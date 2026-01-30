@@ -1,0 +1,11 @@
+CREATE TABLE test_values (k String, w UInt64) ENGINE = MergeTree() ORDER BY k;
+INSERT INTO test_values VALUES ('a', 1), ('a', 2), ('b', 5), ('c', 10), ('c', 3), ('d', 8), ('e', 0);
+SELECT topKWeighted(3)(k, w) FROM (SELECT k, SUM(w) AS w FROM test_values GROUP BY k HAVING SUM(w) > 0) AS grouped;
+SELECT k, topKWeighted(2, 3, 'counts')(k, w) AS weighted_top FROM (SELECT k, SUM(w) AS w FROM test_values GROUP BY k) AS aggregated GROUP BY k;
+CREATE TABLE time_test (timestamp DateTime, metric UInt64) ENGINE = MergeTree() ORDER BY timestamp;
+INSERT INTO time_test VALUES (now() - INTERVAL 1 HOUR, 5), (now() - INTERVAL 2 HOUR, 15), (now() - INTERVAL 30 MINUTE, 10);
+SELECT topKWeighted(2)(timestamp, metric) FROM time_test WHERE timestamp > now() - INTERVAL '2 hour';
+SELECT topKWeighted(3)(.timestamp, metric) FROM time_test WHERE (timestamp + INTERVAL 1 HOUR) < now();
+SELECT topKWeighted(3)(k, w) AS top_weights FROM (SELECT k, SUM(w) AS w FROM test_values GROUP BY k HAVING topKWeighted(1)(k, w) IS NOT NULL) AS filtered;
+SELECT topKWeighted(1, 4)(k, w) FROM (SELECT k, COUNT(*) AS w FROM test_values GROUP BY k) AS counts WHERE w > 2;
+SELECT k, topKWeighted(3)(k, w) FROM (SELECT k, w - INTERVAL 1 DAY AS adjusted_weight FROM test_values) AS adjusted WHERE adjusted_weight < 10;

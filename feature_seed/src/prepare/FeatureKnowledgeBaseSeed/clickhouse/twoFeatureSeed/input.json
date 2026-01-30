@@ -1,0 +1,20 @@
+{
+    "function": "input",
+    "operator": "s1 || s2",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, name String, age Int8, created_at DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table SELECT input('id UInt32, name String, age Int8, created_at DateTime') AS (1, 'John', 30, now()) || input('id UInt32, name String, age Int8, created_at DateTime') AS (2, 'Doe', 25, now());",
+        "SELECT id, name || ' is ' || toString(age) AS description FROM test_table WHERE description IS NOT NULL;",
+        "CREATE TABLE another_table (uid UUID, label String) ENGINE = MergeTree() ORDER BY uid;",
+        "INSERT INTO another_table SELECT input('uid UUID, label String') AS (generateUUIDv4(), 'Label ' || toString(id)) FROM test_table;",
+        "SELECT t.id, (t.name || ' ' || t.created_at) AS combined FROM test_table t WHERE t.age <= 30 GROUP BY combined HAVING COUNT(*) > 1;",
+        "CREATE TABLE temp_table (col1 Float32, col2 Int32) ENGINE = MergeTree() ORDER BY col1;",
+        "INSERT INTO temp_table SELECT input('col1 Float32, col2 Int32') AS (CAST(3.14159 AS Float32), CAST(NULL AS Int32));",
+        "SELECT col1, col2 FROM temp_table WHERE col2 IS NULL || col1 >= 0.0;",
+        "INSERT INTO test_table SELECT input('id UInt32, name String, age Int8, created_at DateTime') AS (3, 'Alice', NULL, now()) || (SELECT input('id UInt32, name String, age Int8, created_at DateTime') AS (4, 'Bob', 40, now()));",
+        "CREATE TABLE join_table (key Int32, description String) ENGINE = MergeTree() ORDER BY key;",
+        "INSERT INTO join_table SELECT input('key Int32, description String') AS (1, 'First') UNION SELECT input('key Int32, description String') AS (2, 'Second');",
+        "SELECT t.id, jt.description || ' - ' || t.name AS full_description FROM test_table t JOIN join_table jt ON t.id = jt.key WHERE jt.description IS NOT NULL;",
+        "SELECT COUNT(*) FROM test_table GROUP BY name || age HAVING COUNT(*) > MAX(age);"
+    ]
+}

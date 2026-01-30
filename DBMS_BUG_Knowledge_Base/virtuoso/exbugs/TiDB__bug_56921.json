@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/56921",
+  "title": "Inconsistent Results Between COUNT and SUM with Common Logical Conditions in SQL Queries",
+  "description": "## Bug Report\r\n\r\n\r\nThe two SQL queries have a common sub-clause:`v0.c1 >= v0.c0 OR v0.c1 LIKE 'z%'`\r\n\r\n\r\nBoth queries essentially evaluate the same logical conditions.  The first query directly counts the number of rows meeting the conditions, while the second query counts the number of TRUE evaluations from a subquery.\r\nIf a row meets either condition, it is counted as 1 in the second query and is included in the count in the first query.\r\nTherefore, both statements should yield the same result, as they are counting the same set of rows based on the same conditions.\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```sql\r\ndrop table  if exists t0;\r\ndrop view  if exists v0;\r\nCREATE TABLE t0(c0 VARCHAR(255) COLLATE utf8mb4_general_ci);\r\nINSERT INTO t0(c0) VALUES ('B');\r\nCREATE VIEW v0(c0, c1) AS SELECT DISTINCT t0.c0, 'a' FROM t0;\r\n\r\nSELECT COUNT(*) FROM v0 WHERE v0.c1 >= v0.c0 OR v0.c1 LIKE 'z%';\r\nSELECT SUM(count) FROM (SELECT (v0.c1 >= v0.c0 OR v0.c1 LIKE 'z%') AS count FROM v0) AS asdf;\r\n\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\nreturn the same result.\r\n\r\n### 3. What did you see instead (Required)\r\n```sql\r\nSELECT COUNT(*) FROM v0 WHERE v0.c1 >= v0.c0 OR v0.c1 LIKE 'z%';\r\n+----------+\r\n| COUNT(*) |\r\n+----------+\r\n|        0 |\r\n+----------+\r\n1 row in set (0.01 sec)\r\n\r\nSELECT SUM(count) FROM (SELECT (v0.c1 >= v0.c0 OR v0.c1 LIKE 'z%') AS count FROM v0) AS asdf;\r\n+------------+\r\n| SUM(count) |\r\n+------------+\r\n|          1 |\r\n+------------+\r\n1 row in set (0.00 sec)\r\n```\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n```\r\nmysql> select version();\r\n+--------------------+\r\n| version()          |\r\n+--------------------+\r\n| 8.0.11-TiDB-v7.5.1 |\r\n+--------------------+\r\n1 row in set (0.00 sec)\r\n```\r\n",
+  "date": "2024-10-28T14:08:20Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t1;",
+    "CREATE TABLE t1(c0 INT, c1 VARCHAR(255), c2 DECIMAL(10,2));",
+    "INSERT INTO t1(c0, c1, c2) VALUES (1, 'A', 10.50), (2, 'B', NULL), (3, 'C', 20.00);",
+    "SELECT COUNT(*) FROM t1 WHERE c1 >= CAST(c0 AS VARCHAR) OR c1 LIKE 'A%';",
+    "SELECT SUM(CASE WHEN c1 >= CAST(c0 AS VARCHAR) OR c1 LIKE 'B%' THEN 1 ELSE 0 END) FROM t1;"
+  ],
+  "key_bug_features": [
+    "Inconsistent results between COUNT and SUM in SQL queries"
+  ]
+}

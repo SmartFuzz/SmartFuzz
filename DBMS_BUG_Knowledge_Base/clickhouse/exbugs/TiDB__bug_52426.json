@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/52426",
+  "title": "Inconsistent row count estimation between lite stats init and non-lite init when table has no stats",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\ncreate a small table and insert some rows\r\n```\r\ncreate table t(a int);\r\ninsert into t values(1), (2), (3), (4), (5), (6), (7), (8), (9), (10);\r\n```\r\n\r\nWait for a while after the stats delta is updated.\r\n![image](https://github.com/pingcap/tidb/assets/7846227/fd9bb0d5-7345-4d1f-9046-a98cf00ccfb6)\r\n\r\nThen run `explain select * from t where a in (1, 2, 3, 4, 5, 6,7,8)` with and without setting `lite-init-stats` in config to false(default is true).\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nEstimation is the same, both is `0.08` while the full scan is `10`. (0.08 = 10 * 1/1000 * 8)\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nThe lite init got \r\n![image](https://github.com/pingcap/tidb/assets/7846227/cbc1bd3d-dec3-4110-a24b-13ec4f0d76a7)\r\n8 = 10 * 0.8(defaultSelectivityFactor)\r\n\r\n### 4. What is your TiDB version? (Required)\r\ncurrent master.\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2024-04-08T16:57:57Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1(a Int32, b String, c Float32) ENGINE = MergeTree() ORDER BY a;",
+    "INSERT INTO t1 VALUES(1, 'row1', 1.1), (2, 'row2', 2.2), (3, 'row3', 3.3), (4, 'row4', 4.4), (5, 'row5', 5.5);",
+    "CREATE TABLE t2(d Int32, e Int32) ENGINE = MergeTree() ORDER BY d;",
+    "INSERT INTO t2 VALUES(1, 1), (2, 2), (3, 3);",
+    "SELECT * FROM t1 WHERE a IN (SELECT e FROM t2 WHERE d > 1) AND b IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Inconsistent row count estimation with lite stats configuration"
+  ]
+}

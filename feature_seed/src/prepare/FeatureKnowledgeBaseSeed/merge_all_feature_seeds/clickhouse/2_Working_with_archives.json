@@ -1,0 +1,10 @@
+CREATE TABLE archive_test (id UInt32, data String, created_at DateTime DEFAULT now()) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO archive_test VALUES (1, 'sample data 1', '2023-01-01 12:00:00'), (2, 'sample data 2', '2023-01-02 12:00:00'), (3, NULL, '2023-01-03 12:00:00');
+SELECT *, (id, data) FROM (SELECT * FROM s3('https://s3-us-west-1.amazonaws.com/umbrella-static/top-1m-2018-01-1{0..2}.csv.zip :: *.csv')) AS archive_data;
+SELECT id, data, created_at, (COUNT(*) OVER (PARTITION BY data)) AS data_count FROM (SELECT * FROM archive_test WHERE data IS NOT NULL) AS filtered_data GROUP BY id, data, created_at HAVING data_count > 1;
+SELECT id, (data, created_at) FROM (SELECT * FROM s3('https://s3-us-west-1.amazonaws.com/umbrella-static/top-1m-2018-01-1{0..2}.csv.zip :: *.csv') WHERE created_at < '2023-01-02 00:00:00') AS archives ORDER BY id;
+CREATE TABLE temp_summary AS SELECT id, count(*) AS entry_count FROM archive_test GROUP BY id;
+SELECT arrayJoin(archive_data) FROM (SELECT * FROM s3('https://s3-us-west-1.amazonaws.com/umbrella-static/top-1m-2018-01-1{0..2}.csv.zip :: *.csv') WHERE length(data) > 5) AS archive_data;
+SELECT (id, data), (ELT(number, 'a', 'b', 'c')) FROM (SELECT id, fromNullable(data) AS data, toUInt8(id % 3) AS number FROM archive_test) AS inner_query;
+WITH (SELECT min(created_at) FROM archive_test) AS min_date SELECT * FROM archive_test WHERE created_at >= min_date;
+SELECT id, data FROM (SELECT id, (data, created_at) FROM archive_test ORDER BY created_at DESC) AS ordered_data WHERE data IS NOT NULL AND id IN (1, 2);

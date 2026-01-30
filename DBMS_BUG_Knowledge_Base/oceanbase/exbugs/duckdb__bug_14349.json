@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14349",
+  "title": "`Order By` not being respected when writing to partition. ",
+  "description": "### What happens?\n\nWhen writing to partitioned csv or parquet the order by statement at `COPY` statement is not being respected specially for this input for some reason when exporting using multithreading. \r\n\r\nI tried to minimize the repro without much success however so have attached my script as is.\n\n### To Reproduce\n\n1. Unzip the csv file from the attachment. \r\n2. Write the following sql code to a file, `partitioned-write.sql`\r\n```sql\r\n-- Workaround for the bug in the COPY, where the order by is not respected with multi-threading\r\n-- SET threads TO 1;\r\n\r\ndrop table if exists binance_public_trade;\r\n\r\nCREATE TABLE\r\n  binance_public_trade (\r\n    trade_id BIGINT,\r\n    price DOUBLE,\r\n    qty DOUBLE,\r\n    base_qty DOUBLE,\r\n    time BIGINT,\r\n    is_buyer_maker BOOLEAN,\r\n    is_best_price_match BOOLEAN,\r\n  );\r\n\r\nCOPY binance_public_trade\r\nFROM\r\n  './FTTUSDT-trades-2022-04.csv';\r\n\r\nCREATE TEMP TABLE import_data AS\r\nWITH\r\n  t AS (\r\n    SELECT\r\n      'FTTUSDT' AS symbol,\r\n      'binance' AS exchange,\r\n      make_timestamp (time * 1000) AS timestamp,\r\n      *\r\n    FROM\r\n      binance_public_trade\r\n  )\r\nSELECT\r\n  symbol,\r\n  exchange,\r\n  CAST(\r\n    STRFTIME (CAST(timestamp AS DATE), '%Y%m%d') AS INTEGER\r\n  ) AS date,\r\n  CAST(trade_id AS BIGINT) AS trade_id,\r\n  epoch_us (timestamp) as timestamp,\r\n  price,\r\n  qty,\r\n  is_buyer_maker,\r\n  is_best_price_match\r\nFROM\r\n  t\r\nORDER BY\r\n  timestamp,\r\n  trade_id;\r\n\r\ncopy (\r\n  select\r\n    *\r\n  from\r\n    import_data\r\n  order by\r\n    timestamp,\r\n    trade_id\r\n) to 'bleh' (\r\n  overwrite true,\r\n  partition_by (symbol, exchange, date)\r\n);\r\n```\r\n3. Run it using something like `duckdb -init partitioned-write.sql`. \r\n4. To make it easier to diff, commit the output to a git repository. \r\n5. Run step 3 again to observe the changes. \r\n6. To fix the issue, uncomment `-- SET threads TO 1;`\r\n\r\n[FTTUSDT-trades-2022-04.csv.zip](https://github.com/user-attachments/files/17352907/FTTUSDT-trades-2022-04.csv.zip)\r\n\n\n### OS:\n\naarch64\n\n### DuckDB Version:\n\nv1.1.1 af39bd0dcf\n\n### DuckDB Client:\n\nDuckDB CLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nSwoorup Joshi\n\n### Affiliation:\n\nSide Project\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have not tested with any build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [X] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [X] Yes, I have",
+  "date": "2024-10-13 03:19:52",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_order_by (id INTEGER, value DOUBLE, created_at TIMESTAMP, category VARCHAR, is_active BOOLEAN);",
+    "INSERT INTO test_order_by VALUES (1, 10.5, '2023-01-01 10:00:00', 'A', TRUE), (2, 20.0, '2023-01-01 09:00:00', 'B', FALSE), (3, 15.0, '2023-01-01 11:00:00', 'A', TRUE);",
+    "CREATE TABLE partitioned_data AS SELECT category, COUNT(*) AS count FROM test_order_by GROUP BY category;",
+    "SELECT * FROM partitioned_data ORDER BY count DESC INTO OUTFILE 'partitioned_output.csv' FIELDS TERMINATED BY ',' ENCLOSED BY '\"' LINES TERMINATED BY '\\n';",
+    "CREATE TABLE large_data AS SELECT ROW_NUMBER() OVER () AS num, DBMS_RANDOM.VALUE() AS rand_value FROM dual CONNECT BY LEVEL <= 1000000;"
+  ],
+  "key_bug_features": [
+    "`ORDER BY` not respected during multi-threaded `COPY` operations."
+  ]
+}

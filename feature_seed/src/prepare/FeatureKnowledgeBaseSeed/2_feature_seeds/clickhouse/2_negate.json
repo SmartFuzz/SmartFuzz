@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id UInt32, values Array(Int32), negated_value Int32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, [1, 2, 3]), (2, [4, 5, 6]), (3, [7, 8, 9]), (4, NULL), (5, []);
+SELECT id, negate(arrayElement(values, 1)) AS first_negated FROM test_table;
+SELECT id, negate(arrayElement(values, negate(2))) AS negated_index FROM test_table WHERE values IS NOT NULL;
+SELECT id, negate(0) + negate(arrayElement(values, 2)) AS adjusted_value FROM test_table GROUP BY id HAVING adjusted_value < 0;
+SELECT id, FIRST_VALUE(negate(arrayElement(values, 1))) OVER (PARTITION BY id ORDER BY id) AS first_neg FROM test_table;
+SELECT id, negate(arrayElement(values, 2)), arrayElement(values, negate(3)) AS cross_access FROM test_table WHERE negate(arrayLength(values)) > -1;
+SELECT id, negate(COALESCE(arrayElement(values, 1), 0)) AS safe_negate FROM test_table;
+CREATE TABLE temp_table AS SELECT id, negate(arrayElement(values, 1)) AS negated_val FROM test_table WHERE id > 0;
+SELECT id, negate(arrayElement(values, 1)) AS negated_first, negate(arrayElement(values, -1)) AS last_negated FROM temp_table ORDER BY id;

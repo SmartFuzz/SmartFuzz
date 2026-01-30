@@ -1,0 +1,10 @@
+CREATE TABLE events (user_id UInt64, timestamp DateTime, eventID UInt8, event_date Date) ENGINE = MergeTree() ORDER BY timestamp;
+INSERT INTO events VALUES (1, '2019-01-01 00:00:00', 1003, '2019-01-01'), (1, '2019-01-01 01:00:00', 1009, '2019-01-01'), (1, '2019-01-01 02:00:00', 1007, '2019-01-01'), (1, '2019-01-01 03:00:00', 1010, '2019-01-01'), (1, '2019-01-01 04:00:00', 1003, '2019-01-01');
+SELECT level, count() AS c FROM (SELECT user_id, windowFunnel(6048000000000000)(timestamp, eventID = 1003, eventID = 1009, eventID = 1007, eventID = 1010) AS level FROM events WHERE (event_date >= '2019-01-01') AND (event_date <= '2019-02-02') GROUP BY user_id) GROUP BY level ORDER BY level ASC;
+CREATE TABLE event_summary AS SELECT user_id, windowFunnel(6048000000000000)(timestamp, eventID) AS max_level FROM events WHERE (event_date >= '2019-01-01') AND (event_date <= '2019-02-02') GROUP BY user_id;
+SELECT user_id, windowFunnel(6048000000000000, 'strict_deduplication')(timestamp, eventID = 1003, eventID = 1009) AS level FROM events WHERE (event_date >= '2019-01-01') AND (event_date <= '2019-02-02') GROUP BY user_id;
+SELECT user_id, windowFunnel(6048000000000000, 'strict_order')(timestamp, eventID = 1003, eventID = 1009, eventID = 1007) AS level FROM events WHERE (event_date >= '2019-01-01') AND (event_date <= '2019-02-02') GROUP BY user_id ORDER BY level;
+SELECT level, count() AS c FROM (SELECT user_id, windowFunnel(6048000000000000, 'strict_once')(timestamp, eventID) AS level FROM events WHERE (event_date >= '2019-01-01') GROUP BY user_id) GROUP BY level ORDER BY level DESC;
+CREATE TABLE temp_events AS SELECT user_id, timestamp, eventID FROM events WHERE (eventID IN (1003, 1009, 1007));
+SELECT user_id, windowFunnel(6048000000000000)(timestamp, eventID) AS level FROM temp_events GROUP BY user_id;
+SELECT user_id, max(windowFunnel(6048000000000000)(timestamp, eventID)) AS max_level FROM (SELECT user_id, timestamp, eventID FROM events) GROUP BY user_id;

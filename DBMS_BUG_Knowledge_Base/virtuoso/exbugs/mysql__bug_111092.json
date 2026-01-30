@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=111092",
+  "title": "dumpInstance produces empty pre-view SQL if SHOW FIELDS FROM results in error",
+  "description": "If a view produces an error when running SHOW FIELDS FROM against it, dumpInstance will create an empty \"db@view.pre.sql\" file. This can break loadDump in scenarios where a user has a SELECT grant against such a view, potentially catching users off guard. The loadDump process normally:\r\n\r\n1) Creates placeholder views\r\n2) Creates users\r\n3) Applies grants\r\n4) Rereates actual views\r\n5) Loads data\r\n\r\nbut loadDump fails at step 3 due to missing placeholder views since the \"pre\" file is empty (technically, not empty. It has a DROP TABLE view; statement but no CREATE VIEW placeholder statement.)\r\n\r\nThe workaround:\r\n\r\nmysql --force -u root -p < dump/@.users.sql\r\nmysqlsh -u root -- util loadDump \"dump\" --loadData=false --loadDdl=true --loadUsers=false --loadIndexes=false --deferTableIndexes=all --skipBinlog=true\r\nmysql -u root -p < dump/@.users.sql\r\nmysqlsh -u root -- util loadDump \"dump\" --loadData=true --loadDdl=false --loadUsers=false --loadIndexes=true --deferTableIndexes=all --skipBinlog=true --updateGtidSet=replace\r\n\r\n1) Creates all users, skipping GRANT errors via --force\r\n2) Loads DDL, where DEFINERs can potentially depend on the existence of certain users\r\n3) Applies grants, which can run successfully now that both users and DDL exist\r\n4) Loads data\nHow to repeat:\npodman run --replace --rm -d --name=mysql -p 3306:3306 -e MYSQL_ALLOW_EMPTY_PASSWORD=true mysql:8.0.33\r\n\r\nmysql -h 127.0.0.1 -u root\r\n\r\ncreate database test;\r\nuse test;\r\n\r\n-- Below taken from\nhttps://bugs.mysql.com/bug.php?id=35869\nto forcibly invoke SHOW FIELDS FROM error\r\n\r\ncreate table t1 (a int);\r\ninsert into t1 (a) values (1), (2), (3);\r\ncreate table t2 like t1;\r\ninsert into t2 (a) values (4), (5), (6);\r\ncreate view v2 as select max(a) from t1;\r\ncreate view v1 as select * from v2;\r\nselect * from v1;\r\ndrop view v2;\r\ncreate table v2 as select * from t2;\r\n\r\nexit\r\n\r\nmysqlsh --verbose --no-wizard -h 127.0.0.1 -u root -- util dumpInstance /tmp/dump\r\n\r\ncat /tmp/dump/test@v1.pre.sql\nSuggested fix:\nI'm not sure what mysqlsh should do. In this situation, mysqldump normally fails and exits with:\r\n\r\nERROR 1356 (HY000) at line 1: View 'test.v1' references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them\r\n\r\nOn one hand, it's nice that mysqlsh can still produce a backup in this situation where it's functionally a problem with Mysql server and not mysqlsh, but on the other hand, it's a \"silent failure\" of sorts.\r\n\r\nMaybe the output of dumpInstance should produce WARNING messages? or maybe there should be a flag to indicate whether the user would like the dump process to fail in this situation?",
+  "date": "2023-05-19 19:00:00",
+  "vulnerable_version": "8.0.33",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE DATABASE test_db;",
+    "USE test_db;",
+    "CREATE TABLE users (id INTEGER PRIMARY KEY, name VARCHAR(100) NOT NULL, email VARCHAR(100) UNIQUE);",
+    "INSERT INTO users (name, email) VALUES ('Alice', 'alice@example.com'), ('Bob', NULL), ('Charlie', 'charlie@example.com');",
+    "CREATE VIEW active_users AS SELECT * FROM users WHERE email IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "SHOW FIELDS FROM error causes empty pre-view SQL"
+  ]
+}

@@ -1,0 +1,27 @@
+{
+    "function": "h3IsValid",
+    "operator": "a NOT LIKE s",
+    "sql_array": [
+        "CREATE TABLE test_h3 (id UInt64, h3index UInt64, name String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_h3 (id, h3index, name) VALUES (1, 630814730351855103, 'Valid Index'), (2, 123456789012345678, 'Invalid Index'), (3, 0, 'Boundary Case');",
+        "SELECT id, h3IsValid(h3index) AS isValid, name FROM test_h3 WHERE isValid NOT LIKE '0';",
+        "SELECT id, h3index, name FROM test_h3 WHERE h3IsValid(h3index) NOT LIKE h3IsValid(0);",
+        "SELECT id, h3index, Count(*) OVER (PARTITION BY h3IsValid(h3index)) AS count_per_validity FROM test_h3 HAVING count_per_validity > 1;",
+        "SELECT id, name, h3index FROM (SELECT * FROM test_h3 WHERE h3IsValid(h3index) NOT LIKE h3IsValid(123456789012345679)) AS subquery WHERE subquery.name NOT LIKE '%Invalid%';",
+        "CREATE TABLE test_numbers (num UInt64, description String) ENGINE = MergeTree() ORDER BY num;",
+        "INSERT INTO test_numbers (num, description) VALUES (1, 'Number One'), (2, 'Number Two'), (3, 'Nine ');",
+        "SELECT num, description FROM test_numbers WHERE num NOT LIKE CAST(1 AS String) AND description NOT LIKE 'Number%';",
+        "CREATE TABLE test_combined (id UInt64, h3index UInt64, num UInt64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_combined (id, h3index, num) SELECT id, h3index, num FROM test_h3 JOIN test_numbers ON h3index NOT LIKE CAST(num AS UInt64);",
+        "SELECT id, h3IsValid(h3index) AS validity, num FROM test_combined GROUP BY id, validity, num HAVING validity NOT LIKE 0;",
+        "SELECT id, h3index, h3IsValid(h3index) NOT LIKE 1 AS is_invalid FROM test_combined WHERE h3IsValid(h3index) NOT LIKE (SELECT DISTINCT h3IsValid(h3index) FROM test_h3) AND h3index NOT LIKE 0;",
+        "INSERT INTO test_h3 SELECT 4, 630814730351855104, 'Another Valid' WHERE NOT EXISTS (SELECT * FROM test_h3 WHERE h3index = 630814730351855104);",
+        "SELECT id, h3index FROM test_h3 WHERE h3IsValid(h3index) = 1 AND h3index NOT LIKE (SELECT MAX(h3index) FROM test_h3);",
+        "CREATE TABLE test_nulls (h3index Nullable(UInt64), description Nullable(String)) ENGINE = MergeTree() ORDER BY h3index;",
+        "INSERT INTO test_nulls (h3index, description) VALUES (NULL, NULL), (630814730351855102, 'Non-null Index');",
+        "SELECT h3index, h3IsValid(h3index) AS isValid FROM test_nulls WHERE isValid NOT LIKE 0;",
+        "CREATE TABLE test_complicated (h3index UInt64, extra UInt64) ENGINE = MergeTree() ORDER BY h3index;",
+        "INSERT INTO test_complicated (h3index, extra) VALUES (630814730351855102, 10), (630814730351855103, 20), (123456789012345678, 30);",
+        "SELECT h3index, COUNT(*) NOT LIKE h3IsValid(extra) FROM test_complicated GROUP BY h3index HAVING COUNT(*) > 0;"
+    ]
+}

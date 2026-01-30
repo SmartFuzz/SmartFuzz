@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/489",
+  "title": "Select with Max on xsd:datetime results in \"Tag 248 not defined\"",
+  "description": "Running the following query on a small set of testdata (approx 50 triples) results in  \"Tag 248 not defined\"\nPREFIX oa:   <http://www.w3.org/ns/oa#>\nPREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\nPREFIX foaf: <http://xmlns.com/foaf/0.1/>\nPREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>\nPREFIX prov: <http://www.w3.org/ns/prov#>\nPREFIX reva: <http://data.reva.nl/2013/07/reva#>\nPREFIX rela: <http://www.digimelding.nl/2013/11/relaties#>\nPREFIX gem:  <http://www.bprbzk.nl/BRP/informatiebank/tabel33#>\n\nSELECT ?graph ?timestamp ?addressesCount ?mostRecentTimestamp\nWHERE {\n  GRAPH ?graph {\n    ?graph rdf:type reva:RootAnnotatie ;\n      oa:annotatedAt ?timestamp .\n\n    {\n      SELECT\n              ?graph\n              (count(?addressTimestamp) as ?addressesCount)\n              (max(?addressTimestamp) as ?mostRecentTimestamp)\n      WHERE {\n        ?adresAnnotatie rdf:type reva:AdresAnnotatie ;\n          oa:hasTarget ?graph ;\n          oa:annotatedAt ?addressTimestamp .\n      }\n      GROUP BY ?graph\n    }\n  }\n}\n\nThis exact same query ran just fine on Apache Jena TDB with Fuseki.",
+  "date": "2015-10-12 08:20:03",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE test_graph (id INT PRIMARY KEY, graph_uri VARCHAR(255), annotated_at TIMESTAMP);",
+    "CREATE TABLE test_address (id INT PRIMARY KEY, address_uri VARCHAR(255), target_graph INT, address_timestamp TIMESTAMP, FOREIGN KEY (target_graph) REFERENCES test_graph(id));",
+    "INSERT INTO test_graph (id, graph_uri, annotated_at) VALUES (1, 'http://example.org/graph1', '2023-10-01 10:00:00'), (2, 'http://example.org/graph2', '2023-10-02 12:00:00');",
+    "INSERT INTO test_address (id, address_uri, target_graph, address_timestamp) VALUES (1, 'http://example.org/address1', 1, '2023-10-01 09:00:00'), (2, 'http://example.org/address2', 1, NULL), (3, 'http://example.org/address3', 2, '2023-10-02 11:00:00');",
+    "SELECT g.graph_uri, g.annotated_at, COUNT(a.address_timestamp) AS addresses_count, MAX(a.address_timestamp) AS most_recent_timestamp FROM test_graph g LEFT JOIN test_address a ON g.id = a.target_graph GROUP BY g.id;"
+  ],
+  "key_bug_features": [
+    "Select with Max on xsd:datetime in query"
+  ]
+}

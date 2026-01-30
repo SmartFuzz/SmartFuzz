@@ -1,0 +1,11 @@
+CREATE TABLE geo_data (id Int32, polygon1 Array(Array(Tuple(Float64, Float64))), polygon2 Array(Array(Tuple(Float64, Float64)));
+INSERT INTO geo_data VALUES (1, [[(0, 0), (0, 0.1), (0.1, 0.1), (0.1, 0)]], [[(10., 10.), (10., 40.), (40., 40.), (40., 10.), (10., 10.)]]);
+INSERT INTO geo_data VALUES (2, [[(1, 1), (1, 1.1), (1.1, 1.1), (1.1, 1)]], [[(20., 20.), (20., 50.), (50., 50.), (50., 20.), (20., 20.)]]);
+SELECT id, polygonsDistanceSpherical(polygon1, polygon2) AS distance FROM geo_data;
+SELECT id, polygonsDistanceSpherical(polygon1, polygon2), x -> polygonsDistanceSpherical([(0, 0), (0, 0.1)], z -> [(10., 10.), (10., 40.), (40., 40.), (40., 10.)]) AS nested_distance FROM geo_data;
+SELECT id, distance FROM (SELECT id, polygonsDistanceSpherical(polygon1, polygon2) AS distance FROM geo_data WHERE distance IS NOT NULL) WHERE distance > 10.0;
+SELECT id, AVG(polygonsDistanceSpherical(polygon1, polygon2)) OVER (PARTITION BY id) AS avg_distance FROM geo_data;
+SELECT id, polygonsDistanceSpherical(polygon1, polygon2) AS dist FROM geo_data GROUP BY dist HAVING dist < 15.0;
+CREATE TABLE temp_geo (point_id Int32, point Array(Tuple(Float64, Float64)));
+INSERT INTO temp_geo VALUES (1, [(0.5, 0.5)]), (2, [(15, 15)]);
+SELECT gd.id, gd.polygon1, gd.polygon2, polygonsDistanceSpherical(gd.polygon1, tg.point) FROM geo_data gd JOIN temp_geo tg ON polygonsDistanceSpherical(gd.polygon1, tg.point) IS NOT NULL;

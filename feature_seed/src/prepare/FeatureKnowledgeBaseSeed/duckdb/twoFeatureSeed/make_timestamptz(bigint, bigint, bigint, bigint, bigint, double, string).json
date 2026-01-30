@@ -1,0 +1,18 @@
+{
+    "function": "make_timestamptz(bigint, bigint, bigint, bigint, bigint, double, string)",
+    "operator": "%",
+    "sql_array": [
+        "CREATE TABLE test_table (id INTEGER PRIMARY KEY, ts BIGINT, offset BIGINT, some_string VARCHAR);",
+        "INSERT INTO test_table (id, ts, offset, some_string) VALUES (1, 737790272000000000, 3600, 'CET');",
+        "INSERT INTO test_table (id, ts, offset, some_string) VALUES (2, 863993952000000000, 7200, NULL);",
+        "SELECT make_timestamptz(1992, 9, 20, 15, 34, 27.123456, some_string) % (SELECT COUNT(*) FROM test_table) AS time_mod FROM test_table WHERE offset IS NOT NULL;",
+        "SELECT id, make_timestamptz(ts, offset % 60, 15, 34, 27.123456, 'UTC') AS adjusted_time FROM test_table WHERE make_timestamptz(ts, offset, 0, 0, 0, some_string) IS NOT NULL;",
+        "SELECT id, COUNT(*) as count, make_timestamptz(1992, 9, (SELECT MAX(id) FROM test_table) % 12, 15, 34, 27.123456, some_string) FROM test_table GROUP BY id HAVING COUNT(*) % 2 = 0;",
+        "CREATE TABLE secondary_table (ref_id INTEGER REFERENCES test_table(id), value DOUBLE);",
+        "INSERT INTO secondary_table (ref_id, value) VALUES (1, 5.5), (2, NULL);",
+        "SELECT s.ref_id, s.value, make_timestamptz(1992, 9, 20, 15, 34, s.value % 1.1, 'UTC') FROM secondary_table s JOIN test_table t ON s.ref_id = t.id WHERE t.offset IS NULL;",
+        "WITH temp AS (SELECT ts, offset % 30 AS mod_offset FROM test_table) SELECT make_timestamptz(2000, 1, 1, 0, 0, (SELECT AVG(mod_offset) FROM temp WHERE mod_offset IS NOT NULL), 'CET') AS new_ts FROM test_table;",
+        "DROP TABLE IF EXISTS test_table;",
+        "DROP TABLE IF EXISTS secondary_table;"
+    ]
+}

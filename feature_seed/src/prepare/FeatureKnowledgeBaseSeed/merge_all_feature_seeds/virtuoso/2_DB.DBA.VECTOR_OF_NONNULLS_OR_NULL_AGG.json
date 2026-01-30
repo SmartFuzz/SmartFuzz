@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, value VARCHAR(255), json_data JSON);
+INSERT INTO test_table (id, value, json_data) VALUES (1, 'sample1', '{"key": 100}'), (2, NULL, '{"key": 200}'), (3, 'sample3', NULL), (4, '', '{"key": null}');
+SELECT DB.DBA.VECTOR_OF_NONNULLS_OR_NULL_AGG(value) FROM (SELECT value FROM test_table WHERE value IS NOT NULL ORDER BY value) AS subquery;
+SELECT json_get(json_data, 'key') FROM test_table WHERE json_data IS NOT NULL;
+SELECT DB.DBA.VECTOR_OF_NONNULLS_OR_NULL_AGG(json_get(json_data, 'key')) FROM (SELECT json_data FROM test_table WHERE json_data IS NOT NULL) AS subquery;
+SELECT DB.DBA.VECTOR_OF_NONNULLS_OR_NULL_AGG(COALESCE(value, 'default')) FROM (SELECT DISTINCT value FROM test_table WHERE value IS NOT NULL) AS subquery;
+SELECT json_get(json_data, 'key') FROM test_table WHERE id IN (SELECT id FROM test_table WHERE value = 'sample1');
+SELECT COUNT(*) FROM (SELECT DB.DBA.VECTOR_OF_NONNULLS_OR_NULL_AGG(value) AS aggregated_values FROM test_table GROUP BY id HAVING aggregated_values IS NOT NULL) AS subquery;
+SELECT json_get(json_data, 'key') AS extracted_key FROM test_table WHERE JSON_LENGTH(json_data) > 0 ORDER BY id;
+SELECT DB.DBA.VECTOR_OF_NONNULLS_OR_NULL_AGG(value) FROM test_table GROUP BY (CASE WHEN value IS NULL THEN 'null_value' ELSE 'non_null_value' END) HAVING COUNT(value) > 1;

@@ -1,0 +1,14 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, text_col VARCHAR(255), num_col INT);
+INSERT INTO test_table (id, text_col, num_col) VALUES (1, 'abcdef', 5), (2, NULL, 3), (3, 'xyz', NULL);
+CREATE TABLE join_table (id INT PRIMARY KEY, reference_id INT, value NUMERIC);
+INSERT INTO join_table (id, reference_id, value) VALUES (1, 1, 2.5), (2, 1, 0), (3, NULL, 4.0);
+SELECT t1.id, (SELECT COUNT(*) FROM join_table j WHERE j.reference_id = t1.id AND j.value = 2.5) as count_value FROM test_table t1 WHERE substring(t1.text_col, 1) = 'a' AND t1.num_col IS NOT NULL;
+SELECT t.id, substring(t.text_col, (t.num_col * 2)) as substring_col FROM test_table t WHERE t.text_col IS NOT NULL AND t.num_col > 0;
+SELECT t1.id, (substring(t1.text_col, 1) || CAST(SUM(t2.value) AS VARCHAR)) FROM test_table t1 JOIN join_table t2 ON t1.id = t2.reference_id GROUP BY t1.id HAVING COUNT(t2.value) > 1;
+SELECT id, substring(text_col, 2 * (num_col + 1)) FROM test_table WHERE id IN (SELECT DISTINCT reference_id FROM join_table WHERE value > 1) ORDER BY id;
+SELECT t.id, substring(t.text_col, 1) vs_value FROM test_table t WHERE id IN (SELECT reference_id FROM join_table WHERE value IS NULL);
+SELECT t.id, (SUBSTRING(t.text_col, 1) * (t.num_col + 1)) AS derived_value FROM test_table t WHERE t.num_col IS NOT NULL ORDER BY derived_value DESC;
+SELECT t1.id, (SELECT COUNT(*) FROM join_table j WHERE j.reference_id = t1.id) || substring((SELECT text_col FROM test_table WHERE id = t1.id), 1, 2) FROM test_table t1 WHERE t1.id = 2;
+DROP TABLE IF EXISTS temp_table;
+CREATE TEMP TABLE temp_table AS SELECT t1.id, (substring(t1.text_col, 1) * t2.value) AS multiplied_value FROM test_table t1 JOIN join_table t2 ON t1.id = t2.reference_id;
+SELECT * FROM temp_table WHERE multiplied_value IS NOT NULL;

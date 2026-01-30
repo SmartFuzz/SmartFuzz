@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/86393",
+  "title": "`merge` function fails with columns not present in all merged tables",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nThe `merge` function in ClickHouse fails when trying to access columns that don't exist in all merged tables, specifically when merging non-MergeTree tables (e.g., distributed tables, remote tables).\n## Version\n- ClickHouse version: 25.9.1\n- Server: localhost:9000\n## Description\nWhen using the `merge()` function to combine multiple tables and then trying to access a column that exists in some tables but not others, ClickHouse throws an `UNKNOWN_IDENTIFIER` error. **The key issue is that this behavior works correctly when merging MergeTree tables, but fails when merging non-MergeTree tables (e.g., distributed tables, remote tables).**\n## Steps to Reproduce\n```sql\n-- Create table t1 with columns a and b\nCREATE TABLE t1 (\na UInt32,\nb UInt32\n) ENGINE = MergeTree()\nORDER BY a;\n-- Create table t2 with only column a\nCREATE TABLE t2 (\na UInt32\n) ENGINE = MergeTree()\nORDER BY a;\n-- Insert sample data\nINSERT INTO t1 (a, b) VALUES (1, 11), (2, 12), (3, 13);\nINSERT INTO t2 (a) VALUES (9), (8), (7);\n-- Create remote tables\nCREATE TABLE d1 AS remote('127.0.0{0,1}', default, t1);\nCREATE TABLE d2 AS remote('127.0.0.0', default, t2);\n-- This works\nSELECT uniq(a) FROM merge('t*');\nSELECT uniq(a) FROM merge('d*');\n-- This works too - column 'b' only exists in t1, not t2\nSELECT uniq(b) FROM merge('t*');\n-- This fails - column 'b' only exists in d1, not d2\nSELECT uniq(b) FROM merge('d*');\nSELECT b FROM merge('d*');\n```\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nhttps://fiddle.clickhouse.com/c1b7187f-e3a7-4fba-8d4e-4035e6f02242\n### Expected behavior\nThe `merge()` function should handle columns that don't exist in all merged tables gracefully. When a column is missing from some tables, the behavior should be consistent regardless of the engine of the tables being merged\n### Error message and/or stacktrace\n```\nCode: 47. DB::Exception: Received from localhost:9000.\nDB::Exception: Identifier '__table1.b' cannot be resolved from table with name __table1.\nIn scope SELECT uniq(__table1.b) AS `uniq(b)` FROM default.t2 AS __table1.\nMaybe you meant: ['__table1.a']: Child table: default.d2 (579222ee-96cf-45c4-aceb-bdb22a6bf50e).\n(UNKNOWN_IDENTIFIER)",
+  "date": "2025-08-28T19:59:05Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE t3 (x UInt32, y String);",
+    "CREATE TABLE t4 (x UInt32);",
+    "INSERT INTO t3 (x, y) VALUES (1, 'one'), (2, 'two'), (3, 'three');",
+    "INSERT INTO t4 (x) VALUES (4), (5), (6);",
+    "SELECT COUNT(DISTINCT y) FROM t3;"
+  ],
+  "key_bug_features": [
+    "merge function fails with missing columns in non-MergeTree tables"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+    "function": "sys.isaurl(string)",
+    "operator": "<<=",
+    "sql_array": [
+        "CREATE TABLE test_urls (id SERIAL PRIMARY KEY, url_string VARCHAR(255), ip_address INET);",
+        "INSERT INTO test_urls (url_string, ip_address) VALUES ('http://example.com', inet '192.168.1.1'), ('invalid-url', inet '192.168.2.1'), ('https://secure-site.org', inet '192.168.1.100');",
+        "SELECT url_string, sys.isaurl(url_string), ip_address FROM test_urls WHERE sys.isaurl(url_string) AND inet '192.168.1.1' <<= ip_address;",
+        "SELECT url_string FROM test_urls WHERE sys.isaurl(url_string) OR ip_address <<= inet '192.168.1.0/24';",
+        "CREATE TEMPORARY TABLE temp_ips (ip_address INET);",
+        "INSERT INTO temp_ips (ip_address) VALUES (inet '192.168.1.5'), (inet '192.168.1.15');",
+        "SELECT url_string, sys.isaurl(url_string) AS valid_url, (SELECT COUNT(*) FROM temp_ips WHERE temp_ips.ip_address <<= test_urls.ip_address) AS contained_count FROM test_urls GROUP BY url_string HAVING valid_url = TRUE;",
+        "SELECT url_string FROM test_urls WHERE sys.isaurl(url_string) AND (CASE WHEN ip_address IS NULL THEN TRUE ELSE ip_address <<= inet '192.168.1.0/24' END);",
+        "CREATE TABLE url_logs (log_id SERIAL PRIMARY KEY, url_string VARCHAR(255), accessed TIMESTAMP);",
+        "INSERT INTO url_logs (url_string, accessed) VALUES ('http://example.com', NOW()), ('https://secure-site.org', NOW() - INTERVAL '1 day');",
+        "SELECT ul.url_string, COUNT(*) AS access_count FROM url_logs ul JOIN test_urls tu ON sys.isaurl(ul.url_string) WHERE sys.isaurl(tu.url_string) GROUP BY ul.url_string HAVING access_count > 1;",
+        "SELECT url_string FROM (SELECT url_string, sys.isaurl(url_string) AS valid FROM test_urls) AS subquery WHERE valid = TRUE AND url_string NOT IN (SELECT url_string FROM url_logs WHERE accessed < NOW() - INTERVAL '7 days');"
+    ]
+}

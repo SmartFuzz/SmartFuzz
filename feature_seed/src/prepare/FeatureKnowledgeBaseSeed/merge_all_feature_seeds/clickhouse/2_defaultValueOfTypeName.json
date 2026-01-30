@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id Int32, value Nullable(String), num Int8, date Date) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, 'Test', 10, '2023-01-01'), (2, NULL, 20, '2023-01-02'), (3, '', 30, '2023-01-03'), (4, 'Fuzz', 127, '2023-01-04');
+SELECT id, defaultValueOfTypeName('Int8') || value FROM test_table WHERE num > defaultValueOfTypeName('Int8') AND value IS NOT NULL;
+SELECT id, defaultValueOfTypeName('Nullable(String)') || (SELECT max(value) FROM test_table WHERE value IS NOT NULL) AS combined_value FROM test_table GROUP BY id HAVING combined_value != '';
+SELECT id, num, defaultValueOfTypeName('Int8') + (CASE WHEN value IS NULL THEN 0 ELSE length(value) END) AS new_value FROM test_table WHERE new_value > 10;
+SELECT id, defaultValueOfTypeName('Nullable(Int8)') AS default_value FROM test_table HAVING default_value = 0 OR default_value IS NULL;
+CREATE TABLE another_table (foreign_id Int32, related_value String) ENGINE = MergeTree() ORDER BY foreign_id;
+INSERT INTO another_table VALUES (1, 'JoinTest1'), (2, 'JoinTest2'), (3, NULL);
+SELECT tt.id, tt.value || at.related_value AS full_string FROM test_table tt LEFT JOIN another_table at ON tt.id = at.foreign_id WHERE tt.value IS NULL OR defaultValueOfTypeName('String') = '';
+SELECT COUNT(*) OVER (PARTITION BY id) AS count_partition, defaultValueOfTypeName('Int8') + num AS adjusted_value FROM test_table ORDER BY count_partition DESC;

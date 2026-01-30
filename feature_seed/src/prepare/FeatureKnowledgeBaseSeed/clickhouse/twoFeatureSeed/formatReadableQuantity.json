@@ -1,0 +1,18 @@
+{
+    "function": "formatReadableQuantity",
+    "operator": "a != ALL (subquery)",
+    "sql_array": [
+        "CREATE TABLE test_numbers (id Int32, quantity Float64);",
+        "INSERT INTO test_numbers VALUES (1, 1234.56789), (2, 1000), (3, 9876543210), (4, NULL), (5, 0);",
+        "SELECT id, formatReadableQuantity(quantity) AS readable_format FROM test_numbers WHERE quantity != ALL (SELECT quantity FROM test_numbers WHERE quantity IS NOT NULL);",
+        "SELECT id, formatReadableQuantity(quantity) AS readable_format FROM test_numbers WHERE quantity != ALL (SELECT DISTINCT quantity FROM test_numbers WHERE id > 2) AND id < 5;",
+        "SELECT id, formatReadableQuantity(SUM(quantity)) AS total_readable FROM (SELECT id, quantity FROM test_numbers WHERE quantity IS NOT NULL GROUP BY id) GROUP BY id HAVING total_readable != ALL (SELECT formatReadableQuantity(quantity) FROM test_numbers WHERE quantity IS NOT NULL);",
+        "SELECT id, formatReadableQuantity(quantity) AS formatted_quantity FROM test_numbers WHERE formatted_quantity != ALL (SELECT formatReadableQuantity(quantity) FROM (SELECT quantity FROM test_numbers WHERE quantity IS NOT NULL));",
+        "CREATE TABLE temp_data AS SELECT id, quantity FROM test_numbers WHERE quantity IS NOT NULL;",
+        "SELECT id, formatReadableQuantity(quantity) AS human_readable FROM (SELECT id, quantity FROM temp_data WHERE quantity > 1000) WHERE quantity != ALL (SELECT quantity FROM test_numbers WHERE quantity IS NULL) ORDER BY id;",
+        "SELECT formatReadableQuantity(avg(quantity)) AS avg_readable FROM (SELECT quantity FROM test_numbers WHERE quantity IS NOT NULL GROUP BY id HAVING count(*) > 1) WHERE avg_readable != ALL (SELECT formatReadableQuantity(quantity) FROM test_numbers WHERE quantity < 0);",
+        "CREATE TABLE boundary_test (num Int32, value Float64) ENGINE = MergeTree() ORDER BY num;",
+        "INSERT INTO boundary_test VALUES (1, -1e10), (2, 1e10), (3, 0), (4, NULL), (5, 1.0);",
+        "SELECT num, formatReadableQuantity(value) AS readable_value FROM boundary_test WHERE value != ALL (SELECT value FROM boundary_test WHERE value IS NOT NULL AND value != 0);"
+    ]
+}

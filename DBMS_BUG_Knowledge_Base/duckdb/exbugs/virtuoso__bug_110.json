@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/110",
+  "title": "Query over BNodes doesn't work ",
+  "description": "When I have some data with BNodes I experience a strange behavior of Virtuoso.\nHere you see two TTL files (Data 1 with BNode fails, Data 2 with named node works).\nData 1:\n@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix owl:    <http://www.w3.org/2002/07/owl#> .\n@prefix ex:     <http://example.com/> .\n\nex:a rdf:type        owl:Class ;\n     rdfs:subClassOf ex:b ,\n                     [\n                        rdf:type owl:Restriction ;\n                        ex:prop \"hallo\"\n                     ] .\n\nData 2:\n@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix owl:    <http://www.w3.org/2002/07/owl#> .\n@prefix ex:     <http://example.com/> .\n\nex:a rdf:type        owl:Class ;\n     rdfs:subClassOf ex:b ,\n                     ex:c .\n\nex:c rdf:type owl:Restriction ;\n     ex:prop \"hallo\" .\n\nThe problem occurs, when querying Data 1:\nIf I send Query 1 I get the correct result as expected. But when I send Query 2 I get no result at all, and for Query 3 ?p and ?o are also empty. But as soon as I send Query 4 I see that the data I have queried for exists.\nQuery 1:\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX ex: <http://example.com/>\n\nSELECT ?a ?b\nWHERE {\n    ?a rdfs:subClassOf ?b.\n}\n\nQuery 2:\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX ex: <http://example.com/>\n\nSELECT ?a ?b ?p ?o\nWHERE {\n    ?a rdfs:subClassOf ?b.\n    ?b ?p ?o .\n}\n\nQuery 3:\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX ex: <http://example.com/>\n\nSELECT ?a ?b ?p ?o\nWHERE {\n    ?a rdfs:subClassOf ?b.\n    OPTIONAL {\n        ?b ?p ?o .\n    }\n}\n\nQuery 4:\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX ex: <http://example.com/>\n\nSELECT ?a ?b ?p ?o\nWHERE {\n    {\n        ?a rdfs:subClassOf ?b.\n    } UNION {\n        ?b a owl:Restriction ;\n           ?p ?o .\n    }\n}\n\nThe same set of queries and data works with ARC2 and returns the expected results.",
+  "date": "2013-11-25 09:43:28",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE bnodes_test (id INTEGER PRIMARY KEY, data VARCHAR, bnode_data BLOB);",
+    "INSERT INTO bnodes_test (id, data, bnode_data) VALUES (1, 'Test Data', NULL);",
+    "INSERT INTO bnodes_test (id, data, bnode_data) VALUES (2, 'Another Test', 'BNode Content');",
+    "SELECT id, data FROM bnodes_test WHERE bnode_data IS NOT NULL;",
+    "SELECT id, data FROM bnodes_test WHERE data LIKE '%Test%';"
+  ],
+  "key_bug_features": [
+    "Querying BNodes leads to unexpected empty results"
+  ]
+}

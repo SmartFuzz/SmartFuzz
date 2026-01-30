@@ -1,0 +1,19 @@
+{
+    "function": "arrayFlatten",
+    "operator": "a / b",
+    "sql_array": [
+        "CREATE TABLE test_table (id Int32, array_col Array(Array(Int32)), nullable_col Nullable(Int32));",
+        "INSERT INTO test_table VALUES (1, [[1, 2], [3, 4]], NULL), (2, [], [5]), (3, [[6]], 10);",
+        "SELECT id, flatten(array_col) FROM test_table WHERE nullable_col IS NULL;",
+        "SELECT id, flatten(array_col) AS flat_array, (SELECT COUNT(*) FROM test_table WHERE id = test_table.id)/NULLIF(nullable_col, 0) AS division_result FROM test_table;",
+        "SELECT id, flatten(array_col) AS flat_array, (flatten(array_col) / NULLIF((SELECT COUNT(*) FROM test_table WHERE id < 3), 0)) AS division_result FROM test_table GROUP BY id, flat_array HAVING division_result IS NOT NULL;",
+        "CREATE TABLE join_table (join_id Int32, value Float64);",
+        "INSERT INTO join_table VALUES (1, 1.5), (2, NULL), (3, 3.0);",
+        "SELECT t.id, flatten(t.array_col), j.value / NULLIF(t.nullable_col, 0) AS division_result FROM test_table t JOIN join_table j ON t.id = j.join_id WHERE flatten(t.array_col) != [] ORDER BY division_result ASC;",
+        "SELECT id, (flatten(array_col) / 1.0) AS float_division, value FROM test_table JOIN join_table ON true HAVING float_division IS NOT NULL;",
+        "CREATE TABLE test_boundaries (min_value Int32, max_value Int32);",
+        "INSERT INTO test_boundaries VALUES (0, 2147483647);",
+        "SELECT flatten(array_concat(arrayMap(x -> [min_value, max_value], (SELECT min_value, max_value FROM test_boundaries)))) AS boundary_values FROM test_boundaries;",
+        "SELECT id FROM (SELECT id, flatten(array_col) AS flat_array FROM test_table) AS subquery WHERE arrayLength(flat_array) > 0;"
+    ]
+}

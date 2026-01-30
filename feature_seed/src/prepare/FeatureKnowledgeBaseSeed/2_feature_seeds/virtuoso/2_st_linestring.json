@@ -1,0 +1,11 @@
+CREATE TABLE geo_data (id SERIAL PRIMARY KEY, location VARCHAR, geo_line VARCHAR NOT NULL);
+INSERT INTO geo_data (location, geo_line) VALUES ('A', ST_AsText(ST_Linestring(ST_Point(11, 22), ST_Point(12, 23), ST_Point(12, 23), ST_Point(14, 25), ST_Point(15, 26))));
+INSERT INTO geo_data (location, geo_line) VALUES ('B', ST_AsText(ST_Linestring(ST_Point(20, 21), ST_Point(21, 22), ST_Point(21, 22), ST_Point(23, 23), ST_Point(24, 24))));
+SELECT location, ST_AsText(ST_Linestring(ST_Point(1,1), ST_Point(NULL, NULL), ST_Point(3,3))) AS line FROM geo_data;
+CREATE TABLE xml_data (id SERIAL PRIMARY KEY, data XML);
+INSERT INTO xml_data (data) VALUES ('<item><name>item1</name><value>10</value></item>'), ('<item><name>item2</name><value>20</value></item>');
+SELECT location, (SELECT ST_AsText(ST_Linestring(ST_Point(1, 2), ST_Point(3, 4))) FROM geo_data WHERE id = 1) AS geo_line FROM geo_data WHERE id IN (SELECT id FROM xml_data WHERE xpath_string('//item/value', data) = '20');
+SELECT location, ST_AsText(ST_Linestring(ST_Point((SELECT MIN(value) FROM xml_data WHERE xpath_string('//item/name', data) = 'item1'), 1), ST_Point(3,3))) AS geo_line FROM geo_data GROUP BY location HAVING COUNT(*) > 1;
+WITH line_data AS (SELECT ST_Linestring(ST_Point(1,1), ST_Point(2,2), ST_Point(3,3)) AS line FROM geo_data) SELECT ST_AsText(line) FROM line_data WHERE ST_Distance(line, ST_Linestring(ST_Point(1,1), ST_Point(2,2))) > 0;
+SELECT ST_AsText(ST_Linestring(ST_Point(10, 10), ST_Point(20, 20))) AS geo_line, (xpath_string('//item/name', data)) AS item_name FROM xml_data, geo_data WHERE ST_DWithin(geo_line, ST_SetSRID(ST_Point(15, 15), 4326), 5);
+SELECT ST_AsText(ST_Linestring(ST_Point(NULL, 5), ST_Point(1, 1), ST_Point(2, NULL))) FROM geo_data WHERE location IS NOT NULL;

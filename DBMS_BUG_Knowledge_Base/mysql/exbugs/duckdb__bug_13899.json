@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/13899",
+  "title": "asof join's result is incorrect in v1.1.0  when add filter for right table on join condition",
+  "description": "### What happens?\n\nasof join's result is incorrect in v1.1.0  when add filter for right table on join condition\n\n### To Reproduce\n\ndata prepare\r\n```sql\r\ncreate table t1(seq_no int,amount decimal(10,2));\r\ninsert into t1\r\nvalues\r\n(1,1.00),(2,null),(3,null),(4,null),(5,2.00),\r\n(6,null),(7,null),(8,3.00),(9,null),(10,null),(11,5.00);\r\n```\r\n\r\ndiff results between v1.1.0 and v1.0.0 when query as below\r\n```sql\r\nselect * from t1;\r\nselect a.seq_no,a.amount,b.amount\r\n  from t1 as a \r\n  asof join t1 as b\r\n    on a.seq_no>=b.seq_no\r\n   and b.amount is not null;\r\n```\r\nexpect result:\r\n|seq_no|amount|amount|\r\n|---|---|---|\r\n|1|1.00|1.00|\r\n|2||1.00|\r\n|3||1.00|\r\n|4||1.00|\r\n|5|2.00|2.00|\r\n|6||2.00|\r\n|7||2.00|\r\n|8|3.00|3.00|\r\n|9||3.00|\r\n|10||3.00|\r\n|11|5.00|5.00|\r\n\r\nresult in v1.1.0\r\n|seq_no|amount|amount|\r\n|---|---|---|\r\n|1|1.00|1.00|\r\n|5|2.00|2.00|\r\n|8|3.00|3.00|\r\n|11|5.00|5.00|\r\n\r\nchange right table with filter to sub-query.results between v1.1.0 and v1.0.0 are the same.\r\n\r\n```sql\r\nselect a.seq_no,a.amount,b.amount\r\n  from t1 as a\r\n  asof join (select seq_no,amount\r\n               from t1\r\n              where amount is not null\r\n            ) as b\r\n    on a.seq_no>=b.seq_no;\r\n```\r\nresult:\r\n|seq_no|amount|amount|\r\n|---|---|---|\r\n|1|1.00|1.00|\r\n|2||1.00|\r\n|3||1.00|\r\n|4||1.00|\r\n|5|2|2.00|\r\n|6||2.00|\r\n|7||2.00|\r\n|8|3|3.00|\r\n|9||3.00|\r\n|10||3.00|\r\n|11|5|5.00|\r\n\r\nv1.0.0 screenshot\r\n![17261262705990](https://github.com/user-attachments/assets/7e6d4921-ed2e-4a2a-8a4e-27f290332383)\r\nv1.1.0 screenshot\r\n![17261261624687](https://github.com/user-attachments/assets/5fee500e-068d-4ebc-816a-a17a79c88b54)\n\n### OS:\n\nwindows10 x86_64\n\n### DuckDB Version:\n\n1.1.0\n\n### DuckDB Client:\n\ncli\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\ndetran\n\n### Affiliation:\n\nsunline\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have not tested with any build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [ ] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [ ] Yes, I have",
+  "date": "2024-09-12 11:07:49",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE t2(seq_no INT, amount DECIMAL(10,2), description VARCHAR(50));",
+    "INSERT INTO t2 VALUES (1, 1.00, 'first'), (2, NULL, 'second'), (3, 3.50, 'third'), (4, NULL, 'fourth'), (5, 2.00, 'fifth');",
+    "SELECT a.seq_no, a.amount, b.amount FROM t2 AS a JOIN t2 AS b ON a.seq_no >= b.seq_no AND b.amount IS NOT NULL;",
+    "SELECT a.seq_no, a.amount, b.amount FROM t2 AS a JOIN (SELECT seq_no, amount FROM t2 WHERE amount IS NOT NULL) AS b ON a.seq_no >= b.seq_no;",
+    "SELECT a.seq_no, a.amount, b.amount FROM t2 AS a JOIN (SELECT seq_no, amount FROM t2 WHERE description LIKE 'f%') AS b ON a.seq_no >= b.seq_no;"
+  ],
+  "key_bug_features": [
+    "asof join result incorrect with filter on right table"
+  ]
+}

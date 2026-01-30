@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id INT, value DECIMAL(10, 2), nullable_value INT);
+INSERT INTO test_table (id, value, nullable_value) VALUES (1, 5.00, NULL), (2, 10.00, 20), (3, NULL, 30);
+SELECT DB.DBA.BAG_OF_NONNULLS_AGG(value - nullable_value) AS non_null_agg FROM test_table GROUP BY id HAVING (value - nullable_value) > 0;
+SELECT DB.DBA.BAG_OF_NONNULLS_AGG(NULLIF(value, 5.00) - COALESCE(nullable_value, 0)) AS adjusted_agg FROM test_table;
+SELECT DB.DBA.BAG_OF_NONNULLS_AGG(CASE WHEN value IS NOT NULL THEN value - (SELECT AVG(value) FROM test_table) ELSE NULL END) AS conditional_agg FROM test_table;
+CREATE TABLE join_table (ref_id INT, amount DECIMAL(10, 3), description VARCHAR(255));
+INSERT INTO join_table (ref_id, amount, description) VALUES (1, 15.75, 'Item A'), (2, NULL, 'Item B'), (2, 30.50, NULL);
+SELECT DB.DBA.BAG_OF_NONNULLS_AGG(t1.value - jt.amount) AS joined_agg FROM test_table t1 JOIN join_table jt ON t1.id = jt.ref_id WHERE jt.description IS NOT NULL GROUP BY t1.id HAVING COUNT(jt.amount) > 0;
+SELECT DB.DBA.BAG_OF_NONNULLS_AGG(value - (SELECT MAX(nullable_value) FROM test_table WHERE nullable_value IS NOT NULL)) AS max_diff_agg FROM test_table;
+SELECT DB.DBA.BAG_OF_NONNULLS_AGG(value) FROM test_table WHERE value > 0 OR nullable_value IS NULL;
+SELECT DB.DBA.BAG_OF_NONNULLS_AGG(COALESCE(value, 0) - (SELECT MIN(value) FROM test_table WHERE value IS NOT NULL)) AS min_diff_agg FROM test_table;

@@ -1,0 +1,18 @@
+CREATE TABLE rdf_data (id INT PRIMARY KEY, name VARCHAR(100), metadata VARCHAR(255));
+INSERT INTO rdf_data VALUES (1, 'Test1', NULL);
+INSERT INTO rdf_data VALUES (2, 'Test2', 'CORRUPTED');
+INSERT INTO rdf_data VALUES (3, 'Test3', 'VALID');
+SELECT DB.DBA.RDF_AUDIT_METADATA(id, name % 2) AS audit_result FROM rdf_data WHERE metadata IS NULL;
+SELECT name, (SELECT COUNT(*) FROM rdf_data WHERE metadata IS NOT NULL) AS valid_count FROM rdf_data GROUP BY name HAVING valid_count % 2 = 1;
+SELECT id, DB.DBA.RDF_AUDIT_METADATA(id, 'This is a test! ' || name) AS metadata_check FROM rdf_data WHERE LENGTH(name) % 3 = 0;
+SELECT DB.DBA.RDF_AUDIT_METADATA((SELECT MAX(id) FROM rdf_data), '*' % 1) AS corrected, name FROM rdf_data WHERE name IS NOT NULL ORDER BY name;
+SELECT id, (CASE WHEN metadata IS NULL THEN 0 ELSE 1 END) % 2 AS null_metadata_flag FROM rdf_data;
+CREATE TABLE test_bounds (value DECIMAL(10,5));
+INSERT INTO test_bounds VALUES (1.23456);
+INSERT INTO test_bounds VALUES (99999.99999);
+SELECT DB.DBA.RDF_AUDIT_METADATA(id, CAST(value AS VARCHAR) % '2') AS audit_result FROM test_bounds WHERE value >= 99999;
+SELECT DB.DBA.RDF_AUDIT_METADATA(id, (11 % NULL)) AS unexpected_result FROM rdf_data;
+CREATE TEMP TABLE temp_rf_metadata AS SELECT id, metadata FROM rdf_data WHERE id <= 2;
+SELECT DB.DBA.RDF_AUDIT_METADATA((SELECT SUM(id) FROM temp_rf_metadata GROUP BY id), '*' % IFNULL((SELECT AVG(id) FROM rdf_data), 1)) AS result FROM temp_rf_metadata;
+ALTER TABLE rdf_data DROP COLUMN name;
+SELECT DB.DBA.RDF_AUDIT_METADATA(id, name) FROM rdf_data WHERE metadata IS NOT NULL AND (SELECT COUNT(*) FROM rdf_data) >= 100;

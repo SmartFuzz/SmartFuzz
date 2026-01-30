@@ -1,0 +1,18 @@
+{
+    "function": "ST_SetSRID",
+    "operator": "SIMILAR TO",
+    "sql_array": [
+        "CREATE TABLE geospatial_data (id SERIAL PRIMARY KEY, geom GEOMETRY, description TEXT);",
+        "INSERT INTO geospatial_data (geom, description) VALUES (ST_SetSRID(ST_Point(10, 2), 4335), 'Initial point');",
+        "CREATE TABLE string_data (id SERIAL PRIMARY KEY, str_value TEXT);",
+        "INSERT INTO string_data (str_value) VALUES ('abc'), ('def'), ('ghi');",
+        "SELECT id, ST_SetSRID(geom, 4326) AS updated_geom FROM geospatial_data WHERE id IN (SELECT id FROM string_data WHERE str_value SIMILAR TO 'a%');",
+        "SELECT id, geom FROM geospatial_data WHERE description SIMILAR TO (SELECT CONCAT('%', str_value, '%') FROM string_data WHERE str_value SIMILAR TO 'a%') AND geom IS NOT NULL;",
+        "SELECT g.id, g.geom FROM geospatial_data g JOIN (SELECT DISTINCT id, str_value FROM string_data WHERE str_value SIMILAR TO 'd%') AS s ON g.id = s.id WHERE ST_SetSRID(g.geom, 9999) IS NOT NULL;",
+        "SELECT g.id, ST_SetSRID(g.geom, (SELECT MAX(id) FROM string_data)) AS transformed_geom FROM geospatial_data g WHERE g.geom IS NOT NULL GROUP BY g.id HAVING COUNT(g.description) > 0;",
+        "CREATE TABLE combined_data (id SERIAL PRIMARY KEY, geom GEOMETRY, info TEXT);",
+        "INSERT INTO combined_data (geom, info) SELECT ST_SetSRID(geom, 4326), str_value FROM geospatial_data g JOIN string_data s ON ST_Contains(g.geom, ST_SetSRID(ST_Point(10, 2), 4326)) WHERE g.geom IS NOT NULL;",
+        "SELECT COUNT(*) FROM combined_data WHERE info SIMILAR TO (SELECT CONCAT('%' || s.str_value || '%') FROM string_data s WHERE s.str_value IS NOT NULL);",
+        "SELECT DISTINCT ST_SetSRID(ST_Point(0, 0), 4326) AS new_point FROM geospatial_data WHERE id > (SELECT AVG(id) FROM geospatial_data) SIMILAR TO '^[0-9]+$';"
+    ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/56500",
+  "title": "incorrect dual table query plan using vector",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n``` SQL\r\nCREATE TABLE `taf8bd821` (\r\n  `col_49` vector DEFAULT NULL,\r\n  `col_50` vector(2) DEFAULT NULL,\r\n  VECTOR INDEX `idx_45`((VEC_L2_DISTANCE(`col_50`)))\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin;\r\n\r\ndesc SELECT `taf8bd821`.`col_49` AS `r0` FROM (`taf8bd821`)  WHERE `taf8bd821`.`col_50` BETWEEN '[0.472885, 0.023340]' AND '[0.696708, 0.030039]';\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\nTableScan\r\n\r\n### 3. What did you see instead (Required)\r\n``` SQL\r\nmysql> desc SELECT `taf8bd821`.`col_49` AS `r0` FROM (`taf8bd821`)  WHERE `taf8bd821`.`col_50` BETWEEN '[0.472885, 0.023340]' AND '[0.696708, 0.030039]';\r\n+-------------------+---------+------+---------------+-----------------------+\r\n| id                | estRows | task | access object | operator info         |\r\n+-------------------+---------+------+---------------+-----------------------+\r\n| Projection_4      | 1.00    | root |               | test.taf8bd821.col_49 |\r\n| └─TableDual_6     | 1.00    | root |               | rows:0                |\r\n+-------------------+---------+------+---------------+-----------------------+\r\n2 rows in set, 1 warning (0.11 sec)\r\n```\r\n### 4. What is your TiDB version? (Required)\r\nmaster\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2024-10-09T06:41:33Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE `test_table` ( `id` INT PRIMARY KEY, `vec_col` JSON DEFAULT NULL, `num_col` INT NOT NULL, `str_col` VARCHAR(255) DEFAULT NULL );",
+    "INSERT INTO `test_table` (`id`, `vec_col`, `num_col`, `str_col`) VALUES (1, JSON_ARRAY(0.1, 0.2, 0.3), 10, 'test1');",
+    "INSERT INTO `test_table` (`id`, `vec_col`, `num_col`, `str_col`) VALUES (2, JSON_ARRAY(0.4, 0.5, 0.6), 20, NULL);",
+    "SELECT `vec_col` FROM `test_table` WHERE `num_col` BETWEEN 5 AND 15;",
+    "SELECT `vec_col` FROM `test_table` WHERE `vec_col` IS NOT NULL AND `num_col` > 15;"
+  ],
+  "key_bug_features": [
+    "incorrect dual table query plan using vector"
+  ]
+}

@@ -1,0 +1,11 @@
+CREATE TABLE hackernews (id UInt64, comment String);
+INSERT INTO hackernews VALUES (1, 'This is a test.'), (2, 'Another comment!'), (3, NULL), (4, '');
+SELECT * FROM executable('sentiment.py', TabSeparated, 'id UInt64, sentiment Float32', (SELECT id, comment FROM hackernews WHERE id >= (SELECT MAX(id) FROM hackernews WHERE comment IS NOT NULL) OR comment = '' LIMIT 10));
+SELECT id, sentiment FROM executable('sentiment.py', TabSeparated, 'id UInt64, sentiment Float32', (SELECT id, comment FROM hackernews WHERE LENGTH(comment) >= 5 AND comment != '' AND id <= 5));
+SELECT * FROM (SELECT id, comment FROM hackernews) AS subquery WHERE EXISTS (SELECT 1 FROM hackernews WHERE id >= 1 OR comment IS NULL);
+CREATE TABLE test_numbers (number Float64);
+INSERT INTO test_numbers VALUES (1.5), (NULL), (3.14159265359), (2.718), (0.000001);
+SELECT * FROM executable('sentiment.py', TabSeparated, 'id UInt64, sentiment Float32', (SELECT id FROM test_numbers WHERE number >= (SELECT MIN(number) FROM test_numbers WHERE number IS NOT NULL)));
+CREATE TABLE comments_analysis AS (SELECT comment, COUNT(*) AS count FROM hackernews GROUP BY comment HAVING count >= 1) ENGINE = Memory;
+SELECT * FROM comments_analysis WHERE count >= (SELECT AVG(count) FROM comments_analysis) AND count IS NOT NULL;
+SELECT * FROM executable('sentiment.py', TabSeparated, 'id UInt64, sentiment Float32', (SELECT id, comment FROM hackernews WHERE id IN (SELECT DISTINCT id FROM hackernews WHERE comment IS NULL) OR comment NOT LIKE '%test%' LIMIT 5));

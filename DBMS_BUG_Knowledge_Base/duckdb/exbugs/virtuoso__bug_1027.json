@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/1027",
+  "title": "SPARQL - Correct result in JDBC driver, but not in ISQL / SPARQL HTTP endpoint",
+  "description": "Running following query from ISQL console\nSPARQL define output:format \"JSON\"\ndefine sql:signal-void-variables 1\n\nSELECT DISTINCT ?floorCount\nWHERE {\n  SERVICE <https://ruian.linked.opendata.cz/sparql> {\n     <https://ruian.linked.opendata.cz/zdroj/stavební-objekty/22088181> <https://ruian.linked.opendata.cz/slovník/početPodlaží> ?floorCount\n  }\n}\ngives me an empty result.\nHowever, running the same query via JDBC driver gives me the following output\n{\n   \"head\":{\n      \"link\":[],\n      \"vars\":[\n         \"floorCount\"\n      ]\n   },\n   \"results\":{\n      \"distinct\":false,\n      \"ordered\":true,\n      \"bindings\":[\n         {\n            \"floorCount\":{\n               \"type\":\"typed-literal\",\n               \"datatype\":\"http://www.w3.org/2001/XMLSchema#integer\",\n               \"value\":\"1\"\n            }\n         }\n      ]\n   }\n}\n\nThe floorCount is suddenly 1 however running mentioned query on target HTTP SPARQL Endpoint https://linked.opendata.cz/sparql gives me an empty result. This can be also verified via running DESCRIBE <https://ruian.linked.opendata.cz/zdroj/stavební-objekty/22088181>.\nRunning mentioned query via local SPARQL HTTP Endpoint yields to no matches.\nBut probably due to issue reported in #1026.\nRunning the query from ISQL yields to same result - no matches.",
+  "date": "2022-04-09 21:20:26",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE building_objects (id INTEGER PRIMARY KEY, floor_count INTEGER NOT NULL, description VARCHAR);",
+    "INSERT INTO building_objects (id, floor_count, description) VALUES (1, 1, 'Building with one floor');",
+    "INSERT INTO building_objects (id, floor_count, description) VALUES (2, NULL, 'Building with unknown floors');",
+    "SELECT id, COALESCE(floor_count, 0) AS floor_count FROM building_objects WHERE floor_count IS NOT NULL;",
+    "SELECT DISTINCT floor_count FROM building_objects WHERE floor_count > 0 ORDER BY floor_count DESC;"
+  ],
+  "key_bug_features": [
+    "Query returns different results in JDBC and ISQL"
+  ]
+}

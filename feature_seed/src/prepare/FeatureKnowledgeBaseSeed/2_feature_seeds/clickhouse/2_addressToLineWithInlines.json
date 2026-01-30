@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id UInt64, address UInt64, trace Array(String)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_data VALUES (1, 531055181, ['functionA:10', 'functionB:20']), (2, 531055182, ['functionC:30']);
+SELECT addressToLineWithInlines(address) AS address_lines FROM test_data WHERE id != ALL (SELECT id FROM test_data WHERE address < 531055180);
+SELECT addressToLineWithInlines(arrayJoin(trace)) AS inline_lines FROM test_data WHERE id != ALL (SELECT id FROM test_data WHERE address >= 531055183);
+SELECT id, addressToLineWithInlines(address) AS inlines FROM test_data GROUP BY id HAVING id != ALL (SELECT id FROM test_data WHERE id > 1);
+SELECT addressToLineWithInlines(address) FROM (SELECT address FROM test_data WHERE address != ALL (SELECT address FROM test_data WHERE id = 1));
+SELECT addressToLineWithInlines(address) AS line_info FROM test_data WHERE address != ALL (SELECT address FROM test_data WHERE id = 2) AND NULL IS NULL;
+CREATE TEMPORARY TABLE temp_test (temp_id UInt64, temp_address UInt64) ENGINE = MergeTree() ORDER BY temp_id;
+INSERT INTO temp_test VALUES (1, 531055181), (2, NULL), (3, 0);
+SELECT addressToLineWithInlines(temp_address) AS temp_inlines FROM temp_test WHERE temp_id != ALL (SELECT temp_id FROM temp_test WHERE temp_address IS NULL);

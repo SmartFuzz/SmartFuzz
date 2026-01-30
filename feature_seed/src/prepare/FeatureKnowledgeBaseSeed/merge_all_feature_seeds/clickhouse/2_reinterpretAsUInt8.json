@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id UInt32, value Nullable(Float32), str_value String, date_value Date) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_data VALUES (1, NULL, '255', '2023-01-01'), (2, 5.5, '1000', '2023-01-02'), (3, 1.4, '0', '2023-01-03'), (4, NULL, '32767', '2023-01-04');
+SELECT id, reinterpretAsUInt8(value) AS reinterpret_value, str_value, value IS NOT NULL AS value_check FROM test_data WHERE reinterpretAsUInt8(value) IS NOT NULL;
+SELECT id, reinterpretAsUInt8(toInt64(str_value)) AS converted_value, date_value, value IS NOT NULL AS value_check FROM test_data WHERE reinterpretAsUInt8(toInt64(str_value)) IS NOT NULL;
+SELECT id, value, str_value, date_value, toTypeName(reinterpretAsUInt8(value)) AS value_type FROM test_data WHERE value IS NOT NULL AND value > 1.0;
+SELECT id, interpret_value, str_value FROM (SELECT id, reinterpretAsUInt8(value) AS interpret_value, str_value FROM test_data WHERE value IS NOT NULL) AS subquery WHERE interpret_value < 256;
+SELECT id, reinterpretAsUInt8(CASE WHEN str_value = '' THEN 0 ELSE reinterpretAsUInt8(toInt32(str_value)) END) AS interpreted_val FROM test_data HAVING interpreted_val IS NOT NULL;
+CREATE TABLE temp_table AS (SELECT id, value FROM test_data WHERE value IS NOT NULL) ENGINE = Memory;
+SELECT t1.id, t1.value, reinterpretAsUInt8(t1.value) AS interp_value FROM temp_table t1 JOIN test_data t2 ON t1.id = t2.id WHERE t2.str_value IS NOT NULL;
+DROP TABLE temp_table;

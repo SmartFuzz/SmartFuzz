@@ -1,0 +1,10 @@
+CREATE TABLE test_strings(id INT, data VARCHAR(255), regex_pattern VARCHAR(255));
+INSERT INTO test_strings VALUES (1, 'anabanana', '(an)'), (2, 'banana', '^(banana)$'), (3, NULL, ''), (4, '', '(.*)');
+CREATE TABLE temp_results AS SELECT id, regexp_full_match(data, regex_pattern) AS is_match FROM test_strings;
+CREATE TABLE more_data(id INT, bit_data BITSTRING);
+INSERT INTO more_data VALUES (1, '1001011'::BITSTRING), (2, '1101100'::BITSTRING), (3, '0010110'::BITSTRING);
+CREATE TABLE combined_data AS SELECT tr.id, tr.is_match, md.bit_data << 2 AS shifted_bit_data FROM temp_results tr JOIN more_data md ON tr.id = md.id;
+SELECT id, is_match, shifted_bit_data FROM combined_data WHERE is_match IS NOT NULL HAVING shifted_bit_data = '11011000'::BITSTRING;
+SELECT id, NULLIF(shifted_bit_data, '00000000'::BITSTRING) FROM combined_data WHERE is_match = TRUE ORDER BY id;
+SELECT COUNT(*) FROM combined_data WHERE regexp_full_match(shifted_bit_data::VARCHAR, '^110.*$');
+SELECT MAX(id) AS max_id, MIN(id) AS min_id FROM combined_data GROUP BY is_match HAVING COUNT(*) > 1;

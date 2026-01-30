@@ -1,0 +1,11 @@
+CREATE TABLE haystack_table (id UInt32, text String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO haystack_table VALUES (1, 'apple banana cherry'), (2, 'date elderberry fig'), (3, 'grape honeydew kiwi');
+SELECT multiMatchAllIndices(text, ['apple', 'banana']) FROM haystack_table;
+SELECT id, multiMatchAllIndices(text, ['date', 'fig']) FROM haystack_table WHERE id > 1;
+SELECT id, multiMatchAllIndices(text, ['grape', 'kiwi', 'honeydew']) AS indices FROM haystack_table WHERE indices IS NOT NULL;
+CREATE TABLE secondary_table (id UInt32, description String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO secondary_table VALUES (1, 'apple pie'), (2, 'banana split'), (3, 'grape jelly');
+SELECT s.id, multiMatchAllIndices(h.text, ['apple', 'grape']) FROM haystack_table h JOIN secondary_table s ON h.id = s.id;
+WITH (SELECT multiMatchAllIndices(text, ['honeydew', 'banana']) FROM haystack_table) AS match_indices SELECT * FROM secondary_table WHERE id IN match_indices;
+SELECT id, text, multiMatchAllIndices(text, ['fig', 'banana', 'cherry']) FROM haystack_table WHERE text LIKE '%banana%';
+SELECT id, multiMatchAllIndices(text, ['kiwi', 'banana']) FROM haystack_table WHERE multiMatchAllIndices(text, ['kiwi', 'banana']) != [];

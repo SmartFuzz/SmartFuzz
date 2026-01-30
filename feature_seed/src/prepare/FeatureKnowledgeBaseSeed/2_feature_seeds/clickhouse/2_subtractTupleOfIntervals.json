@@ -1,0 +1,9 @@
+CREATE TABLE test_dates (id UInt32, event_date DateTime, description String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_dates VALUES (1, toDateTime('2022-12-31 23:59:59'), 'New Year Eve'), (2, toDateTime('2023-01-01 00:00:00'), 'New Year Day');
+SELECT id, subtractTupleOfIntervals(event_date, (INTERVAL 1 DAY, INTERVAL 2 HOUR)) AS new_date FROM test_dates WHERE description LIKE '%New%';
+CREATE TABLE test_joins (id UInt32, link_id UInt32, related_date DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_joins VALUES (1, 1, subtractTupleOfIntervals(toDateTime('2023-01-01 00:00:00'), (INTERVAL 1 DAY, INTERVAL 12 HOUR))), (2, 1, toDateTime('2022-12-31 18:00:00'));
+SELECT a.id, a.event_date, b.related_date FROM test_dates AS a JOIN test_joins AS b ON a.id = b.link_id WHERE a.event_date LIKE '2023%' AND b.related_date >= subtractTupleOfIntervals(toDateTime('2022-12-31 23:59:59'), (INTERVAL 1 DAY));
+SELECT id, COUNT(*) FROM test_dates WHERE event_date IS NOT NULL GROUP BY id HAVING event_date < subtractTupleOfIntervals(NOW(), (INTERVAL 1 MONTH));
+SELECT id, IF(event_date IS NULL, 'No Event', CAST(event_date AS String)) AS event_status FROM test_dates WHERE event_date LIKE CONCAT('%', '2023', '%');
+SELECT id, DATE_FORMAT(subtractTupleOfIntervals(event_date, (INTERVAL 1 YEAR)), '%Y-%m-%d') AS formatted_date FROM test_dates WHERE id = (SELECT MIN(id) FROM test_dates WHERE event_date LIKE '2023%');

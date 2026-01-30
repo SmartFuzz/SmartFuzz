@@ -1,0 +1,16 @@
+{
+    "function": "regr_avgy(y, x)",
+    "operator": "+",
+    "sql_array": [
+        "CREATE TABLE test_data (id INT PRIMARY KEY, value_y FLOAT, value_x FLOAT, created_at TIMESTAMPTZ);",
+        "INSERT INTO test_data (id, value_y, value_x, created_at) VALUES (1, NULL, 1.0, TIMESTAMPTZ '1992-03-22 01:02:03'), (2, 10.0, NULL, TIMESTAMPTZ '1992-03-23 01:02:03'), (3, 20.0, 2.0, TIMESTAMPTZ '1993-03-22 01:02:03'), (4, 30.0, 3.0, TIMESTAMPTZ '1994-03-22 01:02:03');",
+        "SELECT regr_avgy(value_y + 1.0, value_x) OVER (PARTITION BY created_at::date) AS average_y FROM test_data WHERE value_x IS NOT NULL;",
+        "SELECT created_at, regr_avgy(value_y + 5.0, value_x) + INTERVAL 1 DAY AS adjusted_avg_y FROM test_data GROUP BY created_at HAVING adjusted_avg_y > 15.0;",
+        "SELECT created_at, COUNT(*) AS count, regr_avgy(value_y + CAST(NULL AS FLOAT), value_x) FROM test_data GROUP BY created_at ORDER BY regr_avgy(value_y, value_x) DESC LIMIT 10;",
+        "SELECT AVG(sub.avg_y) FROM (SELECT regr_avgy(value_y, value_x) AS avg_y FROM test_data WHERE value_x IS NOT NULL GROUP BY id) AS sub;",
+        "SELECT (regr_avgy(value_y + 2.5, value_x) + INTERVAL -5 DAY) AS modified_avg_y FROM test_data WHERE value_x IS NOT NULL AND created_at > TIMESTAMPTZ '1992-03-22 00:00:00' GROUP BY created_at HAVING modified_avg_y IS NOT NULL;",
+        "CREATE TABLE new_data (ref_id INT, timestamp_col TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO new_data (ref_id, timestamp_col) VALUES (1, TIMESTAMPTZ '1995-03-22 01:02:03' + INTERVAL -3 DAY), (2, TIMESTAMPTZ '1992-03-22 01:02:03' + INTERVAL 2 DAY);",
+        "SELECT a.ref_id, (SELECT regr_avgy(b.value_y, b.value_x) FROM test_data b WHERE b.created_at::date = a.timestamp_col::date) AS daily_avg_y FROM new_data a;"
+    ]
+}

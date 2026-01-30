@@ -1,0 +1,18 @@
+CREATE TABLE test_table (id SERIAL PRIMARY KEY, timestamp_col TIMESTAMP(6), value_col DOUBLE PRECISION);
+INSERT INTO test_table (timestamp_col, value_col) VALUES (timestamp(6) '2021-01-15 10:30:00.654321', -42.8);
+INSERT INTO test_table (timestamp_col, value_col) VALUES (timestamp(6) '2021-01-15 10:30:00.123456', NULL);
+SELECT ceil(value_col) AS ceil_value, timestamp_col FROM test_table WHERE timestamp_col > timestamp(6) '2021-01-01 00:00:00.000000';
+SELECT ceil(COALESCE(value_col, -9999.9)) AS adjusted_value, timestamp_col FROM test_table WHERE timestamp_col <= timestamp(6) '2021-01-31 23:59:59.999999';
+SELECT id, ceil(value_col) AS ceil_value FROM test_table WHERE value_col IS NOT NULL ORDER BY ceil(value_col) DESC;
+SELECT AVG(ceil(value_col)) AS avg_ceil_value FROM test_table WHERE value_col < 0 GROUP BY timestamp_col;
+CREATE TABLE additional_table (id SERIAL PRIMARY KEY, related_id INT, some_text VARCHAR(255));
+INSERT INTO additional_table (related_id, some_text) VALUES (1, 'sample text');
+SELECT t.id, ceil(t.value_col) AS ceil_value, (SELECT COUNT(*) FROM additional_table a WHERE a.related_id = t.id) AS related_count FROM test_table t;
+SELECT t.id, ceil(t.value_col) AS ceil_value FROM test_table t JOIN additional_table a ON t.id = a.related_id WHERE a.some_text LIKE '%sample%';
+SELECT ceil(SUM(value_col)) AS total_ceil, timestamp_col FROM test_table GROUP BY timestamp_col HAVING total_ceil > 0;
+CREATE TABLE edge_case_table (id SERIAL PRIMARY KEY, empty_text VARCHAR(255));
+INSERT INTO edge_case_table (empty_text) VALUES ('');
+SELECT ceil(NULLIF(ceil(value_col), 0)) AS adjusted_ceil_value FROM test_table WHERE value_col IS NOT NULL;
+SELECT id, ceil(value_col + 0.5) AS rounded_value, (timestamp(6) '2022-02-28 17:30:00.123456' - timestamp(6) '2022-02-28 17:00:00.000000') AS time_difference FROM test_table WHERE value_col IS NOT NULL ORDER BY time_difference;
+ALTER TABLE additional_table ADD COLUMN timestamp_recorded TIMESTAMP(6) DEFAULT NOW();
+SELECT a.id, ceil(a.value_col) AS ceil_value, NOW() AS current_time FROM test_table a JOIN additional_table b ON a.id = b.related_id WHERE b.timestamp_recorded IS NOT NULL;

@@ -1,0 +1,12 @@
+[
+    "CREATE TABLE auth_requests (username VARCHAR, password VARCHAR, nonce VARCHAR, opaque VARCHAR, response VARCHAR);",
+    "INSERT INTO auth_requests VALUES ('user1', 'secret123', 'noncevalue1', 'opaquevalue1', 'responsevalue1');",
+    "INSERT INTO auth_requests VALUES ('user2', 'mypassword', 'noncevalue2', 'opaquevalue2', 'responsevalue2');",
+    "SELECT username, vsp_calculate_digest(username, password, app_auth_vec('Authorization: Digest username=\"user1\", realm=\"my_realm\", nonce=\"noncevalue1\", uri=\"/path\", response=\"responsevalue1\"')) AS calculated_digest FROM auth_requests WHERE username='user1';",
+    "SELECT username FROM auth_requests WHERE response = vsp_calculate_digest(username, password, app_auth_vec('Authorization: Digest username=\"user1\", realm=\"my_realm\", nonce=\"noncevalue1\", uri=\"/path\", response=\"responsevalue1\"')) AND password = 'secret123';",
+    "CREATE PROCEDURE test_authentication() { DECLARE auth any; DECLARE checksum varchar; auth := app_auth_vec('Authorization: Digest username=\"user1\", realm=\"my_realm\", nonce=\"noncevalue1\", uri=\"/path\", response=\"responsevalue1\"'); checksum := vsp_calculate_digest('user1', 'secret123', auth); IF (checksum IS NOT NULL AND checksum = get_keyword('response', auth)) THEN http('OK'); ELSE app_get_auth(); END IF; };",
+    "SELECT username FROM auth_requests WHERE response IS NOT NULL AND vsp_calculate_digest(username, password, app_auth_vec('Authorization: Digest username=\"user2\", realm=\"my_realm\", nonce=\"noncevalue2\", uri=\"/path\", response=\"responsevalue2\"')) IN (SELECT response FROM auth_requests WHERE username='user2');",
+    "CREATE TABLE invalid_auth (data VARCHAR);",
+    "INSERT INTO invalid_auth VALUES ('Invalid data for testing vsp_calculate_digest');",
+    "CREATE VIEW valid_auth_view AS SELECT username, vsp_calculate_digest(username, password, app_auth_vec('Authorization: Digest username=\"user1\", realm=\"my_realm\", nonce=\"noncevalue1\", uri=\"/path\", response=\"responsevalue1\"')) AS digest FROM auth_requests WHERE password IS NOT NULL;"
+]

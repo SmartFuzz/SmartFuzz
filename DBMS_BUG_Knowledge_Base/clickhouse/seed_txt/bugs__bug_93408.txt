@@ -1,0 +1,5 @@
+CREATE TABLE throttle_test (id UInt64, payload String, created_at DateTime DEFAULT now()) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO throttle_test (id, payload) SELECT number, randomString(1000) FROM numbers(100) SETTINGS max_insert_threads = 8;
+CREATE TABLE throttle_test_backup AS throttle_test ENGINE = MergeTree() ORDER BY id;
+SELECT id, payload FROM throttle_test WHERE created_at IS NOT NULL AND id % 2 = 0;
+SELECT COUNT(*) FROM throttle_test_backup WHERE payload LIKE '%test%' AND id IN (SELECT id FROM throttle_test WHERE id < 50);

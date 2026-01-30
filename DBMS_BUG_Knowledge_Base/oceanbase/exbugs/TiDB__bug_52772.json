@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/52772",
+  "title": "TiDB panic when new collation is disabled and two expressions use different collation",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n1. Create a cluster with TiDB version before v4.0.0.\r\n2. Upgrade the cluster to master.\r\n3. Create 2 tables with the same charset but different collations:\r\n```sql\r\ncreate table t1(code varchar(32)) CHARSET=utf8 COLLATE=utf8_general_ci;\r\ncreate table t2(code varchar(32)) CHARSET=utf8 COLLATE=utf8_bin;\r\n```\r\n4. Execute a query:\r\n```sql\r\nselect * from t1 join t2 on t1.code=t2.code and t1.code in ('1') and t2.code in ('1');\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nEmpty query result\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nTiDB reports error:\r\n```\r\nERROR 1105 (HY000): runtime error: invalid memory address or nil pointer dereference\r\n```\r\n\r\nThe stack:\r\n```\r\ngithub.com/pingcap/tidb/expression.NewFunctionInternal\\n\\t/home/jenkins/agent/workspace/build-common/go/src/github.com/pingcap/tidb/expression/scalar_function.go:277\\ngithub.com/pingcap/tidb/expression.ColumnSubstituteImpl\\n\\t/home/jenkins/agent/workspace/build-common/go/src/github.com/pingcap/tidb/expression/util.go:515\\ngithub.com/pingcap/tidb/expression.ColumnSubstitute\\n\\t/home/jenkins/agent/workspace/build-common/go/src/github.com/pingcap/tidb/expression/util.go:414\\ngithub.com/pingcap/tidb/expression.(*propConstSolver).propagateConstantEQ\\n\\t/home/jenkins/agent/workspace/build-common/go/src/github.com/pingcap/tidb/expression/constant_propagation.go:214\\ngithub.com/pingcap/tidb/expression.(*propConstSolver).solve\\n\\t/home/jenkins/agent/workspace/build-common/go/src/github.com/pingcap/tidb/expression/constant_propagation.go:352\\ngithub.com/pingcap/tidb/expression.(*propConstSolver).PropagateConstant\\n\\t/home/jenkins/agent/workspace/build-common/go/src/github.com/pingcap/tidb/expression/constant_propagation.go:711\\ngithub.com/pingcap/tidb/expression.PropagateConstant\\n\\t/home/jenkins/agent/workspace/build-common/go/src/github.com/pingcap/tidb/expression/constant_propagation.go:361\\ngithub.com/pingcap/tidb/planner/core.(*DataSource).PredicatePushDown\\n\\t/home/jenkins/agent/workspace/build-common/go/src/github.com/pingcap/tidb/planner/core/rule_predicate_push_down.go:135\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\nmaster",
+  "date": "2024-04-19T11:30:41Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1(code VARCHAR(32)) CHARACTER SET utf8 COLLATE utf8_general_ci;",
+    "CREATE TABLE t2(code VARCHAR(32)) CHARACTER SET utf8 COLLATE utf8_bin;",
+    "INSERT INTO t1(code) VALUES ('1'), ('2'), (NULL);",
+    "INSERT INTO t2(code) VALUES ('1'), ('2'), (NULL);",
+    "SELECT * FROM t1 JOIN t2 ON t1.code = t2.code WHERE t1.code IS NOT NULL AND t2.code IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Different collations used in join expressions"
+  ]
+}

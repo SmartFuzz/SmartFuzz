@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/54821",
+  "title": "SEMI JOIN returns incorrect results",
+  "description": "## Bug Report\r\n\r\n### 1. Minimal reproduce step (Required)\r\n``` sql\r\nCREATE TABLE t0(c0 NUMERIC UNSIGNED ZEROFILL , c1 DECIMAL UNSIGNED  AS (c0) VIRTUAL NOT NULL UNIQUE);\r\nCREATE TABLE t1 LIKE t0;\r\nINSERT IGNORE  INTO t1(c0) VALUES (278315979), (-1662611842);\r\nINSERT IGNORE  INTO t1(c0) VALUES (233157952), (-1526658956), (1657263820) ON DUPLICATE KEY UPDATE c0=NULL;\r\nREPLACE INTO t0(c0) VALUES (95226653);\r\n```\r\n``` sql\r\nSELECT * FROM t0;\r\n    c0    |    c1\r\n----------+----------\r\n 95226653 | 95226653\r\n```\r\n``` sql\r\nSELECT * FROM t1;\r\n     c0     |     c1\r\n------------+------------\r\n 0          | 0\r\n 233157952  | 233157952\r\n 278315979  | 278315979\r\n 1657263820 | 1657263820\r\n\r\n```\r\n### 2. What did you expect to see? (Required)\r\n``` sql\r\nSELECT t1.c0, t1.c1 FROM  t1  WHERE NOT EXISTS (SELECT 1 FROM t0 WHERE t1.c0 < t0.c0); \r\n     c0     |     c1\r\n------------+------------\r\n 278315979  | 278315979\r\n 233157952  | 233157952\r\n 1657263820 | 1657263820\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n``` sql\r\nSELECT t1.c0, t1.c1 FROM  t1  WHERE NOT EXISTS (SELECT 1 FROM t0 WHERE t1.c0 < t0.c0); \r\n     c0     |     c1\r\n------------+------------\r\n 278315979  | 278315979\r\n 0          | 0\r\n 233157952  | 233157952\r\n 1657263820 | 1657263820\r\n```\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n```\r\n                      tidb_version()\r\n-----------------------------------------------------------\r\n Release Version: v8.2.0                                  +\r\n Edition: Community                                       +\r\n Git Commit Hash: 821e491a20fbab36604b36b647b5bae26a2c1418+\r\n Git Branch: HEAD                                         +\r\n UTC Build Time: 2024-07-05 09:16:25                      +\r\n GoVersion: go1.21.10                                     +\r\n Race Enabled: false                                      +\r\n Check Table Before Drop: false                           +\r\n Store: tikv\r\n```\r\n",
+  "date": "2024-07-23T03:58:52Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2(c0 INT, c1 VARCHAR(50) NOT NULL, c2 DATE DEFAULT NULL);",
+    "INSERT INTO t2(c0, c1) VALUES (1, 'test1'), (2, 'test2'), (3, 'test3');",
+    "CREATE TABLE t3(c0 FLOAT, c1 BOOLEAN, c2 TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t3(c0, c1) VALUES (1.5, TRUE), (2.5, FALSE), (3.5, NULL);",
+    "SELECT t2.c0, t2.c1 FROM t2 WHERE NOT EXISTS (SELECT 1 FROM t3 WHERE t2.c0 < t3.c0);"
+  ],
+  "key_bug_features": [
+    "SEMI JOIN with NOT EXISTS returns incorrect results"
+  ]
+}

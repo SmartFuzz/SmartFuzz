@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=107568",
+  "title": "binary data starting with 0x00 are returned as empty string",
+  "description": "Binary data selected from DB table which are starting with 0x00 are returned as empty string.\nHow to repeat:\nPrepare table with data\r\n\r\nCREATE TABLE `bintest` (\r\n  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,\r\n  `data` binary(16) DEFAULT NULL,\r\n  `text` varchar(45) DEFAULT NULL,\r\n  PRIMARY KEY (`id`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8;\r\n\r\nINSERT INTO bintest (data, text) VALUES\r\n(0x112233445566778899aabbccddeeff00, \"good\"),\r\n(0x11220033445566778899aabbccddeeff, \"still good\"), (0x00112233445566778899aabbccddeeff, \"bad\");\r\n\r\nIn python\r\ncursor.execute(\"SELECT data, text FROM bintest\")\r\nfor (data, text) in cursor:\r\n    print(f\"'{data}': {text}\")\r\n\r\n>>> 'bytearray(b'\\x11\"3DUfw\\x88\\x99\\xaa\\xbb\\xcc\\xdd\\xee\\xff\\x00')': good\r\n>>> 'bytearray(b'\\x11\"\\x003DUfw\\x88\\x99\\xaa\\xbb\\xcc\\xdd\\xee\\xff')': still good\r\n>>> '': bad",
+  "date": "2022-06-15 08:40:00",
+  "vulnerable_version": "8.0.29",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE `bintest_extended` (\n`id` int(10) unsigned NOT NULL AUTO_INCREMENT,\n`data` binary(32) DEFAULT NULL,\n`text` varchar(100) DEFAULT NULL,\n`created_at` timestamp DEFAULT CURRENT_TIMESTAMP,\nPRIMARY KEY (`id`)\n) CHARACTER SET utf8mb4;",
+    "INSERT INTO bintest_extended (data, text) VALUES\n(0x00112233445566778899aabbccddeeff00, 'test1'),\n(0x00abcdefabcdefabcdefabcdefabcdef, 'test2'),\n(0x112233445566778899aabbccddeeff00, 'test3');",
+    "SELECT data, text FROM bintest_extended WHERE data IS NOT NULL;",
+    "UPDATE bintest_extended SET text = 'updated' WHERE data = 0x00112233445566778899aabbccddeeff00;",
+    "SELECT COUNT(*) FROM bintest_extended WHERE LENGTH(data) = 16;"
+  ],
+  "key_bug_features": [
+    "Binary data starting with 0x00 returned as empty string"
+  ]
+}

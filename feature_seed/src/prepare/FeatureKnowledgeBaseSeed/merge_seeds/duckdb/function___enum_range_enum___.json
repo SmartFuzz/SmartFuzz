@@ -1,0 +1,14 @@
+CREATE TYPE mood AS ENUM ('happy', 'sad', 'neutral');
+SELECT enum_range(NULL::mood);
+CREATE TABLE moods (id INT, mood_value mood);
+INSERT INTO moods VALUES (1, 'happy'), (2, 'sad'), (3, 'neutral');
+SELECT DISTINCT mood_value FROM moods WHERE mood_value = ANY(enum_range(NULL::mood));
+CREATE TABLE users (user_id INT, user_mood mood);
+INSERT INTO users VALUES (1, 'happy'), (2, 'happy'), (3, 'neutral');
+SELECT u.user_id, u.user_mood FROM users u WHERE u.user_mood IN (SELECT unnest(enum_range(NULL::mood)));
+CREATE TABLE user_actions (action_id INT, user_mood mood);
+INSERT INTO user_actions VALUES (1, 'sad'), (2, 'happy');
+SELECT ua.action_id FROM user_actions ua JOIN users u ON ua.user_mood = u.user_mood WHERE u.user_mood IN (SELECT unnest(enum_range(NULL::mood))) ORDER BY ua.action_id;
+CREATE TABLE mood_logs (log_id INT, mood_entry mood);
+INSERT INTO mood_logs VALUES (1, 'neutral'), (2, 'happy');
+SELECT ml.log_id, COUNT(*) AS mood_count FROM mood_logs ml GROUP BY ml.mood_entry HAVING ml.mood_entry IN (SELECT unnest(enum_range(NULL::mood)));

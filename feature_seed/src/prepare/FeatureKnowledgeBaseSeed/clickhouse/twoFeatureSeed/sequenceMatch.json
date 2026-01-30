@@ -1,0 +1,17 @@
+{
+    "function": "sequenceMatch",
+    "operator": "SELECT a OR b",
+    "sql_array": [
+        "CREATE TABLE events (id UInt32, time DateTime, number UInt8) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO events VALUES (1, '2023-10-01 00:00:00', 1), (2, '2023-10-01 00:01:00', 2), (3, '2023-10-01 00:05:00', 3), (4, '2023-10-01 00:10:00', 1), (5, '2023-10-01 00:15:00', 2);",
+        "SELECT sequenceMatch('(?1)(?2)(?t>60)')(time, number = (SELECT number FROM events WHERE number > 2 OR number < 1), number = 2) FROM events GROUP BY number HAVING sequenceMatch('(?1)(?2)(?t>60)')(time, number = 1, number = (SELECT number FROM events WHERE time < '2023-10-01 00:10:00'));",
+        "SELECT sequenceMatch('(?1)(?t>30)(?2)')(time, number = 1 OR number = 3, number = 2) FROM events WHERE time >= '2023-10-01 00:00:00' AND time < '2023-10-01 00:15:00';",
+        "CREATE TABLE temp_events AS SELECT * FROM events WHERE number IS NULL;",
+        "INSERT INTO temp_events VALUES (6, NULL, 1), (7, '2023-10-01 00:20:00', NULL);",
+        "SELECT sequenceMatch('(?1)(?t<300)(?2)')(time, number = (SELECT MAX(number) FROM events), number = (SELECT MIN(number) FROM temp_events)) FROM events;",
+        "SELECT sequenceMatch('(?1)(?t<120)(?2)(?3)')(time, number = (SELECT number FROM events WHERE time < '2023-10-01 00:01:00' OR time > '2023-10-01 00:10:00'), number = 2, number = (SELECT number FROM temp_events WHERE time IS NULL)) FROM events HAVING number > 0;",
+        "ALTER TABLE events ADD COLUMN description String;",
+        "INSERT INTO events VALUES (8, '2023-10-01 00:25:00', 3), (9, '2023-10-01 00:30:00', 1), (10, '2023-10-01 00:35:00', 2);",
+        "SELECT sequenceMatch('(?1)(?t>300)(?2)')(time, number = (SELECT number FROM events WHERE description IS NOT NULL), number = (SELECT number FROM events WHERE number = 2 OR number IS NULL)) FROM events GROUP BY time ORDER BY time DESC;"
+    ]
+}

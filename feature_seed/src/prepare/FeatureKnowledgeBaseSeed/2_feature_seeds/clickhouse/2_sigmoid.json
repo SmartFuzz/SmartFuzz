@@ -1,0 +1,15 @@
+CREATE TABLE test_table (id UInt32, value Float64, text String DEFAULT '') ENGINE = Memory;
+INSERT INTO test_table (id, value, text) VALUES (1, -2.3, 'sample'), (2, NULL, 'NULL value'), (3, 0.0, ''), (4, 3.5, 'positive'), (5, 1.0, NULL);
+SELECT id, sigmoid(value) AS sigmoid_value FROM test_table WHERE text != '' AND value IS NOT NULL;
+SELECT id, sigmoid(tupleElement((select arrayJoin([value, 0, 1]) AS x), 2)) AS nested_sigmoid FROM test_table;
+SELECT id, round(sigmoid(value), 5) FROM test_table WHERE value > (SELECT AVG(value) FROM test_table WHERE value IS NOT NULL) HAVING sigmoid(value) < 0.8;
+SELECT id, sigmoid(value) AS sigmoid_value FROM (SELECT id, value, text FROM test_table WHERE text = 'sample' OR value < 0 GROUP BY value) AS subquery;
+WITH (SELECT round(sigmoid(value), 5) FROM test_table WHERE text IS NULL) AS temp_sigmoid_value SELECT id, value, temp_sigmoid_value FROM test_table WHERE value IS NOT NULL;
+SELECT id, arrayJoin(arrayMap(x -> sigmoid(x), (SELECT value FROM test_table))) AS sigmoid_array FROM test_table;
+CREATE TABLE test_table2 (id UInt32, a Tuple(value Float64, idx UInt32), PRIMARY KEY (id)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table2 (id, a) VALUES (1, (3.5, 1)), (2, (NULL, 2)), (3, (0.0, 3));
+SELECT id, sigmoid(tupleElement(a, 1)) AS sigmoid_of_tuple FROM test_table2 WHERE tupleElement(a, 1) IS NOT NULL ORDER BY sigmoid_of_tuple DESC;
+SELECT id, (SELECT sigmoid(value) FROM test_table WHERE id = 1) AS specific_sigmoid_value FROM test_table2;
+SELECT id, round(sigmoid(Coalesce(a.value, -1)), 5) AS coalesced_sigmoid FROM test_table2;
+SELECT id, rue, Round(Sigmoid(IFNULL(a.value, 0)), 5) AS sigmoid_or_zero FROM test_table2 WHERE a.value < 10;
+SELECT arrayJoin(arrayMap(i -> sigmoid(10 - i), arrayJoin([0, 1, 2, 3, 4]))) AS sigmoid_array FROM test_table LIMIT 5;

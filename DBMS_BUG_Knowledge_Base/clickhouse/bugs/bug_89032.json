@@ -1,0 +1,22 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/89032",
+  "title": "Kafka Table engine consuming Avro Confluent message containing union data type raises error",
+  "vulnerable_database": "ClickHouse",
+  "date": "2025-10-27T11:01:24Z",
+  "vulnerable_version": "25.8.9.20",
+  "description": "### Company or project name\n_No response_\n### Describe the unexpected behaviour\nI'm consuming Kafka messages (Avro Confluent format) using the Kafka table engine from different kind of topics  and works well but when trying to consume a topic that contains a 'union' Avro data type as follows the kafka consumer raises the error: \"The number of leaves in record doesn't match the number of elements in tuple: column payload: (at row 1)\"\n{\\\"name\\\":\\\"attributes\\\",\n\\\"type\\\":[\\\"null\\\",{\\\"type\\\":\\\"map\\\",\\\"values\\\":[\\\"null\\\",\\\"string\\\",\\\"boolean\\\",\\\"int\\\",\\\"long\\\",\\\"float\\\",\\\"double\\\"]}]}\nThe clickhouse data schema inference mechanism define this data type as:  **attributes Map(String, Variant(Bool, Float32, Float64, Int32, Int64, String))**\nThis data type requires the activation of the setting \"allow_suspicious_variant_types = 1\"\nWhen loading messages directly from file it works well. When loading using Kafka table engine raises the mentioned error.\nI am doing something wrong? missing something?\nThanks\n### Which ClickHouse versions are affected?\n25.8.9.20\n### How to reproduce\n1. Inference of data model:\n`CREATE TABLE STREAMS.tests_raw (raw String)\nENGINE = Kafka\nSETTINGS kafka_broker_list = 'localhost:9092',\nkafka_topic_list = 'test.document.public.v1',\nkafka_group_name = 'testing',\nkafka_format = 'RawBLOB';`\n`INSERT INTO FUNCTION file('./avro_raw_document.avro', 'RawBLOB')\nSELECT * FROM STREAMS.tests_raw LIMIT 1\nSETTINGS max_block_size=1, stream_like_engine_allow_direct_select=1;`\n`CREATE TEMPORARY TABLE document_test AS\nSELECT * FROM file('./avro_raw_document.avro', 'AvroConfluent')\nSETTINGS format_avro_schema_registry_url='localhost:8081'\nSETTINGS allow_suspicious_variant_types = 1;`\n`SHOW CREATE TEMPORARY TABLE document_test\\G;`\n2. Create Kafka engine table using the inferred data model  as follows:\nSETTINGS kafka_broker_list = 'localhost:9092',\nkafka_topic_list = 'test.document.public.v1',\nkafka_group_name = 'testing',\nkafka_format = 'AvroConfluent',\nformat_avro_schema_registry_url = 'localhost:8081',\nkafka_handle_error_mode='stream',\nallow_suspicious_variant_types = 1,\nallow_experimental_variant_type = 1,\ninput_format_avro_allow_missing_fields = 1;\n4. Create MergeTree destination table using the same inferred data model.\n5. Create the MV as \"Select * from\".\n6. Create the dlq MV.\n7. Show dlq MV errors.\n### Expected behavior\nDocumentation shows that this data conversion is supported : https://clickhouse.com/docs/interfaces/formats/AvroConfluent#data-type-mapping\n### Error message and/or stacktrace\n_No response_\n### Additional context\n_No response_",
+  "poc": [
+    "CREATE TABLE STREAMS.tests_raw (raw String) \nENGINE = Kafka\nSETTINGS kafka_broker_list = 'localhost:9092',\n         kafka_topic_list = 'test.document.public.v1',\n         kafka_group_name = 'testing',\n         kafka_format = 'RawBLOB';",
+    "INSERT INTO FUNCTION file('./avro_raw_document.avro', 'RawBLOB') \nSELECT * FROM STREAMS.tests_raw LIMIT 1 \nSETTINGS max_block_size=1, stream_like_engine_allow_direct_select=1;"
+  ],
+  "key_bug_features": [
+    "Kafka table engine consuming union Avro data type"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE IF NOT EXISTS kafka_test (id UInt32, attributes Map(String, Variant(Bool, Float32, Float64, Int32, Int64, String))) ENGINE = Kafka SETTINGS kafka_broker_list = 'localhost:9092', kafka_topic_list = 'test.document.public.v1', kafka_group_name = 'testing', kafka_format = 'AvroConfluent', format_avro_schema_registry_url = 'localhost:8081', allow_suspicious_variant_types = 1;",
+    "INSERT INTO kafka_test (id, attributes) VALUES (1, {'key1': 1.5, 'key2': true, 'key3': 'value'});",
+    "CREATE TABLE IF NOT EXISTS processed_data AS SELECT id, attributes['key1'] AS key1_value FROM kafka_test WHERE attributes['key2'] = true;",
+    "CREATE TABLE IF NOT EXISTS error_log (error_message String, created_at DateTime DEFAULT now()) ENGINE = MergeTree() ORDER BY created_at;",
+    "INSERT INTO error_log (error_message) SELECT 'Error processing message' WHERE NOT EXISTS (SELECT * FROM processed_data WHERE key1_value IS NOT NULL);"
+  ]
+}

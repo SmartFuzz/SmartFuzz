@@ -1,0 +1,16 @@
+CREATE TABLE test_rdf_metadata (id INT, data VARCHAR(255));
+INSERT INTO test_rdf_metadata (id, data) VALUES (1, 'Example data 1');
+INSERT INTO test_rdf_metadata (id, data) VALUES (2, 'Example data 2');
+UPDATE test_rdf_metadata SET data = 'Updated data 1' WHERE id = 1;
+SELECT * FROM test_rdf_metadata WHERE id IN (SELECT DISTINCT id FROM test_rdf_metadata WHERE data LIKE 'Example%');
+CREATE TABLE audit_metadata_log (log_id INT, fix_status VARCHAR(50), timestamp TIMESTAMP);
+INSERT INTO audit_metadata_log (log_id, fix_status, timestamp) VALUES (1, 'Corruption Fix Applied', NOW());
+SELECT a.id, a.data FROM test_rdf_metadata a JOIN audit_metadata_log b ON a.id = b.log_id WHERE b.fix_status = 'Corruption Fix Applied';
+SELECT COUNT(*) FROM test_rdf_metadata WHERE data IS NULL;
+DB.DBA.RDF_AUDIT_METADATA(1, '*');
+DB.DBA.RDF_AUDIT_METADATA((SELECT MAX(id) FROM test_rdf_metadata), '*');
+DB.DBA.RDF_AUDIT_METADATA((SELECT MIN(id) FROM test_rdf_metadata), '*');
+DELETE FROM test_rdf_metadata WHERE id = (SELECT id FROM test_rdf_metadata ORDER BY RAND() LIMIT 1);
+CREATE TABLE test_rdf_invalid_metadata (id INT, invalid_data VARCHAR(255));
+INSERT INTO test_rdf_invalid_metadata (id, invalid_data) VALUES (1, NULL), (2, 'Invalid data 1');
+DB.DBA.RDF_AUDIT_METADATA(1, (SELECT DISTINCT invalid_data FROM test_rdf_invalid_metadata WHERE invalid_data IS NOT NULL));

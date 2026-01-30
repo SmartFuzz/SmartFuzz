@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/62662",
+  "title": "a IN (1) OR a = 1  cannot be simplified",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n```\nCREATE TABLE test_table (\n    id INT PRIMARY KEY,\n    a INT\n);\nexplain SELECT * FROM test_table WHERE a IN (1, 2, 3, 4) or  a = 1;\n```\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\n\n```\n+---------------------+----------+-----------+------------------+-----------------------------------------------------------------+\n| id                  | estRows  | task      | access object    | operator info                                                   |\n+---------------------+----------+-----------+------------------+-----------------------------------------------------------------+\n| TableReader_8       | 40.00    | root      |                  | data:Selection_7                                                |\n| └─Selection_7       | 40.00    | cop[tikv] |                  | in(test.test_table.a, 1, 2, 3, 4) |\n|   └─TableFullScan_6 | 10000.00 | cop[tikv] | table:test_table | keep order:false, stats:pseudo                                  |\n+---------------------+----------+-----------+------------------+-----------------------------------------------------------------+\n```\n\nit should be ```in(test.test_table.a, 1, 2, 3, 4)```\n\n### 3. What did you see instead (Required)\n\n```\n+---------------------+----------+-----------+------------------+-----------------------------------------------------------------+\n| id                  | estRows  | task      | access object    | operator info                                                   |\n+---------------------+----------+-----------+------------------+-----------------------------------------------------------------+\n| TableReader_8       | 40.00    | root      |                  | data:Selection_7                                                |\n| └─Selection_7       | 40.00    | cop[tikv] |                  | or(in(test.test_table.a, 1, 2, 3, 4), eq(test.test_table.a, 1)) |\n|   └─TableFullScan_6 | 10000.00 | cop[tikv] | table:test_table | keep order:false, stats:pseudo                                  |\n+---------------------+----------+-----------+------------------+-----------------------------------------------------------------+\n```\n\n\nbut we get ```or(in(test.test_table.a, 1, 2, 3, 4), eq(test.test_table.a, 1))```\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "date": "2025-07-28T11:44:54Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE test_table_1 (id INTEGER PRIMARY KEY, a INTEGER NOT NULL);",
+    "INSERT INTO test_table_1 (id, a) VALUES (1, 1), (2, 2), (3, 3), (4, 4);",
+    "CREATE TABLE test_table_2 (id INTEGER PRIMARY KEY, b VARCHAR(10));",
+    "INSERT INTO test_table_2 (id, b) VALUES (1, '1'), (2, '2'), (3, '3');",
+    "SELECT * FROM test_table_1 WHERE a IN (1, 2, 3, 4) OR a = 1;"
+  ],
+  "key_bug_features": [
+    "a IN (1, 2, 3, 4) or a = 1"
+  ]
+}

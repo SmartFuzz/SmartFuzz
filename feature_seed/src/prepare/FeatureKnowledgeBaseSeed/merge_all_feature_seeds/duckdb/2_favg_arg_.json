@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id INTEGER, value FLOAT, created_at TIMESTAMPTZ);
+INSERT INTO test_data VALUES (1, 10.0, TIMESTAMPTZ '2023-10-01 10:00:00'), (2, NULL, TIMESTAMPTZ '2023-10-02 10:00:00'), (3, 20.0, TIMESTAMPTZ '2023-10-03 10:00:00'), (4, 30.0, TIMESTAMPTZ '2023-10-04 10:00:00');
+SELECT id, favg(value) OVER (PARTITION BY created_at::DATE - INTERVAL '1 DAY') AS average_value FROM test_data GROUP BY created_at::DATE - INTERVAL '1 DAY', id HAVING favg(value) IS NOT NULL ORDER BY average_value;
+SELECT a.id, a.value, favg(b.value) AS avg_value FROM test_data a JOIN (SELECT id, value FROM test_data WHERE value IS NOT NULL) b ON a.id = b.id GROUP BY a.id, a.value HAVING a.value > favg(b.value - INTERVAL '1 DAY') ORDER BY avg_value DESC;
+CREATE TEMPORARY TABLE aggregated_values AS SELECT created_at::DATE, favg(value) AS daily_avg FROM test_data GROUP BY created_at::DATE;
+SELECT daily_avg, created_at FROM aggregated_values WHERE daily_avg IS NOT NULL ORDER BY daily_avg DESC;
+SELECT id, value, created_at - INTERVAL '2 DAY' AS adjusted_time FROM test_data WHERE value IS NOT NULL AND created_at - INTERVAL '1 DAY' < (SELECT favg(value) FROM test_data);
+INSERT INTO test_data VALUES (5, 40.0, TIMESTAMPTZ '2023-10-05 10:00:00'), (6, 50.0, TIMESTAMPTZ '2023-10-06 10:00:00');
+SELECT id, value, favg(value) OVER (PARTITION BY id ORDER BY created_at DESC) AS running_avg FROM test_data WHERE value IS NOT NULL ORDER BY running_avg;
+SELECT created_at::DATE, favg(value) AS monthly_avg FROM test_data WHERE value IS NOT NULL AND created_at >= TIMESTAMPTZ '2023-10-01 00:00:00' GROUP BY created_at::DATE HAVING monthly_avg IS NOT NULL ORDER BY monthly_avg;

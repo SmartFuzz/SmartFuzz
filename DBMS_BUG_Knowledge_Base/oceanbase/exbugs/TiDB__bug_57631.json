@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/57631",
+  "title": "Analyze is too slow when run dml in million tables scenario",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n1. about 100k partition tables and each 10k rows\r\n```sql\r\nCREATE TABLE `sbtest1` (\r\n  `id` int NOT NULL AUTO_INCREMENT,\r\n  `k` int NOT NULL DEFAULT '0',\r\n  `c` char(120) NOT NULL DEFAULT '',\r\n  `pad` char(60) NOT NULL DEFAULT '',\r\n  `ec1` varchar(40) DEFAULT NULL,\r\n  `ec2` varchar(40) DEFAULT NULL,\r\n  `ec3` varchar(40) DEFAULT NULL,\r\n  `ec4` varchar(40) DEFAULT NULL,\r\n  `ec5` varchar(40) DEFAULT NULL,\r\n  `ec6` varchar(40) DEFAULT NULL,\r\n  `ec7` varchar(40) DEFAULT NULL,\r\n  `ec8` varchar(40) DEFAULT NULL,\r\n  `ec9` varchar(40) DEFAULT NULL,\r\n  `ec10` varchar(40) DEFAULT NULL,\r\n  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,\r\n  KEY `k_2` (`k`),\r\n  KEY `ek1` (`ec1`(30)),\r\n  KEY `ek2` (`ec2`(30)),\r\n  KEY `ek3` (`ec3`(30)),\r\n  KEY `ek4` (`ec4`(30))\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin AUTO_INCREMENT=1087002\r\nPARTITION BY RANGE (`id`)\r\n(PARTITION `p1` VALUES LESS THAN (1001),\r\n PARTITION `p2` VALUES LESS THAN (2001),\r\n PARTITION `p3` VALUES LESS THAN (3001),\r\n PARTITION `p4` VALUES LESS THAN (4001),\r\n PARTITION `p5` VALUES LESS THAN (5001),\r\n PARTITION `p6` VALUES LESS THAN (6001),\r\n PARTITION `p7` VALUES LESS THAN (7001),\r\n PARTITION `p8` VALUES LESS THAN (8001),\r\n PARTITION `p9` VALUES LESS THAN (9001),\r\n PARTITION `p10` VALUES LESS THAN (MAXVALUE))\r\n```\r\n2. run dml on some of the tables\r\n3. execute analyze table\r\nIt takes about 3 seconds if not having dml workload\r\n```sql\r\nmysql> analyze table sbtest100.sbtest1;\r\nQuery OK, 0 rows affected, 10 warnings (21 min 48.62 sec)\r\n```\r\n### 2. What did you expect to see? (Required)\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\nmaster  \r\n\r\nRelease Version: v8.5.0\r\nEdition: Community\r\nGit Commit Hash: eb871f862e059832533f1abc6b9b1b3f0957a780\r\nGit Branch: heads/refs/tags/v8.5.0\r\nUTC Build Time: 2024-11-22 03:01:24\r\nGoVersion: go1.23.3\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv\r\n",
+  "date": "2024-11-22T07:46:47Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE `sbtest2` ( `id` int NOT NULL AUTO_INCREMENT, `k` int NOT NULL DEFAULT '0', `c` char(120) NOT NULL DEFAULT '', `pad` char(60) NOT NULL DEFAULT '', `ec1` varchar(40) DEFAULT NULL, PRIMARY KEY (`id`), KEY `k_2` (`k`) ) PARTITION BY RANGE (`id`) (PARTITION `p1` VALUES LESS THAN (1001), PARTITION `p2` VALUES LESS THAN (2001), PARTITION `p3` VALUES LESS THAN (3001), PARTITION `p4` VALUES LESS THAN (4001), PARTITION `p5` VALUES LESS THAN (5001), PARTITION `p6` VALUES LESS THAN (6001), PARTITION `p7` VALUES LESS THAN (7001), PARTITION `p8` VALUES LESS THAN (8001), PARTITION `p9` VALUES LESS THAN (9001), PARTITION `p10` VALUES LESS THAN (MAXVALUE));",
+    "INSERT INTO `sbtest2` (`k`, `c`, `pad`, `ec1`) VALUES (1, 'test', 'padding', NULL);",
+    "UPDATE `sbtest2` SET `ec1` = 'updated' WHERE `id` = 1;",
+    "SELECT * FROM `sbtest2` WHERE `k` IN (SELECT `k` FROM `sbtest2` WHERE `ec1` IS NOT NULL);",
+    "ANALYZE TABLE `sbtest2`;"
+  ],
+  "key_bug_features": [
+    "Analyze table performance degrades with DML on many tables"
+  ]
+}

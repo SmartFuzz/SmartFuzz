@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/92863",
+  "title": "Regression with query condition cache on Memory engine in 25.10",
+  "description": "### Company or project name\n_No response_\n### Describe the unexpected behaviour\nI believe there is a regression in the query condition cache for Memory engine databases starting in 25.10 (I'm testing with `Connected to ClickHouse server version 25.10.3`. The below SQL repros it for me:\n```\nDROP DATABASE IF EXISTS bug_repro;\nCREATE DATABASE bug_repro ENGINE = Memory;\nUSE bug_repro;\nCREATE TABLE IF NOT EXISTS analytics_log_in\n(\n`time` DateTime DEFAULT now(),\n`shard_id` String,\n`user_email` String,\n`user_impersonated` Boolean\n)\nENGINE = MergeTree\nORDER BY (`time`);\nCREATE TABLE IF NOT EXISTS analytics_session_timeline_viewed\n(\n`time` DateTime DEFAULT now(),\n`shard_id` String,\n`user_email` String,\n`session_id` String,\n`user_impersonated` Boolean\n)\nENGINE = MergeTree\nORDER BY (`time`);\nINSERT INTO analytics_log_in VALUES\n('2020-10-15 01:00:00', 'id1', 'email', false);\nINSERT INTO analytics_session_timeline_viewed VALUES\n('2020-11-15 01:00:00', 'id1', 'email', 'session_id', false);\nSELECT COUNT(*) as count\nFROM analytics_log_in\nWHERE\ntime >= toStartOfMonth(toDateTime(1604142000, 'UTC')) AND\ntime < addMonths(toStartOfMonth(toDateTime(1604142000, 'UTC')), 1) AND\nshard_id = 'id1' AND\nuser_impersonated = false;\nSELECT COUNT(*) as count\nFROM analytics_log_in\nWHERE\ntime >= toStartOfMonth(toDateTime(1606737600, 'UTC')) AND\ntime < addMonths(toStartOfMonth(toDateTime(1606737600, 'UTC')), 1) AND\nshard_id = 'id1' AND\nuser_impersonated = false;\nSELECT COUNT(*) as count\nFROM analytics_session_timeline_viewed\nWHERE\ntime >= toStartOfMonth(toDateTime(1604142000, 'UTC')) AND\ntime < addMonths(toStartOfMonth(toDateTime(1604142000, 'UTC')), 1) AND",
+  "date": "2025-12-22T23:26:16Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "DROP DATABASE IF EXISTS bug_repro;",
+    "CREATE DATABASE bug_repro;",
+    "CREATE TABLE IF NOT EXISTS user_data (user_id INT, user_name VARCHAR(255), user_age TINYINT, user_email VARCHAR(255), user_active BOOLEAN);",
+    "INSERT INTO user_data VALUES (1, 'Alice', 30, 'alice@example.com', true);",
+    "SELECT COUNT(*) FROM user_data WHERE user_age > 25 AND user_active = true;"
+  ],
+  "key_bug_features": [
+    "Regression in query condition cache for Memory engine"
+  ]
+}

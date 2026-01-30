@@ -1,0 +1,21 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=117845",
+  "title": "WHERE ... IN Returning Unexpected Row",
+  "description": "In three-valued-logic, a predicate can only be one of (TRUE/FALSE/NULL) at a time. Therefore, the given \"TRUE QUERY\" union \"NULL QUERY\" should only return a subset of the \"BASE QUERY\". However, in SQL Server version 8.0.41, the former returned one more row than the latter.\r\n\r\nAt a closer look, the row `A` of t1.c2 is returned in the \"TRUE QUERY\", which should not be the case. `A` is not in `t2.c3`, therefore `c2 IN ( SELECT c3 FROM t2)` should never be evaluated to true for that specific query.\nHow to repeat:\nCREATE DATABASE dt;\r\nUSE dt;\r\n\r\nCREATE TABLE t1(c1 INT ,c2 TEXT ) ;\r\nCREATE TABLE t2(c3 DOUBLE ,c4 INT) ;\r\nINSERT t1(c1) VALUES (1);\r\nINSERT t1(c1) VALUES (2); \r\nINSERT t1(c1) VALUES (3);\r\nINSERT t1(c2) VALUES (\"A\");\r\nINSERT t2(c4,c3) VALUES (4, 0/-1e1);\r\nINSERT t2(c3) VALUES (5);\r\nINSERT t2(c4) VALUES (6);\r\nINSERT t2(c4) VALUES (7);\r\n\r\nSELECT c2 FROM t1; -- BASE QUERY: 4 rows\r\n\r\nSELECT c2 FROM t1 WHERE ( c2 IN ( SELECT c3 FROM t2) ) -- TRUE QUERY: 1 row\r\nUNION ALL\r\nSELECT c2 FROM t1 WHERE ( c2 IN ( SELECT c3 FROM t2) ) IS NULL;  -- NULL QUERY: 4 rows",
+  "date": "2025-04-01 18:15:00",
+  "vulnerable_version": "8.0.41",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE DATABASE dt;",
+    "CREATE TABLE t1(c1 INT NOT NULL, c2 TEXT DEFAULT NULL, PRIMARY KEY(c1));",
+    "CREATE TABLE t2(c3 DOUBLE, c4 INT NOT NULL, UNIQUE(c4));",
+    "INSERT INTO t1(c1, c2) VALUES (1, 'A'), (2, NULL), (3, 'B');",
+    "INSERT INTO t2(c3, c4) VALUES (0/-1e1, 4), (5, 6), (NULL, 7);",
+    "SELECT c2 FROM t1 WHERE c2 IN (SELECT c3 FROM t2) UNION ALL SELECT c2 FROM t1 WHERE c2 IS NULL;"
+  ],
+  "key_bug_features": [
+    "c2 IN (SELECT c3 FROM t2) evaluation error"
+  ]
+}

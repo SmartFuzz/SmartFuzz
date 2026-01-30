@@ -1,0 +1,31 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=118269",
+  "title": "The result of anti disk hash join is wrong",
+  "vulnerable_database": "MySQL Server: Optimizer",
+  "date": "2025-05-26 09:41:00",
+  "vulnerable_version": "",
+  "description": "In anti join, if disk-hash-join is used and the join-key of the driver table contains a null value, the result will be incorrect.\nHow to repeat:\n1. create table\r\n\r\nCREATE TABLE t1 (id int primary key, col1 varchar(200));\r\nCREATE TABLE t2 (id int primary key, col1 varchar(200));\r\n\r\n2. create procedure and insert data\r\n\r\nDELIMITER //\r\nCREATE PROCEDURE insert_data ()\r\nBEGIN\r\n\tDECLARE num int;\r\n\tSET num = 1;\r\n\tWHILE num <= 1000 DO\r\n    INSERT INTO t2 VALUES (num, md5(rand()));\r\n\tSET num = num + 1;\r\n\tEND WHILE;\r\nEND;//\r\nDELIMITER ;\r\n\r\ncall insert_data();\r\nINSERT INTO t1 VALUES (1, null);\r\n\r\n3. Execute SQL:\r\n\r\nWhen join_buffer_size is large, execute sql:\r\n\r\n> set join_buffer_size = 10240000;\r\n> select * from t1 left join t2 on t1.col1 = t2.col1 where t2.id is null;\r\n\r\nWe will get:\r\n\r\n+----+------+------+------+\r\n| id | col1 | id   | col1 |\r\n+----+------+------+------+\r\n|  1 | NULL | NULL | NULL |\r\n+----+------+------+------+\n\nWhen join_buffer_size is small, execute sql:\r\n\r\n> set join_buffer_size = 1024;\r\n> select * from t1 left join t2 on t1.col1 = t2.col1 where t2.id is null;\r\n\r\nWe will get empty set.",
+  "poc": [
+    "CREATE TABLE t1 (id int primary key, col1 varchar(200));",
+    "CREATE TABLE t2 (id int primary key, col1 varchar(200));",
+    "create procedure and insert data\nDELIMITER //\nCREATE PROCEDURE insert_data ()\nBEGIN\nDECLARE num int;",
+    "SET num = 1;",
+    "DO\nINSERT INTO t2 VALUES (num, md5(rand()));",
+    "SET num = num + 1;",
+    "call insert_data();",
+    "INSERT INTO t1 VALUES (1, null);",
+    "set join_buffer_size = 10240000;",
+    "select * from t1 left join t2 on t1.col1 = t2.col1 where t2.id is null;",
+    "set join_buffer_size = 1024;"
+  ],
+  "key_bug_features": [
+    "Anti join with null value in join-key"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t3 (id int primary key, col1 varchar(200), col2 int DEFAULT NULL);",
+    "CREATE TABLE t4 (id int primary key, col1 varchar(200), col2 int NOT NULL);",
+    "INSERT INTO t3 VALUES (1, NULL, 10);",
+    "INSERT INTO t4 VALUES (1, 'test', 20), (2, 'example', 30);",
+    "SELECT * FROM t3 LEFT JOIN t4 ON t3.col1 = t4.col1 WHERE t4.id IS NULL;"
+  ]
+}

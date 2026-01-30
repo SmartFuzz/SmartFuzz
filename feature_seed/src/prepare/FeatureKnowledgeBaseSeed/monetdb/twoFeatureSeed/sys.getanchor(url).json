@@ -1,0 +1,18 @@
+{
+    "function": "sys.getanchor(url)",
+    "operator": "time",
+    "sql_array": [
+        "CREATE TABLE test_urls (id INT PRIMARY KEY, url CLOB);",
+        "INSERT INTO test_urls VALUES (1, 'http://example.com#section1'), (2, 'http://example.com#'), (3, NULL), (4, 'http://example.com/path');",
+        "SELECT id, sys.getanchor(url) AS anchor FROM test_urls WHERE url IS NOT NULL;",
+        "SELECT id, sys.getanchor(url) AS anchor, time '12:30:00' AS fixed_time FROM test_urls WHERE sys.getanchor(url) IS NOT NULL;",
+        "SELECT id, sys.getanchor(url) AS anchor, COUNT(*) OVER(PARTITION BY sys.getanchor(url)) AS anchor_count FROM test_urls GROUP BY anchor HAVING anchor_count > 1;",
+        "SELECT t1.id, sys.getanchor(t1.url) AS anchor, t2.fixed_time FROM test_urls t1 JOIN (SELECT time '23:59:59' AS fixed_time) t2 ON sys.getanchor(t1.url) IS NOT NULL;",
+        "SELECT id, sys.getanchor(url) AS anchor FROM test_urls WHERE time '23:61:00' > time '23:59:59';",
+        "WITH anchor_data AS (SELECT id, sys.getanchor(url) AS anchor, time '00:00:01' AS tiny_time FROM test_urls) SELECT anchor, COUNT(*) FROM anchor_data GROUP BY anchor HAVING COUNT(*) > 0;",
+        "CREATE TABLE test_fuzz_edges (id INT PRIMARY KEY, value VARCHAR(50), time_value TIME);",
+        "INSERT INTO test_fuzz_edges VALUES (1, '', time '00:00:00'), (2, '0', time '12:15:30'), (3, '23:59:59', NULL);",
+        "SELECT id, value, CASE WHEN time_value IS NULL THEN 'NULL TIME' ELSE 'VALID TIME' END AS time_status FROM test_fuzz_edges;",
+        "SELECT id, sys.getanchor(url), time '18:40:05' FROM test_urls WHERE id IN (SELECT id FROM test_fuzz_edges WHERE value <> '' AND time_value IS NOT NULL);"
+    ]
+}

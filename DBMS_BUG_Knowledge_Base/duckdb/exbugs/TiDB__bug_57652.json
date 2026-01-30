@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/57652",
+  "title": "Wrong LENGTH result in Tiflash",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n```sql\r\nDROP TABLE IF EXISTS t0;\r\n\r\nCREATE TABLE t0 (\r\n    col1 DOUBLE, \r\n    col2 DOUBLE, \r\n    PRIMARY KEY (col1)\r\n);\r\n\r\nINSERT INTO t0 (col1, col2) \r\nVALUES \r\n    (-5.9145723849e+25, -5.9145723849e+25),\r\n    (5.9145723849e+25, -5.9145723849e+25);\r\n\r\nALTER TABLE t0 SET TIFLASH REPLICA 1;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nI find that the returned result is inconsistent across two queries.\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n```sql\r\nmysql> SELECT /*+ READ_FROM_STORAGE(tiflash[t0]) */ *\r\n    -> FROM t0\r\n    -> WHERE 1 | LENGTH(LEAST(col1, col2)) > 22 AND LENGTH(CAST(col1 AS CHAR)) <= 30;\r\nEmpty set (0.05 sec)\r\n\r\nmysql> SELECT /*+ READ_FROM_STORAGE(tikv[t0]) */ *\r\n    -> FROM t0\r\n    -> WHERE 1 | LENGTH(LEAST(col1, col2)) > 22 AND LENGTH(CAST(col1 AS CHAR)) <= 30;\r\n+------------------+------------------+\r\n| col1             | col2             |\r\n+------------------+------------------+\r\n| -5.9145723849e25 | -5.9145723849e25 |\r\n|  5.9145723849e25 | -5.9145723849e25 |\r\n+------------------+------------------+\r\n2 rows in set (0.04 sec)\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\nTiDB v8.4.0",
+  "date": "2024-11-23T12:49:58Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t1;",
+    "CREATE TABLE t1 (col1 FLOAT, col2 VARCHAR, col3 INTEGER, PRIMARY KEY (col1));",
+    "INSERT INTO t1 (col1, col2, col3) VALUES (1.23456789, 'test', NULL), (NULL, 'example', 10);",
+    "SELECT * FROM t1 WHERE LENGTH(col2) > 4 AND col3 IS NULL;",
+    "SELECT * FROM t1 WHERE LENGTH(col2) > 4 AND col3 IS NULL;"
+  ],
+  "key_bug_features": [
+    "Inconsistent LENGTH results between Tiflash and Tikv queries"
+  ]
+}

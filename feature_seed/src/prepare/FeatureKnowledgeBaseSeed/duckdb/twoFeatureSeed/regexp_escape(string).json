@@ -1,0 +1,16 @@
+{
+    "function": "regexp_escape(string)",
+    "operator": "&&",
+    "sql_array": [
+        "CREATE TABLE test_table (id INTEGER PRIMARY KEY, url VARCHAR, tags ARRAY<VARCHAR>);",
+        "INSERT INTO test_table VALUES (1, 'http://example.com/test?query=123', ['http', 'test', 'query']), (2, 'https://example.com', ['https', 'example']), (3, '', ['empty', 'list']);",
+        "SELECT id, regexp_escape(url) AS escaped_url FROM test_table WHERE escaped_url && regexp_escape(tags[1]) OR id IS NULL;",
+        "SELECT id, COUNT(*) AS tag_count FROM test_table GROUP BY url HAVING tag_count > 0 AND regexp_escape(url) && ['http', 'query'] ;",
+        "SELECT id, url FROM (SELECT id, url, regexp_escape(url) AS escaped FROM test_table) AS subquery WHERE escaped IS NOT NULL;",
+        "SELECT id, SUM(CASE WHEN url IS NULL THEN 1 ELSE 0 END) AS null_count FROM test_table GROUP BY id HAVING null_count = 2;",
+        "CREATE TEMP TABLE temp_table AS SELECT id, tags FROM test_table WHERE tags && ['http', 'example'] AND id < 3;",
+        "INSERT INTO temp_table VALUES (4, ['test', 'foo']), (5, ['bar', NULL]);",
+        "SELECT id, regexp_escape(tags[1]) AS escaped_tag FROM temp_table WHERE escaped_tag IS NOT NULL ORDER BY id;",
+        "SELECT t1.id, t1.url FROM test_table AS t1 JOIN temp_table AS t2 ON t1.id = 1 AND t2.id IS NOT NULL WHERE t1.url != '' AND regexp_escape(url) && tags;"
+    ]
+}

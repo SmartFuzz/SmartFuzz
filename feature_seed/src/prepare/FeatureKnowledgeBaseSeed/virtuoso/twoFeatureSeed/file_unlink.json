@@ -1,0 +1,25 @@
+{
+    "function": "file_unlink",
+    "operator": "IS NULL",
+    "sql_array": [
+        "CREATE TABLE test_files (id INT PRIMARY KEY, file_path VARCHAR(255) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO test_files (id, file_path) VALUES (1, '/path/to/file1.txt'), (2, NULL), (3, '');",
+        "SELECT file_path FROM test_files WHERE file_unlink(file_path) IS NULL;",
+        "SELECT id FROM test_files WHERE NOT (file_unlink(file_path) IS NULL) AND created_at < NOW() - INTERVAL '1 day';",
+        "SELECT id, (CASE WHEN file_unlink(file_path) IS NULL THEN 'Deletion failed' ELSE 'Deleted' END) AS status FROM test_files;",
+        "CREATE TABLE temp_files (id INT, file_path VARCHAR(255));",
+        "INSERT INTO temp_files (id, file_path) SELECT id, file_path FROM test_files WHERE file_path IS NOT NULL;",
+        "SELECT id FROM test_files WHERE file_path IS NULL OR EXISTS (SELECT 1 FROM temp_files WHERE temp_files.file_path = test_files.file_path);",
+        "SELECT (SELECT file_unlink(file_path) FROM test_files WHERE id = 1) AS unlink_status WHERE (file_unlink(file_path) IS NULL) IS TRUE;",
+        "SELECT id FROM test_files WHERE (file_unlink(file_path) IS NULL OR file_path IS NULL) AND (file_path <> '') GROUP BY id HAVING COUNT(*) > 0;",
+        "UPDATE test_files SET file_path = NULL WHERE id = 2;",
+        "SELECT id, file_unlink(file_path) AS unlink_result FROM test_files WHERE file_path IS NOT NULL HAVING unlink_result IS NULL;",
+        "CREATE TABLE archived_files (id INT PRIMARY KEY, file_path VARCHAR(255) NULL DEFAULT NULL);",
+        "INSERT INTO archived_files (SELECT id, file_path FROM test_files WHERE file_path IS NOT NULL);",
+        "SELECT a.id FROM archived_files a JOIN temp_files t ON a.file_path = t.file_path WHERE a.file_path IS NULL OR t.file_path IS NOT NULL;",
+        "SELECT id, file_unlink(file_path) FROM test_files WHERE file_path = '/path/to/nonexistentfile.txt' IS NULL;",
+        "SELECT (SELECT COUNT(*) FROM test_files WHERE file_path IS NOT NULL) AS total_files, (SELECT COUNT(*) FROM test_files WHERE (file_unlink(file_path) IS NULL)) AS deleted_files;",
+        "SELECT id FROM test_files WHERE file_path IS NOT NULL AND (SELECT COUNT(*) FROM test_files WHERE file_path LIKE '%file%') > 0;",
+        "SELECT id, file_path, file_unlink(CASE WHEN file_path IS NULL THEN '/default/path.txt' ELSE file_path END) AS unlink_result FROM test_files WHERE file_path IS NOT NULL;"
+    ]
+}

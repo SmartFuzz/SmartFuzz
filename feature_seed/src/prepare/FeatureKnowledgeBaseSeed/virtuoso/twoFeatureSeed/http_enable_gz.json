@@ -1,0 +1,18 @@
+{
+    "function": "http_enable_gz",
+    "operator": "NOT IN",
+    "sql_array": [
+        "CREATE TABLE test_http (id INT PRIMARY KEY, status VARCHAR(10));",
+        "INSERT INTO test_http (id, status) VALUES (1, 'active'), (2, 'inactive'), (3, NULL);",
+        "SELECT http_enable_gz(1) FROM test_http WHERE id NOT IN (SELECT id FROM test_http WHERE status IS NULL);",
+        "SELECT * FROM test_http WHERE http_enable_gz(0) NOT IN (SELECT COUNT(*) FROM test_http WHERE status = 'active');",
+        "SELECT http_enable_gz(1) AS gzip_enabled, COUNT(*) FROM test_http GROUP BY gzip_enabled HAVING COUNT(*) NOT IN (2);",
+        "SELECT http_enable_gz(NULL) WHERE EXISTS (SELECT 1 FROM test_http WHERE id NOT IN (SELECT id FROM test_http WHERE status = 'inactive'));",
+        "CREATE TABLE another_table (value INT, description VARCHAR(50));",
+        "INSERT INTO another_table (value, description) VALUES (1, 'gzip'), (2, 'brotli'), (3, 'deflate');",
+        "SELECT http_enable_gz(COALESCE((SELECT MIN(value) FROM another_table WHERE description NOT IN ('gzip')), 0)) AS enabled_gzip;",
+        "SELECT value FROM another_table WHERE value NOT IN (SELECT COUNT(*) FROM test_http) AND description IS NOT NULL;",
+        "UPDATE test_http SET status = 'disabled' WHERE http_enable_gz(0) NOT IN (SELECT COUNT(*) FROM another_table WHERE value < 3);",
+        "DELETE FROM test_http WHERE id NOT IN (SELECT id FROM (SELECT id FROM test_http WHERE status = 'inactive') AS subquery);"
+    ]
+}

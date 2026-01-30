@@ -1,0 +1,30 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/e0a8120553",
+  "title": "Incorrect result for BETWEEN and generated column",
+  "vulnerable_version": "3.31.0 alpha",
+  "date": "2019-12-20 15:54:215.64 years ago",
+  "path": "/home/crawl_bugs/sqlite/ticket_output/ticket_info_e0a8120553.json",
+  "poc": [
+    "CREATE TABLE t0(c0 REAL AS(1) UNIQUE, c1 INT);",
+    "INSERT INTO t0 VALUES('');",
+    "SELECT * FROM t0 WHERE (1 BETWEEN CAST(t0.c0 AS TEXT) AND t0.c0);",
+    "SELECT 1 BETWEEN CAST(t0.c0 AS TEXT) AND t0.c0 FROM t0;",
+    "CREATE TABLE t1(a TEXT AS(b) COLLATE nocase, b TEXT, c INT, d DEFAULT 1);",
+    "INSERT INTO t1(b,c) VALUES('abc',11),('DEF',22),('ghi',33);",
+    "SELECT a FROM t1 WHERE b='DEF' AND a='def';",
+    "CREATE INDEX t1bca ON t1(b,c,a);",
+    "SELECT a FROM t1 WHERE b='DEF' AND a='def';"
+  ],
+  "vulnerable_database": "sqlite",
+  "description": "mrigger added on 2019-12-20 15:54:21:\nConsider the following test case:\nCREATE TABLE t0(c0 REAL AS(1) UNIQUE, c1 INT);\nINSERT INTO t0 VALUES('');\nSELECT * FROM t0 WHERE (1 BETWEEN CAST(t0.c0 AS TEXT) AND t0.c0); -- unexpected: row is fetched\nUnexpectedly, the query fetches a row. I believe that it should not be fetched, because the predicate seems to evaluate to false:\nSELECT 1 BETWEEN CAST(t0.c0 AS TEXT) AND t0.c0 FROM t0; -- 0\nWhen removing the UNIQUE, the query executes as expected.\ndrh added on 2019-12-20 20:56:35:\nThe original problem reported above is fixed by check-in [728ad39e3bd07a25].\nHowever, there is a related problem demonstrated as follows:\nCREATE TABLE t1(a TEXT AS(b) COLLATE nocase, b TEXT, c INT, d DEFAULT 1);\nINSERT INTO t1(b,c) VALUES('abc',11),('DEF',22),('ghi',33);\nSELECT a FROM t1 WHERE b='DEF' AND a='def';  -- returns one row as expected.\n\nCREATE INDEX t1bca ON t1(b,c,a);\nSELECT a FROM t1 WHERE b='DEF' AND a='def';  -- returns no rows - error\nIt appears that collating sequence for a generated column is forgotten\nwhen that column is accessed through a covering index.",
+  "key_bug_features": [
+    "BETWEEN query with generated column and UNIQUE constraint"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t2(c0 INTEGER PRIMARY KEY, c1 REAL, c2 TEXT UNIQUE);",
+    "INSERT INTO t2(c1, c2) VALUES(1.5, 'value1'), (2.5, 'value2'), (3.5, 'value3');",
+    "CREATE TABLE t3(a TEXT AS(b) COLLATE nocase, b TEXT, c INT);",
+    "INSERT INTO t3(b, c) VALUES('abc', 10), ('DEF', 20), ('ghi', 30);",
+    "SELECT * FROM t3 WHERE b='DEF' AND a='def';"
+  ]
+}

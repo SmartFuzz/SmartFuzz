@@ -1,0 +1,22 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=114347",
+  "title": "mysqlsh upgrade utility is reporting that views using the NOW() function",
+  "vulnerable_database": "Shell General / Core Client",
+  "date": "2024-03-14 08:53:00",
+  "vulnerable_version": "8.0.36",
+  "description": "The MySQL Shell upgrade utility is reporting that views using the NOW() or sysdate() function have zero dates.\nHow to repeat:\nmysql> create table `t1` (`NOW()` datetime NOT NULL) ENGINE=InnoDB ;\r\nQuery OK, 0 rows affected (0.03 sec)\r\n\r\nmysql> create view `v1` AS select NOW() AS col1;\r\nQuery OK, 0 rows affected (0.00 sec)\n\n18) Zero Date, Datetime, and Timestamp values\r\n  Warning: By default zero date/datetime/timestamp values are no longer allowed\r\n    in MySQL, as of 5.7.8 NO_ZERO_IN_DATE and NO_ZERO_DATE are included in\r\n    SQL_MODE by default. These modes should be used with strict mode as they will\r\n    be merged with strict mode in a future release. If you do not include these\r\n    modes in your SQL_MODE setting, you are able to insert\r\n    date/datetime/timestamp values that contain zeros. It is strongly advised to\r\n    replace zero values with valid ones, as they may not work correctly in the\r\n    future.\r\n  More information:\nhttps://lefred.be/content/mysql-8-0-and-wrong-dates/\ntest.v1.col1 - column has zero default value: 0000-00-00 00:00:00\nhttps://github.com/mysql/mysql-shell/blob/54a3a4112bed9126c6a2f4ebe0803919285eaf06/modules...\nmysql> select TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, concat('column has zero default value: ', COLUMN_DEFAULT) from information_schema.columns where TABLE_SCHEMA not in ('performance_schema','information_schema','sys','mysql') and DATA_TYPE in ('timestamp', 'datetime', 'date') and COLUMN_DEFAULT like '0000-00-00%';\r\n+--------------+------------+-------------+-----------------------------------------------------------+\r\n| TABLE_SCHEMA | TABLE_NAME | COLUMN_NAME | concat('column has zero default value: ', COLUMN_DEFAULT) |\r\n+--------------+------------+-------------+-----------------------------------------------------------+\r\n| test         | v1         | col1        | column has zero default value: 0000-00-00 00:00:00        |\r\n+--------------+------------+-------------+-----------------------------------------------------------+\r\n1 row in set (0.00 sec)",
+  "poc": [
+    "create table `t1` (`NOW()` datetime NOT NULL) ENGINE=InnoDB ;",
+    "create view `v1` AS select NOW() AS col1;"
+  ],
+  "key_bug_features": [
+    "Views using NOW() function resulting in zero dates"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE `t2` (`id` INT NOT NULL PRIMARY KEY, `created_at` DATETIME DEFAULT NOW()) ENGINE=InnoDB;",
+    "CREATE VIEW `v2` AS SELECT id, created_at FROM t2 WHERE created_at IS NOT NULL;",
+    "INSERT INTO `t2` (id) VALUES (1);",
+    "SELECT * FROM `v2` WHERE created_at = '0000-00-00 00:00:00';",
+    "CREATE TABLE `t3` (`event_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP, `description` VARCHAR(255)) ENGINE=InnoDB;"
+  ]
+}

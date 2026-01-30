@@ -1,0 +1,15 @@
+CREATE TABLE http_requests (id INT PRIMARY KEY, request_url VARCHAR(255), request_time TIMESTAMP, request_data TEXT);
+INSERT INTO http_requests (id, request_url, request_time, request_data) VALUES (1, 'http://example.com/api/data', NOW(), NULL);
+CREATE TABLE spatial_data (geo_id INT PRIMARY KEY, shape GEOMETRY NOT NULL);
+INSERT INTO spatial_data (geo_id, shape) VALUES (1, ST_GeomFromText('POLYGON((30 10, 40 40, 20 40, 10 20, 30 10))')), (2, ST_GeomFromText('POLYGON((35 15, 45 45, 25 45, 15 25, 35 15))'));
+SELECT http_path() AS current_location, bif:st_overlaps((SELECT shape FROM spatial_data WHERE geo_id = 1), (SELECT shape FROM spatial_data WHERE geo_id = 2)) AS is_overlapping;
+SELECT DISTINCT request_url, (SELECT COUNT(*) FROM http_requests WHERE request_url = http_path()) AS request_count FROM http_requests WHERE request_data IS NULL GROUP BY request_url HAVING request_count > 0 ORDER BY request_count DESC;
+SELECT request_url, request_time, bif:st_overlaps(shapes.value, (SELECT shape FROM spatial_data WHERE geo_id = 1)) AS spatial_overlap FROM http_requests CROSS JOIN (SELECT ST_GeomFromText('POINT(30 20)') AS value) AS shapes WHERE request_data IS NOT NULL;
+SELECT http_path() AS current_url, bif:st_overlaps((SELECT shape FROM spatial_data), ST_GeomFromText('POINT(30 20)')) AS overlaps FROM http_requests WHERE request_time > NOW() - INTERVAL '1 day' AND request_url IS NOT NULL;
+CREATE TABLE user_activity (user_id INT, activity VARCHAR(255), activity_time TIMESTAMP, PRIMARY KEY (user_id, activity_time));
+INSERT INTO user_activity (user_id, activity, activity_time) VALUES (1, 'visit', NOW() - INTERVAL '2 hours'), (2, 'purchase', NOW() - INTERVAL '3 hours');
+SELECT user_id, http_path() AS current_url, COUNT(activity) OVER (PARTITION BY user_id) AS activity_count FROM user_activity WHERE activity_time BETWEEN NOW() - INTERVAL '1 day' AND NOW() ORDER BY user_id;
+CREATE TABLE api_logs (log_id SERIAL PRIMARY KEY, log_time TIMESTAMP DEFAULT NOW(), endpoint VARCHAR(255), response_code INT);
+INSERT INTO api_logs (endpoint, response_code) VALUES (http_path(), 200), (http_path(), NULL), (http_path(), 404);
+SELECT log_id, endpoint, response_code FROM api_logs WHERE response_code IS NOT NULL AND response_code BETWEEN 200 AND 404 ORDER BY log_time DESC;
+SELECT http_path() AS current_location, bif:st_overlaps(ST_Point(30, 30), (SELECT shape FROM spatial_data WHERE geo_id = 1)) AS overlap_status FROM http_requests WHERE id IN (SELECT request_id FROM user_activity WHERE activity = 'visit');

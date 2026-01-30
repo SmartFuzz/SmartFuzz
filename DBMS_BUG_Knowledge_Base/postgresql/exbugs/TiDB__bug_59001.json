@@ -1,0 +1,19 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/59001",
+  "title": "Wrong result in TiKV of year comparsion",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n\n```sql\nDROP TABLE IF EXISTS t0;\nCREATE TABLE t0(c0 YEAR NOT NULL );\nCREATE INDEX i0 ON t0(c0);\nREPLACE INTO t0(c0) VALUES ('1935'), ('1982');\nALTER TABLE t0 SET TIFLASH REPLICA 1;\nSELECT /*+ READ_FROM_STORAGE(tikv[t0]) */ t0.c0 FROM t0 WHERE 0.025 <= t0.c0;\nSELECT /*+ READ_FROM_STORAGE(tiflash[t0]) */ t0.c0 FROM t0 WHERE 0.025 <= t0.c0;\n```\n\n### 2. What did you expect to see? (Required)\n\nsee the following case: TiKV and Tiflash return different result\n\n### 3. What did you see instead (Required)\n\n```sql\nmysql> SELECT /*+ READ_FROM_STORAGE(tiflash[t0]) */ t0.c0 FROM t0 WHERE 0.025 <= t0.c0;\n+------+\n| c0   |\n+------+\n| 1935 |\n| 1982 |\n+------+\n2 rows in set (0.04 sec)\n\nmysql> SELECT /*+ READ_FROM_STORAGE(tikv[t0]) */ t0.c0 FROM t0 WHERE 0.025 <= t0.c0;\nEmpty set (0.04 sec)\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n8.5.0",
+  "date": "2025-01-17T01:53:33Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t1;",
+    "CREATE TABLE t1(c1 INT NOT NULL CHECK (c1 >= 1900 AND c1 <= 2100), c2 INT DEFAULT NULL);",
+    "INSERT INTO t1(c1, c2) VALUES (2000, 10), (1990, NULL), (1985, 20);",
+    "SELECT c1 FROM t1 WHERE c2 IS NULL OR c1 < 1995;"
+  ],
+  "key_bug_features": [
+    "Year comparison between TiKV and Tiflash returns different results"
+  ]
+}

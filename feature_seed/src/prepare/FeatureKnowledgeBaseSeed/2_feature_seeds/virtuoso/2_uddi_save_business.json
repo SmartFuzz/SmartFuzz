@@ -1,0 +1,13 @@
+CREATE TABLE business_entities (id INT PRIMARY KEY, name VARCHAR(255), description TEXT, created_at TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO business_entities (id, name, description, created_at) VALUES (1, 'Business A', 'Description A', NOW()), (2, 'Business B', 'Description B', NOW());
+SELECT uddi_save_business((SELECT name FROM business_entities WHERE id = 1), 'New Description', 'Additional Info') AS saved WHERE 'Business A' REGEXP 'A$';
+SELECT uddi_save_business((SELECT name FROM business_entities WHERE created_at IS NULL), 'Updated on NULL Created At', 'Test Description') AS saved WHERE (SELECT COUNT(*) FROM business_entities) REGEXP '^2$';
+SELECT uddi_save_business('Business C', (SELECT description FROM business_entities WHERE id = 2 AND updated_at > NOW() - INTERVAL '1 DAY'), 'Test with Subquery where updated_at > NOW() - INTERVAL ''1 DAY''') AS saved WHERE 'Some Value' REGEXP 'C.*';
+UPDATE business_entities SET description = 'Updated Description' WHERE id = (SELECT MAX(id) FROM business_entities) AND 'Description A' REGEXP 'Description';
+SELECT uddi_save_business((SELECT name FROM business_entities ORDER BY created_at DESC LIMIT 1), NULL, 'Testing NULL Handling') AS saved WHERE 'Business B' REGEXP 'B$';
+CREATE TABLE temp_entities (temp_id INT, temp_data VARCHAR(255));
+INSERT INTO temp_entities (temp_id, temp_data) VALUES (1, 'Data A'), (2, 'Data B');
+SELECT uddi_save_business('Business D', (SELECT MAX(temp_data) FROM temp_entities WHERE temp_data REGEXP '^Data'), 'Test with JOIN') AS saved FROM business_entities JOIN temp_entities ON business_entities.id = temp_entities.temp_id WHERE temp_data IS NOT NULL;
+ALTER TABLE business_entities ADD COLUMN temp_col INT DEFAULT 0;
+SELECT uddi_save_business('Business E', (SELECT MAX(description) FROM business_entities WHERE description IS NOT NULL) UNION SELECT NULL) AS saved WHERE NULL REGEXP 'NULL';
+DROP TABLE temp_entities;

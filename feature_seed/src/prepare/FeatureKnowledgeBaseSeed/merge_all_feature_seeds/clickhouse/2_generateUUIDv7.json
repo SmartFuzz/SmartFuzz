@@ -1,0 +1,13 @@
+CREATE TABLE test_table (id UInt32, value Float32, uuid UUID) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table SELECT number, number * number / (number + 1), generateUUIDv7(number % 3) FROM numbers(10);
+SELECT id, value, (generateUUIDv7(value) * id) AS new_uuid FROM test_table WHERE id % 2 = 0 ORDER BY new_uuid;
+WITH (SELECT generateUUIDv7() AS uuid_val) AS generated_uuid SELECT id, value, (value + 1.0) * 2, uuid_val FROM test_table JOIN (SELECT generateUUIDv7() AS join_uuid) AS join_table ON uuid_val = join_uuid;
+CREATE TABLE nested_test (nested_id UInt32, uuid UUID, multiple_values Array(Float32)) ENGINE = MergeTree() ORDER BY nested_id;
+INSERT INTO nested_test SELECT number, generateUUIDv7(number), [generateUUIDv7(number) * number, generateUUIDv7(number + 1) / 2.0] FROM numbers(5);
+SELECT nested_id, arraySum(multiple_values) AS total_value, (SELECT generateUUIDv7(NULL) FROM nested_test) AS inner_uuid FROM nested_test GROUP BY nested_id HAVING total_value > 1.0;
+WITH (SELECT generateUUIDv7() AS new_uuid, id FROM test_table WHERE id IS NOT NULL) AS generated_ids SELECT new_uuid FROM generated_ids WHERE new_uuid IS NOT NULL ORDER BY new_uuid;
+CREATE TABLE join_test (id UInt32, join_id UInt32, uuid UUID) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO join_test SELECT id, number, generateUUIDv7() FROM numbers(5) JOIN numbers(5) AS join_num ON numbers.id = join_num.id;
+SELECT j.id, j.join_id, (SELECT generateUUIDv7(j.join_id) * j.id) AS complex_generated FROM join_test j LEFT JOIN test_table t ON j.id = t.id WHERE t.value IS NOT NULL;
+SELECT IFNULL((generateUUIDv7() * 10), 'null_uuid') AS derived_uuid, MAX(value) FROM test_table GROUP BY derived_uuid;
+WITH (SELECT generateUUIDv7() AS uid) AS generated_uids SELECT (value * 5) AS multiplied_value, uid FROM test_table JOIN generated_uids ON id = 1;

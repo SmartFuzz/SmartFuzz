@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/16991-bcaeaafa17e0a723%40postgresql.org",
+  "title": "BUG #16991: regclass is not case sensitive causing \"relation does not exist\" error",
+  "description": "The following bug has been logged on the website:\nBug reference:      16991\nLogged by:          Federico Caselli\nEmail address:      cfederico87(at)gmail(dot)com\nPostgreSQL version: 13.2\nOperating system:   any\nDescription:\nHi,\nCasting the name of an object to regclass using `name_col::regclass` is very\nuseful when querying the pg_catalog view to find the relevant information.\nThis casting does not work if the name of the object to cast is case\nsensitive when it comes from a column.\nExample using indexes to illustrate:\n```sql\nbegin;\ncreate table example(id serial, value text);\ncreate index \"CaseSensitiveIndex\" on example (value, id);\ncreate index not_case_sensitive on example (id, value);\nselect pg_relation_size(indexrelname::regclass) from pg_stat_all_indexes\nwhere indexrelname = 'not_case_sensitive';\nselect pg_relation_size(indexrelname::regclass) from pg_stat_all_indexes\nwhere indexrelname = 'CaseSensitiveIndex';\nrollback;\n```\nIn this example the case the first select using the insensitive\n\"not_case_sensitive\" is correctly casted to regclass, while the second use\nusing \"CaseSensitiveIndex\" fails with the error \"SQL Error [42P01]: ERROR:\nrelation \"casesensitiveindex\" does not exist\" suggesting that the case is\nnot respected by the regclass casting.\nWhile the example makes little sense, since the column \"indexrelid\" could be\nused directly, in many queries the oid of an object is not immediately\navailable.\nUsing the \"select oid from pg_class where ...\" as suggested in the\ndocumentation here\nhttps://www.postgresql.org/docs/current/datatype-oid.html\nworks, but as mentioned in the documentation is not 100% correct.\nIt think it would be nice if when casting from a column regclass would use\nthe case sensitive form, like it's possible when using the literal name\ndirectly, like `select '\"CaseSensitiveIndex\"'::regclass`\nBest,\nFederico",
+  "date": "2021-05-04 10:53:56",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id UInt32, name String, value Int32) ENGINE = MergeTree() ORDER BY id;",
+    "CREATE INDEX CaseSensitiveIndex ON test_table (name, value) TYPE minmax;",
+    "CREATE INDEX not_case_sensitive ON test_table (value, id) TYPE minmax;",
+    "SELECT count() FROM system.tables WHERE name = 'test_table';",
+    "SELECT count() FROM system.tables WHERE name = 'CaseSensitiveIndex';"
+  ],
+  "key_bug_features": [
+    "regclass casting fails with case sensitive object names"
+  ]
+}

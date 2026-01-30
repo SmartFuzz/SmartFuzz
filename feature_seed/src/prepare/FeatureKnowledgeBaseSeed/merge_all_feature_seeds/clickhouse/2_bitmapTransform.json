@@ -1,0 +1,10 @@
+CREATE TABLE test_bitmap (id UInt32, bitmap_data AggregateFunction(bitmap, UInt32));
+INSERT INTO test_bitmap SELECT number, bitmapBuild(arrayJoin(number % 20, number + 1)) FROM numbers(100);
+SELECT bitmapToArray(bitmapTransform(bitmap_data, CAST([1, 2, 3, 4] AS Array(UInt32)), CAST([10, 20, 30, 40] AS Array(UInt32))) ) AS transformed_bitmap FROM test_bitmap WHERE id NOT LIKE '10';
+SELECT id, COUNT(*) AS cnt FROM (SELECT id, bitmapTransform(bitmap_data, CAST([2, 3, 4] AS Array(UInt32)), CAST([20, 30, 40] AS Array(UInt32))) AS transformed FROM test_bitmap) GROUP BY id HAVING cnt NOT LIKE 0;
+SELECT id, countIf(bitmapTransform(bitmap_data, CAST([3] AS Array(UInt32)), CAST([33] AS Array(UInt32))) NOT LIKE '0') AS not_like_count FROM test_bitmap GROUP BY id HAVING not_like_count > 0;
+CREATE TABLE test_patterns (pattern String, id UInt32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_patterns VALUES ('%test%', 1), ('another_pattern', 2), ('some%', 3);
+SELECT * FROM test_patterns WHERE pattern NOT LIKE (SELECT concat('%', toString(id), '%') FROM test_bitmap WHERE id = 3);
+SELECT bitmapToArray(bitmapTransform(bitmap_data, CAST([999, 1, 0] AS Array(UInt32)), CAST([1, 2, 3] AS Array(UInt32)))) AS edge_case_res FROM test_bitmap ORDER BY id NOT LIKE '0';
+SELECT id, bitmapToArray(bitmapTransform(bitmap_data, CAST([4, 5, NULL] AS Array(UInt32)), CAST([44, 55, 66] AS Array(UInt32)))) AS edge_bitmap FROM test_bitmap WHERE edge_bitmap NOT LIKE '%NULL%';

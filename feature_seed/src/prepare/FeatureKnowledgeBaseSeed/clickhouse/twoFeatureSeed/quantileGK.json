@@ -1,0 +1,17 @@
+{
+    "function": "quantileGK",
+    "operator": "a <> b",
+    "sql_array": [
+        "CREATE TABLE test_data (id UInt32, number Float64, created_at DateTime, remarks String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_data VALUES (1, 5.5, now(), 'first entry'), (2, 10.0, now(), 'second entry'), (3, NULL, now(), 'no number'), (4, 25.2, now(), 'twenty five'), (5, 100.6, now(), 'hundred point six');",
+        "SELECT quantileGK(50, 0.5)(number) AS median_value FROM test_data WHERE number <> 10.0;",
+        "SELECT id, quantileGK(10, 0.25)(number) AS qk_value FROM test_data GROUP BY id HAVING qk_value <> 5.5;",
+        "SELECT a.id, quantileGK(100, 0.75)(a.number + b.number) AS combined_quantile FROM test_data AS a JOIN (SELECT number FROM test_data WHERE remarks <> 'no number') AS b ON (a.id <> b.number) GROUP BY a.id;",
+        "SELECT quantileGK(1000, 0.5)(number + IFNULL(created_at, toDateTime('1970-01-01'))) AS adjusted_median FROM test_data WHERE created_at IS NOT NULL AND remarks <> '';",
+        "SELECT quantileGK(1, 0.1)(number) AS low_accuracy, quantileGK(100, 0.9)(number) AS high_accuracy FROM (SELECT number FROM test_data WHERE created_at < now() - INTERVAL 1 HOUR) AS filtered_data WHERE low_accuracy <> high_accuracy;",
+        "CREATE TABLE temp_test AS SELECT id, quantileGK(100, 0.5)(number) AS quantile_value FROM test_data GROUP BY id HAVING quantile_value <> 10.0;",
+        "SELECT t.id, t.quantile_value FROM temp_test AS t WHERE t.quantile_value <> (SELECT quantileGK(50, 0.5)(number) FROM test_data WHERE created_at > now() - INTERVAL 1 DAY);",
+        "INSERT INTO test_data VALUES (6, 0.0, now(), 'zero entry'), (7, 1000.0, now(), 'thousand entry');",
+        "SELECT quantileGK(10, 0.5)(number) FROM (SELECT number FROM test_data WHERE number IS NOT NULL) AS filtered_numeric WHERE number <> 1000.0;"
+    ]
+}

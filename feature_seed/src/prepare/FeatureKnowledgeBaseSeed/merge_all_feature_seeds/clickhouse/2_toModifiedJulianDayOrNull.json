@@ -1,0 +1,13 @@
+CREATE TABLE test_dates (id UInt32, event_date String, value Int32);
+INSERT INTO test_dates VALUES (1, '2020-01-01', 10), (2, 'invalid-date', 20), (3, '', 30), (4, NULL, 40);
+SELECT id, toModifiedJulianDayOrNull(event_date) * value AS julian_value FROM test_dates;
+SELECT COUNT(*) FROM (SELECT toModifiedJulianDayOrNull(event_date) * value AS julian_value FROM test_dates WHERE value > 0) AS derived_table HAVING julian_value IS NOT NULL;
+SELECT SUM(NULLIF(toModifiedJulianDayOrNull(event_date), 0) * value) AS total_sum FROM test_dates WHERE value < 15;
+CREATE TABLE test_numbers (num1 Int32, num2 Int32);
+INSERT INTO test_numbers VALUES (5, 10), (3, NULL), (NULL, 20), (0, 0);
+SELECT num1, num2, toModifiedJulianDayOrNull(CAST(CONCAT('2020-01-', toString(num1)) AS String)) * num2 AS computed_value FROM test_numbers;
+SELECT AVG(toModifiedJulianDayOrNull(event_date) * value) FROM test_dates GROUP BY value HAVING AVG(value) > 5;
+CREATE TABLE complex_join (id UInt32, reference_date String);
+INSERT INTO complex_join VALUES (1, '2020-01-01'), (2, '2020-12-31'), (3, '2021-01-01');
+SELECT ct.id, ct.reference_date, td.value * toModifiedJulianDayOrNull(td.event_date) AS interaction_value FROM test_dates AS td JOIN complex_join AS ct ON toModifiedJulianDayOrNull(td.event_date) IS NOT NULL AND td.id = ct.id;
+SELECT toModifiedJulianDayOrNull('2020-12-31') AS test_date, (SELECT COUNT(*) FROM complex_join WHERE reference_date > '2020-01-01') * 2 AS count_result;

@@ -1,0 +1,10 @@
+CREATE TABLE employee_salaries(`department` String, `employee_name` String, `salary` UInt32, `performance_rating` UInt8) Engine = Memory;
+INSERT INTO employee_salaries VALUES ('Sales', 'Alice', 50000, 3), ('Sales', 'Bob', 50000, 3), ('Engineering', 'Charlie', 60000, 4), ('Engineering', 'David', 70000, 5), ('HR', 'Eve', 45000, 2), ('HR', 'Frank', 30000, 1);
+SELECT employee_name, salary, rank() OVER (PARTITION BY department ORDER BY performance_rating DESC, salary DESC) AS rank FROM employee_salaries WHERE salary NOT IN (SELECT salary FROM employee_salaries WHERE performance_rating < 3);
+SELECT employee_name, salary FROM employee_salaries WHERE department NOT IN (SELECT department FROM employee_salaries WHERE salary < 40000) AND performance_rating NOT IN (SELECT performance_rating FROM employee_salaries WHERE employee_name = 'Eve');
+SELECT department, AVG(salary) AS avg_salary FROM employee_salaries GROUP BY department HAVING avg_salary NOT IN (SELECT DISTINCT AVG(salary) FROM employee_salaries WHERE performance_rating = 1);
+CREATE TABLE department_budget(`department` String, `budget` Float64) Engine = Memory;
+INSERT INTO department_budget VALUES ('Sales', 100000.00), ('Engineering', 150000.00), ('HR', 50000.00);
+SELECT d.department, d.budget, e.employee_name, e.salary, rank() OVER (PARTITION BY d.department ORDER BY e.salary DESC) AS salary_rank FROM department_budget d JOIN employee_salaries e ON d.department = e.department WHERE e.salary NOT IN (SELECT salary FROM employee_salaries WHERE salary < 20000);
+SELECT employee_name, salary FROM employee_salaries WHERE (salary NOT IN (SELECT salary FROM employee_salaries WHERE salary > 100000) OR salary IS NULL);
+SELECT employee_name, rank() OVER (ORDER BY salary DESC) AS rank FROM employee_salaries WHERE department NOT IN (SELECT department FROM department_budget WHERE budget < 60000);

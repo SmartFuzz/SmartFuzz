@@ -1,0 +1,11 @@
+CREATE TABLE test_timestamps (id INT, ts BIGINT, value DOUBLE, extra STRING);
+INSERT INTO test_timestamps VALUES (1, 19920920133427, 2.5, 'first'), (2, NULL, 5.5, 'second');
+SELECT id, make_timestamp(ts / 10000000000, 9, 20, (value ** 2)::BIGINT, 34, value) AS computed_ts FROM test_timestamps WHERE id = 1;
+SELECT id, value, make_timestamp(1992, 9, 20, 13, 34, 27.123456) ** 2 AS exponent_ts FROM test_timestamps;
+SELECT id, value, make_timestamp(1992, 9, 20, NULLIF(value, 0), 34, 27.123456) AS nullable_ts FROM test_timestamps;
+SELECT id, (SELECT COUNT(*) FROM test_timestamps AS sub WHERE sub.value > 3) AS count_above_threshold, value ** 2 AS squared FROM test_timestamps GROUP BY id, value HAVING squared < 20;
+SELECT id, value, make_timestamp(COALESCE(ts, 19920920133427), 9, 20, 13, 34, 27.123456) AS final_ts FROM test_timestamps ORDER BY final_ts ASC;
+CREATE TABLE more_test_data (group_id INT, val DOUBLE);
+INSERT INTO more_test_data VALUES (1, 10.0), (2, NULL), (1, 15.5);
+SELECT t.id, m.group_id, make_timestamp(1992, 9, 20, 13, 34, m.val ** 2) AS timestamp_from_group FROM test_timestamps AS t JOIN more_test_data AS m ON t.id = m.group_id AND m.val IS NOT NULL;
+SELECT id, (SELECT COUNT(*) FROM more_test_data WHERE MORE_TEST_DATA.val IS NOT NULL AND (value ** 2) < 50) AS valid_groups FROM test_timestamps GROUP BY id HAVING valid_groups > 0;

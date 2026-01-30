@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/92697",
+  "title": "KILL QUERY and cancel query (Ctrl+C) don't work with postgresql() table function",
+  "description": "### Company or project name\nArenadata\n### Describe what's wrong\nKILL QUERY and cancel query (Ctrl+C) does not work on queries like:\n```sql\nSELECT * FROM postgresql(...)\n```\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nThe issue is reproduced on v25.12.1.649-stable.\nCreate docker-compose.yaml file:\n```yaml\nversion: '3.8'\nservices:\npostgres:\nimage: postgres:latest\ncontainer_name: postgres_latest\nrestart: unless-stopped\nenvironment:\nPOSTGRES_USER: admin\nPOSTGRES_PASSWORD: admin123\nPOSTGRES_DB: testdb\nports:\n- \"5432:5432\"\nvolumes:\n- postgres_data:/var/lib/postgresql\ncommand: >\npostgres -c max_connections=200\n-c shared_buffers=256MB\n-c max_prepared_transactions=100\nvolumes:\npostgres_data:\n```\nIn postgres container:\n```sql\nCREATE OR REPLACE FUNCTION generate_infinite_sequence()\nRETURNS SETOF INT AS $$\nDECLARE\ncounter INT := 1;\nBEGIN\nLOOP\nRETURN NEXT counter;\ncounter := counter + 1;\nPERFORM pg_sleep(0.01);\nEND LOOP;\nEND;\n$$ LANGUAGE plpgsql;\nCREATE OR REPLACE VIEW infinite_counter AS\nSELECT generate_infinite_sequence() as counter;",
+  "date": "2025-12-19T14:53:41Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT UNSIGNED, name VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, value FLOAT) ENGINE = OBTable;",
+    "INSERT INTO test_table (id, name, value) VALUES (1, 'test1', 10.5), (2, 'test2', NULL), (3, 'test3', 20.0);",
+    "CREATE TABLE another_table (ref_id INT UNSIGNED, description VARCHAR(255), amount INT) ENGINE = OBTable;",
+    "INSERT INTO another_table (ref_id, description, amount) SELECT id, CONCAT(name, ' description'), CAST(value AS SIGNED) FROM test_table WHERE value IS NOT NULL;",
+    "SELECT * FROM infinite_counter WHERE counter < 100;"
+  ],
+  "key_bug_features": [
+    "KILL QUERY and Ctrl+C do not cancel PostgreSQL queries"
+  ]
+}

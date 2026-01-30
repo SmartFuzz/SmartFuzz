@@ -1,0 +1,17 @@
+{
+    "function": "xenc_set_primary_key",
+    "operator": "OR",
+    "sql_array": [
+        "CREATE TABLE certificates (id INT PRIMARY KEY, cert_name VARCHAR(255), cert_value BLOB);",
+        "INSERT INTO certificates (id, cert_name, cert_value) VALUES (1, 'CertA', 'ValidCertValue1'), (2, 'CertB', NULL);",
+        "CREATE TABLE keys (key_id INT PRIMARY KEY, key_name VARCHAR(255), key_value BLOB, key_type VARCHAR(50));",
+        "INSERT INTO keys (key_id, key_name, key_value, key_type) VALUES (1, 'Key1', 'KeyValue1', 'RSA'), (2, 'Key2', 'KeyValue2', NULL);",
+        "SELECT xenc_set_primary_key(key_name) FROM keys WHERE key_value IS NOT NULL OR key_type IS NULL;",
+        "SELECT cert_name, cert_value, xenc_set_primary_key(cert_name) FROM certificates WHERE id IN (SELECT key_id FROM keys WHERE key_name = 'Key1' OR key_value IS NULL);",
+        "SELECT COUNT(*) FROM (SELECT DISTINCT cert_name, xenc_set_primary_key(cert_name) AS primary_key FROM certificates WHERE cert_value IS NOT NULL AND cert_name LIKE 'Cert%') AS valid_certs;",
+        "SELECT k.key_name FROM keys k JOIN certificates c ON (k.key_name = c.cert_name OR c.cert_value IS NULL) GROUP BY k.key_name HAVING COUNT(*) > 1;",
+        "UPDATE keys SET key_value = xenc_set_primary_key(key_name) WHERE key_type = 'RSA' OR (key_value IS NULL AND key_name IS NOT NULL);",
+        "SELECT xenc_set_primary_key(key_name) FROM (SELECT key_name FROM keys UNION SELECT key_name FROM certificates) AS combined_keys WHERE key_name NOT IN (SELECT key_name FROM keys WHERE key_value IS NOT NULL);",
+        "CREATE TEMPORARY TABLE temp_keys AS SELECT key_name, xenc_set_primary_key(key_name) FROM keys WHERE key_value IS NOT NULL OR key_type IS NULL;"
+    ]
+}

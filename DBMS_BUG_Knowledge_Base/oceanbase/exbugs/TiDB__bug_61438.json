@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/61438",
+  "title": "TiFlash and TiKV return different results for comparison between bitwise OR constant and ENUM column",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n```\nDROP TABLE IF EXISTS t0;\nCREATE TABLE t0(c0 ENUM('b8hwfe2l', 's6zj', 'zx3js', 'vbuci', 'l2l6lx90') );\nALTER TABLE t0 SET TIFLASH REPLICA 1;\nINSERT IGNORE  INTO t0(c0) VALUES ('yp14128q');\nUPDATE t0 SET c0=true;\nCREATE INDEX i0 ON t0(c0) KEY_BLOCK_SIZE 5340524867573591996;\n\nSELECT /*+ read_from_storage(tiflash[t0]) */ t0.c0 FROM t0 WHERE ((((1982833210)|(-544334148)))<(t0.c0));\nSELECT /*+ read_from_storage(tikv[t0]) */ t0.c0 FROM t0 WHERE ((((1982833210)|(-544334148)))<(t0.c0));\n```\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\nThe same query returns the same results on both TiKV and TiFlash.\n### 3. What did you see instead (Required)\n```\nmysql> SELECT /*+ read_from_storage(tikv[t0]) */ t0.c0 FROM t0 WHERE ((((1982833210)|(-544334148)))<(t0.c0));\n+----------+\n| c0       |\n+----------+\n| b8hwfe2l |\n+----------+\n1 row in set (0.00 sec)\n\nmysql> SELECT /*+ read_from_storage(tiflash[t0]) */ t0.c0 FROM t0 WHERE ((((1982833210)|(-544334148)))<(t0.c0));\nEmpty set (0.01 sec)\n```\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| tidb_version()                                                                                                                                                                                                                               |\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| Release Version: v8.5.0\nEdition: Community\nGit Commit Hash: d13e52ed6e22cc5789bed7c64c861578cd2ed55b\nGit Branch: HEAD\nUTC Build Time: 2024-12-18 02:26:06\nGoVersion: go1.23.3\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv |\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n",
+  "date": "2025-05-30T15:33:30Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t1;",
+    "CREATE TABLE t1(c1 VARCHAR(20) NOT NULL CHECK (c1 IN ('value1', 'value2', 'value3')), c2 INT DEFAULT 0);",
+    "INSERT INTO t1(c1, c2) VALUES ('value1', 10), ('value2', 20), ('value3', 30);",
+    "SELECT c1 FROM t1 WHERE (c2 | 5) < (SELECT COUNT(*) FROM t1);",
+    "SELECT c1 FROM t1 WHERE (c2 & 15) = 0;"
+  ],
+  "key_bug_features": [
+    "Comparison between bitwise OR constant and ENUM column"
+  ]
+}

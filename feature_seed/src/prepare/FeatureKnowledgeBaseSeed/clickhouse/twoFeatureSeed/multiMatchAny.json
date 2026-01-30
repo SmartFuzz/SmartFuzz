@@ -1,0 +1,15 @@
+{
+    "function": "multiMatchAny",
+    "operator": "a ILIKE s",
+    "sql_array": [
+        "CREATE TABLE test_matching (id UInt32, haystack String, pattern Array(String), check_result UInt8, nullable_test Nullable(String)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_matching VALUES (1, 'This is a test string for pattern matching', ['test', 'sample'], 0, NULL), (2, 'Another example string', ['example', 'notfound'], 0, 'just a test'), (3, 'Test input for boundary', ['Notfound', 'boundary'], 0, 'border');",
+        "UPDATE test_matching SET check_result = multiMatchAny(haystack, pattern) WHERE id = 1;",
+        "SELECT id, multiMatchAny(haystack, ['test', 'sample']) ILIKE '0' AS match_found FROM test_matching WHERE nullable_test IS NULL;",
+        "SELECT id, multiMatchAny(CONCAT(haystack, ' additional text'), patterns) AS result FROM (SELECT id, haystack, arrayJoin(pattern) AS patterns FROM test_matching) WHERE result = 1 ORDER BY id;",
+        "SELECT id, haystack, multiMatchAny(haystack, ['xyz', 'another test']) AS test_match, (SELECT COUNT(*) FROM test_matching t2 WHERE haystack ILIKE t2.haystack) AS related_count FROM test_matching WHERE related_count > 1 GROUP BY id, haystack, test_match HAVING test_match = 0;",
+        "CREATE TABLE test_results (result_id UInt32, original String, matches UInt8) ENGINE = MergeTree() ORDER BY result_id;",
+        "INSERT INTO test_results SELECT id, haystack, check_result FROM test_matching WHERE check_result = 1;",
+        "SELECT result_id, COUNT(*) OVER(PARTITION BY matches) AS match_count FROM test_results HAVING match_count > 0;"
+    ]
+}

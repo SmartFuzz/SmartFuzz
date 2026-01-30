@@ -1,0 +1,16 @@
+{
+    "function": "XMLATTRIBUTES",
+    "operator": "NEW Operator",
+    "sql_array": [
+        "CREATE TABLE test_table (id INTEGER PRIMARY KEY, attr_name VARCHAR(100), attr_value VARCHAR(100), type_instance NEW type_name);",
+        "INSERT INTO test_table (id, attr_name, attr_value) VALUES (1, 'attribute1', 'value1'), (2, 'attribute2', NULL), (3, 'attribute3', 'value3');",
+        "SELECT id, XMLELEMENT('element', XMLATTRIBUTES(attr_name, attr_value)) AS xml_output FROM test_table WHERE attr_value IS NOT NULL;",
+        "SELECT t1.id, XMLELEMENT('outer', XMLATTRIBUTES(t1.attr_name, t1.attr_value), XMLELEMENT('inner', XMLATTRIBUTES(t2.attr_name, t2.attr_value))) AS nested_xml FROM test_table t1 JOIN test_table t2 ON t1.id = t2.id WHERE t1.attr_value IS NOT NULL;",
+        "SELECT id, (SELECT COUNT(*) FROM test_table WHERE attr_value IS NULL) AS null_count, XMLELEMENT('data', XMLATTRIBUTES(attr_name, COALESCE(attr_value, 'default_value'))) FROM test_table GROUP BY id HAVING null_count >= 1;",
+        "SELECT id, NEW my_type(LEAST(attr_value::INTEGER, 10), attr_name) AS instance FROM test_table ORDER BY instance;",
+        "WITH data AS (SELECT id, XMLELEMENT('attributes', XMLATTRIBUTES(attr_name, attr_value)) AS xml_data FROM test_table) SELECT id, xml_data FROM data WHERE xml_data IS NOT NULL;",
+        "CREATE TABLE another_table (id INTEGER, nested_instance NEW type_name);",
+        "INSERT INTO another_table (id, nested_instance) VALUES (1, NEW type_name('valueA', NULL)), (2, NEW type_name(NULL, 'valueB'));",
+        "SELECT a.id, xml_data FROM (SELECT id, XMLELEMENT('wrapper', XMLATTRIBUTES(attr_name, attr_value)) AS xml_data FROM test_table JOIN another_table ON test_table.id = another_table.id) a WHERE a.id IN (SELECT DISTINCT id FROM test_table WHERE attr_value IS NOT NULL);"
+    ]
+}

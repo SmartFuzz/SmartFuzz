@@ -1,0 +1,22 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/84754",
+  "title": "[V:25.7.1.3997] DB::Exception: Cannot read all data. Bytes read: 0.",
+  "vulnerable_database": "ClickHouse",
+  "date": "2025-07-30T21:41:22Z",
+  "vulnerable_version": "25.7.1.3997",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nHi,\nI'm getting the following error and trying to understand why ?\nquery fail resulting in : `Code: 33. DB::Exception: Cannot read all data. Bytes read: 0. Bytes expected: 8. (CANNOT_READ_ALL_DATA) (version 25.7.1.3997 (official build))`\n```sql\nWITH\n['7XGrdJRYtXXXXXXXXXXXXXXXXXXXXXXsELwYpuuUu'] AS signers_list,\n['XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'] AS mints_list,\nisolated_data AS (\nSELECT\nmint,\nowner,\ninterval,\ninterval_start,\nafter,\ndecimals\nFROM\nstats.ledgers_buffer\nWHERE\ninterval = '15m'\nAND interval_start >= toStartOfInterval(now() - INTERVAL 24 HOUR, INTERVAL 15 MINUTE)\n),\naggregated_data AS (\nSELECT\nmint,\ninterval,\ninterval_start AS ts,\nargMaxMerge(after) AS amount,\nargMaxMerge(decimals) AS decimals\nFROM\nisolated_data\nWHERE\nowner IN signers_list\nAND mint IN mints_list\nGROUP BY\nmint,\ninterval_start ,\ninterval\n)\nSELECT * from aggregated_data\n```\nqueries working and returning data:\n```sql\nWITH\n['7XGrdJRYtXXXXXXXXXXXXXXXXXXXXXXsELwYpuuUu'] AS signers_list,\n['XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'] AS mints_list,\nisolated_data AS (\nSELECT",
+  "poc": [
+    "CREATE TABLE IF NOT EXISTS stats.ledgers\n(\n    interval String,\n    interval_start DateTime,\n\n    owner String,\n    address String,\n    mint String,\n\n    amount AggregateFunction(sum, Int128),\n    before AggregateFunction(argMin, UInt128, UInt64),\n    after AggregateFunction(argMax, UInt128, UInt64),\n    decimals AggregateFunction(argMax, UInt32, UInt64),\n    price AggregateFunction(argMax, Nullable(Decimal(38,18)), UInt64),\n    supply AggregateFunction(argMax, Nullable(UInt128), UInt64),\n    interactions AggregateFunction(sum, UInt128),\n    after_value AggregateFunction(argMax, Nullable(Decimal(38,18)), UInt64),\n    amount_value AggregateFunction(argMax, Nullable(Decimal(38,18)), UInt64),\n    INDEX idx_owner owner TYPE bloom_filter(0.001) GRANULARITY 64,\n    INDEX idx_address address TYPE bloom_filter(0.001) GRANULARITY 64,\n    INDEX idx_mint mint TYPE bloom_filter(0.001) GRANULARITY 64,\n    INDEX idx_interval interval TYPE set(100) GRANULARITY 64\n)\nENGINE = AggregatingMergeTree\nPARTITION BY toYYYYMM(interval_start)\nORDER BY (interval, toDate(interval_start) DESC, owner, address, mint, interval_start desc)\nSETTINGS index_granularity = 8192, allow_experimental_reverse_key = 1;",
+    "CREATE TABLE IF NOT EXISTS stats.ledgers_buffer\nAS stats.ledgers\nENGINE = Buffer('stats','ledgers', 4, 2, 20, 100000, 1000000, 200000000, 2000000000);"
+  ],
+  "key_bug_features": [
+    "Cannot read all data during query execution"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE IF NOT EXISTS stats.ledgers_test (interval String, interval_start DateTime, owner String, mint String, amount AggregateFunction(sum, Int128), after AggregateFunction(argMax, UInt128, UInt64), decimals AggregateFunction(argMax, UInt32, UInt64)) ENGINE = AggregatingMergeTree() ORDER BY (interval, interval_start);",
+    "INSERT INTO stats.ledgers_test VALUES ('15m', now(), 'owner1', 'mint1', 100, 200, 18);",
+    "INSERT INTO stats.ledgers_test VALUES ('15m', now() - INTERVAL 1 HOUR, 'owner2', 'mint2', 150, 250, 20);",
+    "SELECT mint, argMax(after, interval_start) AS latest_after FROM stats.ledgers_test WHERE interval = '15m' GROUP BY mint;",
+    "SELECT * FROM stats.ledgers_test WHERE amount > 0 AND interval_start >= now() - INTERVAL 1 DAY;"
+  ]
+}

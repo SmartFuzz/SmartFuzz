@@ -1,0 +1,16 @@
+CREATE TABLE test_table (id INT, name VARCHAR(50), value INT);
+CREATE TRIGGER test_trigger AFTER UPDATE ON test_table FOR EACH ROW BEGIN ATOMIC UPDATE another_table SET value = NEW.value WHERE id = NEW.id;
+END;
+CREATE TRIGGER test_trigger2 BEFORE INSERT ON test_table FOR EACH ROW WHEN (NEW.value > 100) BEGIN ATOMIC INSERT INTO log_table(action, timestamp) VALUES('Insert Trigger', CURRENT_TIMESTAMP);
+END;
+CREATE TRIGGER test_trigger3 BEFORE DELETE ON test_table FOR EACH ROW BEGIN ATOMIC DELETE FROM audit_table WHERE record_id = OLD.id;
+END;
+CREATE TRIGGER test_trigger4 AFTER INSERT ON test_table FOR EACH STATEMENT BEGIN ATOMIC INSERT INTO summary_table(total_records) SELECT COUNT(*) FROM test_table;
+END;
+CREATE TRIGGER test_trigger5 AFTER TRUNCATE ON test_table FOR EACH STATEMENT BEGIN ATOMIC INSERT INTO cleanup_log(action, timestamp) VALUES('Table Truncated', CURRENT_TIMESTAMP);
+END;
+CREATE TABLE another_table (id INT PRIMARY KEY, value INT);
+CREATE TRIGGER complex_trigger BEFORE UPDATE OF value ON test_table FOR EACH ROW BEGIN ATOMIC UPDATE another_table SET value = (SELECT SUM(value) FROM test_table WHERE id = NEW.id) WHERE id = NEW.id;
+END;
+CREATE TRIGGER conditional_trigger AFTER INSERT ON test_table FOR EACH ROW WHEN (NEW.value < 0) BEGIN ATOMIC INSERT INTO error_log(error_message, timestamp) VALUES('Negative value inserted', CURRENT_TIMESTAMP);
+END;

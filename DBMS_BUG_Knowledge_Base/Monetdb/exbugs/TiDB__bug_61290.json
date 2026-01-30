@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/61290",
+  "title": "Incorrect plan and result are used when using generated columns",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n```\nCREATE TABLE t0(id int default 1, c0 NUMERIC UNSIGNED ZEROFILL , c1 DECIMAL UNSIGNED  AS (c0) VIRTUAL NOT NULL UNIQUE);\ninsert ignore into t0(c0) values (null);\nselect * from t0;\nexplain select * from t0;\n```\n\n### 2. What did you expect to see? (Required)\n\n```\nmysql> select * from t0;\n+------+------+----+\n| id   | c0   | c1 |\n+------+------+----+\n|    1 | NULL |  0 |\n+------+------+----+\n1 row in set (0.00 sec)\n\nmysql> explain select * from t0;\n+---------------------------+----------+-----------+---------------+------------------------------------------------+\n| id                        | estRows  | task      | access object | operator info                                  |\n+---------------------------+----------+-----------+---------------+------------------------------------------------+\n| Projection_3              | 10000.00 | root      |               | test.t0.id, test.t0.c0, test.t0.c0->test.t0.c1 |\n| └─Projection_6            | 10000.00 | root      |               | test.t0.id, test.t0.c0                         |\n|   └─TableReader_5         | 10000.00 | root      |               | data:TableFullScan_4                           |\n|     └─TableFullScan_4     | 10000.00 | cop[tikv] | table:t0      | keep order:false, stats:pseudo                 |\n+---------------------------+----------+-----------+---------------+------------------------------------------------+\n4 rows in set (0.00 sec)\n```\n\n### 3. What did you see instead (Required)\n\n```\nmysql> select * from t0;\n+------+------+----+\n| id   | c0   | c1 |\n+------+------+----+\n|    1 |    0 |  0 |\n+------+------+----+\n1 row in set (0.00 sec)\n\nmysql> explain select * from t0;\n+---------------------------+----------+-----------+---------------+------------------------------------------------+\n| id                        | estRows  | task      | access object | operator info                                  |\n+---------------------------+----------+-----------+---------------+------------------------------------------------+\n| Projection_3              | 10000.00 | root      |               | test.t0.id, test.t0.c1->test.t0.c0, test.t0.c1 |\n| └─Projection_6            | 10000.00 | root      |               | test.t0.id, test.t0.c1                         |\n|   └─TableReader_5         | 10000.00 | root      |               | data:TableFullScan_4                           |\n|     └─TableFullScan_4     | 10000.00 | cop[tikv] | table:t0      | keep order:false, stats:pseudo                 |\n+---------------------------+----------+-----------+---------------+------------------------------------------------+\n4 rows in set (0.00 sec)\n```\n\n### 4. What is your TiDB version? (Required)\n\na8281b6d9821b5c16fe2bfc3308c96a9a821e3a3\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "date": "2025-05-23T08:24:09Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1(id INT PRIMARY KEY, c0 FLOAT, c1 DECIMAL(10, 2) DEFAULT (c0 + 1));",
+    "INSERT INTO t1(c0) VALUES (NULL);",
+    "SELECT * FROM t1;",
+    "CREATE TABLE t2(id INT, c0 INT, c1 INT DEFAULT (c0 * 2) UNIQUE);",
+    "INSERT INTO t2(c0) VALUES (0);"
+  ],
+  "key_bug_features": [
+    "Using generated columns with incorrect insert values"
+  ]
+}

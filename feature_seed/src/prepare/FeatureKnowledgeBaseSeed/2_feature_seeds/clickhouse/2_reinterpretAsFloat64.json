@@ -1,0 +1,8 @@
+CREATE TABLE test_table (id UInt32, value String, number Float64, date_value Date);
+INSERT INTO test_table VALUES (1, 'NaN', 0.1, '2023-01-01'), (2, 'Infinity', 1.5, '2023-01-02'), (3, 'NULL', 2.5, '1970-01-01');
+SELECT id, reinterpretAsFloat64(toUInt64(value)) AS reinterpret_value FROM test_table WHERE reinterpret_value NOT IN (SELECT number FROM test_table WHERE date_value < '2023-01-02');
+SELECT id, COUNT(*) OVER (PARTITION BY reinterpretAsFloat64(toFloat64(number))) AS count_group FROM test_table HAVING count_group NOT IN (1, 2, reinterpretAsFloat64(NULL));
+SELECT id, reinterpretAsFloat64(CAST(value AS UInt8)) AS float_value FROM test_table WHERE float_value NOT IN (0, 1) AND date_value = reinterpretAsFloat64(0x0);
+SELECT id FROM test_table WHERE value NOT IN (SELECT CAST(value AS String) FROM test_table WHERE date_value = reinterpretAsFloat64(number));
+SELECT MAX(reinterpretAsFloat64(number)), MIN(reinterpretAsFloat64(NULL)) AS min_value FROM test_table GROUP BY reinterpretAsFloat64(date_value);
+SELECT id, reinterpretAsFloat64((number * 100) - (SELECT MAX(number) FROM test_table)) AS processed_value FROM test_table WHERE processed_value NOT IN (1, 2, 3);

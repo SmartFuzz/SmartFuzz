@@ -1,0 +1,11 @@
+CREATE TABLE http_paths (id SERIAL PRIMARY KEY, path VARCHAR(255), default_page VARCHAR(255), security_level VARCHAR(50));
+INSERT INTO http_paths (path, default_page, security_level) VALUES ('/home', 'index.html', 'SSL');
+INSERT INTO http_paths (path, default_page, security_level) VALUES ('/about', NULL, 'HTTP');
+INSERT INTO http_paths (path, default_page, security_level) VALUES ('/contact', 'contact.html', NULL);
+SELECT id, http_map_get('default_page') AS default_page, security_level FROM http_paths WHERE http_map_get('security_level') ILIKE 'http';
+SELECT COUNT(*) FROM (SELECT id FROM http_paths WHERE http_map_get('security_level') ILIKE 'SSL') AS subquery;
+SELECT id FROM http_paths WHERE (SELECT http_map_get('security_level') FROM http_paths WHERE security_level IS NULL) IS NULL;
+SELECT path, http_map_get('default_page') AS default_page FROM http_paths WHERE path ILIKE '/ho%';
+WITH RankedPaths AS (SELECT path, row_number() OVER (ORDER BY id) AS rnk FROM http_paths) SELECT path FROM RankedPaths WHERE rnk <= 2 AND http_map_get('default_page') IS NOT NULL;
+SELECT http_map_get('default_page'), security_level FROM http_paths WHERE security_level ILIKE 'ssl' OR security_level ILIKE 'http';
+SELECT http_map_get('default_page') AS page FROM http_paths WHERE path NOT IN (SELECT path FROM http_paths WHERE default_page IS NULL);

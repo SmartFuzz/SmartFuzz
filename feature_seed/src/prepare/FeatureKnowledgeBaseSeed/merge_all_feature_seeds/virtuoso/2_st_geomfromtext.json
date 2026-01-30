@@ -1,0 +1,11 @@
+CREATE TABLE geospatial_data (id INT PRIMARY KEY, geom VARCHAR(255) NOT NULL, height FLOAT);
+INSERT INTO geospatial_data (id, geom, height) VALUES (1, 'POINT (10.03 30.01)', 50.0);
+INSERT INTO geospatial_data (id, geom, height) VALUES (2, 'POINT (20.00 40.00)', NULL);
+INSERT INTO geospatial_data (id, geom, height) VALUES (3, 'POINT (0 0)', 0.0);
+SELECT id, st_geomfromtext(CONCAT('POINT (', height / NULLIF(height, 0), ' ', height), ')', 2000) AS geom_data FROM geospatial_data WHERE height IS NOT NULL;
+SELECT id, geom, (height / (SELECT MAX(height) FROM geospatial_data WHERE height IS NOT NULL)) AS normalized_height FROM geospatial_data;
+SELECT a.id, st_geomfromtext(CONCAT('POINT (', CAST(a.height AS VARCHAR), ' ', CAST(a.height AS DECIMAL(10, 2)), ')'), 2000) AS geom_data FROM geospatial_data a JOIN geospatial_data b ON a.id <> b.id AND a.height IS NOT NULL;
+SELECT id, geom, (height + 10) / NULLIF(height, 0) AS adjusted_height FROM geospatial_data GROUP BY id, geom HAVING adjusted_height IS NOT NULL;
+SELECT a.id, st_geomfromtext(CONCAT('POINT (', CAST(a.height AS FLOAT) / 2, ' ', CAST(b.height AS FLOAT) / 3, ')'), 2000) AS geom_data FROM geospatial_data a JOIN geospatial_data b ON a.id < b.id;
+SELECT id, st_geomfromtext('POINT (1.0 2.0)', 2000) AS geom_data, height / (SELECT COUNT(*) FROM geospatial_data) AS avg_height FROM geospatial_data;
+CREATE TEMPORARY TABLE temp_geoms AS SELECT st_geomfromtext(CONCAT('POINT (', CAST(height AS CHAR), ' ', '0.0', ')'), 2000) AS geom_data FROM geospatial_data WHERE height IS NOT NULL;

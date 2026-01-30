@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id UInt32, value Float64, weight UInt32, created_at DateTime);
+INSERT INTO test_data VALUES (1, 10.5, 2, '2023-01-01 12:00:00'), (2, 20.5, 5, '2023-02-01 12:00:00'), (3, NULL, 1, '2023-03-01 12:00:00'), (4, 40.5, 3, '2023-04-01 12:00:00');
+SELECT quantileTDigestWeighted(0.5)(value, weight) AS median_value FROM test_data WHERE value > (SELECT AVG(value) FROM test_data WHERE weight > 2);
+SELECT id, value, weight FROM test_data WHERE quantileTDigestWeighted(0.75)(value, weight) > (SELECT AVG(value) FROM test_data) GROUP BY id ORDER BY value DESC;
+SELECT quantileTDigestWeighted(0.1)(value, weight) AS quantile_10 FROM (SELECT value, weight FROM test_data) WHERE weight > 0 AND value IS NOT NULL;
+WITH (SELECT quantileTDigestWeighted(0.9)(value, weight) FROM test_data) AS subquery_quantile SELECT id, value FROM test_data WHERE value > (SELECT quantileTDigestWeighted(0.2)(value, weight) FROM test_data WHERE weight < 5) ORDER BY created_at;
+SELECT quantileTDigestWeighted(0.95)(CAST(value AS Int32), weight) FROM test_data WHERE id IN (SELECT id FROM test_data WHERE weight > 2) AND created_at > '2023-01-01 00:00:00';
+SELECT value, weight FROM test_data WHERE quantileTDigestWeighted(0.5)(value, weight) > (SELECT quantileTDigestWeighted(0.5)(value, weight) FROM test_data WHERE weight IS NOT NULL GROUP BY weight HAVING COUNT(*) > 1) HAVING value <= 40.5;
+CREATE TABLE temp_data AS SELECT id, value, weight FROM test_data WHERE created_at < '2023-04-01 00:00:00';
+SELECT quantileTDigestWeighted(0.5)(value, weight) AS median_value FROM temp_data WHERE id > (SELECT MIN(id) FROM temp_data) AND value IS NOT NULL;

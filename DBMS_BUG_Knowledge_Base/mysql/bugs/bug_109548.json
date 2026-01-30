@@ -1,0 +1,27 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=109548",
+  "title": "Poor performance when using HASH field to check unique",
+  "vulnerable_database": "MySQL Server: DML",
+  "date": "2023-01-09 07:55:00",
+  "vulnerable_version": "8.0.13,8.0.31",
+  "description": "When the total length of group parts exceeds the maximum key length of TempTable, the optimizer chooses to add an extra hidden hash field to check the uniqueness of group parts. The executor calculates the hash value by XOR the hash value of each varchar field in unique_hash_group(). But if the values of any two group parts keep the same, the XOR hash value will be 0. Thus, all rows will generate the same hash value, causing very bad performance.\nHow to repeat:\nCREATE TABLE product (\r\n  value int NOT NULL AUTO_INCREMENT,\r\n  code varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,\r\n  name varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,\r\n  comment varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,\r\n  platform varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,\r\n  KEY idx_key (value)\r\n);\r\n\r\ndelimiter //\r\nCREATE PROCEDURE BatchInsert(IN row_count int)\r\nBEGIN\r\n  SET @n = 1;\r\n  REPEAT\r\n      SET @str = (CONCAT('test', CAST(@n AS CHAR)));\r\n      INSERT INTO product(code, name) VALUES(@str, @str);\r\n      SET @n = @n + 1;\r\n  UNTIL @n > row_count\r\n  END REPEAT;\r\nEND;\r\n//\r\ndelimiter ;\r\n\r\nCALL BatchInsert(20000);\r\n\r\nmysql-8.0.13 > SELECT COUNT(*) FROM ( SELECT value FROM product GROUP BY code, name, comment, platform ) derived;\r\n+----------+\r\n| COUNT(*) |\r\n+----------+\r\n|    20000 |\r\n+----------+\r\n1 row in set (17.84 sec)\nSuggested fix:\nIf we can improve the hash calculating algorithm in unique_hash() for data of varchar type instead of using XOR, we can avoid the bad performance in this scenario. The following change is a simple example.\r\n\r\ndiff --git a/sql/sql_executor.cc b/sql/sql_executor.cc\r\nindex e59dac8642b..ffc16342b99 100644\r\n--- a/sql/sql_executor.cc\r\n+++ b/sql/sql_executor.cc\r\n@@ -3737,7 +3737,6 @@ static bool table_rec_cmp(TABLE *table) {\r\n\r\n ulonglong unique_hash(Field *field, ulonglong *hash_val) {\r\n   uchar *pos, *end;\r\n-  ulong seed1 = 0, seed2 = 4;\r\n   ulonglong crc = *hash_val;\r\n\r\n   if (field->is_null()) {\r\n@@ -3757,12 +3756,6 @@ ulonglong unique_hash(Field *field, ulonglong *hash_val) {\r\n     Field_json *json_field = down_cast<Field_json *>(field);\r\n\r\n     crc = json_field->make_hash_key(hash_val);\r\n-  } else if (field->key_type() == HA_KEYTYPE_TEXT ||\r\n-             field->key_type() == HA_KEYTYPE_VARTEXT1 ||\r\n-             field->key_type() == HA_KEYTYPE_VARTEXT2) {\r\n-    field->charset()->coll->hash_sort(field->charset(), (const uchar *)pos,\r\n-                                      field->data_length(), &seed1, &seed2);\r\n-    crc ^= seed1;\r\n   } else\r\n     while (pos != end)\r\n       crc = ((crc << 8) + (((uchar) * (uchar *)pos++))) +\r\n\r\nAfter the above change, the same query can be returned in 0.02 sec:\r\nmysql-8.0.13 > SELECT COUNT(*) FROM ( SELECT value FROM product GROUP BY code, name, comment, platform ) derived;\r\n+----------+\r\n| COUNT(*) |\r\n+----------+\r\n|    20000 |\r\n+----------+\r\n1 row in set (0.02 sec)",
+  "poc": [
+    "CREATE TABLE product (\nvalue int NOT NULL AUTO_INCREMENT,\ncode varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,\nname varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,\ncomment varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,\nplatform varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,\nKEY idx_key (value)\n);",
+    "CREATE PROCEDURE BatchInsert(IN row_count int)\nBEGIN\nSET @n = 1;",
+    "SET @str = (CONCAT('test', CAST(@n AS CHAR)));",
+    "INSERT INTO product(code, name) VALUES(@str, @str);",
+    "SET @n = @n + 1;",
+    "CALL BatchInsert(20000);",
+    "SELECT COUNT(*) FROM ( SELECT value FROM product GROUP BY code, name, comment, platform ) derived;"
+  ],
+  "key_bug_features": [
+    "Extra hidden hash field for uniqueness check"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE product_v2 (value INT NOT NULL AUTO_INCREMENT, code VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL, name VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL, comment VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL, platform VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL, UNIQUE KEY unique_code_name (code, name), KEY idx_key (value));",
+    "CREATE TABLE temp_product (temp_id INT NOT NULL AUTO_INCREMENT, temp_code VARCHAR(255), temp_name VARCHAR(255), PRIMARY KEY (temp_id));",
+    "INSERT INTO product_v2 (code, name) VALUES ('test1', 'Test Product 1');",
+    "INSERT INTO temp_product (temp_code, temp_name) SELECT code, name FROM product_v2 WHERE code IS NOT NULL;",
+    "SELECT COUNT(*) FROM (SELECT value FROM product_v2 GROUP BY code, name, comment, platform) AS derived;"
+  ]
+}

@@ -1,0 +1,16 @@
+CREATE TABLE test_table (id UInt32, value Float64, text String);
+INSERT INTO test_table VALUES (1, 123.456789, 'sample'), (2, 0.0, NULL), (3, -1.234567, 'negative'), (4, NULL, 'null value'), (5, 9999999999.999999, 'max float');
+SELECT id, toDecimalString(value, 3) || ' - ' || IFNULL(text, 'No Text') AS description FROM test_table WHERE value IS NOT NULL;
+SELECT id, toDecimalString(CAST(value AS UInt8), 2) || ' = ' || CASE WHEN value > 0 THEN 'Positive' ELSE 'Non-Positive' END AS status FROM test_table;
+SELECT value, toDecimalString(NULLIF(value, 0), 4) AS decimal_value FROM test_table HAVING decimal_value IS NOT NULL;
+SELECT id, text, toDecimalString(CAST(value AS Float64), 5) AS formatted_value FROM test_table WHERE text IS NOT NULL AND length(text) > 3;
+CREATE TABLE test_table_2 (id UInt32, measure Float64, category String);
+INSERT INTO test_table_2 VALUES (1, 12.34, 'A'), (2, 56.78, 'B'), (3, NULL, 'C'), (4, 90.12, NULL);
+SELECT t1.id, toDecimalString(t1.measure + IFNULL(t2.measure, 0), 4) || ' - ' || COALESCE(t1.category, 'Unknown') AS full_desc FROM test_table t1 LEFT JOIN test_table_2 t2 ON t1.id = t2.id;
+SELECT COUNT(*) FROM (SELECT DISTINCT id, toDecimalString(value, 1) AS decimal_rep FROM test_table HAVING decimal_rep LIKE '%.0%') AS unique_records;
+SELECT (toDecimalString(value, 2) || text) AS combined_info FROM test_table WHERE value < 0.0 ORDER BY value DESC;
+SELECT id, toDecimalString(COALESCE(value, 0), 3) AS result_value FROM (SELECT id, value FROM test_table UNION ALL SELECT id, NULL AS value FROM test_table_2) AS combined;
+SELECT t1.id, toDecimalString(NULLIF(t2.measure, 0), 3) || ' combined with ' || toDecimalString(t1.value, 5) AS final_output FROM test_table t1, test_table_2 t2 WHERE t1.id = t2.id OR t2.id IS NULL;
+CREATE TABLE temporary_table AS SELECT value, toDecimalString(value, 5) AS str_value FROM test_table WHERE value IS NOT NULL;
+INSERT INTO temporary_table (value, str_value) SELECT -value, toDecimalString(CAST(-value AS Float64), 6) FROM test_table WHERE value < 0;
+SELECT str_value || ' | ' || toDecimalString(id, 0) AS concat_result FROM temporary_table;

@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/88699",
+  "title": "Data mismatch when reading via s3Cluster table function",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nA data mismatch occurs when exporting and re-importing data using the S3 table function with compression mode set to `xz` and read mode set to `auto` in a multi-shard cluster environment.\nI get this issue with ClickHouse `25.8.10` but not with `25.8.4.13`\nCluster setup:\n```xml\n<cluster_3shards_1replicas_0>\n<shard>\n<replica>\n<host>clickhouse1</host>\n<port>9000</port>\n</replica>\n<replica>\n<host>clickhouse2</host>\n<port>9000</port>\n</replica>\n<replica>\n<host>clickhouse3</host>\n<port>9000</port>\n</replica>\n</shard>\n</cluster_3shards_1replicas_0>\n```\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\n**ClickHouse version:** `25.8.10`\n**ClickHouse settings:** `clickhouse client -n --allow_experimental_analyzer \"0\" --min_os_cpu_wait_time_ratio_to_throw \"15\" --max_os_cpu_wait_time_ratio_to_throw \"25\" --s3_truncate_on_insert \"1\"`\n### 1. Create initial tables\n```sql\nCREATE TABLE table_1 (d UInt64)\nENGINE = MergeTree() ORDER BY d SETTINGS storage_policy='default';\n```\n```sql\nCREATE TABLE table_2_local (d UInt64)\nENGINE = MergeTree() ORDER BY d SETTINGS storage_policy='default';\n```\n```sql\nCREATE TABLE IF NOT EXISTS table_2 AS table_2_local\nENGINE = Distributed(cluster_3shards_1replicas_0, default, table_2_local, rand());\n```\n### 2. Insert test data\n```sql\nINSERT INTO table_1 VALUES (427);\n```\n### 3. Export data to S3 using compression `'xz'`\n```sql\nINSERT INTO FUNCTION s3('https://s3.amazonaws.com/.../auto.xz',\n'key_id', 'access_key',",
+  "date": "2025-10-16T21:35:43Z",
+  "vulnerable_version": "25.8.4.13",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE table_3 (id INT UNSIGNED, name VARCHAR(255), created_at DATETIME) ENGINE=InnoDB;",
+    "INSERT INTO table_3 VALUES (1, 'test1', NOW()), (2, 'test2', NOW() - INTERVAL 1 DAY);",
+    "CREATE TABLE table_4 (id INT UNSIGNED, value DOUBLE, description VARCHAR(255)) ENGINE=InnoDB;",
+    "INSERT INTO table_4 SELECT id, CAST(name AS DOUBLE), NULL FROM table_3;",
+    "CREATE TABLE IF NOT EXISTS table_5 AS SELECT * FROM table_4;",
+    "INSERT INTO table_5 SELECT * FROM table_4 WHERE value > 0.5;"
+  ],
+  "key_bug_features": [
+    "Data mismatch with S3 table function and xz compression"
+  ]
+}

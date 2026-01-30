@@ -1,0 +1,30 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/13615",
+  "title": "Equivalent MACRO definitions yield different results",
+  "vulnerable_database": "DuckDB",
+  "date": "2024-08-28 14:05:09",
+  "vulnerable_version": "",
+  "description": "### What happens?\n\nIt is my understanding that\r\n```sql\r\nCREATE MACRO s2(x) AS (sum(x) OVER());\r\n```\r\nand\r\n```sql\r\nCREATE MACRO s1(x) AS (SELECT sum(y) OVER() FROM (SELECT x AS y));\r\n```\r\nshould yield identical results. They produce, however, different results.\r\n\r\nIf `s1()` is for some reason not allowed, it should at least issue an error instead of providing a wrong result.\r\n\r\n\r\nIn this example it is easy to workaround (by choosing `s2()` instead of `s1()`). But when using it in more complex context, such a subquery construction might become necessary to e.g. avoid a \"nested window functions not allowed\" error.\n\n### To Reproduce\n\n```sql\r\nCREATE TABLE tab (x int);\r\n\r\nINSERT INTO tab VALUES (3);\r\nINSERT INTO tab VALUES (7);\r\n\r\nCREATE MACRO s1(x) AS (SELECT sum(y) OVER() FROM (SELECT x AS y));\r\nCREATE MACRO s2(x) AS (sum(x) OVER());\r\n\r\nSELECT s1(x), s2(x) FROM tab;\r\n```\r\n\r\nOutput:\r\n```\r\n┌───────┬───────┐\r\n│ s1(x) ┆ s2(x) │\r\n╞═══════╪═══════╡\r\n│     3 ┆    10 │\r\n│     7 ┆    10 │\r\n└───────┴───────┘\r\n```\n\n### OS:\n\nMS Windows 10, x64\n\n### DuckDB Version:\n\n1.0.0\n\n### DuckDB Client:\n\nWasm\n\n### Full Name:\n\nLukas Schneiderbauer\n\n### Affiliation:\n\nNone\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a stable release\n\n### Did you include all relevant data sets for reproducing the issue?\n\nNot applicable - the reproduction does not require a data set\n\n### Did you include all code required to reproduce the issue?\n\n- [X] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [X] Yes, I have",
+  "poc": [
+    "CREATE TABLE tab (x int);",
+    "INSERT INTO tab VALUES (3);",
+    "INSERT INTO tab VALUES (7);",
+    "SELECT sum(y) OVER() FROM (SELECT x AS y));",
+    "SELECT s1(x), s2(x) FROM tab;",
+    "SELECT s1(x), (SELECT sum(y) OVER() FROM (SELECT x AS y)) AS expanded from tab;",
+    "SELECT s2(x), sum(x) over () AS expanded FROM tab;",
+    "select (SELECT sum(y) OVER() FROM (SELECT x AS y) t) from tab;",
+    "select sum(x) over () from tab;",
+    "SELECT x, (SELECT SUM(x) FROM tab) AS full_subquery from tab;"
+  ],
+  "key_bug_features": [
+    "Different results from equivalent MACRO definitions"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE tab2 (x int, y float, z varchar(10));",
+    "INSERT INTO tab2 VALUES (3, 2.5, 'test1');",
+    "INSERT INTO tab2 VALUES (7, NULL, 'test2');",
+    "CREATE MACRO s3(x) AS (SELECT sum(y) OVER() FROM (SELECT x AS y));",
+    "SELECT s3(x), sum(x) OVER() FROM tab2;"
+  ]
+}

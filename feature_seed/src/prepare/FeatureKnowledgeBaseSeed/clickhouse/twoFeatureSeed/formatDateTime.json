@@ -1,0 +1,23 @@
+{
+    "function": "formatDateTime",
+    "operator": "EXTRACT",
+    "sql_array": [
+        "CREATE TABLE test_dates (id UInt32, event_time DateTime, description String);",
+        "INSERT INTO test_dates VALUES (1, '2023-01-01 00:00:00', 'New Year'), (2, '2023-06-15 12:15:45', 'Mid Year'), (3, NULL, 'Null Event');",
+        "SELECT id, formatDateTime(event_time, '%Y-%m-%d %H:%i:%s') AS formatted_time FROM test_dates WHERE event_time IS NOT NULL;",
+        "SELECT id, EXTRACT(MONTH FROM event_time) AS event_month, formatDateTime(event_time, '%c') AS compact_month FROM test_dates;",
+        "SELECT id, event_time, formatDateTime(event_time, '%W, %d %M %Y') AS full_date FROM test_dates WHERE EXTRACT(YEAR FROM event_time) = 2023;",
+        "CREATE TABLE test_dates_extended (event_time DateTime, time_zone String) ENGINE = MergeTree() ORDER BY event_time;",
+        "INSERT INTO test_dates_extended SELECT event_time, 'Europe/London' FROM test_dates WHERE event_time IS NOT NULL;",
+        "SELECT id, formatDateTime(event_time, '%Y-%m-%d %H:%i:%s', time_zone) AS local_time FROM test_dates_extended WHERE time_zone LIKE 'Europe%';",
+        "SELECT EXTRACT(DAY FROM formatDateTime(event_time, '%Y-%m-%d %H:%i:%s')) AS day_number, COUNT(*) FROM test_dates GROUP BY day_number HAVING day_number IS NOT NULL;",
+        "SELECT EXTRACT(YEAR FROM event_time) AS year, COUNT(*) FROM test_dates GROUP BY year HAVING year > 2020;",
+        "SELECT EXTRACT(HOUR FROM event_time) AS hour_count, formatDateTime(event_time, '%p') AS am_pm FROM test_dates WHERE event_time IS NOT NULL GROUP BY hour_count, am_pm ORDER BY hour_count DESC;",
+        "CREATE TABLE test_edge_cases (id UInt32, event_time DateTime64(3), description String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_edge_cases VALUES (1, '2023-01-01 00:00:00.123', 'With Fraction'), (2, '2023-01-01 00:00:00', 'Without Fraction'), (3, NULL, 'Null Time');",
+        "SELECT id, formatDateTime(event_time, '%f') AS fractional_seconds FROM test_edge_cases WHERE id <= 2;",
+        "SELECT id, formatDateTime(NULLIF(event_time, '2023-01-01 00:00:00'), '%Y-%m-%d') AS null_handling_time FROM test_edge_cases;",
+        "SELECT formatDateTime(toDate(event_time), '%F') AS just_date, COUNT(*) FROM test_dates GROUP BY just_date;",
+        "SELECT EXTRACT(YEAR FROM toDateTime64(event_time, 3)) AS adjusted_year, COUNT(*) FROM test_edge_cases GROUP BY adjusted_year HAVING adjusted_year IS NOT NULL;"
+    ]
+}

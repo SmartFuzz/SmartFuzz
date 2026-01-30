@@ -1,0 +1,17 @@
+CREATE TABLE events (id INT, event_time TIMESTAMP, duration INTERVAL, location VARCHAR(255));
+INSERT INTO events VALUES (1, TIMESTAMP '2023-10-01 12:00:00', INTERVAL '1 hour', 'New York');
+INSERT INTO events VALUES (2, TIMESTAMP '2023-10-01 14:30:00', INTERVAL '30 minutes', 'Los Angeles');
+INSERT INTO events VALUES (3, TIMESTAMP '2023-10-01 16:45:00', INTERVAL '15 minutes', NULL);
+INSERT INTO events VALUES (4, TIMESTAMP '2023-10-01 18:15:00', INTERVAL '45 minutes', 'Chicago');
+CREATE TABLE timestamps (bucket_id INT, bucket_time TIMESTAMP);
+INSERT INTO timestamps VALUES (1, TIMESTAMP '2023-10-01 00:00:00');
+INSERT INTO timestamps VALUES (2, TIMESTAMP '2023-10-01 00:10:00');
+INSERT INTO timestamps VALUES (3, TIMESTAMP '2023-10-01 00:20:00');
+SELECT e.id, time_bucket(INTERVAL '10 minutes', e.event_time, INTERVAL '2 minutes') AS bucketed_time FROM events e WHERE e.location IS NOT NULL HAVING bucketed_time > TIMESTAMP '2023-10-01 00:10:00';
+SELECT DISTINCT e.id, e.event_time + e.duration AS end_time FROM events e WHERE e.duration IS NOT NULL;
+SELECT t.bucket_id, COUNT(e.id) AS event_count FROM timestamps t LEFT JOIN events e ON e.event_time >= t.bucket_time AND e.event_time < t.bucket_time + INTERVAL '10 minutes' GROUP BY t.bucket_id ORDER BY event_count DESC;
+SELECT e.id, e.event_time, time_bucket(INTERVAL '1 hour', e.event_time) AS bucketed_hour FROM events e WHERE e.event_time + e.duration <= TIMESTAMP '2023-10-01 20:00:00';
+SELECT (time_bucket(INTERVAL '1 hour', e.event_time) + INTERVAL '5 minutes') AS adjusted_time FROM events e WHERE e.location LIKE 'Chicago%' AND e.duration IS NOT NULL;
+SELECT e.id, (e.event_time + INTERVAL '3 days' + (SELECT MAX(e2.duration) FROM events e2 WHERE e2.id != e.id)) AS future_event_time FROM events e WHERE e.duration IS NOT NULL;
+SELECT e.id, e.event_time, time_bucket(INTERVAL '15 minutes', e.event_time + INTERVAL '10 minutes', INTERVAL '0 minutes') AS adjusted_bucket FROM events e WHERE e.event_time IS NOT NULL AND e.location IS NOT NULL ORDER BY adjusted_bucket;
+SELECT e.id, e.event_time + e.duration AS calculated_end FROM events e WHERE e.duration IS NULL OR e.duration <= INTERVAL '1 hour';

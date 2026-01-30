@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id INT, json_column VARCHAR, number_column INT, null_column VARCHAR);
+INSERT INTO test_data (id, json_column, number_column, null_column) VALUES (1, '{"key": "value1"}', 10, NULL), (2, '{"key": "value2"}', 5, 'test'), (3, '{"key": "value3"}', 0, '');
+SELECT json_parse(json_column) AS parsed_json, number_column % 4 AS mod_result FROM test_data WHERE number_column > 0;
+SELECT id, (SELECT json_parse(json_column) AS inner_json FROM test_data WHERE id = 1) AS inner_tree, number_column % 2 FROM test_data HAVING number_column % 2 = 0;
+SELECT id, json_parse('{' || (SELECT string_agg(json_column, ',') FROM test_data WHERE number_column <= 5) || '}') AS combined_json FROM test_data GROUP BY id ORDER BY number_column;
+SELECT json_parse(json_column), number_column, (CASE WHEN null_column IS NULL THEN 'NULL_FOUND' ELSE null_column END) AS null_check FROM test_data WHERE json_parse(json_column) IS NOT NULL AND number_column % 2 = 0;
+CREATE TEMPORARY TABLE temp_data (temp_id INT, temp_json VARCHAR);
+INSERT INTO temp_data (temp_id, temp_json) VALUES (1, '{"temp_key": "temp_value1"}'), (2, '{"temp_key": "temp_value2"}');
+SELECT temp_id, json_parse(temp_json), (temp_id % (SELECT COUNT(*) FROM test_data)) AS mod_temp FROM temp_data;
+SELECT id, json_parse(json_column), (SELECT COUNT(*) FROM test_data WHERE number_column > 0) % id AS mod_count FROM test_data WHERE number_column IS NOT NULL;

@@ -1,0 +1,21 @@
+{
+    "function": "updateXML",
+    "operator": "SPARQL: sameTerm",
+    "sql_array": [
+        "CREATE TABLE documents (id INT PRIMARY KEY, xml_content XML);",
+        "INSERT INTO documents (id, xml_content) VALUES (1, '<root><node>Value 1</node></root>');",
+        "INSERT INTO documents (id, xml_content) VALUES (2, '<root><node>Value 2</node></root>');",
+        "INSERT INTO documents (id, xml_content) VALUES (3, NULL);",
+        "SELECT id, updateXML(xml_content, '<node>Updated Value</node>') AS updated_xml FROM documents WHERE sameTerm(xml_content, updateXML(xml_content, '<node>Updated Value</node>')) IS FALSE;",
+        "CREATE TABLE related_data (doc_id INT, data_value VARCHAR(100), FOREIGN KEY (doc_id) REFERENCES documents(id));",
+        "INSERT INTO related_data (doc_id, data_value) VALUES (1, 'Sample Data 1');",
+        "INSERT INTO related_data (doc_id, data_value) VALUES (2, 'Sample Data 2');",
+        "INSERT INTO related_data (doc_id, data_value) VALUES (3, NULL);",
+        "SELECT d.id, COUNT(rd.data_value) AS data_count FROM documents d LEFT JOIN related_data rd ON d.id = rd.doc_id GROUP BY d.id HAVING NULLIF(data_count, 0) IS NOT NULL ORDER BY d.id;",
+        "SELECT d.id, updateXML(d.xml_content, '<additional>Content</additional>') AS enriched_xml FROM documents d WHERE EXISTS (SELECT 1 FROM related_data rd WHERE rd.doc_id = d.id AND sameTerm(NULL, rd.data_value) IS TRUE);",
+        "SELECT id, updateXML(xml_content, (SELECT xml_content FROM documents WHERE id = 3 LIMIT 1)) AS conditional_update FROM documents WHERE sameTerm(NULL, (SELECT xml_content FROM documents WHERE id = 1 LIMIT 1)) IS FALSE;",
+        "CREATE TABLE test_data (numeric_value NUMERIC, text_value TEXT);",
+        "INSERT INTO test_data (numeric_value, text_value) VALUES (1.123456789, 'Extremely high precision'), (NULL, 'Test with NULL');",
+        "SELECT updateXML((SELECT xml_content FROM documents WHERE id = 1), '<root><node>Final Update</node></root>') AS final_update FROM documents WHERE sameTerm('1', CAST(numeric_value AS VARCHAR)) IS TRUE;"
+    ]
+}

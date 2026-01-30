@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/63741",
+  "title": "TiDB cannot simplify  (i=j) OR (i IS NULL AND j IS NULL) as i <=> j",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\nTiDB cannot simplify  (i=j) OR (i IS NULL AND j IS NULL) as i <=> j\n\n\n```\nCREATE TABLE test(i INTEGER, j INTEGER);\nexplain SELECT i FROM test WHERE (i=j) OR (i IS NULL AND j IS NULL);\n```\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\n\nIn duckdb\n\n<img width=\"646\" height=\"534\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/db218cc7-3557-4124-934e-6c4e817a6047\" />\n\n `IS NOT DISTINCT FROM ` in duckdb is the same as the mysql '<=>'\n\n\n### 3. What did you see instead (Required)\n```\n+------------------------+---------+-----------+---------------+---------------------------------------------------------------------------------+\n| id                     | estRows | task      | access object | operator info                                                                   |\n+------------------------+---------+-----------+---------------+---------------------------------------------------------------------------------+\n| TableReader_12         | 2.60    | root      |               | data:Projection_6                                                               |\n| └─Projection_6         | 2.60    | cop[tikv] |               | test.test.i                                                                     |\n|   └─Selection_11       | 2.60    | cop[tikv] |               | or(eq(test.test.i, test.test.j), and(isnull(test.test.i), isnull(test.test.j))) |\n|     └─TableFullScan_10 | 3.00    | cop[tikv] | table:test    | keep order:false, stats:pseudo                                                  |\n+------------------------+---------+-----------+---------------+---------------------------------------------------------------------------------+\n```\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "date": "2025-09-25T04:58:42Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE test1(i Int32, j Int32, k String DEFAULT 'default');",
+    "INSERT INTO test1(i, j) VALUES (1, 1), (NULL, NULL), (2, 3), (NULL, 4);",
+    "CREATE TABLE test2(a Int32, b Int32, c Int32 DEFAULT 0) ENGINE = MergeTree() ORDER BY a;",
+    "INSERT INTO test2(a, b) VALUES (1, 2), (NULL, NULL), (3, 3);",
+    "SELECT i FROM test1 WHERE (i = j) OR (isNull(i) AND isNull(j));"
+  ],
+  "key_bug_features": [
+    "(i=j) OR (i IS NULL AND j IS NULL) simplification"
+  ]
+}

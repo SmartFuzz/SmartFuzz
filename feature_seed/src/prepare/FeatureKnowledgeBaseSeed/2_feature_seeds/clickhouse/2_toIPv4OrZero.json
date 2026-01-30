@@ -1,0 +1,8 @@
+CREATE TABLE ip_test_table (id UInt32, ip_string String, valid_ip String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO ip_test_table (id, ip_string) VALUES (1, '192.168.1.1'), (2, '256.256.256.256'), (3, 'Not an IP address'), (4, ''), (5, '0.0.0.0');
+SELECT id, toIPv4OrZero(ip_string) AS converted_ip FROM ip_test_table WHERE multiIf(ip_string = '', 'empty', ip_string = 'Not an IP address', 'invalid', true, toIPv4OrZero(ip_string)) != 0.0.0.0;
+SELECT id, toIPv4OrZero(ip_string) AS converted_ip FROM ip_test_table GROUP BY id HAVING converted_ip = '0.0.0.0' OR converted_ip IS NULL;
+CREATE TEMPORARY TABLE ip_analysis (analysis_id UInt32, ip_input String, transformed_ip String) ENGINE = Memory;
+INSERT INTO ip_analysis (analysis_id, ip_input) SELECT id, ip_string FROM ip_test_table;
+SELECT analysis_id, ip_input, x FROM (SELECT analysis_id, ip_input, toIPv4OrZero(ip_input) AS transformed_ip FROM ip_analysis) WHERE multiIf(transformed_ip = '0.0.0.0', 'Invalid IP', true, transformed_ip) LIKE 'Invalid%';
+SELECT COUNT(*) FROM ip_test_table WHERE toIPv4OrZero(ip_string) IS NULL AND multiIf(ip_string = '', 'empty', ip_string = 'Not an IP address', 'invalid', true, toIPv4OrZero(ip_string)) NOT LIKE '%0.0.0.0%';

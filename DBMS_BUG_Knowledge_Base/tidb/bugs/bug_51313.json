@@ -1,0 +1,25 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/51313",
+  "title": "`batchPoint` leads to tidb panic when `KeyPartition` column is part of multi-column index",
+  "vulnerable_database": "tidb",
+  "date": "2024-02-26T06:57:27Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n```\r\ncreate table tkey (col1 int not null, col2 varchar(32) not null, col3 int not null, unique(col1, col2)) partition by key(col2) partitions 4;\r\ninsert into tkey values(1, 'a', 1), (2, 'b', 2);\r\nselect col1, col2, col3 from tkey where col1 = 1 and col2 = 'a' or col1 = 3 and col2 = 'c';\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\n```\r\nmysql> select col1, col2, col3 from tkey where col1 = 1 and col2 = 'a' or col1 = 3 and col2 = 'c';\r\n+------+------+------+\r\n| col1 | col2 | col3 |\r\n+------+------+------+\r\n|    1 | a    |    1 |\r\n+------+------+------+\r\n1 row in set, 1 warning (0.01 sec)\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n```\r\nmysql> select col1, col2, col3 from tkey where col1 = 1 and col2 = 'a' or col1 = 3 and col2 = 'c';\r\nERROR 1105 (HY000): runtime error: index out of range [1] with length 1\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\nmaster\r\n\r\n",
+  "poc": [
+    "create table tkey (col1 int not null, col2 varchar(32) not null, col3 int not null, unique(col1, col2)) partition by key(col2) partitions 4;",
+    "insert into tkey values(1, 'a', 1), (2, 'b', 2);",
+    "select col1, col2, col3 from tkey where col1 = 1 and col2 = 'a' or col1 = 3 and col2 = 'c';"
+  ],
+  "poc_type": "sql_text",
+  "state": "closed",
+  "key_bug_features": [
+    "`batchPoint` causes panic with multi-column index and partitioning"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE tkey2 (col1 INT NOT NULL, col2 VARCHAR(32) NOT NULL, col3 INT NOT NULL, UNIQUE(col1, col2)) PARTITION BY HASH(col1) PARTITIONS 4;",
+    "INSERT INTO tkey2 VALUES (1, 'a', 1), (2, 'b', 2), (3, NULL, 3);",
+    "SELECT col1, col2, col3 FROM tkey2 WHERE col1 = 1 AND col2 = 'a' OR col1 = 4 AND col2 IS NULL;",
+    "CREATE TABLE tkey3 (col1 INT NOT NULL, col2 VARCHAR(32) NOT NULL, col3 INT NOT NULL, UNIQUE(col1, col2)) PARTITION BY RANGE (col3) (PARTITION p0 VALUES LESS THAN (2), PARTITION p1 VALUES LESS THAN (4));",
+    "INSERT INTO tkey3 VALUES (1, 'x', 1), (2, 'y', 3), (3, 'z', 5);"
+  ]
+}

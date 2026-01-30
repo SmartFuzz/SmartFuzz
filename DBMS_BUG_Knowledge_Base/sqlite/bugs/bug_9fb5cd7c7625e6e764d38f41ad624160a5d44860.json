@@ -1,0 +1,24 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/9fb5cd7c76",
+  "title": "\"DELETE FROM tbl\" statements do not obtain a shared-cache write-lock on table \"tbl\"",
+  "vulnerable_version": "",
+  "date": "2013-09-26 14:17:0511.87 years ago",
+  "path": "/home/crawl_bugs/sqlite/ticket_output/ticket_info_9fb5cd7c76.json",
+  "poc": [
+  "BEGIN;",
+  "DELETE FROM tbl WHERE 1;",
+  "DELETE FROM tbl;"
+  ],
+  "vulnerable_database": "sqlite",
+  "description": "dan added on 2013-09-26 14:17:05:\nIn shared-cache mode, SQLite uses read and write locks on individual tables to isolate transactions from other shared-cache users. This means that if one shared-cache user opens a transaction and modifies the contents of a table, a write-lock is taken on that table to prevent other shared-cache clients from reading the modified data before it is committed. See section 2.2 of the following for details:\n\n   http://www.sqlite.org/sharedcache.html\n\nCurrently, if the statement that writes to the table is a DELETE statement that uses the truncate optimization, this lock is not being obtained. Meaning a second shared-cache client is not prohibited from observing an empty table before the transaction is committed (like a read_uncommitted client would).\n\nTo clarify, this:\n\n  BEGIN; DELETE FROM tbl WHERE 1;\n\nobtains the correct shared-cache locks, but this:\n\n  BEGIN; DELETE FROM tbl;\n\ndoes not.\ndan added on 2013-09-26 14:24:16:\nHas existed since at least version 3.6.4.",
+  "key_bug_features": [
+    "DELETE statements with truncate optimization do not obtain write-lock"
+  ],
+  "bug_features_seed": [
+  "PRAGMA cache_size=shared;",
+  "BEGIN;",
+  "DELETE FROM fuzz_tbl;",
+  "COMMIT;"
+]
+
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/1152",
+  "title": "User SPARQL cannot delete triple with a string as object (SR186 DB.DBA.L_O_LOOK_NE) ",
+  "description": "Hi,\nI get this error on DELETE DATA via http://localhost:8890/sparql, but only when the triple's object is a string:\nVirtuoso 42000 Error SR186:SECURITY: No permission to execute dpipe DB.DBA.L_O_LOOK_NE with user ID 107, group ID 107\n\nIf the triple's object is a URI, the triple is deleted without error.\nSteps to reproduce:\nUsing the official Docker image:\n$ docker run --name virtuoso-7.2.10-official --interactive --tty \\\n    --env DBA_PASSWORD=dba --publish 1111:1111 --publish 8890:8890 \\\n    --volume `pwd`:/database openlink/virtuoso-opensource-7:7.2.10\n\nGranted SPARQL_UPDATE and WebDAV to user SPARQL through Conductor.\nSystem Admin > User Accounts > User > SPARQL > Edit\n  User type: SQL/ODBC and WebDAV\n  Account Roles: SPARQL_SELECT, SPARQL_UPDATE\n\nWorkaround to prevent #1094:\nDB.DBA.RDF_DEFAULT_USER_PERMS_SET ('nobody', 7);\n\nInsert data:\nINSERT DATA {\n  GRAPH <http://mu.semte.ch/application> {\n    <http://mu.semte.ch/application/name-as-uri> <http://schema.org/name> <http://mu.semte.ch/application/myname> .\n    <http://mu.semte.ch/application/name-as-string> <http://schema.org/name> \"My name\" .\n} }\n\nDeleting the triple with the string from http://localhost:8890/sparql fails:\nDELETE DATA {\n  GRAPH <http://mu.semte.ch/application> {\n    <http://mu.semte.ch/application/name-as-string> <http://schema.org/name> \"My name\" .\n} }\n\nError:\nVirtuoso 42000 Error SR186:SECURITY: No permission to execute dpipe DB.DBA.L_O_LOOK_NE with user ID 107, group ID 107\n\nSPARQL query:\ndefine sql:big-data-const 0\n#output-format:text/html\ndefine sql:signal-void-variables 1\nDELETE DATA {\n  GRAPH <http://mu.semte.ch/application> {\n    <http://mu.semte.ch/application/name-as-string> <http://schema.org/name> \"My name\" .\n} }\n\nDeleting the triple with the URI as object from http://localhost:8890/sparql succeeds:\nDELETE DATA {\n  GRAPH <http://mu.semte.ch/application> {\n    <http://mu.semte.ch/application/name-as-uri> <http://schema.org/name> <http://mu.semte.ch/application/myname> .\n} }\n\nResult:\nDelete from <http://mu.semte.ch/application>, 1 (or less) triples -- done\n\nDeleting the triple with the string from isql succceeds:\nSQL> SPARQL DELETE DATA { GRAPH <http://mu.semte.ch/application> { <http://mu.semte.ch/application/name-as-string> <http://schema.org/name> \"My name\" . } } ;\n\nDone. -- 2 msec.\nSQL> SPARQL SELECT * WHERE { GRAPH <http://mu.semte.ch/application> { ?s <http://schema.org/name> ?o } } ;\ns                                                                                 o",
+  "date": "2023-06-28 16:55:30",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE graph_data (s VARCHAR, p VARCHAR, o VARCHAR);",
+    "INSERT INTO graph_data VALUES ('<http://mu.semte.ch/application/name-as-string>', '<http://schema.org/name>', 'My name');",
+    "INSERT INTO graph_data VALUES ('<http://mu.semte.ch/application/name-as-uri>', '<http://schema.org/name>', '<http://mu.semte.ch/application/myname>');",
+    "DELETE FROM graph_data WHERE s = '<http://mu.semte.ch/application/name-as-string>' AND p = '<http://schema.org/name>' AND o = 'My name';",
+    "SELECT * FROM graph_data WHERE s = '<http://mu.semte.ch/application/name-as-string>' OR s = '<http://mu.semte.ch/application/name-as-uri>';"
+  ],
+  "key_bug_features": [
+    "Deleting triples with string objects fails due to permission error"
+  ]
+}

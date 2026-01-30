@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=105802",
+  "title": "Slave stops with HA_ERR_KEY_NOT_FOUND (INDEX_SCAN,HASH_SCAN)",
+  "description": "Slave stops with HA_ERR_KEY_NOT_FOUND when slave_rows_search_algorithms is set to INDEX_SCAN,HASH_SCAN. And it is the default setting in version 8.0.\r\n\r\n**** SHOW SLAVE STATUS on slave ****\r\nSHOW SLAVE STATUS;\r\nSlave_IO_State\tWaiting for master to send event\r\nMaster_Host\t127.0.0.1\r\nMaster_User\troot\r\nMaster_Port\t13000\r\nConnect_Retry\t1\r\nMaster_Log_File\tmaster-bin.000001\r\nRead_Master_Log_Pos\t1264\r\nRelay_Log_File\tslave-relay-bin.000002\r\nRelay_Log_Pos\t985\r\nRelay_Master_Log_File\tmaster-bin.000001\r\nSlave_IO_Running\tYes\r\nSlave_SQL_Running\tNo\r\nReplicate_Do_DB\t\r\nReplicate_Ignore_DB\t\r\nReplicate_Do_Table\t\r\nReplicate_Ignore_Table\t\r\nReplicate_Wild_Do_Table\t\r\nReplicate_Wild_Ignore_Table\t\r\nLast_Errno\t1032\r\nLast_Error\tCould not execute Update_rows event on table uniticket.t1; Can't find record in 't1', Error_code: 1032; Can't find record in 't1', Error_code: 1032; handler error HA_ERR_KEY_NOT_FOUND; the event's master log master-bin.000001, end_log_pos 1233\nHow to repeat:\nMTR test:\r\n\r\n--source include/master-slave.inc\r\n--connection master\r\ncreate database uniticket;\r\nuse uniticket;\r\n\r\nCREATE TABLE `t1` (\r\n  `a` varchar(60) COLLATE utf8mb4_general_ci DEFAULT NULL,\r\n  `b` varchar(60) COLLATE utf8mb4_general_ci DEFAULT NULL,\r\n  `c` varchar(60) COLLATE utf8mb4_general_ci DEFAULT NULL,\r\n  `d` varchar(60) COLLATE utf8mb4_general_ci DEFAULT NULL,\r\n  UNIQUE KEY `k1` (`a`,`b`,`c`)\r\n) ENGINE=InnoDB;\r\n\r\nINSERT INTO `t1` (`d`,`a`,`c`,`b`) VALUES('2021-12-04 16:42:53','A','B','A')  ,('2021-12-04 16:42:54','A','B','A')  ,('2021-12-04 16:42:53','A','B','A')  ,('2021-12-04 16:42:55','A','B','A') ON DUPLICATE KEY UPDATE `d`=VALUES(`d`),`a`=VALUES(`a`),`c`=VALUES(`c`),`b`=VALUES(`b`);\r\n\r\n--source include/sync_slave_sql_with_master.inc\r\n--connection master\r\nDROP TABLE t1;\r\n--source include/rpl_end.inc",
+  "date": "2021-12-05 12:43:00",
+  "vulnerable_version": "5.7.*; 8.0.*",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE DATABASE uniticket;",
+    "CREATE TABLE t1 (id INT PRIMARY KEY, a VARCHAR(60) NOT NULL, b VARCHAR(60) DEFAULT NULL, c VARCHAR(60) UNIQUE, d TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t1 (id, a, b, c) VALUES (1, 'A', NULL, 'C1'), (2, 'B', 'B1', 'C2'), (3, NULL, 'B2', 'C3');",
+    "SELECT * FROM t1 WHERE a IS NULL OR b IS NULL;",
+    "DROP TABLE t1;"
+  ],
+  "key_bug_features": [
+    "slave_rows_search_algorithms set to INDEX_SCAN,HASH_SCAN"
+  ]
+}

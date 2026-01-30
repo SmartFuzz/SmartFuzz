@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id Int32, value String, created_at DateTime, score Float32, is_active Nullable(Int8)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table (id, value, created_at, score, is_active) VALUES (1, 'test1', '2023-01-01 00:00:00', 1.5, 1), (2, 'test2', '2023-01-02 00:00:00', 2.5, NULL), (3, '', '2023-01-03 00:00:00', -1.5, 0);
+SELECT normalizedQueryHash(value) AS hash_value FROM test_table WHERE id >= 2 GROUP BY hash_value HAVING hash_value IS NOT NULL;
+SELECT normalizedQueryHash(CONCAT(value, ' - ', CAST(score AS String))) AS combined_hash FROM test_table WHERE score >= 0.0;
+SELECT normalizedQueryHash('SELECT **' || value || '** FROM test_table WHERE score >= 2.0') AS res_hash WHERE res_hash >= normalizedQueryHash('SELECT * FROM test_table WHERE score >= 1.0');
+SELECT normalizedQueryHash(value) AS q_hash, COUNT(*) AS total FROM test_table WHERE is_active IS NULL OR is_active = 1 GROUP BY q_hash HAVING total > 1;
+WITH (SELECT AVG(score) FROM test_table WHERE is_active IS NOT NULL) AS average_score SELECT normalizedQueryHash(value) AS hash, value FROM test_table WHERE score >= average_score;
+SELECT normalizedQueryHash(value) AS q_hash FROM (SELECT id, value, score FROM test_table WHERE is_active != 1) AS filtered_table WHERE q_hash >= normalizedQueryHash('SELECT id FROM test_table WHERE score > 0');
+SELECT COUNT(*) FROM (SELECT * FROM test_table WHERE value = '' OR value IS NULL HAVING normalizedQueryHash(value) IS NOT NULL) AS edge_case;
+SELECT normalizedQueryHash((SELECT value FROM test_table WHERE id = 1)) AS hash_value WHERE (SELECT score FROM test_table WHERE id = 1) >= 0.0;

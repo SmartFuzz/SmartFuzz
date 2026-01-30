@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/86032",
+  "title": "Expression in condition is evaluated twice in lighweight updates",
+  "description": "### Company or project name\nClickHouse Inc.\n### Describe the unexpected behaviour\nExpression in condition is evaluated twice in lightweight updates. It leads to slightly less performance in case of deterministic conditions and may lead to unexpected results with non-deterministic conditions.\n### How to reproduce\nExample:\n```sql\ndrop table if exists test_lwu;\ncreate table test_lwu (a UInt64) engine = MergeTree order by tuple() settings enable_block_number_column = 1, enable_block_offset_column = 1;\ninsert into test_lwu select number from numbers(100);\nset allow_experimental_lightweight_update = 1;\nset lightweight_delete_mode = 'lightweight_update_force';\ndelete from test_lwu where rand() % 10 = 0;\nselect count() from test_lwu;\nselect name, rows from system.parts where table = 'test_lwu' and active;\n```\nPossible output:\n```\n99\nall_1_1_0       100\npatch-f18f7271629a324b0d26b6ad0b83a6c2-all_3_3_0_2      13\n```\nAs you can see, 13 rows are written in the patch part, but only 1 row is deleted from the table. It happens because we firstly filter rows from the table with the condition `rand() % 10 = 0` and update column `_row_exists` with the expression `if (rand() % 10 = 0, 0, _row_exists)`. Since the condition is evaluated twice, we filter rows twice.\n### Expected behavior\nCondition is evaluated only once.",
+  "date": "2025-08-22T13:03:47Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS test_lwu;",
+    "CREATE TABLE test_lwu (a BIGINT, b VARCHAR(255), c FLOAT DEFAULT 0.0);",
+    "INSERT INTO test_lwu SELECT number, CASE WHEN number % 5 = 0 THEN NULL ELSE CAST(number % 5 AS CHAR) END, number / 2.0 FROM (SELECT 0 AS number UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10 UNION ALL SELECT 11 UNION ALL SELECT 12 UNION ALL SELECT 13 UNION ALL SELECT 14 UNION ALL SELECT 15 UNION ALL SELECT 16 UNION ALL SELECT 17 UNION ALL SELECT 18 UNION ALL SELECT 19 UNION ALL SELECT 20 UNION ALL SELECT 21 UNION ALL SELECT 22 UNION ALL SELECT 23 UNION ALL SELECT 24 UNION ALL SELECT 25 UNION ALL SELECT 26 UNION ALL SELECT 27 UNION ALL SELECT 28 UNION ALL SELECT 29 UNION ALL SELECT 30 UNION ALL SELECT 31 UNION ALL SELECT 32 UNION ALL SELECT 33 UNION ALL SELECT 34 UNION ALL SELECT 35 UNION ALL SELECT 36 UNION ALL SELECT 37 UNION ALL SELECT 38 UNION ALL SELECT 39 UNION ALL SELECT 40 UNION ALL SELECT 41 UNION ALL SELECT 42 UNION ALL SELECT 43 UNION ALL SELECT 44 UNION ALL SELECT 45 UNION ALL SELECT 46 UNION ALL SELECT 47 UNION ALL SELECT 48 UNION ALL SELECT 49 UNION ALL SELECT 50 UNION ALL SELECT 51 UNION ALL SELECT 52 UNION ALL SELECT 53 UNION ALL SELECT 54 UNION ALL SELECT 55 UNION ALL SELECT 56 UNION ALL SELECT 57 UNION ALL SELECT 58 UNION ALL SELECT 59 UNION ALL SELECT 60 UNION ALL SELECT 61 UNION ALL SELECT 62 UNION ALL SELECT 63 UNION ALL SELECT 64 UNION ALL SELECT 65 UNION ALL SELECT 66 UNION ALL SELECT 67 UNION ALL SELECT 68 UNION ALL SELECT 69 UNION ALL SELECT 70 UNION ALL SELECT 71 UNION ALL SELECT 72 UNION ALL SELECT 73 UNION ALL SELECT 74 UNION ALL SELECT 75 UNION ALL SELECT 76 UNION ALL SELECT 77 UNION ALL SELECT 78 UNION ALL SELECT 79 UNION ALL SELECT 80 UNION ALL SELECT 81 UNION ALL SELECT 82 UNION ALL SELECT 83 UNION ALL SELECT 84 UNION ALL SELECT 85 UNION ALL SELECT 86 UNION ALL SELECT 87 UNION ALL SELECT 88 UNION ALL SELECT 89 UNION ALL SELECT 90 UNION ALL SELECT 91 UNION ALL SELECT 92 UNION ALL SELECT 93 UNION ALL SELECT 94 UNION ALL SELECT 95 UNION ALL SELECT 96 UNION ALL SELECT 97 UNION ALL SELECT 98 UNION ALL SELECT 99) AS numbers;",
+    "DELETE FROM test_lwu WHERE (RAND() % 10) = 0;",
+    "SELECT COUNT(*) FROM test_lwu;"
+  ],
+  "key_bug_features": [
+    "Condition evaluated twice in lightweight updates"
+  ]
+}

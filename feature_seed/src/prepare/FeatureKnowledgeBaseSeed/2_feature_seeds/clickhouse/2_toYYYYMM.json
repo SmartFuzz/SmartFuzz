@@ -1,0 +1,9 @@
+CREATE TABLE test_dates (id UInt32, event_date DateTime, value Int32, timezone String);
+INSERT INTO test_dates VALUES (1, '2023-01-15 12:12:00', 10, 'US/Eastern'), (2, '2023-02-20 09:30:00', 20, 'UTC'), (3, '2023-03-02 15:45:00', NULL, 'UTC'), (4, '2023-01-01 00:00:00', 15, 'US/Pacific');
+SELECT id, toYYYYMM(event_date, timezone) % value AS result FROM test_dates WHERE value IS NOT NULL;
+SELECT event_date, toYYYYMM(event_date, timezone) AS ym, (value + 100) % (toYYYYMM(event_date, timezone) - 202301) AS modulo FROM test_dates WHERE event_date IS NOT NULL;
+SELECT id, (toYYYYMM(event_date, timezone) % 10) AS month_mod, COUNT(*) OVER (PARTITION BY (toYYYYMM(event_date, timezone) % 10)) AS count FROM test_dates GROUP BY id, month_mod HAVING month_mod = 1;
+SELECT id, (toYYYYMM(event_date, timezone) % value) + COALESCE((toYYYYMM(event_date, timezone) % (value + 5)), 0) AS combined FROM test_dates WHERE event_date > '2023-01-01 00:00:00' ORDER BY combined ASC;
+CREATE TABLE temp_results AS SELECT id, toYYYYMM(event_date, timezone) AS ym FROM test_dates WHERE event_date IS NOT NULL;
+SELECT DISTINCT ym, COUNT(*) FROM temp_results GROUP BY ym HAVING COUNT(*) > 0;
+DROP TABLE IF EXISTS temp_results;

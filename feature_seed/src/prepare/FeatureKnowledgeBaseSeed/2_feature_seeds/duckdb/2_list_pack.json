@@ -1,0 +1,17 @@
+CREATE TABLE test_lists (id INTEGER PRIMARY KEY, values LIST INTEGER, status VARCHAR);
+INSERT INTO test_lists VALUES (1, list_value(1, 2, 3, 4), 'active');
+INSERT INTO test_lists VALUES (2, list_value(NULL, 5, 6, 7), 'inactive');
+INSERT INTO test_lists VALUES (3, list_value(8, 9), 'active');
+INSERT INTO test_lists VALUES (4, list_value(), 'inactive');
+SELECT id, values FROM test_lists WHERE values @> list_value(1, 2);
+SELECT id, values, status FROM test_lists WHERE values @> list_value(5, 6) AND status = 'inactive';
+SELECT id, values FROM test_lists WHERE EXISTS (SELECT 1 FROM test_lists t WHERE t.values @> list_value(2) AND t.id = test_lists.id);
+CREATE TABLE additional_data (ref_id INTEGER, extra_values LIST VARCHAR);
+INSERT INTO additional_data VALUES (1, list_value('apple', 'banana')), (2, list_value('cherry')), (3, list_value(NULL));
+SELECT t.id, t.values, a.extra_values FROM test_lists t JOIN additional_data a ON t.id = a.ref_id WHERE t.values @> (SELECT list_value(1));
+SELECT COUNT(*) FROM test_lists WHERE values @> list_value(NULL);
+SELECT id, values, COUNT(*) AS num_entries FROM test_lists GROUP BY id, values HAVING list_value(5) @> values;
+SELECT id, values FROM test_lists WHERE values @> list_value(NULL) OR values IS NULL;
+SELECT id, list_value(1.1, 2.2, 3.3) AS decimal_list FROM test_lists WHERE values @> list_value(5);
+CREATE TEMPORARY TABLE temp_test AS SELECT id, values FROM test_lists WHERE LENGTH(values) > 0;
+SELECT * FROM temp_test WHERE values @> list_value();

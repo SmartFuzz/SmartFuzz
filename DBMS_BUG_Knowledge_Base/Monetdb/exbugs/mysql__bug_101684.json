@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=101684",
+  "title": "Adding ROLLUP breaks group labels",
+  "description": "Adding \"WITH ROLLUP\" to a grouped report breaks labels in certain scenarios.\r\n\r\nSee below and/or\nhttps://stackoverflow.com/questions/64791459/problems-with-rollup-in-mysql-8-0-21\nHow to repeat:\nhttps://dbfiddle.uk/?rdbms=mysql_8.0&fiddle=df65003f39f8822818e7483f9972fe05\nCreate sample:\r\nCREATE TABLE TableName(Prob DOUBLE);\r\nINSERT INTO TableName ( Prob ) VALUES ( RAND());\r\nINSERT INTO TableName ( Prob ) SELECT IF(RAND()<0.1,NULL,RAND()) FROM TableName;\r\nINSERT INTO TableName ( Prob ) SELECT IF(RAND()<0.1,NULL,RAND()) FROM TableName;\r\nINSERT INTO TableName ( Prob ) SELECT IF(RAND()<0.1,NULL,RAND()) FROM TableName;\r\nINSERT INTO TableName ( Prob ) SELECT IF(RAND()<0.1,NULL,RAND()) FROM TableName;\r\nINSERT INTO TableName ( Prob ) SELECT IF(RAND()<0.1,NULL,RAND()) FROM TableName;\r\nINSERT INTO TableName ( Prob ) SELECT IF(RAND()<0.1,NULL,RAND()) FROM TableName;\r\nINSERT INTO TableName ( Prob ) SELECT IF(RAND()<0.1,NULL,RAND()) FROM TableName;\r\nINSERT INTO TableName ( Prob ) SELECT IF(RAND()<0.1,NULL,RAND()) FROM TableName;\r\nINSERT INTO TableName ( Prob ) SELECT IF(RAND()<0.1,NULL,RAND()) FROM TableName;\r\nINSERT INTO TableName ( Prob ) SELECT IF(RAND()<0.1,NULL,RAND()) FROM TableName;\r\n\r\nExpected behaviour: \r\nSELECT TRUNCATE(table_s.Prob,1) AS p,COUNT(*) AS c\r\nFROM TableName table_s\r\nGROUP BY TRUNCATE(table_s.Prob,1);\r\n\r\nUnexpected behaviour:\r\nSELECT TRUNCATE(table_s.Prob,1) AS p,COUNT(*) AS c\r\nFROM TableName table_s\r\nGROUP BY TRUNCATE(table_s.Prob,1)\r\nWITH ROLLUP;",
+  "date": "2020-11-19 15:35:00",
+  "vulnerable_version": "8.0.22",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE TestTable (ID INT PRIMARY KEY, Value DOUBLE, Category VARCHAR(50));",
+    "INSERT INTO TestTable (ID, Value, Category) VALUES (1, RANDOM(), 'A');",
+    "INSERT INTO TestTable (ID, Value, Category) SELECT ID + 1, CASE WHEN RANDOM() < 0.5 THEN NULL ELSE RANDOM() END, 'B' FROM TestTable;",
+    "SELECT TRUNCATE(Value, 1) AS rounded_value, COUNT(*) AS count FROM TestTable GROUP BY TRUNCATE(Value, 1);",
+    "SELECT TRUNCATE(Value, 1) AS rounded_value, COUNT(*) AS count FROM TestTable GROUP BY TRUNCATE(Value, 1) UNION ALL SELECT NULL, COUNT(*) FROM TestTable;"
+  ],
+  "key_bug_features": [
+    "Adding WITH ROLLUP to grouped report breaks labels"
+  ]
+}

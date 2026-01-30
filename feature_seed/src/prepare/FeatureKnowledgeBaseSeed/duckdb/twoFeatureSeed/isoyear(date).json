@@ -1,0 +1,16 @@
+{
+    "function": "isoyear(date)",
+    "operator": "/",
+    "sql_array": [
+        "CREATE TABLE test_dates (id INTEGER PRIMARY KEY, event_date DATE, value FLOAT);",
+        "INSERT INTO test_dates VALUES (1, DATE '2021-01-01', 10.5), (2, DATE '2022-01-05', NULL), (3, DATE '2023-01-01', 20.0);",
+        "SELECT isoyear(event_date) / (SELECT COUNT(*) FROM test_dates) AS iso_year_division FROM test_dates GROUP BY event_date HAVING iso_year_division IS NOT NULL;",
+        "SELECT id, event_date, value, isoyear(event_date) / CASE WHEN value IS NULL THEN 1 ELSE value END AS iso_year_per_value FROM test_dates WHERE isoyear(event_date) > 2020 ORDER BY iso_year_per_value;",
+        "SELECT event_date, AVG(COALESCE(value, 0)) / NULLIF(COUNT(value), 0) AS avg_value_ratio FROM test_dates GROUP BY isoyear(event_date) HAVING avg_value_ratio < 10.0;",
+        "SELECT id, isoyear(event_date) / (SELECT AVG(value) FROM test_dates WHERE value IS NOT NULL) AS iso_year_to_avg_value FROM test_dates WHERE event_date < CURRENT_DATE;",
+        "CREATE TABLE additional_values (id INTEGER PRIMARY KEY, num_values FLOAT, event_id INTEGER, FOREIGN KEY(event_id) REFERENCES test_dates(id));",
+        "INSERT INTO additional_values VALUES (1, 0.0, 1), (2, -5.0, 2), (3, 3.14, 3);",
+        "SELECT a.event_id, isoyear(d.event_date) / (a.num_values + 1) AS adjusted_iso_year FROM additional_values a JOIN test_dates d ON a.event_id = d.id WHERE a.num_values != 0;",
+        "WITH date_summary AS (SELECT id, isoyear(event_date) AS iso_year_value, COUNT(value) AS value_count FROM test_dates GROUP BY id, iso_year_value) SELECT id, iso_year_value, value_count / NULLIF(iso_year_value, 0) AS iso_year_ratio FROM date_summary;"
+    ]
+}

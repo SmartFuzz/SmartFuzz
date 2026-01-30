@@ -1,0 +1,10 @@
+CREATE TABLE geometry_test (id SERIAL PRIMARY KEY, shape GEOMETRY, description VARCHAR(255));
+INSERT INTO geometry_test (shape, description) VALUES ('MULTIPOINT(1 1, 2 2)', 'Test MULTIPOINT Geometry');
+INSERT INTO geometry_test (shape, description) VALUES ('GEOMETRYCOLLECTION(POINT(1 1), LINESTRING(0 0, 1 1))', 'Test Geometry Collection with Point and Line');
+INSERT INTO geometry_test (shape, description) VALUES (NULL, 'NULL entry for shape');
+SELECT id, ST_NumGeometries(shape), description FROM geometry_test WHERE ST_NumGeometries(shape) SIMILAR TO '1|2';
+SELECT id, shape, bif:GeometryType(shape), ST_NumGeometries(shape) AS geom_count FROM geometry_test WHERE shape IS NOT NULL AND bif:GeometryType(shape) SIMILAR TO 'MULTI%';
+SELECT id, ST_NumGeometries(shape) AS geom_count FROM geometry_test WHERE description NOT SIMILAR TO '%NULL%' GROUP BY id HAVING geom_count > 1;
+SELECT AVG(ST_NumGeometries(shape)) AS average_geom_count FROM geometry_test WHERE description SIMILAR TO '%Geometry%' GROUP BY description;
+SELECT id, shape, bif:GeometryType(shape), ST_NumGeometries(shape), CASE WHEN ST_NumGeometries(shape) IS NULL THEN 'No Geometries' ELSE 'Has Geometries' END AS geom_status FROM geometry_test WHERE description SIMILAR TO '%MULTI%';
+SELECT id, ST_NumGeometries(shape) AS geom_count FROM geometry_test WHERE shape IS NOT NULL AND geom_count >= (SELECT AVG(ST_NumGeometries(shape)) FROM geometry_test) ORDER BY geom_count DESC;

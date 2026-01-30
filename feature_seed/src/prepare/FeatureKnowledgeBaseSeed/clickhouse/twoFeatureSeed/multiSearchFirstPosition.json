@@ -1,0 +1,16 @@
+{
+    "function": "multiSearchFirstPosition",
+    "operator": "a GLOBAL IN ...",
+    "sql_array": [
+        "CREATE TABLE test_strings (id UInt32, haystack String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_strings VALUES (1, 'Hello World'), (2, 'Fuzzy Logic'), (3, 'Clickhouse'), (4, 'MultiSearch Test');",
+        "SELECT id, multiSearchFirstPosition(haystack, ['lo', 'Cli', 'Test']) AS pos FROM test_strings WHERE id GLOBAL IN (SELECT id FROM test_strings WHERE multiSearchFirstPosition(haystack, ['Hello', 'Fuzzy']) > 0);",
+        "CREATE TABLE test_numbers (id UInt32, number Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_numbers VALUES (1, 1.0), (2, NULL), (3, 2.5), (4, 3.14159);",
+        "SELECT n.id, n.number, multiSearchFirstPosition(CAST(n.number AS String), ['1', '2']), n.number GLOBAL IN (SELECT n2.number FROM test_numbers AS n2 WHERE n2.number IS NOT NULL) AS is_in FROM test_numbers AS n;",
+        "CREATE TABLE test_mixed (id UInt32, haystack String, number Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_mixed VALUES (1, '', 0.0), (2, 'Boundary Test', 1.5), (3, 'Hello', NULL), (4, 'Extreme Case', infinity());",
+        "SELECT id, multiSearchFirstPosition(haystack, ['Test', 'Extreme']), multiSearchFirstPosition(haystack, ['Boundary']) AS boundary_pos FROM test_mixed HAVING boundary_pos > 0 GLOBAL IN (SELECT number FROM test_numbers WHERE number IS NOT NULL);",
+        "WITH (SELECT id FROM test_numbers WHERE number < 10) AS valid_ids SELECT m.id, multiSearchFirstPosition(haystack, ['Hello', 'Boundary']) AS match_position FROM test_mixed AS m WHERE m.id GLOBAL IN valid_ids AND m.haystack <> '' ORDER BY match_position DESC;"
+    ]
+}

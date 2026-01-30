@@ -1,0 +1,15 @@
+CREATE TABLE timestamps (id INTEGER PRIMARY KEY, ts TIMESTAMPTZ);
+INSERT INTO timestamps VALUES (1, '2022-11-07 08:43:04.123456+00'::TIMESTAMPTZ);
+INSERT INTO timestamps VALUES (2, '2000-01-01 00:00:00+00'::TIMESTAMPTZ);
+INSERT INTO timestamps VALUES (3, '1970-01-01 00:00:00+00'::TIMESTAMPTZ);
+INSERT INTO timestamps VALUES (4, '9999-12-31 23:59:59.999999+00'::TIMESTAMPTZ);
+SELECT epoch_ns(ts) FROM timestamps WHERE id = 1;
+SELECT epoch_ns(ts) AS nanoseconds FROM timestamps WHERE id IN (1, 2);
+SELECT t1.id, epoch_ns(t2.ts) AS nanoseconds FROM timestamps t1 JOIN timestamps t2 ON t1.id = t2.id WHERE t1.id = 4;
+SELECT epoch_ns(ts) + 1000000000 AS adjusted_nanoseconds FROM timestamps WHERE ts IS NOT NULL;
+SELECT IF(epoch_ns(ts) > 0, 'Positive Epoch', 'Non-Positive Epoch') AS epoch_status FROM timestamps;
+WITH temp AS (SELECT epoch_ns(ts) AS ns FROM timestamps) SELECT AVG(ns) FROM temp;
+CREATE TABLE other_data (data_id INTEGER PRIMARY KEY, ts TIMESTAMPTZ);
+INSERT INTO other_data VALUES (1, '2023-01-01 10:30:00+00'::TIMESTAMPTZ);
+SELECT t.id, epoch_ns(t.ts) AS ns, o.data_id FROM timestamps t LEFT JOIN other_data o ON t.id = o.data_id WHERE epoch_ns(t.ts) > (SELECT MAX(epoch_ns(ts)) FROM other_data);
+SELECT DISTINCT epoch_ns(ts) FROM timestamps HAVING COUNT(ts) > 1;

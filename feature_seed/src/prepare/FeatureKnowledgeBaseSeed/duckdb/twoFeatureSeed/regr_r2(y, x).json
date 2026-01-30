@@ -1,0 +1,16 @@
+{
+    "function": "regr_r2(y, x)",
+    "operator": "+",
+    "sql_array": [
+        "CREATE TABLE test_data (id INTEGER PRIMARY KEY, value_y DOUBLE, value_x DOUBLE, event_date DATE);",
+        "INSERT INTO test_data VALUES (1, 2.5, 3.5, DATE '2000-01-01'), (2, NULL, 4.5, DATE '2000-01-05'), (3, 3.0, NULL, DATE '2000-01-10'), (4, 4.5, 3.0, DATE '2000-01-15');",
+        "SELECT regr_r2(value_y, value_x + INTERVAL 3 DAY) AS correlation_value FROM test_data WHERE event_date > DATE '2000-01-01' GROUP BY id HAVING correlation_value IS NOT NULL;",
+        "WITH aggregated AS (SELECT COUNT(*) AS cnt, regr_r2(value_y, value_x) OVER () AS r2 FROM test_data) SELECT * FROM aggregated WHERE cnt > 1;",
+        "SELECT regr_r2(value_y, value_x) AS corr FROM test_data ORDER BY event_date + INTERVAL (CASE WHEN value_y IS NOT NULL THEN 5 ELSE 0 END) DAY;",
+        "CREATE TABLE additional_data (identifier INTEGER PRIMARY KEY, numeric_val DOUBLE, date_stamp DATE);",
+        "INSERT INTO additional_data VALUES (1, 1.5, DATE '2020-01-01'), (2, 2.0, DATE '2020-02-01'), (3, 3.5, DATE '2000-03-02');",
+        "SELECT a.identifier, regr_r2(a.numeric_val, b.value_x + INTERVAL (SELECT COUNT(*) FROM test_data) DAY) AS correlation_corr FROM additional_data a JOIN test_data b ON a.identifier = b.id WHERE b.value_y IS NOT NULL GROUP BY a.identifier HAVING correlation_corr IS NOT NULL;",
+        "SELECT regr_r2(COALESCE(value_y, 0), COALESCE(value_x, 0) + INTERVAL 7 DAY) FROM test_data WHERE value_y IS NOT NULL AND event_date <= DATE '2000-01-10';",
+        "SELECT event_date, COUNT(*) AS record_count, regr_r2(value_y, value_x) AS correlation FROM test_data WHERE event_date BETWEEN DATE '2000-01-01' AND DATE '2000-01-15' GROUP BY event_date HAVING record_count > 1;"
+    ]
+}

@@ -1,0 +1,13 @@
+CREATE TABLE test_hosts (id UInt32, host_name String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_hosts VALUES (1, 'server1'), (2, 'server2'), (3, 'server3');
+SELECT id, host_name FROM test_hosts WHERE host_name NOT LIKE hostName();
+SELECT id FROM (SELECT id, host_name FROM test_hosts WHERE host_name NOT LIKE 'server%') AS temp WHERE id > 1;
+SELECT id, COUNT(*) FROM test_hosts GROUP BY id HAVING COUNT(*) NOT LIKE length(host_name);
+CREATE TABLE temp_hosts AS SELECT hostName() AS current_host GROUP BY current_host;
+INSERT INTO temp_hosts SELECT hostName() WHERE NOT current_host NOT LIKE 'server1';
+SELECT id, host_name FROM test_hosts WHERE (host_name NOT LIKE 'server%' AND id NOT IN (SELECT id FROM temp_hosts)) ORDER BY id;
+CREATE TEMPORARY TABLE fuzz_edge_cases (value String, numValue Nullable(UInt32)) ENGINE = Memory;
+INSERT INTO fuzz_edge_cases VALUES ('', NULL), ('boundary_case', 0), ('test%', 1), ('extreme_value', 4294967295);
+SELECT * FROM fuzz_edge_cases WHERE numValue IS NULL NOT LIKE hostName();
+SELECT value FROM fuzz_edge_cases WHERE value NOT LIKE hostName() AND numValue < 2 GROUP BY value HAVING count(value) > 0;
+SELECT hostName(), id, COUNT(*) FROM test_hosts WHERE host_name NOT LIKE 'server3' GROUP BY hostName(), id ORDER BY COUNT(*) DESC;

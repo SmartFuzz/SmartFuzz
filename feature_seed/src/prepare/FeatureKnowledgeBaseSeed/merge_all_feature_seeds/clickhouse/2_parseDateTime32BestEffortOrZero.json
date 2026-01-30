@@ -1,0 +1,11 @@
+CREATE TABLE test_dates (id UInt32, dateString String, intValue Int32, dateTimeValue DateTime32, nullableValue Nullable(Int32)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_dates VALUES (1, '2023-10-01T10:00:00Z', 100, parseDateTime32BestEffortOrZero('2023-10-01 10:00:00'), NULL), (2, 'invalid-date', 200, parseDateTime32BestEffortOrZero('invalid-date'), 300), (3, '', 300, parseDateTime32BestEffortOrZero(''), NULL);
+SELECT id, dateString, intValue, dateTimeValue, nullableValue, dateTimeValue IN (parseDateTime32BestEffortOrZero('not-a-date'), 0) AS isZeroDate FROM test_dates WHERE intValue >= 200 AND dateTimeValue != 0;
+SELECT id, dateString, intValue, dateTimeValue, nullableValue FROM test_dates WHERE parseDateTime32BestEffortOrZero(dateString) IN (0, '2023-10-01 10:00:00') AND (nullableValue IS NULL OR intValue > 150);
+SELECT count(*) AS total FROM (SELECT id, parseDateTime32BestEffortOrZero(dateString) AS validDate FROM test_dates WHERE dateTimeValue IN (0, parseDateTime32BestEffortOrZero('2023-10-01 10:00:00')) GROUP BY validDate HAVING validDate != 0) AS subquery;
+CREATE TABLE second_dates (id UInt32, relatedId UInt32, anotherDateString String, anotherIntValue Int32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO second_dates VALUES (1, 1, '2023-10-01T10:00:00Z', 500), (2, 1, 'invalid-date', 600), (3, 1, '', 700);
+SELECT td.id, sd.anotherIntValue, parseDateTime32BestEffortOrZero(sd.anotherDateString) IN (0, parseDateTime32BestEffortOrZero(td.dateString)) AS isMatchingDate FROM test_dates td JOIN second_dates sd ON td.id = sd.relatedId WHERE sd.anotherIntValue IS NOT NULL;
+SELECT id, dateTimeValue, COUNT() AS count FROM test_dates WHERE (dateTimeValue IN (parseDateTime32BestEffortOrZero('invalid-date'), 0)) OR (nullableValue IS NULL) GROUP BY id, dateTimeValue HAVING count > 0 ORDER BY count DESC;
+ALTER TABLE test_dates ADD COLUMN newColumn DateTime32;
+INSERT INTO test_dates (id, dateString, intValue, dateTimeValue, nullableValue, newColumn) VALUES (4, '2023-10-02 11:00:00', 250, parseDateTime32BestEffortOrZero('2023-10-02 11:00:00'), NULL, parseDateTime32BestEffortOrZero('2023-10-02 11:00:00'));

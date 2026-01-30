@@ -1,0 +1,24 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/84981",
+  "title": "Lightweight updates fail when a table has a MATERIALIZED column whose value depends on an EPHEMERAL column",
+  "vulnerable_database": "ClickHouse",
+  "date": "2025-08-03T22:37:20Z",
+  "vulnerable_version": "",
+  "description": "### Company or project name\nn/a\n### Describe the unexpected behaviour\nAttempting to perform a lightweight update on a table with a `MATERIALIZED` column which depends on an `EPHEMERAL` column results in an error that the `EPHEMERAL` column does not exist. This is unexpected since the value of the `EPHEMERAL` column is not relevant for the update being performed.\n### Which ClickHouse versions are affected?\n25.7\n### How to reproduce\nhttps://fiddle.clickhouse.com/8d3f4fc2-a3f3-47c9-b3e4-e394c1f33dd6\n```\nCREATE TABLE t1 (c1 String EPHEMERAL, c2 String MATERIALIZED tryBase64Decode(c1), c3 BOOLEAN)\nENGINE=MergeTree\nORDER BY tuple()\nSETTINGS enable_block_number_column=1, enable_block_offset_column=1;\nINSERT INTO t1(c1, c3) VALUES ('SGVsbG8gV29ybGQh', true);\nSET asterisk_include_materialized_columns = 1;\nSELECT * FROM t1;\nSET allow_experimental_lightweight_update = 1;\nUPDATE t1 SET c3 = false WHERE c2='Hello World!';\nSELECT * FROM t1;\n```\n### Expected behavior\nLightweight update should complete without error.\n### Error message and/or stacktrace\n```\nReceived exception from server (version 25.7.1):\nCode: 47. DB::Exception: Received from localhost:9000. DB::Exception: Missing columns: 'c1' while processing: 'tryBase64Decode(c1)', required columns: 'c1', available columns: '_block_number' '_row_exists' '_part_data_version' '_part_offset' '_disk_name' '_sample_factor' '_part_starting_offset' '_part_index' '_part' '_part_granule_offset' '_block_offset' '_part_uuid' 'c3' '_partition_id' 'c2'. (UNKNOWN_IDENTIFIER)\n(query: UPDATE t1 SET c3 = false WHERE c2='Hello World!';)\n```\n### Additional context\nReplacing the `MATERIALIZED` column with a `DEFAULT` column eliminates the error, but this changes the semantics of the column.\nThis appears to be the same failure mode as #68839 and #71793.",
+  "poc": [
+    "CREATE TABLE t1 (c1 String EPHEMERAL, c2 String MATERIALIZED tryBase64Decode(c1), c3 BOOLEAN)\nENGINE=MergeTree\nORDER BY tuple()\nSETTINGS enable_block_number_column=1, enable_block_offset_column=1;",
+    "INSERT INTO t1(c1, c3) VALUES ('SGVsbG8gV29ybGQh', true);",
+    "update = 1;",
+    "UPDATE t1 SET c3 = false WHERE c2='Hello World!';"
+  ],
+  "key_bug_features": [
+    "Lightweight update fails with MATERIALIZED column depending on EPHEMERAL column"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t2 (c1 String EPHEMERAL, c2 String MATERIALIZED tryBase64Decode(c1), c3 Int32, c4 Float64 DEFAULT 0.0) ENGINE=MergeTree ORDER BY tuple();",
+    "INSERT INTO t2(c1, c3) VALUES ('SGVsbG8gV29ybGQh', 1);",
+    "SET allow_experimental_lightweight_update = 1;",
+    "UPDATE t2 SET c3 = 0 WHERE c2 = 'Hello World!';",
+    "SELECT * FROM t2 WHERE c3 IS NOT NULL;"
+  ]
+}

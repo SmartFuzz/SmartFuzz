@@ -1,0 +1,9 @@
+CREATE TABLE test_table (id UInt32, setting_value String, value_to_check Int32, created_at DateTime);
+INSERT INTO test_table VALUES (1, 'custom_setting1', 10, now()), (2, 'custom_setting2', NULL, now()), (3, 'custom_setting3', 5, now());
+CREATE TABLE second_table (group_id UInt32, group_value Int32);
+INSERT INTO second_table VALUES (1, 15), (1, 20), (2, 5);
+SELECT id, getSettingOrDefault(setting_value, 'default_value') AS setting_result FROM test_table WHERE value_to_check BETWEEN getSettingOrDefault('custom_setting1', 1) AND getSettingOrDefault('custom_setting2', 30);
+SELECT group_id, AVG(value_to_check) AS avg_value FROM test_table INNER JOIN second_table ON getSettingOrDefault(setting_value, 'group_default') BETWEEN group_value - 5 AND group_value + 5 GROUP BY group_id HAVING avg_value > 0;
+SELECT id, getSettingOrDefault('custom_setting_unknown', NULL) AS unknown_setting, created_at FROM test_table WHERE created_at BETWEEN now() - INTERVAL 1 DAY AND now();
+SELECT id, IF(getSettingOrDefault(setting_value, 'other_setting') IS NOT NULL, value_to_check, NULL) AS conditional_value FROM test_table WHERE value_to_check BETWEEN getSettingOrDefault('custom_setting3', 0) AND 10;
+SELECT id, value_to_check FROM test_table WHERE setting_value IN (SELECT getSettingOrDefault(setting_value, 'fallback') FROM second_table WHERE group_value < 30);

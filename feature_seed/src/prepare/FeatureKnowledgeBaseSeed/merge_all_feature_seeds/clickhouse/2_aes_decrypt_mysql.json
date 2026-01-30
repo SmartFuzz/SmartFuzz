@@ -1,0 +1,12 @@
+CREATE TABLE test_decrypt (id UInt32, ciphertext String, key String, iv String, expected_plaintext String);
+INSERT INTO test_decrypt VALUES (1, unhex('24E9E4966469'), '123456789101213141516171819202122', 'iviviviviviviviv123456', 'Secret');
+CREATE TABLE test_op_combinations (data String);
+INSERT INTO test_op_combinations VALUES ('abc'), (NULL), (''), ('AES_ENCRYPTED_DATA');
+SELECT id, aes_decrypt_mysql('aes-256-ofb', ciphertext, key, iv) AS decrypted_text FROM test_decrypt WHERE aes_decrypt_mysql('aes-256-ofb', ciphertext, key, iv) == expected_plaintext;
+SELECT COUNT(*) FROM test_op_combinations WHERE (data == NULL) OR (data == 'abc');
+SELECT id, expected_plaintext FROM test_decrypt WHERE aes_decrypt_mysql('aes-256-ofb', ciphertext, key, iv) == 'Secret' AND (expected_plaintext IS NOT NULL);
+SELECT id, aes_decrypt_mysql('aes-256-ofb', unhex('24E9E4966469'), key, iv) AS decrypted_text FROM test_decrypt GROUP BY decrypted_text HAVING decrypted_text == 'Secret';
+SELECT aes_decrypt_mysql('aes-256-ofb', ciphertext, '123456789101213141516171819202122', 'iviviviviviviviv123456') AS decrypted FROM test_decrypt WHERE id = 1 UNION ALL SELECT aes_decrypt_mysql('aes-256-ofb', unhex('24E9E4966469'), key, iv) FROM test_decrypt HAVING decrypted == expected_plaintext;
+CREATE TABLE edge_cases (edge_value Nullable(Int32), description String);
+INSERT INTO edge_cases VALUES (NULL, 'Null value'), (0, 'Zero'), (-1, 'Negative one'), (1, 'Positive one'), (2147483647, 'Int32 max');
+SELECT edge_value, aes_decrypt_mysql('aes-256-ofb', unhex('24E9E4966469'), key, iv) AS decrypted FROM edge_cases WHERE edge_value == 0 OR edge_value IS NULL;

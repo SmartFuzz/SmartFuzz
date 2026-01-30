@@ -1,0 +1,13 @@
+CREATE TABLE test_table (id UInt32, value String, decimal_value Nullable(Decimal(18, 5))) ENGINE = Memory;
+INSERT INTO test_table VALUES (1, '1234.56789', toDecimal64OrNull('1234.56789', 5)), (2, 'NaN', toDecimal64OrNull('NaN', 5)), (3, 'Inf', toDecimal64OrNull('Inf', 5)), (4, '0.0001', toDecimal64OrNull('0.0001', 5));
+SELECT id, value, EXISTS(SELECT 1 FROM test_table WHERE decimal_value IS NOT NULL) AS has_valid_decimal FROM test_table WHERE EXISTS(SELECT 1 FROM test_table WHERE id = 1 AND toDecimal64OrNull(value, 5) IS NOT NULL);
+SELECT id, value, toDecimal64OrNull(value, 5) AS converted_value FROM test_table WHERE EXISTS(SELECT value FROM test_table WHERE toDecimal64OrNull(value, 5) IS NULL);
+SELECT (COUNT(*) > 0) AS has_values FROM (SELECT * FROM test_table WHERE EXISTS(SELECT 1 FROM numbers(10) WHERE number < 10 AND value LIKE '%1%')) AS subquery;
+SELECT A.id, A.value, (SELECT toDecimal64OrNull(A.value, 5) * 2 FROM test_table A2 WHERE A2.id = A.id) AS double_converted FROM test_table A WHERE EXISTS(SELECT 1 FROM test_table B WHERE B.decimal_value IS NOT NULL) GROUP BY id, value HAVING double_converted > 0;
+SELECT EXISTS(SELECT 1 FROM test_table WHERE toDecimal64OrNull(value, 5) IS NOT NULL AND EXISTS(SELECT 1 FROM test_table C WHERE C.value LIKE '4%'));
+CREATE TABLE additional_table (num UInt32, temp_value String) ENGINE = Memory;
+INSERT INTO additional_table VALUES (1, '5.75'), (2, 'Invalid'), (3, '0.99999999999999999999');
+SELECT A.num, EXISTS(SELECT 1 FROM additional_table B WHERE toDecimal64OrNull(B.temp_value, 5) IS NULL AND A.num = B.num) AS has_invalid FROM additional_table A GROUP BY A.num HAVING has_invalid = 1;
+SELECT EXISTS(SELECT 1 FROM test_table WHERE EXISTS(SELECT * FROM additional_table WHERE toDecimal64OrNull(temp_value, 5) IS NULL));
+SELECT toDecimal64OrNull('1000000000000000000', 0) AS overflow_test, toDecimal64OrNull('', 0) AS empty_string_test, EXISTS(SELECT 1 FROM numbers(100) WHERE number > 90) AS test_existence;
+SELECT COUNT() FROM test_table WHERE EXISTS(SELECT value FROM test_table WHERE toDecimal64OrNull(value, 5) IS NOT NULL AND decimal_value IS NULL) HAVING COUNT() > 0;

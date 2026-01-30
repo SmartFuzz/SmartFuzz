@@ -1,0 +1,14 @@
+CREATE DATABASE test_db;
+CREATE TABLE test_db.test_table (id UInt64, name String, value Float64) ENGINE = MergeTree() ORDER BY id;
+CREATE NAMED COLLECTION mysql_creds AS host = 'localhost', port = 3306, database = 'test_db', user = 'bayonet', password = '123';
+INSERT INTO FUNCTION mysql('localhost:3306', 'test_db', 'test_table', 'bayonet', '123', 1) (id, name, value) VALUES (1, 'item1', 10.5);
+INSERT INTO FUNCTION mysql('localhost:3306', 'test_db', 'test_table', 'bayonet', '123', 0, 'UPDATE value = value + 1') (id, name, value) VALUES (1, 'item1_updated', 11.5);
+SELECT * FROM mysql(mysql_creds, table='test_table') WHERE value > 10;
+SELECT A.id, B.value FROM mysql(mysql_creds, table='test_table') AS A JOIN (SELECT id, COUNT(*) as cnt FROM mysql(mysql_creds, table='test_table') GROUP BY id) AS B ON A.id = B.id WHERE A.value >= 10;
+INSERT INTO FUNCTION mysql('localhost:3306', 'test_db', 'test_table', 'bayonet', '123', 0, 'UPDATE value = value + 1') SELECT id, name, value FROM mysql(mysql_creds, table='test_table') WHERE id IN (SELECT id FROM mysql(mysql_creds, table='test_table') WHERE name LIKE 'item%');
+CREATE TABLE test_db.test_copy (id UInt64, name String, value Float64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_db.test_copy SELECT * FROM mysql('localhost:3306', 'test_db', 'test_table', 'bayonet', '123') WHERE id % 2 = 0;
+CREATE TABLE test_db.duplicate_test (id UInt64, name String, value Float64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO FUNCTION mysql('localhost:3306', 'test_db', 'duplicate_test', 'bayonet', '123', 0, 'UPDATE value = 0') VALUES (1, 'duplicate_item', 100.0);
+SELECT COUNT(*) FROM mysql(mysql_creds, table='duplicate_test') WHERE id IN (SELECT id FROM mysql(mysql_creds, table='test_table') WHERE value > (SELECT avg(value) FROM mysql(mysql_creds, table='test_table'));
+SELECT * FROM mysql(mysql_creds, table='test_table') WHERE id IN (SELECT id FROM mysql(mysql_creds, table='duplicate_test')) AND value < (SELECT MIN(value) FROM mysql(mysql_creds, table='test_table'));

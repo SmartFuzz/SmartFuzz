@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/91595",
+  "title": "uniqThetaIntersect does not works for empty merge states",
+  "description": "### Company or project name\nSummarization\n### Describe what's wrong\nI am trying to merge the theta sketches based on some predicate, If the predicate results in no sketch being selected then intersect returns the count from first sketch, wherein the result should be 0.\nFiddle [Link](https://fiddle.clickhouse.com/090ba1db-65cc-4425-b3f4-4939579990a7)\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\n```sql\nCREATE TABLE TEST_AGG(\nCID UInt32,\nUSERS AggregateFunction(uniqTheta, UInt32)\n) ENGINE = AggregatingMergeTree() ORDER BY CID;\nINSERT INTO TEST_AGG VALUES (1, arrayReduce('uniqThetaState', [1, 2]::Array(UInt32))), (2, arrayReduce('uniqThetaState', [2, 3]::Array(UInt32)));\nSELECT finalizeAggregation(\nuniqThetaIntersect(\nuniqThetaMergeStateIf(USERS, CID = 1),\nuniqThetaMergeStateIf(USERS, CID = 3)\n)\n) FROM TEST_AGG;\n```\n### Expected behavior\nThe final select query should return 0 as the result, because there was an empty state to intersect with it.\n### Error message and/or stacktrace\n_No response_\n### Additional context\n_No response_",
+  "date": "2025-12-05T17:10:17Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE TEST_AGG_1(CID INT, USERS BLOB);",
+    "INSERT INTO TEST_AGG_1 VALUES (1, '0x0102'), (2, '0x0203');",
+    "CREATE TABLE TEST_AGG_2(CID INT, USERS BLOB);",
+    "INSERT INTO TEST_AGG_2 VALUES (3, '0x0405'), (4, '0x0607');",
+    "SELECT COUNT(*) FROM TEST_AGG_1 WHERE CID = 1 AND USERS IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "uniqThetaIntersect fails with empty merge states"
+  ]
+}

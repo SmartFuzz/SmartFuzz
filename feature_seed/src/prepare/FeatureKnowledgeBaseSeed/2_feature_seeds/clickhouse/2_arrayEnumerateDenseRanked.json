@@ -1,0 +1,10 @@
+CREATE TABLE test_array (id UInt32, arr_array Array(Int32), nullable_value Nullable(Int32));
+INSERT INTO test_array VALUES (1, [10, 20, 10, 30], NULL), (2, [30, 20, 10], 2), (3, [], 5), (4, [NULL, NULL], NULL);
+SELECT arrayEnumerateDenseRanked(1, arr_array, 1) AS ranked, nullable_value FROM test_array WHERE ranked IS NULL;
+SELECT a.id, arrayEnumerateDenseRanked(2, a.arr_array, 2) AS ranked FROM test_array AS a JOIN (SELECT id FROM test_array WHERE nullable_value IS NULL) AS b ON a.id = b.id;
+SELECT arrayEnumerateDenseRanked(1, arr, 1) AS dense_rank FROM (SELECT arr_array AS arr FROM test_array WHERE nullable_value IS NOT NULL) WHERE dense_rank IS NULL HAVING COUNT(*) > 0;
+SELECT id, arrayEnumerateDenseRanked(1, arr_array, 2) FROM test_array GROUP BY id HAVING COUNT(IF(nullable_value IS NULL, 1, NULL)) > 0;
+SELECT id, arrayEnumerateDenseRanked(1, arr_array, 2) FROM (SELECT id, arr_array FROM test_array) AS subquery WHERE (SELECT COUNT(*) FROM test_array WHERE nullable_value IS NULL) IS NULL;
+CREATE TABLE temp_test (temp_array Array(DateTime), temporal Nullable(DateTime));
+INSERT INTO temp_test VALUES ([now(), now(), toDateTime('2023-01-01 00:00:00')], NULL), ([toDateTime('2022-12-31 23:59:59')], toDateTime('2023-01-01 00:00:00'));
+SELECT arrayEnumerateDenseRanked(1, temp_array, 1) AS temporal_ranked FROM temp_test WHERE temporal IS NULL;

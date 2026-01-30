@@ -1,0 +1,14 @@
+CREATE TABLE test_timescale (id UInt32, event_time DateTime64(9));
+INSERT INTO test_timescale VALUES (1, now64(9)), (2, now64(6)), (3, now64(3));
+SELECT id, event_time FROM test_timescale;
+SELECT now64() AS current_time, event_time FROM test_timescale WHERE event_time < now64(3);
+SELECT id, now64(0) AS current_time, event_time - now64(0) AS time_difference FROM test_timescale;
+CREATE TABLE nested_test (id UInt32, nested_time DateTime64(3));
+INSERT INTO nested_test SELECT id, now64(3) FROM test_timescale;
+SELECT * FROM nested_test WHERE nested_time > (SELECT now64(9));
+CREATE TABLE timezones_test (timezone String, event_time DateTime64(3));
+INSERT INTO timezones_test VALUES ('Asia/Istanbul', now64(3, 'Asia/Istanbul')), ('Europe/London', now64(3, 'Europe/London'));
+SELECT timezone, event_time FROM timezones_test WHERE event_time BETWEEN now64(3, 'Asia/Istanbul') - INTERVAL 1 HOUR AND now64(3, 'Asia/Istanbul') + INTERVAL 1 HOUR;
+SELECT t.id, t.event_time, tz.event_time AS timezone_event_time FROM test_timescale AS t JOIN timezones_test AS tz ON t.id = tz.timezone;
+SELECT id, event_time, now64(3) AS query_time FROM test_timescale WHERE event_time > now64(3);
+SELECT now64(9) AS high_precision_time, (SELECT COUNT(*) FROM test_timescale WHERE event_time < high_precision_time) AS count_before_now64;

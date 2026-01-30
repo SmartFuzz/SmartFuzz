@@ -1,0 +1,17 @@
+{
+    "function": "seriesDecomposeSTL",
+    "operator": "a NOT LIKE s",
+    "sql_array": [
+        "CREATE TABLE time_series_data (id UInt32, values Array(Float64), period UInt32) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO time_series_data VALUES (1, [10.1, 20.45, 40.34, 10.1, NULL, 20.45, 40.34, 10.1, 20.45, 40.34, 10.1, 20.45], 3);",
+        "SELECT id, seriesDecomposeSTL(values, period) AS components FROM time_series_data WHERE id NOT LIKE '2';",
+        "SELECT id, (SELECT count() FROM time_series_data WHERE NOT (id IN (SELECT id FROM time_series_data WHERE values[1] NOT LIKE '10.1'))) AS not_like_check, seriesDecomposeSTL(values, period) AS components FROM time_series_data GROUP BY id HAVING not_like_check > 0;",
+        "WITH (SELECT seriesDecomposeSTL(values, period) FROM time_series_data WHERE period > 2) AS stl_components SELECT arrayJoin(stl_components) AS component, id FROM time_series_data WHERE component[3] NOT LIKE '20.45';",
+        "CREATE TABLE temp_series AS SELECT id, arrayJoin(seriesDecomposeSTL(values, period)) AS decomposed FROM time_series_data;",
+        "INSERT INTO temp_series VALUES (2, [0, 0, NULL, -100], 2);",
+        "SELECT id, countIf(decomposed[1] NOT LIKE 'NULL') AS valid_seasonal FROM temp_series GROUP BY id HAVING valid_seasonal > 1;",
+        "ALTER TABLE time_series_data ADD COLUMN description String;",
+        "UPDATE time_series_data SET description = 'Test' WHERE id = 1;",
+        "DROP TABLE temp_series;"
+    ]
+}

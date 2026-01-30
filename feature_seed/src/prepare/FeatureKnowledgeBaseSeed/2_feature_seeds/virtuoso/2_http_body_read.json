@@ -1,0 +1,15 @@
+CREATE TABLE soap_requests (id INT PRIMARY KEY, payload TEXT, processed BOOLEAN DEFAULT FALSE);
+INSERT INTO soap_requests (id, payload) VALUES (1, '<document>abc</document>');
+INSERT INTO soap_requests (id, payload) VALUES (2, NULL);
+INSERT INTO soap_requests (id, payload) VALUES (3, '');
+SELECT http_body_read() AS body_output, bif:contains(http_body_read(), '<document>') AS contains_document FROM soap_requests WHERE processed IS NULL;
+SELECT sr.id, sr.payload FROM soap_requests sr WHERE sr.payload IS NOT NULL AND bif:contains(sr.payload, 'abc');
+SELECT COUNT(*) FROM (SELECT sr.id, bif:contains(http_body_read(), 'nonexistent') AS match FROM soap_requests sr) AS subquery WHERE match = TRUE;
+SELECT sr.id, SUM(CASE WHEN bif:contains(sr.payload, 'error') THEN 1 ELSE 0 END) AS error_count FROM soap_requests sr GROUP BY sr.id HAVING error_count > 0;
+SELECT sr1.id, sr1.payload FROM soap_requests sr1 JOIN soap_requests sr2 ON bif:contains(sr1.payload, 'abc') AND sr1.id <> sr2.id WHERE sr2.payload IS NOT NULL;
+SELECT MAX(LENGTH(sr.payload)) AS max_length FROM soap_requests sr WHERE bif:contains(sr.payload, 'abc') AND sr.payload <> '';
+CREATE TABLE logs (log_id INT PRIMARY KEY, log_message TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO logs (log_id, log_message) VALUES (1, http_body_read());
+DROP TABLE IF EXISTS temp_requests;
+CREATE TEMPORARY TABLE temp_requests AS SELECT * FROM soap_requests WHERE processed IS NULL;
+SELECT payload FROM temp_requests WHERE bif:contains(payload, 'abc') AND CHAR_LENGTH(payload) > 5;

@@ -1,0 +1,10 @@
+CREATE TABLE test_dates (id UInt32, year Int32, month Int32, day Int32, hour Int32, minute Int32, second Int32, precision Int32, value DateTime64(9));
+INSERT INTO test_dates (id, year, month, day, hour, minute, second, precision, value) VALUES (1, 2023, 5, 15, 10, 30, 45, 779, makeDateTime64(2023, 5, 15, 10, 30, 45, 779, 9));
+INSERT INTO test_dates (id, year, month, day, hour, minute, second, precision, value) VALUES (2, 2024, 2, 29, 23, 59, 59, 999, makeDateTime64(2024, 2, 29, 23, 59, 59, 999, 3));
+SELECT * FROM test_dates WHERE value = ALL (SELECT makeDateTime64(year, month, day, hour, minute, second, precision) FROM test_dates WHERE id = 1);
+SELECT id, makeDateTime64(year, month, day, hour, minute, second, precision) AS generated_value FROM test_dates GROUP BY id HAVING generated_value IS NOT NULL;
+CREATE TABLE temp_dates AS SELECT id, year, month, day FROM test_dates WHERE year >= 2000;
+INSERT INTO temp_dates SELECT id, year, month + 1, day FROM test_dates WHERE year < 2000;
+SELECT id, value FROM test_dates WHERE (makeDateTime64(year, month, day, hour, minute, second, precision) = ALL (SELECT makeDateTime64(year, month, day, hour, minute, second, precision) FROM temp_dates WHERE id = 1)) AND (value IS NOT NULL);
+SELECT id, COUNT(*) AS count FROM test_dates GROUP BY id HAVING count > 1 AND makeDateTime64(year, month, day, hour, minute, second, precision) = (SELECT MAX(value) FROM test_dates);
+SELECT id, makeDateTime64(year, month, day, hour, minute, second, precision) AS precision_time FROM test_dates WHERE precision_time = ALL (SELECT MAX(value) FROM test_dates WHERE year = 2023) AND (year IN (SELECT year FROM temp_dates));

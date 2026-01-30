@@ -1,0 +1,16 @@
+{
+    "function": "DB.DBA.RDF_GRAPH_USER_PERMS_GET",
+    "operator": "bif:st_intersects",
+    "sql_array": [
+        "CREATE TABLE users (uname VARCHAR(255) PRIMARY KEY, permissions INTEGER, geom GEOMETRY);",
+        "CREATE TABLE graphs (graph_iri VARCHAR(255) PRIMARY KEY);",
+        "INSERT INTO users (uname, permissions, geom) VALUES ('Anna', 1, ST_GeomFromText('POINT(1 1)', 4326)), ('Bob', 0, ST_GeomFromText('POINT(2 2)', 4326));",
+        "INSERT INTO graphs (graph_iri) VALUES ('http://example.com/Anna/system'), ('http://example.com/Bob/system');",
+        "SELECT DB.DBA.RDF_GRAPH_USER_PERMS_GET('http://example.com/Anna/system', uname) AS user_permissions FROM users u WHERE u.permissions IS NOT NULL AND bif:st_intersects(u.geom, ST_GeomFromText('POINT(1 1)', 4326));",
+        "SELECT u.uname, COUNT(*) AS perm_count FROM users u JOIN graphs g ON DB.DBA.RDF_GRAPH_USER_PERMS_GET(g.graph_iri, u.uname) > 0 GROUP BY u.uname HAVING COUNT(*) > 0;",
+        "SELECT uname, bif:st_intersects(ST_GeomFromText((SELECT geom FROM users WHERE uname = 'Anna'), 4326), geom) AS intersection FROM users WHERE uname IN (SELECT uname FROM users WHERE permissions IS NOT NULL) ORDER BY intersection DESC;",
+        "SELECT DISTINCT uname FROM users WHERE bif:st_intersects(geom, ST_GeomFromText('POINT(2 2)', 4326)) AND DB.DBA.RDF_GRAPH_USER_PERMS_GET('http://example.com/Bob/system', uname) IS NOT NULL;",
+        "SELECT uname, bif:st_intersects(geom, ST_GeomFromText('LINESTRING(1 1, 2 2)', 4326)) AS does_intersect FROM users WHERE uname NOT IN (SELECT uname FROM users WHERE permissions = 0) ORDER BY does_intersect DESC;",
+        "SELECT DB.DBA.RDF_GRAPH_USER_PERMS_GET('http://example.com/Nobody/system', uname) AS permissions, COUNT(*) OVER(PARTITION BY uname) AS user_count FROM users WHERE permissions IS NULL OR permissions < 2;"
+    ]
+}

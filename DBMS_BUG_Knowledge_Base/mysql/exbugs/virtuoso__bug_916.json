@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/916",
+  "title": "Federated SPARQL error when using IRIs",
+  "description": "See this query on the endpoint https://slovník.gov.cz/sparql\nPREFIX skos: <http://www.w3.org/2004/02/skos/core#>\nSELECT *\nWHERE {\n    ?s skos:prefLabel ?termLabel .\n    FILTER(STR(?termLabel) = \"kód adresního místa\")\n    FILTER(STR(?s) = \"https://slovník.gov.cz/datový/vfr-1.8.0/pojem/kód-adresního-místa\")\n}\nIt returns 1 result.\nThen, try to run this query on any other endpoint (e.g. https://linked.opendata.cz/sparql):\nPREFIX skos: <http://www.w3.org/2004/02/skos/core#>\nSELECT *\nWHERE {\n  SERVICE <https://xn--slovnk-7va.gov.cz/sparql> {\n    <https://slovník.gov.cz/datový/vfr-1.8.0/pojem/kód-adresního-místa> skos:prefLabel ?termLabel .\n    FILTER(STR(?termLabel) = \"kód adresního místa\")\n  }\n}\nor this query\nPREFIX skos: <http://www.w3.org/2004/02/skos/core#>\nSELECT *\nWHERE {\n  SERVICE <https://xn--slovnk-7va.gov.cz/sparql> {\n    ?s skos:prefLabel ?termLabel .\n    FILTER(STR(?termLabel) = \"kód adresního místa\")\n    FILTER(STR(?s) = \"https://slovník.gov.cz/datový/vfr-1.8.0/pojem/kód-adresního-místa\")\n  }\n}\nThey return no results. When running the query like this:\nPREFIX skos: <http://www.w3.org/2004/02/skos/core#>\nSELECT *\nWHERE {\n  SERVICE <https://xn--slovnk-7va.gov.cz/sparql> {\n    ?s skos:prefLabel ?termLabel .\n  }\n}\nLIMIT 10\nthe expected result is there.\nWhat is broken is the comparison of IRIs when they contain unicode characters.",
+  "date": "2020-05-13 05:17:44",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE test_iri (id INT PRIMARY KEY, iri VARCHAR(255) NOT NULL, label VARCHAR(255) NOT NULL);",
+    "INSERT INTO test_iri (id, iri, label) VALUES (1, 'https://slovník.gov.cz/datový/vfr-1.8.0/pojem/kód-adresního-místa', 'kód adresního místa');",
+    "INSERT INTO test_iri (id, iri, label) VALUES (2, 'https://slovnk.gov.cz/datov/vfr-1.8.0/pojem/kd-adresnho-msta', 'kód adresního místa');",
+    "SELECT * FROM test_iri WHERE iri = 'https://slovník.gov.cz/datový/vfr-1.8.0/pojem/kód-adresního-místa';",
+    "SELECT * FROM test_iri WHERE iri IS NULL;"
+  ],
+  "key_bug_features": [
+    "Comparison of IRIs with unicode characters fails"
+  ]
+}

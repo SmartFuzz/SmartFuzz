@@ -1,0 +1,22 @@
+{
+    "function": "ngramSearch",
+    "operator": "x",
+    "sql_array": [
+        "CREATE TABLE test_strings (id UInt32, haystack String, needle String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_strings VALUES (1, 'The quick brown fox jumps over the lazy dog', 'jumps'), (2, 'Lorem ipsum dolor sit amet', 'Lorem ip'), (3, '', 'empty'), (4, 'Hello World', 'Hello World');",
+        "SELECT ngramSearch(haystack, needle), transform(ngramSearch(haystack, needle), [0.0, 0.5, 1.0], ['Not Found', 'Similar', 'Exact Match'], 'Unknown') AS match_status FROM test_strings;",
+        "SELECT id, haystack, needle FROM test_strings WHERE ngramSearch(haystack, needle) BETWEEN 0.1 AND 0.9;",
+        "SELECT ngramSearch(haystack, needle) AS similarity FROM test_strings WHERE similarity IS NOT NULL;",
+        "SELECT id, ngramSearch(haystack, needle) AS similarity FROM test_strings HAVING similarity > 0.5;",
+        "SELECT id, haystack, needle FROM test_strings ORDER BY ngramSearch(haystack, needle) DESC LIMIT 2;",
+        "CREATE TABLE test_strings_null (id UInt32, haystack Nullable(String), needle Nullable(String)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_strings_null VALUES (1, 'Example string', 'string'), (2, NULL, 'not_found'), (3, 'Another example', NULL), (4, NULL, NULL);",
+        "SELECT ngramSearch(haystack, needle) FROM test_strings_null WHERE ngramSearch(haystack, needle) IS NOT NULL;",
+        "SELECT COUNT() AS count_match FROM test_strings_null WHERE ngramSearch(haystack, COALESCE(needle, 'default')) > 0.5;",
+        "SELECT id, ngramSearch(COALESCE(haystack, 'empty'), needle) AS similarity FROM test_strings_null ORDER BY similarity DESC;",
+        "SELECT id, ngramSearch(haystack, needle) AS similarity FROM (SELECT * FROM test_strings_null WHERE needle IS NOT NULL) temp HAVING similarity > 0.2;",
+        "SELECT id, ngramSearch(haystack, needle) AS similarity FROM test_strings_null WHERE haystack LIKE '%example%' AND similarity < 0.5;",
+        "SELECT ngramSearch(haystack, needle), multiIf(ngramSearch(haystack, needle) < 0.33, 'Low Match', ngramSearch(haystack, needle) > 0.66, 'High Match', 'Medium Match') AS match_quality FROM test_strings_null;",
+        "SELECT SUM(ngramSearch(haystack, needle)) AS total_similarity FROM test_strings WHERE haystack != '' GROUP BY needle HAVING total_similarity > 0.5;"
+    ]
+}

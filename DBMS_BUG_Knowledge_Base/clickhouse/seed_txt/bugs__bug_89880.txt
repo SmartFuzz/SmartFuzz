@@ -1,0 +1,5 @@
+CREATE TABLE T1 (K Int64, C0 String, C1 Nullable(String), C2 Float64) Engine=ReplacingMergeTree order by K;
+INSERT INTO T1 SELECT number, arrayMap(i -> cityHash64(i * number), range(10)), number % 2 = 0 ? 'even' : NULL, number * 1.5 FROM numbers(100);
+CREATE TABLE T2 (K Int64, C0 String, C1 Int32) Engine=MergeTree order by K;
+INSERT INTO T2 SELECT K, C0, CAST(K AS Int32) FROM T1 WHERE C1 IS NOT NULL;
+SELECT * FROM T1 FINAL WHERE C1 = 'even' SETTINGS optimize_move_to_prewhere_if_final=1;

@@ -1,0 +1,17 @@
+{
+    "function": "IPv4StringToNum(s)",
+    "operator": "a NOT BETWEEN b AND c",
+    "sql_array": [
+        "CREATE TABLE ip_data (id UUID, ip_address String, created_at DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO ip_data VALUES (generateUUIDv4(), '192.168.1.1', now()),(generateUUIDv4(), '255.255.255.255', now()),(generateUUIDv4(), NULL, now()),(generateUUIDv4(), 'invalid_ip', now());",
+        "SELECT id, IPv4StringToNum(ip_address) AS ip_num FROM ip_data WHERE ip_address NOT BETWEEN '192.168.1.0' AND '192.168.1.255';",
+        "SELECT id, IPv4StringToNum(ip_address) AS ip_num FROM ip_data WHERE NOT (IPv4StringToNum(ip_address) BETWEEN IPv4StringToNum('192.168.0.0') AND IPv4StringToNum('192.168.1.255'));",
+        "SELECT COUNT(*) FROM (SELECT id, IPv4StringToNum(ip_address) AS ip_num FROM ip_data WHERE NOT (ip_num BETWEEN 0 AND 4294967295)) AS filtered_ip;",
+        "SELECT id, IF(ip_address IS NULL, 0, IPv4StringToNum(ip_address)) AS ip_num FROM ip_data WHERE ip_address NOT BETWEEN '10.0.0.0' AND '10.255.255.255';",
+        "SELECT id, AVG(IPv4StringToNum(ip_address)) AS avg_ip FROM ip_data GROUP BY id HAVING avg_ip NOT BETWEEN 0 AND 4294967295;",
+        "WITH (SELECT COUNT(*) FROM ip_data WHERE ip_address IS NOT NULL) AS valid_ips, (SELECT COUNT(*) FROM ip_data WHERE ip_address IS NULL) AS null_ips SELECT valid_ips, null_ips WHERE valid_ips NOT BETWEEN 1 AND 100;",
+        "CREATE TABLE temp_ip_data AS SELECT IPv4StringToNum(ip_address) AS ip_num FROM ip_data WHERE NOT (ip_address = 'invalid_ip');",
+        "INSERT INTO temp_ip_data SELECT DISTINCT IPv4StringToNum(ip_address) FROM ip_data WHERE ip_address IS NOT NULL AND ip_address NOT BETWEEN '192.168.0.0' AND '192.168.1.255';",
+        "SELECT COUNT(*) FROM temp_ip_data WHERE ip_num IS NOT NULL AND ip_num NOT BETWEEN 0 AND 4294967295;"
+    ]
+}

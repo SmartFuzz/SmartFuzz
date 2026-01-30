@@ -1,0 +1,19 @@
+{
+    "function": "toInt16OrDefault",
+    "operator": "a ? b : c",
+    "sql_array": [
+        "CREATE TABLE test_nullable (id Int32, value String, nullable_value Nullable(Int32));",
+        "INSERT INTO test_nullable VALUES (1, '-32769', NULL), (2, '32768', '500'), (3, 'abc', NULL);",
+        "SELECT id, toInt16OrDefault(value, CAST(-1, 'Int16')) AS int_value, nullable_value ? toInt16OrDefault(value, CAST(0, 'Int16')) : nullable_value AS computed_value FROM test_nullable;",
+        "CREATE TABLE test_aggregation (group_id Int32, value Float64);",
+        "INSERT INTO test_aggregation VALUES (1, 123.456), (1, NULL), (2, 789.01), (2, 'nan'), (2, 'inf');",
+        "SELECT group_id, SUM(toInt16OrDefault(value, CAST(0, 'Int16'))) AS total_value FROM test_aggregation GROUP BY group_id HAVING total_value > 0;",
+        "CREATE TABLE test_join (user_id Int32, status String);",
+        "INSERT INTO test_join VALUES (1, 'active'), (2, 'inactive'), (3, NULL);",
+        "SELECT j.user_id, j.status, CASE WHEN j.status IS NULL THEN toInt16OrDefault('invalid', CAST(-2, 'Int16')) ELSE toInt16OrDefault(j.status, CAST(-1, 'Int16')) END AS status_code FROM test_join AS j JOIN test_nullable AS t ON j.user_id = t.id;",
+        "CREATE TABLE test_boundary (value String);",
+        "INSERT INTO test_boundary VALUES ('-32768'), ('32767'), ('32768'), ('-32769'), ('-1'), ('0'), ('NaN'), ('Inf');",
+        "SELECT value, toInt16OrDefault(value, CAST(-1, 'Int16')) AS converted_value FROM test_boundary WHERE toInt16OrDefault(value, CAST(0, 'Int16')) ? value : 'error';",
+        "SELECT j.user_id, j.status, IFNULL(toInt16OrDefault(j.status, CAST(-1, 'Int16')), 0) AS status_code FROM test_join AS j LEFT JOIN test_nullable AS t ON j.user_id = t.id;"
+    ]
+}

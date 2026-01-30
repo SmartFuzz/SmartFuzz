@@ -1,0 +1,13 @@
+CREATE TABLE ip_addresses (ip_string String);
+INSERT INTO ip_addresses VALUES ('192.168.1.1'), ('255.255.255.255'), ('0.0.0.0'), ('256.256.256.256'), ('invalid_ip'), ('172.16.254.1'), ('10.0.0.256');
+SELECT ip_string, toIPv4OrZero(ip_string) AS ipv4_result FROM ip_addresses;
+WITH 'Not an IP address' AS invalid_IPv6_string SELECT toIPv4OrZero(invalid_IPv6_string) AS result;
+SELECT DISTINCT toIPv4OrZero(ip_string) FROM ip_addresses WHERE ip_string LIKE '%.%.%.%';
+WITH (SELECT ip_string FROM ip_addresses WHERE toIPv4OrZero(ip_string) = '0.0.0.0') AS invalid_ips SELECT COUNT(*) AS count_invalid FROM invalid_ips;
+CREATE TABLE valid_invalid_ips AS SELECT ip_string, toIPv4OrZero(ip_string) AS ipv4_result FROM ip_addresses;
+SELECT COUNT(*) FROM valid_invalid_ips WHERE ipv4_result = '0.0.0.0';
+WITH (SELECT ip_string FROM ip_addresses) AS all_ips SELECT ip_string, toIPv4OrZero(ip_string) AS converted_ip FROM all_ips WHERE LENGTH(ip_string) < 16 UNION SELECT 'Invalid IP', toIPv4OrZero('Invalid IP') ORDER BY converted_ip;
+CREATE TABLE test_ips (id UInt32, ip_string String);
+INSERT INTO test_ips VALUES (1, '192.168.1.1'), (2, '300.300.300.300'), (3, 'abc.def.ghi.jkl');
+SELECT id, ip_string, toIPv4OrZero(ip_string) FROM test_ips WHERE id IN (SELECT id FROM test_ips WHERE ip_string = '300.300.300.300' OR ip_string LIKE '%.%.%.%') ORDER BY id;
+SELECT ip_string, CASE WHEN toIPv4OrZero(ip_string) = '0.0.0.0' THEN 'Invalid' ELSE 'Valid' END AS ip_status FROM ip_addresses;

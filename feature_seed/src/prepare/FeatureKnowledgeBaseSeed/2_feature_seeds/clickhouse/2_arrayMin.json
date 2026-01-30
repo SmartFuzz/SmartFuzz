@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id Int32, value Array(Int32), event_date DateTime);
+INSERT INTO test_table VALUES (1, [2, 4, 5], toDateTime('2023-01-01 12:00:00'));
+INSERT INTO test_table VALUES (2, [1, 3, NULL], toDateTime('2023-01-02 11:30:00'));
+INSERT INTO test_table VALUES (3, [3, 5, 7], toDateTime('2023-01-03 10:45:00'));
+SELECT arrayMin(arrayFilter(x -> x IS NOT NULL, value)) AS min_valid_value, EXTRACT(MONTH FROM event_date) AS event_month FROM test_table GROUP BY event_month;
+SELECT EXTRACT(DAY FROM toDate(value[1]::DateTime)) AS extracted_day, arrayMin(value) AS minimum_value FROM test_table WHERE value IS NOT NULL GROUP BY extracted_day;
+CREATE TABLE secondary_table (id Int32, ref_value Int32, event_date DateTime, FOREIGN KEY (id) REFERENCES test_table (id));
+INSERT INTO secondary_table VALUES (1, 10, toDateTime('2023-01-01 12:01:00'));
+SELECT arrayMin(value) AS min_value, EXTRACT(YEAR FROM event_date) AS event_year FROM test_table WHERE value[1] > 0 GROUP BY event_year;
+SELECT a.id, a.value, arrayMin(x -> (x * 2), a.value) AS doubled_min FROM test_table AS a JOIN secondary_table AS b ON a.id = b.id WHERE EXTRACT(HOUR FROM b.event_date) < 12;
+SELECT sum(arrayMin(value)) AS total_min, EXTRACT(MONTH FROM MIN(event_date)) AS first_month FROM test_table GROUP BY total_min HAVING total_min > 0;

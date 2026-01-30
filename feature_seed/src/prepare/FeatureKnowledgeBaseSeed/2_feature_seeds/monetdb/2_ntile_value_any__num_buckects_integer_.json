@@ -1,0 +1,14 @@
+CREATE TABLE test_ntile (id SERIAL PRIMARY KEY, value INTEGER, bucket_count INTEGER);
+INSERT INTO test_ntile (value, bucket_count) VALUES (10, 3), (20, 4), (30, 2), (NULL, 5), (5, NULL);
+SELECT id, ntile(value < 15, bucket_count) OVER (ORDER BY value) AS bucket FROM test_ntile WHERE value IS NOT NULL;
+SELECT id, ntile(CASE WHEN value < 15 THEN value ELSE 0 END, bucket_count) OVER (ORDER BY value) AS bucket FROM test_ntile;
+SELECT id, value, ntile(COALESCE(NULLIF(value, 0), 1), bucket_count) OVER (ORDER BY value) AS bucket FROM test_ntile;
+SELECT id, ntile(value, (SELECT COUNT(*) FROM test_ntile WHERE bucket_count < 5)) OVER (PARTITION BY bucket_count ORDER BY value) AS bucket FROM test_ntile;
+CREATE TABLE test_edge_cases (data VARCHAR(255), threshold FLOAT);
+INSERT INTO test_edge_cases (data, threshold) VALUES ('start', 10.0), ('middle', 15.5), ('end', 20.0), ('boundary', NULL);
+SELECT data, ntile(CASE WHEN threshold IS NULL THEN 1 ELSE ntile(threshold < 15.0, 3) END, 2) OVER () AS bucket FROM test_edge_cases;
+SELECT ntile(value, COUNT(*)) OVER (PARTITION BY bucket_count) AS bucket FROM (SELECT value + 1 AS value, bucket_count FROM test_ntile WHERE value IS NOT NULL) AS subquery;
+SELECT ntile(NULLIF(value, 10), bucket_count) FROM test_ntile WHERE bucket_count IS NOT NULL;
+SELECT A.id, A.value, ntile(A.value < B.threshold, A.bucket_count) AS bucket FROM test_ntile A JOIN test_edge_cases B ON A.value < B.threshold;
+SELECT id, ntile(value + CAST('0.5' AS FLOAT), 3) AS bucket FROM test_ntile WHERE value IS NOT NULL ORDER BY bucket;
+SELECT ntile(COALESCE(NULLIF(value, 0), 1) + 1, 4) FROM test_ntile WHERE id IN (SELECT id FROM test_ntile WHERE value < 25);

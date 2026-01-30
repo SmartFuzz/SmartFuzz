@@ -1,0 +1,16 @@
+{
+    "function": "AP_BUILD_MATCH_LIST",
+    "operator": "=",
+    "sql_array": [
+        "CREATE TABLE phrases (id INT PRIMARY KEY, text VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO phrases (id, text) VALUES (1, 'example phrase'), (2, 'edge case'), (3, NULL);",
+        "CREATE TABLE documents (doc_id INT PRIMARY KEY, content TEXT, analysis_date TIMESTAMP);",
+        "INSERT INTO documents (doc_id, content, analysis_date) VALUES (1, 'This is an example phrase content.', '2023-01-01 12:00:00'), (2, '', '2023-02-01 12:00:00'), (3, NULL, '2023-03-01 12:00:00');",
+        "SELECT d.doc_id, d.content FROM documents d WHERE d.content IS NOT NULL AND (SELECT COUNT(*) FROM phrases p WHERE p.text = 'example phrase') > 0;",
+        "SELECT d.doc_id, AP_BUILD_MATCH_LIST((SELECT text FROM phrases WHERE id = 1)) AS report FROM documents d WHERE d.content = (SELECT text FROM phrases WHERE id = 1) ORDER BY d.doc_id;",
+        "SELECT doc_id, AP_BUILD_MATCH_LIST(text) FROM phrases WHERE text IS NOT NULL GROUP BY text HAVING COUNT(*) = 1;",
+        "SELECT d.doc_id, AP_BUILD_MATCH_LIST((SELECT text FROM phrases WHERE id = (1 + 0))) AS report FROM documents d JOIN phrases p ON p.text = 'edge case' WHERE d.content LIKE '%' || p.text || '%';",
+        "SELECT p.id, AP_BUILD_MATCH_LIST(COALESCE(d.content, 'empty content')) FROM phrases p LEFT JOIN documents d ON d.content IS NOT NULL GROUP BY p.id HAVING COUNT(d.doc_id) > 0;",
+        "SELECT p.id, COUNT(*) FROM phrases p WHERE p.text IS NOT NULL AND (SELECT AP_BUILD_MATCH_LIST('Non-existing phrase') FROM documents d) IS NULL GROUP BY p.id;"
+    ]
+}

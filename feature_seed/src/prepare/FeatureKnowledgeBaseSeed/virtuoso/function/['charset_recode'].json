@@ -1,0 +1,19 @@
+[
+    "CREATE TABLE test_strings (id INT PRIMARY KEY, original_string VARCHAR(50), src_charset VARCHAR(50), dst_charset VARCHAR(50));",
+    "INSERT INTO test_strings (id, original_string, src_charset, dst_charset) VALUES (1, '\\xA9', 'ISO-8859-1', 'UTF-8');",
+    "INSERT INTO test_strings (id, original_string, src_charset, dst_charset) VALUES (2, '\\xC0', 'WINDOWS-1251', 'ISO-8859-5');",
+    "INSERT INTO test_strings (id, original_string, src_charset, dst_charset) VALUES (3, N'\\x410', '_WIDE_', 'WINDOWS-1251');",
+    "INSERT INTO test_strings (id, original_string, src_charset, dst_charset) VALUES (4, N'\\x410', '_WIDE_', 'ISO-8859-1');",
+    "SELECT id, charset_recode(original_string, src_charset, dst_charset) FROM test_strings WHERE src_charset IS NOT NULL;",
+    "SELECT id, charset_recode(original_string, 'UTF-8', 'ISO-8859-1') FROM test_strings WHERE original_string IS NOT NULL;",
+    "SELECT id, charset_recode(N'\\x410', '_WIDE_', dst_charset) FROM test_strings WHERE dst_charset = 'WINDOWS-1251';",
+    "SELECT id, charset_recode(NULL, 'ISO-8859-1', 'UTF-8') AS recoded_string FROM test_strings WHERE id = 1;",
+    "SELECT id, charset_recode(original_string, NULL, NULL) AS default_recoded_string FROM test_strings;",
+    "SELECT id, cast(charset_recode(original_string, src_charset, dst_charset) AS varbinary) FROM test_strings WHERE src_charset = 'ISO-8859-1';",
+    "SELECT src_charset, dst_charset, COUNT(*) AS total FROM test_strings GROUP BY src_charset, dst_charset HAVING total > 1;",
+    "SELECT id, charset_recode(original_string, 'UTF-8', '_WIDE_') AS recoded_string FROM (SELECT original_string, src_charset FROM test_strings) AS subquery;",
+    "SELECT id, charset_recode(original_string, 'WINDOWS-1251', 'ISO-8859-5') AS recoded_string FROM test_strings WHERE id IN (SELECT id FROM test_strings WHERE src_charset = 'WINDOWS-1251');",
+    "CREATE TABLE charset_tests (test_id INT PRIMARY KEY, expected_output VARBINARY(50), input_string VARCHAR(50), src_charset VARCHAR(50), dst_charset VARCHAR(50));",
+    "INSERT INTO charset_tests (test_id, expected_output, input_string, src_charset, dst_charset) VALUES (1, 0xC2A9, '\\xA9', 'ISO-8859-1', 'UTF-8');",
+    "SELECT ct.test_id, ct.expected_output, cast(charset_recode(ct.input_string, ct.src_charset, ct.dst_charset) AS varbinary) AS actual_output FROM charset_tests ct WHERE ct.expected_output = actual_output;"
+]

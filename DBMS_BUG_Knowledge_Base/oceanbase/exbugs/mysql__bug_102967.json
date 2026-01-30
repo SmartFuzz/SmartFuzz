@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=102967",
+  "title": "deadlock transaction hang up when connection is broken",
+  "description": "When turn off dead lock detection, transactions hold locks and come along\r\nwith dead lock. If transactoins client disconnect accidently, transactions\r\nwill not rollback and hold locks until lock timed out. This will cause the\r\nfollowup blocking on the holding locks. Also if transaction is blocked by\r\nother transaction and disconnected accidently, this transaction will not\r\nrelease locks until timed out No matter what dead lock check is configed.\r\nDeadlcok hangup can be solved by turning dead lock check on.\nHow to repeat:\nset global innodb_deadlock_detect=off;\r\ncreate table t1(f1 int);\r\ncreate table t2(f1 int);\r\n\r\nconn 1 conn 2\r\nbegin; begin;\r\nselect * from t1 for update; select * from t2 for update;\r\ninsert into t2 values (1); insert into t1 values (1);\r\n\r\nkill conn1, conn2 client\r\n\r\nconn 3\r\nshow processlist;\nSuggested fix:\nIn timed out monitor thread, we add check on thread's connection status of\r\nsocket. If connection is broken, monitor will mark the transaction unusable\r\nand signal lock suspend thread connection as lock timed-out.",
+  "date": "2021-03-15 02:39:00",
+  "vulnerable_version": "5.7.18",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "SET GLOBAL ob_deadlock_detect=OFF;",
+    "CREATE TABLE t1(f1 INT NOT NULL, f2 VARCHAR(255) DEFAULT NULL, f3 TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "CREATE TABLE t2(f1 INT PRIMARY KEY, f2 DECIMAL(10,2) NOT NULL);",
+    "INSERT INTO t1(f1, f2) VALUES (1, 'test'), (2, NULL), (3, 'sample');",
+    "INSERT INTO t2(f1, f2) SELECT f1, COUNT(*) FROM t1 GROUP BY f1 HAVING f1 > 0;"
+  ],
+  "key_bug_features": [
+    "Transactions hold locks after client disconnects unexpectedly"
+  ]
+}

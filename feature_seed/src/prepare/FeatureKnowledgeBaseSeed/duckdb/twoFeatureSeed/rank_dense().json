@@ -1,0 +1,17 @@
+{
+    "function": "rank_dense()",
+    "operator": "@>",
+    "sql_array": [
+        "CREATE TABLE test_rank_data (id INTEGER, value INTEGER, category TEXT, tags LIST<INTEGER>);",
+        "INSERT INTO test_rank_data VALUES (1, 10, 'A', [1, 2, 3]), (2, 20, 'B', [3, 4]), (3, 10, 'C', [1, 2]), (4, 20, 'A', [3]);",
+        "SELECT id, value, rank_dense() OVER (PARTITION BY category ORDER BY value) AS dense_rank FROM test_rank_data WHERE tags @> [3];",
+        "SELECT DISTINCT id, value FROM (SELECT id, value, rank_dense() OVER (PARTITION BY category ORDER BY value) AS dense_rank FROM test_rank_data WHERE tags @> [3]) AS ranked_data WHERE dense_rank > 1;",
+        "CREATE TABLE subquery_test (sub_id INTEGER, sub_value TEXT);",
+        "INSERT INTO subquery_test VALUES (1, '5'), (2, '15'), (3, NULL), (4, '20');",
+        "SELECT A.id, A.value, (SELECT COUNT(*) FROM subquery_test WHERE CAST(sub_value AS INTEGER) < A.value) AS less_count FROM test_rank_data AS A WHERE A.value > (SELECT COALESCE(MAX(CAST(sub_value AS INTEGER)), 0) FROM subquery_test WHERE sub_id < 4);",
+        "SELECT DISTINCT A.id, B.sub_value, rank_dense() OVER (ORDER BY A.value) AS rank FROM test_rank_data A JOIN subquery_test B ON (A.value > CAST(B.sub_value AS INTEGER) OR B.sub_value IS NULL) GROUP BY A.id, B.sub_value HAVING rank > 1;",
+        "CREATE TEMPORARY TABLE temp_data AS SELECT id, value, tags @> [2] AS has_tag FROM test_rank_data WHERE value > 10;",
+        "SELECT id FROM temp_data WHERE has_tag IS TRUE ORDER BY id DESC;",
+        "SELECT id, ARRAY_AGG(value) FROM test_rank_data GROUP BY category HAVING ARRAY_AGG(value) @> [20];"
+    ]
+}

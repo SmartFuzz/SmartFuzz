@@ -1,0 +1,10 @@
+CREATE TABLE Shippers (id INT PRIMARY KEY, name VARCHAR(255) NOT NULL, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE Subscribers (id INT PRIMARY KEY, shipper_id INT, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (shipper_id) REFERENCES Shippers(id));
+INSERT INTO Shippers (id, name) VALUES (1, 'Shipper A'), (2, 'Shipper B'), (3, 'Shipper C');
+INSERT INTO Subscribers (id, shipper_id) VALUES (1, 1), (2, 2), (3, 1);
+SELECT REPL_UPDATE_SNAPSHOT('Demo.demo.Shippers', (SELECT COUNT(*) FROM Subscribers WHERE shipper_id = Shippers.id AND updated_at IS NOT NULL));
+SELECT COUNT(*) FROM Subscribers WHERE name LIKE (SELECT CONCAT('%', name, '%') FROM Shippers WHERE id = 1);
+SELECT id FROM (SELECT id, name FROM Shippers WHERE name LIKE 'Shipper%') AS Temp WHERE EXISTS (SELECT 1 FROM Subscribers WHERE subscribers.shipper_id = Temp.id);
+SELECT DISTINCT S.id, S.name FROM Shippers S JOIN Subscribers SS ON S.id = SS.shipper_id WHERE S.name LIKE 'Shipper%' GROUP BY S.id HAVING COUNT(SS.id) > 0;
+SELECT REPL_UPDATE_SNAPSHOT(COALESCE((SELECT name FROM Shippers WHERE id = 1), 'Default Shipper'), (SELECT COUNT(*) FROM Subscribers WHERE shipper_id IS NULL OR shipper_id < 0));
+SELECT REPL_UPDATE_SNAPSHOT('Demo.demo.Shippers', (SELECT COUNT(CASE WHEN updated_at IS NOT NULL THEN 1 END) FROM Subscribers WHERE shipper_id = Shippers.id));

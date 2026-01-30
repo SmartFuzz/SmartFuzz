@@ -1,0 +1,29 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/58762",
+  "title": "Get unexpected error when executing nested subquery",
+  "vulnerable_database": "tidb",
+  "date": "2025-01-07T11:04:28Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n```sql\nCREATE TABLE t1 (ctime time, cbit bit(32));\ninsert into t1 values(now(), 1);\n\nCREATE TABLE t2 (col_bit bit(32));\ninsert into t2 values(1);\n\nCREATE TABLE t3 (col_time time);\ninsert into t3 values(now());\n\nupdate t1 set cbit = 1 where cbit in ( select col_bit from t2 where ctime in ( select col_time from t3 where t1.cbit = 1 or t1.ctime < '18:00:00.00') );\n```\n\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\n\nSuccess.\n\n### 3. What did you see instead (Required)\n\n```\nERROR 1105 (HY000): Data Too Long, field len 10, data len 15\n```\n\n### 4. What is your TiDB version? (Required)\n\nhttps://github.com/pingcap/tidb/commit/23ed0dfd6ed0bf86f8a06f2f14af817b3caca11e\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "poc": [
+    "CREATE TABLE t1 (ctime time, cbit bit(32));",
+    "insert into t1 values(now(), 1);",
+    "CREATE TABLE t2 (col_bit bit(32));",
+    "insert into t2 values(1);",
+    "CREATE TABLE t3 (col_time time);",
+    "insert into t3 values(now());",
+    "update t1 set cbit = 1 where cbit in ( select col_bit from t2 where ctime in ( select col_time from t3 where t1.cbit = 1 or t1.ctime < '18:00:00.00') );"
+  ],
+  "poc_type": "sql_text",
+  "state": "open",
+  "key_bug_features": [
+    "Executing nested subquery with incompatible data types"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t4 (id INT, ctime TIME, cbit BIT(32));",
+    "INSERT INTO t4 VALUES (1, NOW(), 1);",
+    "CREATE TABLE t5 (col_int INT, col_bit BIT(32));",
+    "INSERT INTO t5 VALUES (1, 1);",
+    "UPDATE t4 SET cbit = 1 WHERE cbit IN (SELECT col_bit FROM t5 WHERE col_int IN (SELECT id FROM t4 WHERE ctime < '12:00:00' OR cbit IS NULL));"
+  ]
+}

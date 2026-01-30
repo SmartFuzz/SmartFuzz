@@ -1,0 +1,25 @@
+{
+    "function": "UUIDv7ToDateTime",
+    "operator": "x",
+    "sql_array": [
+        "CREATE TABLE uuid_test (id UInt32, uuid UUID, created_at DateTime64(3));",
+        "INSERT INTO uuid_test VALUES (1, toUUID('018f05c9-4ab8-7b86-b64e-c9f03fbd45d1'), now()), (2, toUUID('018f05c9-4ab8-7b86-b64e-c9f03fbd45d1'), now() - INTERVAL 1 DAY);",
+        "SELECT id, UUIDv7ToDateTime(uuid, 'UTC') as event_time FROM uuid_test WHERE id = (SELECT min(id) FROM uuid_test) LIMIT 1;",
+        "SELECT AVG(UUIDv7ToDateTime(uuid, 'America/New_York')) FROM uuid_test GROUP BY id HAVING UUIDv7ToDateTime(uuid) < now() - INTERVAL 1 HOUR;",
+        "SELECT multiIf(UUIDv7ToDateTime(uuid) IS NULL, 'NULL', UUIDv7ToDateTime(uuid)) as event_time_desc FROM uuid_test;",
+        "SELECT id, transform(ifNull(toString(id), '0'), ['0', '1'], ['Inactive', 'Active'], 'Unknown') as status FROM uuid_test;",
+        "CREATE TABLE uuid_metrics (metric_type String, value Float64, timestamp DateTime64(3)) ENGINE = MergeTree() ORDER BY timestamp;",
+        "INSERT INTO uuid_metrics VALUES ('cpu', 75.2, now()), ('memory', NULL, now()), ('disk', 100.0, now() - INTERVAL 30 MINUTE);",
+        "SELECT metric_type, multiIf(value IS NULL, 'No data', value > 80, 'High', 'Normal') as usage_level FROM uuid_metrics;",
+        "SELECT UUIDv7ToDateTime(toUUID(CONCAT('018f05c9-4ab8-7b86-b64e-c9f03fbd45d', toString(rand() % 100)))) as timestamp_malformed FROM numbers(10);",
+        "CREATE TABLE join_test (user_id UInt32, uuid UUID) ENGINE = MergeTree() ORDER BY user_id;",
+        "INSERT INTO join_test VALUES (1, toUUID('018f05c9-4ab8-7b86-b64e-c9f03fbd45d1')), (2, toUUID('018f05c9-4ab8-7b86-b64e-c9f03fbd45d2'));",
+        "SELECT j.user_id, UUIDv7ToDateTime(j.uuid, 'Europe/London') as event_time, u.created_at FROM join_test j JOIN uuid_test u ON j.user_id = u.id WHERE UUIDv7ToDateTime(j.uuid) > now() - INTERVAL 1 HOUR;",
+        "SELECT UUIDv7ToDateTime(toUUID('invalid-uuid-format')) as invalid_timestamp;",
+        "SELECT id, multiIf(UUIDv7ToDateTime(uuid, 'Asia/Tokyo') IS NOT NULL, 'Valid', 'Invalid') as status FROM uuid_test;",
+        "CREATE TEMPORARY TABLE temp_uuid_test (uuid UUID) ENGINE = Memory;",
+        "INSERT INTO temp_uuid_test VALUES (toUUID('018f05c9-4ab8-7b86-b64e-c9f03fbd45d1')), (toUUID('018f05c9-4ab8-7b86-b64e-c9f03fbd45d3'));",
+        "SELECT avg(UUIDv7ToDateTime(uuid)) FROM temp_uuid_test WHERE UUIDv7ToDateTime(uuid) IS NOT NULL;",
+        "SELECT user_id, multiIf(timestamp IS NULL, 'No Timestamp', UUIDv7ToDateTime(uuid)) AS event_time FROM join_test LEFT JOIN uuid_test u ON join_test.user_id = u.id;"
+    ]
+}

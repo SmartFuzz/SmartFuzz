@@ -1,0 +1,14 @@
+CREATE TABLE test_sinh (id UInt64, angle Float64, value Float64) ENGINE = Memory;
+INSERT INTO test_sinh VALUES (1, 0, sinh(0)), (2, 1, sinh(1)), (3, -1, sinh(-1)), (4, 100, sinh(100)), (5, -100, sinh(-100));
+SELECT id, angle, value FROM test_sinh WHERE EXISTS (SELECT * FROM test_sinh WHERE value > 0);
+SELECT id, angle, value FROM test_sinh WHERE EXISTS (SELECT * FROM test_sinh WHERE value < sinh(-5));
+SELECT COUNT() FROM test_sinh WHERE value = sinh(angle) AND EXISTS (SELECT * FROM test_sinh WHERE angle > 50);
+CREATE TABLE test_null (id UInt64, angle Nullable(Float64)) ENGINE = Memory;
+INSERT INTO test_null VALUES (1, NULL), (2, 0), (3, 10), (4, -10);
+SELECT id, angle, value FROM test_null WHERE angle IS NULL OR EXISTS (SELECT * FROM test_sinh WHERE value > sinh(angle));
+SELECT angle, COUNT() FROM test_null GROUP BY angle HAVING EXISTS (SELECT * FROM test_null t WHERE t.angle IS NOT NULL AND t.angle > angle);
+CREATE TABLE test_join (id UInt64, angle Float64) ENGINE = Memory;
+INSERT INTO test_join VALUES (1, 0), (2, 1.5), (3, 3.0);
+SELECT a.id, a.angle, EXISTS(SELECT * FROM test_sinh WHERE value > sinh(b.angle)) AS exists_sinh FROM test_join a JOIN test_sinh b ON a.angle < b.angle;
+SELECT id, angle, sinh(angle) AS sinh_value FROM test_null WHERE angle IS NOT NULL AND (EXISTS (SELECT 1 FROM test_sinh WHERE value = 0) OR EXISTS (SELECT 1 FROM test_sinh WHERE value < sinh(-10)));
+SELECT sinh(MAX(angle)) AS max_sinh_value FROM test_join WHERE angle IS NOT NULL GROUP BY id HAVING EXISTS (SELECT * FROM test_null WHERE angle = 0);

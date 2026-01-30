@@ -1,0 +1,15 @@
+CREATE TABLE retention_test_1(date Date, uid Int32, event_type UInt8) ENGINE = Memory;
+INSERT INTO retention_test_1 SELECT '2020-01-01', number, 1 FROM numbers(5);
+INSERT INTO retention_test_1 SELECT '2020-01-02', number, 0 FROM numbers(10);
+INSERT INTO retention_test_1 SELECT '2020-01-03', number, 1 FROM numbers(15);
+SELECT uid, retention(event_type NOT LIKE 0, event_type NOT LIKE 1) AS retention_result FROM retention_test_1 WHERE date IN ('2020-01-01', '2020-01-02', '2020-01-03') GROUP BY uid ORDER BY uid;
+SELECT uid, sum(r[1]) AS first_retention, sum(r[2]) AS second_retention FROM ( SELECT uid, retention(CAST(event_type AS UInt8) NOT LIKE 1, event_type) AS r FROM retention_test_1 GROUP BY uid HAVING event_type != 2 ) AS subquery GROUP BY uid;
+CREATE TABLE retention_test_2(date Date, uid Int32, status String) ENGINE = Memory;
+INSERT INTO retention_test_2 SELECT '2020-01-01', number, 'A' FROM numbers(5);
+INSERT INTO retention_test_2 SELECT '2020-01-02', number, 'B' FROM numbers(10);
+INSERT INTO retention_test_2 SELECT '2020-01-03', number, 'C' FROM numbers(15);
+SELECT uid, retention(CAST(status AS UInt8) NOT LIKE 66, status NOT LIKE 'B') AS retention_result FROM retention_test_2 GROUP BY uid HAVING retention_result[1] = 1;
+CREATE TABLE retention_test_3(date DateTime, uid UInt32, flag UInt8) ENGINE = Memory;
+INSERT INTO retention_test_3 VALUES ('2020-01-01 12:00:00', 1, 1), ('2020-01-01 12:15:00', 2, 0), ('2020-01-01 12:30:00', 3, 1);
+SELECT uid, retention(flag NOT LIKE 0, CASE WHEN flag = 1 THEN 1 ELSE 0 END) AS retention_state FROM retention_test_3 WHERE date >= '2020-01-01 00:00:00' AND date < '2020-01-02 00:00:00' GROUP BY uid ORDER BY retention_state;
+SELECT a.uid, b.date, retention(a.flag, b.flag NOT LIKE 0) AS combined_retention FROM retention_test_3 AS a JOIN retention_test_2 AS b ON a.uid = b.uid WHERE a.date BETWEEN '2020-01-01' AND '2020-01-02' GROUP BY a.uid, b.date;

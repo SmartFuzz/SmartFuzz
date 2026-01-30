@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=103093",
+  "title": "MINUS between const value 0 and field with MIN bigint value gets wrong result",
+  "description": "It seems Item_func_minus::int_op() does not consider \"0 - col\" carefully if col has MIN bigint value. It's expected to report out-of-range exception since bigint cannot have MAX bigint value + 1.\nHow to repeat:\nmysql> create table t1(a bigint) engine=innodb;\r\nQuery OK, 0 rows affected (0.06 sec)\r\n\r\nmysql> insert into t1 values (-9223372036854775808);\r\nQuery OK, 1 row affected (0.01 sec)\r\n\r\nmysql> select a, 0-a from t1;\r\n+----------------------+----------------------+\r\n| a                    | 0-a                  |\r\n+----------------------+----------------------+\r\n| -9223372036854775808 | -9223372036854775808 |\r\n+----------------------+----------------------+\r\n1 row in set (0.00 sec)\n\nmysql> delete from t1;\r\nQuery OK, 1 row affected (0.00 sec)\r\n\r\nmysql> insert into t1 values (-9223372036854775807);\r\nQuery OK, 1 row affected (0.00 sec)\r\n\r\nmysql> select a, 1-a from t1;\r\nERROR 1690 (22003): BIGINT value is out of range in '(1 - `hubery`.`t1`.`a`)'",
+  "date": "2021-03-24 12:14:00",
+  "vulnerable_version": "8.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t2(b BIGINT NOT NULL, c INT DEFAULT 0);",
+    "INSERT INTO t2 VALUES (-9223372036854775808, 1);",
+    "SELECT b, 0 - b FROM t2;",
+    "INSERT INTO t2 VALUES (-9223372036854775807, NULL);",
+    "SELECT b, 1 - c FROM t2 WHERE c IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "MINUS operation with MIN bigint value and zero"
+  ]
+}

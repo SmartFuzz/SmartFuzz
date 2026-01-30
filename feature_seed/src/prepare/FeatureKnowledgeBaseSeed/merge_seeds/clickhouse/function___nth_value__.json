@@ -1,0 +1,17 @@
+DROP TABLE IF EXISTS team_salaries;
+CREATE TABLE team_salaries (team String, player String, salary UInt32, position String) Engine = Memory;
+INSERT INTO team_salaries VALUES ('Team A', 'Player 1', 300000, 'F'), ('Team B', 'Player 2', 250000, 'M'), ('Team A', 'Player 3', 200000, 'M'), ('Team B', 'Player 4', 150000, 'F');
+SELECT player, salary, nth_value(player, 1) OVER (PARTITION BY team ORDER BY salary DESC) AS highest_salary FROM team_salaries;
+SELECT player, salary, nth_value(player, 2) OVER (PARTITION BY team ORDER BY salary DESC) AS second_highest_salary FROM team_salaries;
+SELECT team, nth_value(salary, 2) OVER (ORDER BY team) AS second_salary FROM team_salaries GROUP BY team;
+WITH ranked_players AS (SELECT player, salary, ntile(3) OVER (ORDER BY salary DESC) AS rank FROM team_salaries) SELECT player, nth_value(player, 2) OVER (PARTITION BY rank ORDER BY salary DESC) AS second_player FROM ranked_players;
+DROP TABLE IF EXISTS all_salaries;
+CREATE TABLE all_salaries (team String, player String, salary UInt32) Engine = Memory;
+INSERT INTO all_salaries VALUES ('Team A', 'Player 1', 250000), ('Team B', 'Player 2', 270000), ('Team A', 'Player 3', NULL), ('Team B', 'Player 4', 230000);
+SELECT team, nth_value(salary, 1) OVER (PARTITION BY team ORDER BY salary DESC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS first_salary FROM all_salaries;
+SELECT player, salary, nth_value(salary, 2) OVER (ORDER BY salary) AS second_salary FROM all_salaries;
+DROP TABLE IF EXISTS salary_stats;
+CREATE TABLE salary_stats AS SELECT team, COUNT(*) AS player_count, SUM(salary) AS total_salary FROM team_salaries GROUP BY team;
+CREATE TABLE final_stats AS SELECT team, nth_value(total_salary, 1) OVER (ORDER BY player_count DESC) AS top_salary FROM salary_stats;
+SELECT team, nth_value(total_salary, 3) OVER (ORDER BY player_count DESC) AS third_salary FROM salary_stats;
+SELECT player, salary FROM (SELECT player, salary, nth_value(player, 2) OVER (ORDER BY salary DESC) AS second_highest FROM team_salaries) WHERE second_highest IS NOT NULL;

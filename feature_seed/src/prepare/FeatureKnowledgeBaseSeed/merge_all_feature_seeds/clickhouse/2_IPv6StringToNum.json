@@ -1,0 +1,11 @@
+CREATE TABLE ip_addresses (addr String) ENGINE = MergeTree() ORDER BY addr;
+INSERT INTO ip_addresses VALUES ('notaddress'), ('127.0.0.1'), ('1111::ffff'), ('::1'), ('abcd:ef12:3456:789a:BCDE:F012:3456:789a');
+CREATE TABLE temp AS SELECT addr, IPv6StringToNum(addr) AS num_addr FROM ip_addresses WHERE addr != 'notaddress';
+SELECT num_addr, cutIPv6(num_addr, 0, 0) FROM temp WHERE (num_addr IS NOT NULL) AND (addr != '::1');
+SELECT addr, (SELECT count(*) FROM (SELECT DISTINCT IPv6StringToNum(addr) AS temp_addr FROM ip_addresses)) AS total_unique FROM ip_addresses WHERE addr LIKE 'abcd%';
+SELECT addr, (IPv6StringToNum(addr) = IPv6StringToNum('::1')) AND (addr IS NOT NULL) AS is_loopback FROM ip_addresses WHERE addr IN ('::1', '127.0.0.1') GROUP BY addr HAVING is_loopback = 1;
+SELECT SUM(num_addr), COUNT(*) FROM (SELECT IPv6StringToNum(addr) AS num_addr FROM ip_addresses WHERE addr NOT LIKE 'notaddress' HAVING num_addr IS NOT NULL) GROUP BY num_addr;
+SELECT addr, (IPv6StringToNum(addr) IS NULL) AS is_invalid FROM ip_addresses WHERE addr IN ('notaddress', '::1') ORDER BY is_invalid ASC;
+CREATE TABLE fuzz_test (id UInt32, computed_addr FixedString(16)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO fuzz_test SELECT number, IPv6StringToNum(addr) FROM numbers(10) JOIN ip_addresses ON number < 10;
+SELECT addr, num_addr, (num_addr IS NULL) AND (addr IS NOT NULL) AS invalid_check FROM (SELECT addr, IPv6StringToNum(addr) AS num_addr FROM ip_addresses) WHERE invalid_check = 1;

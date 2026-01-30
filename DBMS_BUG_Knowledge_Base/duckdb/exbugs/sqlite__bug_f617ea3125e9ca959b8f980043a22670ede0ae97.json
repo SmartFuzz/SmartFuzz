@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/f617ea3125",
+  "title": "Incorrect ORDER BY with colliding input and output column names",
+  "description": "drh added on 2013-08-14 20:24:32:\nConsider the following SQL:\nCREATE TABLE t1(m CHAR(2));\nINSERT INTO t1 VALUES('az');\nINSERT INTO t1 VALUES('by');\nINSERT INTO t1 VALUES('cx');\nSELECT '1', substr(m,2) AS m FROM t1 ORDER BY m;\nSELECT '2', substr(m,2) AS m FROM t1 ORDER BY m COLLATE binary;\nThe identifier \"m\" used in the ORDER BY clauses might refer to either the\ninput column \"t1.m\" or to the second column of output.  The SQL standards\nare ambiguous on which should be used.  PostgreSQL uses the output column\nfor unadorned identifiers, such as found in query (1) and it uses\nthe input column when m is part of an expression, such as query (2).\nHence, PostgreSQL answers queries (1) and (2) with rows that in opposite\norders from one another.  MS-SQL 2008 works like PosgreSQL.  Oracle appears\nto use the output column name in both cases.\nSQLite should be changed to agree with PostgreSQL.\ndrh added on 2013-08-15 20:11:43:\nAdd to the test case above:\nSELECT '3', substr(m,2) AS m FROM t1 ORDER BY lower(m);\nPostgreSQL binds ORDER BY terms to output columns if the term is an ordinal\nor a simple identifier that matches the name of an output column.  If if the\nORDER BY term is an expression, it matches against input columns instead.\nPostgreSQL considers \"m COLLATE binary\" to be an expression.  But for\ncompatibility with SQL92 and historical compatibility with older versions\nof SQLite, we will break with PostgreSQL and bind ORDER BY terms of the\nform \"m COLLATE binary\" to output columns.  However, \"lower(m)\" is clearly an\nexpression, so both PostgreSQL and SQLite will resolve the \"m\" variable there\nto match the input column, t1.m.",
+  "date": "2013-08-14 20:24:3211.99 years ago",
+  "vulnerable_version": "3.7.17",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(m CHAR(2), n INTEGER);",
+    "INSERT INTO t1 VALUES('az', 1);",
+    "INSERT INTO t1 VALUES('by', NULL);",
+    "INSERT INTO t1 VALUES('cx', 3);",
+    "SELECT '1', substr(m, 2) AS m FROM t1 ORDER BY m;"
+  ],
+  "key_bug_features": [
+    "Ambiguous identifier resolution in ORDER BY clauses"
+  ]
+}

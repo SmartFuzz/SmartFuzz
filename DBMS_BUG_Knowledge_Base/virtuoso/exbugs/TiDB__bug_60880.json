@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/60880",
+  "title": "Can't find a proper physical plan for this query",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\nCREATE TABLE t (a INT NOT NULL, b INT UNIQUE);\nCREATE TABLE t1 (a INT NOT NULL, b INT DEFAULT 0);\nINSERT INTO t (a, b) VALUES (1, 100), (2, 200), (3, 300);\nINSERT INTO t1 (a, b) VALUES (1, 50), (2, 150), (3, 250);\nError executing SQL:\nEXPLAIN ANALYZE SELECT SUM(CASE WHEN t.a > 0 THEN (SELECT SUM(b) FROM t1 WHERE t.a = t1.a GROUP BY t.a HAVING COUNT(*) > 1) ELSE 0 END) FROM t LEFT JOIN t1 ON t.a = t1.a WHERE EXISTS (SELECT 1 FROM t t2 WHERE t2.b < 250) GROUP BY t.a WITH ROLLUP\nError Message:(1815, \"Internal : Can't find a proper physical plan for this query\")\n\n### 2. What did you expect to see? (Required)\nThe physical plan for this query\n\n### 3. What did you see instead (Required)\nError Message:(1815, \"Internal : Can't find a proper physical plan for this query\")\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\nmysql> SELECT TIDB_VERSION();\n+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| TIDB_VERSION()                                                                                                                                                                                                                                                     |\n+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| Release Version: v7.5.1\nEdition: Community\nGit Commit Hash: 7d16cc79e81bbf573124df3fd9351c26963f3e70\nGit Branch: heads/refs/tags/v7.5.1\nUTC Build Time: 2024-02-27 14:28:32\nGoVersion: go1.21.6\nRace Enabled: false\nCheck Table Before Drop: false\nStore: unistore |\n+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n1 row in set (0.00 sec)\n",
+  "date": "2025-04-27T13:51:56Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (a INT NOT NULL, b VARCHAR(255) NOT NULL, c FLOAT DEFAULT 0.0);",
+    "INSERT INTO t2 (a, b, c) VALUES (1, 'test1', 10.5), (2, 'test2', 20.5), (3, 'test3', 30.5);",
+    "CREATE TABLE t3 (a INT NOT NULL, b INT DEFAULT NULL, UNIQUE (a, b));",
+    "INSERT INTO t3 (a, b) VALUES (1, NULL), (2, 100), (3, 200);",
+    "SELECT SUM(CASE WHEN t2.a > 0 THEN (SELECT COUNT(*) FROM t3 WHERE t2.a = t3.a GROUP BY t3.b HAVING SUM(b) IS NOT NULL) ELSE 0 END) FROM t2 LEFT JOIN t3 ON t2.a = t3.a WHERE t3.b IS NOT NULL GROUP BY t2.a;"
+  ],
+  "key_bug_features": [
+    "EXPLAIN ANALYZE with complex subquery and GROUP BY"
+  ]
+}

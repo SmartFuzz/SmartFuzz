@@ -1,0 +1,14 @@
+CREATE TABLE test_strings (id SERIAL PRIMARY KEY, str1 VARCHAR(255), str2 VARCHAR(255));
+INSERT INTO test_strings (str1, str2) VALUES ('abcdefg', 'abcxyz'), ('', 'empty'), ('MonetDB', 'DB3'), (NULL, 'NULL_test');
+SELECT id, editdistance(str1, str2) AS distance FROM test_strings WHERE str1 IS NOT NULL AND str2 IS NOT NULL;
+SELECT id, editdistance((SELECT CONCAT(str1, str2) FROM test_strings WHERE id = 1), (SELECT str2 FROM test_strings WHERE id = 2)) AS nested_distance FROM test_strings;
+CREATE TABLE hex_tests (hex_id SERIAL PRIMARY KEY, hex_str BLOB);
+INSERT INTO hex_tests (hex_str) VALUES (x'abcd'), (x'12ef98'), (x'');
+SELECT ht.hex_id, editdistance(CHAR(ht.hex_str), 'abcd') AS dist FROM hex_tests ht WHERE editdistance(CHAR(ht.hex_str), 'abcd') > 0;
+SELECT hex_id, editdistance(CHAR(x'68656c6c6f'), 'hello') AS dist, CASE WHEN editdistance(CHAR(x'68656c6c6f'), 'hello') = 0 THEN 'MATCH' ELSE 'NO MATCH' END AS comparison FROM hex_tests;
+SELECT T1.id, T1.str1, editdistance(T1.str1, (SELECT T2.str2 FROM test_strings T2 WHERE T2.id = 1)) AS dist FROM test_strings T1 WHERE editdistance(T1.str1, (SELECT T2.str2 FROM test_strings T2 WHERE T2.id = 1)) < 3;
+CREATE TABLE combined_test (id SERIAL PRIMARY KEY, text_val VARCHAR(255), hex_val BLOB);
+INSERT INTO combined_test (text_val, hex_val) VALUES ('test', x'abcd'), ('example', x'1234'), (NULL, x'');
+SELECT ct.id, editdistance(ct.text_val, 'test') AS distance, ct.hex_val FROM combined_test ct WHERE ct.text_val IS NOT NULL AND editdistance(ct.text_val, 'test') > 0;
+SELECT COUNT(*) FROM test_strings WHERE editdistance(str1, str2) > (SELECT AVG(editdistance(str1, str2)) FROM test_strings) HAVING COUNT(*) > 1;
+SELECT DISTINCT hex_id, editdistance(CHAR(hex_val), 'abcd') AS distance FROM combined_test WHERE hex_val IS NOT NULL ORDER BY distance ASC;

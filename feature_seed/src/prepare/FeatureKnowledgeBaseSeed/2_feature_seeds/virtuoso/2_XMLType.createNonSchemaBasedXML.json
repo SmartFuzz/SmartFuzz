@@ -1,0 +1,15 @@
+CREATE TABLE xml_test (id INT PRIMARY KEY, xml_content XMLType);
+INSERT INTO xml_test (id, xml_content) VALUES (1, XMLType('<root><child>Test</child></root>', 'http://www.example.com/schema.xsd'));
+INSERT INTO xml_test (id, xml_content) VALUES (2, XMLType('<empty/>', 'http://www.example.com/schema.xsd'));
+SELECT id, XMLType.createNonSchemaBasedXML(xml_content) AS non_schema_xml FROM xml_test WHERE xml_content IS NOT NULL;
+SELECT id, datatype((SELECT XMLType.createNonSchemaBasedXML(xml_content) FROM xml_test WHERE id = 1)) as xml_datatype FROM xml_test;
+SELECT id, COUNT(*) OVER (PARTITION BY datatype(createNonSchemaBasedXML(xml_content))) AS count_per_datatype FROM xml_test;
+CREATE TABLE data_test (num1 INT, num2 INT, result VARCHAR(255));
+INSERT INTO data_test (num1, num2) VALUES (100, NULL), (NULL, 200), (150, 150);
+SELECT num1, num2, CASE WHEN num1 IS NULL THEN num2 ELSE num1 END AS selected_value FROM data_test;
+SELECT id, datatype(XMLType.createNonSchemaBasedXML(xml_content)) AS xml_datatype FROM xml_test WHERE xml_content IS NOT NULL ORDER BY id;
+SELECT id, XMLType.createNonSchemaBasedXML((SELECT xml_content FROM xml_test WHERE id = data_test.num1)) AS nested_xml FROM data_test JOIN xml_test ON data_test.num1 = xml_test.id WHERE data_test.num1 IS NOT NULL;
+CREATE TABLE complex_join (id INT, value VARCHAR(100));
+INSERT INTO complex_join (id, value) VALUES (1, 'A'), (2, 'B'), (3, 'C');
+SELECT a.id, a.value, b.id AS join_id FROM complex_join a JOIN (SELECT id, XMLType.createNonSchemaBasedXML(xml_content) as xml_content FROM xml_test WHERE id = 1) b ON a.id = b.id * 10 WHERE a.value IS NOT NULL;
+SELECT a.id, COUNT(*) AS count, XMLType.createNonSchemaBasedXML(b.xml_content) AS ns_xml FROM xml_test b LEFT JOIN complex_join a ON a.id = b.id GROUP BY a.id, b.xml_content HAVING COUNT(*) > 0;

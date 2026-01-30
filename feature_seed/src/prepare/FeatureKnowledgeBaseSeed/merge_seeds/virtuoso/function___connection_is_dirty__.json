@@ -1,0 +1,34 @@
+CREATE TABLE session_variables (id INTEGER PRIMARY KEY, var_name VARCHAR(255), var_value VARCHAR(255));
+INSERT INTO session_variables (var_name, var_value) VALUES ('user_id', '1');
+INSERT INTO session_variables (var_name, var_value) VALUES ('session_token', 'abc123');
+SELECT * FROM session_variables WHERE var_name = 'user_id';
+<?vsp
+    declare rc integer;
+connection_vars_set ();
+rc := connection_is_dirty ();
+-- rc is equal to 0
+  ?>;
+UPDATE session_variables SET var_value = '2' WHERE var_name = 'user_id';
+<?vsp
+    rc := connection_is_dirty ();
+-- rc is equal to 1
+  ?>;
+SELECT user_id, session_token FROM session_variables WHERE user_id IN (SELECT var_value FROM session_variables WHERE var_name = 'user_id');
+<?vsp
+    connection_vars_set ();
+rc := connection_is_dirty ();
+-- rc is equal to 0
+  ?>;
+INSERT INTO session_variables (var_name, var_value) VALUES ('last_action', 'login');
+<?vsp
+    rc := connection_is_dirty ();
+-- rc is equal to 1
+  ?>;
+DELETE FROM session_variables WHERE var_name = 'session_token';
+<?vsp
+    rc := connection_is_dirty ();
+-- rc is equal to 1
+  ?>;
+CREATE TABLE user_sessions (session_id INTEGER PRIMARY KEY, user_id INTEGER, login_time TIMESTAMP, FOREIGN KEY (user_id) REFERENCES session_variables(id));
+INSERT INTO user_sessions (user_id, login_time) VALUES ((SELECT id FROM session_variables WHERE var_name = 'user_id'), CURRENT_TIMESTAMP);
+SELECT COUNT(*) FROM user_sessions WHERE user_id = (SELECT var_value FROM session_variables WHERE var_name = 'user_id');

@@ -1,0 +1,17 @@
+CREATE TABLE subscriptions (id INTEGER PRIMARY KEY, subscriber VARCHAR(100), status VARCHAR(50), last_updated TIMESTAMP);
+INSERT INTO subscriptions (subscriber, status, last_updated) VALUES ('sub1', 'ACTIVE', CURRENT_TIMESTAMP);
+INSERT INTO subscriptions (subscriber, status, last_updated) VALUES ('sub2', NULL, CURRENT_TIMESTAMP);
+CREATE TABLE publications (id INTEGER PRIMARY KEY, publisher VARCHAR(100), visibility VARCHAR(50));
+INSERT INTO publications (publisher, visibility) VALUES ('pub1', 'PUBLIC');
+INSERT INTO publications (publisher, visibility) VALUES ('pub2', 'PRIVATE');
+SELECT * FROM subscriptions WHERE status IS NULL OR subscriber = '';
+SELECT * FROM publications WHERE visibility = 'PUBLIC' AND id IN (SELECT id FROM subscriptions WHERE status = 'ACTIVE');
+SELECT REPL_STAT() AS replication_status WHERE bif:contains(subscriber, 'sub') AND status IS NOT NULL;
+SELECT s.id, s.subscriber, p.publisher FROM subscriptions s JOIN publications p ON bif:contains(s.subscriber, 'sub') AND s.status = p.visibility;
+SELECT s.subscriber, COUNT(*) AS publication_count FROM subscriptions s LEFT JOIN publications p ON bif:contains(s.subscriber, p.publisher) GROUP BY s.subscriber HAVING publication_count > 1;
+SELECT s.subscriber, MAX(last_updated) AS latest_update FROM subscriptions s WHERE s.status IS NOT NULL GROUP BY s.subscriber HAVING latest_update > NOW() - INTERVAL '1 DAY';
+CREATE TABLE temp_data (data_value VARCHAR(255));
+INSERT INTO temp_data (data_value) VALUES ('value1'), (NULL), (''), ('value3');
+SELECT * FROM temp_data WHERE bif:contains(data_value, 'value') OR data_value IS NULL;
+SELECT REPL_STAT() FROM (SELECT DISTINCT subscriber FROM subscriptions WHERE status IS NOT NULL) AS temp_sub;
+DROP TABLE IF EXISTS temp_data;

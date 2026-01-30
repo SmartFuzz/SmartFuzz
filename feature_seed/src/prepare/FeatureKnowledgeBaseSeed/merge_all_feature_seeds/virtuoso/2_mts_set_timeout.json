@@ -1,0 +1,11 @@
+CREATE TABLE transactions (id INT PRIMARY KEY, amount DECIMAL(10,2), created_at DATETIME, is_completed BOOLEAN);
+INSERT INTO transactions (id, amount, created_at, is_completed) VALUES (1, 100.00, '2023-10-01 10:00:00', TRUE), (2, NULL, '2023-10-01 10:05:00', FALSE), (3, 200.50, '2023-10-01 10:10:00', TRUE);
+SET MTS_2PC=1;
+SELECT mts_set_timeout(-1) AND (SELECT COUNT(*) FROM transactions WHERE is_completed = TRUE);
+SELECT mts_set_timeout(5000) AND (SELECT AVG(amount) FROM transactions WHERE amount IS NOT NULL GROUP BY is_completed HAVING AVG(amount) > 100);
+SELECT mts_set_timeout(1000) AND (SELECT COUNT(*) FROM transactions WHERE amount > (SELECT MIN(amount) FROM transactions) AND created_at > '2023-10-01 09:00:00');
+SELECT mts_set_timeout(0) AND (SELECT SUM(amount) FROM transactions WHERE is_completed = TRUE HAVING SUM(amount) > (SELECT SUM(amount) FROM transactions WHERE is_completed = FALSE));
+SELECT mts_set_timeout(-1) AND (SELECT COUNT(*) FROM (SELECT amount FROM transactions WHERE amount IS NOT NULL UNION SELECT NULL) AS subquery WHERE subquery.amount IS NOT NULL);
+SELECT mts_set_timeout(60000) AND (SELECT MAX(amount) FROM transactions WHERE is_completed AND created_at < NOW());
+CREATE TABLE tmp_transactions AS SELECT id, amount FROM transactions WHERE is_completed;
+SELECT mts_set_timeout(2000) AND (SELECT COUNT(*) FROM tmp_transactions WHERE amount > 150) AND (SELECT COUNT(*) FROM transactions WHERE is_completed = FALSE);

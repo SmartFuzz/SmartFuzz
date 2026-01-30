@@ -1,0 +1,22 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/89121",
+  "title": "Cannot cast Cap'n Proto with named unions",
+  "vulnerable_database": "ClickHouse",
+  "date": "2025-10-28T21:00:48Z",
+  "vulnerable_version": "25.8.11.66",
+  "description": "### Company or project name\n_No response_\n### Describe the unexpected behaviour\nUsing a capnp schema with named union is producing the following error:\n```\nDB::Exception: Root CapnProto Struct cannot be named union/struct with unnamed union: While executing Kafka.\n```\nPerhaps I don't understand the error message correctly (if so, sorry about that), but I was expecting that an unnamed union in the root struct would produce the error, whereas a named one would be properly casted.\nI'm not familiar enough with the codebase to know if the right behaviour is to fail for both unnamed and named union (I think the check is recursive, so in that case unions are simply not supported), of if it's a bug and named unions should be correctly casted.\nThanks!\n### Which ClickHouse versions are affected?\nTested on 25.8.11.66\n### How to reproduce\n* capnp schema:\n```\n@0xb8c3d4e5f6a7b8c0;\n# Minimal test schema to demonstrate ClickHouse union limitation\nstruct TestRecord {\n# Simple metadata field\nid @0 :UInt64;\n# Named union - this should be valid Cap'n Proto\nsampleType :union {\ntypeA @1 :TypeA;\ntypeB @2 :TypeB;\n}\n}\nstruct TypeA {\nvalueA @0 :UInt32;\n}\nstruct TypeB {\nvalueB @0 :Text;\n}\n```\n* ClickHouse table schema\n```\nCREATE DATABASE IF NOT EXISTS test;\nCREATE TABLE IF NOT EXISTS test.from_kafka\n(\nid UInt64,\n`sampleType.typeA.valueA` UInt32,\n`sampleType.typeB.valueB` String\n)\nENGINE = Kafka()\nSETTINGS\nkafka_broker_list = '10.0.0.100:9092',\nkafka_topic_list = 'test-topic',\nkafka_group_name = 'clickhouse-test-group',\nkafka_format = 'CapnProto',\nkafka_schema = 'test:TestRecord',\nkafka_num_consumers = 1,",
+  "poc": [
+    "CREATE DATABASE IF NOT EXISTS test;",
+    "CREATE TABLE IF NOT EXISTS test.from_kafka\n(\n    id UInt64,\n    `sampleType.typeA.valueA` UInt32,\n    `sampleType.typeB.valueB` String\n)\nENGINE = Kafka()\nSETTINGS\n    kafka_broker_list = '10.0.0.100:9092',\n    kafka_topic_list = 'test-topic',\n    kafka_group_name = 'clickhouse-test-group',\n    kafka_format = 'CapnProto',\n    kafka_schema = 'test:TestRecord',\n    kafka_num_consumers = 1,\n    kafka_max_block_size = 1048576;"
+  ],
+  "key_bug_features": [
+    "Casting named unions in Cap'n Proto schema fails"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE IF NOT EXISTS test.from_kafka (id UInt64, `sampleType.typeA.valueA` UInt32, `sampleType.typeB.valueB` String) ENGINE = Kafka() SETTINGS kafka_broker_list = '10.0.0.100:9092', kafka_topic_list = 'test-topic', kafka_group_name = 'clickhouse-test-group', kafka_format = 'CapnProto', kafka_schema = 'test:TestRecord', kafka_num_consumers = 1;",
+    "INSERT INTO test.from_kafka (id, `sampleType.typeA.valueA`, `sampleType.typeB.valueB`) VALUES (1, 100, NULL);",
+    "INSERT INTO test.from_kafka (id, `sampleType.typeA.valueA`, `sampleType.typeB.valueB`) VALUES (2, NULL, 'Sample Text');",
+    "SELECT id, `sampleType.typeA.valueA`, `sampleType.typeB.valueB` FROM test.from_kafka WHERE `sampleType.typeA.valueA` IS NOT NULL;",
+    "SELECT COUNT(*) FROM test.from_kafka WHERE `sampleType.typeB.valueB` LIKE '%Sample%';"
+  ]
+}

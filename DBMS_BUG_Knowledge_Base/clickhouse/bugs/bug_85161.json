@@ -1,0 +1,22 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/85161",
+  "title": "`Array(Tuple)` with tuple element `size0` leads to logical error and crash",
+  "vulnerable_database": "ClickHouse",
+  "date": "2025-08-06T19:27:45Z",
+  "vulnerable_version": "",
+  "description": "### Company or project name\nClickHouse\n### Describe what's wrong\nAfter reading the column size, the cache entry name clashes with the column name\n[Here](https://github.com/ClickHouse/ClickHouse/blob/238e70c1902d78bffc0c2e37c4e30465d536fc0d/src/DataTypes/Serializations/ISerialization.cpp#L152)\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\n```sql\nCREATE TABLE t0 (c0 Nested(size0 String, c1 Int)) ENGINE = Log();\nINSERT INTO TABLE t0 (c0.size0, c0.c1) VALUES (['A'], [1]);\nSELECT c0.size0 FROM t0; -- Logical error\nSELECT 1 FROM t0 GROUP BY c0.size0, c0.c1; -- Crash\n```\nhttps://fiddle.clickhouse.com/448643ca-e5d4-41b8-9d0b-57132b75393f\n### Expected behavior\n_No response_\n### Error message and/or stacktrace\n_No response_\n### Additional context\n_No response_",
+  "poc": [
+    "CREATE TABLE t0 (c0 Nested(size0 String, c1 Int)) ENGINE = Log();",
+    "INSERT INTO TABLE t0 (c0.size0, c0.c1) VALUES (['A'], [1]);"
+  ],
+  "key_bug_features": [
+    "Cache entry name clashes with column name"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t1 (c0 Nested(size0 String, c1 Int, c2 Float64)) ENGINE = Log();",
+    "INSERT INTO t1 (c0.size0, c0.c1, c0.c2) VALUES (['B', NULL], [2, 3], [1.5, 2.5]);",
+    "SELECT c0.size0, c0.c1 FROM t1 WHERE c0.c2 > 2.0;",
+    "CREATE TABLE t2 AS SELECT c0.size0, count(*) AS count FROM t1 GROUP BY c0.size0;",
+    "SELECT * FROM t2 WHERE count > 0;"
+  ]
+}

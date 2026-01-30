@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/91120",
+  "title": "uniqThetaIntersect produces wrong results for empty merge states.",
+  "description": "### Company or project name\n_No response_\n### Describe the unexpected behaviour\nI am trying to merge the theta sketches based on some predicate, If the predicate results in no sketch being selected then intersect returns the count from first sketch, wherein the result should be 0.\n### Which ClickHouse versions are affected?\nI have tested this on 25.8.10.7 and latest, may occur on other versions as well.\n### How to reproduce\n### Base Schema\n```sql\nCREATE TABLE TEST_AGG(\nCID UInt32,\nUSERS AggregateFunction(uniqTheta, UInt32)\n) ENGINE = AggregatingMergeTree() ORDER BY CID;\nINSERT INTO TEST_AGG VALUES (1, arrayReduce('uniqThetaState', [1, 2]::Array(UInt32))), (2, arrayReduce('uniqThetaState', [2, 3]::Array(UInt32)));\n```\n### Issue Query\n```sql\nSELECT finalizeAggregation(\nuniqThetaIntersect(\nuniqThetaMergeStateIf(USERS, CID = 1),\nuniqThetaMergeStateIf(USERS, CID = 3)\n)\n) FROM TEST_AGG;\n```\nAbove query results in count of 2\n### Expected behavior\nuniqThetaIntersect function should check if the sketch is a default/empty sketch then return the empty one, so that finalizeAggregation function can return 0 count.\n### Error message and/or stacktrace\n_No response_\n### Additional context\n_No response_",
+  "date": "2025-11-28T12:19:44Z",
+  "vulnerable_version": "25.8.10.7",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE TEST_AGG_V2(CID INTEGER, USERS BYTEA, STATUS VARCHAR);",
+    "INSERT INTO TEST_AGG_V2 VALUES (1, pg_aggregate_uniq_theta_state(ARRAY[1, 2]), 'active'), (2, pg_aggregate_uniq_theta_state(ARRAY[2, 3]), NULL), (3, pg_aggregate_uniq_theta_state(ARRAY[4, 5]), 'inactive');",
+    "SELECT COUNT(*) FROM TEST_AGG_V2 WHERE STATUS IS NULL;",
+    "SELECT finalize_uniq_theta_aggregation(uniq_theta_intersect(uniq_theta_merge_state_if(USERS, CID = 1), uniq_theta_merge_state_if(USERS, CID = 2))) FROM TEST_AGG_V2;",
+    "SELECT finalize_uniq_theta_aggregation(uniq_theta_intersect(uniq_theta_merge_state_if(USERS, CID = 1), uniq_theta_merge_state_if(USERS, CID = 4))) FROM TEST_AGG_V2;"
+  ],
+  "key_bug_features": [
+    "uniqThetaIntersect returns incorrect count for empty merge states"
+  ]
+}

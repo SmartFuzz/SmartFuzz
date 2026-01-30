@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/48040",
+  "title": "Constraint check name uses wrong error code",
+  "description": "## Bug Report\r\n\r\nIn MySQL error 3822 is used for duplicate check constraint names, but TiDB uses 1061.\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```\r\nCREATE TABLE t3 (id INT PRIMARY KEY, CONSTRAINT c3 CHECK (id<50), CONSTRAINT c3 CHECK (id<40));\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nMySQL 8.2.0\r\n```\r\nsql> CREATE TABLE t3 (id INT PRIMARY KEY, CONSTRAINT c3 CHECK (id<50), CONSTRAINT c3 CHECK (id<40));\r\nERROR: 3822 (HY000): Duplicate check constraint name 'c3'.\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n```\r\nsql> SET GLOBAL tidb_enable_check_constraint=ON;\r\nQuery OK, 0 rows affected (0.0029 sec)\r\n\r\nsql> CREATE TABLE t3 (id INT PRIMARY KEY, CONSTRAINT c3 CHECK (id<50), CONSTRAINT c3 CHECK (id<40));\r\nERROR: 1061 (42000): duplicate key name c3\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n```\r\nRelease Version: v7.6.0-alpha-23-gdfd9080bcf-dirty\r\nEdition: Community\r\nGit Commit Hash: dfd9080bcf49083e52d6cb714668da9b881dc54d\r\nGit Branch: master\r\nUTC Build Time: 2023-10-27 06:35:10\r\nGoVersion: go1.21.0\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: unistore\r\n```",
+  "date": "2023-10-27T07:22:13Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (id INT PRIMARY KEY, CONSTRAINT c1 CHECK (id > 0), CONSTRAINT c1a CHECK (id < 100));",
+    "CREATE TABLE t2 (name VARCHAR(50), age INT, CONSTRAINT c2 CHECK (age >= 18), CONSTRAINT c2a CHECK (age <= 65));",
+    "CREATE TABLE t3 (id INT, value DECIMAL(10,2), CONSTRAINT c3 CHECK (value IS NOT NULL), CONSTRAINT c3a CHECK (value >= 0));",
+    "INSERT INTO t1 (id) VALUES (10), (20), (30);",
+    "SELECT * FROM t1 WHERE id IN (SELECT id FROM t1 WHERE id < 25);"
+  ],
+  "key_bug_features": [
+    "Duplicate check constraint name error handling"
+  ]
+}

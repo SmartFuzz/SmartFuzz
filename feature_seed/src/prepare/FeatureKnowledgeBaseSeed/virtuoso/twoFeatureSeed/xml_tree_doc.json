@@ -1,0 +1,16 @@
+{
+    "function": "xml_tree_doc",
+    "operator": "*",
+    "sql_array": [
+        "CREATE TABLE xml_data (id SERIAL PRIMARY KEY, xml_content XML, doc_base VARCHAR(255));",
+        "INSERT INTO xml_data (xml_content, doc_base) VALUES (xml_tree('<root><child>Content</child></root>'), 'virt://WS.WS.SYS_DAV_RES.RES_FULL_PATH.RES_CONTENT:/DAV/docsrc/');",
+        "SELECT id, xml_tree_doc(xml_content, doc_base) * 10 AS modified_value FROM xml_data WHERE id IN (SELECT id FROM xml_data WHERE xml_content IS NOT NULL);",
+        "SELECT id, xml_tree_doc(xml_tree(xml_uri_get(doc_base, 'virtdocs.xml'))) * (SELECT COUNT(*) FROM xml_data) AS final_value FROM xml_data;",
+        "CREATE TABLE numeric_data (num_value NUMERIC, description VARCHAR);",
+        "INSERT INTO numeric_data (num_value, description) VALUES (3 * NULLIF(4, 4), 'Edge case with NULL handling');",
+        "SELECT id, xml_tree_doc(xml_tree('<root><num>' || CAST(num_value AS VARCHAR) || '</num></root>'), 'virt://WS.WS.SYS_DAV_RES.RES_FULL_PATH.RES_CONTENT:/DAV/docsrc/') FROM numeric_data WHERE num_value <> 0;",
+        "SELECT id, xml_tree_doc(xml_tree('<root><mult>' || CAST((num_value * num_value) AS VARCHAR) || '</mult></root>'), 'virt://WS.WS.SYS_DAV_RES.RES_FULL_PATH.RES_CONTENT:/DAV/docsrc/') AS results FROM numeric_data;",
+        "SELECT doc_base, xml_tree_doc(xml_tree('<details><count>' || COUNT(*) OVER (PARTITION BY description) || '</count></details>'), doc_base) AS xml_details FROM xml_data GROUP BY doc_base HAVING COUNT(*) > 1;",
+        "SELECT DISTINCT doc_base, xml_tree_doc(xml_tree('<values><calc>' || (SELECT SUM(num_value) FROM numeric_data) || '</calc></values>'), doc_base) AS final_calc FROM xml_data ORDER BY doc_base;"
+    ]
+}

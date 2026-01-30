@@ -1,0 +1,17 @@
+CREATE TABLE rdf_data (id INT PRIMARY KEY, data VARCHAR(255));
+INSERT INTO rdf_data (id, data) VALUES (1, 'Sample Data 1'), (2, 'Sample Data 2'), (3, NULL), (4, '');
+CREATE TABLE processing_logs (log_id INT PRIMARY KEY, rdf_id INT, log_message VARCHAR(255), timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (rdf_id) REFERENCES rdf_data(id));
+INSERT INTO processing_logs (log_id, rdf_id, log_message) VALUES (1, 1, 'Started loading'), (2, 2, 'Load error'), (3, 3, 'Load complete');
+SELECT rdf_id, bif:sha1(data) AS data_hash FROM rdf_data WHERE data IS NOT NULL;
+SELECT log_id, bif:sha1(log_message) AS message_hash FROM processing_logs WHERE rdf_id IN (SELECT id FROM rdf_data WHERE LENGTH(data) > 0);
+SELECT rdf_id, COUNT(*) as log_count FROM processing_logs GROUP BY rdf_id HAVING COUNT(*) > 1;
+WITH filtered_logs AS (SELECT rdf_id, log_message FROM processing_logs WHERE log_message IS NOT NULL) SELECT rdf_id, bif:sha1(log_message) AS log_hash FROM filtered_logs;
+SELECT rdf_id, (SELECT COUNT(*) FROM processing_logs WHERE rdf_id = rdf_data.id AND log_message LIKE '%error%') AS error_logs FROM rdf_data WHERE MAX(id) >= (SELECT MIN(log_id) FROM processing_logs);
+SELECT rdf_data.id, bif:sha1(CONCAT(data, COALESCE((SELECT MAX(log_message) FROM processing_logs WHERE rdf_id = rdf_data.id), 'No Logs'))) as combined_hash FROM rdf_data;
+SELECT rdf_id, bif:sha1(data) AS data_hash FROM rdf_data WHERE data IS NOT NULL ORDER BY data_hash DESC LIMIT 1;
+SELECT rdf_id, COUNT(*) FROM processing_logs GROUP BY rdf_id HAVING COUNT(*) >= (SELECT COUNT(*) FROM processing_logs) / 2;
+DELETE FROM processing_logs WHERE rdf_id IS NULL;
+CREATE TEMPORARY TABLE temp_rdf (id INT, hash VARCHAR(40));
+INSERT INTO temp_rdf (id, hash) SELECT id, bif:sha1(data) FROM rdf_data WHERE data IS NOT NULL;
+SELECT a.rdf_id, a.log_id FROM processing_logs a JOIN processing_logs b ON a.rdf_id = b.rdf_id WHERE a.log_id <> b.log_id;
+SELECT a.rdf_id, bif:sha1(a.log_message) AS log_hash FROM processing_logs a WHERE RDF_id IN (SELECT id FROM rdf_data) GROUP BY a.rdf_id HAVING log_hash IS NOT NULL;

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/56992",
+  "title": "The `timestampadd()` function handles time precision abnormally",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n```\r\ncreate table lrr_test(`COL1` datetime(2) NOT NULL);\r\ninsert into lrr_test values('2024-01-01 00:00:00.32');\r\ninsert into lrr_test values('2024-01-01 00:02:00.00');\r\nselect col1, timestampadd(hour, 1, col1) from lrr_test;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\nMysql：\r\n+------------------------+-----------------------------+\r\n| col1                   | timestampadd(hour, 1, col1) |\r\n+------------------------+-----------------------------+\r\n| 2024-01-01 00:02:00.00 | 2024-01-01 01:02:00.00      |\r\n| 2024-01-01 00:00:00.32 | 2024-01-01 01:00:00.32      |\r\n+------------------------+-----------------------------+\r\nAfter timestampadd() function processing, two decimal places are retained\r\n\r\n### 3. What did you see instead (Required)\r\n+------------------------+-----------------------------+\r\n| col1                   | timestampadd(hour, 1, col1) |\r\n+------------------------+-----------------------------+\r\n| 2024-01-01 00:00:00.32 | 2024-01-01 01:00:00.320000  |\r\n| 2024-01-01 00:02:00.00 | 2024-01-01 01:02:00         |\r\n+------------------------+-----------------------------+\r\nSome retain six decimal places. If it is `.00`, no decimal places are retained.\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\nRelease Version: v8.5.0-alpha-7-g22a175b384\r\nEdition: Community\r\nGit Commit Hash: 22a175b384d6e171641e0aa0d3d8b9c15a92a935\r\nGit Branch: HEAD\r\nUTC Build Time: 2024-10-30 05:21:13\r\nGoVersion: go1.23.2\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv\r\n",
+  "date": "2024-10-30T07:41:39Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE lrr_test_v2(`COL1` datetime NOT NULL, `COL2` int NOT NULL);",
+    "INSERT INTO lrr_test_v2 VALUES('2024-01-01 00:00:00.123', NULL);",
+    "INSERT INTO lrr_test_v2 VALUES('2024-01-01 00:02:00.456', 5);",
+    "SELECT COL1, DATE_ADD(COL1, INTERVAL 30 MINUTE) AS new_time FROM lrr_test_v2 WHERE COL2 IS NOT NULL;",
+    "SELECT COL1, DATE_ADD(COL1, INTERVAL 45 SECOND) FROM lrr_test_v2 WHERE COL1 IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "timestampadd() function retains incorrect time precision"
+  ]
+}

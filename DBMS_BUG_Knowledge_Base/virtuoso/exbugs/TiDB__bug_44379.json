@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/44379",
+  "title": "Return deleted record in repeatable-read transaction",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\ninit\r\n```mysql\r\ncreate table t0 (a int);\r\ninsert into t0 values (1);\r\ninsert into t0 values (2);\r\n```\r\n\r\nThen run:\r\n```mysql\r\nsession1 > begin;\r\nsession2 > begin;\r\nsession2 > delete from t0 where a=1;\r\nsession1 > delete from t0 where a=2;\r\nsession2 > commit; -- successful\r\nsession1 > select * from t0 where a=1; -- return (1)\r\n```\r\n\r\nThis is not compatible with MySQL(for both 5.7.41 and 8.0.33), the behaviour of MySQL is:\r\n\r\n```mysql\r\nsession1 > begin;\r\nsession2 > begin;\r\nsession2 > delete from t0 where a=1;\r\nsession1 > delete from t0 where a=2; -- blocked util session2 commit\r\nsession2 > commit; -- successful\r\nsession1 > select * from t0 where a=1; -- return empty set\r\n```\r\n\r\nThough the unblock of `delete from t0 where a=2;` in session1 is mentioned in doc[1]. But the followed commit is success (unlike the differ said in doc), and the follow incompatible select is also unmentioned.\r\n\r\n[1]https://docs.pingcap.com/zh/tidb/v6.5/pessimistic-transaction\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n```\r\n| Release Version: v6.5.0\r\nEdition: Community\r\nGit Commit Hash: 706c3fa3c526cdba5b3e9f066b1a568fb96c56e3\r\nGit Branch: heads/refs/tags/v6.5.0\r\nUTC Build Time: 2022-12-27 03:50:44\r\nGoVersion: go1.19.3\r\nRace Enabled: false\r\nTiKV Min Version: 6.2.0-alpha\r\nCheck Table Before Drop: false\r\nStore: tikv |\r\n```",
+  "date": "2023-06-02T13:10:09Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (id INTEGER PRIMARY KEY, name VARCHAR(50), age INTEGER);",
+    "INSERT INTO t1 (id, name, age) VALUES (1, 'Alice', 30);",
+    "INSERT INTO t1 (id, name, age) VALUES (2, 'Bob', 25);",
+    "BEGIN;",
+    "DELETE FROM t1 WHERE id = 1;",
+    "SELECT * FROM t1 WHERE id = 1;"
+  ],
+  "key_bug_features": [
+    "Return deleted record in repeatable-read transaction"
+  ]
+}

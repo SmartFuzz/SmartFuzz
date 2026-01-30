@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=104967",
+  "title": "The fuction  buf_validate()  affects performance seriously and can be optimized",
+  "description": "storage/innobase/buf/buf0buf.cc\r\n\r\nbuf_validate() {\r\n  for (i = 0; i < srv_buf_pool_instances; i++) {\r\n  ... ...\r\n    buf_pool_validate_instance(buf_pool);\r\n    ... ...\r\n  }\r\n}\r\n\r\nbuf_pool_validate_instance() {\r\n  ...\r\n  ut_a(buf_LRU_validate());\r\n  ...\r\n}\r\n\r\nstorage/innobase/buf/buf0lru.cc\r\n\r\nbuf_LRU_validate() {\r\n  for (ulint i = 0; i < srv_buf_pool_instances; i++) {\r\n    ...\r\n    buf_LRU_validate_instance(buf_pool);\r\n  }\r\n}\r\n\r\nthe times that one lru_list will be validated is 'srv_buf_pool_instances',\r\nwhen calling buf_validate().\r\n\r\na lru_list just need be validated one time when calling buf_validate()\r\n\r\nif srv_buf_pool_instances is 8, the counter of validating lru_list is  64(8 * 8),\r\nso the performance has been reduced\r\n\r\nThis algorithm's time complexity is O ( N * N )\nHow to repeat:\nversion: MySQL Community Server 8.0.26 - debug\r\nmy.cnf: innodb_adaptive_hash_index=OFF\n\nCREATE DATABASE test_ibuf;\r\nUSE test_ibuf;\r\nCREATE TABLE `test_ibuf_insert`(\r\n  `test_title` VARCHAR(200) NOT NULL,\r\n  `test_number` VARCHAR(200) NOT NULL\r\n);\r\n\r\nCREATE INDEX title ON test_ibuf_insert (test_title);\r\nCREATE INDEX number ON test_ibuf_insert (test_number);\r\n\r\nDELIMITER //;\r\nCREATE PROCEDURE func_insert(IN max INT)\r\nBEGIN\r\n  DECLARE i INT;\r\n  SET i=1;\r\n  INSERT INTO test_ibuf_insert (test_title,  test_number) VALUES ('begin_insert', 'begin_insert');\r\n  WHILE i<=max DO\r\n    INSERT INTO test_ibuf_insert (test_title,  test_number) VALUES ('title_test', i);\r\n  SET i=i+1;\r\n  END WHILE;\r\n  INSERT INTO test_ibuf_insert (test_title,  test_number) VALUES ('end_insert', 'end_insert');\r\nEND //\r\nDELIMITER ;//\r\n\r\nBEGIN;\r\nCALL func_insert(100000);\r\nCOMMIT;\r\n\r\nSELECT * from test_ibuf.test_ibuf_insert where test_title='title_test';\r\n\r\nSELECT * from test_ibuf.test_ibuf_insert where test_title='title_test';\r\n\r\nSELECT * from test_ibuf.test_ibuf_insert where test_title='title_test';\nSuggested fix:\nstorage/innobase/buf/buf0buf.cc\r\n\r\nbuf_pool_validate_instance() {\r\n  ...\r\n  - ut_a(buf_LRU_validate());\r\n  + buf_LRU_validate_instance(buf_pool);\r\n  ...\r\n}\r\n\r\nstorage/innobase/buf/buf0lru.cc\r\n\r\n- static void buf_LRU_validate_instance(buf_pool_t *buf_pool) {\r\n+ void buf_LRU_validate_instance(buf_pool_t *buf_pool) {\r\n\r\nstorage/innobase/include/buf0lru.h \r\n\r\n+ /** Validates the LRU list for one buffer pool instance.\r\n+ @param[in]\tbuf_pool\tbuffer pool instance */\r\n+ void buf_LRU_validate_instance(buf_pool_t *buf_pool);\r\n\r\nThis algorithm's time complexity is O ( N )\r\n\r\nperformance will be increased (srv_buf_pool_instances-1)/srv_buf_pool_instances",
+  "date": "2021-09-17 10:04:00",
+  "vulnerable_version": "8.0.26",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_fuzz_data (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, value REAL DEFAULT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_fuzz_data (name, value) VALUES ('test1', 123.45), ('test2', NULL), ('test3', 678.90);",
+    "SELECT * FROM test_fuzz_data WHERE value IS NULL OR value > 100;",
+    "CREATE INDEX idx_name ON test_fuzz_data (name);",
+    "CREATE INDEX idx_value ON test_fuzz_data (value);"
+  ],
+  "key_bug_features": [
+    "buf_validate() validates LRU list multiple times unnecessarily"
+  ]
+}

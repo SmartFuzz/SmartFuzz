@@ -1,0 +1,9 @@
+CREATE TABLE test_table (id UInt32, data Array(UInt32), bitmap_col AggregateFunction(bitmapBuild, UInt32)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, [3, 5, 7, 9], bitmapBuild([3, 5])), (2, [2, 4, 6], bitmapBuild([2])), (3, [], bitmapBuild([]));
+SELECT id, bitmapContains(bitmap_col, toUInt32(5)) || ' found in bitmap' AS result FROM (SELECT id, bitmapBuild(data) AS bitmap_col FROM test_table GROUP BY id) WHERE bitmap_col != bitmapBuild([]);
+SELECT id, data, bitmapContains(bitmapBuild(data), toUInt32(NULL)) || ' (NULL checked)' AS check_null FROM test_table HAVING check_null = 0;
+SELECT id, data, bitmapContains(bitmapBuild(data), toUInt32(2 || 2)) AS test_combined FROM test_table WHERE bitmapContains(bitmap_col, toUInt32(4)) = 0 ORDER BY id ASC;
+SELECT id, bitmapContains(bitmapBuild(data), toUInt32(1) + toUInt32(3) || '') AS combined_test FROM test_table WHERE data != [];
+SELECT id, bitmapContains(bitmapBuild(data), 10 - (3 || 5)) AS bitmap_check FROM test_table WHERE id > 2;
+SELECT id, (bitmapContains(bitmapBuild(data), toUInt32(3 || '5')) || '') AS complex_check FROM test_table JOIN (SELECT id, data FROM test_table WHERE data[1] IS NOT NULL) AS t2 ON test_table.id = t2.id GROUP BY id HAVING complex_check = 1;
+SELECT id, bitmapContains(bitmapBuild(data), toUInt32(7)) || ' found' AS result FROM test_table WHERE id NOT IN (SELECT id FROM test_table WHERE data = []);

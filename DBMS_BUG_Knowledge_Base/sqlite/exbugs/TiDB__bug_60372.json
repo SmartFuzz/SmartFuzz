@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/60372",
+  "title": "Unexpected Filtering Behavior When Using XOR with Subquery in WHERE Clause in TiDB",
+  "description": "## Bug Report\n### 1. Minimal reproduce step (Required)\nThe following SQL statements create a table, insert sample data, and execute queries that demonstrate inconsistent behavior:\n```\nCREATE TABLE `t1` (\n  `c1` int\n);\n\nINSERT INTO `t1` VALUES (6);\n\nselect  \n  ref_1.c1 as c_1, \n  1 xor ((((ref_1.c1) <> ( \n        select  \n            (ref_1.c1) as c_1\n          from \n            t1 as ref_62\n          where false\n          order by c_1 desc\n           limit 1)) \n      and ((null) \n        and (((ref_1.c1)) between (1) and (2))))) as w_2\nfrom \n  t1 as ref_1;\n```\n\nOutput:\n```\n+------+------+\n| c_1  | w_2  |\n+------+------+\n|    6 |    1 |\n+------+------+\n1 row in set (0.00 sec)\n```\n\nNow, executing the same expression in the WHERE clause:\n```\nSELECT  \n  ref_1.c1 AS c_1, \n  1 XOR ((((ref_1.c1) <> ( \n        SELECT  \n            (ref_1.c1) AS c_1\n          FROM \n            t1 AS ref_62\n          WHERE false\n          ORDER BY c_1 DESC\n          LIMIT 1)) \n      AND ((NULL) \n        AND (((ref_1.c1)) BETWEEN (1) AND (2))))) AS w_2\nFROM \n  t1 AS ref_1\nWHERE 1 XOR ((((ref_1.c1) <> ( \n        SELECT  \n            (ref_1.c1) AS c_1\n          FROM \n            t1 AS ref_62\n          WHERE false\n          ORDER BY c_1 DESC\n          LIMIT 1)) \n      AND ((NULL) \n        AND (((ref_1.c1)) BETWEEN (1) AND (2)))));\n```\n\nUnexpected Output:\n`Empty set (0.00 sec)`\n\n### 2. What did you expect to see? (Required)\nSince the first query computes w_2 = 1, the filtering condition WHERE w_2 should not filter out all rows.\n\nThe second query should return the same row {6, 1} as the first query.\n\n### 3. What did you see instead (Required)\nThe second query unexpectedly returns an empty set, despite the computed w_2 value being 1.\n\n### 4. What is your TiDB version? (Required)\n8.0.11-TiDB\nmaster https://github.com/pingcap/tidb/commit/b6141ec589ed8e73176692dc982a210ad7cf070b\n\nGoVersion: go1.23.4\nRace Enabled: false\nCheck Table Before Drop: false\nStore: unistore |\n\n",
+  "date": "2025-04-02T09:01:59Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2 ( c1 INTEGER, c2 TEXT, c3 DATETIME DEFAULT NULL );",
+    "INSERT INTO t2 VALUES (5, 'test1', NULL), (10, 'test2', '2023-01-01 00:00:00'), (15, 'test3', '2023-01-02 00:00:00');",
+    "SELECT ref_1.c1 AS c_1, (1 + (ref_1.c1 <> (SELECT MAX(ref_2.c1) FROM t2 AS ref_2 WHERE ref_2.c2 = 'test1')) + (0 AND (ref_1.c1 BETWEEN 1 AND 10)) % 2) AS w_2 FROM t2 AS ref_1;",
+    "SELECT ref_1.c1 AS c_1, (1 + (ref_1.c1 <> (SELECT MAX(ref_2.c1) FROM t2 AS ref_2 WHERE ref_2.c2 = 'test1')) + (0 AND (ref_1.c1 BETWEEN 1 AND 10)) % 2) AS w_2 FROM t2 AS ref_1 WHERE (1 + (ref_1.c1 <> (SELECT MAX(ref_2.c1) FROM t2 AS ref_2 WHERE ref_2.c2 = 'test1')) + (0 AND (ref_1.c1 BETWEEN 1 AND 10)) % 2) = 1;",
+    "SELECT ref_1.c1 AS c_1, (1 + (ref_1.c1 <> (SELECT MIN(ref_2.c1) FROM t2 AS ref_2 WHERE ref_2.c3 IS NOT NULL)) + (0 AND (ref_1.c1 BETWEEN 10 AND 20)) % 2) AS w_2 FROM t2 AS ref_1 WHERE (1 + (ref_1.c1 <> (SELECT MIN(ref_2.c1) FROM t2 AS ref_2 WHERE ref_2.c3 IS NOT NULL)) + (0 AND (ref_1.c1 BETWEEN 10 AND 20)) % 2) = 1;"
+  ],
+  "key_bug_features": [
+    "XOR with subquery in WHERE clause"
+  ]
+}

@@ -1,0 +1,15 @@
+CREATE TABLE event_schedule (event_id INT, event_time TIMETZ);
+INSERT INTO event_schedule VALUES (1, curtime()), (2, curtime() + INTERVAL '1 hour');
+SELECT event_id, event_time FROM event_schedule WHERE event_time > curtime();
+CREATE TABLE user_activity (user_id INT, activity_time TIMETZ);
+INSERT INTO user_activity VALUES (101, curtime() - INTERVAL '30 minutes'), (102, curtime() - INTERVAL '1 hour');
+SELECT ua.user_id, ea.event_id FROM user_activity ua JOIN event_schedule ea ON ua.activity_time < ea.event_time WHERE ea.event_time > curtime();
+WITH current_time AS (SELECT curtime() as now) SELECT * FROM event_schedule WHERE event_time > (SELECT now FROM current_time);
+SELECT event_id, event_time FROM event_schedule WHERE EXTRACT(HOUR FROM event_time) BETWEEN EXTRACT(HOUR FROM curtime()) - 1 AND EXTRACT(HOUR FROM curtime());
+CREATE TABLE timezone_info (timezone_id INT, timezone_name TEXT);
+INSERT INTO timezone_info VALUES (1, 'UTC'), (2, 'America/New_York');
+SELECT tz.timezone_name, curtime() AT TIME ZONE tz.timezone_name FROM timezone_info tz;
+CREATE TABLE temp_logs (log_id INT, log_time TIMETZ);
+INSERT INTO temp_logs VALUES (1, curtime()), (2, curtime() + INTERVAL '2 hours');
+SELECT COUNT(*) FROM temp_logs WHERE log_time >= curtime() - INTERVAL '1 hour';
+WITH recent_logs AS (SELECT log_time FROM temp_logs WHERE log_time >= curtime() - INTERVAL '2 hours') SELECT AVG(EXTRACT(MINUTE FROM log_time)) FROM recent_logs;

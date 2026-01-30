@@ -1,0 +1,17 @@
+[
+    "CREATE TABLE test_sequence (dt DateTime, id Int32, event String) ENGINE = MergeTree() PARTITION BY toYYYYMMDD(dt) ORDER BY id;",
+    "INSERT INTO test_sequence VALUES (1, 1, 'Start'), (1, 1, 'Mid'), (1, 1, 'End'), (1, 2, 'Start'), (1, 2, 'Mid'), (1, 2, 'End');",
+    "SELECT id, sequenceNextNode('forward', 'head')(dt, event, event = 'Start', event = 'Start', event = 'Mid') as next_event FROM test_sequence GROUP BY id;",
+    "SELECT id, sequenceNextNode('backward', 'tail')(dt, event, event = 'End', event = 'End', event = 'Mid') as prev_event FROM test_sequence GROUP BY id;",
+    "CREATE TABLE test_sequence_multi (dt DateTime, id Int32, event String, ref String) ENGINE = MergeTree() PARTITION BY toYYYYMMDD(dt) ORDER BY id;",
+    "INSERT INTO test_sequence_multi VALUES (1, 1, 'A', 'ref1'), (1, 1, 'B', 'ref2'), (1, 2, 'A', 'ref3'), (1, 2, 'C', 'ref4');",
+    "SELECT id, sequenceNextNode('forward', 'first_match')(dt, event, ref = 'ref2', event = 'A', event = 'B') FROM test_sequence_multi GROUP BY id;",
+    "WITH (SELECT ref FROM test_sequence_multi WHERE event = 'A') as ref_val SELECT id, sequenceNextNode('forward', 'first_match')(dt, event, ref = ref_val, event = 'A') FROM test_sequence_multi GROUP BY id;",
+    "SELECT id, sequenceNextNode('backward', 'last_match')(dt, event, ref = 'ref4', event = 'B') FROM test_sequence_multi GROUP BY id;",
+    "ALTER TABLE test_sequence_multi DELETE WHERE event = 'C' SETTINGS mutations_sync = 1;",
+    "INSERT INTO test_sequence_multi VALUES (2, 1, 'B', 'ref5'), (2, 1, 'C', 'ref6');",
+    "SELECT id, sequenceNextNode('backward', 'tail')(dt, event, ref = 'ref1', event = 'C') FROM test_sequence_multi GROUP BY id;",
+    "CREATE TABLE test_nested (dt DateTime, id Int32, event String) ENGINE = MergeTree() PARTITION BY toYYYYMMDD(dt) ORDER BY (id, dt);",
+    "INSERT INTO test_nested VALUES (1, 1, 'Start'), (1, 1, 'Continue'), (1, 1, 'Finish'), (2, 1, 'Start'), (2, 1, 'Finish');",
+    "SELECT id, (SELECT event FROM test_nested WHERE id = 1 AND event = 'Finish' LIMIT 1) as nested_event, sequenceNextNode('forward', 'first_match')(dt, event, event = (SELECT event FROM test_nested WHERE id = 1 LIMIT 1), event = 'Finish') FROM test_nested GROUP BY id;"
+]

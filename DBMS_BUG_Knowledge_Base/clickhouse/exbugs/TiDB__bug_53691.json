@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/53691",
+  "title": "Inconsistent Results with DATE_ADD and BETWEEN Clause",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\nCreate and populate the table to:\r\n\r\n```sql\r\nCREATE TABLE t0 (c_0 DATETIME, c_1 INT, c_2 DATETIME);\r\nINSERT INTO t0 VALUES ('6722-01-03 04:01:57.000000', '3525', '6731-08-29 04:01:57.000000');\r\n```\r\n\r\n```sql\r\nSELECT c_2, (DATE_ADD(t0.c_0, INTERVAL t0.c_1 DAY)) FROM t0;\r\n```\r\n| c_2                 | (DATE_ADD(t0.c_0, INTERVAL t0.c_1 DAY)) |\r\n| ------------------- | --------------------------------------- |\r\n| 6731-08-29 04:01:57 | 6731-08-29 04:01:57                     |\r\n\r\nThus c_2 and (DATE_ADD(t0.c_0, INTERVAL t0.c_1 DAY)) have the same value in t0.\r\n\r\nExecute this SELECT:\r\n\r\n```sql\r\nSELECT t0.c_1 FROM t0 WHERE t0.c_2 BETWEEN -3.1881253607903353e+38 AND '2935-07-28 18:13:52.000000';\r\n```\r\n\r\nOutput:\r\n\r\n| c_1  |\r\n| ---- |\r\n| 3525 |\r\n\r\nChange c_2 to (DATE_ADD(t0.c_0, INTERVAL t0.c_1 DAY)) and get a new SELECT:\r\n\r\nSELECT t0.c_1 FROM t0 WHERE (DATE_ADD(t0.c_0, INTERVAL t0.c_1 DAY)) BETWEEN -3.1881253607903353e+38 AND '2935-07-28 18:13:52.000000';\r\n\r\nOutput:\r\n\r\n| c_1  |\r\n| ---- |\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nThe second SELECT query should return the same result as the first one since c_2 and (DATE_ADD(t0.c_0, INTERVAL t0.c_1 DAY)) have the same value.\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nSee part 1.\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\nRelease Version: v7.5.1\r\nEdition: Community\r\nGit Commit Hash: 7d16cc79e81bbf573124df3fd9351c26963f3e70\r\nGit Branch: heads/refs/tags/v7.5.1\r\nUTC Build Time: 2024-02-27 14:30:59\r\nGoVersion: go1.21.6\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv\r\n\r\n",
+  "date": "2024-05-30T12:38:42Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (c_0 DateTime, c_1 Int32, c_2 DateTime, c_3 String);",
+    "INSERT INTO t1 VALUES ('6722-01-03 04:01:57', 3525, '6731-08-29 04:01:57', 'test');",
+    "SELECT c_1 FROM t1 WHERE c_2 BETWEEN addDays(c_0, 1) AND addDays(c_0, 10);",
+    "SELECT c_1 FROM t1 WHERE (addDays(c_0, c_1)) BETWEEN '6722-01-01 00:00:00' AND '6731-08-30 00:00:00';",
+    "SELECT c_1 FROM t1 WHERE c_2 IS NULL OR (addDays(c_0, c_1)) IS NULL;"
+  ],
+  "key_bug_features": [
+    "Inconsistent results with DATE_ADD in BETWEEN clause"
+  ]
+}

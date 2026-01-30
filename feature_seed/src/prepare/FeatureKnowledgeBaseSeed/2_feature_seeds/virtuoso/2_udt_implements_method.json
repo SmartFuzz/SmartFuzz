@@ -1,0 +1,14 @@
+CREATE TABLE user_data (id INT PRIMARY KEY, data SER_UDT);
+INSERT INTO user_data VALUES (1, new SER_UDT());
+SELECT id, udt_implements_method(data, 'NEGATE') AS method_handle FROM user_data WHERE data IS NOT NULL;
+SELECT id, bif:crc64(udt_implements_method(data, 'NEGATE')) AS method_crc FROM user_data WHERE id > 0;
+SELECT id, data, (SELECT udt_implements_method(data, 'NEGATE') FROM user_data u WHERE u.id = user_data.id) AS inner_method FROM user_data;
+SELECT id, bif:crc64(udt_implements_method(data, 'NEGATE')) FROM user_data WHERE id IN (SELECT id FROM user_data WHERE id < 10);
+CREATE TABLE additional_data (user_id INT, detail VARCHAR(255), FOREIGN KEY (user_id) REFERENCES user_data(id));
+INSERT INTO additional_data VALUES (1, 'Sample data');
+SELECT a.user_id, a.detail, bif:crc64(udt_implements_method(u.data, 'NEGATE')) FROM additional_data a JOIN user_data u ON a.user_id = u.id;
+UPDATE user_data SET data = new SER_UDT() WHERE id = 1;
+SELECT id, bif:crc64(NULLIF(udt_implements_method(data, 'NEGATE'), 0)) AS method_check FROM user_data;
+SELECT DISTINCT id, udt_implements_method(data, 'NON_EXISTENT_METHOD') AS nonexistent_method FROM user_data GROUP BY id HAVING COUNT(data) > 0;
+SELECT id, bif:crc64(udt_implements_method(data, 'NEGATE')) AS method_crc FROM user_data ORDER BY method_crc DESC;
+DROP TABLE IF EXISTS additional_data;

@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/a306e56ff6",
+  "title": "Failed DELETE with PRAGMA reverse_unordered_selects",
+  "description": "drh added on 2016-04-09 16:31:11:\nThe DELETE operation on the penultimate line of the script below fails to\ndelete every row for which b==2, as shown by the SELECT on the last line:\nPRAGMA page_size=1024;\nCREATE TABLE t1(a INTEGER PRIMARY KEY, b, c);\nCREATE INDEX x1 ON t1(b, c);\nINSERT INTO t1(a,b,c) VALUES(1, 1, zeroblob(80));\nINSERT INTO t1(a,b,c) SELECT a+1, 1, c FROM t1;\nINSERT INTO t1(a,b,c) SELECT a+2, 1, c FROM t1;\nINSERT INTO t1(a,b,c) SELECT a+10, 2, c FROM t1 WHERE b=1;\nINSERT INTO t1(a,b,c) SELECT a+20, 3, c FROM t1 WHERE b=1;\nPRAGMA reverse_unordered_selects = ON;\nDELETE FROM t1 WHERE b=2;\nSELECT a FROM t1 WHERE b=2;\nThe underlying cause of this malfunction appears to be a defect in the\nOP_Prev opcode of the VDBE.  However, we have so far been unable to cause\nincorrect behavior except by using reverse_unordered_selects and the\nmulti-row on-pass delete optimization that was introduced in version 3.9.0\n(check-in [8b93cc5937]).",
+  "date": "2016-04-09 16:31:119.34 years ago",
+  "vulnerable_version": "3.12.1",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t2(id INT PRIMARY KEY, value VARCHAR(255), amount DECIMAL(10, 2) DEFAULT 0.0);",
+    "INSERT INTO t2(value, amount) VALUES('test', 10.5);",
+    "INSERT INTO t2(value, amount) SELECT 'example', SUM(amount) FROM t2 WHERE amount > 5.0 GROUP BY value;",
+    "DELETE FROM t2 WHERE amount < 15.0;",
+    "SELECT * FROM t2 WHERE amount < 15.0;"
+  ],
+  "key_bug_features": [
+    "DELETE operation fails with PRAGMA reverse_unordered_selects ON"
+  ]
+}

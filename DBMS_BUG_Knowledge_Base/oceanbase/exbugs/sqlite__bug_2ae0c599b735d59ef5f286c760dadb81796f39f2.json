@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/2ae0c599b7",
+  "title": "Table-valued functions do not work as the right table of a LEFT JOIN",
+  "description": "drh added on 2019-11-15 00:06:15:\nTable valued functions do not work as the right-hand table of a LEFT JOIN.\nThe arguments to the table valued function become constraints on the HIDDEN\ncolumns of the virtual table in the WHERE clause, whereas they should be\nconstraints in the ON clause for a LEFT JOIN.  Because the constraints are\non the WHERE clause rather than the ON clause, the join acts like a INNER JOIN.\nThe following code illustrates the problem:\nCREATE TABLE t1(x);\nINSERT INTO t1 VALUES('a'),('b'),('c');\nSELECT x, value FROM t1 LEFT JOIN json_each('[\"b\"]') ON x=value;\nThe output is a single row, which is exactly what one would expect if the\nLEFT keyword were omitted.  This is because the parser rewrites the\nquery as follows:\nCREATE TABLE t1(x);\nINSERT INTO t1 VALUES('a'),('b'),('c');\nSELECT x, value FROM t1 LEFT JOIN json_each ON x=value WHERE json='[\"b\"]';\nReformulating the query like this:\nCREATE TABLE t1(x);\nINSERT INTO t1 VALUES('a'),('b'),('c');\nSELECT x, value FROM t1 LEFT JOIN json_each ON x=value AND json='[\"b\"]';\nGives the expected result.\nThis problem has existed in the code ever since table-valued functions were\nadded in version 3.9.0 (2015-10-14).",
+  "date": "2019-11-15 00:06:155.74 years ago",
+  "vulnerable_version": "3.30.1",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(x VARCHAR(255), y INT);",
+    "INSERT INTO t1 VALUES('a', 1),('b', 2),('c', 3);",
+    "SELECT x, value FROM t1 LEFT JOIN json_table('[''b'']', '$[*]' COLUMNS(value VARCHAR(255) PATH '$')) ON x=value;",
+    "CREATE TABLE t2(z FLOAT);",
+    "INSERT INTO t2 VALUES(1.1), (2.2), (NULL);"
+  ],
+  "key_bug_features": [
+    "Table-valued functions as right table in LEFT JOIN"
+  ]
+}

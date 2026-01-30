@@ -1,0 +1,22 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/356",
+  "title": "Memory leak issue",
+  "vulnerable_database": "Virtuoso",
+  "date": "2015-03-13 16:10:02",
+  "vulnerable_version": "",
+  "description": "I use Virtuoso v07.20.3212\nI am experiencing memory leaks which cause the server hosting the endpoint to crash. I have set the parameters NumberOfBuffers and MaxDirtyBuffers for a server of 15Gb.\nHowever, the memory consumption goes way beyond. This is confirmed by setting the previous parameters to work with 8Gb, and I do see the memory consumption steadily increasing.\nThe logs do not show anything relevant, although I have run trace_on('errors');.\nSpecifically, I am sending queries from a multi-threaded application (4 threads), each query being a simple lookup about the attributes of a resource.",
+  "poc": [
+    "select sum(?out) as ?total_MWh where {\n     ?title rdf:type cat:Powerplant .\n     ?title prop:Annual_Energyoutput_MWh ?out .\n     {?title prop:Ownercompany <http://enipedia.tudelft.nl/wiki/Eni_Spa>}\n     UNION {?title prop:Operator <http://enipedia.tudelft.nl/wiki/Eni_Spa>}\n     UNION {\n          <http://enipedia.tudelft.nl/wiki/Eni_Spa> prop:Subsidiary+ ?subsidiary .\n          {select * where { {?title prop:Ownercompany ?subsidiary} UNION {?title prop:Operator ?subsidiary} } }\n     }\n}",
+    "select sum(?out) as ?total_MWh where {\n     ?title rdf:type cat:Powerplant .\n     ?title prop:Annual_Energyoutput_MWh ?out .\n     <http://enipedia.tudelft.nl/wiki/Eni_Spa> prop:Subsidiary* ?company .\n     ?title prop:Ownercompany|prop:Operator ?company .\n}"
+  ],
+  "key_bug_features": [
+    "Memory leaks in multi-threaded query execution"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE Powerplant (id INT PRIMARY KEY, name VARCHAR(255), annual_energy_output DECIMAL(10,2), owner_company VARCHAR(255), operator VARCHAR(255));",
+    "INSERT INTO Powerplant (id, name, annual_energy_output, owner_company, operator) VALUES (1, 'Plant A', 1500.00, 'Company A', 'Operator A');",
+    "INSERT INTO Powerplant (id, name, annual_energy_output, owner_company, operator) VALUES (2, 'Plant B', NULL, 'Company B', NULL);",
+    "SELECT SUM(annual_energy_output) AS total_output FROM Powerplant WHERE owner_company IS NOT NULL;",
+    "SELECT name, COALESCE(annual_energy_output, 0) AS output FROM Powerplant WHERE output > 1000;"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+    "function": "currentSchemas",
+    "operator": "a.N",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt64, data Array(String), created_at DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table VALUES (1, ['value1', 'value2'], now()), (2, ['value3', NULL], now());",
+        "SELECT currentSchemas(true), (SELECT data[1] FROM test_table WHERE id = 1) AS first_value FROM test_table;",
+        "SELECT id, currentSchemas(true)[1] AS current_schema FROM test_table WHERE created_at > now() - INTERVAL 1 DAY;",
+        "SELECT id, (SELECT arrayJoin(data) FROM test_table) AS individual_data FROM test_table WHERE arrayExists(x -> x IS NOT NULL, data);",
+        "SELECT id, data[1] AS first_data FROM test_table WHERE data[1] IS NOT NULL GROUP BY id HAVING count(data) > 1;",
+        "CREATE TABLE temp_table AS SELECT * FROM test_table;",
+        "INSERT INTO temp_table SELECT id, data, created_at FROM test_table WHERE id < 3;",
+        "SELECT currentSchemas(true)[1] AS schema_overview, COUNT(*) FROM (SELECT id, arrayJoin(data) AS individual_data FROM temp_table) GROUP BY individual_data;",
+        "SELECT id, currentSchemas(true)[1] AS current_schema, data[1] AS first_data FROM test_table WHERE created_at IS NOT NULL HAVING first_data != 'value2';"
+    ]
+}

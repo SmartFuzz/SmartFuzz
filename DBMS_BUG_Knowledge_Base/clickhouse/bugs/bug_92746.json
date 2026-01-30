@@ -1,0 +1,26 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/92746",
+  "title": "Query loses “merge sorted streams” optimization when querying through a VIEW over Distributed table",
+  "vulnerable_database": "ClickHouse",
+  "date": "2025-12-20T16:04:42Z",
+  "vulnerable_version": "",
+  "description": "### Company or project name\n_No response_\n### Describe the unexpected behaviour\nWhen running an ORDER BY … DESC LIMIT query directly on a Distributed table, ClickHouse uses the efficient plan with\nSorting (Merge sorted streams … for ORDER BY).\nHowever, running the logically equivalent query through a VIEW defined as a simple projection over the same Distributed table (e.g. CREATE VIEW v AS SELECT … FROM distributed_table) produces a different plan:\n•\textra VIEW-expansion steps (Convert VIEW subquery result…, Materialize constants…)\n•\tloss of sorted-stream property\n•\tfallback to Sorting (Sorting for ORDER BY) above the read\nThis results in a significantly slower query, despite identical SQL semantics and data sources.\n### Which ClickHouse versions are affected?\nLatest\n### How to reproduce\n```\nDROP DATABASE IF EXISTS repro ON CLUSTER '{cluster}';\nCREATE DATABASE repro ON CLUSTER '{cluster}';\n-- Local replicated table\nCREATE TABLE repro.events_shard ON CLUSTER '{cluster}'\n(\norg_id String,\nevent_time DateTime,\nid UInt64,\nmsg String\n)\nENGINE = ReplicatedMergeTree\nPARTITION BY toYYYYMMDD(event_time)\nORDER BY (org_id, event_time, id);\n-- Distributed table\nCREATE TABLE repro.events ON CLUSTER '{cluster}' AS repro.events_shard\nENGINE = Distributed('{cluster}', repro, events_shard, cityHash64(org_id));\n-- View that is \"just select from the distributed table\"\nCREATE VIEW repro.events_view ON CLUSTER '{cluster}' AS\nSELECT org_id, event_time, id, msg\nFROM repro.events;\n-- Data\nINSERT INTO repro.events\nSELECT\ntoString(number % 100) AS org_id,\nnow() - (number % 200000) AS event_time,\nnumber AS id,\nconcat('m', toString(number)) AS msg\nFROM numbers(2000000);\n-- A) Direct distributed query\nEXPLAIN\nSELECT id, event_time, msg\nFROM repro.events\nWHERE event_time >= now() - INTERVAL 2 HOUR AND event_time <= now()\nORDER BY event_time DESC\nLIMIT 200;\n-- B) Same query through the view",
+  "poc": [
+    "DROP DATABASE IF EXISTS repro ON CLUSTER '{cluster}';",
+    "CREATE DATABASE repro ON CLUSTER '{cluster}';",
+    "CREATE TABLE repro.events_shard ON CLUSTER '{cluster}'\n(\n    org_id String,\n    event_time DateTime,\n    id UInt64,\n    msg String\n)\nENGINE = ReplicatedMergeTree\nPARTITION BY toYYYYMMDD(event_time)\nORDER BY (org_id, event_time, id);",
+    "CREATE TABLE repro.events ON CLUSTER '{cluster}' AS repro.events_shard\nENGINE = Distributed('{cluster}', repro, events_shard, cityHash64(org_id));",
+    "CREATE VIEW repro.events_view ON CLUSTER '{cluster}' AS\nSELECT org_id, event_time, id, msg\nFROM repro.events;",
+    "INSERT INTO repro.events\nSELECT\n    toString(number % 100) AS org_id,\n    now() - (number % 200000) AS event_time,\n    number AS id,\n    concat('m', toString(number)) AS msg\nFROM numbers(2000000);"
+  ],
+  "key_bug_features": [
+    "Querying through a VIEW loses merge sorted streams optimization"
+  ],
+  "bug_features_seed": [
+    "DROP DATABASE IF EXISTS test_db ON CLUSTER '{cluster}';",
+    "CREATE DATABASE test_db ON CLUSTER '{cluster}';",
+    "CREATE TABLE test_db.sample_table ON CLUSTER '{cluster}' (id UInt64, name String, created_at DateTime, score Float64) ENGINE = MergeTree() ORDER BY id;",
+    "CREATE VIEW test_db.sample_view ON CLUSTER '{cluster}' AS SELECT id, name, created_at FROM test_db.sample_table WHERE score > 50.0;",
+    "INSERT INTO test_db.sample_table SELECT number, concat('Name', toString(number)), now(), number % 100 FROM numbers(100);"
+  ]
+}

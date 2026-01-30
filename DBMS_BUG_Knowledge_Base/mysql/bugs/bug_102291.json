@@ -1,0 +1,29 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=102291",
+  "title": "Subquery produces wrong result when set big_tables = 1",
+  "vulnerable_database": "MySQL Server: Optimizer",
+  "date": "2021-01-19 09:17:00",
+  "vulnerable_version": "8.0, 8.0.22, 8.0.23",
+  "description": "When setting big_tables = 1, subquery with LIMT/OFFSET may produce wrong result. \r\n\r\n```\r\nCREATE TABLE t1(a INT);\r\nCREATE TABLE t2(a INT);\r\nINSERT INTO t1 VALUES (1),(2),(3),(4);\r\nINSERT INTO t2 VALUES (1),(2);\r\nCREATE TABLE t0 AS SELECT * FROM t1;\r\nCREATE TABLE t3(a INT, b INT);\r\nINSERT INTO t3 VALUES (1,3), (2,3);\r\nANALYZE TABLE t1, t2, t0, t3;\r\n\r\nset big_tables = 0;\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nmysql> select a from t1 join (select count(a) as cnt from t2 union select 1 limit 1, 1) as derived_1_2(cnt) on (true) where t1.a > derived_1_2.cnt;\r\n+------+\r\n| a    |\r\n+------+\r\n|    2 |\r\n|    3 |\r\n|    4 |\r\n+------+\r\n3 rows in set (0.00 sec)\n\nmysql> select a from t1 join (select count(a) as cnt from t2 union select 1 limit 1, 1) as derived_1_2(cnt) on (true) where t1.a > derived_1_2.cnt;\r\n+------+\r\n| a    |\r\n+------+\r\n|    3 |\r\n|    4 |\r\n+------+\r\n2 rows in set (0.01 sec)\r\n\r\n```\nHow to repeat:\nFollow the above SQL, one can repeat this problem.",
+  "poc": [
+    "CREATE TABLE t1(a INT);",
+    "CREATE TABLE t2(a INT);",
+    "INSERT INTO t1 VALUES (1),(2),(3),(4);",
+    "INSERT INTO t2 VALUES (1),(2);",
+    "CREATE TABLE t0 AS SELECT * FROM t1;",
+    "CREATE TABLE t3(a INT, b INT);",
+    "INSERT INTO t3 VALUES (1,3), (2,3);",
+    "set big_tables = 0;",
+    "select a from t1 join (select count(a) as cnt from t2 union select 1 limit 1, 1) as derived_1_2(cnt) on (true) where t1.a > derived_1_2.cnt;"
+  ],
+  "key_bug_features": [
+    "Subquery with LIMIT/OFFSET when big_tables = 1"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t4(a INT, b VARCHAR(10), c FLOAT, d DATE);",
+    "INSERT INTO t4 VALUES (1, 'test', 1.1, '2023-01-01'), (2, 'example', 2.2, '2023-01-02'), (3, NULL, 3.3, '2023-01-03');",
+    "CREATE TABLE t5(e INT, f INT DEFAULT 0, g TEXT NOT NULL);",
+    "INSERT INTO t5 VALUES (1, 2, 'data1'), (2, NULL, 'data2'), (3, 4, 'data3');",
+    "SELECT a FROM t4 JOIN (SELECT COUNT(e) AS cnt FROM t5 WHERE f IS NULL UNION SELECT 1 LIMIT 0, 1) AS derived_1_3(cnt) ON (true) WHERE t4.a > derived_1_3.cnt;"
+  ]
+}

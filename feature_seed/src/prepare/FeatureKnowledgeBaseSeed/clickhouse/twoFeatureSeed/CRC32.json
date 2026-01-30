@@ -1,0 +1,14 @@
+{
+    "function": "CRC32",
+    "operator": "x",
+    "sql_array": [
+        "CREATE TABLE test_crc32 (id UInt32, text String, value Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_crc32 VALUES (1, 'Hello, World!', 3.14), (2, '', 0), (3, NULL, -Infinity);",
+        "SELECT id, CRC32(text) as checksum FROM test_crc32 WHERE value > 0.0;",
+        "SELECT id, value, multiIf(CRC32(text) = 0, 'No Checksum', 'Valid Checksum') as status FROM test_crc32 WHERE text IS NOT NULL;",
+        "SELECT COUNT(*) FROM (SELECT id, transform(CRC32(text), [0, 1], [value, NULL], NULL) AS transformed_checksum FROM test_crc32) AS subquery;",
+        "WITH (SELECT AVG(value) as avg_value FROM test_crc32) AS avgTable SELECT id, multiIf(value IS NULL, 'No Value', value) as value_status, CRC32(text) FROM test_crc32 HAVING avg_value > 0;",
+        "WITH (SELECT CRC32('Sample String') AS crc_string) SELECT id, multiIf(crc_string = 0, 'Checksum is Zero', 'Checksum Valid') FROM test_crc32, (SELECT CRC32(text) FROM test_crc32) AS subcrc;",
+        "ALTER TABLE test_crc32 ADD COLUMN new_col DateTime DEFAULT now();"
+    ]
+}

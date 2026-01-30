@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/467",
+  "title": "SPARQL BIND does not always work on the latest Virtuoso release (07.20.3214)",
+  "description": "Consider the following two endpoints:\n\nEndpoint 1: http://3cixty.eurecom.fr/sparql running Virtuoso 07.20.3214\nEndpoint 2: http://91.250.81.138:8890/sparql running Virtuoso 07.20.3213\n\nThey have both the exact same dataset loaded, using the same method.\nConsider the following simple SPARQL query:\nSELECT DISTINCT *\nWHERE {\n    GRAPH <http://3cixty.com/milan/events> {?event a lode:Event .}\n    ?event lode:atTime ?date.\n    VALUES (?now) {(\"2015-8-21T00:00Z\"^^xsd:dateTime)}\n    ?date time:hasBeginning/time:inXSDDateTime ?datetimeBegin.\n         BIND(xsd:dateTime(?datetimeBegin) - ?now AS ?dateDiffBegin)\n    ?date time:hasEnd/time:inXSDDateTime ?datetimeEnd.\n        BIND(xsd:dateTime(?datetimeEnd) - ?now AS ?dateDiffEnd)\n}\nLIMIT 100\n\nThe variables ?dateDiffBegin and ?dateDiffEnd are bound in the Endpoint 2 but NOT in the Endpoint 1. Is this a bug introduced in the newest version of Virtuoso?\nI wonder if this bug is not also related to the issue #368 which is not closed yet.",
+  "date": "2015-08-21 09:54:45",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE events (event_id INT PRIMARY KEY, event_name VARCHAR, event_date TIMESTAMP, location VARCHAR, attendees INT CHECK (attendees >= 0));",
+    "INSERT INTO events (event_id, event_name, event_date, location, attendees) VALUES (1, 'Concert', '2023-10-01 20:00:00', 'Stadium', 100);",
+    "INSERT INTO events (event_id, event_name, event_date, location, attendees) VALUES (2, 'Conference', '2023-10-05 09:00:00', 'Convention Center', NULL);",
+    "SELECT event_name, event_date, attendees, CASE WHEN attendees IS NULL THEN 'No attendees' ELSE CAST(attendees AS VARCHAR) END AS attendee_status FROM events WHERE event_date > CURRENT_TIMESTAMP;",
+    "UPDATE events SET attendees = COALESCE(attendees, 0) + 1 WHERE event_id = 1;"
+  ],
+  "key_bug_features": [
+    "BIND function fails to bind variables in latest Virtuoso version"
+  ]
+}

@@ -1,0 +1,16 @@
+CREATE TABLE test_strings (id UInt32, str1 String, str2 String, str3 FixedString(10), num_value Float64, nullable_value Nullable(Int32));
+INSERT INTO test_strings VALUES (1, 'Hello', 'World', 'Test123', 3.14, NULL), (2, 'Click', 'House', 'SQL', 2.718, 5), (3, '', 'Edge', NULL, 42, NULL);
+SELECT concatWithSeparator(',', concatWithSeparator('-', str1, str2), str3, CAST(num_value AS String)) AS concatenated_str FROM test_strings WHERE nullable_value IS NULL;
+SELECT id, concatWithSeparator(';
+', str1, str3, concatWithSeparator('|', str2, CAST(num_value AS String))) AS complex_concat FROM test_strings ORDER BY complex_concat;
+SELECT id, num_value * (SELECT COUNT(*) FROM test_strings WHERE str2 = 'House') AS product FROM test_strings HAVING product > 0;
+SELECT id, str1, str2, concatWithSeparator('|', str1, str2, CAST(num_value AS String)) AS concatenated FROM test_strings WHERE nullable_value IS NOT NULL AND str1 = '';
+CREATE TABLE test_numeric (id UInt32, some_value Float64, another_value Nullable(Int32));
+INSERT INTO test_numeric VALUES (1, 1.5, NULL), (2, -3.0, 42), (3, 0.0, NULL);
+SELECT id, concatWithSeparator(',', str1, str2) AS concat_results FROM test_strings WHERE num_value < (SELECT AVG(some_value) FROM test_numeric) AND nullable_value IS NOT NULL;
+SELECT id, concatWithSeparator(' - ', CAST(some_value AS String), concatWithSeparator(':', another_value, 'Always')) AS formatted_string FROM test_numeric;
+SELECT id, str1, CONCAT(NULL, str2) AS safe_concat FROM test_strings;
+CREATE TEMPORARY TABLE temp_joined AS SELECT a.id AS a_id, b.id AS b_id FROM test_strings AS a JOIN test_numeric AS b ON a.id = b.id;
+SELECT concatWithSeparator(';
+', a.str1, b.some_value) FROM temp_joined AS j JOIN test_strings AS a ON j.a_id = a.id JOIN test_numeric AS b ON j.b_id = b.id WHERE a.str3 IS NOT NULL;
+SELECT CONCAT(j.a_id, '-', CONCAT_WS('|', j.a_id, b.another_value)) AS complex_id FROM temp_joined AS j JOIN test_numeric AS b ON j.b_id = b.id WHERE b.another_value IS NOT NULL;

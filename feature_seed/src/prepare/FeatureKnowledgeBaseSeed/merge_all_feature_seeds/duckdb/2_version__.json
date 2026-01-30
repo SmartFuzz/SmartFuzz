@@ -1,0 +1,14 @@
+CREATE TABLE test_table (id INTEGER, created_at TIMESTAMP, amount DECIMAL(10,2), description VARCHAR(255), is_active BOOLEAN);
+INSERT INTO test_table VALUES (1, TIMESTAMP '2023-01-01 12:00:00', 100.50, 'Initial entry', TRUE), (2, TIMESTAMP '2023-01-02 12:00:00', NULL, 'Second entry', NULL), (3, NULL, 200.75, '', TRUE);
+SELECT id, description, created_at - INTERVAL (SELECT COUNT(*) FROM test_table WHERE amount IS NULL) DAY AS adjusted_timestamp FROM test_table WHERE is_active IS TRUE ORDER BY adjusted_timestamp;
+SELECT version(), MIN(amount) AS min_amount, MAX(amount) AS max_amount FROM test_table WHERE created_at IS NOT NULL GROUP BY description HAVING COUNT(*) > 1;
+SELECT id, version() AS duckdb_version, created_at - INTERVAL 5 DAY AS five_days_ago FROM test_table WHERE created_at IS NOT NULL AND (SELECT COUNT(*) FROM test_table WHERE amount > 150) > 0;
+SELECT id, created_at, CASE WHEN amount IS NULL THEN 'No Amount' ELSE description END AS display_desc FROM test_table WHERE created_at < (SELECT MAX(created_at) FROM test_table) - INTERVAL 10 DAY;
+CREATE TABLE another_table (table_id INTEGER, ref_id INTEGER, FOREIGN KEY(ref_id) REFERENCES test_table(id));
+INSERT INTO another_table VALUES (1, 1), (2, NULL), (3, 3);
+SELECT a.table_id, a.ref_id, t.created_at, (SELECT version()) AS db_version FROM another_table a JOIN test_table t ON a.ref_id = t.id WHERE t.amount < (SELECT AVG(amount) FROM test_table) ORDER BY t.created_at;
+SELECT COUNT(*) FROM test_table WHERE created_at = TIMESTAMP '2023-01-01 12:00:00' - INTERVAL 1 DAY;
+SELECT version(), SUM(COALESCE(amount, 0)) AS total_amount FROM test_table GROUP BY created_at;
+DROP TABLE IF EXISTS temp_table;
+CREATE TEMPORARY TABLE temp_table AS SELECT id, created_at - INTERVAL 1 HOUR AS one_hour_earlier FROM test_table WHERE is_active IS TRUE;
+SELECT id, created_at FROM temp_table WHERE created_at < TIMESTAMP NOW() - INTERVAL 2 HOUR;

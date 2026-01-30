@@ -1,0 +1,16 @@
+{
+    "function": "ifNotFinite",
+    "operator": "a.N",
+    "sql_array": [
+        "CREATE TABLE test_fuzzing (id UInt32, float_value Float64, text_value String, nested_tuple Tuple(a Float64, b Float64));",
+        "INSERT INTO test_fuzzing VALUES (1, 1.0, 'valid'), (2, 1.0/0, 'infinity'), (3, -1.0/0, 'negative_infinity'), (4, 1.5, NULL);",
+        "SELECT id, ifNotFinite(float_value, CAST(text_value AS Float64)) AS checked_value FROM test_fuzzing WHERE float_value IS NOT NULL;",
+        "SELECT id, ifNotFinite(nested_tuple.1, 0.0) AS first_element_check FROM test_fuzzing;",
+        "SELECT id, float_value + ifNotFinite(nested_tuple.2, float_value) AS computed_value FROM test_fuzzing WHERE ifNotFinite(float_value, 0) != 0;",
+        "SELECT AVG(ifNotFinite(nested_tuple.1, 0)) AS average_check FROM test_fuzzing GROUP BY id HAVING average_check > 0;",
+        "SELECT a.id, b.float_value, ifNotFinite(a.float_value, 0) FROM test_fuzzing AS a JOIN test_fuzzing AS b ON a.id = b.id WHERE ifNotFinite(b.float_value, 0) IS NOT NULL;",
+        "SELECT nested_tuple.1 AS element_1, ifNotFinite(nested_tuple.2, 0) AS element_2 FROM test_fuzzing WHERE ifNotFinite(float_value, 0) > 0;",
+        "SELECT id, ifNotFinite((SELECT AVG(float_value) FROM test_fuzzing WHERE text_value IS NOT NULL), 0) AS avg_float FROM test_fuzzing GROUP BY id;",
+        "CREATE TABLE temporary_fuzzing AS SELECT id, ifNotFinite(nested_tuple.1, 0) AS finite_check FROM test_fuzzing WHERE float_value IS NOT NULL;"
+    ]
+}

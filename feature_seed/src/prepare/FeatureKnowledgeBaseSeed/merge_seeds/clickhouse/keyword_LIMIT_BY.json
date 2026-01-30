@@ -1,0 +1,10 @@
+CREATE TABLE limit_by (id Int32, val String, referrer String, domain String, device_type String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO limit_by (id, val, referrer, domain, device_type) VALUES (1, 'a', 'ref1', 'domain1', 'desktop'), (2, 'b', 'ref2', 'domain1', 'mobile'), (3, 'a', 'ref3', 'domain2', 'desktop'), (4, 'c', 'ref4', 'domain2', 'mobile'), (5, 'b', 'ref5', 'domain1', 'desktop'), (6, 'd', 'ref6', 'domain3', 'mobile');
+SELECT *, ROW_NUMBER() OVER(PARTITION BY domain, device_type ORDER BY id) as rn FROM limit_by WHERE rn <= 5 LIMIT 5 BY domain, device_type;
+SELECT domain, device_type, referrer, COUNT(*) as ref_count FROM limit_by GROUP BY domain, device_type ORDER BY ref_count DESC LIMIT 3 BY domain, device_type;
+SELECT id, val FROM limit_by WHERE device_type = 'desktop' ORDER BY id LIMIT 2 OFFSET 1 BY id;
+SELECT referrer, domain, COUNT(*) as count FROM limit_by GROUP BY referrer, domain ORDER BY count DESC LIMIT 3 BY domain;
+SELECT id, val, domain FROM (SELECT * FROM limit_by WHERE val IN ('a', 'b', 'c')) AS subquery ORDER BY id LIMIT 1 BY val;
+SELECT * FROM limit_by WHERE val = 'a' LIMIT 10 BY id;
+SELECT DISTINCT domain FROM limit_by LIMIT 5 BY device_type;
+SELECT val, COUNT(*) FROM limit_by HAVING COUNT(*) > 1 LIMIT 5 BY val;

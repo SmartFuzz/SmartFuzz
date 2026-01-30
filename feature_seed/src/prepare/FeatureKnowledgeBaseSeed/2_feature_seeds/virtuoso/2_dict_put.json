@@ -1,0 +1,13 @@
+CREATE TABLE test_dict (id INT PRIMARY KEY, key_part VARCHAR(255), value_part VARCHAR(255));
+INSERT INTO test_dict (id, key_part, value_part) VALUES (1, 'one', '1'), (2, 'two', '2'), (3, 'three', NULL);
+SELECT dict_put(key_part, (SELECT COUNT(*) FROM test_dict WHERE value_part IS NOT NULL) BETWEEN 1 AND 2) AS updated_dict FROM test_dict WHERE value_part IS NOT NULL;
+SELECT key_part, dict_put(key_part, value_part) AS new_value FROM test_dict WHERE dict_put(key_part, value_part) BETWEEN '1' AND '2' ORDER BY key_part;
+SELECT dict_put(key_part, CASE WHEN value_part IS NULL THEN 'default' ELSE value_part END) AS final_value FROM test_dict WHERE key_part BETWEEN 'a' AND 'z' GROUP BY final_value HAVING COUNT(*) > 1;
+WITH temp_dict AS (SELECT id, dict_put(key_part, value_part) AS temp_value FROM test_dict WHERE value_part NOT BETWEEN '1' AND '10') SELECT * FROM temp_dict WHERE temp_value IS NOT NULL;
+SELECT key_part, COUNT(*) AS num_updates FROM (SELECT dict_put(key_part, 'updated_value') AS new_value FROM test_dict HAVING new_value IS NOT NULL) AS updated WHERE new_value BETWEEN '1' AND '100' GROUP BY key_part;
+CREATE TABLE test_range (range_start INT, range_end INT, value_part INT CHECK(range_end > range_start));
+INSERT INTO test_range (range_start, range_end, value_part) VALUES (1, 10, 5), (5, 15, NULL), (10, 20, 25);
+SELECT dict_put(range_start, range_end) AS dict_entry FROM test_range WHERE value_part IS NULL OR value_part BETWEEN range_start AND range_end;
+CREATE TABLE test_join (dict_id INT REFERENCES test_dict(id), range_val INT);
+INSERT INTO test_join (dict_id, range_val) VALUES (1, 5), (2, 15), (3, 0);
+SELECT d.key_part, j.range_val, dict_put(d.key_part, j.range_val) AS dict_range_value FROM test_dict d JOIN test_join j ON d.id = j.dict_id WHERE dict_put(d.key_part, j.range_val) BETWEEN '1' AND '10';

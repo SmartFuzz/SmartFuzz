@@ -1,0 +1,12 @@
+CREATE TABLE test_uuid (id UUID, data String, ts DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_uuid VALUES (generateUUIDv4(), 'some data', now()), (generateUUIDv4(), NULL, now());
+SELECT tupleElement((SELECT arrayJoin([dictGetUUID('test_dict', 'id', id)]) FROM test_uuid WHERE data IS NOT NULL), 1) AS fetched_uuid FROM test_uuid WHERE ts < now();
+SELECT dictGetUUID('test_dict', 'id', tupleElement((SELECT arrayJoin([id]) FROM test_uuid WHERE data IS NOT NULL), 1)) AS result_uuid WHERE result_uuid IS NOT NULL;
+SELECT id, tupleElement((VALUES (generateUUIDv4()), (generateUUIDv4())), 2) AS uuid_tuple WHERE id IS NOT NULL;
+SELECT COUNT() FILTER (WHERE tupleElement((SELECT arrayJoin([generateUUIDv4()]) FROM test_uuid LIMIT 10), 1) IS NULL) AS null_count FROM test_uuid;
+CREATE TABLE test_data (id Int32, text Nullable(String), timestamp DateTime DEFAULT now()) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_data VALUES (1, 'first entry', now()), (2, NULL, now()), (3, '', now());
+SELECT tupleElement((SELECT arrayJoin(CASE WHEN text IS NULL THEN ['default'] ELSE [text] END) FROM test_data), 1) AS processed_text FROM test_data WHERE id < 10;
+SELECT COUNT(*) FROM test_data WHERE timestamp > (SELECT MAX(ts) FROM (SELECT ts FROM test_uuid));
+CREATE TEMPORARY TABLE temp_join AS SELECT id, tupleElement((SELECT arrayJoin([generateUUIDv4()]) FROM test_uuid), 1) AS random_uuid FROM test_uuid;
+SELECT AVG(id) FROM temp_join WHERE random_uuid IS NOT NULL AND random_uuid > generateUUIDv4();

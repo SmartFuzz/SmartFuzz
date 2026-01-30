@@ -1,0 +1,26 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/54810",
+  "title": "Inconsistent Results Between MySQL and TiDB in Date Arithmetic Query",
+  "vulnerable_database": "tidb",
+  "date": "2024-07-22T09:34:35Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\r\n\r\nI execute the same statement in tidb and mysql. There may be bugs in there\r\n### 1. Minimal reproduce step (Required)\r\n```sql\r\ndrop table if exists t;\r\ncreate table t (c1 double);\r\ninsert into t values (1.01);\r\n\r\n\r\nSELECT f1 FROM t AS t1 JOIN (SELECT (c1+DATE_SUB('2018-05-17', INTERVAL 1 DAY_MICROSECOND)) AS f1 FROM t) AS t2 ON true; \r\n\r\n```\r\n### 2. What did you expect to see? (Required)\r\nIt returns the following result in mysql:\r\n```\r\n+-------------------+\r\n| f1                |\r\n+-------------------+\r\n| 20180516235960.91 |\r\n+-------------------+\r\n1 row in set (0.00 sec)\r\n\r\n```\r\n### 3. What did you see instead (Required)\r\nIt returns the following result in tidb:\r\n```\r\n+---------+\r\n| f1      |\r\n+---------+\r\n| 2019.01 |\r\n+---------+\r\n1 row in set, 1 warning (0.00 sec)\r\n```\r\n\r\n\r\n### 4. What is your TiDB version? (Required)\r\n```\r\n+--------------------+\r\n| version()          |\r\n+--------------------+\r\n| 8.0.11-TiDB-v7.5.1 |\r\n+--------------------+\r\n1 row in set (0.01 sec)\r\n\r\n```\r\n\r\n",
+  "poc": [
+    "drop table if exists t;",
+    "create table t (c1 double);",
+    "insert into t values (1.01);",
+    "SELECT f1 FROM t AS t1 JOIN (SELECT (c1+DATE_SUB('2018-05-17', INTERVAL 1 DAY_MICROSECOND)) AS f1 FROM t) AS t2 ON true;"
+  ],
+  "poc_type": "sql_text",
+  "state": "closed",
+  "key_bug_features": [
+    "Date arithmetic query inconsistency between MySQL and TiDB"
+  ],
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t1;",
+    "CREATE TABLE t1 (c1 DOUBLE, c2 DATE NOT NULL, c3 VARCHAR(50));",
+    "INSERT INTO t1 VALUES (1.01, '2018-05-17', 'Test');",
+    "SELECT c1 + DATE_SUB(c2, INTERVAL 1 DAY_MICROSECOND) AS result FROM t1;",
+    "SELECT c1 FROM t1 AS a JOIN (SELECT (c1 + DATE_SUB(c2, INTERVAL 1 DAY_MICROSECOND)) AS f1 FROM t1) AS b ON a.c1 = b.f1;"
+  ]
+}

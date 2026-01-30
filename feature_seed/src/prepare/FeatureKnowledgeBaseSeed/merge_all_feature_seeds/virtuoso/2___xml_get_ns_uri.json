@@ -1,0 +1,13 @@
+CREATE TABLE namespaces (prefix VARCHAR(50), uri VARCHAR(255));
+INSERT INTO namespaces (prefix, uri) VALUES ('ex', 'http://example.org/'), ('dc', 'http://purl.org/dc/elements/1.1/');
+SELECT __xml_get_ns_uri('ex', 1) AS uri_ex, __xml_get_ns_uri('dc', 2) AS uri_dc;
+SELECT prefix, uri FROM namespaces WHERE __xml_get_ns_uri(prefix, 2) BETWEEN 'http://a.com/' AND 'http://z.com/';
+SELECT uri, COUNT(*) FROM (SELECT __xml_get_ns_uri(prefix, 1) AS uri FROM namespaces) AS derived GROUP BY uri HAVING COUNT(*) BETWEEN 1 AND 2;
+CREATE TABLE data (id INT, value VARCHAR(100), ns_prefix VARCHAR(50));
+INSERT INTO data (id, value, ns_prefix) VALUES (1, 'sample', 'ex'), (2, NULL, 'dc'), (3, 'test', 'unknown');
+SELECT d.id, __xml_get_ns_uri(d.ns_prefix, 1) AS namespace_uri FROM data d WHERE d.value IS NOT NULL AND __xml_get_ns_uri(d.ns_prefix, 2) BETWEEN 'http://example.org/' AND 'http://example.org/test';
+CREATE TEMPORARY TABLE temp_data AS SELECT DISTINCT value FROM data WHERE length(value) BETWEEN 1 AND 10;
+SELECT COUNT(*) FROM temp_data WHERE EXISTS (SELECT 1 FROM namespaces ns WHERE ns.prefix = (SELECT ns_prefix FROM data d WHERE d.id = 1));
+SELECT __xml_get_ns_uri(NULL, 2) AS null_uri, __xml_get_ns_uri('unknown', 1) AS unknown_uri;
+SELECT d.id, d.value FROM data d LEFT JOIN namespaces ns ON d.ns_prefix = ns.prefix WHERE ns.uri IS NULL AND d.id BETWEEN 1 AND 10 ORDER BY d.id;
+SELECT AVG(CAST((SELECT COUNT(*) FROM data) AS FLOAT)) AS avg_count FROM data GROUP BY __xml_get_ns_uri(ns_prefix, 1) HAVING AVG(CAST(NULL AS FLOAT)) BETWEEN 0 AND 10;

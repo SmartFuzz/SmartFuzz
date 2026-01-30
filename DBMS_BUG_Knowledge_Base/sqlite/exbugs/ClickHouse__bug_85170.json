@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/85170",
+  "title": "ADD or REMOVE JSON  type hint Fail",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nI created a table with a JSON column. After adding data, I want to add a JSON column with type hint user_id Int64, but it fails to add successfully.\n1.created a table\nCREATE TABLE test_json_map4\n(\nv JSON(\nuser_group_id Int64,\nmodule_name String,\ndimensions_map Map(String, String)\n)\n) ENGINE = MergeTree ORDER BY tuple();\n2.add data\nINSERT INTO test_json_map4 (v)\nselect\nconcat('{\"user_group_id\":123,\"module_name\":\"test_module\",\"dimensions_map\":{\"k1\":\"v1\",\"k2\":\"v2\"}}')  as v\nFROM numbers(1);\n3.add JSON type hint\nALTER TABLE test_json_map4\nMODIFY COLUMN v JSON(\nuser_group_id Int64,\nmodule_name String,\ndimensions_map Map(String, String),\nuser_id Int64\n);\n4.add JSON type hint for add index\nALTER TABLE test_json_map4\n(ADD INDEX idx_user_id v.user_id TYPE minmax GRANULARITY 1);\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\n1.created a table\nCREATE TABLE test_json_map4\n(\nv JSON(\nuser_group_id Int64,\nmodule_name String,\ndimensions_map Map(String, String)\n)\n) ENGINE = MergeTree ORDER BY tuple();\n2.add data\nINSERT INTO test_json_map4 (v)\nselect\nconcat('{\"user_group_id\":123,\"module_name\":\"test_module\",\"dimensions_map\":{\"k1\":\"v1\",\"k2\":\"v2\"}}')  as v\nFROM numbers(1);\n3.add JSON type hint\nALTER TABLE test_json_map4\nMODIFY COLUMN v JSON(\nuser_group_id Int64,",
+  "date": "2025-08-07T02:58:58Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test_json_map5 (v TEXT DEFAULT NULL);",
+    "INSERT INTO test_json_map5 (v) VALUES ('{\"user_group_id\": 456, \"module_name\": \"another_module\", \"dimensions_map\": {\"k3\": \"v3\", \"k4\": \"v4\"}, \"user_id\": 789}');",
+    "UPDATE test_json_map5 SET v = json_insert(v, '$.extra_field', NULL);",
+    "INSERT INTO test_json_map5 (v) VALUES ('{\"user_group_id\": null, \"module_name\": \"test_module\", \"dimensions_map\": {\"k1\": \"v1\"}}');",
+    "CREATE INDEX idx_user_id ON test_json_map5 (json_extract(v, '$.user_id'));"
+  ],
+  "key_bug_features": [
+    "Adding JSON type hint to existing column fails"
+  ]
+}

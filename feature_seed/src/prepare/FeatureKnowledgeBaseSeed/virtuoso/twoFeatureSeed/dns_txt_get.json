@@ -1,0 +1,16 @@
+{
+    "function": "dns_txt_get",
+    "operator": "SPARQL Operator: isIRI",
+    "sql_array": [
+        "CREATE TABLE dns_records (id SERIAL PRIMARY KEY, domain VARCHAR(255), record TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO dns_records (domain, record) VALUES ('x._domainkey.example.com', 'v=DKIM1; k=rsa; p=...');",
+        "INSERT INTO dns_records (domain, record) VALUES (null, NULL);",
+        "SELECT dns_txt_get((SELECT domain FROM dns_records WHERE id = 1), 'x._domainkey.example.com') AS dns_record;",
+        "SELECT domain, dns_txt_get(domain, domain) AS dns_record FROM dns_records WHERE dns_txt_get(domain, domain) IS NOT NULL;",
+        "SELECT d1.domain, dns_txt_get(d1.record, (SELECT d2.domain FROM dns_records d2 WHERE d2.id = 1)) AS dns_record FROM dns_records d1 WHERE isIRI(d1.domain) = true;",
+        "SELECT d.domain, COUNT(*) OVER (PARTITION BY dns_txt_get(d.record, d.domain)) AS record_count FROM dns_records d GROUP BY d.domain, dns_txt_get(d.record, d.domain) HAVING COUNT(*) > 0;",
+        "SELECT d.domain, (SELECT COUNT(*) FROM dns_records WHERE domain IS NOT NULL) AS total_records FROM dns_records d WHERE isIRI(d.domain) OR dns_txt_get(NULL, d.domain) IS NOT NULL;",
+        "SELECT dns_txt_get(NULL, '') AS empty_txt_record, isIRI('http://example.com') AS is_iri_check;",
+        "SELECT dns_txt_get(d.record, d.domain) AS fetched_record FROM (SELECT domain, record FROM dns_records WHERE created_at > (CURRENT_TIMESTAMP - INTERVAL '1 DAY')) d WHERE isIRI(d.domain) AND dns_txt_get(d.record, 'invalid.domain') IS NULL;"
+    ]
+}

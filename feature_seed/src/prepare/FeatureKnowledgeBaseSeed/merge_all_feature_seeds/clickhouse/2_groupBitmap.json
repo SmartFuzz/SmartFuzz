@@ -1,0 +1,10 @@
+CREATE TABLE users (UserID UInt32, Active UInt8, SignupDate DateTime, Tags String) ENGINE = MergeTree() ORDER BY UserID;
+INSERT INTO users (UserID, Active, SignupDate, Tags) VALUES (1, 1, '2023-01-01 10:00:00', 'tag1'), (2, 1, '2023-02-01 11:00:00', NULL), (3, 0, '2023-03-01 12:00:00', 'tag2'), (4, 1, '2023-04-01 10:30:00', '');
+CREATE TABLE activities (ActivityID UInt32, UserID UInt32, ActivityType String) ENGINE = MergeTree() ORDER BY ActivityID;
+INSERT INTO activities (ActivityID, UserID, ActivityType) VALUES (1, 1, 'login'), (2, 2, 'purchase'), (3, 1, NULL), (4, 4, 'logout'), (5, 5, 'login');
+SELECT groupBitmap((SELECT count() FROM activities a WHERE a.UserID = u.UserID)) AS user_activity_count FROM users u GROUP BY u.UserID HAVING u.Active = 1;
+SELECT groupBitmap((x -> IF(Tags IS NULL, 0, length(Tags)))) AS tag_length_bitmap FROM users GROUP BY Active;
+SELECT user.UserID, groupBitmap(user.UserID) AS user_bitmap FROM users AS user LEFT JOIN (SELECT ActivityID, UserID FROM activities WHERE UserID IS NOT NULL) AS act ON user.UserID = act.UserID GROUP BY user.UserID;
+SELECT groupBitmap(UserID) AS activity_count FROM activities WHERE ActivityType = (x -> 'login');
+SELECT DISTINCT UserID, groupBitmap((x -> CAST(SignupDate AS UInt32))) AS signup_bitmap FROM users GROUP BY UserID HAVING Active = 1;
+SELECT groupBitmap((x -> IF(SignupDate = '2023-01-01 10:00:00', UserID, NULL))) AS specific_signup_bitmap FROM users;

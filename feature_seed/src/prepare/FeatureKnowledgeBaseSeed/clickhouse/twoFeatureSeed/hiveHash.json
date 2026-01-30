@@ -1,0 +1,19 @@
+{
+    "function": "hiveHash",
+    "operator": "a NOT BETWEEN b AND c",
+    "sql_array": [
+        "CREATE TABLE test_hash (id Int32, str_value String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_hash (id, str_value) VALUES (1, 'Hello, world!'), (2, NULL), (3, 'ClickHouse'), (4, 'Fuzz Testing');",
+        "SELECT id, hiveHash(str_value) as hash_value FROM test_hash WHERE str_value NOT BETWEEN 'A' AND 'Z';",
+        "SELECT id, hiveHash(str_value) as hash_value FROM test_hash WHERE NOT hiveHash(str_value) BETWEEN hiveHash('A') AND hiveHash('Z');",
+        "SELECT id, SUM(CASE WHEN str_value IS NULL THEN -1 ELSE hiveHash(str_value) END) as total_hash FROM test_hash GROUP BY id HAVING NOT total_hash BETWEEN -10 AND 10;",
+        "SELECT id, hiveHash(str_value) as hash_value FROM test_hash WHERE str_value NOT BETWEEN CAST(0 AS String) AND CAST(100 AS String) ORDER BY hash_value;",
+        "SELECT id FROM (SELECT id, hiveHash(str_value) as hash_value FROM test_hash) AS subquery WHERE hash_value NOT BETWEEN 0 AND 100;",
+        "CREATE TABLE test_edge_cases (id Int32, num_value Float64, str_value Nullable(String)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_edge_cases (id, num_value, str_value) VALUES (1, 1.0, 'Boundary'), (2, 1.5, NULL), (3, 2.0, 'Test');",
+        "SELECT id, hiveHash(str_value) as hash_value FROM test_edge_cases WHERE num_value NOT BETWEEN hiveHash('0.0') AND hiveHash('3.0');",
+        "SELECT id FROM test_edge_cases WHERE (num_value NOT BETWEEN 0.0 AND 2.0 OR str_value IS NULL);",
+        "SELECT id, COUNT(*) FROM (SELECT id, hiveHash(COALESCE(str_value, 'default')) as hash_value FROM test_edge_cases) AS hashed GROUP BY id HAVING hash_value NOT BETWEEN hiveHash('Hello') AND hiveHash('World');",
+        "SELECT id, hiveHash(str_value) FROM (SELECT id, NULLIF(str_value, '') as str_value FROM test_hash WHERE str_value IS NOT NULL) as filtered WHERE str_value NOT BETWEEN 'Fuzz' AND 'Testing';"
+    ]
+}

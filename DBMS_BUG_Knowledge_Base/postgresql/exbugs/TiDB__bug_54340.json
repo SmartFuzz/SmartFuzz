@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/54340",
+  "title": "unexpected runtime warning error",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n```\r\nCREATE TABLE t (id INT, a VARBINARY(20), b BIGINT);\r\nINSERT INTO t VALUES(1, _binary '2012-05-19 09:06:07', 20120519090607),\r\n(1, _binary '2012-05-19 09:06:07', 20120519090607),\r\n(2, _binary '12012-05-19 09:06:07', 120120519090607),\r\n(2, _binary '12012-05-19 09:06:07', 120120519090607);\r\nSELECT SUBTIME(BIT_OR(b), '1 1:1:1.000002') FROM t GROUP BY id;\r\nshow warnings;\r\n````\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\n```\r\n+---------+------+---------------------------------------------------+\r\n| Level   | Code | Message                                           |\r\n+---------+------+---------------------------------------------------+\r\n| Warning | 1292 | Truncated incorrect time value: '120120519090607' |\r\n+---------+------+---------------------------------------------------+\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n```\r\n+---------+------+-----------------------------------------+\r\n| Level   | Code | Message                                 |\r\n+---------+------+-----------------------------------------+\r\n| Warning | 1292 | Incorrect time value: '120120519090607' |\r\n| Warning | 1105 |                                         |\r\n+---------+------+-----------------------------------------+\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2024-07-01T05:58:22Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR(50), timestamp_col TIMESTAMP, amount DECIMAL(10, 2));",
+    "INSERT INTO test_table VALUES (1, 'Alice', '2023-10-01 12:00:00', 100.50), (2, 'Bob', '2023-10-02 13:30:00', 200.75), (3, 'Charlie', NULL, 300.00);",
+    "CREATE TABLE another_table (ref_id INT, value BIGINT NOT NULL, FOREIGN KEY (ref_id) REFERENCES test_table(id));",
+    "INSERT INTO another_table VALUES (1, 12345678901234), (2, 98765432109876), (3, 11223344556677);",
+    "SELECT (BIT_OR(value) - INTERVAL '1 1:1.000002') FROM another_table GROUP BY ref_id;"
+  ],
+  "key_bug_features": [
+    "Incorrect time value in BIT_OR aggregation query"
+  ]
+}

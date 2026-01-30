@@ -1,0 +1,17 @@
+{
+    "function": "fromUnixTimestampInJodaSyntax",
+    "operator": "a.N",
+    "sql_array": [
+        "CREATE TABLE test_dates (id UInt32, timestamp_value Int32, date_format String) ENGINE = Memory;",
+        "INSERT INTO test_dates VALUES (1, 1234334543, 'yyyy-MM-dd HH:mm:ss'), (2, 1672531199, 'dd-MM-yyyy HH:mm:ss');",
+        "SELECT fromUnixTimestampInJodaSyntax(MAX(timestamp_value), date_format, 'UTC') AS formatted_date FROM test_dates WHERE id = 1;",
+        "CREATE TABLE test_joins (id UInt32, parent_id UInt32, CONSTRAINT fk_parent FOREIGN KEY (parent_id) REFERENCES test_dates(id)) ENGINE = Memory;",
+        "INSERT INTO test_joins VALUES (1, 1), (2, 2), (3, 1);",
+        "SELECT a.id, fromUnixTimestampInJodaSyntax(a.timestamp_value, a.date_format, 'UTC') AS formatted_time FROM test_dates AS a JOIN test_joins AS b ON a.id = b.parent_id WHERE b.id = 1;",
+        "SELECT COUNT(*) AS total_records FROM (SELECT a.id, fromUnixTimestampInJodaSyntax(a.timestamp_value, a.date_format, 'UTC') AS formatted_time FROM test_dates AS a JOIN test_joins AS b ON a.id = b.parent_id GROUP BY a.id, formatted_time HAVING formatted_time IS NOT NULL);",
+        "SELECT a.id, fromUnixTimestampInJodaSyntax(a.timestamp_value, 'yyyy-MM-dd HH:mm:ss', 'UTC') AS formatted_time FROM (SELECT id, MAX(timestamp_value) AS timestamp_value FROM test_dates GROUP BY id HAVING COUNT(*) > 1) AS a;",
+        "SELECT fromUnixTimestampInJodaSyntax(a.timestamp_value + 1, date_format, 'UTC') AS altered_time FROM test_dates AS a WHERE a.timestamp_value IS NOT NULL ORDER BY altered_time DESC;",
+        "DROP TABLE IF EXISTS test_dates;",
+        "DROP TABLE IF EXISTS test_joins;"
+    ]
+}

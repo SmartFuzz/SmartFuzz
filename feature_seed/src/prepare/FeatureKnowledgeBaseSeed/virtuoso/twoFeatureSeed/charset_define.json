@@ -1,0 +1,21 @@
+{
+    "function": "charset_define",
+    "operator": ">=",
+    "sql_array": [
+        "CREATE TABLE charset_test (id INT PRIMARY KEY, name VARCHAR(100), value VARBINARY(255));",
+        "INSERT INTO charset_test (id, name, value) VALUES (1, 'A', N'\\x1\\x2\\x3'), (2, 'B', N'\\x4\\xffce\\x5'), (3, 'C', NULL);",
+        "SELECT id, name, charset_define('TEST-CHARSET', value, vector('SOME-CHARSET', 'ANOTHER-CHARSET')) AS defined_charset FROM charset_test WHERE name >= 'A';",
+        "SELECT id, name FROM charset_test WHERE charset_define('NEW-CHARSET', value, vector('SOME-CHARSET', 'ANOTHER-CHARSET')) IS NULL;",
+        "SELECT id, name FROM charset_test WHERE (SELECT COUNT(*) FROM charset_test WHERE name >= 'B') > 1;",
+        "CREATE TABLE another_charset_test (id INT, description TEXT, encoded_value VARBINARY(255));",
+        "INSERT INTO another_charset_test (id, description, encoded_value) VALUES (1, 'Encoding Test 1', N'\\x1\\x2\\x3'), (2, 'Encoding Test 2', N'\\xffce\\x5');",
+        "SELECT a.id, a.description, charset_define('NEW-CHARSET', a.encoded_value, vector('SOME-CHARSET', 'ANOTHER-CHARSET')) AS character_set FROM another_charset_test AS a JOIN charset_test AS c ON a.id >= c.id WHERE a.encoded_value IS NOT NULL;",
+        "SELECT id, name FROM charset_test WHERE (SELECT MAX(id) FROM charset_test) >= id HAVING COUNT(value) > 0;",
+        "SELECT a.id, charset_define('NEW-CHARSET', a.value, vector('SOME-CHARSET', 'ANOTHER-CHARSET')) AS new_charset FROM charset_test AS a WHERE charset_define('NEW-CHARSET', a.value, vector('SOME-CHARSET', NULL)) >= '1';",
+        "CREATE TEMPORARY TABLE temp_test (temp_id INT, temp_value VARCHAR(50), temp_bin VARBINARY(255));",
+        "INSERT INTO temp_test (temp_id, temp_value, temp_bin) VALUES (1, 'Test', N'\\x1'), (2, 'Example', NULL), (3, NULL, N'\\x2');",
+        "SELECT temp_id, temp_value, charset_define('TEMP-CHARSET', temp_bin, vector('SOME-CHARSET', NULL)) AS defined_temp_charset FROM temp_test WHERE temp_value >= 'Sample' AND temp_bin IS NOT NULL;",
+        "SELECT temp_id, COUNT(*) AS count FROM temp_test GROUP BY temp_id HAVING count >= 2;",
+        "SELECT c.id, charset_define('CHARSET-GROUP', c.value, vector('SOME-CHARSET', 'ANOTHER-CHARSET')) AS char_group FROM charset_test AS c INNER JOIN (SELECT id FROM charset_test WHERE name >= 'C') AS sub ON c.id >= sub.id;"
+    ]
+}

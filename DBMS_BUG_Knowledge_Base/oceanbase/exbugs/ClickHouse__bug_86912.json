@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/86912",
+  "title": "Update Cannot Update One Column From Another",
+  "description": "### Company or project name\nClickHouse, [Sqitch](https://sqitch.org).\n### Describe the unexpected behaviour\nThis `UPDATE` does not work:\n```\nclickhouse :) update bar set baz = id;\nSyntax error: failed at position 24 (end of query):\nupdate bar set baz = id;\nExpected one of: token sequence, Dot, token, OR, AND, IS NOT DISTINCT FROM, IS NULL, IS NOT NULL, BETWEEN, NOT BETWEEN, LIKE, ILIKE, NOT LIKE, NOT ILIKE, REGEXP, IN, NOT IN, GLOBAL IN, GLOBAL NOT IN, MOD, DIV, Comma, IN PARTITION, WHERE\n```\nIt's pretty typical to be able to update one column from another. Here's Postgres:\n```\ndavid=# select * from bar;\nid |  baz\n----+--------\n1 | [null]\n2 | [null]\n3 | [null]\n(3 rows)\ndavid=# update bar set baz = id;\nUPDATE 3\ndavid=# select * from bar;\nid | baz\n----+-----\n1 |   1\n2 |   2\n3 |   3\n(3 rows)\n```\n### Which ClickHouse versions are affected?\n25.8.2.29\n### How to reproduce\n```\ncreate table bar(id int primary key, baz int) ENGINE=MergeTree;\ninsert into bar values (1), (2), (3);\nselect * from bar;\nupdate bar set baz = id;\nselect * from bar;\n```\n### Expected behavior\nShould update one column with the value from another.\n### Error message and/or stacktrace\n```\nSyntax error: failed at position 24 (end of query):\nupdate bar set baz = id;\nExpected one of: token sequence, Dot, token, OR, AND, IS NOT DISTINCT FROM, IS NULL, IS NOT NULL, BETWEEN, NOT BETWEEN, LIKE, ILIKE, NOT LIKE, NOT ILIKE, REGEXP, IN, NOT IN, GLOBAL IN, GLOBAL NOT IN, MOD, DIV, Comma, IN PARTITION, WHERE\n```\n### Additional context\nFiling this report since the [UPDATE docs](https://clickhouse.com/docs/sql-reference/statements/update) ask for reports for unexpected issues.",
+  "date": "2025-09-09T20:07:45Z",
+  "vulnerable_version": "25.8.2.29",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE bar(id INT, baz INT, name VARCHAR(255));",
+    "INSERT INTO bar VALUES (1, NULL, 'A'), (2, NULL, 'B'), (3, NULL, 'C');",
+    "CREATE TABLE foo(id INT, value INT);",
+    "INSERT INTO foo VALUES (1, 10), (2, 20), (3, 30);",
+    "UPDATE bar SET baz = (SELECT value FROM foo WHERE foo.id = bar.id) WHERE baz IS NULL;",
+    "SELECT * FROM bar;"
+  ],
+  "key_bug_features": [
+    "Updating one column with another column's value"
+  ]
+}

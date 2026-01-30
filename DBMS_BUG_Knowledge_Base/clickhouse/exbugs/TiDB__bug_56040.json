@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/56040",
+  "title": "analyze predicate column may not get stat info",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n``` SQL\r\nCREATE TABLE `tlc7a7bc3f` (\r\n  `col_32` char(68) COLLATE gbk_bin DEFAULT 'LLQFjN0Ne7',\r\n  `col_33` tinyint(1) NOT NULL DEFAULT '1',\r\n  `col_34` timestamp NULL DEFAULT NULL,\r\n  `col_35` mediumint(8) unsigned NOT NULL DEFAULT '1',\r\n  `col_36` binary(79) NOT NULL DEFAULT '3I!s=Kqnf@=7-\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0'\r\n) ENGINE=InnoDB DEFAULT CHARSET=gbk COLLATE=gbk_bin;\r\nCREATE TABLE `tl4f97ac94` (\r\n  `col_1` double DEFAULT '8548.501650392927',\r\n  `col_2` char(158) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT '=I#8%wzce2DpvHr6YZB',\r\n  `col_3` float NOT NULL,\r\n  `col_4` varbinary(395) NOT NULL\r\n) ENGINE=InnoDB DEFAULT CHARSET=gbk COLLATE=gbk_chinese_ci;\r\nselect   /*+ inl_join( tlc7a7bc3f ) */ tlc7a7bc3f.col_32 as r0 from tl4f97ac94 , tlc7a7bc3f where not( tlc7a7bc3f.col_35 in ( 15972450 ,2442965 ,13628873 ,8863316 ,12230202;\r\n) ) order by r0;\r\n\r\ndump column usges to mysql.column_stats_usage\r\n\r\nanalyze table tl4f97ac94 predicate column;\r\n\r\ndesc select   /*+ inl_join( tlc7a7bc3f ) */ tlc7a7bc3f.col_32 as r0 from tl4f97ac94 , tlc7a7bc3f where not( tlc7a7bc3f.col_35 in ( 15972450 ,2442965 ,13628873 ,8863316 ,12230202;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\nestRows for tl4f97ac94 is correct.\r\n### 3. What did you see instead (Required)\r\n```\r\nTableFullScan_18         | 10000.00    | cop[tikv] | table:tl4f97ac94\r\n```\r\n### 4. What is your TiDB version? (Required)\r\nmaster\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2024-09-12T07:59:13Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE test_table_1 (id Int32 NOT NULL, value String, created_at DateTime DEFAULT now(), PRIMARY KEY (id));",
+    "INSERT INTO test_table_1 (value) VALUES (NULL), ('test1'), ('test2');",
+    "CREATE TABLE test_table_2 (ref_id Int32 NOT NULL, description String, FOREIGN KEY (ref_id) REFERENCES test_table_1(id));",
+    "INSERT INTO test_table_2 (ref_id, description) VALUES (1, 'description1'), (2, 'description2'), (NULL, 'description3');",
+    "SELECT * FROM test_table_1 WHERE id IN (SELECT ref_id FROM test_table_2 WHERE description IS NOT NULL);"
+  ],
+  "key_bug_features": [
+    "analyze table tl4f97ac94 predicate column"
+  ]
+}

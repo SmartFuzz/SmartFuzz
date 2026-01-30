@@ -1,0 +1,16 @@
+CREATE TABLE test_table (id INT, value1 VARCHAR(20), value2 VARCHAR(20));
+INSERT INTO test_table VALUES (1, null, 'default_value');
+INSERT INTO test_table VALUES (2, 'actual_value', null);
+INSERT INTO test_table VALUES (3, null, null);
+SELECT id, {fn IFNULL(value1, value2)} AS result FROM test_table;
+SELECT id, {fn IFNULL(value1, 'fallback')} AS result FROM test_table WHERE value1 IS NULL;
+SELECT id, {fn IFNULL(value2, value1)} AS result FROM test_table WHERE value2 IS NOT NULL;
+CREATE TABLE secondary_table (qid INT, detail VARCHAR(20));
+INSERT INTO secondary_table VALUES (1, 'extra_value');
+SELECT t.id, {fn IFNULL(t.value1, (SELECT detail FROM secondary_table WHERE qid = 1))} AS result FROM test_table t;
+SELECT t.id, {fn IFNULL(t.value1, {fn IFNULL(t.value2, 'not_available')})} AS result FROM test_table t;
+SELECT s.id, {fn IFNULL(t.value1, 'default_value')} AS result FROM test_table t JOIN secondary_table s ON t.id = s.qid;
+SELECT {fn IFNULL(MIN(value1), 'no_values')} AS min_value FROM test_table;
+SELECT {fn IFNULL(MAX(value2), 'no_values')} AS max_value FROM test_table WHERE value2 IS NOT NULL;
+SELECT {fn IFNULL((SELECT value1 FROM test_table WHERE id = 3), 'fallback')} AS subquery_result;
+SELECT {fn IFNULL(t1.value1, t2.detail)} AS result FROM test_table t1 JOIN secondary_table t2 ON t1.id = t2.qid WHERE t1.value1 IS NULL;

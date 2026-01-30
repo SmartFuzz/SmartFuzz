@@ -1,0 +1,16 @@
+{
+    "function": "toUInt8OrZero",
+    "operator": "x -> expr",
+    "sql_array": [
+        "CREATE TABLE fuzz_test (id UInt32, value String, num UInt8 DEFAULT toUInt8OrZero(value));",
+        "INSERT INTO fuzz_test (id, value) VALUES (1, '256'), (2, 'abc'), (3, '-1'), (4, '0.7'), (5, '12.99'), (6, 'Inf'), (7, 'NaN'), (8, '4294967296');",
+        "SELECT id, toUInt8OrZero(value) AS converted_value, id -> converted_value AS lambda_test FROM fuzz_test;",
+        "SELECT id, (SELECT COUNT() FROM fuzz_test WHERE toUInt8OrZero(value) > 0) AS positive_count FROM fuzz_test GROUP BY id HAVING positive_count > 0;",
+        "SELECT id, toUInt8OrZero(num) AS converted_num FROM (SELECT id, value, toUInt8OrZero(value) AS num FROM fuzz_test) AS subquery WHERE num < 1;",
+        "SELECT id, (value -> toUInt8OrZero(value)) AS lambda_conversion FROM fuzz_test;",
+        "SELECT id, num, toUInt8OrZero(value) AS corrected_num FROM fuzz_test WHERE value IS NOT NULL ORDER BY corrected_num DESC;",
+        "CREATE TABLE test_join (test_id UInt32, ref_value String);",
+        "INSERT INTO test_join (test_id, ref_value) VALUES (1, '0'), (2, '256'), (3, 'abc');",
+        "SELECT f.id, f.value, j.ref_value -> toUInt8OrZero(ref_value) AS ref_converted FROM fuzz_test AS f JOIN test_join AS j ON f.id = j.test_id;"
+    ]
+}

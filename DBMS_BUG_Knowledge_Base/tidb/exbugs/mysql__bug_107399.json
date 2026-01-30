@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=107399",
+  "title": "Broken integer value empty string validation with bind vars (8.0.27 to 8.0.28)",
+  "description": "Constants work fine, but empty string bind variables just converts to zero\nHow to repeat:\nMySQL 8.0.27 - correct behavior\r\n\r\nSELECT VERSION(), @@sql_mode\r\n;\r\n+---------+---------------------------------------------------------------------------------------------------------------------+\r\n|VERSION()|@@sql_mode                                                                                                           |\r\n+---------+---------------------------------------------------------------------------------------------------------------------+\r\n|8.0.27   |ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION|\r\n+---------+---------------------------------------------------------------------------------------------------------------------+\n\nDROP TABLE IF EXISTS test_empty_string\r\n;\r\nCREATE TABLE test_empty_string (int_col INT)\r\n;\r\n\r\nINSERT test_empty_string VALUES ('')\r\n;\r\n[HY000][1366] Incorrect integer value: '' for column 'int_col' at row 1\r\n\r\nSET @val = ''\r\n;\r\nINSERT test_empty_string VALUES (@val)\r\n;\r\n[HY000][1366] Incorrect integer value: '' for column 'int_col' at row 1\r\n\r\nPREPARE stmt1 FROM 'INSERT test_empty_string VALUES (?)'\r\n;\r\nEXECUTE stmt1 USING @val\r\n;\r\n[HY000][1366] Incorrect integer value: '' for column 'int_col' at row 1\r\n\r\nSELECT * FROM test_empty_string\r\n;\r\n0 rows retrieved\n\nMySQL 8.0.28 (8.0.29) - incorrect behavior\r\n\r\nSELECT VERSION(), @@sql_mode\r\n;\r\n+---------+---------------------------------------------------------------------------------------------------------------------+\r\n|VERSION()|@@sql_mode                                                                                                           |\r\n+---------+---------------------------------------------------------------------------------------------------------------------+\r\n|8.0.28   |ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION|\r\n+---------+---------------------------------------------------------------------------------------------------------------------+\n\nDROP TABLE IF EXISTS test_empty_string\r\n;\r\nCREATE TABLE test_empty_string (int_col INT)\r\n;\r\n\r\nINSERT test_empty_string VALUES ('')\r\n;\r\n[HY000][1366] Incorrect integer value: '' for column 'int_col' at row 1\r\n\r\nSET @val = ''\r\n;\r\nINSERT test_empty_string VALUES (@val)\r\n;\r\n[HY000][1366] Incorrect integer value: '' for column 'int_col' at row 1\r\n\r\nIncorrect behavior:\r\nPREPARE stmt1 FROM 'INSERT test_empty_string VALUES (?)'\r\n;\r\nEXECUTE stmt1 USING @val\r\n;\r\n1 row affected\r\n\r\nSELECT * FROM test_empty_string\r\n;\r\n+-------+\r\n|int_col|\r\n+-------+\r\n|0      |\r\n+-------+\n\nsimilar error in PHP PDO drivers\r\n$PDO_sth->query with static statement - correctly raising error\r\n$PDO_sth->prepare + execute - inserting incorrect value\r\n\r\nalso incorrect statement saved to mysql-bin-changelog (binlog_format = 'MIXED' OR 'STATEMENT')\r\nThere are incorrect statement\r\nINSERT test_empty_string VALUES ('')\r\nwhich executed with error\r\n[HY000][1366] Incorrect integer value: '' for column 'int_col' at row 1\r\nand replication gets broken",
+  "date": "2022-05-25 20:56:00",
+  "vulnerable_version": "8.0.28, 8.0.29",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_empty_string_v2 (int_col INT NOT NULL, str_col VARCHAR(255) DEFAULT '') ENGINE=InnoDB;",
+    "INSERT INTO test_empty_string_v2 (int_col, str_col) VALUES (NULL, 'test');",
+    "SET @val = '';",
+    "INSERT INTO test_empty_string_v2 (int_col) VALUES (CAST(@val AS SIGNED));",
+    "SELECT * FROM test_empty_string_v2 WHERE int_col IS NULL OR str_col = '';"
+  ],
+  "key_bug_features": [
+    "Empty string bind variable converts to zero"
+  ]
+}

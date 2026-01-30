@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id UInt32, value Float64, scale UInt8) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, 99.67, 2), (2, 0.99999, 3), (3, NULL, 0), (4, 1.15, 2);
+SELECT id, toDecimal128(value, scale) AS decimal_value, multiIf(value IS NULL, 'NULL', toTypeName(decimal_value)) AS type_check FROM test_table;
+CREATE TABLE temp_table AS SELECT toDecimal128(value, scale) AS transformed_value FROM test_table WHERE value IS NOT NULL;
+SELECT transformed_value, IF(transformed_value > 0, 'Positive', 'Non-Positive') AS sign FROM temp_table WHERE transformed_value IS NOT NULL;
+SELECT COUNT(*) AS value_count, sum(toDecimal128(value, 3)) AS total_decimal FROM test_table GROUP BY scale HAVING total_decimal > 0;
+SELECT id, AVG(toDecimal128(value, 2)) AS avg_decimal FROM test_table GROUP BY id ORDER BY avg_decimal DESC;
+SELECT id, toDecimal128(multiIf(value > 0, value, -value), 4) AS positive_value FROM test_table WHERE value IS NOT NULL ORDER BY positive_value;
+SELECT value, toDecimal128('' AS x, 2) AS invalid_conversion FROM test_table WHERE value IS NOT NULL UNION SELECT value, toDecimal128(NULL, 1) FROM test_table;
+CREATE TABLE final_table AS SELECT id, toDecimal128(value, scale) AS final_value FROM test_table IF (scale = 2) AND (value IS NOT NULL);

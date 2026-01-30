@@ -1,0 +1,15 @@
+CREATE TABLE urls (url String) ENGINE = MergeTree() ORDER BY url;
+INSERT INTO urls VALUES ('https://example.com'), ('http://example.com/page?query=1'), ('https://example.com/#anchor'), ('http://example.com/page/');
+SELECT url, URLHash(url) AS hash FROM urls;
+SELECT url, URLHash(url, 1) AS hash_level_1 FROM urls;
+SELECT url, URLHash(url, 2) AS hash_level_2 FROM urls WHERE LENGTH(url) > 20;
+WITH (SELECT url FROM urls WHERE URLHash(url, 1) IS NOT NULL) AS u1 SELECT u1.url, URLHash(u1.url) AS hash FROM u1;
+CREATE TABLE hashes AS SELECT url, URLHash(url) AS hash FROM urls;
+SELECT u.url, h.hash FROM urls AS u JOIN hashes AS h ON u.url = h.url WHERE h.hash IS NOT NULL;
+SELECT url, URLHash(url, 3) AS hash FROM urls WHERE url LIKE 'http://%' AND LENGTH(url) <= 50;
+INSERT INTO urls VALUES ('http://test.com/page/anotherpage/'), ('https://another-example.org'), ('example.com/long/query/path/to/resource');
+SELECT DISTINCT URLHash(url) AS unique_hash FROM urls;
+SELECT url, URLHash(url) AS hash FROM (SELECT url FROM urls WHERE url LIKE 'https://%') AS filtered_urls;
+SELECT COUNT(*) FROM (SELECT URLHash(url) FROM urls GROUP BY URLHash(url));
+WITH (SELECT URLHash(url) AS hash FROM urls) AS hash_subquery SELECT COUNT(*) FROM hash_subquery WHERE hash IS NOT NULL;
+SELECT URLHash(url) AS hash, COUNT(*) FROM urls GROUP BY hash HAVING COUNT(*) > 1;

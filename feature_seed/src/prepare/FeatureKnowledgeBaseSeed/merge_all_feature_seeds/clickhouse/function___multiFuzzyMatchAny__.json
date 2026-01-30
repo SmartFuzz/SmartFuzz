@@ -1,0 +1,11 @@
+CREATE TABLE test_strings (id UInt32, haystack String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_strings VALUES (1, 'hello world'), (2, 'goodbye world'), (3, 'hi there'), (4, 'good morning'), (5, 'hey there');
+SELECT multiFuzzyMatchAny(haystack, 1, ['hello', 'goodbye']) FROM test_strings;
+SELECT multiFuzzyMatchAny(haystack, 2, ['bye', 'hi']) FROM test_strings WHERE id > 2;
+SELECT id, haystack FROM test_strings WHERE multiFuzzyMatchAny(haystack, 1, ['hell', 'orld']) = 1;
+WITH (SELECT arrayJoin(['good', 'morning'])) AS patterns SELECT multiFuzzyMatchAny(haystack, 1, patterns) FROM test_strings;
+CREATE TABLE patterns_table (pattern String) ENGINE = MergeTree() ORDER BY pattern;
+INSERT INTO patterns_table VALUES ('hello'), ('goodbye'), ('hi');
+SELECT a.id, a.haystack FROM test_strings AS a JOIN patterns_table AS b ON multiFuzzyMatchAny(a.haystack, 1, [b.pattern]) = 1;
+SELECT COUNT(*) FROM test_strings WHERE multiFuzzyMatchAny(haystack, 1, ['good', 'morning']) = 1 AND id < 4;
+SELECT id FROM (SELECT id, multiFuzzyMatchAny(haystack, 1, ['hello', 'hi']) AS match FROM test_strings) WHERE match = 1;

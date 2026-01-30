@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/13542",
+  "title": "Correlated subquery related? Failed to bind column reference \"once_state2\" [35.0] (bindings: {#[1.0], #[33.0]})",
+  "description": "### What happens?\r\n\r\nSee the reproduction. The difference between the first query that succeeds, and the second that gives an error is only that a column is referenced in the where clause in the second query. This column is generated from a exists correlated subquery \"self join\".\r\n\r\n### To Reproduce\r\n\r\n```\r\n$ ./duckdb \r\nv1.0.0 1f98600c2c\r\n```\r\n```sql\r\nselect version();\r\n```\r\n```text\r\n┌───────────┐\r\n│ version() │\r\n│  varchar  │\r\n├───────────┤\r\n│ v1.0.0    │\r\n└───────────┘\r\n```\r\n```sql\r\ncreate table stuff (\r\n      ts timestamp,\r\n      item_id int,\r\n      type text\r\n    );\r\n```\r\n```sql\r\nwith\r\n    unique_items as (\r\n       select distinct item_id from stuff\r\n    ),\r\n    state_stuff as (\r\n      select\r\n        item_id,\r\n        exists (select 1 from stuff c where s.item_id = c.item_id\r\n                and type = 'state1') as once_state1,\r\n        exists (select 1 from stuff c where s.item_id = c.item_id\r\n                and type = 'state2') as once_state2\r\n      from unique_items s)\r\n    select * from state_stuff;\r\n```\r\n```text\r\n┌─────────┬─────────────┬─────────────┐\r\n│ item_id │ once_state1 │ once_state2 │\r\n│  int32  │   boolean   │   boolean   │\r\n├─────────┴─────────────┴─────────────┤\r\n│               0 rows                │\r\n└─────────────────────────────────────┘\r\n```\r\n```sql\r\nwith\r\n    unique_items as (\r\n       select distinct item_id from stuff\r\n    ),\r\n    state_stuff as (\r\n      select\r\n        item_id,\r\n        exists (select 1 from stuff c where s.item_id = c.item_id\r\n                and type = 'state1') as once_state1,\r\n        exists (select 1 from stuff c where s.item_id = c.item_id\r\n                and type = 'state2') as once_state2\r\n      from unique_items s)\r\n    select * from state_stuff where not once_state2;\r\n```\r\n```console\r\nINTERNAL Error: Failed to bind column reference \"once_state2\" [35.0] (bindings: {#[1.0], #[33.0]})\r\nThis error signals an assertion failure within DuckDB. This usually occurs due to unexpected conditions or errors in the program's logic.\r\nFor more information, see https://duckdb.org/docs/dev/internal_errors\r\n```\r\n\r\n### OS:\r\n\r\nx64 Debian GNU/Linux 12\r\n\r\n### DuckDB Version:\r\n\r\n1.0.0\r\n\r\n### DuckDB Client:\r\n\r\nduckdb cli\r\n\r\n### Full Name:\r\n\r\nJake Wheat\r\n\r\n### Affiliation:\r\n\r\nn/a\r\n\r\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\r\n\r\nI have tested with a nightly build\r\n\r\n### Did you include all relevant data sets for reproducing the issue?\r\n\r\nYes\r\n\r\n### Did you include all code required to reproduce the issue?\r\n\r\n- [X] Yes, I have\r\n\r\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\r\n\r\n- [X] Yes, I have",
+  "date": "2024-08-24 13:00:20",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE items (id INT PRIMARY KEY, name VARCHAR(255), quantity INT, created_at DATETIME);",
+    "INSERT INTO items (id, name, quantity, created_at) VALUES (1, 'item1', 10, '2024-01-01 10:00:00');",
+    "INSERT INTO items (id, name, quantity, created_at) VALUES (2, 'item2', 5, '2024-01-01 10:05:00');",
+    "SELECT id, EXISTS (SELECT 1 FROM items c WHERE i.id = c.id AND quantity > 0) AS has_stock FROM items i HAVING has_stock;",
+    "SELECT id, EXISTS (SELECT 1 FROM items c WHERE i.id = c.id AND quantity > 0) AS has_stock FROM items i HAVING NOT has_stock;"
+  ],
+  "key_bug_features": [
+    "Column reference in where clause with correlated subquery"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/c694113e50",
+  "title": "Unnecessary ABORT with unhelpful error message",
+  "description": "drh added on 2018-07-24 20:57:04:\nIf a query that uses a correlated subquery is running, and midway through that\nquery a CREATE INDEX statement is run, then the next time the correlated\nsubquery needs to run within the main query, \nthe main query aborts with an \"abort due to ROLLBACK\"\nerror.  There are two problems with this.  (1) It does not need to abort,\nsince the query could continue running.  Certainly it ought to reprepare\nbefore it runs again, to possibly take advantage of the new index, but for\nthe current cycle it should just keep on going.  (2) The error message\n(and the SQLITE_ABORT_ROLLBACK error code) do not accurately describe what\nis going wrong.\nThe following TCL script demonstrates the problem:\nsqlite3 db :memory:\ndb eval {\n  CREATE TABLE t1(a INTEGER PRIMARY KEY);\n  CREATE TABLE t2(d INTEGER PRIMARY KEY,e,f);\n  INSERT INTO t1(a) VALUES(1),(2),(3),(4);\n}\ndb eval {SELECT a FROM t1 WHERE NOT EXISTS(SELECT 1 FROM t2 WHERE d=a)} {\n  if {$a==3} {\n    puts \"CREATE INDEX\"\n    db eval {CREATE INDEX t2e ON t2(e);}\n  }\n  puts a=$a\n}\nIn the script above the output shows:\na=1\na=2\nCREATE INDEX\na=3\nThen the \"abort due to ROLLBACK\" error occurs.",
+  "date": "2018-07-24 20:57:047.05 years ago",
+  "vulnerable_version": "3.24.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE users(id INT PRIMARY KEY, name VARCHAR(255), age INT);",
+    "CREATE TABLE orders(order_id INT PRIMARY KEY, user_id INT, amount DECIMAL(10, 2), FOREIGN KEY(user_id) REFERENCES users(id));",
+    "INSERT INTO users(name, age) VALUES('Alice', 30), ('Bob', NULL), ('Charlie', 25);",
+    "INSERT INTO orders(user_id, amount) VALUES(1, 100.50), (2, 200.75), (1, NULL);",
+    "SELECT u.name FROM users u WHERE NOT EXISTS(SELECT 1 FROM orders o WHERE o.user_id = u.id AND o.amount IS NOT NULL);"
+  ],
+  "key_bug_features": [
+    "CREATE INDEX during correlated subquery execution causes abort"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/335",
+  "title": "Cannot delete triple with non-ASCII characters in literal with language tag",
+  "description": "Reproducing is about as easy as could be. Insert data with:\ninsert into graph <http://test/3807dd61-b064-11e4-8385-7831c1bfeec2> {\n  <http://test/3> <http://test/name> \"\\u00F8\"@no.\n  <http://test/3> <http://test/age> 3.\n}\n\nNow check that it's there:\nselect * where { graph <http://test/3807dd61-b064-11e4-8385-7831c1bfeec2> {\n  ?s ?p ?o\n  }\n}\n\nTwo triples, literal with its nice ø and the language tag. Everything fine.\nThen delete both triples:\nWITH <http://test/3807dd61-b064-11e4-8385-7831c1bfeec2> DELETE {\n  <http://test/3> <http://test/name> \"\\u00F8\"@no.\n  <http://test/3> <http://test/age> 3.\n}\n\nThis reports back that 2 (or less) triples have been deleted, which is perfect. Then verify that they're gone:\nselect * where { graph <http://test/3807dd61-b064-11e4-8385-7831c1bfeec2> {\n  ?s ?p ?o\n  }\n}\n\nUnfortunately, the \"ø\"@no is not gone. If you do this whole sequence with just \"ø\" (without the @no) it works as expected. Makes no difference whether you use SPARQL endpoint over HTTP or if you do this via JDBC (with \"SPARQL \" in front of all statements).",
+  "date": "2015-02-09 14:13:49",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE IF NOT EXISTS graph1 (subject VARCHAR(255), predicate VARCHAR(255), object VARCHAR(255), lang VARCHAR(10));",
+    "INSERT INTO graph1 (subject, predicate, object, lang) VALUES ('http://test/1', 'http://test/name', 'Test', 'en');",
+    "INSERT INTO graph1 (subject, predicate, object, lang) VALUES ('http://test/2', 'http://test/name', 'ø', 'no');",
+    "DELETE FROM graph1 WHERE subject = 'http://test/2' AND predicate = 'http://test/name' AND object = 'ø' AND lang = 'no';",
+    "SELECT * FROM graph1;"
+  ],
+  "key_bug_features": [
+    "Deleting triples with non-ASCII characters fails"
+  ]
+}

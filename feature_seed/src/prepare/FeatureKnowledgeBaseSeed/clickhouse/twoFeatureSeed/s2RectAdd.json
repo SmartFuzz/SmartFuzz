@@ -1,0 +1,16 @@
+{
+    "function": "s2RectAdd",
+    "operator": "a - b",
+    "sql_array": [
+        "CREATE TABLE geo_test (id UInt64, pointLow UInt64, pointHigh UInt64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO geo_test VALUES (1, 5178914411069187297, 5177056748191934217), (2, 0, 0), (3, 5179000000000000000, 5178000000000000000);",
+        "SELECT id, s2RectAdd(pointLow, pointHigh, s2RectAdd(pointLow, 5179056748191934217, 5179006748191934217)) AS rectAdd FROM geo_test WHERE (pointLow - pointHigh) > 0;",
+        "CREATE TABLE geo_extreme (ext_id UInt64, ext_value String) ENGINE = MergeTree() ORDER BY ext_id;",
+        "INSERT INTO geo_extreme VALUES (1, '10000'), (2, '0'), (3, 'NULL');",
+        "SELECT ext_id, s2RectAdd(0, 0, toUInt64(parseFloat(ext_value))) AS rectAdd FROM geo_extreme WHERE ext_value IS NOT NULL;",
+        "SELECT id, s2RectAdd(pointLow, pointHigh, s2Point) FROM geo_test, (SELECT min(pointLow) AS s2Point FROM geo_test) AS subquery WHERE pointLow - (SELECT max(pointHigh) FROM geo_test) < 100;",
+        "WITH (SELECT min(pointLow) FROM geo_test) AS minLow, (SELECT max(pointHigh) FROM geo_test) AS maxHigh SELECT s2RectAdd(minLow, maxHigh, 5179006747191934217) AS rectAdd FROM geo_test HAVING rectAdd > 0;",
+        "SELECT s2RectAdd(0, 0, 5178914411069187297) - s2RectAdd(5179056748191934217, 5177000000000000000, 5178000000000000000) AS complexTest FROM geo_test;",
+        "WITH (SELECT count(*) FROM geo_test) AS totalCount SELECT s2RectAdd(pointLow, pointHigh, 5179056748191934217) AS rectAdd, totalCount FROM geo_test HAVING rectAdd > 0 ORDER BY rectAdd DESC;"
+    ]
+}

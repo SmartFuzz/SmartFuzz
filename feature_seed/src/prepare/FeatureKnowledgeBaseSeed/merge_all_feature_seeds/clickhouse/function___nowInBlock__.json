@@ -1,0 +1,15 @@
+CREATE TABLE test_table (id UInt32, event_time DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, nowInBlock()), (2, nowInBlock()), (3, nowInBlock());
+SELECT id, event_time, nowInBlock() AS block_time FROM test_table;
+SELECT id, nowInBlock('UTC') AS utc_time FROM test_table WHERE id < 3;
+SELECT id, event_time, nowInBlock() AS block_time FROM (SELECT id, event_time FROM test_table) AS subquery;
+SELECT id, (event_time + INTERVAL 2 HOUR) AS adjusted_time, nowInBlock() AS block_time FROM test_table;
+CREATE TABLE temp_numbers AS SELECT number AS id FROM numbers(10) ENGINE = Memory;
+SELECT id, nowInBlock() AS block_time FROM temp_numbers WHERE id % 2 = 0;
+SELECT id, (nowInBlock() - event_time) AS time_difference FROM test_table WHERE event_time < nowInBlock() - INTERVAL 5 MINUTE;
+SELECT t.id, nowInBlock() AS block_time FROM test_table AS t JOIN temp_numbers AS n ON t.id = n.id;
+WITH (nowInBlock() - INTERVAL 1 HOUR) AS recent_time SELECT id, event_time FROM test_table WHERE event_time > recent_time;
+SELECT id, event_time, MIN(event_time) OVER(PARTITION BY id) AS min_time, nowInBlock() AS block_time FROM test_table;
+CREATE TABLE joined_data AS SELECT t.id, t.event_time, n.block_time FROM test_table t JOIN (SELECT nowInBlock() AS block_time FROM numbers(5)) n ON t.id = n.block_time;
+SELECT DISTINCT nowInBlock() AS block_time FROM test_table ORDER BY block_time;
+SELECT id, DATE_FORMAT(nowInBlock('Europe/London'), '%Y-%m-%d %H:%i:%s') AS london_time FROM test_table;

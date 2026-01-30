@@ -1,0 +1,15 @@
+CREATE TABLE test_table (id UInt64, text_value String, number_value Float64, date_value Date);
+INSERT INTO test_table VALUES (1, 'foobar', 2.5, '2023-10-01'), (2, 'foo', 3.0, '2023-10-02'), (3, NULL, 1.0, '2023-10-03'), (4, '', 0.0, '2023-10-04');
+SELECT countMatches(text_value, materialize('foo')) AS matches FROM test_table WHERE id = 1;
+SELECT id, materialize(text_value) AS full_text FROM test_table WHERE materialize(text_value) == 'foobar';
+SELECT COUNT(*) FROM (SELECT text_value, number_value FROM test_table WHERE number_value > (SELECT materialize(2.0));
+SELECT id, number_value FROM test_table WHERE text_value == materialize('foo') OR number_value == materialize(3.0);
+WITH materialize(countMatches(text_value, 'foo')) AS foo_count SELECT id, foo_count FROM test_table HAVING foo_count > 0;
+SELECT id, COUNT(*) AS count FROM test_table GROUP BY id HAVING materialize(count > 1) == 0;
+CREATE TABLE another_test_table (key UInt64 PRIMARY KEY, col1 Nullable(String), col2 DateTime) ENGINE = MergeTree() ORDER BY key;
+INSERT INTO another_test_table VALUES (1, 'test', NOW()), (2, NULL, NOW()), (3, '', NOW());
+SELECT materialize(NOT (col1 IS NULL)) AS is_not_null FROM another_test_table;
+SELECT key, materialize(col1) AS val FROM another_test_table WHERE val == materialize('test');
+SELECT key FROM another_test_table WHERE (SELECT count(*) FROM test_table WHERE materialize(text_value) == 'foo') > 0;
+SELECT key, date_value FROM test_table WHERE date_value < (SELECT materialize(NOW() - INTERVAL 1 DAY));
+SELECT col1, COUNT(*) FROM another_test_table GROUP BY col1 HAVING materialize(COUNT(*)) > 1;

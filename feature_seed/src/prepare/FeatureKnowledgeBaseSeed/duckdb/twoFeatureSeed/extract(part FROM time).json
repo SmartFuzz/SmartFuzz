@@ -1,0 +1,17 @@
+{
+    "function": "extract(part FROM time)",
+    "operator": "-",
+    "sql_array": [
+        "CREATE TABLE time_test (id INTEGER PRIMARY KEY, time_col TIME, duration_col INTERVAL);",
+        "INSERT INTO time_test (id, time_col, duration_col) VALUES (1, TIME '12:30:00', INTERVAL '3 HOUR'), (2, TIME '22:15:00', INTERVAL '1 HOUR'), (3, TIME '05:00:00', INTERVAL '15 MINUTE');",
+        "SELECT id, extract('hour' FROM time_col - duration_col) AS adjusted_hour FROM time_test WHERE time_col IS NOT NULL;",
+        "CREATE TABLE second_test (event_time TIME, description VARCHAR);",
+        "INSERT INTO second_test (event_time, description) VALUES (TIME '14:00:00', 'Event 1'), (TIME '14:30:00', 'Event 2'), (TIME NULL, 'Event 3');",
+        "SELECT e.id, e.description, extract('hour' FROM e.event_time - INTERVAL '2 HOUR') AS event_hour FROM second_test e LEFT JOIN time_test t ON extract('minute' FROM t.time_col) = 30 WHERE t.duration_col IS NOT NULL GROUP BY e.id, e.description HAVING event_hour IS NOT NULL;",
+        "SELECT e.event_hour, COUNT(*) OVER (PARTITION BY e.event_hour) AS hour_count FROM (SELECT extract('hour' FROM time_col - INTERVAL '1 HOUR') AS event_hour FROM time_test) e;",
+        "SELECT t1.id, t1.time_col, t2.description, extract('hour' FROM t1.time_col - t2.event_time) AS hour_diff FROM time_test t1 JOIN second_test t2 ON extract('minute' FROM t1.time_col) = 0 WHERE t1.time_col IS NOT NULL;",
+        "SELECT id, (extract('hour' FROM time_col) + extract('minute' FROM time_col)/60.0) AS decimal_hour FROM time_test ORDER BY decimal_hour DESC;",
+        "SELECT id, (extract('hour' FROM time_col) - EXTRACT('hour' FROM (TIME '23:59:59' - INTERVAL '1 MINUTE'))) AS hour_difference FROM time_test;",
+        "SELECT t1.id, t1.time_col + INTERVAL '5 HOUR' AS new_time FROM time_test t1 WHERE t1.time_col - INTERVAL '1 HOUR' IS NOT NULL;"
+    ]
+}

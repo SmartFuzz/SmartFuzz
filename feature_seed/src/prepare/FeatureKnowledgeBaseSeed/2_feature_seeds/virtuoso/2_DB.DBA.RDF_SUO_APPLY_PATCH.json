@@ -1,0 +1,16 @@
+CREATE TABLE test_graph (id INT PRIMARY KEY, rdf_data TEXT);
+INSERT INTO test_graph VALUES (1, '<http://example.org/subject1> <http://example.org/predicate1> <http://example.org/object1> .');
+INSERT INTO test_graph VALUES (2, '<http://example.org/subject2> <http://example.org/predicate2> <http://example.org/object2> .');
+INSERT INTO test_graph VALUES (3, '<http://example.org/subject3> <http://example.org/predicate3> <http://example.org/blanks1> .');
+INSERT INTO test_graph VALUES (4, '<http://example.org/subject4> <http://example.org/predicate4> _:blankNode .');
+SELECT id FROM test_graph WHERE DB.DBA.RDF_SUO_APPLY_PATCH('<http://example.org/patch1>', 'test_graph') = 0 AND SPARQL isIRI(rdf_data);
+SELECT MAX(id) FROM test_graph WHERE DB.DBA.RDF_SUO_APPLY_PATCH('<http://example.org/patch2>', 'test_graph') IS NOT NULL;
+DELETE FROM test_graph WHERE id = (SELECT id FROM test_graph WHERE SPARQL isIRI(rdf_data) LIMIT 1);
+SELECT id, COUNT(*) FROM test_graph GROUP BY id HAVING COUNT(*) > 1;
+CREATE TABLE patch_results (result_code INT, description TEXT);
+INSERT INTO patch_results (result_code, description) SELECT DB.DBA.RDF_SUO_APPLY_PATCH('<http://example.org/patch3>', 'test_graph'), 'Patch Attempt';
+SELECT * FROM patch_results WHERE result_code <> 0 ORDER BY result_code ASC;
+UPDATE test_graph SET rdf_data = '<http://example.org/updatedSubject> <http://example.org/updatedPredicate> _:newBlankNode .' WHERE SPARQL isIRI(rdf_data);
+CREATE TEMPORARY TABLE temp_graph AS SELECT * FROM test_graph WHERE rdf_data IS NOT NULL;
+SELECT id FROM temp_graph WHERE DB.DBA.RDF_SUO_APPLY_PATCH('<http://example.org/patch4>', 'temp_graph') <> 0 AND id IN (SELECT id FROM test_graph WHERE SPARQL isIRI(rdf_data));
+DROP TABLE temp_graph;

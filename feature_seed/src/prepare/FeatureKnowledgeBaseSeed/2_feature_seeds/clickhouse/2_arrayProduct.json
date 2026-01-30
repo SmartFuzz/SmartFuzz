@@ -1,0 +1,12 @@
+CREATE TABLE test_product (id UInt32, values Array(Int32), nullable_values Nullable(Int32));
+INSERT INTO test_product VALUES (1, [1, 2, 3]), (2, [0, 1, 2]), (3, []), (4, [toUInt32(5), toUInt32(NULL)]);
+SELECT id, arrayProduct(values) AS product FROM test_product WHERE arrayProduct(values) IS NOT NULL;
+SELECT id, arrayProduct(ifNullable(values)) AS product FROM test_product WHERE arrayProduct(ifNullable(values)) IS NOT NULL;
+SELECT id, arrayProduct(CASE WHEN arrayLength(values) > 0 THEN values ELSE [1] END) AS product FROM test_product GROUP BY id HAVING product IS NOT NULL;
+SELECT id, arrayProduct([value, if(nullable_values IS NOT NULL, nullable_values, 1)]) AS adjusted_product FROM test_product JOIN (SELECT id, arrayProduct(values) AS value FROM test_product WHERE values IS NOT NULL) AS derived ON test_product.id = derived.id WHERE value IS NOT NULL;
+SELECT id, arrayProduct([toFloat64(val) AS val, CASE WHEN nullable_values IS NOT NULL THEN nullable_values ELSE 1 END]) AS multiplied_value FROM test_product GROUP BY id HAVING multiplied_value IS NOT NULL;
+WITH (SELECT arrayProduct(values) FROM test_product) AS inner_product SELECT id, inner_product IS NOT NULL AS is_non_null FROM test_product;
+SELECT id, arrayProduct([nullable_values, 0]) AS product FROM test_product WHERE product IS NOT NULL AND arrayProduct([]) IS NOT NULL;
+CREATE TABLE test_product_upper (id UInt32, upper_value Float64, values Array(Float64));
+INSERT INTO test_product_upper VALUES (1, 1.5, [1.1, 2.2]), (2, NULL, [3.3, 4.4]);
+SELECT id, arrayProduct(values) AS product FROM test_product_upper WHERE product IS NOT NULL AND upper_value IS NOT NULL ORDER BY product DESC;

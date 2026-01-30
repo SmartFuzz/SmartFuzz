@@ -1,0 +1,12 @@
+CREATE TABLE test_table (id UInt8, value Float32, category String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, 10.5, 'A'), (2, 20.5, 'B'), (3, 30.5, 'A'), (4, NULL, 'C'), (5, 40.5, 'B'), (6, 50.5, 'A'), (7, 60.5, 'C');
+SELECT id, value, groupArrayMovingAvg(value)(2) AS moving_avg FROM test_table GROUP BY category;
+SELECT category, groupArrayMovingAvg(CASE WHEN value IS NULL THEN 0 ELSE value END)(3) AS avg_value FROM test_table GROUP BY category HAVING avg_value > 20;
+SELECT category, value FROM test_table WHERE value = ANY (SELECT value FROM test_table WHERE category = 'A') AND value IS NOT NULL;
+SELECT id, groupArrayMovingAvg(value)(3) AS avg_value FROM (SELECT id, value FROM test_table WHERE category = ANY (SELECT category FROM test_table WHERE value > 30)) GROUP BY id;
+SELECT (id, groupArrayMovingAvg(value)(window_size))(2) FROM (SELECT id, value FROM test_table WHERE category = 'B') GROUP BY id HAVING avg_value < 50;
+CREATE TABLE test_table2 (id UInt8, value Decimal32(2), related_id UInt8) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table2 VALUES (1, 10.34, 1), (2, 20.75, 1), (3, NULL, 2), (4, 15.21, 1);
+SELECT A.id, groupArrayMovingAvg(A.value)(3) AS moving_avg FROM test_table AS A JOIN test_table2 AS B ON A.id = B.related_id WHERE B.value IS NOT NULL GROUP BY A.id HAVING moving_avg > 15;
+INSERT INTO test_table2 VALUES (5, 0.99, 1), (6, 29.99, 1);
+SELECT category, groupArrayMovingAvg(value)(2) FROM (SELECT category, value FROM test_table WHERE value IS NOT NULL) GROUP BY category HAVING groupArrayMovingAvg(value)(2) IS NOT NULL;

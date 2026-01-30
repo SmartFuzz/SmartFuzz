@@ -1,0 +1,10 @@
+CREATE TABLE web_acls (id INT PRIMARY KEY, user_role VARCHAR(50), access_level INT);
+INSERT INTO web_acls (id, user_role, access_level) VALUES (1, 'admin', 10), (2, 'guest', 0), (3, 'user', 5);
+SELECT http_acl_set(user_role, access_level) FROM web_acls WHERE access_level NOT BETWEEN 1 AND (SELECT MAX(access_level) FROM web_acls);
+SELECT user_role, http_acl_set(user_role, access_level) AS acl_setting FROM web_acls WHERE access_level NOT BETWEEN 0 AND 10 GROUP BY user_role HAVING COUNT(*) > 1;
+SELECT DISTINCT user_role, http_acl_set(user_role, NULLIF(access_level, 0)) FROM web_acls WHERE user_role NOT BETWEEN 'a' AND 'z' ORDER BY acl_setting;
+SELECT http_acl_set(user_role, access_level) FROM web_acls WHERE NOT EXISTS (SELECT * FROM web_acls WHERE access_level = 0 AND user_role = 'guest') AND access_level > 0;
+CREATE TABLE temp_acls AS SELECT * FROM web_acls WHERE NOT EXISTS (SELECT 1 FROM web_acls WHERE access_level NOT BETWEEN 1 AND 5);
+INSERT INTO web_acls (id, user_role, access_level) VALUES (4, 'manager', 7);
+SELECT http_acl_set(user_role, SUM(access_level)) OVER (PARTITION BY user_role) FROM web_acls WHERE NOT (user_role IS NULL OR user_role NOT BETWEEN 'a' AND 'z');
+UPDATE web_acls SET access_level = http_acl_set(user_role, access_level) WHERE access_level NOT BETWEEN 5 AND 15;

@@ -1,0 +1,16 @@
+CREATE TABLE xml_data (id INTEGER PRIMARY KEY, xml_content XMLType);
+INSERT INTO xml_data (id, xml_content) VALUES (1, XMLType('<valid />', 'file://xmlschema/test0001/clean.xsd'));
+INSERT INTO xml_data (id, xml_content) VALUES (2, XMLType('<bad />', 'file://xmlschema/test0001/clean.xsd'));
+SELECT id, xml_content.isSchemaValidated() >= 1 AS is_valid FROM xml_data WHERE xml_content IS NOT NULL;
+SELECT id, (SELECT xml_content.isSchemaValidated() FROM xml_data d WHERE d.id = xml_data.id) >= 1 AS is_valid FROM xml_data;
+SELECT id, COUNT(*) AS valid_count FROM xml_data GROUP BY id HAVING (xml_content.isSchemaValidated() >= 1) = 1;
+SELECT id, CASE WHEN xml_content.isSchemaValidated() >= (SELECT COUNT(*) FROM xml_data) THEN 'Fully Valid' ELSE 'Partially Valid' END AS validation_status FROM xml_data;
+SELECT id FROM xml_data WHERE xml_content IS NOT NULL AND xml_content.isSchemaValidated() >= (CASE WHEN id > 1 THEN 1 ELSE 0 END);
+CREATE TABLE test_numbers (num_value INTEGER);
+INSERT INTO test_numbers (num_value) VALUES (5), (NULL), (0);
+SELECT unnest(array(SELECT num_value FROM test_numbers WHERE num_value IS NOT NULL)) >= (SELECT xml_content.isSchemaValidated() FROM xml_data WHERE id = 2);
+SELECT id, xml_content.isSchemaValidated() AS validation_result FROM xml_data WHERE id >= (SELECT MIN(num_value) FROM test_numbers) ORDER BY validation_result DESC;
+CREATE TEMP TABLE temp_xml (temp_id INTEGER, temp_xml_content XMLType);
+INSERT INTO temp_xml (temp_id, temp_xml_content) VALUES (1, XMLType('<valid />', 'file://xmlschema/test0001/clean.xsd'));
+SELECT temp_id FROM temp_xml WHERE temp_xml_content.isSchemaValidated() >= (SELECT COUNT(*) FROM xml_data WHERE xml_content IS NOT NULL);
+SELECT temp_id, COUNT(*) FROM temp_xml GROUP BY temp_id HAVING COUNT(*) >= (SELECT COUNT(*) FROM xml_data WHERE xml_content.isSchemaValidated() = 0);

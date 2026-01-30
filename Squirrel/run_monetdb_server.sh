@@ -1,0 +1,1 @@
+AFL_IGNORE_PROBLEMS=1 /usr/local/bin/mserver5 --dbpath=/home/MonetDB-build/data/voc --set merovingian_uri=mapi:monetdb://efb2a7b7b1c9:50000/voc --set mapi_usock=/home/MonetDB-build/data/voc/.mapi.sock --set monet_vault_key=/home/MonetDB-build/data/voc/.vaultkey --set gdk_nr_threads=104 --set tablet_threads=104 --set max_clients=64 --set sql_optimizer=default_pipe   &

@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=104571",
+  "title": "Strings with ASCII charset and UCS2 don't match in join statement in MySQL 8",
+  "description": "In MySQL 8 strings with ASCII charset (collate ascii_general_ci) and UCS2 (collate ucs2_general_ci) don't match in join statement.\nHow to repeat:\nHere is small steps to repeat it:\r\n\r\n1. Create two tables with varchar(64) fields and ascii (collate ascii_general_ci) and ucs2 (collate ucs2_general_ci) charsets respectively:\r\nDROP TEMPORARY TABLE IF EXISTS `__ttmp_unicode`;\r\nCREATE TEMPORARY TABLE IF NOT EXISTS `__ttmp_unicode` (\r\n   `wstrName` VARCHAR(256) CHARACTER SET ucs2 COLLATE ucs2_general_ci DEFAULT NULL)\r\n   -- `wstrName` VARCHAR(256) CHARACTER SET ucs2 COLLATE ucs2_unicode_ci DEFAULT NULL)\r\nENGINE=InnoDB;\r\n\r\nDROP TEMPORARY TABLE IF EXISTS `__ttmp_ascii`;\r\nCREATE TEMPORARY TABLE IF NOT EXISTS `__ttmp_ascii` (\r\n    `strName` VARCHAR(64)\r\n) \r\nENGINE=InnoDB DEFAULT CHARACTER SET `ascii` COLLATE `ascii_general_ci`;\r\n\r\n2. Insert same values in tables:\r\nINSERT INTO `__ttmp_unicode`(wstrName)\r\nVALUES('9337a53f-cfd6-4a68-a1fc-e2d84eba8079');\r\nINSERT INTO `__ttmp_ascii`(strName)\r\nVALUES('9337a53f-cfd6-4a68-a1fc-e2d84eba8079');\r\n\r\n3. Check inserted values:\r\nSELECT * FROM `__ttmp_unicode`;\r\nSELECT * FROM `__ttmp_ascii`;\r\n\r\n4. Try to join them:\r\nSELECT `wstrName`, `strName`\r\nFROM `__ttmp_unicode`\r\nINNER JOIN `__ttmp_ascii` ON `__ttmp_unicode`.`wstrName` = `__ttmp_ascii`.`strName`;\r\n\r\nWith MySQL 8 the result is empty table. But with MySQL 5.7 join statement works well and the result is non-empty table:\r\n# wstrName,                             strName\r\n'9337a53f-cfd6-4a68-a1fc-e2d84eba8079', '9337a53f-cfd6-4a68-a1fc-e2d84eba8079'\r\n\r\nI also find out that replacing \"ucs2_general_ci\" collate with \"ucs2_unicode_ci\" makes join works well like MySQL 5.7. You can see this by uncommenting the line \"`wstrName` VARCHAR(256) CHARACTER SET ucs2 COLLATE ucs2_unicode_ci DEFAULT NULL)\" in table `__ttmp_unicode` definition",
+  "date": "2021-08-09 09:37:00",
+  "vulnerable_version": "MySQL 8, 8.0.26",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TEMPORARY TABLE __ttmp_unicode (wstrName VARCHAR(256) COLLATE \"ucs2_general_ci\" DEFAULT NULL);",
+    "CREATE TEMPORARY TABLE __ttmp_ascii (strName VARCHAR(64) COLLATE \"ascii_general_ci\" DEFAULT NULL);",
+    "INSERT INTO __ttmp_unicode(wstrName) VALUES('boundary_test_value_1');",
+    "INSERT INTO __ttmp_ascii(strName) VALUES('boundary_test_value_1');",
+    "SELECT wstrName, strName FROM __ttmp_unicode INNER JOIN __ttmp_ascii ON __ttmp_unicode.wstrName = __ttmp_ascii.strName;"
+  ],
+  "key_bug_features": [
+    "Join statement fails with ASCII and UCS2 charset mismatch"
+  ]
+}

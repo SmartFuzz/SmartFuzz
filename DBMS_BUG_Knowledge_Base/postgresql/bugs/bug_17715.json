@@ -1,0 +1,28 @@
+{
+  "url": "https://www.postgresql.org/message-id/17715-5b3b05201e49c6a0%40postgresql.org",
+  "title": "BUG #17715: dumps file raise an error on restore if a materialized view use a function calling another function",
+  "vulnerable_database": "postgresql",
+  "date": "2022-12-12 15:42:46",
+  "vulnerable_version": "Unknown",
+  "description": "The following bug has been logged on the website:\nBug reference:      17715\nLogged by:          Benoît Fontaine\nEmail address:      benoitfontaine(dot)ba(at)gmail(dot)com\nPostgreSQL version: 14.5\nOperating system:   debian\nDescription:\n## Steps to reproduce :\n1- Execute this code on an empty database :\n```sql\nCREATE FUNCTION square (p integer) RETURNS integer AS $$\nBEGIN\nRETURN p * p;\nEND;\n$$ LANGUAGE plpgsql;\nCREATE FUNCTION myfunc (p integer) RETURNS integer AS $$\nBEGIN\nRETURN square(p) + 1;\nEND;\n$$ LANGUAGE plpgsql;\nCREATE TABLE dewey (num integer);\nINSERT INTO dewey VALUES (10);\nCREATE MATERIALIZED VIEW myview AS (SELECT myfunc (num) FROM dewey);\n```\n2- Dump this database\n3- Restore the dump into another empty database\n## Issue\n```\npsql:res.sql:89: ERROR:  function square(integer) does not exist\nLINE 1: square (p) + 1\n^\nHINT:  No function matches the given name and argument types. You might need\nto add explicit type casts.\nQUERY:  square (p) + 1\nCONTEXT:  PL/pgSQL function public.myfunc(integer) line 3 at RETURN\n```",
+  "poc": [
+    "CREATE TABLE dewey (num integer);",
+    "INSERT INTO dewey VALUES (10);",
+    "CREATE MATERIALIZED VIEW myview AS (SELECT myfunc (num) FROM dewey);"
+  ],
+  "poc_type": "sql_text",
+  "key_bug_features": [
+    "Materialized view using a function calling another function"
+  ],
+  "bug_features_seed": [
+    "CREATE FUNCTION cube (p integer) RETURNS integer AS $$ BEGIN RETURN p * p * p;",
+    "END;",
+    "$$ LANGUAGE plpgsql;",
+    "CREATE FUNCTION myfunc2 (p integer) RETURNS integer AS $$ BEGIN RETURN cube(p) + 2;",
+    "END;",
+    "$$ LANGUAGE plpgsql;",
+    "CREATE TABLE numbers (value integer NOT NULL CHECK (value > 0));",
+    "INSERT INTO numbers VALUES (5), (10), (15);",
+    "CREATE MATERIALIZED VIEW numview AS (SELECT myfunc2(value) FROM numbers);"
+  ]
+}

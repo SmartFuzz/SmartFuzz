@@ -1,0 +1,21 @@
+{
+    "function": "bitmapHasAny",
+    "operator": "a IN ...",
+    "sql_array": [
+        "CREATE TABLE test_bitmaps (id UInt32, bitmap_col Bitmap) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_bitmaps VALUES (1, bitmapBuild([1, 2, 3])), (2, bitmapBuild([2, 4, 6])), (3, bitmapBuild([7]));",
+        "CREATE TABLE test_data (id UInt32, value String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_data VALUES (1, '1'), (2, '2'), (3, '3');",
+        "SELECT id, bitmapHasAny(bitmap_col, bitmapBuild([1, 5])) AS has_intersection FROM test_bitmaps WHERE has_intersection = 1;",
+        "SELECT t1.id, t1.bitmap_col FROM test_bitmaps AS t1 JOIN test_bitmaps AS t2 ON bitmapHasAny(t1.bitmap_col, t2.bitmap_col) WHERE t1.id <> t2.id;",
+        "SELECT id, COUNT(*) AS cnt FROM test_data GROUP BY id HAVING bitmapHasAny(bitmapBuild([id]), bitmapBuild([2, 4])) = 1;",
+        "SELECT id, SUM(CASE WHEN bitmapHasAny(bitmap_col, bitmapBuild([1])) THEN 1 ELSE 0 END) AS has_one FROM test_bitmaps GROUP BY id ORDER BY has_one DESC;",
+        "SELECT id, IF(bitmapHasAny(bitmapBuild([7]), bitmap_col), 'Has Element', 'No Element') AS intersection_status FROM test_bitmaps WHERE id IN (SELECT id FROM test_data WHERE value IN ('1', '3'));",
+        "CREATE TEMPORARY TABLE temp_data AS SELECT id, bitmapBuild(CAST([1, 2, 3] AS Array(UInt32))) AS temp_col FROM test_bitmaps;",
+        "SELECT id FROM temp_data WHERE bitmapHasAny(temp_col, bitmapBuild([2, 8])) IN (1, 0) GROUP BY id HAVING COUNT(*) > 0;",
+        "SELECT COUNT(*) FROM test_bitmaps WHERE bitmapHasAny(bitmap_col, bitmapBuild([])) = 1;",
+        "ALTER TABLE test_bitmaps ADD COLUMN bitmap_extra Bitmap DEFAULT bitmapBuild([]);",
+        "SELECT id, bitmapHasAny(bitmapBuild([1, 4]), bitmap_extra) AS extra_check FROM test_bitmaps WHERE bitmap_extra IS NOT NULL;",
+        "SELECT DISTINCT bitmapHasAny(bitmapBuild([8, 9]), bitmapBuild([3])) AS intersection_result FROM test_data;"
+    ]
+}

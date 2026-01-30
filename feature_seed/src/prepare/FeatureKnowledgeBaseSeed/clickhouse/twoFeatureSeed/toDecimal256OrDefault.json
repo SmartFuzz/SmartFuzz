@@ -1,0 +1,13 @@
+{
+    "function": "toDecimal256OrDefault",
+    "operator": "a != ANY (subquery)",
+    "sql_array": [
+        "CREATE TABLE TestDecimal (id UInt32, value String);",
+        "INSERT INTO TestDecimal VALUES (1, '123.456'), (2, 'Inf'), (3, 'NaN'), (4, '0.000000000000000000000000000000000000000000000000000000000000000000001');",
+        "SELECT toDecimal256OrDefault(value, 3, CAST('-1', 'Decimal256(0)')) AS decimal_value FROM TestDecimal WHERE id != ANY (SELECT id FROM TestDecimal WHERE value = 'Inf');",
+        "SELECT id, toDecimal256OrDefault(toString(SUM(value != 'NaN')), 2) AS total_valid FROM TestDecimal GROUP BY id HAVING total_valid != ANY (SELECT COUNT(*) FROM TestDecimal WHERE value = '0.000000000000000000000000000000000000000000000000000000000000000000001');",
+        "SELECT dt.id, dt.value, toDecimal256OrDefault(dt.value, 5) AS decimal_value FROM TestDecimal dt JOIN (SELECT id FROM TestDecimal WHERE value != 'NaN') sub ON dt.id = sub.id ORDER BY decimal_value DESC; CREATE TABLE SubQueryTest (id UInt32, other_value String); INSERT INTO SubQueryTest VALUES (1, '42'), (2, '0.9'), (3, '99999999999999999999999999999999999999');",
+        "SELECT toDecimal256OrDefault(other_value, 10) AS converted_value FROM SubQueryTest WHERE converted_value != ANY (SELECT toString(id) FROM TestDecimal);",
+        "SELECT id, value, toDecimal256OrDefault('0.9999999999999999999999999', 76) AS high_precision FROM TestDecimal WHERE high_precision != ANY (SELECT high_precision FROM TestDecimal GROUP BY id HAVING COUNT(*) > 1);"
+    ]
+}

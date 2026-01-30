@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id INTEGER PRIMARY KEY, value INTEGER);
+INSERT INTO test_table VALUES (1, 1), (2, 2), (3, 3), (4, NULL), (5, 6), (6, 7);
+SELECT bitstring_agg(value) | bitstring_agg(id) FROM test_table GROUP BY value HAVING value IS NOT NULL;
+SELECT id, bitstring_agg(value) AS bit_agg FROM (SELECT id, CAST(value AS INTEGER) AS value FROM test_table WHERE value IS NOT NULL) AS subquery GROUP BY id HAVING bitstring_agg(value) IS NOT NULL;
+WITH aggregated AS (SELECT bitstring_agg(value) AS bit_agg FROM test_table WHERE value IS NOT NULL) SELECT bit_agg | '0001'::BITSTRING FROM aggregated;
+CREATE TABLE complex_table (id INTEGER, value1 INTEGER, value2 INTEGER, value3 INTEGER);
+INSERT INTO complex_table VALUES (1, 1, 2, 3), (2, 3, 4, NULL), (3, 1, NULL, 2), (4, NULL, 1, 3);
+SELECT id, bitstring_agg(value1) | bitstring_agg(value2) FROM complex_table GROUP BY id HAVING value1 IS NOT NULL OR value2 IS NOT NULL;
+SELECT id, (bitstring_agg(value1) | bitstring_agg(value3)) AS combined_bits FROM complex_table GROUP BY id HAVING combined_bits IS NOT NULL;
+SELECT bitstring_agg((SELECT value1 FROM complex_table WHERE id = c.id)) FROM complex_table c WHERE value2 IS NOT NULL GROUP BY id;

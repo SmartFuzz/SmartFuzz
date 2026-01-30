@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7477",
+  "title": "MonetDB server crashes in `atom_cmp`",
+  "description": "MonetDB server crashes in `atom_cmp`.\n\n**To Reproduce**\n```sql\nSELECT - 66 x GROUP BY x HAVING ( abs ( x ) IN ( SELECT '' x WHERE ( x = ( x = 1 ) ) UNION SELECT 1 ) );\n```\n\n**Backtrace of the Crash**\n```c\n#0 0x7f28e45cd0bd (atom_cmp+0x2d)\n#1 0x7f28e46981a4 (sql_abs_propagate_statistics+0xb4)\n#2 0x7f28e468e311 (rel_propagate_statistics+0x451)\n#3 0x7f28e4661a65 (exp_visitor+0xc45)\n#4 0x7f28e46616e3 (exp_visitor+0x8c3)\n#5 0x7f28e46605e9 (exps_exp_visitor_bottomup+0xf9)\n#6 0x7f28e4689ca1 (rel_get_statistics_+0x351)\n#7 0x7f28e465fde7 (rel_visitor_bottomup+0x3e7)\n#8 0x7f28e465fcd7 (rel_visitor_bottomup+0x2d7)\n#9 0x7f28e465fc3a (rel_visitor_bottomup+0x23a)\n#10 0x7f28e465fcd7 (rel_visitor_bottomup+0x2d7)\n#11 0x7f28e46897bf (rel_get_statistics+0x5f)\n#12 0x7f28e4686235 (rel_optimizer+0x935)\n#13 0x7f28e45e84a7 (sql_processrelation+0xc7)\n#14 0x7f28e43f0edb (sql_symbol2relation+0x1bb)\n#15 0x7f28e441da82 (SQLparser+0x802)\n#16 0x7f28e441ca0a (SQLengine_+0xa5a)\n#17 0x7f28e441a1fe (SQLengine+0x3e)\n#18 0x7f28e499eb2f (runScenario+0x6f)\n#19 0x7f28e499fcfe (MSscheduleClient+0xb6e)\n#20 0x7f28e4ae36c2 (doChallenge+0x132)\n#21 0x7f28e5900b38 (thread_starter+0x318)\n#22 0x7f28e4311609 (start_thread+0xd9)\n#23 0x7f28e4234353 (clone+0x43)\n```\n\n**Software versions**\n - MonetDB version number: v11.49.1 (Dec2023)\n - OS and version: Ubuntu 20.04\n - From docker image monetdb/monetdb:Dec2023 (or monetdb/dev-builds:default)\n\nAn example of steps to reproduce in docker container (**write the poc into /tmp/test.sql first**):\n```bash\ndocker container rm monetdb_test -f\ndocker run -e MDB_DB_ADMIN_PASS=monetdb --name monetdb_test -itd monetdb/monetdb:Dec2023\ndocker exec monetdb_test bash -c 'echo -n -e \"user=monetdb\\npassword=monetdb\\n\" > /root/.monetdb'\n\nsleep 10\ncat /tmp/test.sql | timeout 5s docker exec -i monetdb_test mclient monetdb     # run test case\n\nif docker exec monetdb_test bash -c \"grep '[m]server5' /proc/*/cmdline -lR\"; then\n    echo \"[INFO] Server normal.\"\nelse\n    echo \"[CRASH] Mserver5 process does NOT exist.\"\nfi\n```\n\nIt can also be reproduced on the docker image `monetdb/dev-builds:default`.\n\n**Issue labeling**\nbug",
+  "date": "2024-03-17T11:12:12Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT PRIMARY KEY, value FLOAT, name VARCHAR(50));",
+    "INSERT INTO test_table (id, value, name) VALUES (1, -66.5, 'test1');",
+    "INSERT INTO test_table (id, value, name) VALUES (2, NULL, 'test2');",
+    "SELECT -66 AS x GROUP BY x HAVING ( ABS(x) IN (SELECT value FROM test_table WHERE (value = (value = 1)) UNION SELECT 1));",
+    "SELECT COUNT(*) FROM test_table WHERE value IS NULL;"
+  ],
+  "key_bug_features": [
+    "SELECT - 66 x GROUP BY x HAVING abs(x) IN ..."
+  ]
+}

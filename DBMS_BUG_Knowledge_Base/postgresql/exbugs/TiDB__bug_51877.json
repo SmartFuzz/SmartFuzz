@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/51877",
+  "title": "Tikv conv function inconsistent results with tidb",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\nset tidb_opt_projection_push_down = 'on';\r\ncreate table bug15583(b BIT(8), n INT);\r\ninsert into bug15583 values(128, 128);\r\ninsert into bug15583 values(null, null);\r\ninsert into bug15583 values(0, 0);\r\ninsert into bug15583 values(255, 255);\r\nselect conv(b, 10, 2), conv(b + 0, 10, 2) from bug15583;\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\nconv(b, 10, 2)  conv(b + 0, 10, 2)\r\n10000000       10000000\r\nNULL    NULL\r\n0       0\r\n11111111       11111111\r\n\r\n### 3. What did you see instead (Required)\r\nconv(b, 10, 2)  conv(b + 0, 10, 2)\r\n0       10000000\r\nNULL    NULL\r\n0       0\r\n0       11111111\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n| Release Version: v7.4.0-alpha-2012-gfe01d11df6-dirty\r\nEdition: Community\r\nGit Commit Hash: https://github.com/pingcap/tidb/commit/fe01d11df67ca60573b028ed4c9bc52db9a17a7e\r\nGit Branch: div_increase_prec\r\nUTC Build Time: 2024-03-15 08:10:07\r\n",
+  "date": "2024-03-19T02:58:44Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "SET SESSION sql_mode = '';",
+    "CREATE TABLE bug_test(id SERIAL PRIMARY KEY, b BYTEA, n INT, str_col VARCHAR(10));",
+    "INSERT INTO bug_test(b, n, str_col) VALUES(decode('80', 'hex'), 128, 'test1');",
+    "INSERT INTO bug_test(b, n, str_col) VALUES(NULL, NULL, 'test2');",
+    "SELECT to_char(b::bit(8), 'FM99999999'), to_char(n, 'FM99999999'), to_char(b::int, 'FM99999999') FROM bug_test WHERE str_col = 'test1';"
+  ],
+  "key_bug_features": [
+    "conv function produces inconsistent results with projection push down"
+  ]
+}

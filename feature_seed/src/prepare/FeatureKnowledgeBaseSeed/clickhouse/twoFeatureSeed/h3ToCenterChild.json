@@ -1,0 +1,17 @@
+{
+    "function": "h3ToCenterChild",
+    "operator": "(x1, x2, ...)",
+    "sql_array": [
+        "CREATE TABLE geo_data (id UInt32, h3_index UInt64, resolution UInt8) ENGINE = Memory;",
+        "INSERT INTO geo_data VALUES (1, 577023702256844799, 1), (2, 577023702256844800, 2), (3, 577023702256844801, 3);",
+        "SELECT h3ToCenterChild(index, resolution) AS center_hex, (id, resolution) FROM geo_data WHERE resolution > 0;",
+        "SELECT id, h3ToCenterChild(h3_index, (CASE WHEN resolution < 3 THEN resolution + 1 ELSE 3 END)) AS center_child FROM geo_data;",
+        "WITH (SELECT h3ToCenterChild(h3_index, resolution) FROM geo_data WHERE h3_index IS NOT NULL) AS center_children SELECT DISTINCT center_children, tuple(id, resolution) FROM geo_data;",
+        "SELECT id, (SELECT h3ToCenterChild(h3_index, resolution) FROM geo_data) AS center FROM geo_data WHERE id IN (SELECT id FROM geo_data WHERE resolution < 2);",
+        "CREATE TABLE temp_geo (id UInt32, value String, index UInt64) ENGINE = Memory;",
+        "INSERT INTO temp_geo VALUES (1, 'data', 577023702256844799), (2, NULL, 577023702256844800), (3, 'another', 577023702256844801);",
+        "SELECT h3ToCenterChild(if(value IS NULL, 0, index), 1) AS refined_index, (id, value) FROM temp_geo;",
+        "WITH (SELECT count(*) AS count FROM geo_data GROUP BY resolution HAVING count > 1) AS counts SELECT h3ToCenterChild(h3_index, count) FROM geo_data JOIN counts ON geo_data.resolution = counts.count;",
+        "SELECT h3ToCenterChild(NULLIF(h3_index, 0), NULLIF(resolution, 0)) AS adjusted_index FROM geo_data;"
+    ]
+}

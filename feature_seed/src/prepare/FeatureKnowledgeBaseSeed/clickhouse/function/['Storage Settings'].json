@@ -1,0 +1,20 @@
+[
+    "CREATE TABLE hdfs_test (id UInt32, data String) ENGINE = HDFS('hdfs://example.com/test');",
+    "ALTER TABLE hdfs_test MODIFY SETTING hdfs_truncate_on_insert = 1;",
+    "INSERT INTO hdfs_test VALUES (1, 'sample1');",
+    "ALTER TABLE hdfs_test MODIFY SETTING hdfs_create_new_file_on_insert = 1;",
+    "INSERT INTO hdfs_test VALUES (2, 'sample2');",
+    "CREATE TABLE hdfs_test_empty (id UInt32, data String) ENGINE = HDFS('hdfs://example.com/test_empty');",
+    "ALTER TABLE hdfs_test_empty MODIFY SETTING hdfs_skip_empty_files = 1;",
+    "INSERT INTO hdfs_test_empty VALUES (null, '');",
+    "CREATE TABLE permissions_test (id UInt32, file_path String) ENGINE = HDFS('hdfs://example.com/permissions');",
+    "ALTER TABLE permissions_test MODIFY SETTING ignore_access_denied_multidirectory_globs = 1;",
+    "SELECT id, file_path FROM permissions_test WHERE file_path LIKE 'hdfs://example.com/%';",
+    "INSERT INTO hdfs_test SELECT id, data FROM hdfs_test_empty WHERE data != '';",
+    "SELECT COUNT(*) FROM hdfs_test WHERE id IN (SELECT id FROM permissions_test WHERE id < 10);",
+    "SELECT data FROM hdfs_test WHERE id NOT IN (SELECT id FROM hdfs_test_empty) ORDER BY id DESC;",
+    "CREATE TABLE complex_test (id UInt32, data String) ENGINE = HDFS('hdfs://example.com/complex');",
+    "INSERT INTO complex_test (id, data) SELECT t.id, CONCAT(t.data, ' - modified') FROM hdfs_test t WHERE t.id >= 1;",
+    "INSERT INTO complex_test VALUES (3, 'sample3'), (4, 'sample4');",
+    "SELECT id, data FROM complex_test WHERE id IN (SELECT DISTINCT id FROM hdfs_test) ORDER BY data ASC;"
+]

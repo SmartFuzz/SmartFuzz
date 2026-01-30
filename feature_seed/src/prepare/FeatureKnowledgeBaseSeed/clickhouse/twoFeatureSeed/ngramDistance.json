@@ -1,0 +1,16 @@
+{
+    "function": "ngramDistance",
+    "operator": "INTERVAL",
+    "sql_array": [
+        "CREATE TABLE test_strings (id UInt32, haystack String, needle String) ENGINE = Memory;",
+        "INSERT INTO test_strings VALUES (1, 'ClickHouse', 'ClickHouse!'), (2, 'ClickHouse', 'House'), (3, 'a', 'aa'), (4, '', '');",
+        "SELECT ngramDistance(haystack, needle) AS similarity, id FROM test_strings WHERE similarity < 0.5;",
+        "SELECT h.id, h.haystack, n.needle, ngramDistance(h.haystack, n.needle) AS distance FROM test_strings h JOIN test_strings n ON h.id != n.id WHERE ngramDistance(h.haystack, n.needle) < 0.1;",
+        "SELECT id, ngramDistance(haystack, needle) + INTERVAL 1 HOUR AS adjusted_similarity FROM test_strings WHERE adjusted_similarity < 1;",
+        "SELECT id, haystack FROM test_strings WHERE ngramDistance(haystack, needle) = (SELECT MIN(ngramDistance(haystack, needle)) FROM test_strings);",
+        "SELECT id, now() + INTERVAL ngramDistance(haystack, needle) DAY AS date_adjusted FROM test_strings;",
+        "CREATE TABLE temp_results AS SELECT ngramDistance(haystack, needle) AS sim FROM test_strings WHERE length(haystack) > 0;",
+        "SELECT COUNT(*) AS total_count, AVG(ngramDistance('ClickHouse', haystack)) AS average_distance FROM test_strings GROUP BY haystack HAVING average_distance > 0.5;",
+        "SELECT DISTINCT id, ngramDistance(haystack, needle) OVER (PARTITION BY haystack ORDER BY needle DESC) AS partitioned_distance FROM test_strings WHERE haystack IS NOT NULL;"
+    ]
+}

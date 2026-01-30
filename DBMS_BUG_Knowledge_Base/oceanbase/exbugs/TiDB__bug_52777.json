@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/52777",
+  "title": "subqueries produce different result between different deploy topology (2)",
+  "description": "### 1. Minimal reproduce step (Required)\r\nFirst execute `init.sql` to create the table. Then executing `error.sql` yields unexpected results. Note that reproducing these results might not be entirely stable. Typically, it can be completed within three attempts. You can try executing multiple times or execute it again after rebuilding the table.\r\n[init.sql.txt](https://github.com/pingcap/tidb/files/15046735/init.sql.txt)\r\n[error.sql.txt](https://github.com/pingcap/tidb/files/15046734/error.sql.txt)\r\n\r\n### 2. What did you expect to see? (Required)\r\nThe first column is a column c_k in the table. \r\nThe second column is the maximum value of t_xf1at0.c_pv from another table t_xf1at0 under certain conditions. \r\nThe third column is a subquery that calculates `t_xf1at0.c_pv <= c_k`, sorted in ascending order. If the maximum value of t_xf1at0.c_pv is greater than c_k, the result should be 0; otherwise, it should be 1.\r\n\r\n### 3. What did you see instead (Required)\r\nIn both TiDB multi-node and TiDB single-node versions, incorrect values are present, but the results are different.\r\n[output_re_main.log](https://github.com/pingcap/tidb/files/15046736/output_re_main.log)\r\n[output_re_single.log](https://github.com/pingcap/tidb/files/15046737/output_re_single.log)\r\n\r\n### 4. What is your TiDB version? (Required)\r\n```\r\nRelease Version: v7.5.1\r\nEdition: Community\r\nGit Commit Hash: 7d16cc79e81bbf573124df3fd9351c26963f3e70\r\nGit Branch: heads/refs/tags/v7.5.1\r\nUTC Build Time: 2024-02-27 14:28:32\r\nGoVersion: go1.21.6\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv\r\n```\r\ntopology:\r\n\r\ndistributed.yaml:\r\n```\r\nglobal:\r\n  user: \"tidb\"\r\n  ssh_port: 22\r\n  deploy_dir: \"/tidb-deploy\"\r\n  data_dir: \"/tidb-data\"\r\n\r\npd_servers:\r\n  - host: 10.0.2.31\r\n\r\ntidb_servers:\r\n  - host: 10.0.2.21\r\n  - host: 10.0.2.22\r\n\r\ntikv_servers:\r\n  - host: 10.0.2.11\r\n  - host: 10.0.2.12\r\n  - host: 10.0.2.13\r\n\r\nmonitoring_servers:\r\n  - host: 10.0.2.8\r\n\r\ngrafana_servers:\r\n  - host: 10.0.2.8\r\n\r\nalertmanager_servers:\r\n  - host: 10.0.2.8\r\n```\r\n\r\nsingle.yaml\r\n```\r\nglobal:\r\n  user: \"tidb\"\r\n  ssh_port: 22\r\n  deploy_dir: \"/tidb-deploy\"\r\n  data_dir: \"/tidb-data\"\r\n\r\npd_servers:\r\n  - host: 10.0.2.73\r\n\r\ntidb_servers:\r\n  - host: 10.0.2.72\r\n\r\ntikv_servers:\r\n  - host: 10.0.2.71\r\n\r\n```\r\n\r\n\r\n### about us\r\nWe are the BASS team from the School of Cyber Science and Technology at Beihang University. Our main focus is on system software security, operating systems, and program analysis research, as well as the development of automated program testing frameworks for detecting software defects. Using our self-developed database vulnerability testing tool, we have identified the above-mentioned vulnerabilities in TiDB that may lead to database logic error.\r\n",
+  "date": "2024-04-20T03:13:23Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_comment",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t0 (c_k INT NOT NULL, c_v VARCHAR(255));",
+    "INSERT INTO t0 VALUES (-2127559046, 'value1'), (-190905159, 'value2'), (NULL, 'value3'), (98004414, 'value4');",
+    "CREATE TABLE t1 (c_pv INT, c_desc TEXT DEFAULT 'default');",
+    "INSERT INTO t1 VALUES (-2123227448, 'desc1'), (2131706870, NULL), (-2071508387, 'desc3'), (2135465388, 'desc4');",
+    "SELECT t0.c_k, (SELECT MAX(c_pv) FROM t1 WHERE c_pv < t0.c_k) AS max_pv, CASE WHEN (SELECT MAX(c_pv) FROM t1) > t0.c_k THEN 0 ELSE 1 END AS comparison FROM t0 ORDER BY t0.c_k ASC;"
+  ],
+  "key_bug_features": [
+    "subqueries yield inconsistent results across deployment topologies"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+    "function": "sum(sec_interval_expr)",
+    "operator": "time",
+    "sql_array": [
+        "CREATE TABLE test_intervals (id INT, event_time TIME, interval_sec INTERVAL SECOND);",
+        "INSERT INTO test_intervals VALUES (1, time '12:30:00', '60 seconds'), (2, time '14:45:00', '90 seconds'), (3, time '16:00:00', NULL), (4, time '18:00:00', '120 seconds');",
+        "SELECT id, SUM(CAST(interval_sec AS INTERVAL SECOND)) AS total_interval FROM test_intervals GROUP BY id HAVING total_interval IS NOT NULL;",
+        "SELECT id, SUM(Cast(interval_sec AS INTERVAL SECOND)) FROM test_intervals WHERE event_time = time '12:30:00' OR event_time IS NULL GROUP BY id ORDER BY total_interval;",
+        "CREATE TABLE temp_events (event_id INT, event_length VARCHAR(20));",
+        "INSERT INTO temp_events VALUES (1, '00:01:00'), (2, '00:02:30'), (3, '00:00:45'), (4, NULL);",
+        "SELECT t1.event_id, SUM(CAST(i.interval_sec AS INTERVAL SECOND)) FROM test_intervals t1 JOIN temp_events t2 ON t1.id = t2.event_id WHERE t2.event_length IS NOT NULL GROUP BY t1.event_id HAVING SUM(CAST(i.interval_sec AS INTERVAL SECOND)) > 60;",
+        "SELECT id, SUM(CAST('0:30:00' AS INTERVAL SECOND)) + COALESCE(SUM(CAST(interval_sec AS INTERVAL SECOND)), 0) FROM test_intervals GROUP BY id HAVING SUM(CAST('0:30:00' AS INTERVAL SECOND)) < 180;",
+        "SELECT SUM(CAST(i.interval_sec AS INTERVAL SECOND)) FROM test_intervals i WHERE EXISTS (SELECT 1 FROM temp_events WHERE event_length IS NOT NULL) GROUP BY i.id;",
+        "CREATE TABLE complex_test (test_id INT, created_at TIMESTAMP, test_interval INTERVAL SECOND DEFAULT '45 seconds');",
+        "INSERT INTO complex_test VALUES (1, CURRENT_TIMESTAMP, '120 seconds'), (2, CURRENT_TIMESTAMP - INTERVAL '1 DAY', '30 seconds'), (3, CURRENT_TIMESTAMP - INTERVAL '3 HOUR', NULL);",
+        "SELECT SUM(CAST(test_interval AS INTERVAL SECOND)) FROM complex_test WHERE created_at <= CURRENT_TIMESTAMP GROUP BY test_id HAVING SUM(CAST(test_interval AS INTERVAL SECOND)) IS NOT NULL;"
+    ]
+}

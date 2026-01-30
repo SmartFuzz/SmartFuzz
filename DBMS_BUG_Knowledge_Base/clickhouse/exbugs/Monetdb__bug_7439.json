@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7439",
+  "title": "MonetDB server crashes in `exps_card`",
+  "description": "MonetDB server crashes in `exps_card`.\n\n**To Reproduce**\n```sql\nCREATE TABLE v0 ( v1 oid ) ; \n DELETE FROM v0 WHERE NOT ( v1 IN ( SELECT MAX ( DISTINCT ( SELECT NULL WHERE v1 AND v1 = 'aggordview1' GROUP BY v1 ) ) FROM v0 ) ) ;  \n```\n\n**Backtrace of the Crash**\n```c\n#0 0x7fe1aec45c70 (exps_card+0x50)\n#1 0x7fe1aecb9521 (rel_optimize_projections_+0x3c91)\n#2 0x7fe1aec671ef (rel_visitor_topdown+0x27f)\n#3 0x7fe1aec675a5 (rel_visitor_topdown+0x635)\n#4 0x7fe1aec675a5 (rel_visitor_topdown+0x635)\n#5 0x7fe1aec67546 (rel_visitor_topdown+0x5d6)\n#6 0x7fe1aec675a5 (rel_visitor_topdown+0x635)\n#7 0x7fe1aec67546 (rel_visitor_topdown+0x5d6)\n#8 0x7fe1aecb01ab (rel_optimize_projections+0x3b)\n#9 0x7fe1aec8b2da (rel_optimizer+0x75a)\n#10 0x7fe1aebeef22 (sql_processrelation+0x82)\n#11 0x7fe1ae9f8e1b (sql_symbol2relation+0x1bb)\n#12 0x7fe1aea25b84 (SQLparser+0x624)\n#13 0x7fe1aea24cbc (SQLengine_+0xa5c)\n#14 0x7fe1aea224fe (SQLengine+0x3e)\n#15 0x7fe1aefa02cf (runScenario+0x6f)\n#16 0x7fe1aefa14de (MSscheduleClient+0xb6e)\n#17 0x7fe1af0d8182 (doChallenge+0x132)\n#18 0x7fe1afe018a7 (thread_starter+0xc7)\n#19 0x7fe1ae91c609 (start_thread+0xd9)\n#20 0x7fe1ae83f133 (clone+0x43)\n```\n\n**Software versions**\n - MonetDB version number: v11.49.1 (Dec2023)\n - OS and version: Ubuntu 20.04\n - From docker image monetdb/monetdb:Dec2023\n\nAn example of steps to reproduce in docker container (**write the poc into /tmp/test.sql first**):\n```bash\ndocker container rm monetdb_test -f\ndocker run -e MDB_DB_ADMIN_PASS=monetdb --name monetdb_test -itd monetdb/monetdb:Dec2023\ndocker exec monetdb_test bash -c 'echo -n -e \"user=monetdb\\npassword=monetdb\\n\" > /root/.monetdb'\n\nsleep 10\ncat /tmp/test.sql | timeout 5s docker exec -i monetdb_test mclient monetdb     # run test case\n\nif docker exec monetdb_test bash -c \"grep '[m]server5' /proc/*/cmdline -lR\"; then\n    echo \"[INFO] Server normal.\"\nelse\n    echo \"[CRASH] Mserver5 process does NOT exist.\"\nfi\n```\n\nIt can also be reproduced on the docker image `monetdb/dev-builds:default`.\n\n**Issue labeling**\nbug",
+  "date": "2024-01-17T06:52:34Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE TABLE v1 ( id Int32, name String, value Float64, created_at DateTime DEFAULT now() );",
+    "INSERT INTO v1 (id, name, value) VALUES (1, 'test1', 10.5), (2, 'test2', NULL), (3, 'aggordview1', 20.0);",
+    "CREATE TABLE v2 ( ref_id Int32, description String, FOREIGN KEY (ref_id) REFERENCES v1(id) );",
+    "INSERT INTO v2 (ref_id, description) VALUES (1, 'description1'), (2, 'description2');",
+    "DELETE FROM v1 WHERE id NOT IN (SELECT MAX(id) FROM v1 WHERE value IS NOT NULL AND name = 'aggordview1' GROUP BY id);"
+  ],
+  "key_bug_features": [
+    "DELETE operation with complex subquery in `exps_card`"
+  ]
+}

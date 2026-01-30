@@ -1,0 +1,11 @@
+CREATE TABLE h3_data (id UInt32, resolution UInt8, created_at DateTime DEFAULT now(), edge_length Float64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO h3_data (id, resolution) VALUES (1, 15);
+INSERT INTO h3_data (id, resolution) VALUES (2, 0);
+INSERT INTO h3_data (id, resolution) VALUES (3, 7);
+SELECT id, h3EdgeLengthM(resolution) AS edgeLengthM, created_at + INTERVAL edgeLengthM DAY AS future_time FROM h3_data;
+SELECT *, h3EdgeLengthM(resolution) * 1000 AS edgeLengthInCM FROM h3_data WHERE resolution > 0 ORDER BY edgeLengthInCM DESC;
+SELECT id, h3EdgeLengthM(resolution) AS edgeLength, created_at FROM h3_data WHERE created_at IS NOT NULL AND edgeLength > (SELECT AVG(h3EdgeLengthM(resolution)) FROM h3_data);
+WITH (h3EdgeLengthM(15) + INTERVAL 30 MINUTE) AS next_length SELECT id, created_at, next_length FROM h3_data WHERE created_at < now() - INTERVAL 1 DAY;
+SELECT id, h3EdgeLengthM(CASE WHEN resolution IS NULL THEN 0 ELSE resolution END) AS edge_length_m FROM h3_data GROUP BY id HAVING edge_length_m < 100;
+SELECT h3EdgeLengthM(TOUInt8(NULL)) AS null_res_length, h3EdgeLengthM(15) AS valid_res_length FROM h3_data WHERE edge_length_m IS NOT NULL;
+DROP TABLE IF EXISTS h3_data;

@@ -1,0 +1,12 @@
+CREATE TABLE test_numbers (id SERIAL PRIMARY KEY, value NUMERIC, str_value VARCHAR(255));
+INSERT INTO test_numbers (value, str_value) VALUES (0, '0'), (1, '1.0'), (NULL, 'not_a_number');
+SELECT id, iszero(value) AS is_zero FROM test_numbers WHERE iszero(value) = 1;
+CREATE TYPE custom_type AS (field1 INTEGER, field2 FLOAT);
+SELECT NEW custom_type(value, iszero(value)) AS custom_instance FROM test_numbers WHERE value IS NOT NULL;
+SELECT id, value FROM test_numbers WHERE value < (SELECT NEW custom_type(0, 0.0)::FLOAT::NUMERIC FROM test_numbers WHERE value IS NOT NULL LIMIT 1);
+SELECT id, value FROM test_numbers WHERE NEW custom_type(value, 0.0) IS NULL;
+SELECT id, value FROM test_numbers WHERE value = CAST('1.0' AS FLOAT) OR iszero(value) = 1;
+SELECT id, COUNT(*) AS count_zero FROM test_numbers GROUP BY iszero(value) HAVING count_zero > 0;
+SELECT id, value FROM test_numbers WHERE value > (SELECT AVG(COALESCE(value, 0)) FROM test_numbers) AND iszero(value) = 0;
+CREATE TEMPORARY TABLE temp_test AS SELECT id, value, iszero(value) AS is_zero FROM test_numbers WHERE str_value = '';
+SELECT id FROM temp_test WHERE is_zero IS NULL OR is_zero = 1;

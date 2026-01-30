@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7379",
+  "title": "MonetDB server 11.46.0 crashes at cs_bind_ubat",
+  "description": "MonetDB server crashes at `cs_bind_ubat` after executing SQL statements through ODBC.\n\n**To Reproduce**\n```sql\nCREATE TABLE t2 (c1 int, t1 int, c2 int);\nINSERT INTO t2 VALUES(127,255,1),(127,1,2),(-128,0,3),(-128,2,4),(-1,NULL,5);\nINSERT INTO t2 VALUES(200,126,1),(250,-127,2);\nINSERT INTO t2 VALUES (-128,0,1),(-1,1,1),(-2,2,2),(-3,3,3),(-4,4,4),(-5,5,5),(-6,6,6),(0,0,7),(1,1,8),(2,NULL,9),(3,NULL,10),(127,255,11);\nDELETE FROM t2 WHERE c1 IN (-2, 0);\nSTART TRANSACTION;\nUPDATE t2 SET c2 = c2 + 100;\nUPDATE t2 SET c2 = c2 + 100;\n```\n\n**Expected behavior**\nExecuting statements successfully or throwing errors, instead of breaking down the whole MonetDB server.\n\n**Backtrace**\n```\n#0 0x7f6388374871 (cs_bind_ubat+0x151)\n#1 0x7f6388373483 (bind_ubat+0x43)\n#2 0x7f638836d860 (bind_updates+0xe0)\n#3 0x7f63882854ce (mvc_bind_wrap+0x28e)\n#4 0x7f6388614c63 (runMALsequence+0x763)\n#5 0x7f63886185d4 (DFLOWworker+0x2c4)\n#6 0x7f6388d4fba0 (THRstarter+0x100)\n#7 0x7f6388dbfcc4 (thread_starter+0x34)\n#8 0x7f6388134609 (start_thread+0xd9)\n#9 0x7f6388059133 (clone+0x43)\n```\n\n**Software versions**\n - MonetDB server version: 11.46.0 (hg id: 63a42c2) (pulled from the master branch)\n - MonetDB ODBC version: 11.46.0\n - OS and version: ubuntu 20.04\n - Self-installed and compiled. The command line of compilation: `CC=clang-12 CXX=clang++-12 cmake /root/monetdb_master -DCMAKE_BUILD_TYPE=RelWithDebInfo`\n\n**Issue labeling **\nbug\n\n**Additional context**\nThe MonetDB here runs in-memory database. The command line of starting MonetDB server is `mserver5 --in-memory`.",
+  "date": "2023-06-16T16:52:13Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE TABLE t3 (id INTEGER PRIMARY KEY, name VARCHAR(50), value FLOAT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t3 (id, name, value, created_at) VALUES (1, 'test1', 1.5, NULL), (2, 'test2', -2.5, NULL), (3, NULL, 3.0, CURRENT_TIMESTAMP);",
+    "UPDATE t3 SET value = value + 10 WHERE id IN (1, 2);",
+    "DELETE FROM t3 WHERE value < 0;",
+    "SELECT * FROM t3 WHERE created_at IS NULL;"
+  ],
+  "key_bug_features": [
+    "Crashes at cs_bind_ubat during SQL execution via ODBC"
+  ]
+}

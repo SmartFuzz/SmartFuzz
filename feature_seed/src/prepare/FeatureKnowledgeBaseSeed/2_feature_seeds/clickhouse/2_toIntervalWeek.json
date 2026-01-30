@@ -1,0 +1,11 @@
+CREATE TABLE test_dates (id UInt32, event_date Date, description String);
+INSERT INTO test_dates VALUES (1, toDate('2024-06-15'), 'Event 1'), (2, toDate('2024-06-22'), 'Event 2'), (3, NULL, 'Event 3'), (4, toDate('2024-07-01'), 'Event 4');
+SELECT id, event_date + toIntervalWeek(2) AS adjusted_date FROM test_dates WHERE event_date NOT BETWEEN toDate('2024-06-01') AND toDate('2024-07-01');
+SELECT COUNT(*) FROM test_dates WHERE event_date IS NULL OR event_date NOT BETWEEN (toDate('2024-06-15') - toIntervalWeek(1)) AND (toDate('2024-06-15') + toIntervalWeek(1));
+WITH toDate('2024-06-01') AS start_date, toIntervalWeek(3) AS interval_value SELECT id, event_date + interval_value AS new_date FROM test_dates WHERE new_date NOT BETWEEN start_date AND start_date + toIntervalWeek(4);
+CREATE TABLE temp_events AS SELECT toDate('2024-06-15') AS event_date, description FROM test_dates WHERE description NOT LIKE 'Event%';
+INSERT INTO temp_events SELECT toDate('2024-06-29'), description FROM test_dates WHERE event_date IS NOT NULL;
+SELECT event_date, event_date + toIntervalWeek(CAST(1.5 AS UInt32)) AS week_interval FROM temp_events HAVING week_interval NOT BETWEEN toDate('2024-06-01') AND toDate('2024-07-15');
+SELECT event_date, count(*) OVER (PARTITION BY description) AS event_count FROM test_dates HAVING event_count NOT BETWEEN 1 AND 2;
+DROP TABLE IF EXISTS test_dates;
+DROP TABLE IF EXISTS temp_events;

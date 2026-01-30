@@ -1,0 +1,16 @@
+CREATE TABLE polygons_table (id UInt32, polygon Array(Array(Float64)));
+INSERT INTO polygons_table VALUES (1, [[(0, 0), (0, 1), (1, 1), (1, 0)]], (2, [[(10, 10), (10, 20), (20, 20), (20, 10)]]));
+INSERT INTO polygons_table VALUES (2, [[(1, 1), (1, 2), (2, 2), (2, 1)]], (3, [[(8, 8), (8, 15), (15, 15), (15, 8)]]));
+SELECT polygonsDistanceCartesian(polygon[1], polygon[2]) FROM polygons_table WHERE id = 1;
+SELECT polygonsDistanceCartesian(polygon[2], polygon[1]) FROM polygons_table WHERE id = 2;
+CREATE TABLE polygons_multitable (id UInt32, polygon Array(Array(Float64)), other_data String);
+INSERT INTO polygons_multitable VALUES (1, [[(0, 0), (0, 2), (2, 2), (2, 0)]], 'test1');
+INSERT INTO polygons_multitable VALUES (2, [[(10, 10), (10, 50), (50, 50), (50, 10)]], 'test2');
+SELECT a.id, polygonsDistanceCartesian(a.polygon, b.polygon) AS distance FROM polygons_multitable AS a JOIN polygons_multitable AS b ON a.id != b.id;
+SELECT id, polygonsDistanceCartesian(polygon[1], polygon[2]) AS distance FROM (SELECT id, polygon FROM polygons_multitable WHERE id IN (1, 2));
+CREATE TABLE complex_polygons (id UInt32, poly1 Array(Array(Float64)), poly2 Array(Array(Float64)));
+INSERT INTO complex_polygons VALUES (1, [[(0, 0), (0, 2), (2, 2), (2, 0)]], [[(3, 3), (3, 5), (5, 5), (5, 3)]]);
+INSERT INTO complex_polygons VALUES (2, [[(1, 1), (1, 4), (4, 4), (4, 1)]], [[(6, 6), (6, 10), (10, 10), (10, 6)]]);
+SELECT id, polygonsDistanceCartesian(poly1, poly2) FROM complex_polygons WHERE id = 1;
+SELECT COUNT(*) AS total_distance FROM (SELECT polygonsDistanceCartesian(poly1, poly2) FROM complex_polygons) WHERE total_distance > 0;
+SELECT polygonsDistanceCartesian(ARRAY[ARRAY[0.0, 0.0], ARRAY[0.0, 1.0]], ARRAY[ARRAY[1.0, 1.0], ARRAY[1.0, 0.0]]) AS distance;

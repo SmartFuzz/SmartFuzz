@@ -1,0 +1,12 @@
+ATTACH '__TEST_DIR__/test_filter_pushdown_new.db' AS db_v13 (STORAGE_VERSION 'v1.3.0');
+ATTACH '__TEST_DIR__/test_filter_pushdown_old.db' AS db_v1 (STORAGE_VERSION 'v1.0.0');
+USE db_v1;
+USE db_v13;
+PRAGMA force_compression='${compression}';
+CREATE TABLE test (id INT, col VARCHAR);
+INSERT INTO test SELECT i::INT id, concat('BLEEPBLOOP-', (i%10)::VARCHAR) col FROM range(10000) tbl(i);
+CHECKPOINT;
+SELECT MIN(col), MAX(col), COUNT(*) FROM test WHERE col >= 'BLEEPBLOOP-5';
+SELECT MIN(id), MAX(id), MIN(col), MAX(col), COUNT(*) FROM test WHERE id='5000';
+SELECT lower(compression)='${compression}' FROM pragma_storage_info('test') WHERE segment_type ILIKE 'VARCHAR' LIMIT 1;
+DROP TABLE test;

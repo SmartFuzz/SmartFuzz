@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/87575",
+  "title": "Lazy materialization: Method deserializeBinaryBulk of SerializationAggregateFunction does not support cases where rows_offset {} is non-zero",
+  "description": "### Company or project name\n_No response_\n### Describe the unexpected behaviour\nAfter upgrading from 24.x to 25.8.3.66, queries on views that finalize aggregation states of type:\n- AggregateFunction(maxIf, DateTime64(3), UInt8)\n- AggregateFunction(argMax, String, DateTime64(3))\nstart failing when an ORDER BY ... LIMIT ... OFFSET clause is added.\nThe error message:\n`Code: 48. DB::Exception: Method deserializeBinaryBulk of SerializationAggregateFunction does not support cases where rows_offset 41 is non-zero (while reading column delivery_report_at) ... (NOT_IMPLEMENTED)`\nThis only occurs with LIMIT/OFFSET pushing the reader to a non‑zero row offset. Simple finalize queries work fine.\n### Which ClickHouse versions are affected?\n- ClickHouse 25.6.8.10\n- Not observed on 24.x series\n### How to reproduce\n```SQL\nDROP TABLE IF EXISTS agg_test;\nCREATE TABLE agg_test\n(\nid UInt32,\naccepted_at DateTime64(3),\ndelivery_report_at AggregateFunction(maxIf, DateTime64(3), UInt8)\n)\nENGINE = AggregatingMergeTree()\nORDER BY id;\nINSERT INTO agg_test\nSELECT\nnumber AS id,\ntoDateTime64('2025-09-24 00:00:00', 3) + number AS accepted_at,\nmaxIfState(toDateTime64('2025-09-24 00:00:00', 3) + number, (number % 2)) AS delivery_report_at\nFROM numbers(100)\nGROUP BY id, accepted_at;\n-- Works:\nSELECT id, finalizeAggregation(delivery_report_at) AS delivered_at\nFROM agg_test\nORDER BY id ASC\nLIMIT 5;\n-- Fails with Code: 48\nSELECT id, finalizeAggregation(delivery_report_at) AS delivered_at\nFROM agg_test\nORDER BY accepted_at DESC\nLIMIT 10 OFFSET 0;\n```\n### Error message and/or stacktrace\nCode: 48. DB::Exception: Method deserializeBinaryBulk of SerializationAggregateFunction does not support cases where rows_offset 90 is non-zero: (while reading column delivery_report_at): (while reading from part /var/lib/clickhouse/store/193/19355362-a339-4eb4-ae52-48ad07191072/all_1_1_1/ in table qa_mgfn_hub.agg_test (19355362-a339-4eb4-ae52-48ad07191072) located on disk default of type local, from mark 0 with max_rows_to_read = 1, offset = 90). (NOT_IMPLEMENTED) (version 25.8.3.66 (official build))\n### Additional context\nExpected Behavior: Query should finalize and return results correctly regardless of row offset.\nActual Behavior: Query fails with deserializeBinaryBulk ... rows_offset != 0 exception.",
+  "date": "2025-09-24T13:24:28Z",
+  "vulnerable_version": "25.8.3.66",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS agg_test;",
+    "CREATE TABLE agg_test (id INTEGER, accepted_at TIMESTAMP(3), delivery_report_at JSONB);",
+    "INSERT INTO agg_test (id, accepted_at, delivery_report_at) SELECT number AS id, '2025-09-24 00:00:00'::timestamp(3) + number AS accepted_at, jsonb_build_object('value', max(CASE WHEN number % 2 = 1 THEN to_char('2025-09-24 00:00:00'::timestamp(3) + number, 'YYYY-MM-DD HH24:MI:SS.MS') END)) FROM generate_series(0, 99) AS number GROUP BY id, accepted_at;",
+    "SELECT id, delivery_report_at->>'value' AS delivered_at FROM agg_test ORDER BY accepted_at ASC LIMIT 5;",
+    "SELECT id, delivery_report_at->>'value' AS delivered_at FROM agg_test ORDER BY accepted_at DESC LIMIT 10 OFFSET 5;"
+  ],
+  "key_bug_features": [
+    "deserializeBinaryBulk fails with non-zero rows_offset"
+  ]
+}

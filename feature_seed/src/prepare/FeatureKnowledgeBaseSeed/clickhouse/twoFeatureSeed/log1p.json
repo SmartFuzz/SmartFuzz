@@ -1,0 +1,16 @@
+{
+    "function": "log1p",
+    "operator": "a GLOBAL NOT IN ...",
+    "sql_array": [
+        "CREATE TABLE test_log1p (id UInt32, value Float64, str_value String, created_at DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_log1p VALUES (1, 0.0, 'zero', now()), (2, 0.0001, 'small', now()), (3, -1.0, 'negative', now()), (4, 1.0, 'one', now());",
+        "SELECT id, log1p(value) AS log_result FROM test_log1p WHERE value GLOBAL NOT IN (SELECT AVG(value) FROM test_log1p) AND NOT str_value = '';",
+        "SELECT id, log1p(GREATEST(value, 0)) AS log_result, str_value FROM test_log1p WHERE value > -1 GROUP BY id, str_value HAVING log_result >= 0.0 ORDER BY log_result;",
+        "SELECT id, log1p(NULLIF(value, -1)) AS log_result FROM test_log1p WHERE str_value GLOBAL NOT IN (SELECT str_value FROM test_log1p WHERE value < 0.001);",
+        "CREATE TABLE temp_test_log (num Decimal(10, 5), text_value String) ENGINE = Memory;",
+        "INSERT INTO temp_test_log VALUES (1.00001, 'test1'), (2.00001, 'test2'), (NULL, 'null_test');",
+        "SELECT log1p(num) AS log_decimal FROM temp_test_log WHERE text_value GLOBAL NOT IN (SELECT text_value FROM temp_test_log WHERE num IS NULL);",
+        "SELECT log1p(CAST(str_value AS Float64)) FROM test_log1p WHERE str_value IS NOT NULL GLOBAL NOT IN (SELECT log1p(value) FROM test_log1p WHERE value > 0);",
+        "SELECT COUNT(*) FROM test_log1p GROUP BY log1p(value) HAVING log1p(value) < 0.1;"
+    ]
+}

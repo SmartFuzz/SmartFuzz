@@ -1,0 +1,12 @@
+CREATE TABLE test_strings (id UInt32, text String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_strings (id, text) VALUES (1, 'ClickHouse'), (2, 'test'), (3, 'SQL'), (4, NULL), (5, 'fuzzing');
+SELECT text, ngramMinHashArgCaseInsensitive(text) AS hashes FROM test_strings WHERE text IS NOT NULL GROUP BY text HAVING ngramMinHashArgCaseInsensitive(text).1[1] ? 'hash found' : 'no hashes';
+SELECT ngramMinHashArgCaseInsensitive(text) AS hashes FROM (SELECT text FROM test_strings ORDER BY id LIMIT 3) AS limited_texts WHERE ngramMinHashArgCaseInsensitive(text).2[1] ? text : 'invalid' GROUP BY text;
+SELECT t1.text, ngramMinHashArgCaseInsensitive(t1.text, 4) AS ngrams, (SELECT COUNT() FROM test_strings WHERE text = t1.text) ? 'Duplicate' : 'Unique' AS status FROM test_strings AS t1 JOIN test_strings AS t2 ON t2.id > t1.id ORDER BY t1.id;
+CREATE TABLE test_numbers (num UInt32) ENGINE = MergeTree() ORDER BY num;
+INSERT INTO test_numbers (num) VALUES (1), (2), (3), (NULL), (255);
+SELECT ngramMinHashArgCaseInsensitive(toString(num)) AS hashes FROM test_numbers WHERE num IS NOT NULL OR num = NULL ? 0 : 1;
+SELECT ngramMinHashArgCaseInsensitive(text, 5) AS hashset FROM (SELECT text FROM test_strings WHERE text IS NOT NULL) WHERE hashset.1[1] ? 'Valid' : 'Invalid' LIMIT 5;
+SELECT text, ngramMinHashArgCaseInsensitive(text, 2, 3) FROM test_strings WHERE (SELECT COUNT() FROM test_strings WHERE text IS NULL) ? text : 'Fallback';
+DROP TABLE IF EXISTS test_strings;
+DROP TABLE IF EXISTS test_numbers;

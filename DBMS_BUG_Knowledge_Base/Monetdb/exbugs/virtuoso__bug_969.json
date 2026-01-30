@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/969",
+  "title": "Handling of rdf_strlang_impl in OPTIONAL",
+  "description": "I have a query where I bind a language tag to a literal, but that literal can be optional, like so:\nSELECT ?person ?function_label\nWHERE {\n    ?person ex:first_name ?pid;\n    OPTIONAL {\n        ?person ex:function ?function.\n        BIND (STRLANG(?function, \"nl\") AS ?function_label)\n    }\n}\n\nVirtuoso throws Virtuoso 22007 Error Function rdf_strlang_impl needs a bound value as its first argument, not a NULL\nIs this expected behaviour? Shouldn't a NULL aka unbound var not just produce a NULL? Seems like other triple stores (Blazegraph) handle this differently.\nCan I mitigate this with BIND (IF (BOUND(?function), STRLANG(?function, \"nl\"), ?function) AS ?function_label) ?",
+  "date": "2021-06-24 09:00:43",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE persons (id INT PRIMARY KEY, first_name VARCHAR(100));",
+    "CREATE TABLE functions (id INT PRIMARY KEY, function_name VARCHAR(100));",
+    "INSERT INTO persons (id, first_name) VALUES (1, 'Alice'), (2, 'Bob');",
+    "INSERT INTO functions (id, function_name) VALUES (1, 'Developer'), (2, NULL);",
+    "SELECT p.first_name, CASE WHEN f.function_name IS NOT NULL THEN CONCAT(f.function_name, ' (nl)') ELSE NULL END AS function_label FROM persons p LEFT JOIN functions f ON p.id = f.id;"
+  ],
+  "key_bug_features": [
+    "BIND with STRLANG on optional NULL variable"
+  ]
+}

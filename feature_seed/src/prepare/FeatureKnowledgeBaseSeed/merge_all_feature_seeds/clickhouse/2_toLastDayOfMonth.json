@@ -1,0 +1,10 @@
+CREATE TABLE test_dates (id UInt32, event_date DateTime, event_info String);
+INSERT INTO test_dates VALUES (1, '2023-01-15 12:00:00', 'First Event'), (2, '2023-02-28 18:30:00', 'Second Event'), (3, '2023-03-01 09:15:00', 'Third Event'), (4, NULL, 'NULL Event');
+SELECT id, toLastDayOfMonth(event_date) AS last_day FROM test_dates WHERE event_date = ALL (SELECT event_date FROM test_dates WHERE event_date IS NOT NULL);
+SELECT id, toLastDayOfMonth(event_date) AS month_end FROM test_dates WHERE toLastDayOfMonth(event_date) = ALL (SELECT toLastDayOfMonth(event_date) FROM test_dates WHERE event_date IS NOT NULL);
+SELECT toLastDayOfMonth(AVG(event_date)) FROM test_dates WHERE event_date IS NOT NULL GROUP BY event_info HAVING toLastDayOfMonth(AVG(event_date)) = ALL (SELECT toLastDayOfMonth(event_date) FROM test_dates WHERE event_info = 'First Event');
+SELECT id, event_date, toLastDayOfMonth(event_date) FROM test_dates WHERE toLastDayOfMonth(toDateTime(event_date)) = ALL (SELECT toLastDayOfMonth(event_date) FROM test_dates WHERE event_date IS NOT NULL);
+SELECT COUNT(*) FROM test_dates WHERE event_date = ALL (SELECT event_date FROM (SELECT toLastDayOfMonth(event_date) AS month_end FROM test_dates) AS tmp WHERE month_end IS NOT NULL);
+CREATE TABLE test_dates_copy ENGINE = MergeTree() ORDER BY id AS SELECT id, toLastDayOfMonth(event_date) FROM test_dates WHERE event_date IS NOT NULL;
+SELECT toLastDayOfMonth(toDateTime('2023-04-01')) AS last_day_of_april WHERE last_day_of_april = ALL (SELECT toLastDayOfMonth(event_date) FROM test_dates WHERE event_date IS NOT NULL);
+INSERT INTO test_dates VALUES (5, toLastDayOfMonth(toDateTime('2023-07-20 05:30:00')), 'Fifth Event');

@@ -1,0 +1,21 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=102992",
+  "title": "XA transactions do not update slave_relay_log_info table",
+  "description": "When using crash safe replication settings (particularly, relay_log_info_repository='TABLE'), the replica does not update the table mysql.slave_relay_log_info when XA transaction is executed on the source DB even though, the transaction itself was replicated. If the replica crashed before either the source's binary log got rotated or non-XA transaction was executed (as these will trigger an update on the table), the replication will break after the DB start up as the used binary log coordinates will point to transactions that were already applied.\r\n\r\nThe test is reproducible on 5.7.31 and the replication breaks after the crash. However, MySQL 8.0.21 shows an interesting behavior. The table mysql.slave_relay_log_info still doesn't get updated after XA transactions and replication used the incorrect/not-updated binary log coordinates after a crash (as it appear from the error log). However, somehow the replication didn't break and it corrected itself!\nHow to repeat:\n1- Create source and replica DBs.\r\n2- Run the following statements on the source:\r\na) create database xarepl;\r\nb) use xarepl\r\nc) create table t1(id int primary key auto_increment)engine=innodb;\r\nd) -- Run the following statement several times ...\r\nXA START 'xa_replication_check'; insert into t1(id) values(null); XA END 'xa_replication_check'; XA COMMIT 'xa_replication_check' ONE PHASE;\r\ne) -- Check the table records\r\nselect COUNT(*) from t1;\r\n3- Run the following statements on the replica:\r\na) -- Check the table records\r\nselect COUNT(*) from t1;\r\nb) show slave status\\G select Master_log_name,Master_log_pos from mysql.slave_relay_log_info;\r\n\r\nThis will show that the Relay_Master_Log_File and Exec_Master_Log_Pos in SHOW SLAVE STATUS output do not match the info in mysql.slave_relay_log_info table!\r\n\r\n4- Crash the replica (pkill -9 mysql).\nSuggested fix:\nLike the normal transactions, the table \"mysql.slave_relay_log_info\" should get updated in each XA COMMIT.",
+  "date": "2021-03-15 23:57:00",
+  "vulnerable_version": "5.7, 8.0, 5.7.33",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE DATABASE xarepl;",
+    "CREATE TABLE xarepl.t1(id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "BEGIN;",
+    "INSERT INTO xarepl.t1(name) VALUES('Test Name');",
+    "COMMIT;",
+    "SELECT COUNT(*) FROM xarepl.t1;"
+  ],
+  "key_bug_features": [
+    "XA transactions fail to update slave_relay_log_info table"
+  ]
+}

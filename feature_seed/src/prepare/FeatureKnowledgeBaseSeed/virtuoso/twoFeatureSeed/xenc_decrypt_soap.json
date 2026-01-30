@@ -1,0 +1,16 @@
+{
+    "function": "xenc_decrypt_soap",
+    "operator": "XPath Operator: xpath_integer",
+    "sql_array": [
+        "CREATE TABLE soap_messages (id INTEGER PRIMARY KEY, body_str TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO soap_messages (body_str) VALUES ('<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:tns=\"http://example.com\"><soapenv:Body><tns:Action/><tns:Message/></soapenv:Body></soapenv:Envelope>');",
+        "INSERT INTO soap_messages (body_str) VALUES ('<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:tns=\"http://example.com\"><soapenv:Body><tns:Action/><tns:Message/><tns:Extra /></soapenv:Body></soapenv:Envelope>');",
+        "SELECT xenc_decrypt_soap (body_str, 11, 6, 'UTF-8', 'x-any', vector('UsernameToken', vector('label', 'Application-Label', 'keyAlgorithm', 'http://www.w3.org/2001/04/xmlenc#tripledes-cbc')), NULL) AS decrypted_msg FROM soap_messages WHERE xpath_integer('/soapenv:Envelope/soapenv:Body/tns:Message', body_str) > 0;",
+        "SELECT xpath_integer('/soapenv:Envelope/soapenv:Body/tns:Action', body_str) AS action_id, xenc_decrypt_soap(body_str, 11, 6, 'UTF-8', 'x-any', vector('UsernameToken', vector('label', 'Application-Label', 'keyAlgorithm', 'http://www.w3.org/2001/04/xmlenc#tripledes-cbc')), NULL) FROM soap_messages WHERE id IN (SELECT id FROM soap_messages WHERE created_at >= NOW() - INTERVAL '1 day');",
+        "SELECT COUNT(*) FROM (SELECT DISTINCT xenc_decrypt_soap(body_str, 11, 6, 'UTF-8', 'x-any', vector('UsernameToken', NULL), NULL) AS decrypted_msg FROM soap_messages WHERE body_str IS NOT NULL) AS decrypted_messages WHERE xpath_integer('/soapenv:Envelope/soapenv:Body/tns:Message', decrypted_msg) IS NOT NULL;",
+        "CREATE TABLE message_logs (log_id INTEGER PRIMARY KEY, message_id INTEGER, log_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (message_id) REFERENCES soap_messages(id));",
+        "INSERT INTO message_logs (message_id) VALUES (1), (2);",
+        "SELECT l.log_id, m.body_str, xenc_decrypt_soap(m.body_str, 11, 6, 'UTF-8', 'x-any', vector('UsernameToken', vector('label', NULL, 'keyAlgorithm', 'http://www.w3.org/2001/04/xmlenc#tripledes-cbc')), NULL) AS verified_message FROM message_logs l JOIN soap_messages m ON l.message_id = m.id WHERE ISNULL(xpath_integer('/soapenv:Envelope/soapenv:Body/tns:Message', m.body_str));",
+        "SELECT xpath_integer('count(/soapenv:Envelope/soapenv:Body/*[local-name()=\"Message\"]/*[local-name()=\"Action\"])', body_str) AS action_count, COUNT(*) OVER () AS total_count FROM soap_messages;"
+    ]
+}

@@ -1,0 +1,26 @@
+{
+    "HTML": [
+        "https://docs.openlinksw.com/virtuoso/fn_xper_right_sibling/"
+    ],
+    "Title": [
+        "xper_right_sibling\n, \n        xper_left_sibling\n, \n        xper_parent\n, \n        xper_root_entity\n, \n        xper_tell\n, \n        xper_length"
+    ],
+    "Feature": [
+        "xper_right_sibling(xper_entity)"
+    ],
+    "Description": [
+        "low-level navigation functions for persistent XMLs, useful for import of huge amounts of XML data",
+        "All these functions work with \"persistent XML\" (XPER) entities only, signalling errors if\ngiven entity points to \"XML tree\". They are useful when applications need to read a\nhuge XML document, especially something like a datasheet dump or event log with a large number\nof uniform records, and is required to process all records of the document, e.g. import them into\nthe database.",
+        "Consider a real sample of import all data from ODP's content.xml dump which contains more than\n2,000,000 descriptions of various Web-sites, and the length of the file is more than 600Mb. The\nfile has root element named 'RDF' and all descriptions are their children named either 'Topic' or\n'ExternalPage'. This code looks suitable for importing these children:",
+        "It looks fine and it passes small tests but it will not work on real data!",
+        "First problem is regular checkpoints (every 1 hour by default),\nso import_content_xml has no chance to be completed if it takes 1.5 hours of CPU time;\nthe function checkpoint_interval should be used to temporarily disable these checkpoints.\nThen, the length of transaction log become extremely large after switching checkpoints off,\nand it is better to insert explicit checkpoints between calls of these functions.\nFinally, import_content_xml will change more than 4 gigabytes of data in one transaction.\nThis would be impossible on any 32-bit platform, because both memory available and address space\nbecome insufficient. Adding intermediate 'commit work' statements inside the loop's body\nwill not help because both 'commit work' and 'rollback work' statements will close all opened cursors.\nLoop 'for select ... from ... do' uses an implicit cursor to iterate the resultset, but the\n'commit work' operator will close this cursor and abort the loop.",
+        "Function xper_right_sibling is designed specially to solve the last problem. It allows you\nto iterate children of some element without using any cursor at all.\nIt returns the right child of the entity passed as its argument. If the given entity\nis the last child of its parent, the function will return NULL. Similarly, xper_left_sibling will\nreturn the previous child or NULL for the first child, xper_parent will return parent of\nentity or NULL for the document's root and xper_root_entity will return the root for any\nentity. Using these functions, it is possible to scan the document forward (from left\nto right), backward and to \"climb up\" toward the root of the elements' tree. These\nfunctions are called XML Navigation Functions because they are like\nthe statements \"next record\", \"prev record\" etc., used in cursor\nlike navigation of databases.",
+        "There are no special functions to \"go down\", e.g. to find first children of\ngiven element, because xpath_eval can do any such movement very quickly.",
+        "Sometimes data import is controlled from some client application. If one operation takes\nhours, some sort of \"progress bar\" becomes very useful, at least to see whether\napplication works or hangs. xper_length takes an XPER entity and returns whole length of\nXPER disk image in bytes. xper_tell takes an XPER entity and returns something like entity's offset\ninside the document. Their results may be used by the client application to monitor the progress\nand estimate the time until completion. They may be especially useful for debugging purposes,\ne.g. to report position of error. Unfortunately \"xper_seek\" is not possible for\nXPERs, unlike typical random access to files.",
+        "Ultimately, the working version of the procedure described above will look like this:"
+    ],
+    "Examples": [],
+    "Category": [
+        "XML function"
+    ]
+}

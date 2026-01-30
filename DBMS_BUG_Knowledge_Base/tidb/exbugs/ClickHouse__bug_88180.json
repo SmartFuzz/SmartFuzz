@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/88180",
+  "title": "count() returns wrong result",
+  "description": "### Company or project name\nClickhouse\n### Describe what's wrong\n```\nCREATE TABLE left (g UInt32, i UInt32)\nORDER BY (g, i);\nINSERT INTO left VALUES\n(0, 1), (0, 2), (0, 3), (0, 4), (0, 5), (2, 0);\nCREATE TABLE right (g UInt32, i UInt32)\nORDER BY (g, i);\nINSERT INTO right VALUES\n(0,0), (0, 3), (0, 4), (0, 6), (1, 0);\nselect '::run';\nwith differences as\n(\n(\nselect g, i from left\nwhere g BETWEEN 0 and 10\nEXCEPT ALL\nselect g, i from right\nwhere g BETWEEN 0 and 10\n)\nUNION ALL\n(\nselect g, i from right\nwhere g BETWEEN 0 and 10\nEXCEPT ALL\nselect g, i from left\nwhere g BETWEEN 0 and 10\n)\n),\ndiff_counts as\n(\nselect g, count(*) from differences group by g\n)\nselect * from diff_counts;\n```\nreturns\n```\n::run\n2\t1\n1\t1\n```\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nhttps://fiddle.clickhouse.com/c6d482e5-b979-4267-a470-0023e51e9c1c\n### Expected behavior\nit should return\n```",
+  "date": "2025-10-07T12:20:10Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE left (g INT UNSIGNED, i INT UNSIGNED, j VARCHAR(255));",
+    "INSERT INTO left (g, i, j) VALUES (0, 1, 'a'), (0, 2, 'b'), (0, 3, NULL), (0, 4, 'd'), (0, 5, 'e'), (2, 0, 'f');",
+    "CREATE TABLE right (g INT UNSIGNED, i INT UNSIGNED, j INT);",
+    "INSERT INTO right (g, i, j) VALUES (0, 0, NULL), (0, 3, 1), (0, 4, 2), (0, 6, 3), (1, 0, 4);",
+    "SELECT g, COUNT(*) FROM (SELECT g, i FROM left WHERE g BETWEEN 0 AND 10 EXCEPT SELECT g, i FROM right WHERE g BETWEEN 0 AND 10) AS diff GROUP BY g;"
+  ],
+  "key_bug_features": [
+    "count() function with EXCEPT ALL and UNION ALL"
+  ]
+}

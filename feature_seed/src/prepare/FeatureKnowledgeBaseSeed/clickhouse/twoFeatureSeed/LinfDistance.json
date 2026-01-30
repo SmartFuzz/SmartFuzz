@@ -1,0 +1,17 @@
+{
+    "function": "LinfDistance",
+    "operator": "s1 || s2",
+    "sql_array": [
+        "CREATE TABLE test_vectors (id UInt32, vector1 Array(Float64), vector2 Array(Float64));",
+        "INSERT INTO test_vectors VALUES (1, [1.5, NULL, 3.0], [2.0, 0.0, 5.0]), (2, [NULL, 7.0, 3.2], [1.0, 0.1, NULL]), (3, [4.0, 2.0, 6.0], [5.0, 9.0, 1.0]);",
+        "SELECT id, LinfDistance(vector1, vector2) AS distance FROM test_vectors WHERE distance IS NOT NULL;",
+        "SELECT id, LinfDistance(vector1, concat('(', arrayStringConcat(vector1), ')')) AS distance FROM test_vectors GROUP BY id HAVING distance >= 2.5;",
+        "SELECT id, LinfDistance(vector1, vector2) || ' is the result' AS distance_message FROM test_vectors WHERE LinfDistance(vector1, vector2) IS NOT NULL ORDER BY distance_message;",
+        "SELECT id, LinfDistance(vector1, (SELECT arrayMap(x -> x * 2, vector1) FROM test_vectors WHERE id = 1)) AS scaled_distance FROM test_vectors ORDER BY scaled_distance;",
+        "WITH (SELECT count(*) FROM test_vectors WHERE id = 2) AS count_val SELECT id, LinfDistance(vector1, vector2) || ' at count ' || count_val FROM test_vectors;",
+        "SELECT id, LinfDistance(vector1, arrayJoin([2, 3, 10])) AS distance_factor FROM test_vectors WHERE LinfDistance(vector1, arrayJoin([2, 3, 10])) < 7.5;",
+        "CREATE TABLE test_vectors_copy AS test_vectors ENGINE = Memory;",
+        "INSERT INTO test_vectors_copy SELECT id, vector1, vector2 FROM test_vectors;",
+        "SELECT LVL AS stage, LinfDistance(arrayJoin(vector1), arrayJoin(vector2)) AS stage_distance FROM (SELECT id, vector1, vector2 FROM test_vectors_copy) ANY LEFT JOIN (SELECT id, vector1, vector2 FROM test_vectors_copy) USING id GROUP BY stage, stage_distance HAVING stage_distance < 9;"
+    ]
+}

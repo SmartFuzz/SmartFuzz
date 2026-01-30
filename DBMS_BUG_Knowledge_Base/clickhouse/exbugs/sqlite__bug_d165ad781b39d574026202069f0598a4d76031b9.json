@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/d165ad781b",
+  "title": "Assertion `(mFlags&(MEM_Str|MEM_Blob))==0 || (pMem->n==pX->n && pMem->z==pX->z)' failed.",
+  "description": "yongheng added on 2020-03-03 19:42:18:\nPOC:\n---\nCREATE TABLE v0(ALWAYS AS(v3), v3, v5);\nINSERT INTO v0(v5) VALUES(7), (1);\nUPDATE v0 SET v3 = zeroblob(v3);\n---\n\nIt tiggers an assertion in debug build of latest trunk.\ndrh added on 2020-03-03 20:06:37:\nThis is similar to ticket [d165ad781b39d574].  The assert() is inside of\nlogic that occurs in debugging and testing builds only.  That logic attempts\nto prove the register values are not reused after they become stale.  This\nparticular assert() is part of a system to help verify that the verification\nlogic is complete.\nNo impact on release builds.",
+  "date": "2020-03-03 19:42:185.44 years ago",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE test_table(id UInt64, data String, value Int32 DEFAULT 0);",
+    "INSERT INTO test_table(data, value) VALUES(repeat('\\0', 10), 5), (NULL, NULL);",
+    "ALTER TABLE test_table UPDATE data = repeat('\\0', value) WHERE value IS NOT NULL;",
+    "CREATE TABLE another_table(ref_id UInt64, description String, FOREIGN KEY(ref_id) REFERENCES test_table(id));",
+    "INSERT INTO another_table(ref_id, description) SELECT id, 'Test' FROM test_table WHERE value > 0;"
+  ],
+  "key_bug_features": [
+    "Assertion failure during update with zeroblob in debug build"
+  ]
+}

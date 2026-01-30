@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7415",
+  "title": "MonetDB server crashes in `HEAP_malloc`",
+  "description": "MonetDB server crashes in `HEAP_malloc`.\n\n**To Reproduce**\n```sql\n CREATE TABLE t1 AS SELECT     t1.value AS id,     CAST(         sys.group_concat(             CASE WHEN id.value IS NOT NULL THEN 'DB' ELSE '' END             , '')     AS BLOB) AS name FROM     sys.generate_series(0, 1000) AS t1 LEFT JOIN     sys.generate_series(0, 1000) AS id ON id.value < t1.value GROUP BY id ORDER BY id     ;\n insert into t1 (select * from t1)  ;\n insert into t1 (select * from t1)  ;\n insert into t1 (select * from t1)  ;\n insert into t1 (select * from t1)  ;\n DELETE FROM t1 WHERE id=1;  \n select nth_value(aa, 1) over (partition by bb) from analytics ;\n insert into t1 (select * from t1)  ;\n insert into t1 (select * from t1)  ; \n```\n\n**Backtrace of the Crash**\n```c\n#0 0x7ffb416f2ce7 (HEAP_malloc+0xa7)\n#1 0x7ffb4170319a (BLOBput+0x7a)\n#2 0x7ffb4165effe (BATappend_or_update+0x15ee)\n#3 0x7ffb416656fa (BATupdate+0x4a)\n#4 0x7ffb405956c1 (append_col_execute+0x8b1)\n#5 0x7ffb4058197b (append_col+0xcb)\n#6 0x7ffb403e02b0 (mvc_append_wrap+0x660)\n#7 0x7ffb4095829f (runMALsequence+0xf0f)\n#8 0x7ffb4095d933 (DFLOWworker+0x4a3)\n#9 0x7ffb417df8a7 (thread_starter+0xc7)\n#10 0x7ffb402fa609 (start_thread+0xd9)\n#11 0x7ffb4021d133 (clone+0x43)\n```\n\n**Software versions**\n - MonetDB version number: v11.47.11 (Jun2023-SP2)\n - OS and version: Ubuntu 20.04\n - From docker image monetdb/monetdb:Jun2023-SP2\n\nAn example of steps to reproduce in docker container (**write the poc into /tmp/test.sql first**):\n```bash\ndocker container rm monetdb_test -f                                 # remove the old one\ndocker run -e MDB_DB_ADMIN_PASS=monetdb --name monetdb_test -itd monetdb/monetdb:Jun2023-SP2\n                                                                    # start monetdb in docker\ndocker exec monetdb_test bash -c 'echo -n -e \"user=monetdb\\npassword=monetdb\\n\" > /root/.monetdb'\n                                                                    # set username and password\nsleep 10                                                            # wait the server start\ndocker exec monetdb_test bash -c \"grep '/usr/bin/[m]server5' /proc/*/cmdline -lR\"\n                                                                    # check the existence of mserver5 process\ncat /tmp/test.sql | docker exec -i monetdb_test mclient monetdb     # run test case\ndocker exec monetdb_test bash -c \"grep '/usr/bin/[m]server5' /proc/*/cmdline -lR\" || { echo \"[CRASH] Mserver5 process does NOT exist.\"; exit 1; }\n                                                                    # check the existence of mserver5 process\necho \"[INFO] Server normal.\"\n```\n\nIt can also be reproduced on MonetDB Dec2023_root, self-compiled by `CC=clang-12 CXX=clang++-12 cmake /root/monetdb -DCMAKE_BUILD_TYPE=RelWithDebInfo`.\n\n**Issue labeling**\nbug",
+  "date": "2023-11-15T16:37:08Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (id INT PRIMARY KEY, name VARCHAR(255), data BLOB);",
+    "INSERT INTO t2 (id, name, data) VALUES (1, 'Test', CAST('Sample data' AS BLOB));",
+    "INSERT INTO t2 (id, name, data) VALUES (2, NULL, NULL);",
+    "SELECT id, name, data FROM t2 WHERE data IS NOT NULL;",
+    "DELETE FROM t2 WHERE id = 1;"
+  ],
+  "key_bug_features": [
+    "Server crashes during BLOB operations in HEAP_malloc"
+  ]
+}

@@ -1,0 +1,15 @@
+CREATE TABLE test_table (id UInt32, value String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, 'test1'), (2, 'test2'), (3, 'test3');
+SELECT * FROM system.processes WHERE query LIKE '%SELECT%';
+KILL QUERY WHERE query_id IN (SELECT query_id FROM system.processes WHERE user = 'default' AND database = 'test_db') ASYNC;
+KILL QUERY WHERE address = '127.0.0.1' AND user = 'default' AND (query LIKE '%INSERT%' OR query LIKE '%UPDATE%') SYNC;
+SELECT count() FROM system.mutations WHERE is_done = 0;
+KILL MUTATION WHERE database = 'test_db' AND table = 'test_table' AND is_killed = 0;
+KILL QUERY ON CLUSTER 'my_cluster' WHERE user = 'readonly_user' AND (query LIKE '%SELECT%' OR query LIKE '%UPDATE%') ASYNC;
+KILL QUERY WHERE query_id = (SELECT query_id FROM system.processes WHERE duration > 10000 LIMIT 1) SYNC;
+KILL MUTATION WHERE mutation_id IN (SELECT mutation_id FROM system.mutations WHERE is_done = 0 AND table = 'test_table');
+SELECT * FROM system.processes WHERE query LIKE (SELECT CONCAT('%', value, '%') FROM test_table) LIMIT 5;
+KILL QUERY WHERE query_id IN (SELECT query_id FROM (SELECT query_id FROM system.processes ORDER BY elapsed DESC LIMIT 10) AS sub) ASYNC;
+SELECT count(*) FROM system.processes WHERE query_id IN (SELECT query_id FROM system.processes WHERE user = 'test_user') AS SYNC;
+KILL QUERY WHERE query LIKE '%DELETE%';
+KILL MUTATION ON CLUSTER 'test_cluster' WHERE database = 'test_db' AND is_killed = 0;

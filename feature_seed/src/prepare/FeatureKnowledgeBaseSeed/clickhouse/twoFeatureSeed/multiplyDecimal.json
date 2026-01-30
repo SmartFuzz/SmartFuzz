@@ -1,0 +1,16 @@
+{
+    "function": "multiplyDecimal",
+    "operator": "a - b",
+    "sql_array": [
+        "CREATE TABLE fuzz_test (id UInt32, dec_a Decimal64(10, 5), dec_b Decimal32(5, 3), str_val String, val Nullable(Int32));",
+        "INSERT INTO fuzz_test VALUES (1, toDecimal64('123.456', 5), toDecimal32('789.012', 3), 'test', NULL), (2, toDecimal64('0.00001', 5), toDecimal32('0.000023', 3), 'sample', 5);",
+        "SELECT id, multiplyDecimal(dec_a, str_val) AS multiplied_decimal_result FROM fuzz_test WHERE dec_a IS NOT NULL;",
+        "SELECT id, multiplyDecimal(a, b) - multiplyDecimal(toDecimal64('1.000', 3), toDecimal32('2.000', 3)) AS result FROM (SELECT dec_a AS a, dec_b AS b FROM fuzz_test) AS subquery;",
+        "SELECT id, multiplyDecimal(NULLIF(dec_a, 0), dec_b) AS multiplied_result, (multiplyDecimal(dec_a, dec_b) - dec_a) AS operator_test FROM fuzz_test HAVING multiplied_result IS NOT NULL;",
+        "CREATE TABLE test_joins (group_id UInt32, value Decimal64(15, 5), group_name String);",
+        "INSERT INTO test_joins VALUES (1, toDecimal64('100.12345', 5), 'A'), (2, toDecimal64('200.98765', 5), 'B'), (1, toDecimal64('300.45678', 5), 'A');",
+        "SELECT j.group_name, SUM(multiplyDecimal(j.value, f.dec_b)) AS total_value FROM test_joins AS j JOIN fuzz_test AS f ON j.group_id = f.id GROUP BY j.group_name HAVING total_value > 0;",
+        "SELECT id, multiplyDecimal(dec_a, toDecimal32(COALESCE(val, 0), 0)) AS new_value FROM fuzz_test WHERE str_val = '' AND dec_b <> 0;",
+        "SELECT id, multiplyDecimal(dec_a, dec_b, 3) AS result_decimal, (dec_a - dec_b) AS subtraction_result FROM fuzz_test WHERE dec_a > 0 AND (dec_b IS NULL OR dec_b < 0) ORDER BY subtraction_result DESC;"
+    ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7263",
+  "title": "PRIMARY KEY constraint is not persistent through server restarts",
+  "description": "The PRIMARY KEY constraint is ignored when the server restarts, allowing multiples rows with the same key.\n\n**To Reproduce**\n- Create a table with primary key\n    ```sql\n    CREATE TABLE Test (k int PRIMARY KEY, v int);\n    \n    \\d Test\n      CREATE TABLE \"sys\".\"test\" (\n          \"k\" INTEGER       NOT NULL,\n          \"v\" INTEGER,\n          CONSTRAINT \"test_k_pkey\" PRIMARY KEY (\"k\")\n      );\n    ```\n- Check that the PRIMARY KEY constraint is respected:\n    ```sql\n    INSERT INTO Test VALUES(1, 1);\n      1 affected row\n    \n    INSERT INTO Test VALUES(1, 1);\n      INSERT INTO: PRIMARY KEY constraint 'test.test_k_pkey' violated\n    ```\n\n- Restart the server\n\n- Check that the PRIMARY KEY constraint is ignored:\n    ```sql\n    \\d Test\n      CREATE TABLE \"sys\".\"test\" (\n          \"k\" INTEGER       NOT NULL,\n          \"v\" INTEGER,\n          CONSTRAINT \"test_k_pkey\" PRIMARY KEY (\"k\") -- still here\n      );\n\n    INSERT INTO Test VALUES(1, 1);\n      1 affected row\n    INSERT INTO Test VALUES(1, 1);\n      1 affected row\n    INSERT INTO Test VALUES(1, 1);\n      1 affected row\n\n    SELECT * FROM Test;\n      +------+------+\n      | k    | v    |\n      +======+======+\n      |    1 |    1 |\n      |    1 |    1 |\n      |    1 |    1 |\n      |    1 |    1 |\n      +------+------+\n    ```\n\n**Software versions**\n- MonetDB master branch (most recent commit)\n- Ubuntu 20.04 LTS\n- Self-installed and compiled",
+  "date": "2022-03-07T13:06:53Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE TABLE Test2 (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(50), age INT CHECK (age >= 0));",
+    "INSERT INTO Test2 (name, age) VALUES ('Alice', 30);",
+    "INSERT INTO Test2 (name, age) VALUES ('Bob', NULL);",
+    "INSERT INTO Test2 (name, age) VALUES ('Charlie', -5);",
+    "SELECT * FROM Test2 WHERE age IS NULL OR age < 0;"
+  ],
+  "key_bug_features": [
+    "PRIMARY KEY constraint ignored after server restarts"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+    "function": "getSizeOfEnumType",
+    "operator": "a = b",
+    "sql_array": [
+        "CREATE TABLE test_enum (id UInt32, status Enum8('active' = 1, 'inactive' = 2, 'pending' = 3));",
+        "INSERT INTO test_enum VALUES (1, CAST('active' AS Enum8('active' = 1, 'inactive' = 2, 'pending' = 3))), (2, CAST('inactive' AS Enum8('active' = 1, 'inactive' = 2, 'pending' = 3))), (3, CAST('pending' AS Enum8('active' = 1, 'inactive' = 2, 'pending' = 3)));",
+        "SELECT id, getSizeOfEnumType(CAST(status AS Enum8('active' = 1, 'inactive' = 2, 'pending' = 3))) AS enum_size FROM test_enum WHERE getSizeOfEnumType(CAST('pending' AS Enum8('active' = 1, 'inactive' = 2, 'pending' = 3))) = 3;",
+        "SELECT id, status FROM test_enum WHERE status = CAST('active' AS Enum8('active' = 1, 'inactive' = 2, 'pending' = 3)) AND id < (SELECT MAX(id) FROM test_enum);",
+        "SELECT COUNT(*) FROM (SELECT id, status FROM test_enum WHERE status = CAST('inactive' AS Enum8('active' = 1, 'inactive' = 2, 'pending' = 3)) GROUP BY status HAVING getSizeOfEnumType(status) = 1) AS temp;",
+        "SELECT id FROM test_enum WHERE (getSizeOfEnumType(CAST(status AS Enum8('active' = 1, 'inactive' = 2))) = 2) OR (getSizeOfEnumType(CAST(NULL AS Enum8('active' = 1, 'inactive' = 2))) IS NULL);",
+        "CREATE TABLE test_inner_enum AS (SELECT id, getSizeOfEnumType(status) AS enum_size FROM test_enum GROUP BY id, status);",
+        "SELECT id, enum_size FROM test_inner_enum WHERE enum_size > ALL (SELECT getSizeOfEnumType(CAST('inactive' AS Enum8('active' = 1, 'inactive' = 2))) FROM test_enum);",
+        "CREATE TABLE temp_enum (id UInt32, enum_type Enum8('type1' = 1, 'type2' = 2));",
+        "INSERT INTO temp_enum VALUES (1, CAST('type1' AS Enum8('type1' = 1, 'type2' = 2))), (2, CAST(NULL AS Enum8('type1' = 1, 'type2' = 2)));",
+        "SELECT id FROM temp_enum WHERE (CAST(NULL AS Enum8('type1' = 1, 'type2' = 2)) = status) AND NOT (getSizeOfEnumType(CAST(status AS Enum8('type1' = 1, 'type2' = 2))) = 0);"
+    ]
+}

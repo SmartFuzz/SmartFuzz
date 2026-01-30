@@ -1,0 +1,17 @@
+{
+    "function": "toStartOfTenMinutes",
+    "operator": "a BETWEEN b AND c",
+    "sql_array": [
+        "CREATE TABLE test_dates (event_time DateTime, id Int32) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_dates VALUES (toDateTime('2023-04-21 10:17:00'), 1), (toDateTime('2023-04-21 10:20:00'), 2), (toDateTime('2023-04-21 10:23:00'), 3), (toDateTime('2023-04-21 10:27:00'), 4);",
+        "SELECT id, toStartOfTenMinutes(event_time) AS rounded_time FROM test_dates WHERE toStartOfTenMinutes(event_time) BETWEEN toStartOfTenMinutes(toDateTime('2023-04-21 10:15:00')) AND toStartOfTenMinutes(toDateTime('2023-04-21 10:25:00'));",
+        "SELECT id, COUNT(*) FROM test_dates GROUP BY toStartOfTenMinutes(event_time) HAVING COUNT(*) > 1;",
+        "SELECT id, CASE WHEN toStartOfTenMinutes(event_time) BETWEEN toStartOfTenMinutes(toDateTime('2023-04-21 10:15:00')) AND toStartOfTenMinutes(toDateTime('2023-04-21 10:25:00')) THEN 'In Range' ELSE 'Out of Range' END AS time_range FROM test_dates;",
+        "WITH (SELECT id FROM test_dates WHERE event_time IS NOT NULL) AS filtered_ids SELECT f.id, toStartOfTenMinutes(d.event_time) FROM test_dates d JOIN filtered_ids f ON d.id = f.id WHERE toStartOfTenMinutes(d.event_time) >= toStartOfTenMinutes(toDateTime('2023-04-21 10:10:00'));",
+        "SELECT id, avg(toStartOfTenMinutes(event_time)) FROM (SELECT event_time, id FROM test_dates) GROUP BY id ORDER BY avg(toStartOfTenMinutes(event_time));",
+        "CREATE TABLE test_edge_cases (event_time DateTime, str_value String) ENGINE = MergeTree() ORDER BY str_value;",
+        "INSERT INTO test_edge_cases VALUES (toDateTime('2023-04-21 10:10:00'), '2023-04-21 10:10:00'), (toDateTime('2023-04-21 11:10:00'), 'some string'), (toDateTime(NULL), NULL);",
+        "SELECT str_value, toStartOfTenMinutes(event_time) AS rounded_time FROM test_edge_cases WHERE toStartOfTenMinutes(event_time) BETWEEN NULL AND toStartOfTenMinutes(toDateTime('2023-04-21 10:15:00'));",
+        "SELECT toStartOfTenMinutes(event_time) AS rounded FROM test_dates WHERE not(event_time BETWEEN toDateTime('2023-04-21 10:15:00') AND toDateTime('2023-04-21 10:25:00'));"
+    ]
+}

@@ -1,0 +1,11 @@
+CREATE TABLE shard_num_test (id UInt32, value String) ENGINE=Distributed(test_cluster_two_shards_localhost, system, one, id);
+INSERT INTO shard_num_test VALUES (1, 'test1'), (2, 'test2'), (3, 'test3');
+SELECT id, value, shardNum() FROM shard_num_test WHERE id < 5;
+SELECT id, value, shardNum() FROM (SELECT id, value FROM shard_num_test) AS subquery;
+CREATE TABLE shard_num_nested (key UInt32, nested_value Nested(inner_id UInt32, inner_value String)) ENGINE=MergeTree() ORDER BY key;
+INSERT INTO shard_num_nested VALUES (1, [1], ['nested1']), (2, [2], ['nested2']);
+SELECT key, nested_value.inner_id, nested_value.inner_value, shardNum() FROM shard_num_nested ARRAY JOIN nested_value;
+CREATE TABLE shard_num_join (a UInt32, b UInt32) ENGINE=Distributed(test_cluster_two_shards_localhost, system, one, a);
+INSERT INTO shard_num_join VALUES (1, 10), (2, 20), (3, 30);
+SELECT j.a, j.b, shardNum() FROM shard_num_join AS j JOIN shard_num_test AS t ON j.a = t.id;
+SELECT id, shardNum(), (SELECT COUNT(*) FROM shard_num_test WHERE id = shard_num_test.id) AS cnt FROM shard_num_test;

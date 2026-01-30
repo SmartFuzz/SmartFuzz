@@ -1,0 +1,16 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, data VARCHAR(255));
+INSERT INTO test_table (id, data) VALUES (1, 'Test Data 1');
+INSERT INTO test_table (id, data) VALUES (2, 'Test Data 2');
+CREATE TABLE transaction_table (trans_id INT PRIMARY KEY, trans_data VARCHAR(255), datasource_id INT REFERENCES test_table(id));
+INSERT INTO transaction_table (trans_id, trans_data, datasource_id) VALUES (1, 'Transaction 1', 1);
+INSERT INTO transaction_table (trans_id, trans_data, datasource_id) VALUES (2, 'Transaction 2', 1);
+SELECT * FROM test_table WHERE id IN (SELECT datasource_id FROM transaction_table WHERE trans_id = 1);
+SELECT * FROM test_table WHERE id = (SELECT datasource_id FROM transaction_table WHERE trans_id = 2);
+SELECT t.id, t.data FROM test_table t JOIN transaction_table tr ON t.id = tr.datasource_id WHERE tr.trans_data LIKE 'Transaction%';
+WITH active_transactions AS (SELECT datasource_id FROM transaction_table WHERE trans_id > 0) SELECT * FROM test_table WHERE id NOT IN (SELECT datasource_id FROM active_transactions);
+SELECT COUNT(*) FROM test_table WHERE data IS NOT NULL AND id NOT IN (SELECT datasource_id FROM transaction_table);
+SELECT * FROM test_table WHERE id = (SELECT MAX(id) FROM test_table) AND data = (SELECT data FROM test_table WHERE id < (SELECT MAX(id) FROM test_table));
+DELETE FROM transaction_table WHERE trans_id IN (SELECT trans_id FROM transaction_table WHERE datasource_id = (SELECT id FROM test_table WHERE data = 'Test Data 1'));
+DROP TABLE transaction_table;
+DROP TABLE test_table;
+CALL vdd_disconnect_data_source('test_table');

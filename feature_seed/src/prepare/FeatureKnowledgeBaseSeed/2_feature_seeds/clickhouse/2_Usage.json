@@ -1,0 +1,17 @@
+CREATE TABLE test_table (id UInt32, name String, score Float64, created_at DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, 'Alice', 98.5, now()), (2, 'Bob', NULL, now()), (3, 'Charlie', 77.0, now());
+SELECT id, name || ' scored ' || toString(score) AS msg FROM test_table WHERE (score IS NOT NULL) AND (created_at > now() - interval 1 day);
+CREATE TABLE distributed_table AS test_table ENGINE = Distributed('my_cluster', 'default', 'test_table', rand());
+SELECT * FROM distributed_table WHERE id IN (SELECT id FROM test_table WHERE created_at < now() - interval 10 day);
+SELECT count() FROM (SELECT id, score FROM test_table HAVING score > 80) AS valid_scores GROUP BY id;
+SELECT name, score FROM test_table WHERE COALESCE(name, 'Unknown') = 'Unknown' OR score || '' = '77' ORDER BY score;
+SELECT concat('Player: ', name || ' - Score: ' || toString(score)) FROM test_table WHERE score BETWEEN (SELECT MIN(score) FROM test_table) AND (SELECT MAX(score) FROM test_table);
+CREATE TABLE test_table_numeric (num_value Float64, str_value String) ENGINE = MergeTree() ORDER BY num_value;
+INSERT INTO test_table_numeric VALUES (NULL, 'Test1'), (1.23, 'Test2'), (3.45, 'Test3');
+SELECT num_value, str_value FROM test_table_numeric WHERE toString(num_value) || '' LIKE '%Test%' AND num_value > 2.0 ORDER BY num_value;
+SELECT id, name, SUM(IF(score IS NULL, 0, score)) AS total_score FROM test_table GROUP BY id, name HAVING total_score > 90;
+SELECT id || ' ' || name || ' ' || ifNull(toString(score), 'N/A') FROM test_table WHERE id < 10 ORDER BY COALESCE(score, 0);
+SELECT arrayJoin([1, 2, 3]) as num_id, CONCAT('Entry ', arrayJoin(['A', 'B', 'C'])) || ' has score: ' || toString((SELECT AVG(score) FROM test_table)) FROM test_table WHERE name IS NOT NULL;
+SELECT id, name FROM (SELECT id, name FROM test_table WHERE length(name) > 5) AS long_names WHERE id % 2 = 0;
+ALTER TABLE test_table ADD COLUMN additional_score Float64 DEFAULT 0;
+SELECT id, additional_score + ifNull(score, 0) AS combined_score FROM test_table WHERE additional_score > 0;

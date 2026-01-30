@@ -1,0 +1,9 @@
+CREATE TABLE test_table (id INTEGER, value REAL, group_key TEXT);
+INSERT INTO test_table VALUES (1, 2.0, 'A'), (2, NULL, 'B'), (3, 1.5, 'A'), (4, 3.0, 'B'), (5, 4.0, NULL);
+CREATE TABLE group_table (group_key TEXT, extra_value REAL);
+INSERT INTO group_table VALUES ('A', 5.0), ('B', NULL);
+SELECT lgamma(SUM(value)) AS log_gamma_sum, group_key FROM test_table GROUP BY group_key HAVING lgamma(COALESCE(MAX(value), 0)) <=> MAX(COALESCE(extra_value, 0)) WITHIN GROUP (ORDER BY group_key);
+SELECT id, value FROM test_table WHERE value <= lgamma(NULLIF(3, 1)) AND (group_key <=> (SELECT group_key FROM group_table WHERE extra_value IS NOT NULL LIMIT 1));
+SELECT A.id, lgamma(A.value + B.extra_value) FROM test_table AS A JOIN group_table AS B ON A.group_key = B.group_key AND A.value <= lgamma(1.0) WHERE A.value IS NOT NULL;
+SELECT id, value FROM test_table WHERE lgamma(COALESCE(value, 1)) <=> (SELECT lgamma(AVG(value)) FROM test_table WHERE group_key IS NOT NULL) ORDER BY value DESC;
+SELECT DISTINCT lgamma(value) AS log_value FROM test_table WHERE value IS NOT NULL AND lgamma(value) <=> (SELECT AVG(lgamma(value)) FROM test_table);

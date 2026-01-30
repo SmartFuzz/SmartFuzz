@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/49107",
+  "title": "Unexpected Result by REGEXP",
+  "description": "## Bug Report\r\n\r\nI believe this is a bug as two queries return inconsistent results.\r\nAlthough the view includes a `GROUP BY`, it does not break the `only_full_group_by` attribute.\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```sql\r\nCREATE TABLE t0(c0 INT);\r\nCREATE TABLE t1(c0 INT);\r\nINSERT INTO t0 VALUES (1), (2);\r\nINSERT INTO t1 VALUES (3);\r\nCREATE VIEW v0(c0, c1) AS SELECT t0.c0, (false NOT REGEXP t1.c0) LIKE 0 FROM t1, t0 GROUP BY t1.c0;\r\n\r\nSELECT v0.c0 FROM v0; -- {2}\r\nSELECT v0.c0 FROM v0 WHERE NOT v0.c1; -- {1}\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\nThe first query should return 2 rows because the second query returns a different result.\r\n\r\n### 3. What did you see instead (Required)\r\nThe second query returns a different result as that of the first query.\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n```bash\r\n| Release Version: v7.6.0-alpha-347-g598ccada40-dirty\r\nEdition: Community\r\nGit Commit Hash: 598ccada4065e4871bc5bce53a039cbb598a6d82\r\nGit Branch: master\r\nUTC Build Time: 2023-12-01 01:44:42\r\nGoVersion: go1.21.0\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: unistore |\r\n```\r\n\r\n",
+  "date": "2023-12-02T06:59:00Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2(c0 INT, c1 VARCHAR(10), c2 BOOLEAN);",
+    "INSERT INTO t2 VALUES (1, 'test', TRUE), (2, 'example', FALSE);",
+    "CREATE VIEW v1(c0, c1) AS SELECT t2.c0, (CASE WHEN t2.c1 LIKE 'test' THEN TRUE ELSE FALSE END) FROM t2 GROUP BY t2.c0;",
+    "SELECT v1.c0 FROM v1 WHERE v1.c1;",
+    "SELECT v1.c0 FROM v1 WHERE NOT v1.c1;"
+  ],
+  "key_bug_features": [
+    "Inconsistent results from REGEXP in GROUP BY view"
+  ]
+}

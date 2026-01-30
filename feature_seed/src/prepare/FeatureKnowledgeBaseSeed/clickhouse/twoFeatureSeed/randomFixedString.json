@@ -1,0 +1,16 @@
+{
+    "function": "randomFixedString",
+    "operator": "a.N",
+    "sql_array": [
+        "CREATE TABLE test_strings (id UInt64, data FixedString(20), nullable_data Nullable(FixedString(20)));",
+        "INSERT INTO test_strings VALUES (1, randomFixedString(10), randomFixedString(15)), (2, randomFixedString(0), NULL);",
+        "SELECT id, toTypeName(data) AS data_type, tupleElement((SELECT tuple(randomFixedString(5), randomFixedString(10)) AS rnd_tuple), 1) AS rnd_data FROM test_strings WHERE data IS NOT NULL;",
+        "SELECT id, COUNT(*) AS count, SUMIf(length(data), data IS NOT NULL) AS total_length FROM test_strings GROUP BY id HAVING total_length > 5;",
+        "SELECT id, arrayJoin([data, randomFixedString(12)]) AS combined_data FROM test_strings WHERE length(combined_data) >= 10;",
+        "SELECT id, data, NULLIF(tupleElement((SELECT tuple(randomFixedString(7), randomFixedString(10)) AS nested), 2), '') AS safely_accessed_data FROM test_strings WHERE tupleElement((SELECT tuple(NULL, 'valid_string')), 2) IS NOT NULL;",
+        "WITH (SELECT COUNT(*) FROM test_strings) AS total_count SELECT id, total_count - id AS remaining FROM test_strings ORDER BY remaining DESC;",
+        "CREATE TABLE test_strings_copy AS test_strings ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_strings_copy SELECT id, randomFixedString(20) AS data, nullable_data FROM test_strings WHERE id % 2 = 0;",
+        "SELECT id, length(tupleElement((SELECT tuple(randomFixedString(3), ?)), 1)) AS string_length FROM (SELECT randomFixedString(10) AS ? FROM test_strings_copy) WHERE string_length > 5;"
+    ]
+}

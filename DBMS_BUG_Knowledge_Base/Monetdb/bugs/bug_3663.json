@@ -1,0 +1,31 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/3663",
+  "title": "Incorrect result ROW_NUMBER in subquery",
+  "vulnerable_database": "monetdb",
+  "date": "2020-11-30T12:59:16Z",
+  "vulnerable_version": "Unknown",
+  "description": "",
+  "poc": [
+    "CREATE TABLE t1 (id VARCHAR(48), col1 VARCHAR(32), col2 VARCHAR(8), excepted BOOLEAN);",
+    "INSERT INTO t1 (id, col1, col2, excepted) VALUES ('12', 'col1.A.99.code', '.03', 'false'), ('12', 'col1.A.99.code', '.02', 'false');",
+    "CREATE TABLE t2 (id  VARCHAR(48), col3 VARCHAR(32), col2 VARCHAR(8), row int);",
+    "INSERT INTO t2 (id, col3, col2, row) VALUES ('12',null,null,null);",
+    "UPDATE t2 SET (col3, col2, row) =\r\n (SELECT col1, col2, row\r\n FROM (\r\n     SELECT id, col1, col2,\r\n            ROW_NUMBER() OVER (PARTITION BY id ORDER BY (col1 LIKE '%.%.99.%') ASC,\r\n                               col1 ASC, col2 ASC) AS row\r\n     FROM t1\r\n     WHERE excepted = false\r\n       AND col1 LIKE '%.A.%'\r\n )  AS t3\r\n WHERE t3.row = 1\r\n AND t2.id= t3.id\r\n );",
+    "SELECT * FROM t2;",
+    "DROP TABLE t2;",
+    "CREATE TABLE t3 AS (\r\n     SELECT id, col1, col2, \r\n            ROW_NUMBER() OVER (PARTITION BY id ORDER BY (col1 LIKE '%.%.99.%') ASC,\r\n                               col1 ASC,col2 ASC) AS row\r\n     FROM t1\r\n     WHERE excepted = false AND col1 LIKE '%.A.%'\r\n ) WITH DATA;",
+    "UPDATE t2 SET (col3, col2, row) = (SELECT col1, col2, row FROM t3 WHERE t2.id= t3.id AND t3.row = 1);",
+    "DROP TABLE t1;",
+    "DROP TABLE t3;"
+  ],
+  "key_bug_features": [
+    "ROW_NUMBER function in subquery with partitioning"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t4 (id VARCHAR(48), col1 VARCHAR(32), col2 VARCHAR(8), excepted BOOLEAN, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t4 (id, col1, col2, excepted) VALUES ('13', 'col1.B.88.code', '.01', false), ('13', 'col1.B.88.code', NULL, false);",
+    "CREATE TABLE t5 (id VARCHAR(48), col3 VARCHAR(32), col2 VARCHAR(8), row INT, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t5 (id, col3, col2, row) VALUES ('13', NULL, NULL, NULL);",
+    "UPDATE t5 SET (col3, col2, row) = (SELECT col1, col2, ROW_NUMBER() OVER (PARTITION BY id ORDER BY (col1 LIKE '%.%.88.%') ASC, col1 ASC, col2 ASC) FROM t4 WHERE excepted = false AND col1 LIKE '%.B.%' LIMIT 1) WHERE t5.id = t4.id;"
+  ]
+}

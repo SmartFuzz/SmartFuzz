@@ -1,0 +1,16 @@
+{
+    "function": "anyHeavy",
+    "operator": "a IN ...",
+    "sql_array": [
+        "CREATE TABLE airline_data (AirlineID Int32, FlightNumber String, DepartureTime DateTime, Delay Nullable(Int32));",
+        "INSERT INTO airline_data VALUES (1, 'AA123', '2023-10-01 14:00:00', 15), (1, 'AA124', '2023-10-01 15:00:00', NULL), (2, 'DL345', '2023-10-01 16:00:00', 30), (3, 'SW456', '2023-10-01 17:00:00', 10), (1, 'AA123', '2023-10-01 14:05:00', 15), (2, 'DL345', '2023-10-01 16:10:00', NULL), (1, 'AA124', '2023-10-01 15:10:00', 20);",
+        "SELECT anyHeavy(FlightNumber) AS most_common_flight FROM airline_data WHERE DepartureTime > now() - INTERVAL 1 DAY GROUP BY AirlineID HAVING anyHeavy(Delay) IS NOT NULL;",
+        "SELECT AirlineID, anyHeavy(FlightNumber) AS common_flight FROM (SELECT AirlineID, FlightNumber, Delay FROM airline_data WHERE FlightNumber IN (SELECT FlightNumber FROM airline_data WHERE Delay IS NULL)) GROUP BY AirlineID HAVING COUNT(FlightNumber) > 1;",
+        "CREATE TABLE temp_airline AS SELECT AirlineID, anyHeavy(FlightNumber) AS common_flight FROM airline_data GROUP BY AirlineID;",
+        "SELECT a.AirlineID FROM airline_data a JOIN temp_airline t ON a.FlightNumber IN (SELECT FlightNumber FROM airline_data WHERE AirlineID = a.AirlineID) WHERE a.Delay IS NOT NULL GROUP BY a.AirlineID HAVING anyHeavy(Delay) > 5;",
+        "SELECT anyHeavy(FlightNumber) AS most_frequent_flight FROM airline_data WHERE AirlineID IN (SELECT AirlineID FROM airline_data GROUP BY AirlineID HAVING COUNT(FlightNumber) > 2) AND DepartureTime < '2023-10-01 16:00:00' GROUP BY AirlineID;",
+        "INSERT INTO airline_data VALUES (1, 'AA125', '2023-10-01 15:15:00', NULL);",
+        "SELECT AirlineID, anyHeavy(Delay) FROM airline_data WHERE Delay IS NOT NULL GROUP BY AirlineID HAVING anyHeavy(Delay) > 20;",
+        "DROP TABLE IF EXISTS temp_airline;"
+    ]
+}

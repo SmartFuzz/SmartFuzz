@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/59483",
+  "title": "TiDB cannot execute query with Case...When... condition",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n\n```sql\nDrop table if exists t1;\nCREATE TABLE t1 (\n    c1 INT ZEROFILL,\n    c2 BIT(42)\n);\n\nINSERT IGNORE INTO t1 \nVALUES (TRUE, 10101001000000110110110001010000100100);\n\nSELECT t1.c1 \nFROM t1\nWHERE INET6_NTOA(\n    CASE \n        WHEN t1.c2 = -1638932481 THEN t1.c2\n        ELSE t1.c2\n    END\n);\n```\n\n### 2. What did you expect to see? (Required)\n\nTiDB should execute normally.\n\n### 3. What did you see instead (Required)\n\nTiDB throws errors.\n\n```sql\n-- TiDB\nmysql> SELECT t1.c1\n    -> FROM t1\n    -> WHERE INET6_NTOA(\n    ->     CASE\n    ->         WHEN t1.c2 = -1638932481 THEN t1.c2\n    ->         ELSE t1.c2\n    ->     END\n    -> );\nERROR 1105 (HY000): baseBuiltinFunc.vecEvalString() should never be called, please contact the TiDB team for help\n\n-- MySQL 8.4.1\nmysql> SELECT t1.c1\n    -> FROM t1\n    -> WHERE INET6_NTOA(\n    ->     CASE\n    ->         WHEN t1.c2 = -1638932481 THEN t1.c2\n    ->         ELSE t1.c2\n    ->     END\n    -> );\nEmpty set, 1 warning (0.01 sec)\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\nRelease Version: v8.5.0",
+  "date": "2025-02-12T09:06:03Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t2;",
+    "CREATE TABLE t2 (id INT PRIMARY KEY, value VARCHAR(255), status TINYINT(1));",
+    "INSERT INTO t2 (id, value, status) VALUES (1, 'test', 1), (2, 'example', 0);",
+    "SELECT id FROM t2 WHERE INET6_NTOA(CASE WHEN status = 1 THEN id ELSE NULL END) IS NOT NULL;",
+    "SELECT value FROM t2 WHERE INET6_NTOA(CASE WHEN id < 3 THEN id ELSE NULL END) IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Query with CASE WHEN condition in INET6_NTOA"
+  ]
+}

@@ -1,0 +1,19 @@
+CREATE TABLE instances (id INT PRIMARY KEY, instance_type VARCHAR(50), launch_time TIMESTAMP, state VARCHAR(20), tags VARCHAR(255));
+INSERT INTO instances (id, instance_type, launch_time, state, tags) VALUES (1, 't2.micro', NOW(), 'running', 'environment:production');
+INSERT INTO instances (id, instance_type, launch_time, state, tags) VALUES (2, 't2.nano', NOW() - INTERVAL '1 DAY', 'stopped', 'environment:staging');
+INSERT INTO instances (id, instance_type, launch_time, state, tags) VALUES (3, 't2.large', NOW(), 'terminated', NULL);
+SELECT id, instance_type, launch_time FROM instances WHERE state IS NOT NULL AND launch_time > (SELECT CAST(NOW() AS TIMESTAMP) - INTERVAL '1 DAY' AS TIMESTAMP) ORDER BY launch_time DESC;
+SELECT * FROM instances WHERE bif:contains(tags, 'production') AND instance_type IN (SELECT instance_type FROM instances WHERE state = 'running');
+CREATE PROCEDURE test_amazon_describe()
+{
+  DECLARE access_key VARCHAR(50);
+DECLARE sec_token VARCHAR(50);
+DECLARE amis ANY;
+access_key := 'AKIAABCDEFGHIJKLMN';
+sec_token := 'XYZ1234567890';
+amis := xtree_doc(DB.DBA.AMAZON_DESCRIBE_INSTANCES(access_key, sec_token));
+SELECT id FROM instances WHERE bif:contains(tags, xpath_eval('/DescribeInstancesResponse/reservationSet/item/instancesSet/item', amis, 0));
+};
+SELECT instance_type, COUNT(*) AS instance_count FROM instances GROUP BY instance_type HAVING COUNT(*) > 0 AND MAX(launch_time) <= (SELECT launch_time FROM instances WHERE id = 3);
+SELECT id, COALESCE(NULLIF(instance_type, ''), 'unknown') AS resolved_instance_type FROM instances WHERE bif:contains(instance_type, 't2');
+SELECT * FROM instances WHERE id NOT IN (SELECT id FROM instances WHERE state IS NULL AND bif:contains(state, 'running'));

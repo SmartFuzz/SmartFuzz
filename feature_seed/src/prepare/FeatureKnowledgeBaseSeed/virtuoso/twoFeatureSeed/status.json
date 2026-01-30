@@ -1,0 +1,18 @@
+{
+    "function": "status",
+    "operator": "bif:st_overlaps",
+    "sql_array": [
+        "CREATE TABLE test_table (id INT PRIMARY KEY, geom GEOMETRY, status_info VARCHAR(255));",
+        "INSERT INTO test_table (id, geom, status_info) VALUES (1, ST_GeomFromText('POINT(2 3)'), 'Active');",
+        "INSERT INTO test_table (id, geom, status_info) VALUES (2, ST_GeomFromText('POINT(1 1)'), 'Inactive');",
+        "SELECT status((SELECT status_info FROM test_table WHERE id = 1)) AS server_status WHERE bif:st_overlaps(geom, ST_GeomFromText('POINT(2 3)'));",
+        "SELECT status((SELECT AVG(id) FROM test_table WHERE status_info IS NOT NULL)) AS server_avg_id WHERE bif:st_overlaps((SELECT geom FROM test_table WHERE id = 1), (SELECT geom FROM test_table WHERE id = 2));",
+        "CREATE TABLE boundary_values (value DECIMAL(10, 2), geom GEOMETRY);",
+        "INSERT INTO boundary_values (value, geom) VALUES (NULL, ST_GeomFromText('POLYGON((0 0, 1 1, 1 0, 0 0))'));",
+        "SELECT status(CAST(NULL AS VARCHAR)) AS null_status WHERE bif:st_overlaps(geom, (SELECT geom FROM boundary_values WHERE value IS NULL));",
+        "SELECT status(COALESCE((SELECT status_info FROM test_table WHERE id = 2), 'Unknown')) AS fallback_status WHERE bif:st_overlaps(geom, (SELECT ST_GeomFromText('POINT(1 1)')));",
+        "CREATE TABLE spatial_data (id INT, shape GEOMETRY, description VARCHAR(255));",
+        "INSERT INTO spatial_data (id, shape, description) VALUES (3, ST_GeomFromText('LINESTRING(0 0, 1 1, 2 2)'), 'Linear Shape');",
+        "SELECT status((SELECT COUNT(*) FROM spatial_data WHERE description LIKE 'Linear%')) AS linear_count WHERE bif:st_overlaps(shape, (SELECT shape FROM spatial_data WHERE id = 3));"
+    ]
+}

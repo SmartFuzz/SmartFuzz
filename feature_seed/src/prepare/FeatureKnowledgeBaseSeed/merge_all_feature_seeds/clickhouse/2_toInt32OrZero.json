@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id Int32, value String, score Float64, created_at DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, '10'), (2, '-20'), (3, 'abc'), (4, '1.5'), (5, '0xc0fe'), (6, ''), (7, '2147483648'), (8, '-2147483649');
+SELECT id, toInt32OrZero(value) AS converted_value FROM test_table WHERE id = ALL (SELECT id FROM test_table WHERE value = 'abc');
+SELECT id, toInt32OrZero(value) AS converted_value FROM test_table WHERE created_at >= now() - INTERVAL 1 DAY HAVING converted_value <> 0;
+SELECT COUNT(*) FROM (SELECT id, toInt32OrZero(value) AS converted_value FROM test_table GROUP BY id HAVING converted_value = ALL (SELECT AVG(toInt32OrZero(value)) FROM test_table WHERE value != '' AND value IS NOT NULL));
+SELECT id FROM (SELECT id, toInt32OrZero(value) AS converted_value, score FROM test_table WHERE score > 10) AS t1 WHERE score IN (SELECT score FROM (SELECT DISTINCT score FROM test_table) AS t2 WHERE toInt32OrZero(value) < 0);
+SELECT created_at, SUM(toInt32OrZero(value)) AS total FROM test_table GROUP BY created_at;
+SELECT id, CASE WHEN toInt32OrZero(value) > 0 THEN 'Positive' ELSE 'Non-Positive' END AS value_type FROM test_table HAVING value_type = ALL (SELECT 'Positive' FROM test_table);
+CREATE TEMPORARY TABLE temp_table AS SELECT id, toInt32OrZero(value) AS temp_value FROM test_table WHERE value IS NOT NULL;
+SELECT * FROM temp_table WHERE temp_value = ALL (SELECT DISTINCT score FROM test_table WHERE score IS NOT NULL);

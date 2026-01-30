@@ -1,0 +1,14 @@
+CREATE TABLE test_geom (id INT, geom GEOMETRY);
+CREATE TABLE test_data (id INT, info NVARCHAR, reference_id INT, geom GEOMETRY);
+INSERT INTO test_geom (id, geom) VALUES (1, ST_GeomFromText('POINT(1 1)')), (2, ST_GeomFromText('POINT(2 2)'));
+INSERT INTO test_data (id, info, reference_id, geom) VALUES (1, 'Sample 1', 1, ST_GeomFromText('POINT(1 1)')), (2, 'Sample 2', NULL, ST_GeomFromText('POINT(3 3)'));
+SELECT id, info FROM test_data WHERE bif:st_intersects(geom, (SELECT geom FROM test_geom WHERE id = 1)) IS TRUE;
+SELECT id, info FROM test_data WHERE reference_id IN (SELECT id FROM test_geom WHERE bif:st_intersects(geom, ST_GeomFromText('POINT(1.5 1.5)'))) AND info IS NOT NULL;
+SELECT COUNT(*) AS count FROM test_data GROUP BY info HAVING COUNT(*) > 1;
+SELECT id, bif:st_intersects(geom, (SELECT geom FROM test_geom WHERE id = 2)) AS intersects FROM test_data;
+SELECT id, SUM(CASE WHEN reference_id IS NULL THEN 1 ELSE 0 END) AS null_count FROM test_data GROUP BY reference_id;
+SELECT 'WSDL Definition: ' || WSDL_IMPORT_UDT('http://xml.redcoal.com/soapserver.dll/wsdl/ISoapServer') AS wsdl_info WHERE bif:st_intersects(geom, (SELECT geom FROM test_geom WHERE id = 1));
+CREATE TABLE extended_test_data (id INT, info NVARCHAR, rating DECIMAL(10,2) CHECK (rating BETWEEN 0 AND 5));
+INSERT INTO extended_test_data (id, info, rating) VALUES (1, 'Excellent', 5.00), (2, 'Poor', NULL), (3, 'Average', 2.50);
+SELECT id, info FROM extended_test_data WHERE rating IS NOT NULL AND rating > (SELECT AVG(rating) FROM extended_test_data);
+SELECT info, AVG(rating) FROM extended_test_data WHERE bif:st_intersects((SELECT geom FROM test_geom WHERE id = 1), (SELECT geom FROM test_data WHERE reference_id = 1)) GROUP BY info ORDER BY AVG(rating) DESC;

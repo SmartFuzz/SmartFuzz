@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, val NUMERIC, str_val VARCHAR(255));
+INSERT INTO test_table (id, val, str_val) VALUES (1, 10.0, '100'), (2, 20.5, NULL), (3, NULL, '200'), (4, 5.25, 'abcde');
+SELECT id, sys.var_pop(val) << 1 AS shifted_var_pop FROM test_table GROUP BY id HAVING shifted_var_pop > 0;
+SELECT t1.id, t2.val FROM test_table t1 JOIN (SELECT id, sys.var_pop(val) AS pop_val FROM test_table GROUP BY id) t2 ON t1.id = t2.id WHERE t1.str_val IS NULL;
+SELECT id, val, sys.var_pop(val) << (CASE WHEN val IS NULL THEN 0 ELSE 1 END) AS complex_shift FROM test_table WHERE val IS NOT NULL ORDER BY complex_shift;
+SELECT id, sys.var_pop(val) << CAST(ROUND(val) AS INT) AS final_val FROM test_table WHERE val IS NOT NULL AND str_val IS NOT NULL GROUP BY id HAVING final_val > 10;
+CREATE TABLE another_table (ref_id INT, score NUMERIC, UNIQUE(ref_id));
+INSERT INTO another_table (ref_id, score) VALUES (1, 15.0), (2, NULL), (3, 10.5);
+SELECT t1.id, sys.var_pop(NULLIF(t2.score, 0)) << 1 AS modified_score FROM test_table t1 LEFT JOIN another_table t2 ON t1.id = t2.ref_id WHERE t1.val IS NOT NULL;
+WITH var_pop_values AS (SELECT id, sys.var_pop(val) AS pop_val FROM test_table GROUP BY id) SELECT id, pop_val << 2 FROM var_pop_values WHERE pop_val IS NOT NULL;

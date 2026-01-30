@@ -1,0 +1,27 @@
+{
+    "function": "demangle",
+    "operator": "SELECT NOT a",
+    "sql_array": [
+        "CREATE TABLE test_symbols (id Int32, symbol String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_symbols VALUES (1, 'symbolA'), (2, 'symbolB'), (3, 'symbolC');",
+        "SELECT demangle(symbol) AS function_name FROM test_symbols WHERE id = 1;",
+        "SELECT NOT demangle(symbol) = '' AS is_demangled FROM test_symbols WHERE id = 2;",
+        "SELECT demangle(addressToSymbol(x.id)) AS demangled_symbol FROM test_symbols x WHERE NOT x.symbol = '';",
+        "SELECT demangle(symbol), COUNT(*) FROM test_symbols GROUP BY demangle(symbol) HAVING COUNT(*) > 1;",
+        "SELECT NOT emptyString() AS is_empty FROM (SELECT demangle(addressToSymbol(id)) AS func_name FROM test_symbols) AS subquery;",
+        "CREATE TABLE trace_test (trace String) ENGINE = MergeTree() ORDER BY trace;",
+        "INSERT INTO trace_test VALUES ('traceA'), ('traceB'), ('traceC');",
+        "SELECT demangle(symbol) FROM (SELECT trace FROM trace_test WHERE NOT trace = '') AS traces WHERE demangle(symbol) != '';",
+        "SELECT demangle(addressToSymbol(123456789)) AS valid_symbol FROM trace_test WHERE NOT trace = 'invalid';",
+        "SELECT NULLIF(demangle(addressToSymbol(id)), '') AS safe_demangle FROM test_symbols WHERE id < 5;",
+        "SELECT demangle(symbol) AS demangled, NOT trace = '' AS is_valid FROM trace_test JOIN test_symbols ON trace_test.trace = test_symbols.symbol;",
+        "SELECT demangle(addressToSymbol(x.id)) AS func_name FROM (SELECT id FROM test_symbols WHERE id NOT IN (SELECT id FROM test_symbols WHERE id < 0)) AS x;",
+        "SELECT demangle(addressToSymbol(0)) AS zero_symbol, NOT emptyString() AS is_non_empty FROM test_symbols;",
+        "SELECT demangle(arrayStringConcat(arrayMap(y -> demangle(addressToSymbol(y)), arrayJoin([123456789, 987654321])))) AS array_demangled;",
+        "CREATE TABLE nullable_test (nullable_symbol String DEFAULT NULL) ENGINE = MergeTree() ORDER BY nullable_symbol;",
+        "INSERT INTO nullable_test VALUES (NULL), ('symbolX'), (NULL);",
+        "SELECT COUNT(*) FROM nullable_test WHERE NOT nullable_symbol IS NULL;",
+        "SELECT demangle(addressToSymbol(123456)) AS single_valid_symbol, NOT EXISTS (SELECT 1 FROM nullable_test WHERE nullable_symbol IS NULL) AS has_no_nulls FROM dual;",
+        "SELECT demangle(addressToSymbol(x.id)) AS symbol_name FROM (SELECT id FROM test_symbols WHERE id IN (SELECT id FROM nullable_test WHERE nullable_symbol IS NULL)) AS x;"
+    ]
+}

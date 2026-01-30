@@ -1,0 +1,31 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/16c9801ceb",
+  "title": "Segfault on DELETE with WHERE containing OR",
+  "vulnerable_version": "3.12.2",
+  "date": "2016-05-06 03:26:389.27 years ago",
+  "path": "/home/crawl_bugs/sqlite/ticket_output/ticket_info_16c9801ceb.json",
+  "poc": [
+    "CREATE TABLE t1(x INTEGER PRIMARY KEY, y TEXT);",
+    "INSERT INTO t1(x,y) VALUES(1,'zebra');",
+    "CREATE INDEX t1x ON t1(x);",
+    "DELETE FROM t1 WHERE x IS NULL OR x<2;",
+    "SELECT statement below does a full table scan:\nCREATE TABLE t2(x INTEGER PRIMARY KEY, y TEXT);",
+    "SELECT * FROM t2 WHERE x IS NULL;",
+    "CREATE TABLE t1(x INTEGER PRIMARY KEY, y TEXT);",
+    "INSERT INTO t1(x,y) VALUES(1,'zebra');",
+    "CREATE INDEX t1x ON t1(abs(x));",
+    "DELETE FROM t1 WHERE abs(x)=99 OR abs(x)<2;"
+  ],
+  "vulnerable_database": "sqlite",
+  "description": "drh added on 2016-05-06 03:26:38:\nThe following causes an assertion fault, or segfaults if asserts are disabled.\nThe problem occurs on the DELETE statement.\nCREATE TABLE t1(x INTEGER PRIMARY KEY, y TEXT);\nINSERT INTO t1(x,y) VALUES(1,'zebra');\nCREATE INDEX t1x ON t1(x);\nDELETE FROM t1 WHERE x IS NULL OR x<2;\nThis problem was introduced in version 3.12.0 by check-in [96ea990942].\nA simple work-around is to drop the redundant \"t1x\" index.  As far as\nI can tell, this problem only comes up when there is an index on the\nINTEGER PRIMARY KEY, as illustrated by t1x above.\ndrh added on 2016-05-06 03:56:34:\nAnother problem is that the SELECT statement below does a full table scan:\nCREATE TABLE t2(x INTEGER PRIMARY KEY, y TEXT);\nSELECT * FROM t2 WHERE x IS NULL;\nIf this optimization is fixed, the situation that causes the bug in this\nticket would never come up, as far as I can tell.\ndrh added on 2016-05-06 14:33:25:\nAnother crashing example that does not use the degenerate index:\nCREATE TABLE t1(x INTEGER PRIMARY KEY, y TEXT);\nINSERT INTO t1(x,y) VALUES(1,'zebra');\nCREATE INDEX t1x ON t1(abs(x));\nDELETE FROM t1 WHERE abs(x)=99 OR abs(x)<2;\nThese seem to be the requirements to cause the crash:\nA rowid table with an integer primary key\nNo indexes reference any columns of the table other than the primary key\nDELETE with an OR in the WHERE clause\nThe OR clause uses the OP_Seek opcode to do a deferred seek of the main table.\nThat deferred seek is resolved at the first OP_Column.  But if none of the\nindexes ever reference a column (because they all only reference the integer\nprimary key) then the seek does not occur prior to the OP_Delete.",
+  "key_bug_features": [
+    "DELETE with OR in the WHERE clause"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t3(a INTEGER PRIMARY KEY, b TEXT, c REAL);",
+    "INSERT INTO t3(a, b, c) VALUES(1, 'lion', 3.14);",
+    "CREATE INDEX t3b ON t3(b);",
+    "DELETE FROM t3 WHERE b IS NULL OR c < 4.0;",
+    "CREATE TABLE t4(d INTEGER PRIMARY KEY, e TEXT);"
+  ]
+}

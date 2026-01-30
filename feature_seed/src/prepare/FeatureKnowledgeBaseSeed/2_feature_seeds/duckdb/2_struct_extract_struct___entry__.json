@@ -1,0 +1,10 @@
+CREATE TABLE test_struct (data STRUCT<i INTEGER, v2 INTEGER, v3 INTEGER>);
+INSERT INTO test_struct VALUES (struct(1, 2, 3)), (struct(4, 5, NULL));
+SELECT struct_extract(data, 'i') << (SELECT COUNT(*) FROM test_struct) AS shifted_value FROM test_struct;
+SELECT struct_extract(data, 'i') << 4 AS shifted_value FROM test_struct WHERE shifted_value > 5;
+SELECT struct_extract(data, 'i') << struct_extract(data, 'v2') AS combined_shift FROM test_struct WHERE struct_extract(data, 'v3') IS NOT NULL;
+CREATE TABLE test_numbers (num1 INTEGER, num2 INTEGER);
+INSERT INTO test_numbers VALUES (1, 2), (NULL, 4), (5, 0);
+SELECT struct_extract(ts.data, 'i') + (num1 << 1) AS result FROM test_struct ts JOIN test_numbers tn ON struct_extract(ts.data, 'i') IS NOT NULL WHERE tn.num2 > 0;
+SELECT COUNT(*) AS cnt FROM (SELECT struct_extract(data, 'v2') << 1 AS left_shifted FROM test_struct GROUP BY struct_extract(data, 'v2') HAVING COUNT(* > 0)) AS sub;
+SELECT COALESCE(struct_extract(data, 'v3'), 0) << 2 AS shifted_if_null FROM test_struct;

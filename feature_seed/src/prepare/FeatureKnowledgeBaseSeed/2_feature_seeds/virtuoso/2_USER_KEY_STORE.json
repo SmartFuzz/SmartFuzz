@@ -1,0 +1,9 @@
+CREATE TABLE user_keys (user_id INT, key_name VARCHAR(255), key_type VARCHAR(10), key_data BYTEA, PRIMARY KEY (user_id, key_name));
+INSERT INTO user_keys VALUES (1, 'id_rsa', 'X.509', xenc_pkcs12_export ('id_rsa', 'CA Certificate', '')), (2, 'id_rsa', 'RSA', NULL);
+SELECT USER_KEY_STORE(user_id, key_name, key_type, 1, '', key_data) FROM user_keys WHERE user_id = 1 AND key_type IS NOT NULL;
+SELECT USER_KEY_STORE(user_id, key_name, key_type, 2, '', xenc_pkcs12_export ('id_rsa', 'CA Certificate', '')) FROM user_keys WHERE key_name = 'id_rsa' AND user_id IN (SELECT user_id FROM user_keys WHERE key_type = 'X.509' AND user_id IS NOT NULL);
+SELECT COUNT(*) FROM user_keys WHERE key_name = 'id_rsa' AND (key_data IS NULL OR key_data = '');
+SELECT DISTINCT user_id FROM user_keys WHERE user_id NOT IN (SELECT user_id FROM user_keys WHERE key_name = 'id_rsa' AND key_type = 'RSA' AND key_data IS NULL);
+SELECT USER_KEY_STORE(user_id, key_name, key_type, (2 + 2), '', COALESCE(key_data, 'default_key')) FROM user_keys WHERE (user_id > 0 AND user_id < 3) OR (key_name LIKE 'id_%' AND key_type IS NOT NULL);
+SELECT COUNT(*) FROM user_keys HAVING COUNT(user_id) > 1 AND SUM(CASE WHEN key_data IS NOT NULL THEN 1 ELSE 0 END) = 0;
+SELECT AVG(COALESCE(NULLIF(user_id, 0), 1)) AS avg_user FROM user_keys WHERE user_id > (SELECT MAX(user_id) FROM user_keys);

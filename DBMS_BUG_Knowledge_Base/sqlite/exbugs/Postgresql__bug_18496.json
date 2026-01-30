@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/18496-62ecca730bfdfceb%40postgresql.org",
+  "title": "BUG #18496: Strange Handling for Circular Views and Permissions in PostgreSQL",
+  "description": "The following bug has been logged on the website:\nBug reference:      18496\nLogged by:          Jingzhou Fu\nEmail address:      fuboat(at)outlook(dot)com\nPostgreSQL version: 17beta1\nOperating system:   Ubuntu 20.04, docker image postgres:17beta1\nDescription:\nWhen a user without SELECT permissions tries to perform a select operation\non a circular view, PostgreSQL will report an error saying \"infinite\nrecursion detected in rules for relation v2\" instead of \"permission denied\nfor view v2\". Is this a bug or an unexpected behavior? The statements to\nreproduce are:\n-- connect with the superuser 'postgres'\nCREATE VIEW v2 as SELECT 1;\nCREATE VIEW v1 as SELECT * FROM v2;\nCREATE OR REPLACE VIEW v2 AS SELECT * FROM v1;\nSELECT * FROM v2;\nCREATE USER user_name WITH PASSWORD 'password';\nSET SESSION AUTHORIZATION user_name;\nSELECT * FROM v2;\n-- Output: ERROR:  infinite recursion detected in rules for relation \"v2\"\n-- Maybe Expected? ERROR:  permission denied for view v2\nRegardless, a circular view is an invalid view and should not appear in\nnormal scenarios, so reporting this error message does not have any negative\nimpact. However, should this error take precedence over the SELECT\npermission error, and could some important error messages potentially be\nleaked in this way to users without permissions?\nHere is the full result on PostgreSQL 17beta1:\npostgres=# create view v2 as select 1;\npostgres=# create view v1 as select * from v2;\npostgres=# CREATE OR REPLACE VIEW v2 AS select * from v1;\npostgres=# select * from v2;\nERROR:  infinite recursion detected in rules for relation \"v2\"\npostgres=# CREATE USER user_name WITH PASSWORD 'password';\npostgres=# SET SESSION AUTHORIZATION user_name;\npostgres=> select * from v2;\nERROR:  infinite recursion detected in rules for relation \"v2\"\npostgres=> select * from v1;\nERROR:  infinite recursion detected in rules for relation \"v1\"\npostgres=> SET SESSION AUTHORIZATION postgres;\npostgres=# create or replace view v2 as select 1;\npostgres=# SET SESSION AUTHORIZATION user_name;\npostgres=> select * from v1;\nERROR:  permission denied for view v1\npostgres=> select * from v2;\nERROR:  permission denied for view v2\nThank you!\nBest wishes,\nJingzhou Fu",
+  "date": "2024-06-06 07:12:08",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, value INTEGER CHECK (value >= 0));",
+    "INSERT INTO test_table (name, value) VALUES ('test1', 10), ('test2', NULL), ('test3', -5);",
+    "CREATE VIEW circular_view AS SELECT id, name FROM test_table WHERE value = (SELECT value FROM test_table WHERE id = 1);",
+    "CREATE VIEW circular_view_2 AS SELECT * FROM circular_view WHERE id IN (SELECT id FROM circular_view);",
+    "SELECT * FROM circular_view;"
+  ],
+  "key_bug_features": [
+    "SELECT on circular view without permissions"
+  ]
+}

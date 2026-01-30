@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/87265",
+  "title": "lightweight UPDATE doesn't work with WHERE col IN (SELECT",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nlightweight UPDATE doesn't work for replicated tables with partitions when some subquery is in conditions\nfiddle is down, can't use it\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\n25.8.3 or head (2025-09-18)\n```\nCREATE TABLE lightweight_test ON CLUSTER '{cluster}'\n(\nts DateTime,\nvalue String,\nkey String\n)\nENGINE = ReplicatedMergeTree('/clickhouse/tables/{shard}/lightweight_test','{replica}')\nPARTITION BY toYYYYMMDD(ts)\nPRIMARY KEY (key)\nORDER BY (key)\nSETTINGS enable_block_number_column = 1, enable_block_offset_column = 1;\nCREATE TABLE keys ON CLUSTER '{cluster}'\n(\nkey String\n)\nENGINE = ReplicatedMergeTree('/clickhouse/tables/{shard}/keys','{replica}')\nPRIMARY KEY (key)\nORDER BY (key);\nINSERT INTO lightweight_test\nVALUES (now(), 'val', 'key');\nINSERT INTO keys\nVALUES ('key');\nSELECT * FROM lightweight_test\nUPDATE lightweight_test\nSET\nvalue = 'UPDATED-1'\nWHERE\nkey IN (\nSELECT key FROM keys\n)\nSELECT * FROM lightweight_test\n```\n### Expected behavior\n`value` column should contain 'UPDATED-1', it works if change WHERE to `WHERE key IN ('key')`\n### Error message and/or stacktrace\n`value` column contains the same value\n### Additional context\n_No response_",
+  "date": "2025-09-18T10:43:32Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE lightweight_test (ts TIMESTAMP, value VARCHAR(255), key VARCHAR(255), status INTEGER) INDEX key_idx ON key;",
+    "CREATE TABLE keys (key VARCHAR(255), priority INTEGER) INDEX key_idx ON key;",
+    "INSERT INTO lightweight_test (ts, value, key, status) VALUES (CURRENT_TIMESTAMP, 'val', 'key', NULL);",
+    "INSERT INTO keys (key, priority) VALUES ('key', 1), ('key2', 2);",
+    "UPDATE lightweight_test SET value = 'UPDATED-2' WHERE key IN (SELECT key FROM keys WHERE priority > 1);",
+    "SELECT * FROM lightweight_test;"
+  ],
+  "key_bug_features": [
+    "lightweight UPDATE fails with subquery in WHERE clause"
+  ]
+}

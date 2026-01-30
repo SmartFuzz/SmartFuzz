@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/13552",
+  "title": "UNPIVOT statement is extremely slow when working with many columns",
+  "description": "### What happens?\r\n\r\nI'm trying to unpivot table with 30k+ columns. It is extremely slow on DuckDB. \r\nIn comparision similar operation in Pandas takes few seconds.\r\n\r\nFor 10k columns it takes 117 seconds on DuckDB vs 2,7 sec on Pandas\r\n\r\n\r\n### To Reproduce\r\n\r\nFor reporting purposes please find this example:\r\n\r\nData generation\r\n```sql\r\ncreate table r as select id, concat('column_', id) as column_name, concat('value_', id) as  column_value from (select unnest(generate_series(1,10000)) as id);\r\ncreate table pivoted as pivot r on column_name using first(id) group by id;\r\n```\r\n\r\nBenchmark:\r\n```sql\r\nselect count(*) from (unpivot pivoted on columns(* exclude id) into name 'column_name' value 'column_value');\r\n```\r\n```\r\n┌──────────────┐\r\n│ count_star() │\r\n│    int64     │\r\n├──────────────┤\r\n│        10000 │\r\n└──────────────┘\r\nRun Time (s): real 117.393 user 215.706619 sys 18.343984\r\n```\r\n\r\nPandas for comparison\r\n```\r\nimport pandas as pd\r\nimport time\r\n\r\n# Step 1: Create the DataFrame\r\ndata = {\r\n    'id': range(10000),\r\n    'column_name': ['column_' + str(i) for i in range(10000)],\r\n    'column_value': range(10000)\r\n}\r\n\r\ndf = pd.DataFrame(data)\r\n\r\n# Step 2: Pivot the DataFrame\r\npivot_df = df.pivot(index='id', columns='column_name', values='column_value')\r\n\r\n# Step 3: Melt the DataFrame back\r\nstart = time.time()\r\nmelted_df = pivot_df.reset_index().melt(id_vars='id', var_name='column_name', value_name='column_value')\r\nprint(time.time() - start)\r\n# 2.771090269088745\r\n```\r\n\r\n### OS:\r\n\r\nMacOS\r\n\r\n### DuckDB Version:\r\n\r\n1.0.0\r\n\r\n### DuckDB Client:\r\n\r\nCLI\r\n\r\n### Full Name:\r\n\r\nMaciej Bryński\r\n\r\n### Affiliation:\r\n\r\nCledar\r\n\r\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\r\n\r\nI have tested with a stable release\r\n\r\n### Did you include all relevant data sets for reproducing the issue?\r\n\r\nYes\r\n\r\n### Did you include all code required to reproduce the issue?\r\n\r\n- [X] Yes, I have\r\n\r\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\r\n\r\n- [X] Yes, I have",
+  "date": "2024-08-25 19:07:03",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_unpivot (id INT, column_name VARCHAR(255), column_value VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_unpivot (id, column_name, column_value) SELECT id, CONCAT('column_', id), CONCAT('value_', id) FROM (SELECT seq AS id FROM information_schema.tables LIMIT 10000) AS seq;",
+    "CREATE TABLE pivoted_test AS SELECT id, MAX(CASE WHEN column_name = 'column_1' THEN column_value END) AS column_1, MAX(CASE WHEN column_name = 'column_2' THEN column_value END) AS column_2, MAX(CASE WHEN column_name = 'column_3' THEN column_value END) AS column_3, MAX(CASE WHEN column_name = 'column_4' THEN column_value END) AS column_4, MAX(CASE WHEN column_name = 'column_5' THEN column_value END) AS column_5 FROM test_unpivot GROUP BY id;",
+    "SELECT COUNT(*) FROM (SELECT id, column_name, column_value FROM test_unpivot WHERE column_value IS NOT NULL) AS unpivoted;",
+    "CREATE TABLE final_result AS SELECT * FROM (SELECT id, column_name, column_value FROM test_unpivot WHERE column_value IS NOT NULL) AS filtered WHERE id < 5000;"
+  ],
+  "key_bug_features": [
+    "UNPIVOT statement performance degradation with many columns"
+  ]
+}

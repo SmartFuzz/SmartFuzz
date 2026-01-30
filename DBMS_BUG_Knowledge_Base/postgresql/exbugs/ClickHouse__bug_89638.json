@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/89638",
+  "title": "optimize_read_in_order degrades to multi-part k‑way merge when PARTITION BY is used, causing slower ORDER BY … LIMIT N",
+  "description": "### Describe the unexpected behaviour\nWhen a table is partitioned (e.g., PARTITION BY toYYYYMM(dt)) and contains many parts per partition, enabling optimize_read_in_order for a query like SELECT … ORDER BY dt LIMIT 20 produces a pipeline with one reader per part and deep MergingSortedTransform stacks. In practice this is slower than reading in parallel with partial sort. The behavior appears to be a limitation of the implementation rather than a user error, but it’s not documented in the public docs.\n* Planner selects `ReadPoolInOrder` with **N = number of parts** streams, followed by multi‑level `MergingSortedTransform`.\n* Wall‑clock latency is worse than with `optimize_read_in_order = 0`, even for tiny LIMIT.\n* Rows read are lower in the counter, but total query time and memory increase due to the k‑way merge and per‑part readers.\n### How to reproduce\nhttps://fiddle.clickhouse.com/53adc384-56ad-4dd9-8afa-b0baa8d154be\n```\nCREATE TABLE test (dt DateTime,)\nENGINE = MergeTree\nPARTITION BY toYYYYMM(dt)\nORDER BY (dt);\nset max_partitions_per_insert_block=0;\nINSERT INTO test\nSELECT toDate('2015-01-01') + (number % 3650) AS dt\nFROM numbers(10000000);\nSELECT    dt FROM test ORDER BY dt LIMIT 20\n```\nWith PARTITION BY commended/removed, the pipeline and query execution time/rows become expected.\n### Expected behavior\nFor `ORDER BY` matching the sorting key and small `LIMIT`, `optimize_read_in_order` should:\n* Read only the necessary ranges, minimizing work, and\n* Avoid excessive parallel streams proportional to number of parts, or at least short‑circuit early once LIMIT is satisfied, and\n* Prioritize reading from most promising partitions (e.g., newest) first.\nAlternatively, if the above is not feasible today, the documentation should clearly state the limitations with partitioned tables and high part counts and recommend when to disable the optimization.\n### Error message and/or stacktrace\n```\n(Expression)\nExpressionTransform\n(Limit)\nLimit\n(Sorting)\nMergingSortedTransform 8 → 1\n(Expression)\nExpressionTransform × 8\n(ReadFromMergeTree)\nExpressionTransform × 8\nMergingSortedTransform 75 → 1\nExpressionTransform × 75\nMergeTreeSelect(pool: ReadPoolInOrder, algorithm: InOrder) × 75 0 → 1\nMergingSortedTransform 75 → 1\nExpressionTransform × 75\nMergeTreeSelect(pool: ReadPoolInOrder, algorithm: InOrder) × 75 0 → 1\nMergingSortedTransform 75 → 1\nExpressionTransform × 75\nMergeTreeSelect(pool: ReadPoolInOrder, algorithm: InOrder) × 75 0 → 1\nMergingSortedTransform 75 → 1\nExpressionTransform × 75\nMergeTreeSelect(pool: ReadPoolInOrder, algorithm: InOrder) × 75 0 → 1\nMergingSortedTransform 75 → 1",
+  "date": "2025-11-06T12:19:54Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test_partitioned (id SERIAL PRIMARY KEY, dt TIMESTAMP, value FLOAT8);",
+    "INSERT INTO test_partitioned (id, dt, value) SELECT number, '2015-01-01'::DATE + (number % 3650) AS dt, random() FROM generate_series(1, 10000000) AS number;",
+    "CREATE TABLE test_non_partitioned (id SERIAL PRIMARY KEY, dt TIMESTAMP, value FLOAT8);",
+    "INSERT INTO test_non_partitioned (id, dt, value) SELECT number, '2015-01-01'::DATE + (number % 3650) AS dt, random() FROM generate_series(1, 10000000) AS number;",
+    "SELECT dt FROM test_partitioned WHERE value IS NOT NULL ORDER BY dt LIMIT 20;"
+  ],
+  "key_bug_features": [
+    "optimize_read_in_order with PARTITION BY causes slower query performance"
+  ]
+}

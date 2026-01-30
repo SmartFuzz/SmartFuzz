@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7523",
+  "title": "Assertion failure when using `CONTAINS`",
+  "description": "The `SELECT` statement should execute without causing the database to crash. Ideally, the query should return no rows or handle the `NULL` value appropriately according to SQL standards.\n\n**To Reproduce**\n\n```sql\nDROP TABLE IF EXISTS t1 CASCADE;\nCREATE TABLE t1(c0 INTEGER); \nINSERT INTO t1(c0) VALUES (1);\n\nSELECT * FROM t1 WHERE CONTAINS(1, NULL); -- unexpected end of file\n```\n\n**Expected behavior**\nAs mentioned above\n\n**Screenshots**\n\nbacktrace (using gdb):\n\n```\n#0  __pthread_kill_implementation (no_tid=0, signo=6, threadid=140168462124608) at ./nptl/pthread_kill.c:44\n#1  __pthread_kill_internal (signo=6, threadid=140168462124608) at ./nptl/pthread_kill.c:78\n#2  __GI___pthread_kill (threadid=140168462124608, signo=signo@entry=6) at ./nptl/pthread_kill.c:89\n#3  0x00007f7b8b8a5476 in __GI_raise (sig=sig@entry=6) at ../sysdeps/posix/raise.c:26\n#4  0x00007f7b8b88b7f3 in __GI_abort () at ./stdlib/abort.c:79\n#5  0x00007f7b8b88b71b in __assert_fail_base (\n    fmt=0x7f7b8ba40130 \"%s%s%s:%u: %s%sAssertion `%s' failed.\\n%n\", assertion=0x7f7b8d27eb1f \"!strNil(s)\", \n    file=0x7f7b8d27eae8 \"/app/MonetDB/monetdb5/modules/atoms/str.c\", line=163, function=<optimized out>)\n    at ./assert/assert.c:92\n#6  0x00007f7b8b89ce96 in __GI___assert_fail (assertion=0x7f7b8d27eb1f \"!strNil(s)\", \n    file=0x7f7b8d27eae8 \"/app/MonetDB/monetdb5/modules/atoms/str.c\", line=163, \n    function=0x7f7b8d280988 <__PRETTY_FUNCTION__.73> \"str_strlen\") at ./assert/assert.c:101\n#7  0x00007f7b8d09fdef in str_strlen () from /usr/local/lib/libmonetdb5-11.50.0.so.35\n#8  0x00007f7b8d0ac038 in STRselect () from /usr/local/lib/libmonetdb5-11.50.0.so.35\n#9  0x00007f7b8d0ad301 in STRcontainsselect () from /usr/local/lib/libmonetdb5-11.50.0.so.35\n#10 0x00007f7b8d06e967 in runMALsequence () from /usr/local/lib/libmonetdb5-11.50.0.so.35\n#11 0x00007f7b8d0728c0 in DFLOWworker () from /usr/local/lib/libmonetdb5-11.50.0.so.35\n#12 0x00007f7b8c33fa48 in thread_starter () from /usr/local/lib/libbat-11.50.0.so.28\n#13 0x00007f7b8b8f7ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442\n#14 0x00007f7b8b988a04 in clone () at ../sysdeps/unix/sysv/linux/x86_64/clone.S:100\n```\n\n**Software versions**\nBuild from source https://www.monetdb.org/documentation-Dec2023/dev-guide/installation-from-source/#summary:\n\n```\n> docker exec -it monetdb-test mserver5 --version         \nMonetDB 5 server 11.50.0 (hg id: 6e3d6f5) (64-bit, 128-bit integers)\nThis is an unreleased version\nCopyright (c) 1993 - July 2008 CWI\nCopyright (c) August 2008 - 2023 MonetDB B.V., all rights reserved\nVisit https://www.monetdb.org/ for further information\nFound 503.5GiB available memory, 128 available cpu cores\nLibraries:\nCompiled by: @7094a4ca4432 (x86_64-pc-linux-gnu)\nCompilation: /usr/bin/cc \nLinking    : /usr/bin/ld\n```\n\n**Issue labeling**\nBug\n\n**Additional context**\nAdd any other context about the problem here.",
+  "date": "2024-05-24T05:55:22Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t2;",
+    "CREATE TABLE t2(c1 VARCHAR(10), c2 INT, c3 BOOLEAN);",
+    "INSERT INTO t2(c1, c2, c3) VALUES (NULL, 2, TRUE);",
+    "SELECT * FROM t2 WHERE c1 IS NULL;",
+    "SELECT * FROM t2 WHERE c2 = (SELECT MAX(c2) FROM t2 WHERE c3 IS NOT NULL);"
+  ],
+  "key_bug_features": [
+    "Using CONTAINS with NULL causes assertion failure"
+  ]
+}

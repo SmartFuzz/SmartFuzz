@@ -1,0 +1,13 @@
+CREATE TABLE test_dates (id INT PRIMARY KEY, event_date DATE, description VARCHAR(255));
+INSERT INTO test_dates VALUES (1, DATE '2020-03-22', 'Event A'), (2, DATE '1900-01-01', 'Event B'), (3, DATE '2099-12-31', 'Event C');
+SELECT id, century(event_date) AS century FROM test_dates WHERE event_date < DATE '2100-01-01' ORDER BY century(event_date);
+CREATE TABLE string_test (str_value VARCHAR(255));
+INSERT INTO string_test VALUES (r'A\fB\tC\n\Z'), (r'B\t\Z'), (r'EmptyString\');
+SELECT str_value, century(CURRENT_DATE) FROM string_test WHERE str_value RLIKE r'\\t' ORDER BY century(CURRENT_DATE);
+CREATE TABLE complex_test (id INT PRIMARY KEY, start_date DATE, end_date DATE, value FLOAT);
+INSERT INTO complex_test VALUES (1, DATE '2000-01-01', DATE '2000-12-31', 1.0), (2, DATE '1900-06-15', DATE '1900-06-15', NULL), (3, NULL, DATE '2099-12-31', 2.5);
+SELECT AVG(value), century(start_date) FROM complex_test WHERE start_date IS NOT NULL GROUP BY century(start_date) HAVING AVG(value) > 0;
+CREATE TABLE join_test (id INT PRIMARY KEY, test_id INT, remarks VARCHAR(255));
+INSERT INTO join_test VALUES (1, 1, r'Test for\njoin'), (2, 2, 'Another test'), (3, 1, r'Repeated entry\t'), (4, NULL, 'No Test');
+SELECT jt.id, jt.remarks, ct.century FROM join_test jt JOIN complex_test ct ON jt.test_id = ct.id WHERE ct.value IS NOT NULL AND jt.remarks RLIKE r'\\';
+SELECT ct.id, ct.start_date, COUNT(*) AS num_remarks FROM complex_test ct LEFT JOIN join_test jt ON ct.id = jt.test_id GROUP BY ct.id, ct.start_date HAVING COUNT(jt.id) < 2;

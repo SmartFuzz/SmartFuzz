@@ -1,0 +1,21 @@
+{
+  "url": "https://www.postgresql.org/message-id/18184-5868dd258782058e%40postgresql.org",
+  "title": "BUG #18184: ERROR:  wrong varnullingrels (b) (expected (b 3)) for Var 2/2",
+  "description": "The following bug has been logged on the website:\nBug reference:      18184\nLogged by:          Marian Krucina\nEmail address:      marian(dot)krucina(at)linuxbox(dot)cz\nPostgreSQL version: 16.0\nOperating system:   AlmaLinux release 9.0\nDescription:\nHi,\nWe found a bug in PostgreSQL 16. I have simplified the case:\nCREATE TABLE table1(table1_id serial, i int);\nCREATE TABLE table2(table2_id serial, i int);\nCREATE TABLE table3(table3_id serial, i int, a1 TEXT, a2 TEXT, a3 TEXT, a4\nTEXT, a5 TEXT, a6 TEXT, a7 TEXT);\nCREATE INDEX ON table3 (table3_id);\nINSERT INTO table1 (i) SELECT generate_series(1, 1000);\nINSERT INTO table2 (i) SELECT generate_series(1, 1000);\nINSERT INTO table3 (i, a1, a2, a3, a4, a5, a6, a7) SELECT generate_series(1,\n1000), random()::TEXT, random()::TEXT, random()::TEXT, random()::TEXT,\nrandom()::TEXT, random()::TEXT, random()::TEXT;\nCREATE OR REPLACE FUNCTION function1(x table1)\nRETURNS text\nLANGUAGE sql\nIMMUTABLE\nAS $function$\nSELECT\nCASE WHEN 10 < x.i THEN\n'aaa'\nELSE\n'bbb'\nEND\n;\n$function$;\nSELECT\nfunction1(table1)\nFROM table2\nLEFT JOIN table1 ON table1_id = table2_id\nLEFT JOIN LATERAL (SELECT 1 FROM table3) AS tx3 ON (true)\nLIMIT 5;\nERROR:  wrong varnullingrels (b) (expected (b 3)) for Var 2/2\nSELECT version();\nversion\n----------------------------------------------------------------------------------------------------------\nPostgreSQL 16.0 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 11.3.1\n20221121 (Red Hat 11.3.1-4), 64-bit\nThank you,\nMarian Krucina",
+  "date": "2023-11-06 12:54:30",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE table1(table1_id INTEGER PRIMARY KEY, i INTEGER);",
+    "CREATE TABLE table2(table2_id INTEGER PRIMARY KEY, i INTEGER);",
+    "CREATE TABLE table3(table3_id INTEGER PRIMARY KEY, i INTEGER, a1 VARCHAR, a2 VARCHAR, a3 VARCHAR, a4 VARCHAR, a5 VARCHAR, a6 VARCHAR, a7 VARCHAR);",
+    "INSERT INTO table1 (i) SELECT i FROM (SELECT ROW_NUMBER() OVER () AS i FROM range(1, 1001)) AS r;",
+    "INSERT INTO table2 (i) SELECT i FROM (SELECT ROW_NUMBER() OVER () AS i FROM range(1, 1001)) AS r;",
+    "INSERT INTO table3 (i, a1, a2, a3, a4, a5, a6, a7) SELECT i, random()::VARCHAR, random()::VARCHAR, random()::VARCHAR, random()::VARCHAR, random()::VARCHAR, random()::VARCHAR, random()::VARCHAR FROM (SELECT ROW_NUMBER() OVER () AS i FROM range(1, 1001)) AS r;"
+  ],
+  "key_bug_features": [
+    "LEFT JOIN LATERAL with multiple tables in function query"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+    "function": "REPL_REVOKE",
+    "operator": "-",
+    "sql_array": [
+        "CREATE TABLE user_privileges (user_id INT PRIMARY KEY, publication_name VARCHAR(255), access_level INT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO user_privileges VALUES (1, 'table_publication', 1, NULL), (2, 'table_publication', 2, '2023-01-01 00:00:00'), (3, 'another_publication', 3, '');",
+        "SELECT REPL_REVOKE(publication_name, (SELECT MAX(access_level) - 1 AS access FROM user_privileges WHERE user_id = 1)) FROM user_privileges WHERE publication_name IS NOT NULL;",
+        "SELECT REPL_REVOKE(CONCAT('table_publication_', user_id), COALESCE(access_level, 0) - 1) FROM user_privileges WHERE user_id IN (SELECT user_id FROM user_privileges WHERE presence IS NULL);",
+        "SELECT REPL_REVOKE('table_publication', access_level) FROM user_privileges WHERE access_level >= (SELECT MAX(access_level) - MIN(access_level) FROM user_privileges);",
+        "SELECT REPL_REVOKE('table_publication', 0) FROM user_privileges WHERE EXISTS (SELECT * FROM user_privileges WHERE REPL_REVOKE(publication_name, access_level) IS NOT NULL);",
+        "CREATE TABLE publication_logs (log_id INT PRIMARY KEY, user_id INT, action VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO publication_logs (user_id, action) SELECT user_id, 'Revoked access on ' || publication_name FROM user_privileges WHERE access_level < 1;",
+        "SELECT a.user_id, b.action FROM user_privileges AS a JOIN publication_logs AS b ON a.user_id = b.user_id WHERE a.access_level - (SELECT COUNT(*) FROM publication_logs WHERE user_id = a.user_id) = 0;",
+        "SELECT REPL_REVOKE('table_publication', NULLIF((SELECT AVG(access_level) FROM user_privileges), 0) - 1) FROM user_privileges WHERE created_at IS NULL;"
+    ]
+}

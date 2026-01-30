@@ -1,0 +1,14 @@
+CREATE TABLE test_table (id INTEGER PRIMARY KEY, value NUMERIC, timestamp_col TIMESTAMP);
+INSERT INTO test_table (id, value, timestamp_col) VALUES (1, 10.5, TIMESTAMP '2023-01-01 08:00:00'), (2, 5.8, TIMESTAMP '2023-01-01 09:00:00'), (3, NULL, TIMESTAMP '2023-01-01 10:00:00');
+SELECT least(value, (SELECT MAX(value) FROM test_table WHERE value IS NOT NULL) - INTERVAL '1 HOUR') FROM test_table WHERE value IS NOT NULL;
+WITH ranked_values AS (SELECT id, value, LEAST(value, 7) AS least_val FROM test_table) SELECT * FROM ranked_values WHERE least_val IS NOT NULL ORDER BY least_val DESC;
+CREATE TABLE another_table (id INTEGER PRIMARY KEY, time_col TIME);
+INSERT INTO another_table (id, time_col) VALUES (1, TIME '07:00:00'), (2, TIME '06:30:00'), (3, TIME '08:15:00');
+SELECT t.id, least(t.value, (TIME '08:00:00' - INTERVAL '1 HOUR')) AS adjusted_value FROM test_table t JOIN another_table a ON t.id = a.id WHERE adjusted_value IS NOT NULL;
+SELECT t.id, least(t.value, 0) AS min_val FROM test_table t JOIN another_table a ON t.id = a.id WHERE a.time_col < TIME '08:00:00' GROUP BY t.id, min_val HAVING min_val IS NOT NULL;
+SELECT t1.id, least(t1.value, (t2.time_col - INTERVAL '30 MINUTE')) AS computed_val FROM test_table t1 JOIN another_table t2 ON t1.id = t2.id WHERE computed_val IS NOT NULL ORDER BY computed_val;
+CREATE TABLE edge_case_table (id INTEGER, value VARCHAR);
+INSERT INTO edge_case_table (id, value) VALUES (1, '10'), (2, '5.5'), (3, 'NULL');
+SELECT least(CAST(value AS NUMERIC), 6) FROM edge_case_table WHERE value IS NOT NULL;
+SELECT (TIME '12:00:00' - INTERVAL least(1, 2) HOUR) AS subtracted_time;
+SELECT MIN(least(CAST(value AS NUMERIC), -1)) FROM edge_case_table HAVING MIN(value) IS NOT NULL;

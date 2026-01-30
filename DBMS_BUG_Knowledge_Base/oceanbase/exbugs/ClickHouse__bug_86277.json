@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/86277",
+  "title": "Possibly many small files created with Distributed Iceberg table",
+  "description": "### Describe the bug\nNot sure if real issue. Maybe some squashing is missing. While running an insert in a Distributed Iceberg table with a small block size, it takes very long.\n### How to reproduce\nWith:\n```xml\n<remote_servers>\n<cluster0>\n<shard>\n<replica>\n<host>localhost</host>\n<port>9000</port>\n</replica>\n</shard>\n</cluster0>\n</remote_servers>\n```\nRun:\n```sql\nCREATE TABLE t0 (c0 Int) ENGINE = IcebergLocal(local, path = '/var/lib/clickhouse/user_files/lakehouse/t0/') SETTINGS iceberg_recent_metadata_file_by_last_updated_ms_field = 1;\nCREATE TABLE t1 (c0 Int) ENGINE = Distributed('cluster0', default, t0);\nSET min_insert_block_size_bytes = 4, preferred_block_size_bytes = 8;\nINSERT INTO TABLE t1 (c0) SELECT c0 FROM generateRandom('c0 Int', 1769473117655636197, 1, 1) LIMIT 1000; --slow\n```\n### Error message and/or stacktrace\nHere are the top 3 most common stack traces:\n```\nSELECT\narrayStringConcat(arrayMap(x -> demangle(addressToSymbol(x)), trace), '\\n') AS t,\ncount() AS c\nFROM system.trace_log\nWHERE (query_id = 'cbd64241-bec8-49d6-b380-2eb68f303be9') AND (trace_type = 'CPU')\nGROUP BY t\nORDER BY c DESC\nLIMIT 3\nSETTINGS allow_introspection_functions = 1\nQuery id: 2b7b9556-ec15-48db-b079-bdbff9197929\nRow 1:\n──────\nt:\nstd::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>::replace(unsigned long, unsigned long, char const*, unsigned long)\nDB::removeEscapedSlashes(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const&)\nDB::IcebergStorageSink::initializeMetadata()\nDB::IcebergStorageSink::finalizeBuffers()\nDB::IcebergStorageSink::onFinish()\nDB::runStep(std::__1::function<void ()>, std::__1::shared_ptr<DB::ThreadGroup>&)\nDB::ExceptionKeepingTransform::work()\nDB::ExecutionThreadContext::executeTask()\nDB::PipelineExecutor::executeStepImpl(unsigned long, DB::IAcquiredSlot*, std::__1::atomic<bool>*)\nDB::PipelineExecutor::executeStep(std::__1::atomic<bool>*)\nDB::PushingPipelineExecutor::finish()",
+  "date": "2025-08-27T14:48:25Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (c1 VARCHAR(255), c2 FLOAT, c3 INT) ENGINE = OBTable;",
+    "CREATE TABLE t3 (c1 VARCHAR(255), c2 FLOAT) ENGINE = OBTable;",
+    "INSERT INTO t2 (c1, c2, c3) VALUES ('test', 3.14, NULL), ('example', 2.71, 42);",
+    "INSERT INTO t3 (c1, c2) SELECT c1, c2 FROM t2 WHERE c3 IS NOT NULL;",
+    "SELECT COUNT(*) FROM t3 WHERE c2 > 2.0;"
+  ],
+  "key_bug_features": [
+    "Insert into Distributed Iceberg table with small block size"
+  ]
+}

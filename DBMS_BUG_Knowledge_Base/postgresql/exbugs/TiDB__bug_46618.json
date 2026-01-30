@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/46618",
+  "title": "`show tables like '\\_%'` does not escape the underscore",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n1. Startup tiup playground\r\n```\r\ntiup playground nightly\r\nmysql --comments --host 127.0.0.1 --port 4000 -u root\r\n```\r\n\r\n2. Connect to the tiup playground and run these statements\r\n```sql\r\ndrop database foo;\r\ncreate database foo;\r\nuse foo;\r\ncreate table _bar (id int);\r\ncreate table baz (id int);\r\nshow tables like '\\_%';\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n`show tables like '\\_%';` should only show the `_bar` table as MySQL 8.1.0 does.\r\n\r\n```sql\r\nmysql> drop database foo;\r\nQuery OK, 2 rows affected (0.01 sec)\r\n\r\nmysql> create database foo;\r\nQuery OK, 1 row affected (0.00 sec)\r\n\r\nmysql> use foo;\r\nDatabase changed\r\nmysql> create table _bar (id int);\r\nQuery OK, 0 rows affected (0.01 sec)\r\n\r\nmysql> create table baz (id int);\r\nQuery OK, 0 rows affected (0.01 sec)\r\n\r\nmysql>\r\nmysql> show tables like '\\_%';\r\n+---------------------+\r\n| Tables_in_foo (\\_%) |\r\n+---------------------+\r\n| _bar                |\r\n+---------------------+\r\n1 row in set (0.00 sec)\r\n\r\nmysql> select version();\r\n+-----------+\r\n| version() |\r\n+-----------+\r\n| 8.1.0     |\r\n+-----------+\r\n1 row in set (0.00 sec)\r\n\r\nmysql>\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n`show tables like '\\_%';` should shows both `_bar` and `baz` table.\r\n\r\n```sql\r\nmysql> drop database foo;\r\nERROR 1008 (HY000): Can't drop database 'foo'; database doesn't exist\r\nmysql> create database foo;\r\nQuery OK, 0 rows affected (0.17 sec)\r\n\r\nmysql> use foo;\r\nDatabase changed\r\nmysql> create table _bar (id int);\r\nQuery OK, 0 rows affected (0.18 sec)\r\n\r\nmysql> create table baz (id int);\r\nQuery OK, 0 rows affected (0.33 sec)\r\n\r\nmysql>\r\nmysql> show tables like '\\_%';\r\n+---------------------+\r\n| Tables_in_foo (\\_%) |\r\n+---------------------+\r\n| _bar                |\r\n| baz                 |\r\n+---------------------+\r\n2 rows in set (0.00 sec)\r\n\r\nmysql> select tidb_version()\\G\r\n*************************** 1. row ***************************\r\ntidb_version(): Release Version: v7.4.0-alpha\r\nEdition: Community\r\nGit Commit Hash: 80da8496d2cc1238f74d5e5fc6c34c978f5c0f2b\r\nGit Branch: heads/refs/tags/v7.4.0-alpha\r\nUTC Build Time: 2023-09-01 05:56:32\r\nGoVersion: go1.21.0\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv\r\n1 row in set (0.00 sec)\r\n\r\nmysql>\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n```sql\r\nmysql> select tidb_version()\\G\r\n*************************** 1. row ***************************\r\ntidb_version(): Release Version: v7.4.0-alpha\r\nEdition: Community\r\nGit Commit Hash: 80da8496d2cc1238f74d5e5fc6c34c978f5c0f2b\r\nGit Branch: heads/refs/tags/v7.4.0-alpha\r\nUTC Build Time: 2023-09-01 05:56:32\r\nGoVersion: go1.21.0\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv\r\n1 row in set (0.00 sec)\r\n```\r\n\r\n",
+  "date": "2023-09-04T06:15:25Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP DATABASE IF EXISTS test_db;",
+    "CREATE DATABASE test_db;",
+    "CREATE TABLE test_table (id SERIAL PRIMARY KEY, name VARCHAR(50), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table (id, name) VALUES (1, 'example'), (2, 'test');",
+    "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name LIKE '_%';"
+  ],
+  "key_bug_features": [
+    "show tables like '\\_%' does not escape the underscore"
+  ]
+}

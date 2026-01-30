@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/64372",
+  "title": "COUNT vs SUM inconsistency under utf8mb4_general_ci collation",
+  "description": "# Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n## 1. Minimal reproduce step (Required)\n\n1. Run the following SQL statements in TiDB:\n  \n   CREATE TABLE t0(c0 VARCHAR(255) COLLATE utf8mb4_general_ci);\n   INSERT INTO t0(c0) VALUES ('B');\n   CREATE VIEW v0(c0, c1) AS SELECT DISTINCT t0.c0, 'a' FROM t0;\n   SELECT COUNT(*) FROM v0 WHERE v0.c1 >= v0.c0;\n   SELECT SUM(count)\n   FROM (\n       SELECT CAST((v0.c1 >= v0.c0) IS TRUE AS UNSIGNED) AS count\n       FROM v0\n   ) AS asdf;\n   2. Observe the outputs of the final two queries.\n\n## 2. What did you expect to see? (Required)\n\nBecause `utf8mb4_general_ci` is case-insensitive, the comparison `'a' >= 'B'` should evaluate to false, so both queries should return `0`.\n\n## 3. What did you see instead (Required)\n\n`SELECT COUNT(*) ...` returns `0`, but `SELECT SUM(count) ...` returns `1`, meaning the same boolean expression yields different results under different aggregate queries.\n\n## 4. What is your TiDB version? (Required)\nma ster",
+  "date": "2025-11-09T10:32:20Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1(c0 VARCHAR(255), c1 INT);",
+    "INSERT INTO t1(c0, c1) VALUES ('A', 1), ('b', 2), ('C', 3);",
+    "CREATE VIEW v1(c0, c1) AS SELECT DISTINCT t1.c0, t1.c1 FROM t1;",
+    "SELECT COUNT(*) FROM v1 WHERE v1.c1 > 1;",
+    "SELECT SUM(CASE WHEN v1.c0 < 'B' THEN 1 ELSE 0 END) FROM v1;"
+  ],
+  "key_bug_features": [
+    "COUNT and SUM produce inconsistent results with boolean expressions"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+    "function": "shardNum",
+    "operator": "a != ANY (subquery)",
+    "sql_array": [
+        "CREATE TABLE shard_num_test (id UInt32, value String) ENGINE=MergeTree() ORDER BY id;",
+        "INSERT INTO shard_num_test VALUES (1, 'test1'), (2, 'test2'), (3, 'test3');",
+        "CREATE TABLE subquery_test (num UInt8) ENGINE=AggregatingMergeTree() ORDER BY num;",
+        "INSERT INTO subquery_test VALUES (1), (2), (3);",
+        "SELECT value, shardNum() AS shard_index FROM shard_num_test  WHERE id != ANY (SELECT num FROM subquery_test WHERE num > 1);",
+        "SELECT value, COUNT(*) AS row_count FROM shard_num_test GROUP BY value HAVING row_count != ANY (SELECT COUNT() FROM subquery_test WHERE num < 3);",
+        "CREATE TABLE complex_test (a UInt32, b Nullable(Float64), c Nullable(String)) ENGINE=MergeTree() ORDER BY a;",
+        "INSERT INTO complex_test VALUES (1, 1.5, 'Hello'), (2, NULL, NULL), (3, 2.5, 'World');",
+        "SELECT a, b, shardNum() FROM complex_test WHERE b != ANY (SELECT b FROM complex_test WHERE b IS NOT NULL);",
+        "SELECT a, c, shardNum() FROM complex_test WHERE c != ANY (SELECT c FROM complex_test WHERE b IS NULL);",
+        "SELECT a, COUNT(shardNum()) FROM complex_test GROUP BY a HAVING COUNT(shardNum()) != ANY (SELECT COUNT() FROM complex_test WHERE a <= 2);",
+        "CREATE TABLE boundary_test (num Int32, str String) ENGINE=MergeTree() ORDER BY num;",
+        "INSERT INTO boundary_test VALUES (2147483647, 'max_int'), (-2147483648, 'min_int');",
+        "SELECT str, shardNum() FROM boundary_test WHERE num != ANY (SELECT 2147483647 + 1 UNION SELECT -2147483648 - 1);",
+        "SELECT str, shardNum() FROM boundary_test WHERE num != ANY (SELECT (SELECT max(num) FROM boundary_test) + 1);",
+        "CREATE TABLE null_test (id UInt32, value String) ENGINE=ReplicatedMergeTree('/clickhouse/tables/{shard}/null_test', '{replica}') ORDER BY id;",
+        "INSERT INTO null_test VALUES (1, 'NULL-test1'), (2, NULL), (3, 'NULL-test3');",
+        "SELECT value, shardNum() FROM null_test WHERE value != ANY (SELECT value FROM null_test WHERE value IS NULL);"
+    ]
+}

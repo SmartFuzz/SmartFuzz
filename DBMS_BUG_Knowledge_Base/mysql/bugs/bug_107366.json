@@ -1,0 +1,24 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=107366",
+  "title": "Contribution by Tencent: Invalid JSON value, Error_code: 3903",
+  "vulnerable_database": "MySQL Server: Replication",
+  "date": "2022-05-23 01:53:00",
+  "vulnerable_version": "8.0.18 and prior, 8.0.29, 8.0.30, 8.0.31, 8.0.32",
+  "description": "replica fails with Error_code: 3903\r\n\r\nLast_SQL_Error  Could not execute Update_rows event on table test.t1; Invalid JSON value for CAST for functional index 'comp'., Error_code: 3903; handler error No Error!; the event's master log master-bin.000001, end_log_pos 1033\nHow to repeat:\n--source include/master-slave.inc\r\n--source include/have_binlog_format_row.inc\r\n\r\n--connection master\r\n\r\nCREATE TABLE `t1` (\r\n  `id` int,\r\n  `c1` json NOT NULL,\r\n   c2 int,\r\n  KEY `comp` ((cast(`c1` as unsigned array)))\r\n) ENGINE=InnoDB;\r\n\r\ninsert into t1 values(1,'[1046, 2995]',1);\r\n\r\nupdate t1 set c2=2;\r\n\r\nselect * from t1;\r\n\r\n--source include/sync_slave_sql_with_master.inc\r\n\r\nselect * from t1;\r\n\r\n--source include/rpl_end.inc",
+  "poc": [
+    "CREATE TABLE `t1` (\n`id` int,\n`c1` json NOT NULL,\nc2 int,\nKEY `comp` ((cast(`c1` as unsigned array)))\n) ENGINE=InnoDB;",
+    "insert into t1 values(1,'[1046, 2995]',1);",
+    "update t1 set c2=2;",
+    "select * from t1;"
+  ],
+  "key_bug_features": [
+    "Invalid JSON value for CAST in functional index"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE `t2` (\n`id` int,\n`c1` json NOT NULL,\n`c2` int,\n`c3` varchar(255) DEFAULT NULL,\nKEY `comp` ((cast(`c1` as unsigned array)))\n) ENGINE=InnoDB;",
+    "INSERT INTO t2 VALUES (1, '[1, 2, 3]', 10, 'test');",
+    "INSERT INTO t2 VALUES (2, '[4, 5, 6]', 20, NULL);",
+    "UPDATE t2 SET c2 = NULL WHERE id = 1;",
+    "SELECT * FROM t2 WHERE JSON_LENGTH(c1) > 2;"
+  ]
+}

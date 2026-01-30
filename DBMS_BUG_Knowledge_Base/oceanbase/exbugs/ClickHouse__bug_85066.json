@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/85066",
+  "title": "Implement `dateTime64ToUUIDv7` Function",
+  "description": "### Company or project name\nTarget\n### Use case\nLots of context here: https://github.com/ClickHouse/ClickHouse/issues/84244\nWe would like to increase the precision of the timestamps we are storing and also be able to generate a `UUIDv7` from said timestamps for the same reasons above.\n### Describe the solution you'd like\nThis is more nuanced than the `dateTimeToUUIDv7` implementation. The `UUIDv7` [spec](https://www.ietf.org/archive/id/draft-peabody-dispatch-new-uuid-format-01.html#section-4.4) allocates:\n-  `unixts`: 36 bits for the unix timestamp\n- `subsec_a`: additional 12 bits for sub-second precision\n- `subsec_b`: another 12 bits for even more precision\n- `subsec_seq_node`: 62 bits which MAY be allocated to any combination of additional sub-section precision, sequence counter, or pseudo-random data\nClickHouse's current `UUIDv7` implementation uses:\n- 48 bits of precision for storing the timestamp (`unixts + subseq_a`)\n- 12 bits as a counter for incrementing the uuid when derived from the same timestamp (`subseq_b`).\nWe could support the full 64 bit precision of `DateTime64`... but we would not be able to use the same bit positions for a counter and still maintain well-ordered UUIDs. Changing the interpretation of the UUID type could have implications if users are using different UUID versions derived from different functions.\n```SQL\nCREATE TABLE example\n(\n...\nts DateTime64(3, 'UTC'),\nid UUID MATERIALIZED dateTime64ToUUIDv7(ts),\n...\n)\nENGINE = MergeTree\nORDER BY toUint128(id);\n```\n### Describe alternatives you've considered\n_No response_\n### Additional context\nPlease assign to me if deemed a valuable addition! I have already worked on the `dateTimeToUUIDv7` function.",
+  "date": "2025-08-04T20:49:25Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id UUID, ts TIMESTAMP(6) WITH TIME ZONE, value INT) PARTITION BY HASH(id) PARTITIONS 4;",
+    "INSERT INTO test_table (id, ts, value) VALUES (UUID_TO_BIN(UUID()), '2023-10-01 12:00:00.123456', 100);",
+    "INSERT INTO test_table (id, ts, value) VALUES (UUID_TO_BIN(UUID()), '2023-10-01 12:00:00.654321', 200);",
+    "SELECT id, CONCAT(TO_CHAR(EXTRACT(EPOCH FROM ts) * 1000), '-', value) AS uuid_v7 FROM test_table WHERE value > 150;",
+    "CREATE TABLE summary_table AS SELECT id, COUNT(*) AS count FROM test_table GROUP BY id;"
+  ],
+  "key_bug_features": [
+    "dateTime64ToUUIDv7 function implementation"
+  ]
+}

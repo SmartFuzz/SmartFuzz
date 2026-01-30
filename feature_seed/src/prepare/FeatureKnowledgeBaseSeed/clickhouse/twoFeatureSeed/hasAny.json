@@ -1,0 +1,19 @@
+{
+    "function": "hasAny",
+    "operator": "a <> b",
+    "sql_array": [
+        "CREATE TABLE test_arrays (id Int32, arr1 Array(Int32), arr2 Array(Int32), value Int32) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_arrays VALUES (1, [1, 2, 3], [4, 5, 6], 10), (2, [7, 8, NULL], [7, NULL, 9], 20), (3, [10, 11], [12, 13], 30), (4, [], [1, 2], 40);",
+        "SELECT id FROM test_arrays WHERE hasAny(arr1, arr2) <> 0;",
+        "SELECT id, hasAny(arr1, arr2) as has_intersection FROM test_arrays GROUP BY id HAVING has_intersection <> 0;",
+        "SELECT id FROM (SELECT id, arr1, arr2 FROM test_arrays WHERE hasAny(arr1, arr2) = 1 AND arr1[1] <> 2) AS subquery WHERE value > 15;",
+        "SELECT id, arr1, arr2 FROM test_arrays WHERE hasAny(arr1, arr2) = 1 AND value <> 20 ORDER BY value DESC;",
+        "SELECT id, hasAny(arr1, arr2) as has_intersection FROM (SELECT id, arr1, arr2 FROM test_arrays WHERE arr1 IS NOT NULL AND arr2 IS NOT NULL) AS t GROUP BY id HAVING has_intersection = 1;",
+        "SELECT id FROM test_arrays t1 WHERE hasAny((SELECT arr1 FROM test_arrays t2 WHERE t1.id <> t2.id), t1.arr2) <> 0;",
+        "CREATE TABLE test_arrays_2 (id Int32, arr1 Array(String), arr2 Array(Int64), status String DEFAULT 'active') ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_arrays_2 VALUES (1, ['foo', 'bar'], [123456, 789], 'inactive'), (2, ['baz'], [123456, NULL], 'active'), (3, ['', ''], [0, 15], 'inactive');",
+        "SELECT id FROM test_arrays_2 WHERE hasAny(arr1, arr2) <> 0 AND status <> 'active';",
+        "SELECT id, hasAny(arr1, ['foo', 'baz']) as in_array FROM test_arrays_2 WHERE hasAny(arr1, arr2) = 1 GROUP BY id HAVING in_array = 1;",
+        "SELECT id FROM (SELECT id, arr1, arr2 FROM test_arrays_2 WHERE hasAny(arr1, arr2) = 1 AND arr1[1] <> '') AS inner_query WHERE id > 1;"
+    ]
+}

@@ -1,0 +1,11 @@
+CREATE TABLE rdf_data (id INT PRIMARY KEY, g_uri VARCHAR(255), s_uri VARCHAR(255), p_uri VARCHAR(255), xml_col XML);
+INSERT INTO rdf_data VALUES (1, 'http://example.org/g', 'http://example.org/s', 'http://example.org/p', '<root><a>data</a></root>');
+INSERT INTO rdf_data VALUES (2, 'http://example.org/g2', 'http://example.org/s2', 'http://example.org/p2', '<root><b>more data</b></root>');
+SELECT DB.DBA.RDF_QUAD_URI(g_uri, s_uri, p_uri) as quad_uri_result, xpath_string('/root/a', xml_col) as extracted_value FROM rdf_data WHERE g_uri IS NOT NULL;
+SELECT DB.DBA.RDF_QUAD_URI(g_uri, s_uri, p_uri) as quad_uri_result FROM rdf_data WHERE s_uri = (SELECT MAX(s_uri) FROM rdf_data) AND p_uri IS NOT NULL;
+SELECT g_uri, COUNT(*) FROM rdf_data GROUP BY g_uri HAVING COUNT(*) > 1;
+SELECT DB.DBA.RDF_QUAD_URI(g_uri, s_uri, p_uri) FROM rdf_data WHERE xpath_string('/root/b', xml_col) = '' OR g_uri IS NULL;
+CREATE TEMPORARY TABLE temp_rdf_data (id INT, g_uri VARCHAR(255) DEFAULT NULL, s_uri VARCHAR(255), p_uri VARCHAR(255));
+INSERT INTO temp_rdf_data SELECT id, NULL, s_uri, p_uri FROM rdf_data WHERE g_uri = 'http://example.org/g';
+SELECT DB.DBA.RDF_QUAD_URI(g_uri, s_uri, p_uri) FROM rdf_data JOIN temp_rdf_data ON rdf_data.id = temp_rdf_data.id WHERE temp_rdf_data.g_uri IS NULL;
+SELECT g_uri, AVG(LENGTH(xpath_string('/root/a', xml_col))) as avg_length FROM rdf_data GROUP BY g_uri HAVING avg_length > 0;

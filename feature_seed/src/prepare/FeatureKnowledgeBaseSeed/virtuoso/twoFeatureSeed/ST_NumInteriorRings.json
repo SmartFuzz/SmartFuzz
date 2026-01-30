@@ -1,0 +1,17 @@
+{
+    "function": "ST_NumInteriorRings",
+    "operator": "bif:contains",
+    "sql_array": [
+        "CREATE TABLE geo_shapes (id INT PRIMARY KEY, shape VARCHAR(255));",
+        "INSERT INTO geo_shapes (id, shape) VALUES (1, 'POLYGON((1 1, 2 2, 1 3, 1 1))'), (2, 'POLYGON((3 3, 4 4, 3 5, 3 3))'), (3, 'POINT(5 5)'), (4, 'MULTIPOLYGON(((0 0, 1 1, 0 0)), ((2 2, 3 3, 2 2)))');",
+        "SELECT id, ST_NumInteriorRings(shape) AS interior_rings FROM geo_shapes WHERE bif:contains(shape, 'POLYGON') AND ST_NumInteriorRings(shape) IS NOT NULL ORDER BY interior_rings DESC;",
+        "CREATE TABLE geo_metadata (shape_id INT REFERENCES geo_shapes(id), description TEXT);",
+        "INSERT INTO geo_metadata (shape_id, description) VALUES (1, 'Simple polygon'), (2, 'Another simple polygon'), (3, 'Not a polygon'), (4, 'Multipolygon example');",
+        "SELECT gm.description, ST_NumInteriorRings(gs.shape) FROM geo_metadata gm JOIN geo_shapes gs ON gm.shape_id = gs.id WHERE gm.description LIKE '%polygon%' AND ST_NumInteriorRings(gs.shape) IS NOT NULL;",
+        "SELECT id, bif:contains(shape, (SELECT shape FROM geo_shapes WHERE id = 1)) AS contains_flag FROM geo_shapes WHERE ST_NumInteriorRings(shape) IS NOT NULL;",
+        "SELECT id, COUNT(DISTINCT ST_NumInteriorRings(shape)) AS ring_count FROM geo_shapes GROUP BY id HAVING ring_count > 0 OR shape IS NULL;",
+        "SELECT shape, CASE WHEN ST_NumInteriorRings(shape) IS NULL THEN 'Not a polygon' ELSE 'Valid polygon' END AS validity FROM geo_shapes WHERE bif:contains(shape, '5') OR shape IS NULL ORDER BY validity;",
+        "SELECT P.id, ST_NumInteriorRings(P.shape) AS rings FROM geo_shapes P LEFT JOIN geo_shapes S ON ST_NumInteriorRings(P.shape) = ST_NumInteriorRings(S.shape) WHERE S.id IS NULL AND ST_NumInteriorRings(P.shape) < 2;",
+        "SELECT COUNT(*) FROM (SELECT DISTINCT id FROM geo_shapes WHERE ST_NumInteriorRings(shape) IS NOT NULL AND shape NOT LIKE 'POINT%') AS filtered_shapes;"
+    ]
+}

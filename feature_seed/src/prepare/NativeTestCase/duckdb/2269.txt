@@ -1,0 +1,15 @@
+PRAGMA force_compression='roaring';
+CREATE TABLE test (a BOOL);
+INSERT INTO test SELECT case     when i%50=0 then false     when i%25=0 then true     else NULL end FROM range(0,10_000) tbl(i);
+checkpoint;
+SELECT compression FROM pragma_storage_info('test') WHERE  segment_type ILIKE 'BOOLEAN' and compression != 'Roaring';
+select count(*) from test WHERE a IS NULL;
+select count(*) from test WHERE a IS true;
+select count(*) from test WHERE a IS false;
+delete from test;
+with intermediates as (     select i % 2048 as i     from range(0, 10_000) t(i) ) insert into test select case     when i = 0 or i = 6 or i = 1000 then false     when i = 1500 or i = 2000 then true     else null end from intermediates;
+checkpoint;
+select count(*) from test WHERE a IS NULL;
+select count(*) from test WHERE a IS false;
+select count(*) from test WHERE a IS true;
+DROP TABLE test;

@@ -1,0 +1,13 @@
+CREATE TABLE rdf_data (id INT PRIMARY KEY, graph_url VARCHAR(255), rdf_content TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO rdf_data (id, graph_url, rdf_content) VALUES (1, 'http://www.biopax.org/prototype#sample', '...');
+INSERT INTO rdf_data (id, graph_url, rdf_content) VALUES (2, 'http://lod.taxonconcept.org/ontology/txn.owl', CAST('<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">...</rdf:RDF>' AS TEXT));
+SELECT id FROM rdf_data WHERE id = 1 / 1;
+-- checking division by 1 and its behavior;
+SELECT COUNT(*) FROM rdf_data WHERE DB.DBA.RDF_LOAD_RDFXML(rdf_content, '', graph_url) IS NULL;
+-- checking NULL handling with the function;
+SELECT graph_url, COUNT(*) FROM rdf_data GROUP BY graph_url HAVING COUNT(*) / NULLIF(COUNT(*), 0) > 0;
+SELECT DB.DBA.RDF_LOAD_RDFXML(rdf_content, '', graph_url) FROM rdf_data WHERE id = (SELECT MAX(id) FROM rdf_data);
+SELECT id, DB.DBA.RDF_LOAD_RDFXML(rdf_content, '', graph_url) / (SELECT COUNT(*) FROM rdf_data) AS rdf_ratio FROM rdf_data WHERE graph_url IS NOT NULL;
+SELECT id FROM rdf_data WHERE DB.DBA.RDF_LOAD_RDFXML(rdf_content, '', graph_url) IS NOT NULL AND (graph_url = '' OR graph_url = 'http://lod.taxonconcept.org/ontology/txn.owl');
+CREATE TEMPORARY TABLE temp_rdf AS SELECT * FROM rdf_data WHERE created_at > NOW() - INTERVAL '1 day';
+SELECT graph_url, AVG(id / 1.0) FROM temp_rdf GROUP BY graph_url HAVING AVG(id / 1.0) < 2.0;

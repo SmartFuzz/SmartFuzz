@@ -1,0 +1,11 @@
+CREATE TABLE test_data (id INTEGER, date_col DATE, str_col VARCHAR, num_col FLOAT);
+INSERT INTO test_data VALUES (1, DATE '2023-10-01', 'A', 1.5), (2, DATE '2023-10-02', 'B', NULL), (3, DATE '2023-10-03', 'C', 3.0), (4, DATE '2023-10-04', NULL, 4.5);
+SELECT array_zip(ARRAY(SELECT id FROM test_data WHERE str_col IS NOT NULL), ARRAY(SELECT DATE_ADD(date_col, INTERVAL 10 DAY) FROM test_data WHERE num_col IS NOT NULL)) AS zipped_dates;
+SELECT ARRAY(SELECT id FROM test_data WHERE num_col - 1.0 IS NOT NULL) AS valid_ids, array_zip(ARRAY(SELECT id FROM test_data), ARRAY(SELECT str_col FROM test_data WHERE date_col - INTERVAL 1 DAY IS NOT NULL)) AS complex_zip;
+SELECT id, str_col, date_col, num_col - (SELECT COUNT(*) FROM test_data WHERE num_col IS NULL) AS adjusted_num_col FROM test_data WHERE ARRAY_LENGTH(array_zip(ARRAY(SELECT num_col FROM test_data WHERE str_col IS NULL), ARRAY(SELECT date_col FROM test_data)) > 0);
+WITH temp_data AS (SELECT id, array_zip(ARRAY(SELECT str_col FROM test_data), ARRAY(SELECT date_col - INTERVAL 1 DAY FROM test_data WHERE num_col IS NOT NULL)) AS zipped FROM test_data) SELECT * FROM temp_data WHERE zipped IS NOT NULL;
+SELECT id, array_zip(ARRAY(SELECT id FROM test_data WHERE date_col IS NULL), ARRAY(SELECT str_col FROM test_data WHERE num_col > 1)) AS null_stitch WHERE NULL IS NOT NULL;
+INSERT INTO test_data SELECT NULL, DATE '2023-12-25', 'X', 100.00 UNION ALL SELECT id, date_col - INTERVAL 5 DAY, str_col, num_col FROM test_data;
+CREATE TABLE another_data (value FLOAT, date_val DATE NOT NULL);
+INSERT INTO another_data VALUES (NULL, DATE '2023-10-01'), (2.5, DATE '2023-10-02'), (3.5, NULL);
+SELECT a.value, array_zip(ARRAY(SELECT a.value FROM another_data a WHERE a.date_val IS NOT NULL), ARRAY(SELECT b.date_col FROM test_data b WHERE b.num_col IS NOT NULL)) AS complex_zip FROM another_data a JOIN test_data b ON a.date_val = b.date_col - INTERVAL 3 DAY;

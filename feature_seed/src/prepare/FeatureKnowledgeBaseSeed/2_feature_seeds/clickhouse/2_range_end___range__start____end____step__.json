@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id UInt32, value Nullable(Int32));
+INSERT INTO test_table VALUES (1, 10), (2, NULL), (3, 5), (4, 20);
+CREATE TABLE test_joins (id UInt32, fk UInt32, detail String);
+INSERT INTO test_joins VALUES (1, 1, 'Detail 1'), (2, 1, 'Detail 2'), (3, 2, 'Detail 3');
+SELECT t.id, transform(t.value, range(0, 3), [1, 2, 3], 0) AS transformed_value FROM test_table t WHERE multiIf(t.value IS NULL, NULL, t.value > 5, 'High', t.value BETWEEN 1 AND 5, 'Medium', true, 'Low') != 'Low';
+SELECT id, value FROM test_table WHERE value IS NOT NULL AND value IN (SELECT multiIf(value IS NULL, -1, value) FROM test_table);
+SELECT t.id, COUNT(*) FROM test_table t JOIN test_joins j ON t.id = j.fk GROUP BY t.id HAVING COUNT(*) > multiIf(t.value IS NULL, 0, 1);
+SELECT id, range(3) AS range_values, multiIf(value IS NULL, 0, value) AS adjusted_value FROM test_table WHERE adjusted_value > 10;
+SELECT id, arrayJoin(range(0, 5)) AS arr FROM test_table;
+SELECT multiIf(id BETWEEN 1 AND 3, id, NULL) AS condition_check FROM test_table;
+SELECT (SELECT COUNT(*) FROM test_table WHERE multiIf(value IS NULL, 0, value) = 5) AS null_handling_count;

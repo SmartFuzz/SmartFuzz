@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7442",
+  "title": "MonetDB server crashes in `mat_join2`",
+  "description": "MonetDB server crashes in `mat_join2`.\n\n**To Reproduce**\n```sql\nCREATE TABLE v0 ( v2 , v1 ) as ( select i , cast ( i as string ) from generate_series ( 1 , 1000 ) as t ( i ) );\n INSERT INTO v0 ( v1 ) SELECT v0 . v2 FROM v0 , v0 AS sum_f1;\n DELETE FROM v0 WHERE ( 10 );\n SELECT count ( v1 ) FROM v0 WHERE v2 IN ( SELECT ( row_number ( ) OVER ( ) ) FROM v0 ) ;  \n```\n\n**Backtrace of the Crash**\n```c\n#0 0x7f0194e3db82 (mat_join2+0x582)\n#1 0x7f0194e31582 (OPTmergetableImplementation+0x36d2)\n#2 0x7f0194e557a2 (OPTwrapper+0x2c2)\n#3 0x7f0194c1da7f (optimizeMALBlock+0x1cf)\n#4 0x7f0194707b63 (SQLoptimizeQuery+0x353)\n#5 0x7f01946a163d (SQLparser+0x10dd)\n#6 0x7f019469fcbc (SQLengine_+0xa5c)\n#7 0x7f019469d4fe (SQLengine+0x3e)\n#8 0x7f0194c1b2cf (runScenario+0x6f)\n#9 0x7f0194c1c4de (MSscheduleClient+0xb6e)\n#10 0x7f0194d53182 (doChallenge+0x132)\n#11 0x7f0195a7c8a7 (thread_starter+0xc7)\n#12 0x7f0194597609 (start_thread+0xd9)\n#13 0x7f01944ba133 (clone+0x43)\n```\n\n**Software versions**\n - MonetDB version number: v11.49.1 (Dec2023)\n - OS and version: Ubuntu 20.04\n - From docker image monetdb/monetdb:Dec2023\n\nAn example of steps to reproduce in docker container (**write the poc into /tmp/test.sql first**):\n```bash\ndocker container rm monetdb_test -f\ndocker run -e MDB_DB_ADMIN_PASS=monetdb --name monetdb_test -itd monetdb/monetdb:Dec2023\ndocker exec monetdb_test bash -c 'echo -n -e \"user=monetdb\\npassword=monetdb\\n\" > /root/.monetdb'\n\nsleep 10\ncat /tmp/test.sql | timeout 5s docker exec -i monetdb_test mclient monetdb     # run test case\n\nif docker exec monetdb_test bash -c \"grep '[m]server5' /proc/*/cmdline -lR\"; then\n    echo \"[INFO] Server normal.\"\nelse\n    echo \"[CRASH] Mserver5 process does NOT exist.\"\nfi\n```\n\nIt can also be reproduced on the docker image `monetdb/dev-builds:default`.\n\n**Issue labeling**\nbug",
+  "date": "2024-01-17T06:54:51Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE TABLE v1 ( id INTEGER PRIMARY KEY, name TEXT, value REAL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP );",
+    "INSERT INTO v1 (id, name, value) VALUES (1, 'test1', 10.5), (2, 'test2', NULL), (3, 'test3', 20.0);",
+    "CREATE TABLE v2 ( ref_id INTEGER, description TEXT, FOREIGN KEY (ref_id) REFERENCES v1(id) );",
+    "INSERT INTO v2 (ref_id, description) VALUES (1, 'desc1'), (2, 'desc2'), (3, NULL);",
+    "SELECT COUNT(*) FROM v1 WHERE value IS NOT NULL AND id IN (SELECT ref_id FROM v2 WHERE description IS NOT NULL);"
+  ],
+  "key_bug_features": [
+    "Crash during execution of mat_join2 function"
+  ]
+}

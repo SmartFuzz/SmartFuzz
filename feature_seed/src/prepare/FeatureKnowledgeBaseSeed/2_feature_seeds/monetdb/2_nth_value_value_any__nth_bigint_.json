@@ -1,0 +1,11 @@
+CREATE TABLE test_data (id SERIAL PRIMARY KEY, uuid_col UUID, value_col INT);
+INSERT INTO test_data (uuid_col, value_col) VALUES (uuid 'e31960fb-dc8b-452d-ab30-b342723e756a', 10), (uuid 'f81d4fae-7dec-11d0-a765-00e0351c3b89', NULL), (uuid 'e31960fb-dc8b-452d-ab30-b342723e756a', 20);
+SELECT nth_value(value_col, 1) OVER (PARTITION BY uuid_col ORDER BY id) AS first_value, uuid_col FROM test_data WHERE value_col IS NOT NULL GROUP BY uuid_col HAVING COUNT(value_col) > 1;
+CREATE TABLE another_table (id SERIAL PRIMARY KEY, uuid_col UUID, value_col VARCHAR(255));
+INSERT INTO another_table (uuid_col, value_col) VALUES (uuid 'f81d4fae-7dec-11d0-a765-00e0351c3b89', 'String Value'), (uuid 'e31960fb-dc8b-452d-ab30-b342723e756a', NULL);
+SELECT A.uuid_col, nth_value(COALESCE(A.value_col::TEXT, 'default_string'), 2) OVER (PARTITION BY A.uuid_col ORDER BY A.id) FROM test_data AS A JOIN another_table AS B ON A.uuid_col = B.uuid_col WHERE B.value_col IS NOT NULL;
+SELECT uuid_col, nth_value(value_col, 1) OVER (PARTITION BY uuid_col ORDER BY id) AS nth_val FROM test_data WHERE id > 0 GROUP BY uuid_col HAVING nth_value(value_col, 1) IS NOT NULL;
+CREATE TEMPORARY TABLE temp_data AS SELECT uuid_col, nth_value(value_col, 2) OVER (PARTITION BY uuid_col ORDER BY id) AS second_value FROM test_data;
+SELECT uuid_col, second_value FROM temp_data WHERE second_value IS NULL OR second_value = 20;
+SELECT nth_value(NULLIF(value_col, 10), 1) OVER (PARTITION BY uuid_col ORDER BY id) AS non_tenth_value, uuid_col FROM test_data;
+SELECT A.uuid_col, nth_value(B.value_col::UUID, 2) OVER (PARTITION BY A.uuid_col ORDER BY A.id) AS second_uuid_value FROM test_data AS A LEFT JOIN another_table AS B ON A.uuid_col = B.uuid_col WHERE A.value_col IS NOT NULL;

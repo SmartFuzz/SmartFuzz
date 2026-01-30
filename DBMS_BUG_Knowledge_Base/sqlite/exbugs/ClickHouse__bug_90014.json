@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/90014",
+  "title": "Window function 'lag' BAD_ARGUMENTS on remote node",
+  "description": "### Describe what's wrong\n```\nDB::Exception: Window function 'lag' does not expect window frame to be explicitly specified.\n```\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\n```sql\nCREATE TABLE position_evaluation\n(\n`symbol` String,\n`evaluated_at` DateTime64(3),\n`mark_price` Decimal(18, 8),\n)\nENGINE = MergeTree\nORDER BY (symbol, evaluated_at);\ninsert into position_evaluation select * from generateRandom('symbol String, evaluated_at DateTime64(3), mark_price Decimal(18, 8)', 1) LIMIT 100;\nSELECT lag(mark_price) OVER (PARTITION BY symbol ORDER BY evaluated_at ASC) AS last_mark_price\nFROM remote('127.0.0.1', currentDatabase(), position_evaluation);\n```\nhttps://fiddle.clickhouse.com/c6d79f85-b979-4ac1-a4b0-7c2f2221cf08\n### Expected behavior\n_No response_\n### Error message and/or stacktrace\n_No response_\n### Additional context\n_No response_",
+  "date": "2025-11-13T21:15:05Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE position_evaluation_v2 (symbol TEXT, evaluated_at DATETIME, mark_price REAL, volume INTEGER);",
+    "INSERT INTO position_evaluation_v2 (symbol, evaluated_at, mark_price, volume) VALUES ('AAPL', '2023-10-01 12:00:00', 150.12345678, 100), ('GOOGL', '2023-10-01 12:01:00', 2800.12345678, 200);",
+    "SELECT symbol, evaluated_at, mark_price, LAG(mark_price) OVER (PARTITION BY symbol ORDER BY evaluated_at) AS last_mark_price FROM position_evaluation_v2;",
+    "SELECT symbol, evaluated_at, mark_price, LAG(mark_price, 1, NULL) OVER (PARTITION BY symbol ORDER BY evaluated_at) AS last_mark_price_with_default FROM position_evaluation_v2;",
+    "SELECT symbol, evaluated_at, mark_price, LAG(mark_price) OVER (PARTITION BY symbol ORDER BY evaluated_at) AS last_mark_price_invalid FROM position_evaluation_v2;"
+  ],
+  "key_bug_features": [
+    "Window function 'lag' with explicit window frame"
+  ]
+}

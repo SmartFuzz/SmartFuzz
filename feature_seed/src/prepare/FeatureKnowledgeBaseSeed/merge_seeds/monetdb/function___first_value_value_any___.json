@@ -1,0 +1,15 @@
+CREATE TABLE sales (id INT, amount DECIMAL(10, 2), sale_date DATE);
+INSERT INTO sales VALUES (1, 100.00, '2023-01-01'), (2, 150.00, '2023-01-02'), (3, 200.00, '2023-01-03');
+CREATE TABLE employees (id INT, name VARCHAR(50), sales_id INT);
+INSERT INTO employees VALUES (1, 'Alice', 1), (2, 'Bob', 2), (3, 'Charlie', 3);
+SELECT first_value(amount) OVER (ORDER BY sale_date) FROM sales;
+SELECT e.name, first_value(s.amount) OVER (PARTITION BY e.id ORDER BY s.sale_date) AS first_sale_amount FROM employees e JOIN sales s ON e.sales_id = s.id;
+WITH ranked_sales AS (SELECT amount, ROW_NUMBER() OVER (ORDER BY sale_date) AS rnk FROM sales) SELECT first_value(amount) OVER (ORDER BY rnk) FROM ranked_sales;
+SELECT e.name, first_value(s.amount) OVER (PARTITION BY e.id ORDER BY s.sale_date ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) FROM employees e JOIN sales s ON e.sales_id = s.id;
+SELECT e.name, first_value(s.amount) OVER (PARTITION BY e.id ORDER BY sale_date ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) AS first_sale_current FROM employees e JOIN sales s ON e.sales_id = s.id;
+CREATE TABLE temp_sales (id INT, amount DECIMAL(10, 2));
+INSERT INTO temp_sales SELECT * FROM sales WHERE amount > 100;
+SELECT first_value(amount) OVER (ORDER BY id) FROM temp_sales;
+SELECT e.name, first_value(s.amount) OVER (PARTITION BY e.name ORDER BY s.sale_date) FROM employees e JOIN sales s ON e.sales_id = s.id;
+SELECT first_value(amount) OVER (ORDER BY sale_date DESC) FROM sales;
+SELECT e.name, first_value(s.amount) OVER (ORDER BY sale_date ASC RANGE BETWEEN INTERVAL '1' DAY PRECEDING AND CURRENT ROW) AS first_sale_in_range FROM employees e JOIN sales s ON e.sales_id = s.id;

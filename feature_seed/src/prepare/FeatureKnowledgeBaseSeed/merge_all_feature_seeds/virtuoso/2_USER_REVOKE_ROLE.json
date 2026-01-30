@@ -1,0 +1,13 @@
+CREATE TABLE roles (id INT PRIMARY KEY, role_name VARCHAR(50), geometry GEOMETRY);
+CREATE TABLE users (id INT PRIMARY KEY, username VARCHAR(50), role_id INT, location GEOMETRY, FOREIGN KEY (role_id) REFERENCES roles(id));
+INSERT INTO roles (id, role_name, geometry) VALUES (1, 'admin', POINT(1, 1)), (2, 'user', POINT(2, 2));
+INSERT INTO users (id, username, role_id, location) VALUES (1, 'alice', 1, POINT(1.000001, 1.000001)), (2, 'bob', NULL, POINT(NULL, NULL));
+SELECT USER_REVOKE_ROLE(role_name) FROM roles WHERE st_distance(geometry, POINT(2, 2)) < 1;
+SELECT a.username, USER_REVOKE_ROLE(a.role_id) FROM users a JOIN roles b ON a.role_id = b.id WHERE st_distance(a.location, b.geometry) < 0.5;
+SELECT COUNT(*) FROM users WHERE role_id IS NOT NULL GROUP BY role_id HAVING COUNT(*) > (SELECT AVG(role_count) FROM (SELECT COUNT(*) as role_count FROM users GROUP BY role_id) AS subquery);
+UPDATE users SET role_id = USER_REVOKE_ROLE(1) WHERE st_distance(location, (SELECT geometry FROM roles WHERE role_name = 'user')) IS NULL;
+DELETE FROM users WHERE role_id IS NOT NULL AND ST_Distance(location, (SELECT geometry FROM roles WHERE role_name = 'admin')) > 1.0;
+CREATE TEMPORARY TABLE temp_roles AS SELECT * FROM roles WHERE role_name IS NOT NULL;
+INSERT INTO temp_roles (id, role_name, geometry) VALUES (3, 'guest', POINT(3, 3));
+SELECT st_distance(geometry, POINT(5, 5)) AS distance FROM roles WHERE distance = (SELECT MAX(st_distance(geometry, POINT(5, 5))) FROM temp_roles);
+SELECT USER_REVOKE_ROLE(role_name) FROM roles WHERE role_name = (SELECT role_name FROM temp_roles ORDER BY RANDOM() LIMIT 1);

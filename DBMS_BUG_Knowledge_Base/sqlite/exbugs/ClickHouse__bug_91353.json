@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/91353",
+  "title": "Materialized view refresh after depends on - does not work",
+  "description": "### Company or project name\nI found an example `CREATE MATERIALIZED VIEW destination REFRESH AFTER 1 HOUR DEPENDS ON source AS SELECT ... FROM source` in the manual [https://clickhouse.com/docs/sql-reference/statements/create/view#materialized-view](https://clickhouse.com/docs/sql-reference/statements/create/view#materialized-view)\nHowever, when I wrote SQL query `create materialized view processing.dashboard_main_mv\nrefresh after 10 minute depends on processing.dashboard_main_zsl_vm empty\nappend to processing.dashboard_main empty as\nselect ...` I got the next error `SQL Error [22000]: Code: 36. DB::Exception: DEPENDS ON is allowed only for REFRESH EVERY, not REFRESH AFTER. (BAD_ARGUMENTS) (version 25.8.2.29 (official build)) `\nI need refresh depended view with some delay after master view\n### Describe what's wrong\nAccording the manual error never occur\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nPlease run the script\n```\ncreate table raw_table(\nid Int32,\nname String\n)\nengine = Memory;\ncreate table processing_table(\nid Int32,\nname String\n)\nengine = Memory;\ncreate materialized view processing_table_mv refresh every 10 minute append to processing_table as\nselect id, name from raw_table;\ncreate table report_table(\nid Int32,\nname String\n)\nengine = Memory;\ncreate materialized view report_table_mv refresh after 5 minute depends on processing_table_mv append to report_table as\nselect id, name from processing_table;\n```\n### Expected behavior\nNo any error\n### Error message and/or stacktrace\nSQL Error [22000]: Code: 36. DB::Exception: DEPENDS ON is allowed only for REFRESH EVERY, not REFRESH AFTER. (BAD_ARGUMENTS) (version 25.8.2.29 (official build))\n### Additional context\n_No response_",
+  "date": "2025-12-02T18:25:38Z",
+  "vulnerable_version": "25.8.2.29",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test_table1 (id INTEGER, value REAL, created_at DATETIME);",
+    "CREATE TABLE test_table2 (id INTEGER, description TEXT, is_active INTEGER);",
+    "CREATE TRIGGER test_mv1_trigger AFTER INSERT ON test_table2 BEGIN INSERT INTO test_table1 (id, value) SELECT id, value FROM test_table2 WHERE is_active = 1;",
+    "END;",
+    "CREATE TRIGGER test_mv2_trigger AFTER INSERT ON test_table1 BEGIN INSERT INTO test_table2 (id, description) SELECT id, description FROM test_table1 WHERE created_at > datetime('now', '-5 minutes');",
+    "END;"
+  ],
+  "key_bug_features": [
+    "DEPENDS ON not allowed for REFRESH AFTER in views"
+  ]
+}

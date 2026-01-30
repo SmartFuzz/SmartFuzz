@@ -1,0 +1,11 @@
+CREATE TABLE test_times (id INTEGER PRIMARY KEY, event_time TIMESTAMPTZ NOT NULL, description VARCHAR(255));
+INSERT INTO test_times (id, event_time, description) VALUES (1, now(), 'Event A'), (2, now() + INTERVAL 1 DAY, 'Event B'), (3, now() - INTERVAL 2 DAY, 'Event C');
+SELECT id, event_time, description, event_time + INTERVAL 1 HOUR AS new_time FROM test_times WHERE event_time >= now() - INTERVAL 3 DAY;
+SELECT id, (now() + INTERVAL (SELECT COUNT(*) FROM test_times) DAY) AS adjusted_time FROM test_times;
+SELECT id, event_time, description FROM test_times WHERE event_time IS NOT NULL ORDER BY event_time DESC;
+WITH temp AS (SELECT id, event_time + INTERVAL 5 DAY AS future_time FROM test_times) SELECT id, future_time FROM temp WHERE future_time < now() + INTERVAL 2 DAY;
+SELECT COUNT(*) FROM test_times WHERE event_time IN (SELECT event_time + INTERVAL -1 DAY FROM test_times WHERE description IS NOT NULL);
+CREATE TABLE other_events (event_id INTEGER PRIMARY KEY, event_date TIMESTAMPTZ NOT NULL);
+INSERT INTO other_events (event_id, event_date) VALUES (1, now() + INTERVAL 3 DAY), (2, now() - INTERVAL 2 HOUR);
+SELECT t.id, t.event_time, o.event_date FROM test_times t INNER JOIN other_events o ON t.event_time BETWEEN o.event_date AND o.event_date + INTERVAL 1 DAY;
+SELECT id, event_time + INTERVAL 1 MONTH AS added_time FROM test_times GROUP BY added_time HAVING added_time < now() + INTERVAL 6 MONTH;

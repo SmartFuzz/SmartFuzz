@@ -1,0 +1,16 @@
+{
+    "function": "quantileExactInclusive",
+    "operator": "SELECT NOT a",
+    "sql_array": [
+        "CREATE TABLE test_data (id UInt32, value Float64, created_at DateTime, nullable_value Nullable(Float64));",
+        "INSERT INTO test_data VALUES (1, 3.5, '2023-10-01 10:00:00', NULL), (2, 7.2, '2023-10-01 10:05:00', 5.1), (3, 8.0, '2023-10-01 10:10:00', 9.3), (4, NULL, '2023-10-01 10:15:00', 2.4), (5, 11.5, '2023-10-01 10:20:00', NULL);",
+        "SELECT quantileExactInclusive(0.5)(value) AS median_value FROM (SELECT value FROM test_data WHERE NOT (nullable_value IS NULL));",
+        "SELECT id, quantileExactInclusive(0.25)(value) AS q1, quantileExactInclusive(0.75)(value) AS q3 FROM test_data GROUP BY id HAVING NOT (q1 < 0 AND q3 > 10);",
+        "SELECT id, quantileExactInclusive(0.6)(value) FROM (SELECT id, NOT (value < 5) AS is_high, value FROM test_data) WHERE is_high = true;",
+        "CREATE TABLE temp_data AS (SELECT value, created_at FROM test_data WHERE NOT (nullable_value IS NULL) AND value IS NOT NULL);",
+        "SELECT quantileExactInclusive(0.9)(value) FROM temp_data WHERE NOT (value < (SELECT quantileExactInclusive(0.1)(value) FROM test_data));",
+        "SELECT NOT (quantileExactInclusive(0.5)(value) > 10) AS is_median_high FROM test_data;",
+        "SELECT id, value, CASE WHEN value IS NULL THEN 'NULL' ELSE 'NOT NULL' END AS value_state, quantileExactInclusive(0.9)(value) OVER (PARTITION BY value_state) AS high_percentile FROM test_data ORDER BY high_percentile DESC;",
+        "SELECT id, NOT (quantileExactInclusive(0.5)(value) BETWEEN 0 AND 10) AS is_median_out_of_range FROM test_data;"
+    ]
+}

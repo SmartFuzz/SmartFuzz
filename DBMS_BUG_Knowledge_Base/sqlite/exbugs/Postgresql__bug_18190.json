@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/18190-ba5eff0af347078d%40postgresql.org",
+  "title": "BUG #18190: PL/pgSQL does not document comparison operations on RECORD (or ROW) types",
+  "description": "The following bug has been logged on the website:\nBug reference:      18190\nLogged by:          Karl Pinc\nEmail address:      kop(at)karlpinc(dot)com\nPostgreSQL version: 15.4\nOperating system:   Linux\nDescription:\nNothing is said about how to compare entire RECORD type variables, or ROW\ntype variables.\nThis leads to surprising behavior in the code below.  The row in table \"foo\"\nthat has foo.col2 = NULL does not raise an error, but the row that has\nfoo.col2 = 1 does.\nCREATE OR REPLACE FUNCTION checktime (tbl TEXT, col TEXT)\nRETURNS void\nLANGUAGE plpgsql\nAS $$\nDECLARE\nqry TEXT;\nproblem RECORD := NULL;\nBEGIN\nqry := '\nSELECT *\nFROM ' || quote_ident(tbl) || '\nWHERE ' || quote_ident(col) || '::TIME <> $tim$00:00:00$tim$';\nEXECUTE qry INTO problem;\nIF problem IS NOT NULL THEN\nRAISE EXCEPTION data_exception USING\nMESSAGE = tbl\n|| ' has a time part in column '\n|| col\n|| ' that is not 00:00:00'\n, DETAIL = 'The row is: ' || problem;\nEND IF;\nEND;\n$$;\nCREATE TABLE foo (stamp TIMESTAMP WITHOUT TIME ZONE, col2 INT NULL);\nINSERT INTO foo (stamp, col2) VALUES ('1979-01-01 00:01:00', NULL);\nSELECT checktime('foo', 'stamp');\nTRUNCATE foo;\nINSERT INTO foo (stamp, col2) VALUES ('1979-01-01 00:01:00', 1);\nSELECT checktime('foo', 'stamp');\nProbably the right way to write the code is with GET DIAGNOSTICS..., but\nthat's neither here nor there.\nOr maybe an error should be raised when trying to use IS NULL with RECORD\ntype variables.  Or the code needs changing so IS NULL/IS NOT NULL works\nwith RECORD type variables.  Or something else needs doing.\nNote that I've not tried anything with ROW type variables but it seems worth\nmentioning them since it's not obvious how to tell if they've ever been\nassigned a value, which is vaguely related to the intention of the code\nabove.  Likewise, equality comparisons on ROWs and RECORDs (not mixed) seem\nlike they should work, but what of other comparisions?\nIf the issue is documentation, the PL/pgSQL docs should link to the\ncomposite type docs, or the expression docs, or type conversion, or where\never the current documentation is that I can't find or that needs to be\nwritten.",
+  "date": "2023-11-10 19:47:30",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE bar (id INTEGER PRIMARY KEY AUTOINCREMENT, data1 INTEGER, data2 INTEGER, value INTEGER NOT NULL);",
+    "INSERT INTO bar (data1, data2, value) VALUES (NULL, 1, 10);",
+    "INSERT INTO bar (data1, data2, value) VALUES (1, 2, NULL);",
+    "SELECT * FROM bar WHERE data1 IS NULL;",
+    "SELECT * FROM bar WHERE data2 = 2;"
+  ],
+  "key_bug_features": [
+    "Comparison operations on RECORD type variables are undocumented"
+  ]
+}

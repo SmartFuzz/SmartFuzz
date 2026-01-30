@@ -1,0 +1,23 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/92484",
+  "title": "Why does JSONExtractString on a numeric key fail on comparison with a numeric literal?",
+  "vulnerable_database": "ClickHouse",
+  "date": "2025-12-18T09:22:16Z",
+  "vulnerable_version": "",
+  "description": "### Company or project name\n_No response_\n### Question\nhttps://fiddle.clickhouse.com/185ebc7f-d65b-4c78-854a-68e43e10fa86\nPlease help me find a reson for this.\nWhen I do `select '200' > 100` in clickhouse this works by converting to a common integer or float supertype.\nBut when I do this:\nDROP TABLE IF EXISTS demo_ts;\nCREATE TABLE demo_ts\n(\nid     UInt32,\nlabels String\n)\nENGINE = Memory;\nINSERT INTO demo_ts VALUES\n(1, '{\"http.status_code\":\"200\"}'),\n(2, '{\"http.status_code\":\"503\"}'),\n(4, '{\"http.status_code\":\"208\"}');\nSELECT\nid,\nJSONExtractString(labels, 'http.status_code') AS sc\nFROM demo_ts\nORDER BY id;\nSELECT '200' > 100.0; -- this works\nSELECT count(*)\nFROM demo_ts\nWHERE JSONHas(labels, 'http.status_code')\nAND JSONExtractString(labels, 'http.status_code') > 200.0; -- this does not work even if we have JSONHas why?\nI even have JSONHas check. And all the values of JSONExtractString can be converted to numeric values.\nOne more follow up question,\nhttps://clickhouse.com/docs/operations/analyzer?utm_source=chatgpt.com#incompatible-function-arguments-types\nThis mentions\nIn the new analyzer, type inference happens during initial query analysis. This change means that type checks are done before short-circuit evaluation; thus, the if function arguments must always have a common supertype.\nWhat does this mean for and condition?",
+  "poc": [
+    "DROP TABLE IF EXISTS demo_ts;",
+    "CREATE TABLE demo_ts\n(\n  id     UInt32,\n  labels String\n)\nENGINE = Memory;",
+    "INSERT INTO demo_ts VALUES\n  (1, '{\"http.status_code\":\"200\"}'),\n  (2, '{\"http.status_code\":\"503\"}'),          \n  (4, '{\"http.status_code\":\"208\"}');"
+  ],
+  "key_bug_features": [
+    "JSONExtractString comparison with numeric literal fails"
+  ],
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS demo_ts;",
+    "CREATE TABLE demo_ts (id UInt32, labels String) ENGINE = Memory;",
+    "INSERT INTO demo_ts VALUES (1, '{\"http.status_code\":\"200\"}'), (2, '{\"http.status_code\":\"503\"}'), (3, '{\"http.status_code\":\"404\"}'), (4, '{\"http.status_code\":\"208\"}');",
+    "SELECT count(*) FROM demo_ts WHERE JSONHas(labels, 'http.status_code') AND JSONExtractString(labels, 'http.status_code') > '100';",
+    "SELECT id, JSONExtractString(labels, 'http.status_code') AS sc FROM demo_ts WHERE JSONExtractString(labels, 'http.status_code') IS NOT NULL ORDER BY sc;"
+  ]
+}

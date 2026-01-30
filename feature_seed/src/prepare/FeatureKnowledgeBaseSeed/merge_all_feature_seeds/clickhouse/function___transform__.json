@@ -1,0 +1,11 @@
+CREATE TABLE test.hits (SearchEngineID Int32, Referer String);
+INSERT INTO test.hits VALUES (2, 'http://yandex.ru'), (3, 'http://google.ru'), (4, 'http://other.com');
+SELECT transform(SearchEngineID, [2, 3], ['Yandex', 'Google'], 'Other') AS title, count() AS c FROM test.hits WHERE SearchEngineID != 0 GROUP BY title ORDER BY c DESC;
+SELECT transform(Referer, ['http://yandex.ru', 'http://google.ru'], ['www.yandex', 'example.com'], 'Unknown') AS s, count() AS c FROM test.hits GROUP BY s ORDER BY c DESC;
+SELECT transform(SearchEngineID, [1, 2, 3, 4], ['None', 'Yandex', 'Google', 'Other'], 'Unknown') AS title, count() AS c FROM test.hits GROUP BY title;
+SELECT transform(domain(Referer), ['yandex.ru', 'google.ru', 'vkontakte.ru'], ['www.yandex', 'example.com', 'vk.com']) AS transformed_ref, COUNT() AS c FROM test.hits GROUP BY transformed_ref ORDER BY c DESC LIMIT 10;
+CREATE TABLE test.referrals (id Int32, referrer String);
+INSERT INTO test.referrals VALUES (1, 'yandex.ru'), (2, 'google.ru'), (3, 'vkontakte.ru'), (4, 'unknown.ru');
+SELECT t.title, r.referrer FROM (SELECT transform(SearchEngineID, [2, 3], ['Yandex', 'Google'], 'Other') AS title FROM test.hits) AS t JOIN test.referrals AS r ON t.title = r.referrer;
+WITH transform(Referer, ['yandex.ru', 'google.ru'], ['www.yandex', 'example.com'], 'Unknown') AS transformed FROM test.hits WHERE transformed != 'Unknown' GROUP BY transformed;
+SELECT transform(SearchEngineID, [1, 2], ['Search1', 'Search2'], 'Not Found') AS transformed_id, COUNT() AS c FROM (SELECT SearchEngineID FROM test.hits UNION ALL SELECT 4 AS SearchEngineID) GROUP BY transformed_id;

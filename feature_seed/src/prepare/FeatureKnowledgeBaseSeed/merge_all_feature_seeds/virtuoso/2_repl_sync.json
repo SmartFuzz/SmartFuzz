@@ -1,0 +1,17 @@
+CREATE TABLE subscribers (id INT PRIMARY KEY, name VARCHAR(100), subscription_status VARCHAR(50));
+INSERT INTO subscribers (id, name, subscription_status) VALUES (1, 'Alice', 'active');
+INSERT INTO subscribers (id, name, subscription_status) VALUES (2, 'Bob', NULL);
+INSERT INTO subscribers (id, name, subscription_status) VALUES (3, 'Charlie', 'inactive');
+SELECT repl_sync('demo-srv', 'demo-publication', 'repl_user', 'repl_passwd') WHERE (SELECT COUNT(*) FROM subscribers) > 2;
+SELECT * FROM subscribers WHERE (name > '') AND (repl_sync('demo-srv', 'demo-publication', 'repl_user', 'repl_passwd') IS NOT NULL);
+CREATE TABLE publications (pub_id INT PRIMARY KEY, pub_name VARCHAR(50), subscriber_id INT, FOREIGN KEY (subscriber_id) REFERENCES subscribers(id));
+INSERT INTO publications (pub_id, pub_name, subscriber_id) VALUES (1, 'Tech News', 1);
+INSERT INTO publications (pub_id, pub_name, subscriber_id) VALUES (2, 'Sports Daily', 2);
+SELECT * FROM publications JOIN subscribers ON publications.subscriber_id = subscribers.id WHERE repl_sync('demo-srv', 'demo-publication', 'repl_user', 'repl_passwd') AND subscribers.subscription_status IS NOT NULL;
+SELECT COUNT(*) FROM (SELECT pub_id FROM publications WHERE pub_name > 'A' HAVING COUNT(subscriber_id) > 0) temp_table;
+SELECT * FROM subscribers WHERE id > 0 AND (SELECT repl_sync('demo-srv', 'demo-publication', 'repl_user', 'repl_passwd') IS NULL OR name IS NOT NULL);
+CREATE TABLE temp_status (status VARCHAR(50), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO temp_status (status) VALUES ('Sync in progress'), (NULL), ('Sync completed');
+SELECT status, COUNT(*) FROM temp_status GROUP BY status HAVING COUNT(*) > 0 AND (repl_sync('demo-srv', 'demo-publication', 'repl_user', 'repl_passwd') > 0);
+ALTER TABLE publications ADD COLUMN sync_status VARCHAR(20);
+UPDATE publications SET sync_status = 'synchronized' WHERE subscriber_id IN (SELECT id FROM subscribers WHERE subscription_status IS NOT NULL);

@@ -1,0 +1,16 @@
+{
+    "function": "skewPop",
+    "operator": "a IN ...",
+    "sql_array": [
+        "CREATE TABLE test_series (value Float64, id Int32, category String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_series (value, id, category) VALUES (1.5, 1, 'A'), (2.3, 2, 'B'), (NULL, 3, 'C'), (-1.0, 4, 'D'), (0.0, 5, 'E');",
+        "SELECT skewPop(value) FROM (SELECT value FROM test_series WHERE id IN (SELECT id FROM test_series WHERE category = 'B') UNION ALL SELECT value FROM test_series WHERE id IN (SELECT id FROM test_series WHERE category = 'C')) AS subquery;",
+        "CREATE TABLE test_categories (cat_id Int32, cat_name String) ENGINE = MergeTree() ORDER BY cat_id;",
+        "INSERT INTO test_categories (cat_id, cat_name) VALUES (1, 'X'), (2, 'Y'), (3, NULL), (4, 'Z');",
+        "SELECT skewPop(value) FROM test_series WHERE id IN (SELECT cat_id FROM test_categories WHERE cat_name IS NOT NULL) GROUP BY value HAVING value IS NOT NULL;",
+        "SELECT skewPop(value) FROM test_series GROUP BY category HAVING skewPop(value) > (SELECT MAX(skewPop(value)) FROM (SELECT value FROM test_series WHERE category IN ('A', 'B')));",
+        "SELECT category, skewPop(value) FROM test_series WHERE value IN (SELECT value FROM test_series WHERE category = 'A' AND value IS NOT NULL) GROUP BY category ORDER BY skewPop(value) DESC;",
+        "SELECT skewPop(value) FROM (SELECT value, category FROM test_series WHERE category IN ('A', 'B') AND (id = 1 OR id = 3)) AS filtered GROUP BY category HAVING category IS NOT NULL;",
+        "SELECT skewPop(COALESCE(value, 0)) FROM test_series WHERE value IN (SELECT value FROM test_series WHERE category = 'D') GROUP BY category HAVING category = 'D' OR category IS NULL;"
+    ]
+}

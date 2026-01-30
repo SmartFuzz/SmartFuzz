@@ -1,0 +1,17 @@
+{
+    "function": "listagg(col_expr)",
+    "operator": "<>",
+    "sql_array": [
+        "CREATE TABLE test_agg (id INT, value VARCHAR(50), num_value INT);",
+        "INSERT INTO test_agg (id, value, num_value) VALUES (1, 'A', 10), (2, 'B', 20), (3, NULL, 30), (4, 'A', 10), (5, 'C', 20), (6, '', 40);",
+        "SELECT id, listagg(value) <> 'A,B' AS unequal_values FROM test_agg GROUP BY id HAVING id <> 3;",
+        "SELECT id, listagg(value) = listagg(COALESCE(value, 'Unknown')) AS comparison FROM test_agg GROUP BY id HAVING comparison <> FALSE;",
+        "SELECT id, listagg(value) FROM (SELECT DISTINCT id, CONCAT(value, ' - ', num_value) AS combined_value FROM test_agg WHERE num_value IS NOT NULL) AS subquery GROUP BY id HAVING listagg(value) <> 'Unknown - 0';",
+        "SELECT id, listagg(value) <> (SELECT listagg(value) FROM test_agg WHERE id <> 3) FROM test_agg GROUP BY id;",
+        "SELECT a.id, listagg(a.value) AS combined_values FROM test_agg a JOIN test_agg b ON a.num_value <> b.num_value WHERE a.value <> b.value GROUP BY a.id HAVING listagg(a.value) IS NOT NULL AND combined_values <> '';",
+        "SELECT id, listagg(value) FROM (SELECT id, value FROM test_agg WHERE num_value > 0) AS filtered GROUP BY id HAVING listagg(value) <> '' AND listagg(value) IS NOT NULL;",
+        "SELECT listagg(value) FROM (SELECT id, value FROM test_agg WHERE id >= 0) AS subquery WHERE id <> 2 GROUP BY id HAVING COALESCE(listagg(value), '') <> 'A,B';",
+        "CREATE TEMPORARY TABLE temp_test AS SELECT id, value FROM test_agg WHERE num_value < 30;",
+        "SELECT id, listagg(value) <> (SELECT listagg(value) FROM temp_test) FROM temp_test AS t GROUP BY id HAVING listagg(value) <> NULL;"
+    ]
+}

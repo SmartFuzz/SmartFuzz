@@ -1,0 +1,18 @@
+{
+    "function": "DB.DBA.RDF_64BIT_UPGRADE",
+    "operator": "XML Operator: xml_tree_doc",
+    "sql_array": [
+        "CREATE TABLE rdf_data (id INT, iri_id INT, data XML);",
+        "INSERT INTO rdf_data (id, iri_id, data) VALUES (1, 1000000000, '<root><a>1</a></root>');",
+        "INSERT INTO rdf_data (id, iri_id, data) VALUES (2, NULL, '<root><b>2</b></root>');",
+        "INSERT INTO rdf_data (id, iri_id, data) VALUES (3, 4294967295, '<root><c>3</c></root>');",
+        "INSERT INTO rdf_data (id, iri_id, data) VALUES (4, 4294967296, '<root><d>4</d></root>');",
+        "SELECT id, DB.DBA.RDF_64BIT_UPGRADE(iri_id), xml_tree_doc(data) FROM rdf_data WHERE iri_id IS NOT NULL;",
+        "SELECT id, xml_tree_doc(data), COUNT(*) OVER (PARTITION BY iri_id) AS cnt FROM rdf_data WHERE data IS NOT NULL GROUP BY id, data;",
+        "SELECT id, iri_id, xml_tree_doc(data) FROM rdf_data WHERE (iri_id + 1) = 4294967296 ORDER BY xml_tree_doc(data) DESC;",
+        "CREATE TABLE tmp_rdf_data AS SELECT id, DB.DBA.RDF_64BIT_UPGRADE(iri_id) AS upgraded_id, xml_tree_doc(data) AS xml_data FROM rdf_data WHERE data IS NOT NULL;",
+        "SELECT t.id, t.upgraded_id, EXISTS(SELECT 1 FROM rdf_data r WHERE r.iri_id = t.upgraded_id) AS exists_check FROM tmp_rdf_data t;",
+        "SELECT id, COUNT(*) FROM rdf_data GROUP BY iri_id HAVING COUNT(*) > 1;",
+        "SELECT id, xml_tree_doc('<root><value>' || CAST(iri_id AS VARCHAR) || '</value></root>') FROM rdf_data WHERE iri_id BETWEEN 1 AND 4294967296;"
+    ]
+}

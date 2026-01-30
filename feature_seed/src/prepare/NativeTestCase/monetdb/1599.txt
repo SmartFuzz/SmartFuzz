@@ -1,0 +1,8 @@
+START TRANSACTION;
+CREATE TABLE blobs AS SELECT t1.value AS nr, CAST( sys.group_concat( CASE WHEN t2.value IS NOT NULL THEN 'DB' ELSE '' END , '') AS BLOB) AS blb FROM sys.generate_series(0, 1000) AS t1 LEFT JOIN sys.generate_series(0, 1000) AS t2 ON t2.value < t1.value GROUP BY nr ORDER BY nr;
+CREATE TABLE foo(id INT NOT NULL, b BLOB); INSERT INTO foo SELECT nums.value AS id, blobs.blb AS b FROM sys.generate_series(0, 1000000) AS nums LEFT OUTER JOIN blobs ON nums.value % 1000 = blobs.nr AND nums.value % 3 <> 2 ORDER BY id;
+SELECT 'nulls', COUNT(*), NULL FROM foo WHERE (b IS NULL) <> (id % 3 = 2);
+SELECT 'lengths', COUNT(*), NULL FROM foo WHERE b IS NOT NULL AND id % 1000 <> length(b);
+SELECT 'blob6', NULL, b FROM foo WHERE id = 6;
+SELECT 'nulls', COUNT(*), NULL FROM foo WHERE (b IS NULL) <> (id % 3 = 2) UNION SELECT 'lengths', COUNT(*), NULL FROM foo WHERE b IS NOT NULL AND id % 1000 <> length(b) UNION SELECT 'blob6', NULL, b FROM foo WHERE id = 6;
+ROLLBACK;

@@ -1,0 +1,8 @@
+CREATE TABLE test_time_window (event_time DateTime, value Int32, flag Nullable(Int8)) ENGINE = MergeTree() ORDER BY event_time;
+INSERT INTO test_time_window (event_time, value, flag) VALUES (now() - INTERVAL '2' DAY, 10, 1), (now() - INTERVAL '1' DAY, 20, NULL), (now(), 30, 1);
+SELECT hopStart(event_time, INTERVAL '1' DAY, INTERVAL '2' DAY) AS hop_lower, (value > 15 AND flag IS NOT NULL) AS valid_flag FROM test_time_window WHERE valid_flag = 1;
+SELECT hopStart(event_time, INTERVAL '1' HOUR, INTERVAL '5' DAY) FROM (SELECT event_time, (value * NULLIF(flag, 0)) AS adjusted_value FROM test_time_window) WHERE adjusted_value > 0;
+SELECT event_time, SUM(value) FROM (SELECT hopStart(event_time, INTERVAL '30' MINUTE, INTERVAL '2' HOUR) AS window_start, value, (flag IS NULL) AS is_null_flag FROM test_time_window) GROUP BY window_start HAVING is_null_flag = 1;
+SELECT hopStart(event_time, INTERVAL '1' MONTH, INTERVAL '1' YEAR) AS monthly_hop, AVG(value) FROM test_time_window WHERE value < 25 AND (flag AND flag IS NOT NULL) GROUP BY monthly_hop ORDER BY monthly_hop;
+CREATE TEMPORARY TABLE temp_test AS SELECT event_time, (hopStart(event_time, INTERVAL '7' DAY, INTERVAL '30' DAY)) AS window_start FROM test_time_window;
+SELECT * FROM temp_test WHERE window_start IS NOT NULL AND (hopStart(event_time, INTERVAL '1' DAY, INTERVAL '3' DAY) IS NOT NULL AND flag = 1);

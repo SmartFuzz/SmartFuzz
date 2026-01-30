@@ -1,0 +1,15 @@
+CREATE TABLE urls (id SERIAL PRIMARY KEY, url CLOB);
+INSERT INTO urls (url) VALUES ('http://example.com');
+INSERT INTO urls (url) VALUES ('https://test.example.com/path');
+INSERT INTO urls (url) VALUES ('ftp://ftp.example.org');
+SELECT sys.getdomain(url) AS domain FROM urls WHERE sys.getdomain(url) IS NOT NULL;
+SELECT id, sys.getdomain(url) FROM urls WHERE sys.getdomain(url) <= 'org';
+SELECT url, sys.getdomain(url) AS domain FROM urls HAVING domain IS NULL OR domain <= 'com';
+SELECT url FROM urls WHERE sys.getdomain(url) <= (SELECT sys.getdomain(url) FROM urls WHERE id = 1);
+CREATE TABLE test_data (num_col INT, text_col CLOB DEFAULT NULL);
+INSERT INTO test_data (num_col, text_col) VALUES (1, NULL);
+SELECT num_col, sys.getdomain(LOWER(text_col)) AS domain FROM test_data WHERE text_col IS NOT NULL AND sys.getdomain(text_col) <= 'example.com';
+SELECT url FROM urls WHERE EXISTS (SELECT 1 FROM test_data WHERE test_data.num_col <= (SELECT COUNT(*) FROM urls));
+SELECT sys.getdomain(url) FROM urls JOIN test_data ON num_col <= (SELECT COUNT(*) FROM urls WHERE sys.getdomain(url) IS NOT NULL) GROUP BY sys.getdomain(url) HAVING COUNT(*) > 1;
+SELECT sys.getdomain(url), COUNT(*) FROM urls GROUP BY sys.getdomain(url) HAVING sys.getdomain(url) IS NOT NULL AND COUNT(*) <= 10;
+SELECT id, sys.getdomain(url) FROM urls ORDER BY CASE WHEN sys.getdomain(url) IS NULL THEN 1 ELSE 0 END, sys.getdomain(url) ASC;

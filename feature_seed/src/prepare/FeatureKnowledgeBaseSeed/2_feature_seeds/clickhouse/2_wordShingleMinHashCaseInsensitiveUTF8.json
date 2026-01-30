@@ -1,0 +1,11 @@
+CREATE TABLE test_strings (id UInt32, content String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_strings VALUES (1, 'ClickHouse® is a powerful analytical database, ideal for real-time analytics.'), (2, 'clickhouse is an open-source database management system.') , (3, NULL), (4, '');
+SELECT id, wordShingleMinHashCaseInsensitiveUTF8(content, 2, 3) AS hashes FROM test_strings WHERE hashes.1 = ALL (SELECT wordShingleMinHashCaseInsensitiveUTF8(content) FROM test_strings WHERE content IS NOT NULL);
+SELECT id, wordShingleMinHashCaseInsensitiveUTF8(content, 1, 5) AS hashes FROM test_strings WHERE LENGTH(content) = ALL (SELECT LENGTH(content) FROM test_strings);
+SELECT id, wordShingleMinHashCaseInsensitiveUTF8(content, 3, 6) AS hashes FROM test_strings WHERE hashes.2 IN (SELECT hashes.2 FROM (SELECT wordShingleMinHashCaseInsensitiveUTF8(content) AS hashes FROM test_strings) AS subquery WHERE hashes.1 IS NOT NULL);
+WITH (SELECT COUNT() FROM test_strings WHERE content IS NOT NULL) AS total_count SELECT id, wordShingleMinHashCaseInsensitiveUTF8(content, 3, 6) AS hashes FROM test_strings HAVING total_count = ALL (SELECT COUNT() FROM test_strings WHERE content = '');
+CREATE TABLE test_comparison (source_id UInt32, target_id UInt32, result UInt8) ENGINE = MergeTree() ORDER BY source_id;
+INSERT INTO test_comparison SELECT id, (SELECT id FROM test_strings WHERE id != test_strings.id ORDER BY id LIMIT 1) AS target_id, (wordShingleMinHashCaseInsensitiveUTF8(content, 3, 6).1 = ALL (SELECT wordShingleMinHashCaseInsensitiveUTF8(content, 3, 6).1 FROM test_strings WHERE content IS NOT NULL)) AS comparison_result FROM test_strings;
+ALTER TABLE test_strings ADD COLUMN verification_result UInt8;
+UPDATE test_strings SET verification_result = (SELECT COUNT() FROM test_strings WHERE content = 'ClickHouse®' AND verification_result IS NULL) WHERE verification_result IS NULL;
+DROP TABLE IF EXISTS temp_shingles;

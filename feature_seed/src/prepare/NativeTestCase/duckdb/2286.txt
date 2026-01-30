@@ -1,0 +1,18 @@
+ATTACH '__TEST_DIR__/test_big_strings_new.db' AS db_v13 (STORAGE_VERSION 'v1.3.0');
+ATTACH '__TEST_DIR__/test_big_strings_old.db' AS db_v1 (STORAGE_VERSION 'v1.0.0');
+USE db_v1;
+USE db_v13;
+PRAGMA force_compression='${compression}';
+CREATE TABLE normal_string (a VARCHAR);
+INSERT INTO normal_string values (repeat('a', 3900)); INSERT INTO normal_string values (repeat('b', 3900)); INSERT INTO normal_string values (repeat('a', 3900)); INSERT INTO normal_string values (repeat('b', 3900));
+checkpoint;
+SELECT list_aggr(str_split(a,''),'min'), list_aggr(str_split(a,''),'min'), strlen(a)  from normal_string;
+SELECT lower(compression)='${compression}' FROM pragma_storage_info('normal_string') WHERE segment_type ILIKE 'VARCHAR' LIMIT 1;
+PRAGMA force_compression='uncompressed';
+CREATE TABLE big_string (a VARCHAR);
+INSERT INTO big_string values (repeat('a', 8000)); INSERT INTO big_string values (repeat('b', 8000)); INSERT INTO big_string values (repeat('a', 8000)); INSERT INTO big_string values (repeat('b', 8000));
+checkpoint;
+SELECT list_aggr(str_split(a,''),'min'), list_aggr(str_split(a,''),'min'), strlen(a)  from big_string;
+SELECT lower(compression) FROM pragma_storage_info('big_string') WHERE segment_type ILIKE 'VARCHAR' LIMIT 1;
+DROP TABLE big_string;
+DROP TABLE normal_string;

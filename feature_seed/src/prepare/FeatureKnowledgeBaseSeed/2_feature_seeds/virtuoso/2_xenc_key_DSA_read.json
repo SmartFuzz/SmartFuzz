@@ -1,0 +1,15 @@
+CREATE TABLE dsa_keys (id SERIAL PRIMARY KEY, key_name VARCHAR(255) NOT NULL, key_data TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO dsa_keys (key_name, key_data) VALUES ('key1', 'MII..skipped..Klmu+tlaA=='), ('key2', 'MII..skipped..B2Nli3kA==');
+SELECT xenc_key_DSA_read(key_name, key_data) FROM dsa_keys WHERE key_name SIMILAR TO 'key%';
+SELECT xenc_key_DSA_read(key_name, key_data) FROM dsa_keys WHERE key_name SIMILAR TO (SELECT CONCAT('key', id) FROM dsa_keys WHERE id < 3);
+SELECT COUNT(*), xenc_key_DSA_read(key_name, key_data) FROM dsa_keys GROUP BY key_name HAVING COUNT(*) > 1 AND key_name SIMILAR TO 'key[0-9]';
+SELECT xenc_key_DSA_read(key_name, key_data) FROM dsa_keys WHERE key_data IS NOT NULL AND key_data SIMILAR TO 'MII..skipped..%';
+SELECT xenc_key_DSA_read(key_name, key_data) AS dsa_key FROM dsa_keys WHERE key_data = (SELECT MAX(key_data) FROM dsa_keys WHERE key_name SIMILAR TO 'key%');
+SELECT xenc_key_DSA_read(key_name, xenc_key_DSA_read(key_name, key_data)) FROM dsa_keys WHERE key_name IS NULL OR key_data IS NULL;
+SELECT xenc_key_DSA_read(key_name, key_data) FROM dsa_keys WHERE LENGTH(key_data) < 10 AND key_data SIMILAR TO 'MII%';
+ALTER TABLE dsa_keys ADD COLUMN is_active BOOLEAN DEFAULT TRUE;
+UPDATE dsa_keys SET is_active = FALSE WHERE key_name SIMILAR TO 'key1';
+CREATE TEMPORARY TABLE temp_keys AS SELECT key_name, key_data FROM dsa_keys WHERE key_name SIMILAR TO 'key[0-9].';
+SELECT xenc_key_DSA_read(key_name, key_data) FROM temp_keys WHERE key_data SIMILAR TO 'MII%';
+SELECT xenc_key_DSA_read(CONCAT(key_name, '_suffix'), key_data) FROM dsa_keys WHERE key_name SIMILAR TO 'key%';
+SELECT xenc_key_DSA_read(key_name, CAST(key_data AS VARCHAR)) FROM dsa_keys WHERE LENGTH(key_data) > 20;

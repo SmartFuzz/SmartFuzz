@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=115962",
+  "title": "Quantified comparison predicate and NOT NOT gives wrong result",
+  "description": "Adding NOT in front of a quantified comparison predicate (e.g. v >ALL (<subquery>)\r\nproperly inverts the result (and makes it equivalent to v <ANY (<subquery>)).\r\n\r\nHowever, extending this to NOT NOT gives a wrong result.\nHow to repeat:\nCREATE TABLE it\r\n (pk    INTEGER PRIMARY KEY,\r\n  low   INTEGER NOT NULL,\r\n  lown  INTEGER,\r\n  mid   INTEGER NOT NULL,\r\n  midn  INTEGER,\r\n  hig   INTEGER NOT NULL,\r\n  hign  INTEGER,\r\n  nulls INTEGER,\r\n  eql   INTEGER NOT NULL,\r\n  eqln  INTEGER\r\n);\r\n\r\nCREATE TABLE ot(\r\n  v INTEGER NOT NULL,\r\n  vn INTEGER);\r\n\r\nINSERT INTO it(pk, low, lown, mid, midn, hig, hign, nulls, eql, eqln) VALUES\r\n (1, 1,    1, 4,    4, 7,    7, NULL, 11,    11),\r\n (2, 2,    2, 5,    5, 8,    8, NULL, 11,    11),\r\n (3, 3, NULL, 5, NULL, 9, NULL, NULL, 11, NULL);\r\n\r\nINSERT INTO ot VALUES (1, 1), (2, NULL);\r\n\r\nSELECT * FROM ot WHERE v >ALL (SELECT eql FROM it);\r\nEmpty set (0.00 sec)\r\n\r\nSELECT * FROM ot WHERE not v >ALL (SELECT eql FROM it);\r\n+---+------+\r\n| v | vn   |\r\n+---+------+\r\n| 1 |    1 |\r\n| 2 | NULL |\r\n+---+------+\r\n2 rows in set (0.00 sec)\r\n\r\nSELECT * FROM ot WHERE not not v >ALL (SELECT eql FROM it);\r\n+---+------+\r\n| v | vn   |\r\n+---+------+\r\n| 1 |    1 |\r\n| 2 | NULL |\r\n+---+------+\r\n2 rows in set (0.00 sec)\nSuggested fix:\nFix the transformations.",
+  "date": "2024-08-29 14:21:00",
+  "vulnerable_version": "5.7",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INTEGER PRIMARY KEY, value INTEGER NOT NULL, nullable_value INTEGER, check_value INTEGER);",
+    "INSERT INTO test_table (id, value, nullable_value, check_value) VALUES (1, 5, NULL, 10), (2, 15, 20, 0), (3, 25, 30, 5);",
+    "CREATE TABLE reference_table (ref_value INTEGER NOT NULL, ref_nullable_value INTEGER);",
+    "INSERT INTO reference_table (ref_value, ref_nullable_value) VALUES (10, NULL), (20, 15), (30, 25);",
+    "SELECT * FROM reference_table WHERE NOT (ref_value > ALL (SELECT check_value FROM test_table WHERE check_value IS NOT NULL));"
+  ],
+  "key_bug_features": [
+    "NOT NOT with quantified comparison predicate gives wrong result"
+  ]
+}

@@ -1,0 +1,10 @@
+CREATE TABLE urls (id SERIAL PRIMARY KEY, url CLOB NOT NULL, created_at TIMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO urls (url) VALUES ('http://example.com/path/to/resource.txt'), ('ftp://files.example.com/directory/file.pdf'), (NULL);
+SELECT sys.getbasename(url) AS base_name, timestamp(3) WITH TIME ZONE created_at FROM urls WHERE created_at IS NOT NULL;
+SELECT u.id, sys.getbasename(u.url) AS base_name, COUNT(*) OVER (PARTITION BY sys.getbasename(u.url)) AS url_count FROM urls u WHERE u.url IS NOT NULL;
+CREATE TABLE logs (log_id SERIAL PRIMARY KEY, log_message CLOB, log_time TIMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO logs (log_message) VALUES ('Test log entry 1'), ('Another log entry'), (NULL);
+SELECT l.log_id, l.log_message, timestamp(3) WITH TIME ZONE log_time, sys.getbasename((SELECT MIN(url) FROM urls WHERE url IS NOT NULL)) AS min_url FROM logs l JOIN urls u ON sys.getbasename(u.url) IS NOT NULL;
+SELECT u.url, sys.getbasename(u.url) AS base_name FROM urls u WHERE sys.getbasename(u.url) IS NOT NULL ORDER BY base_name;
+SELECT sys.getbasename(u.url), COUNT(*) AS count FROM urls u GROUP BY sys.getbasename(u.url) HAVING COUNT(*) > 1;
+SELECT u.url, (SELECT COUNT(*) FROM logs l WHERE timestamp(3) WITH TIME ZONE log_time = CURRENT_TIMESTAMP) AS log_count FROM urls u WHERE u.url IS NOT NULL LIMIT 1;

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/90669",
+  "title": "Protobuf input_format_protobuf_oneof_presence duplicates rows causing LOGICAL_ERROR",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nClickHouse Protobuf reader crashes with \"Invalid number of rows in Chunk\" when input_format_protobuf_oneof_presence=true a\nreproduced from 25.9 version\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nCREATE TABLE string_or_string\n(\n`string1` String,\n`string2` String\n)\nENGINE = MergeTree\nORDER BY tuple();\ninsert into string_or_string values ('str1',''), ('','str2');\nSELECT * FROM string_or_string\nINTO OUTFILE '/var/lib/clickhouse/user_files/myprotos.bin'\nSETTINGS format_schema_source='string',\nformat_schema = 'syntax = \"proto3\";message StringOrString {oneof string_oneof {string string1 = 1;string string2 = 42;}}',\nformat_schema_message_name='StringOrString'\nFORMAT Protobuf;\nSELECT * FROM file('myprotos.bin', Protobuf)\nSETTINGS format_schema_source='string',\nformat_schema = 'syntax = \"proto3\";message StringOrString {oneof string_oneof {string string1 = 1;string string2 = 42;}}',\nformat_schema_message_name='StringOrString';\nSELECT *\nFROM file('myprotos.bin', Protobuf)\nSETTINGS format_schema_source='string',\nformat_schema = 'syntax = \"proto3\";message StringOrString {oneof string_oneof {string string1 = 1;string string2 = 42;}}',\nformat_schema_message_name='StringOrString', input_format_protobuf_oneof_presence = true\n;\nhttps://fiddle.clickhouse.com/875221ae-b46b-4f7f-b066-28fa8c7339ea\n### Expected behavior\nShould indicate which field of protobuf oneof was found by means of setting enum value in a special column\nhttps://github.com/ClickHouse/ClickHouse/issues/76167\n┌─string1─┬─string2─┬─string_oneof_present─┐\n│ str1              │                     │ string1                                  │\n│                       │ str2             │ string2                                  │\n└──────────────────────.─┘\n### Error message and/or stacktrace\nReceived exception from server (version 25.12.1):\nCode: 49. DB::Exception: Received from localhost:9000. DB::Exception: Invalid number of rows in Chunk  String(size = 2) String(size = 2) Int8(size = 4) column Int8 at position 2: expected 2, got 4: (in file/uri /var/lib/clickhouse/user_files/myprotos.bin): While executing ProtobufRowInputFormat: While executing File. (LOGICAL_ERROR)\n(query: SELECT *\nFROM file('myprotos.bin', Protobuf)\nSETTINGS format_schema_source='string',\nformat_schema = 'syntax = \"proto3\";message StringOrString {oneof string_oneof {string string1 = 1;string string2 = 42;}}',\nformat_schema_message_name='StringOrString', input_format_protobuf_oneof_presence = true\n;)\n### Additional context",
+  "date": "2025-11-23T11:44:39Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT UNSIGNED, name VARCHAR(255), value DOUBLE, created_at DATETIME) ENGINE=InnoDB;",
+    "INSERT INTO test_table VALUES (1, 'test1', 1.23, NOW()), (2, 'test2', NULL, NOW()), (3, NULL, 3.45, NOW());",
+    "CREATE TABLE string_or_string (string1 VARCHAR(255), string2 VARCHAR(255));",
+    "INSERT INTO string_or_string VALUES ('str1', ''), ('', 'str2'), (NULL, 'str3');",
+    "SELECT *, IF(string1 IS NOT NULL, 'string1', 'string2') AS string_oneof_present FROM string_or_string;"
+  ],
+  "key_bug_features": [
+    "input_format_protobuf_oneof_presence=true duplicates rows"
+  ]
+}

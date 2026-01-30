@@ -1,0 +1,11 @@
+CREATE TABLE test_data (id SERIAL PRIMARY KEY, num_col DECIMAL(10, 5), other_col VARCHAR(255) NULL);
+INSERT INTO test_data (num_col, other_col) VALUES (NULL, 'A'), (5.0, 'B'), (10.12345, NULL), (3.6, 'C'), (NULL, 'D');
+SELECT sys.stddev_pop(num_col) / (SELECT COUNT(*) FROM test_data WHERE num_col IS NOT NULL) AS normalized_stddev FROM test_data;
+SELECT d.id, d.num_col, sys.stddev_pop(d.num_col) OVER (PARTITION BY d.other_col) / NULLIF(d.num_col, 0) AS stddev_per_value FROM test_data d;
+SELECT AVG(NULLIF(num_col, 0)) AS avg_non_zero, sys.stddev_pop(num_col) / (SELECT COUNT(*) FROM test_data) AS relative_stddev FROM test_data HAVING AVG(num_col) IS NOT NULL;
+CREATE TABLE test_data2 (id SERIAL PRIMARY KEY, val_col DECIMAL(10, 5) NOT NULL);
+INSERT INTO test_data2 (val_col) VALUES (2.5), (NULL), (4.0), (7.5);
+SELECT t1.id, t1.num_col, (SELECT sys.stddev_pop(val_col) FROM test_data2 t2 WHERE t1.num_col > t2.val_col) AS subquery_stddev FROM test_data t1 WHERE EXISTS (SELECT 1 FROM test_data2 t2 WHERE t1.num_col < t2.val_col);
+WITH stddev_values AS (SELECT sys.stddev_pop(num_col) AS pop_stddev FROM test_data) SELECT pop_stddev / (SELECT COUNT(*) FROM test_data) AS normalized_stddev FROM stddev_values;
+SELECT num_col, CASE WHEN num_col IS NULL THEN 'Null Value' ELSE 'Non-Null' END AS status FROM test_data WHERE num_col / 2 > 1;
+SELECT t1.id, sys.stddev_pop(t2.val_col) / (SELECT COUNT(*) FROM test_data t WHERE t.num_col IS NOT NULL) AS conditional_stddev FROM test_data t1 JOIN test_data2 t2 ON (t1.num_col / 2) = (t2.val_col / 2) GROUP BY t1.id, t2.val_col HAVING sys.stddev_pop(t2.val_col) IS NOT NULL;

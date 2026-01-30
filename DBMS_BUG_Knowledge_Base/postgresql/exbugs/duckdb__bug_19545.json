@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/19545",
+  "title": "casting BLOB to VARCHAR oddity",
+  "description": "### What happens?\n\nWhen casting a BLOB that contains only text to VARCHAR, some characters like quotes get lost / replace by the 'quoting representation'. So casting VARCHAR to BLOB and back to VARCHAR does not preserve the text.\n\nIf that is not considered a bug, what would be the way to extract the text from a BLOB-column?\nReal use case is a table from a sqlite3 file, that has text in a column that has no TYPE declared.\n\n### To Reproduce\n\n```\nwith tab(a) as (values ('abc'),('d\"f'),('g''h'))\n  select a, length(a) as l_a, a::BLOB as b, b::VARCHAR as c, length(c) as l_c, a[2] as a2, c[2] as c2, c[3] as c3\n  from tab;\n```\n\n```\n┌─────────┬───────┬────────┬─────────┬───────┬─────────┬─────────┬─────────┐\n│    a    │  l_a  │   b    │    c    │  l_c  │   a2    │   c2    │   c3    │\n│ varchar │ int64 │  blob  │ varchar │ int64 │ varchar │ varchar │ varchar │\n├─────────┼───────┼────────┼─────────┼───────┼─────────┼─────────┼─────────┤\n│ abc     │     3 │ abc    │ abc     │     3 │ b       │ b       │ c       │\n│ d\"f     │     3 │ d\\x22f │ d\\x22f  │     6 │ \"       │ \\       │ x       │\n│ g'h     │     3 │ g\\x27h │ g\\x27h  │     6 │ '       │ \\       │ x       │\n└─────────┴───────┴────────┴─────────┴───────┴─────────┴─────────┴─────────┘\n```\n\n### OS:\n\nLinux x86_64\n\n### DuckDB Version:\n\n1.4.1\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nMarc Gerber\n\n### Affiliation:\n\nprivate\n\n### Did you include all relevant configuration (e.g., CPU architecture, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant data sets for reproducing the issue?\n\nNot applicable - the reproduction does not require a data set",
+  "date": "2025-10-29 20:02:30",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id SERIAL PRIMARY KEY, text_column BYTEA, num_column INTEGER);",
+    "INSERT INTO test_table (text_column, num_column) VALUES (decode('616263', 'hex'), 1), (decode('64226666', 'hex'), 2), (decode('677768', 'hex'), 3);",
+    "SELECT text_column, LENGTH(text_column) AS length_blob, convert_from(text_column, 'UTF8') AS converted_text, LENGTH(convert_from(text_column, 'UTF8')) AS length_converted FROM test_table;",
+    "SELECT id, text_column, convert_from(text_column, 'UTF8') AS converted_text, SUBSTRING(convert_from(text_column, 'UTF8') FROM 1 FOR 1) AS first_char, SUBSTRING(convert_from(text_column, 'UTF8') FROM 2 FOR 1) AS second_char FROM test_table;",
+    "SELECT a.text_column, b.text_column AS b_text_column, convert_from(b.text_column, 'UTF8') AS converted_text FROM (SELECT text_column FROM test_table) AS a JOIN (SELECT text_column FROM test_table) AS b ON a.text_column = b.text_column;"
+  ],
+  "key_bug_features": [
+    "casting BLOB to VARCHAR loses certain characters"
+  ]
+}

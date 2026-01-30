@@ -1,0 +1,20 @@
+{
+    "function": "ascii(string)",
+    "operator": "-",
+    "sql_array": [
+        "CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR, created_at TIMESTAMPTZ, interval_col INTERVAL);",
+        "INSERT INTO test_table (id, name, created_at, interval_col) VALUES (1, '\u03a9', '1992-03-27 01:02:03+00', INTERVAL '5 DAY');",
+        "SELECT id, name, ascii(name) AS ascii_value, created_at - interval_col AS adjusted_time FROM test_table WHERE created_at > TIMESTAMPTZ '1990-01-01 00:00:00' AND ascii(name) IS NOT NULL;",
+        "SELECT id, name, created_at, (SELECT COUNT(*) FROM test_table AS sub WHERE sub.id < test_table.id) AS sub_count FROM test_table WHERE created_at - interval_col < TIMESTAMPTZ '1995-01-01 00:00:00' ORDER BY adjusted_time DESC;",
+        "CREATE TABLE join_table (ref_id INT, value VARCHAR);",
+        "INSERT INTO join_table (ref_id, value) VALUES (1, 'A'), (1, 'B'), (2, 'C');",
+        "SELECT t.id, j.value, ascii(j.value) AS value_ascii FROM test_table AS t JOIN join_table AS j ON t.id = j.ref_id WHERE ascii(j.value) < 66 GROUP BY t.id, j.value HAVING COUNT(*) > 1;",
+        "CREATE TABLE edge_case_table (edge_id INT UNIQUE, str_value VARCHAR);",
+        "INSERT INTO edge_case_table (edge_id, str_value) VALUES (1, ''), (2, '\u03a9');",
+        "SELECT e.edge_id, ascii(e.str_value) - ascii(NULL) AS ascii_difference, created_at - INTERVAL '1 DAY' AS day_ago FROM edge_case_table AS e JOIN test_table AS t ON e.edge_id = t.id WHERE e.str_value IS NOT NULL;",
+        "SELECT id, name, (ascii(name) + 2) - ascii('A') AS ascii_adjusted FROM test_table WHERE id IN (SELECT ref_id FROM join_table GROUP BY ref_id HAVING COUNT(*) > 1);",
+        "DROP TABLE IF EXISTS test_table;",
+        "DROP TABLE IF EXISTS join_table;",
+        "DROP TABLE IF EXISTS edge_case_table;"
+    ]
+}

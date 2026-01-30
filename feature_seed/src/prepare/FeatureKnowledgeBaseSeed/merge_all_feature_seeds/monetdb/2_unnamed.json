@@ -1,0 +1,12 @@
+CREATE TABLE test_table (id INT NOT NULL, val VARCHAR(50), date_col DATE);
+INSERT INTO test_table (id, val, date_col) VALUES (1, '2023-01-01', '2023-01-01'), (2, NULL, '2023-01-02'), (3, '3.14', NULL);
+SELECT id, SUM(CASE WHEN val IS NOT NULL THEN 1 ELSE 0 END) OVER (PARTITION BY id) AS not_null_count FROM test_table WHERE val::FLOAT >= 2;
+SELECT id, AVG(NULLIF(CAST(val AS FLOAT), 0)) OVER (ORDER BY date_col) AS avg_val FROM test_table HAVING avg_val >= 1.0;
+SELECT id, COUNT(*) FROM (SELECT id, val, ROW_NUMBER() OVER (PARTITION BY val ORDER BY id) AS rn FROM test_table WHERE val IS NOT NULL) AS subquery GROUP BY id HAVING rn >= 1;
+SELECT id, COALESCE(MAX(CAST(val AS INT)), -1) AS max_val FROM test_table GROUP BY id HAVING max_val <= 5;
+SELECT id, RANK() OVER (ORDER BY val::DATE) AS date_rank FROM test_table WHERE id >= (SELECT MIN(id) FROM test_table WHERE id < 3);
+SELECT id, COUNT(*) OVER (PARTITION BY val::INT ORDER BY date_col) AS count_val FROM test_table WHERE val IS NOT NULL AND val::INT >= 1;
+SELECT id, MIN(val::FLOAT) AS min_float FROM test_table WHERE val IS NOT NULL GROUP BY id HAVING MIN(val) IS NOT NULL;
+INSERT INTO test_table (id, val, date_col) VALUES (4, '', '2023-01-03'), (5, '5.67', 'invalid_date');
+SELECT DISTINCT id FROM (SELECT id, val, date_col FROM test_table WHERE val IS NULL OR date_col IS NULL) AS missing_data WHERE id >= 2;
+WITH Ranked AS (SELECT id, RANK() OVER (PARTITION BY val ORDER BY date_col) as rank_id FROM test_table) SELECT id FROM Ranked WHERE rank_id >= 2;

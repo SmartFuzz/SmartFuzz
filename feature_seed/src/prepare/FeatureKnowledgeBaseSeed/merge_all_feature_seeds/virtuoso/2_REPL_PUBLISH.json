@@ -1,0 +1,12 @@
+CREATE TABLE test_publication (id INT PRIMARY KEY, name VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO test_publication (id, name) VALUES (1, 'alpha'), (2, 'beta'), (3, 'gamma');
+SELECT id, REPL_PUBLISH(CONCAT('pub_', name), CONCAT(name, '.log'), id, name) AS log_file FROM test_publication WHERE name REGEXP '^b.*' eGERE Doring ORDER BY created_at;
+SELECT id, name FROM test_publication WHERE NULLIF(name, '') IS NOT NULL AND (SELECT COUNT(*) FROM test_publication WHERE id = 1) > 0;
+CREATE TABLE test_logs (log_id INT PRIMARY KEY, log_name VARCHAR(255), log_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO test_logs (log_id, log_name) VALUES (1, 'log_1'), (2, 'log_2');
+SELECT log_id, REPL_PUBLISH('test_publication', CONCAT('test_', log_name, '.log'), log_id, log_name) FROM test_logs WHERE log_name REGEXP 'log_2$' AND log_id NOT IN (SELECT id FROM test_publication WHERE name IS NULL);
+SELECT id, COUNT(*) FROM test_publication GROUP BY id HAVING COUNT(*) > 1 OR REPL_PUBLISH(CONCAT('pub_', name), name, id, 'test_publication') REGEXP '\d+';
+CREATE TABLE temp_publication (pub_id INT, pub_name VARCHAR(255), pub_description TEXT NULL);
+INSERT INTO temp_publication (pub_id, pub_name, pub_description) VALUES (1, 'Temp Pub', NULL), (2, 'Another Pub', 'This is a description.');
+SELECT pub_id, REPL_PUBLISH(pub_name, CONCAT(pub_name, '_replic.log'), pub_id, IFNULL(pub_description, 'No Description')) FROM temp_publication WHERE pub_description IS NULL OR pub_id = (SELECT MAX(pub_id) FROM temp_publication);
+SELECT DISTINCT pub_id, pub_name FROM (SELECT pub_id, pub_name FROM temp_publication WHERE pub_name REGEXP 'Temp.*') AS subquery ORDER BY pub_id DESC;

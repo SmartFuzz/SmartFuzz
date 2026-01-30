@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=102873",
+  "title": "implicit cast WHERE datetime_column = 0 not producing Incorrect DATETIME value",
+  "description": "If NO_ZERO_IN_DATE,NO_ZERO_DATE are enabled zero date in DML where condition works inconsistently for 0 and '0000-00-00 00:00:00'\nHow to repeat:\nset session sql_mode='';\r\ncreate table t(id int auto_Increment primary key, d datetime);\r\ninsert into t (d) values('0000-00-00 00:00:00');\r\n\r\nIn new connection:\r\nmysql> select @@version,@@sql_mode\\G\r\n*************************** 1. row ***************************\r\n @@version: 8.0.22-13\r\n@@sql_mode: ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION\r\n\r\nmysql> begin;\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nmysql> update t set d=NOW() where d= 0;\r\nQuery OK, 1 row affected (0.00 sec)\r\nRows matched: 1  Changed: 1  Warnings: 0\r\n\r\nmysql> rollback;\r\nQuery OK, 0 rows affected (0.28 sec)\r\n\r\nmysql> update t set d=NOW() where d= '0000-00-00 00:00:00';\r\nERROR 1292 (22007): Incorrect datetime value: '0000-00-00 00:00:00' for column 'd' at row 1\r\n\r\nSame for select queries:\r\nmysql> select d = 0 from t;\r\n+-------+\r\n| d = 0 |\r\n+-------+\r\n|     1 |\r\n+-------+\r\n1 row in set (0.00 sec)\r\n\r\nmysql> select * from t where d = 0;\r\n+----+---------------------+\r\n| id | d                   |\r\n+----+---------------------+\r\n|  1 | 0000-00-00 00:00:00 |\r\n+----+---------------------+\r\n1 row in set (0.00 sec)\r\n\r\nmysql> select * from t where d = '0000-00-00 00:00:00';\r\nERROR 1525 (HY000): Incorrect DATETIME value: '0000-00-00 00:00:00'\nSuggested fix:\nDocument implicit cast case or produce same error for datetime_column",
+  "date": "2021-03-09 07:23:00",
+  "vulnerable_version": "8.0.23",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id UInt32, datetime_col DateTime, int_col Int32) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO test_table (datetime_col, int_col) VALUES (toDateTime('0000-00-00 00:00:00'), 0);",
+    "UPDATE test_table SET datetime_col = now() WHERE datetime_col = toDateTime(0);",
+    "SELECT * FROM test_table WHERE datetime_col = toDateTime('0000-00-00 00:00:00');",
+    "SELECT * FROM test_table WHERE int_col IS NULL;"
+  ],
+  "key_bug_features": [
+    "implicit cast in WHERE condition for datetime_column"
+  ]
+}

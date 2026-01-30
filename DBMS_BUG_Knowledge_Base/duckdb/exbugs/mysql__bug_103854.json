@@ -1,0 +1,21 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=103854",
+  "title": "indexes on outer join with subquery causing incorrect response",
+  "description": "When performing an outer join on a subquery, I'm seeing inaccurate results returned, based on the index used to complete the query. When I force a full scan, the correct results are returned.\r\n\r\nIn particular, there are some non-null results returned from an INNER JOIN, that are NULL in the outer join.\nHow to repeat:\nHere's a similar query to what is being run:\r\n\r\nSELECT A.id AS aid, A.entity_id AS entity_id, subquery.id AS bid\r\nFROM A -- force a full scan: USE INDEX ()\r\nLEFT OUTER JOIN (\r\n\tSELECT B.id AS bid, B.organization_id AS organization_id, B.entity_id AS entity_id\r\n\tFROM B\r\n        INNER JOIN C ON C.id = B.entity_id\r\n\tAND B.status = \"ACTIVE\"\r\n        AND C.status = \"ACTIVE\"\r\n) AS subquery ON A.entity_id = subquery.entity_id AND A.organization_id = subquery.organization_id;\r\n\r\nIf the outer join is made an inner join, there are results returned with a non-null value for `bid`. When an outer join is run instead, these rows have null values for `bid`.",
+  "date": "2021-05-30 02:30:00",
+  "vulnerable_version": "5.7.12",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE A (id INTEGER PRIMARY KEY, entity_id INTEGER NOT NULL, organization_id INTEGER NOT NULL);",
+    "CREATE TABLE B (id INTEGER PRIMARY KEY, entity_id INTEGER NOT NULL, organization_id INTEGER NOT NULL, status VARCHAR NOT NULL);",
+    "CREATE TABLE C (id INTEGER PRIMARY KEY, status VARCHAR NOT NULL);",
+    "INSERT INTO A (id, entity_id, organization_id) VALUES (1, 100, 200), (2, 101, 201);",
+    "INSERT INTO B (id, entity_id, organization_id, status) VALUES (1, 100, 200, 'ACTIVE'), (2, 101, 201, 'INACTIVE');",
+    "SELECT A.id AS aid, A.entity_id AS entity_id, subquery.id AS bid FROM A LEFT OUTER JOIN (SELECT B.id AS bid, B.organization_id AS organization_id, B.entity_id AS entity_id FROM B INNER JOIN C ON C.id = B.entity_id WHERE B.status = 'ACTIVE' AND C.status = 'ACTIVE') AS subquery ON A.entity_id = subquery.entity_id AND A.organization_id = subquery.organization_id;"
+  ],
+  "key_bug_features": [
+    "outer join on subquery with index causing incorrect results"
+  ]
+}

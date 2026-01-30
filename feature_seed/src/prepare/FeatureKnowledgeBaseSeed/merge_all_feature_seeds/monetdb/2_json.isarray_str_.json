@@ -1,0 +1,17 @@
+CREATE TABLE test_json (id INT PRIMARY KEY, data JSON);
+INSERT INTO test_json (id, data) VALUES (1, '[1, 2, 3]'), (2, '[4, 5]'), (3, NULL);
+CREATE TABLE test_inet (id INT PRIMARY KEY, ip INET);
+INSERT INTO test_inet (id, ip) VALUES (1, '192.168.1.1'), (2, '192.168.1.0/24'), (3, NULL);
+SELECT j.id, json.isarray(j.data) AS is_array, i.ip FROM test_json j, test_inet i WHERE json.isarray(j.data) = TRUE AND (i.ip <<= inet '192.168.1.0/24');
+SELECT COUNT(*) FROM (SELECT j.id, json.isarray(j.data) AS is_array FROM test_json j HAVING is_array = TRUE) AS filtered_json;
+SELECT DISTINCT j.id FROM test_json j WHERE json.isarray(j.data) IS NULL OR json.isarray(j.data) = TRUE ORDER BY j.id;
+SELECT j.id, ARRAY_AGG(j.data) AS data_array FROM test_json j GROUP BY j.id HAVING json.isarray(data_array);
+SELECT j.id, COUNT(*) OVER (PARTITION BY json.isarray(j.data)) AS array_count FROM test_json j;
+SELECT j.id, json.isarray(j.data) AS is_array FROM test_json j JOIN test_inet i ON json.isarray(j.data) AND i.ip <<= inet '192.168.1.0/24';
+SELECT j.id, (SELECT COUNT(*) FROM test_inet i WHERE i.ip IS NOT NULL) AS valid_ips FROM test_json j WHERE json.isarray(j.data) IS TRUE GROUP BY j.id HAVING valid_ips > 0;
+SELECT j.id, COALESCE(json.isarray(j.data), FALSE) AS array_check FROM test_json j WHERE json.isarray(j.data) IS TRUE OR json.isarray(j.data) IS FALSE;
+SELECT COUNT(*) FROM test_json j WHERE json.isarray(NULLIF(j.data, ''));
+SELECT j.id FROM (SELECT id, json.isarray(data) AS is_array FROM test_json) AS sub_query WHERE is_array = FALSE OR is_array IS NULL;
+ALTER TABLE test_json ADD COLUMN updated_at TIMESTAMP DEFAULT NOW();
+SELECT j.id, updated_at FROM test_json j WHERE json.isarray(j.data) OR updated_at IS NULL;
+DROP TABLE test_inet;

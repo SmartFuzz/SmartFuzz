@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/58810",
+  "title": "Inconsistent Behavior When Comparing CHAR Column with Binary Values",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n```sql\ndrop table if exists t;\ncreate table t (a char(20) charset utf8mb4, b char(20) charset gbk, c binary(20));\ninsert into t values ('一', '一', 0xe4b880);\ninsert into t values ('一', '一', 0xd2bb);\ninsert into t values ('一', '一', 0xe4ba8c);\ninsert into t values ('一', '一', 0xb6fe);\nselect * from t where a >= 0xb6fe and a <= 0xb6fe; -- error\nselect * from t where a between 0xb6fe and 0xb6fe; -- empty set\n```\n\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\nBoth sql statements return the same result.\n### 3. What did you see instead (Required)\n```sql\ntidb> select * from t where a >= 0xb6fe and a <= 0xb6fe;\nERROR 1105 (HY000): Cannot convert string '\\xB6\\xFE' from binary to utf8mb4\ntidb> select * from t where a between 0xb6fe and 0xb6fe;\nEmpty set, 2 warnings (0.00 sec)\n\ntidb> show warnings;\n+---------+------+---------------------------------------------------------+\n| Level   | Code | Message                                                 |\n+---------+------+---------------------------------------------------------+\n| Warning | 3854 | Cannot convert string '\\xB6\\xFE' from binary to utf8mb4 |\n| Warning | 3854 | Cannot convert string '\\xB6\\xFE' from binary to utf8mb4 |\n+---------+------+---------------------------------------------------------+\n2 rows in set (0.00 sec)\n```\n\n\n### 4. What is your TiDB version? (Required)\nmaster\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "date": "2025-01-08T15:28:52Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS test_table;",
+    "CREATE TABLE test_table (id INTEGER PRIMARY KEY, name TEXT, value BLOB);",
+    "INSERT INTO test_table (id, name, value) VALUES (1, '测试', X'E8AF95');",
+    "INSERT INTO test_table (id, name, value) VALUES (2, '测试', X'E4B8ADE');",
+    "SELECT * FROM test_table WHERE name >= X'E4B8ADE' AND name <= X'E4B8ADE';"
+  ],
+  "key_bug_features": [
+    "Comparing CHAR column with binary values causes errors"
+  ]
+}

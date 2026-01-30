@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7413",
+  "title": "MonetDB server crashes in `BATcalcbetween_intern`",
+  "description": "MonetDB server crashes in `BATcalcbetween_intern`.\n\n**To Reproduce**\n```sql\nCREATE TABLE v0 ( v1 oid ) ; \n INSERT INTO v0 ( v1 ) VALUES ( NULL ) , ( 3 ) , ( 46 ) , ( 10 ) , ( 1 ) ; \n DELETE FROM v0 WHERE v1 <= ( SELECT 2 AS zero WHERE ( v1 BETWEEN 1 AND ( SELECT MAX ( v1 ) FROM v0 name ) ) >= v1 ) ;  \n```\n\n**Backtrace of the Crash**\n```c\n#0 0x7f7f51281dbc (BATcalcbetween_intern+0x14b1c)\n#1 0x7f7f5128ea68 (BATcalcbetweencstbat+0x668)\n#2 0x7f7f50d97df8 (CMDbatBETWEEN+0x788)\n#3 0x7f7f50c0f29f (runMALsequence+0xf0f)\n#4 0x7f7f50c14933 (DFLOWworker+0x4a3)\n#5 0x7f7f51a968a7 (thread_starter+0xc7)\n#6 0x7f7f505b1609 (start_thread+0xd9)\n#7 0x7f7f504d4133 (clone+0x43)\n```\n\n**Software versions**\n - MonetDB version number: v11.47.11 (Jun2023-SP2)\n - OS and version: Ubuntu 20.04\n - From docker image monetdb/monetdb:Jun2023-SP2\n\nAn example of steps to reproduce in docker container (**write the poc into /tmp/test.sql first**):\n```bash\ndocker container rm monetdb_test -f                                 # remove the old one\ndocker run -e MDB_DB_ADMIN_PASS=monetdb --name monetdb_test -itd monetdb/monetdb:Jun2023-SP2\n                                                                    # start monetdb in docker\ndocker exec monetdb_test bash -c 'echo -n -e \"user=monetdb\\npassword=monetdb\\n\" > /root/.monetdb'\n                                                                    # set username and password\nsleep 10                                                            # wait the server start\ndocker exec monetdb_test bash -c \"grep '/usr/bin/[m]server5' /proc/*/cmdline -lR\"\n                                                                    # check the existence of mserver5 process\ncat /tmp/test.sql | docker exec -i monetdb_test mclient monetdb     # run test case\ndocker exec monetdb_test bash -c \"grep '/usr/bin/[m]server5' /proc/*/cmdline -lR\" || { echo \"[CRASH] Mserver5 process does NOT exist.\"; exit 1; }\n                                                                    # check the existence of mserver5 process\necho \"[INFO] Server normal.\"\n```\n\nIt can also be reproduced on MonetDB Dec2023_root, self-compiled by `CC=clang-12 CXX=clang++-12 cmake /root/monetdb -DCMAKE_BUILD_TYPE=RelWithDebInfo`.\n\n**Issue labeling**\nbug",
+  "date": "2023-11-15T16:34:18Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE TABLE v1 ( v2 integer, v3 varchar(50), v4 date );",
+    "INSERT INTO v1 ( v2, v3, v4 ) VALUES ( NULL, 'test1', '2023-01-01' ), ( 5, 'test2', NULL ), ( 10, 'test3', '2023-01-03' );",
+    "DELETE FROM v1 WHERE v2 BETWEEN (SELECT MIN(v2) FROM v1 WHERE v3 IS NOT NULL) AND (SELECT MAX(v2) FROM v1 WHERE v4 IS NULL);",
+    "CREATE TABLE v5 ( v6 integer, v7 float );",
+    "INSERT INTO v5 ( v6, v7 ) VALUES ( NULL, 1.5 ), ( 2, NULL ), ( 3, 3.5 );"
+  ],
+  "key_bug_features": [
+    "DELETE operation with BETWEEN clause on NULL values"
+  ]
+}

@@ -1,0 +1,13 @@
+CREATE TABLE xml_data (id INT, schema_uri VARCHAR(255), xml_content XMLType);
+INSERT INTO xml_data VALUES (1, NULL, XMLType('<data><value>0</value></data>')), (2, 'file://xmlschema/test/valid.xsd', XMLType('<data><value>1</value></data>'));
+SELECT id, XMLType.isSchemaBased(xml_content) AS is_schema_based FROM xml_data WHERE schema_uri IS NOT NULL;
+SELECT id FROM xml_data WHERE XMLType.isSchemaBased(xml_content) > 0;
+SELECT id, COUNT(*) OVER (PARTITION BY XMLType.isSchemaBased(xml_content)) AS counts FROM xml_data;
+SELECT id FROM xml_data WHERE XMLType.isSchemaBased(xml_content) > (SELECT COUNT(*) FROM xml_data WHERE id < 3);
+SELECT id, XMLType.isSchemaBased(XMLType('<data><value>' || TO_CHAR(id) || '</value></data>')) AS dynamic_schema FROM xml_data;
+SELECT id FROM xml_data WHERE XMLType.isSchemaBased(xml_content) > 0 AND id IN (SELECT id FROM xml_data WHERE schema_uri IS NOT NULL) HAVING COUNT(*) > 1;
+WITH xml_info AS (SELECT id, XMLType.isSchemaBased(xml_content) AS is_schema_based FROM xml_data) SELECT COUNT(*) FROM xml_info WHERE is_schema_based = 1;
+CREATE TABLE temp_xml (col1 VARCHAR(100), col2 INT, col3 XMLType);
+INSERT INTO temp_xml VALUES (NULL, 100, XMLType('<temp><val>test</val></temp>')), (NULL, NULL, XMLType('<temp><val>test2</val></temp>'));
+SELECT COUNT(*) FROM (SELECT col1, XMLType.isSchemaBased(col3) FROM temp_xml WHERE col2 IS NOT NULL) AS derived WHERE col1 IS NULL;
+SELECT col2 FROM temp_xml WHERE XMLType.isSchemaBased(col3) < (SELECT MIN(col2) FROM temp_xml WHERE col2 IS NOT NULL);

@@ -1,0 +1,10 @@
+CREATE TABLE procedures (id INT PRIMARY KEY, name VARCHAR(255), coverage_data ARRAY);
+INSERT INTO procedures (id, name, coverage_data) VALUES (1, 'proc_test', ARRAY[NULL, 1, 2, 3, 4]);
+SELECT pldbg_stats_load(ARRAY[SELECT bif:sha1(CONCAT(name, CAST(id AS VARCHAR))) FROM procedures WHERE id = 1]);
+SELECT bif:sha1(CONCAT('Coverage: ', pldbg_stats_load(ARRAY[1]))), COUNT(*) FROM procedures GROUP BY name HAVING COUNT(*) > 0;
+CREATE TABLE coverage_checks (check_id INT PRIMARY KEY, procedure_id INT, check_value VARCHAR(255), FOREIGN KEY (procedure_id) REFERENCES procedures(id));
+INSERT INTO coverage_checks (check_id, procedure_id, check_value) VALUES (1, 1, 'Test Value');
+SELECT pc.check_value, pldbg_stats_load(ARRAY[pc.check_value]) FROM coverage_checks pc JOIN procedures p ON pc.procedure_id = p.id WHERE p.coverage_data IS NOT NULL;
+SELECT bif:sha1(COALESCE(MAX(NULL), 'default')), AVG(check_id) FROM coverage_checks GROUP BY check_value HAVING AVG(check_id) > 0;
+SELECT bif:sha1(CONCAT(pldbg_stats_load(ARRAY[1]), ':', bif:sha1('test'))), p.id FROM procedures p WHERE name IS NOT NULL;
+DROP TABLE procedures;

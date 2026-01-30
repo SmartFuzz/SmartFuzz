@@ -1,0 +1,28 @@
+{
+  "url": "https://github.com/oceanbase/oceanbase/issues/1946",
+  "title": "[Bug]: `truncate`返回了预期之外的类型，导致`select distinct`出现预期之外的结果",
+  "vulnerable_database": "oceanbase",
+  "date": "2024-05-01T07:30:03Z",
+  "vulnerable_version": "Unknown",
+  "description": "master分支版本，`truncate`返回了预期之外的类型，导致`select distinct`出现预期之外的结果。",
+  "poc": [
+    "select truncate(round(cast(3233656 %(1) as signed)),1);",
+    "select distinct出现预期之外的结果\r\n\r\n\r\n```\r\nmysql> SELECT\r\n    ->   ref_0.c_bg9krh as c0\r\n    -> FROM\r\n    ->   t_qch as ref_0\r\n    -> \r\n    -> UNION\r\n    -> (SELECT DISTINCT\r\n    ->   truncate(\r\n    ->       cast(round(\r\n    ->         cast(cast((3233656 % ref_1.c3) as signed) as signed)) as signed), \r\n    ->       cast(ref_1.c2 as signed)) as c0\r\n    -> FROM\r\n    ->   t_a_ez9jc59 as ref_1)\r\n    -> ORDER BY\r\n    ->   c0 \r\n    -> LIMIT 117;",
+    "desc t_qch;",
+    "DROP TENANT mysql FORCE;",
+    "DROP RESOURCE POOL pool_for_tenant_mysql;",
+    "CREATE RESOURCE UNIT 4c7g MAX_CPU 4, MIN_CPU 4, MEMORY_SIZE '7G';",
+    "create resource pool pool_test unit='4c7g', unit_num=1, zone_list=('zone1' ,'zone2', 'zone3');",
+    "create tenant test resource_pool_list=('pool_test'), primary_zone='RANDOM',comment 'test tenant', charset='utf8' set ob_tcp_invited_nodes='%', recyclebin=OFF, ob_query_timeout=5000000;"
+  ],
+  "key_bug_features": [
+    "truncate returns unexpected type affecting select distinct results"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t_test (id INT PRIMARY KEY, value DECIMAL(10, 2), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t_test (id, value) VALUES (1, 123.45), (2, NULL), (3, 678.90);",
+    "SELECT DISTINCT TRUNCATE(ROUND(CAST(value AS SIGNED)), 1) AS truncated_value FROM t_test WHERE value IS NOT NULL;",
+    "CREATE TABLE t_subquery (ref_id INT, ref_value DECIMAL(10, 2));",
+    "INSERT INTO t_subquery (ref_id, ref_value) SELECT id, value FROM t_test WHERE value IS NOT NULL;"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+    "function": "Syntax",
+    "operator": "x -> expr",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, name String, created_at DateTime, score Float64, data Array(Int32));",
+        "INSERT INTO test_table VALUES (1, 'Alice', '2023-01-01 10:00:00', 95.5, [1, 2, 3]), (2, 'Bob', '2023-01-02 11:00:00', NULL, [4, 5]), (3, NULL, '2023-01-03 09:00:00', 76.4, []);",
+        "CREATE TABLE test_table_2 (id UInt32, value String DEFAULT 'Default', timestamp DateTime DEFAULT now());",
+        "INSERT INTO test_table_2 VALUES (1, 'test'), (2, NULL), (3, 'example');",
+        "SELECT x -> remote('127.0.0.1', 'test_table_2', 'default_user', 'password', 'sharding_key') AS remote_query_result FROM (SELECT id, name, created_at, score FROM test_table WHERE score IS NOT NULL);",
+        "SELECT score, x -> (score + 1) AS increased_score FROM test_table WHERE score IS NOT NULL HAVING increased_score > 100;",
+        "SELECT id, name, created_at, score, remote('127.0.0.1', 'test_table', 'test_db') AS remote_row FROM test_table JOIN (SELECT id, MAX(score) AS max_score FROM test_table GROUP BY id HAVING max_score > 90) AS filtered ON test_table.id = filtered.id;",
+        "SELECT id, name, created_at, score, x -> remote('127.0.0.1', 'test_table', 'test_db') + toFloat64(NULL) AS modified_score FROM test_table;",
+        "SELECT name, COUNT(*) AS cnt FROM test_table WHERE created_at > now() - INTERVAL 30 DAY GROUP BY name HAVING cnt > (SELECT AVG(COUNT(*)) FROM test_table GROUP BY name);",
+        "CREATE TABLE test_table_3 (id UInt32, data Nullable(Int32), metadata String DEFAULT 'No Data', created_at DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table_3 VALUES (1, NULL, 'First'), (2, 100, 'Second'), (3, NULL, 'Third');",
+        "SELECT name, remote('192.168.1.1', 'test_table_3', 'admin_user') AS remote_info FROM test_table JOIN test_table_3 ON test_table.id = test_table_3.id WHERE test_table_3.data IS NULL ORDER BY test_table.created_at;",
+        "DELETE FROM test_table WHERE score < 80;"
+    ]
+}

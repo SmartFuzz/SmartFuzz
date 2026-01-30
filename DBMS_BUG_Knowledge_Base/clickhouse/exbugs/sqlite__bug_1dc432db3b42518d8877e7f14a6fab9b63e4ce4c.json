@@ -1,0 +1,19 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/1dc432db3b",
+  "title": "FTS4 integrity-check results in \"database disk image is malformed\" for UTF-16 encoding",
+  "description": "mrigger added on 2019-12-27 11:08:03:\nConsider the following test case:\nPRAGMA encoding = 'UTF-16';\nCREATE VIRTUAL TABLE vt0 USING fts4(c0);\nINSERT INTO vt0 VALUES ('﻿');\nINSERT INTO vt0(vt0) VALUES('integrity-check'); -- database disk image is malformed\nUnexpectedly, the integrity check indicates an error. It seems that FTS5 is not affected.\ndan added on 2019-12-27 14:14:52:\nThe INSERT in the script above is equivalent to this:\nINSERT INTO vt0 VALUES (CAST(X'FEFF' AS TEXT));\nIn utf-16, the sequence 0xFE 0xFF is a BOM - a byte-order-mark. SQLite leaves this byte sequence unchanged when it converts the text value to utf-16 to pass to FTS4. Then FTS4 tokenizes it. But, when FTS4 binds the value to a statement to insert into the %_content table, SQLite strips the BOM away before writing the value to disk. Then, when the integrity check is run, the contents of the FTS index are slightly different to the index that would be produced by rebuilding based on the contents of the %_content table. Hence the error.\ndan added on 2019-12-27 14:16:15:\nThe unicode61 tokenizer handles this, as it ignores the BOM. But the default tokenizer (\"simple\") fails as above.\nmrigger added on 2020-01-29 10:10:51:\nI noticed that this bug report is still open. Will this issue still be addressed?\ndrh added on 2020-01-29 23:19:04:\nThis is an obscure corner case in an obsolete extension that is unlikely to\never be encountered in practice, and a fix is very difficult.  So rather than\nfix it, we merely \ndocument the issue and ask users to avoid the unusual set of circumstances that can\nbring it to pass.  And the circumstances that lead to this problem are quite\nununsual and so we do not believe anybody has ever hit them before or is likely\nto hit them in the furture.  (Unless they are running a fuzzer.  ;-))",
+  "date": "2019-12-27 11:08:035.62 years ago",
+  "vulnerable_version": "3.30.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE vt1 (c1 String, c2 Nullable(Int32));",
+    "INSERT INTO vt1 VALUES (decode('FEFF', 'hex'), NULL);",
+    "INSERT INTO vt1(c1) VALUES ('boundary value');",
+    "SELECT * FROM vt1 WHERE c2 IS NULL;"
+  ],
+  "key_bug_features": [
+    "FTS4 integrity check fails with UTF-16 BOM handling"
+  ]
+}

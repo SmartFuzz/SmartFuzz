@@ -1,0 +1,12 @@
+[
+    "CREATE TABLE IF NOT EXISTS test_table (id UInt32, value String, timestamp DateTime) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO test_table VALUES (1, 'foo', now()), (2, 'bar', now()), (3, 'baz', now());",
+    "CREATE TABLE IF NOT EXISTS s3_table AS SELECT * FROM test_table SETTINGS storage_s3_bucket = 'my-bucket', storage_s3_access_key_id = 'my-key', storage_s3_secret_access_key = 'my-secret';",
+    "SELECT id, value FROM test_table WHERE id IN (SELECT id FROM test_table WHERE value LIKE 'f%') ORDER BY timestamp;",
+    "SELECT t1.id, t1.value FROM test_table t1 JOIN (SELECT id FROM test_table WHERE value = 'bar') t2 ON t1.id = t2.id;",
+    "WITH (SELECT COUNT(*) FROM test_table) AS total FROM test_table HAVING total > 1;",
+    "SELECT t1.id, COUNT(t2.id) as related_count FROM test_table t1 LEFT JOIN test_table t2 ON t1.id = t2.id GROUP BY t1.id HAVING related_count > 0;",
+    "INSERT INTO s3_table SELECT * FROM test_table WHERE timestamp < now() - INTERVAL 30 DAY;",
+    "CREATE TABLE IF NOT EXISTS large_data_table AS SELECT number AS id FROM system.numbers LIMIT 1000000;",
+    "SELECT id FROM large_data_table WHERE id % 10 = 0 UNION SELECT id FROM test_table WHERE id < 2;"
+]

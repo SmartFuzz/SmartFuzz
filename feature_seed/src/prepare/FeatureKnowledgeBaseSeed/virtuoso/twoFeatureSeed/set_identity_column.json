@@ -1,0 +1,18 @@
+{
+    "function": "set_identity_column",
+    "operator": "REGEXP",
+    "sql_array": [
+        "CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR(255), value INT, identity_value INT GENERATED ALWAYS AS IDENTITY);",
+        "INSERT INTO test_table (name, value) VALUES ('test1', 10), ('test2', 20), ('test3', 30);",
+        "SELECT set_identity_column('test_table', 'identity_value', (SELECT MAX(value) FROM test_table WHERE name REGEXP 'test.*'));",
+        "SELECT id, name, value, (SELECT COUNT(*) FROM test_table AS inner_table WHERE inner_table.value > outer_table.value) AS greater_count FROM test_table AS outer_table WHERE name REGEXP '.*2';",
+        "SELECT name, COUNT(*) FROM test_table WHERE value IS NOT NULL GROUP BY name HAVING set_identity_column('test_table', 'identity_value', COUNT(*)) > 0;",
+        "SELECT id, REGEXP_REPLACE(name, 'test', 'example') AS modified_name FROM test_table WHERE identity_value IS NULL;",
+        "UPDATE test_table SET identity_value = set_identity_column('test_table', 'identity_value', value) WHERE name REGEXP '^test3$';",
+        "SELECT id, name, value FROM test_table WHERE REGEXP(name, 'a.*') = TRUE AND set_identity_column('test_table', 'identity_value', 1 + (SELECT COUNT(*) FROM test_table)) IS NOT NULL;",
+        "SELECT value FROM test_table WHERE value > (SELECT MAX(value) FROM test_table WHERE REGEXP(name, 'test.*')) UNION SELECT 0 WHERE NOT EXISTS (SELECT * FROM test_table);",
+        "CREATE TEMPORARY TABLE temp_table AS SELECT name, value FROM test_table WHERE REGEXP(name, 'test.*');",
+        "INSERT INTO temp_table (name, value) VALUES ('temp_test', NULL), (NULL, 50);",
+        "SELECT DISTINCT name, set_identity_column('temp_table', 'value', COALESCE((SELECT MAX(value) FROM temp_table WHERE name REGEXP 'temp.*'), 0)) AS new_identity_value FROM temp_table;"
+    ]
+}

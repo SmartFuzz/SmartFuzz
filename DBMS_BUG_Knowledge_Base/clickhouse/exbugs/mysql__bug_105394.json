@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=105394",
+  "title": "introducer _ucs2 not working",
+  "description": "SELECT HEX(_ucs2\"HELLO\"), HEX(CONVERT(\"HELLO\" USING ucs2));\r\n+-------------------+----------------------------------+\r\n| HEX(_ucs2\"HELLO\") | HEX(CONVERT(\"HELLO\" USING ucs2)) |\r\n+-------------------+----------------------------------+\r\n| 0048454C4C4F      | 00480045004C004C004F             |\r\n+-------------------+----------------------------------+\r\n\r\n_ucs2 seems to apply to only the first character; seems like it should apply to the entire string.\nhttps://stackoverflow.com/questions/69775663/mysql-char-lengthstr-sometimes-produces-diffe...\nHow to repeat:\nSELECT HEX(_ucs2\"HELLO\"), HEX(CONVERT(\"HELLO\" USING ucs2));",
+  "date": "2021-10-31 23:46:00",
+  "vulnerable_version": "all, 5.7, 8.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_strings (id UInt32, str_col String) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO test_strings (str_col) VALUES ('HELLO'), ('WORLD'), ('MYSQL');",
+    "SELECT hex(str_col) AS hex_str_col, hex(reinterpretAsString(str_col)) AS hex_converted FROM test_strings;",
+    "ALTER TABLE test_strings UPDATE str_col = NULL WHERE id = 1;",
+    "SELECT id, length(str_col) AS str_length, hex(reinterpretAsString(str_col)) AS hex_converted FROM test_strings WHERE str_col IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "_ucs2 applies only to the first character"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+    "function": "sys.right_shift(inet, inet)",
+    "operator": "%",
+    "sql_array": [
+        "CREATE TABLE test_inet (id SERIAL PRIMARY KEY, address INET, user_id INT);",
+        "CREATE TABLE user_data (user_id INT PRIMARY KEY, name VARCHAR(100), age INT);",
+        "INSERT INTO test_inet (address, user_id) VALUES (inet '192.168.1/24', 1), (inet '10.0.0/8', 2), (inet '172.16.0/12', NULL);",
+        "INSERT INTO user_data (user_id, name, age) VALUES (1, 'Alice', 25), (2, 'Bob', NULL), (NULL, 'Charlie', 30);",
+        "SELECT ud.name, sys.right_shift(ti.address, inet '192.168.1.3') AS shifted FROM test_inet ti JOIN user_data ud ON ti.user_id = ud.user_id WHERE (sys.right_shift(ti.address, inet '192.168.1.3') IS TRUE OR ud.age IS NULL) GROUP BY ud.name HAVING COUNT(ti.id) % 2 = 0;",
+        "SELECT ud.name, COUNT(*) % 3 AS age_mod FROM user_data ud LEFT JOIN test_inet ti ON ud.user_id = ti.user_id WHERE (ti.address IS NULL OR sys.right_shift(ti.address, inet '10.0.0.5')) GROUP BY ud.name HAVING age_mod > 0 ORDER BY age_mod DESC;",
+        "SELECT ti1.address FROM test_inet ti1 WHERE ti1.user_id IN (SELECT ti2.user_id FROM test_inet ti2 WHERE sys.right_shift(ti2.address, inet '172.16.0.5') IS TRUE AND (ti2.user_id IS NOT NULL OR ti2.address IS NOT NULL)) AND ti1.user_id IS NOT NULL;",
+        "SELECT sys.right_shift(ti.address, inet '192.168.1.5') FROM test_inet ti WHERE ti.address IS NOT NULL AND (5 % (SELECT COUNT(*) FROM user_data) > 0);",
+        "SELECT ud.name FROM user_data ud WHERE ud.age IS NOT NULL AND ud.user_id IN (SELECT ti.user_id FROM test_inet ti WHERE ti.address IS NOT NULL AND sys.right_shift(ti.address, inet '192.168.2.1')) ORDER BY sys.right_shift(ti.address, inet '192.168.2.1') DESC;",
+        "ALTER TABLE user_data ADD CONSTRAINT chk_age CHECK (age >= 0);",
+        "DROP TABLE IF EXISTS temp_inet;",
+        "CREATE TEMP TABLE temp_inet AS SELECT address FROM test_inet WHERE sys.right_shift(address, inet '192.168.1.1') = TRUE;"
+    ]
+}

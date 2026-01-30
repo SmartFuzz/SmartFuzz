@@ -1,0 +1,21 @@
+{
+  "url": "https://www.postgresql.org/message-id/19116-079f845bd20241db%40postgresql.org",
+  "title": "BUG #19116: Lost concurrent updates using ctid - as per doc guidance",
+  "description": "The following bug has been logged on the website:\nBug reference:      19116\nLogged by:          Bernice Southey\nEmail address:      bernice(dot)southey(at)gmail(dot)com\nPostgreSQL version: 18.1\nOperating system:   Linux Mint 22.2\nDescription:\nHere's a contrived exampled to reproduce. (The advisory locks are to force\nconcurrency.)\n--session 1\nCREATE TABLE t(p BOOL, q BOOL);\nINSERT INTO t DEFAULT VALUES;\nSELECT pg_advisory_lock(1);\n--session 2\nSELECT pg_advisory_lock_shared(1);\nSELECT pg_advisory_unlock_shared(1);\nWITH lock_t AS (SELECT ctid FROM t FOR UPDATE)\nUPDATE t SET p = TRUE FROM lock_t l WHERE t.ctid = l.ctid\nRETURNING p, q, t.ctid;\n--session 3\nSELECT pg_advisory_lock_shared(1);\nSELECT pg_advisory_unlock_shared(1);\nWITH lock_t AS (SELECT ctid FROM t FOR UPDATE)\nUPDATE t SET q = TRUE FROM lock_t l WHERE t.ctid = l.ctid\nRETURNING p, q, t.ctid;\n--session 1\nSELECT pg_advisory_unlock(1);\nOnly one of the updates succeeds. If using a standard column, instead of\nctid, then both updates succeed.\nI was using a similar approach to the one advised in the UPDATE doc final\nexample[1]. This guidance was added in PostgreSQL 17 (see [2] for the\ndiscussion). This wouldn't matter as used in the example, as subsequent\nupdates will find the lost updates. But it does matter, if this approach is\nused to update a sync record (e.g. a balance).\nI first thought this was the same issue as here [3] and wrote a post asking\nfor confirmation in the general mailing list. But I've now established that\npatch was released in 17.7. I'm logging a bug because I think the doc\nguidance might be dangerous.\nI can reproduce this in:\nPostgreSQL 18.1 (Ubuntu 18.1-1.pgdg24.04+2) on x86_64-pc-linux-gnu, compiled\nby gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0, 64-bit\nPostgreSQL 17.6 (Debian 17.6-2.pgdg13+1) on x86_64-pc-linux-gnu, compiled by\ngcc (Debian 14.2.0-19) 14.2.0, 64-bit\n1 [\nhttps://www.postgresql.org/docs/current/sql-update.html\n]\n2\n[\nhttps://www.postgresql.org/message-id/flat/CADkLM%3DcaNEQsUwPWnfi2jR4ix99E0EJM_3jtcE-YjnEQC7Rssw%40mail.gmail.com\n]\n3\n[\nhttps://www.postgresql.org/message-id/flat/4a6268ff-3340-453a-9bf5-c98d51a6f729%40app.fastmail.com\n]",
+  "date": "2025-11-17 14:31:11",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE t(p INTEGER, q INTEGER, r TEXT DEFAULT 'default');",
+    "INSERT INTO t(p, q) VALUES (NULL, 1);",
+    "SELECT 1;",
+    "-- Simulating advisory lock with a dummy query;",
+    "UPDATE t SET q = q + 1 WHERE p IS NULL;",
+    "UPDATE t SET r = 'updated' WHERE rowid = (SELECT rowid FROM t LIMIT 1);"
+  ],
+  "key_bug_features": [
+    "Lost concurrent updates using ctid with advisory locks"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+    "function": "welchTTest",
+    "operator": "a != ANY (subquery)",
+    "sql_array": [
+        "CREATE TABLE welch_ttest (id UInt32, sample_data Float64, sample_index Int8) ENGINE = Memory;",
+        "INSERT INTO welch_ttest VALUES (1, 10.5, 0), (2, 25.3, 0), (3, 10.1, 1), (4, 30.5, 1), (5, 40.0, 1);",
+        "SELECT welchTTest(welch_ttest.sample_data, welch_ttest.sample_index) FROM welch_ttest WHERE id != ANY (SELECT id FROM welch_ttest WHERE sample_data < 15);",
+        "CREATE TABLE test_data (val Int32, str_val String) ENGINE = MergeTree() ORDER BY val;",
+        "INSERT INTO test_data VALUES (1, '1.5'), (2, '3.0'), (3, 'NULL'), (4, '5.5');",
+        "SELECT welchTTest(CAST(str_val AS Float64), val) FROM test_data WHERE val != ANY (SELECT val FROM test_data WHERE str_val IS NOT NULL);",
+        "SELECT COUNT(*) FROM (SELECT welchTTest(sample_data, sample_index) AS test_result FROM welch_ttest GROUP BY sample_index HAVING test_result.1 < 0.05);",
+        "CREATE TABLE user_data (user_id UInt32, score Float64, confidence_level Float64) ENGINE = Memory;",
+        "INSERT INTO user_data VALUES (1, 95.0, 0.95), (2, 85.3, 0.90), (3, 75.0, 0.99);",
+        "WITH (SELECT COUNT(*) FROM user_data WHERE confidence_level != ANY (SELECT confidence_level FROM user_data WHERE score < 80.0)) AS count_subquery SELECT welchTTest(score, user_id) FROM user_data WHERE count_subquery > 0;",
+        "CREATE TABLE edge_cases (num Int32, val Decimal(10, 2)) ENGINE = Memory;",
+        "INSERT INTO edge_cases VALUES (1, 1.00), (2, -1.00), (3, 0.00), (4, 123456.78);",
+        "SELECT welchTTest(val, num) FROM edge_cases WHERE num != ANY (SELECT num FROM edge_cases WHERE val = 0.00);",
+        "CREATE TABLE correlated_data (id UInt32, data Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO correlated_data VALUES (1, 12.5), (2, 15.7), (3, 11.2), (4, 22.4);",
+        "SELECT welchTTest(data, (SELECT id FROM correlated_data WHERE data > 15)) FROM correlated_data WHERE id != ANY (SELECT id FROM correlated_data WHERE data < 12);"
+    ]
+}

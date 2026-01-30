@@ -1,0 +1,10 @@
+CREATE TABLE mean_ztest (sample_data Float64, sample_index Int32) ENGINE = Memory;
+INSERT INTO mean_ztest VALUES (1.0, 0), (2.0, 0), (NULL, 0), (3.0, 1), (4.0, 1), (5.0, 1), (0.0, 1);
+SELECT meanZTest(0.5, 0.4, 0.99)((sample_data * (1 + sample_index)), sample_index) FROM mean_ztest GROUP BY sample_index HAVING sample_index IN (0, 1);
+SELECT sample_index, meanZTest(0.1 + (1.0 / 3.0), 0.2, 0.95)(sample_data, sample_index) AS z_test FROM mean_ztest WHERE sample_data IS NOT NULL GROUP BY sample_index ORDER BY sample_index;
+CREATE TABLE complex_ztest (sample_data Decimal(10, 4), sample_index Int32) ENGINE = MergeTree() ORDER BY sample_index;
+INSERT INTO complex_ztest VALUES (1.1234, 0), (2.5678, 0), (ROUND(3.3333, 2), 1), (4.9999, 1), (5.5555, 1), (NULL, 0);
+SELECT meanZTest(0.3, 0.5, 0.97)((sample_data / 0.1), sample_index) FROM complex_ztest WHERE sample_data > 1.0 OR sample_index IS NULL GROUP BY sample_index HAVING COUNT(*) > 1;
+SELECT sample_index, meanZTest(max(sample_data), min(sample_data), 0.90)((sample_data + 1e-5), sample_index) OVER(PARTITION BY sample_index) FROM complex_ztest;
+SELECT sample_index, meanZTest(REPLACE(sample_data, '0.00', '1.00'), 0.45, 0.95)(sample_data, sample_index) FROM mean_ztest WHERE CAST(sample_data AS String) LIKE '%.00' GROUP BY sample_index;
+INSERT INTO mean_ztest SELECT meanZTest(0.9, 0.5, 0.99)(sample_data, sample_index) AS computed_value, sample_index FROM complex_ztest WHERE sample_index = 0;

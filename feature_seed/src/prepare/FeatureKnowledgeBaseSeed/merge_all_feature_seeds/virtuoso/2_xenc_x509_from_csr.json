@@ -1,0 +1,13 @@
+CREATE TABLE csr_test (id INT PRIMARY KEY, csr_value VARCHAR, key_name VARCHAR);
+INSERT INTO csr_test (id, csr_value, key_name) VALUES (1, 'sample_csr', 'MyKey1');
+SELECT id, xenc_x509_from_csr(key_name, 'MyKey1', xenc_x509_csr_generate('RSAKey1', vector('CN', 'Test User', 'C', 'UK')), sequence_next('ca_id_rsa'), 365, 100) != 0 FROM csr_test WHERE csr_value != '';
+CREATE TABLE ca_records (ca_id INT, ca_name VARCHAR, PRIMARY KEY (ca_id));
+INSERT INTO ca_records (ca_id, ca_name) VALUES (1, 'CA_1'), (2, 'CA_2');
+SELECT ca_id, xenc_x509_from_csr(key_name, 'MyKey1', xenc_x509_csr_generate('RSAKey1', vector('CN', 'Test User', 'C', 'UK')), sequence_next(ca_id), 365, 100) != 0 FROM csr_test JOIN ca_records ON csr_test.id != ca_records.ca_id;
+CREATE TABLE csr_data (csr_id INT, csr_text VARCHAR, expired BOOLEAN, PRIMARY KEY (csr_id));
+INSERT INTO csr_data (csr_id, csr_text, expired) VALUES (1, 'CSR_1', FALSE), (2, 'CSR_2', TRUE);
+SELECT csr_id, xenc_x509_from_csr('id_rsa', key_name, xenc_x509_csr_generate('RSAKey1', vector('CN', ''), vector('subjectAltName', 'URI: http://www.example.com'))), sequence_next(ca_id) FROM csr_test LEFT JOIN csr_data ON csr_test.id != csr_data.csr_id WHERE csr_data.expired IS NOT NULL;
+SELECT xenc_x509_from_csr('id_rsa', 'MyKey1', xenc_x509_csr_generate('RSAKey1', vector('CN', 'Edge Case'), vector('subjectAltName', 'URI: http://www.test.com')), sequence_next('ca_id_rsa'), -1, 100) != 0 FROM csr_test WHERE id = 1;
+CREATE TABLE temp_keys (temp_id INT, cert_key ANY, PRIMARY KEY (temp_id));
+INSERT INTO temp_keys (temp_id, cert_key) VALUES (1, NULL), (2, 'CERT_2');
+SELECT temp_id, xenc_x509_from_csr('id_rsa', 'MyKey1', xenc_x509_csr_generate('RSAKey1', vector('CN', 'Null Test'), vector()), sequence_next('ca_id_rsa'), 365, 100) != 0 FROM temp_keys WHERE cert_key IS NULL;

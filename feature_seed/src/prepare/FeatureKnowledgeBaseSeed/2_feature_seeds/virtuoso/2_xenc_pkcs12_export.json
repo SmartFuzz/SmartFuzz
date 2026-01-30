@@ -1,0 +1,10 @@
+CREATE TABLE user_certificates (user_id INT PRIMARY KEY, cert_data VARCHAR(4096), private_key VARCHAR(4096), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO user_certificates (user_id, cert_data, private_key) VALUES (1, '-----BEGIN CERTIFICATE-----\nMIID...\n-----END CERTIFICATE-----', '-----BEGIN PRIVATE KEY-----\nMIIEv...\n-----END PRIVATE KEY-----');
+SELECT user_id, xenc_pkcs12_export(private_key, xpath_string('//item', cert_data)) AS pkcs12_file FROM user_certificates WHERE user_id IS NOT NULL;
+CREATE TABLE xml_documents (doc_id INT PRIMARY KEY, xml_content XML);
+INSERT INTO xml_documents (doc_id, xml_content) VALUES (1, '<item><name>Test</name><value>123</value></item>');
+SELECT doc_id, xpath_string('//name', xml_content) AS item_name, xenc_pkcs12_export('id_rsa', xpath_string('//value', xml_content), '') AS export_file FROM xml_documents WHERE doc_id = 1;
+SELECT user_id, COUNT(*) OVER () AS total_users, xenc_pkcs12_export(private_key, xpath_string('//name', xml_content)) AS pkcs12 FROM user_certificates JOIN xml_documents ON user_certificates.user_id = xml_documents.doc_id WHERE user_id > 0 GROUP BY user_id HAVING COUNT(*) > 0;
+CREATE TABLE temp_keys (key_id INT PRIMARY KEY, key_data VARCHAR(255), FOREIGN KEY (key_id) REFERENCES user_certificates(user_id) ON DELETE CASCADE);
+INSERT INTO temp_keys (key_id, key_data) VALUES (1, 'some_key_data'), (2, NULL);
+SELECT key_id, xenc_pkcs12_export(key_data, xpath_string('//value', xml_content), 'password') AS exported_key FROM temp_keys LEFT JOIN xml_documents ON temp_keys.key_id = xml_documents.doc_id WHERE key_data IS NOT NULL OR key_id IS NULL;

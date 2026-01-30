@@ -1,0 +1,10 @@
+CREATE TABLE ab_test_samples (baseline Float64, mde Float64, power Float64, alpha Float64);
+INSERT INTO ab_test_samples VALUES (0.25, 0.03, 0.80, 0.05), (0.20, NULL, 0.85, 0.01), (0.30, 0.02, NULL, 0.05), (NULL, 0.04, 0.75, 0.05);
+SELECT baseline, mde, power, alpha, minSampleSizeConversion(baseline, IFNULL(mde, 0), IFNULL(power, 1), alpha) AS sample_size FROM ab_test_samples WHERE NOT (power IS NULL) AND alpha < 1;
+SELECT baseline, mde, minSampleSizeConversion(baseline, mde, power, alpha).minimum_sample_size AS sample_size FROM (SELECT baseline, mde, power, alpha FROM ab_test_samples WHERE NOT (baseline < 0 OR baseline > 1)) AS valid_samples;
+WITH (SELECT MIN(baseline) AS min_baseline, MAX(mde) AS max_mde FROM ab_test_samples) AS stats SELECT NOT minSampleSizeConversion(min_baseline, max_mde * 2, 0.9, 0.05).minimum_sample_size AS negated_sample_size;
+SELECT baseline, mde, power, alpha, minSampleSizeConversion(baseline, mde, power, alpha).detect_range_lower AS detect_lower, minSampleSizeConversion(baseline, mde, power, alpha).detect_range_upper AS detect_upper FROM ab_test_samples WHERE NOT (detect_lower < 0);
+CREATE TABLE sample_results (sample_size Float64, detect_range_lower Float64, detect_range_upper Float64);
+INSERT INTO sample_results SELECT minSampleSizeConversion(baseline, mde, power, alpha) FROM ab_test_samples WHERE NOT (mde IS NULL);
+SELECT sample_size FROM sample_results WHERE NOT (sample_size < 10) ORDER BY sample_size DESC LIMIT 1;
+SELECT baseline, (SELECT COUNT(*) FROM sample_results WHERE NOT (detect_range_upper > baseline)) AS detect_count FROM ab_test_samples;

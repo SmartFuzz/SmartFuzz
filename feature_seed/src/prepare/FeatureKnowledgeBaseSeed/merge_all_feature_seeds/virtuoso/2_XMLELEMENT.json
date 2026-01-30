@@ -1,0 +1,18 @@
+CREATE TABLE test_xml (id INT PRIMARY KEY, data XML, attr VARCHAR(255));
+INSERT INTO test_xml (id, data, attr) VALUES (1, XMLELEMENT('root', XMLELEMENT('child', 'Content')), 'Attribute 1');
+INSERT INTO test_xml (id, data, attr) VALUES (2, XMLELEMENT('root', 'Simple Content'), NULL);
+SELECT XMLELEMENT('result', data) FROM test_xml WHERE attr IS NOT NULL;
+SELECT id, XMLELEMENT('info', XMLELEMENT('element', attr), XMLELEMENT('details', data)) AS xml_output FROM test_xml WHERE data IS NOT NULL;
+SELECT id FROM test_xml WHERE XMLELEMENT('error', 'Not found') IS NOT NULL;
+SELECT COUNT(*) FROM test_xml WHERE XMLELEMENT('count', (SELECT COUNT(*) FROM test_xml)) IS NOT NULL;
+CREATE TABLE other_table (ref_id INT, more_data XML);
+INSERT INTO other_table (ref_id, more_data) VALUES (1, XMLELEMENT('outer', XMLELEMENT('inner', 'More Content')));
+SELECT a.id, XMLELEMENT('content', a.data, b.more_data) FROM test_xml a JOIN other_table b ON a.id = b.ref_id WHERE b.more_data IS NOT NULL;
+SELECT XMLELEMENT('total', SUM(CASE WHEN attr IS NOT NULL THEN 1 ELSE 0 END)) FROM test_xml GROUP BY data HAVING MAX(attr) IS NOT NULL;
+SELECT data FROM test_xml WHERE attr IS NOT NULL AND data IS NOT NULL ORDER BY XMLELEMENT('sorted', data) DESC;
+SELECT a.id FROM test_xml a WHERE a.data IS NOT NULL AND EXISTS (SELECT 1 FROM other_table b WHERE a.id = b.ref_id AND b.more_data IS NOT NULL);
+SELECT XMLELEMENT('detail', data) FROM test_xml WHERE data IS NOT NULL AND attr IS NULL;
+SELECT id, data FROM test_xml WHERE XMLELEMENT('check', (SELECT COUNT(*) FROM other_table WHERE ref_id = id)) IS NOT NULL;
+CREATE TABLE edge_cases (num_value INT, str_value VARCHAR(255), xml_value XML);
+INSERT INTO edge_cases (num_value, str_value, xml_value) VALUES (2147483647, '', XMLELEMENT('empty', ''));
+INSERT INTO edge_cases (num_value, str_value, xml_value) VALUES (-2147483648, 'Negative Test', XMLELEMENT('negative', 'Negative Content'));

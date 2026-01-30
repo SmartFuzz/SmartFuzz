@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/4c86b126f2",
+  "title": "Incorrect query result with SQLITE_ENABLE_STAT4",
+  "description": "drh added on 2014-02-10 22:46:11:\nWhen SQLite is compiled using SQLITE_ENABLE_STAT3 or SQLITE_ENABLE_STAT4, it\ngets the wrong answer for the first of the two queries below:\nCREATE TABLE nodes(\n   local_relpath  TEXT PRIMARY KEY,\n   moved_to  TEXT\n);\nINSERT INTO nodes VALUES('A',NULL);\nINSERT INTO nodes VALUES('A/B',NULL);\nINSERT INTO nodes VALUES('',NULL);\nINSERT INTO nodes VALUES('A/B/C-move',NULL);\nINSERT INTO nodes VALUES('A/B/C','A/B/C-move');\nINSERT INTO nodes VALUES('A/B-move',NULL);\nINSERT INTO nodes VALUES('A/B-move/C-move',NULL);\nINSERT INTO nodes VALUES('A/B-move/C','x');\n\nSELECT local_relpath, moved_to\n FROM nodes\nWHERE (local_relpath = 'A/B' OR ((local_relpath > 'A/B/') AND (local_relpath < 'A/B0')))\n  AND moved_to IS NOT NULL;\n\n.print ------------------------------------------------\n\nSELECT local_relpath, moved_to\n FROM nodes\nWHERE (+local_relpath = 'A/B' OR ((local_relpath > 'A/B/') AND (local_relpath < 'A/B0')))\n  AND moved_to IS NOT NULL;\nThe bug appears to have been inserted into trunk with the STAT4 changes\nof check-in [a32af0abe5fa6d] which occurred just after the release of\n3.8.0.  The bug first appeared in 3.8.1.\nNote that it is not necessary to run\nANALYZE or to have sqlite_stat3 or sqlite_stat4 tables in the database.\nThe only requirement is to compile with SQLITE_ENABLE_STAT3 or\nSQLITE_ENABLE_STAT4.\nThe extra unary \"+\" operator in the second queries disable the OR optimization\nand enables the second query to get the correct answer regardless.\nThis bug was discovered in the wild by the SVN developers.\ndrh added on 2014-02-10 23:50:08:\nHere is a simpler script to illustrate the problem.  The query should return\na single row, but it is returning no rows:\nCREATE TABLE t1(x TEXT UNIQUE, y TEXT UNIQUE, z);\nINSERT INTO t1 VALUES('ghi','jkl','y');\nSELECT * FROM t1 WHERE (x='ghi' OR y='jkl') AND z IS NOT NULL;\nThe exact cause of the problem is still unknown.  However, it appears to have\nsomething to do with an adverse interaction between an IS NOT NULL constraint\nand a constraint composed of two or more OR-connected terms.  IS NOT NULL\nconstraints are never considered except when SQLITE_ENABLE_STAT3 or _STAT4 are\nused, so that explains why those compile-time options are required in order to\ndemonstrate the problem.\ndrh added on 2014-02-11 02:48:03:\nNow fixed on trunk.  Work-arounds:\nOmit the SQLITE_ENABLE_STAT3 and SQLITE_ENABLE_STAT4 compile-time options.\nFor WHERE-clause terms of the form \"column IS NOT NULL\" add a unary \"+\"\n      operator before the column name.  Like this:  \"+column IS NOT NULL\".\nAfter opening each database connection (in variable db) run code like the\n      following to disable the STAT3 and STAT4 logic:\n\n    if( strcmp(sqlite3_sourceid(),\"2013-08-26 23:00\")>0\n     && strcmp(sqlite3_sourceid(),\"2014-02-11\")<0 ){\n      sqlite3_test_control(SQLITE_TESTCTRL_OPTIMIZATIONS, db, 0x800);\n    }",
+  "date": "2014-02-10 22:46:1111.50 years ago",
+  "vulnerable_version": "3.8.3",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE test_table(id UInt32, name String, age Nullable(UInt32), address Nullable(String));",
+    "INSERT INTO test_table VALUES(1, 'Alice', 30, NULL);",
+    "INSERT INTO test_table VALUES(2, 'Bob', NULL, '123 Main St');",
+    "INSERT INTO test_table VALUES(3, 'Charlie', 25, '456 Elm St');",
+    "SELECT * FROM test_table WHERE (name = 'Alice' OR address IS NOT NULL) AND age IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Incorrect results with IS NOT NULL and OR conditions"
+  ]
+}

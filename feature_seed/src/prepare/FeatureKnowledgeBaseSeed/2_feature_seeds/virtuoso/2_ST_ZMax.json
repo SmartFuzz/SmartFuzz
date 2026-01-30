@@ -1,0 +1,10 @@
+CREATE TABLE geo_shapes (id INT PRIMARY KEY, shape GEOMETRY);
+INSERT INTO geo_shapes VALUES (1, 'POINTZM(0 1 2 3)'^^<http://www.openlinksw.com/schemas/virtrdf#Geometry>), (2, 'POLYGON((1 3,2 4,1 5,0 4,1 3))'^^<http://www.openlinksw.com/schemas/virtrdf#Geometry>), (3, 'LINESTRING(10 21, 12 23, 10 25)'^^<http://www.openlinksw.com/schemas/virtrdf#Geometry>);
+SELECT id, bif:st_zmax(shape) as max_z FROM geo_shapes WHERE sameTerm(shape, 'POINTZM(0 1 2 3)'^^<http://www.openlinksw.com/schemas/virtrdf#Geometry>);
+SELECT gs1.id, bif:st_zmax(gs1.shape) as zmax1, bif:st_zmax(gs2.shape) as zmax2 FROM geo_shapes gs1 JOIN geo_shapes gs2 ON sameTerm(gs1.shape, gs2.shape) WHERE gs1.id <> gs2.id HAVING zmax1 < zmax2;
+SELECT id, bif:st_zmax(shape) AS zmax FROM geo_shapes GROUP BY id HAVING zmax IS NOT NULL AND zmax > 1E+38;
+CREATE TABLE temp_shapes AS SELECT id, shape FROM geo_shapes WHERE bif:st_zmax(shape) IS NOT NULL;
+SELECT create_shape.id FROM (SELECT id, shape FROM temp_shapes) AS create_shape WHERE sameTerm(create_shape.shape, 'POLYGON((1 3,2 4,1 5,0 4,1 3))'^^<http://www.openlinksw.com/schemas/virtrdf#Geometry>);
+SELECT COALESCE((SELECT id FROM geo_shapes WHERE sameTerm(shape, 'POINTZM(0 1 2 3)'^^<http://www.openlinksw.com/schemas/virtrdf#Geometry>), -1) AS shape_id, bif:st_zmax(shape) AS zmax FROM geo_shapes WHERE shape IS NOT NULL;
+SELECT DISTINCT bif:st_zmax(COALESCE(shape, 'POINT(0 0)'^^<http://www.openlinksw.com/schemas/virtrdf#Geometry>)) AS zmax FROM geo_shapes;
+SELECT id, bif:st_zmax(shape) AS max_z FROM geo_shapes ORDER BY max_z DESC LIMIT 1;

@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id INTEGER PRIMARY KEY, value FLOAT, bin_value BITSTRING);
+INSERT INTO test_table (id, value, bin_value) VALUES (1, 17.4, '10101'::BITSTRING), (2, NULL, '01100'::BITSTRING), (3, 11.7, '11010'::BITSTRING), (4, 0, NULL);
+SELECT id, trunc(value) + 1 AS truncated_value, bin_value & '11111'::BITSTRING AS modified_bin FROM test_table WHERE trunc(value) IS NOT NULL;
+SELECT id, trunc(value) AS truncated_value, (trunc(value) & 5) AS bitwise AND FROM test_table HAVING bitwise AND > 2;
+SELECT id, trunc(sum(value)) AS total_trunc FROM (SELECT value FROM test_table WHERE value IS NOT NULL) AS subquery GROUP BY id;
+CREATE TABLE another_table (id INTEGER, bin_value BITSTRING, FOREIGN KEY (id) REFERENCES test_table(id));
+INSERT INTO another_table (id, bin_value) VALUES (1, '11000'::BITSTRING), (2, '10101'::BITSTRING);
+SELECT t1.id, t1.value, t1.bin_value & t2.bin_value AS combined_bin FROM test_table t1 JOIN another_table t2 ON t1.id = t2.id WHERE t1.value IS NOT NULL;
+SELECT id, trunc(value), (trunc(value) & '10101'::BITSTRING)::BITSTRING AS result FROM test_table WHERE value IS NOT NULL OR bin_value IS NULL;
+CREATE TEMPORARY TABLE temp_table AS SELECT id, trunc(value) as truncated_value FROM test_table;
+SELECT id, truncated_value, BIN_TRUNCATED & '11111'::BITSTRING FROM (SELECT id, trunc(value) AS BIN_TRUNCATED FROM temp_table) AS inner_query WHERE BIN_TRUNCATED > 10;

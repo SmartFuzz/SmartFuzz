@@ -1,0 +1,11 @@
+CREATE TABLE ip_test (id Int32, ip_addr String);
+INSERT INTO ip_test VALUES (1, '171.225.130.45'), (2, '192.168.1.1'), (3, NULL);
+SELECT id FROM ip_test WHERE toIPv4(ip_addr) != ALL (SELECT toIPv4(ip_addr) FROM ip_test WHERE ip_addr IS NOT NULL);
+SELECT id, toIPv4(ip_addr) AS ipv4_address FROM ip_test GROUP BY toIPv4(ip_addr) HAVING ipv4_address != ALL (SELECT toIPv4(ip_addr) FROM ip_test WHERE ip_addr IS NOT NULL);
+SELECT id, toIPv4(ip_addr) AS ipv4_address FROM ip_test WHERE toIPv4(ip_addr) IS NOT NULL AND ipv4_address != ALL (SELECT toIPv4('192.168.1.2'), toIPv4('172.16.0.1'));
+SELECT hex(toIPv4(ip_addr)) AS hex_ip FROM ip_test WHERE ip_addr != ALL (SELECT NULLIF(toIPv4(ip_addr), toIPv4('192.168.1.1')) FROM ip_test);
+SELECT COUNT(*) FROM ip_test WHERE toIPv4(ip_addr) != ALL (SELECT toIPv4(ip_addr) FROM ip_test WHERE ip_addr IS NOT NULL AND toIPv4(ip_addr) != toIPv4('255.255.255.255'));
+CREATE TABLE ip_validation (orig_ip String, valid_ip IPv4);
+INSERT INTO ip_validation VALUES ('10.0.0.1', toIPv4('10.0.0.1')), ('invalid_ip', NULL), ('172.16.0.100', toIPv4('172.16.0.100'));
+SELECT orig_ip FROM ip_validation WHERE valid_ip != ALL (SELECT toIPv4('192.0.2.0') UNION SELECT toIPv4('203.0.113.0'));
+SELECT COUNT(*) FROM (SELECT ip_addr, toIPv4(ip_addr) AS ipv4 FROM ip_test) AS sub WHERE ipv4 != ALL (SELECT toIPv4(ip_addr) FROM ip_test WHERE ip_addr IS NOT NULL);

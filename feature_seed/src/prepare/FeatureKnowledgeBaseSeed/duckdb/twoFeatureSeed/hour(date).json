@@ -1,0 +1,14 @@
+{
+    "function": "hour(date)",
+    "operator": "-",
+    "sql_array": [
+        "CREATE TABLE test_dates (id INTEGER, event_time TIMESTAMP, value NUMERIC);",
+        "INSERT INTO test_dates VALUES (1, timestamp '2021-08-03 11:59:44.123456', 100), (2, timestamp '2021-08-04 00:00:00.000000', NULL), (3, timestamp '2023-01-01 23:59:59.999999', -50);",
+        "SELECT id, hour(event_time) - (SELECT COUNT(*) FROM test_dates t2 WHERE t2.value IS NULL) AS hour_difference FROM test_dates WHERE value + 1 > 50 ORDER BY hour_difference DESC;",
+        "SELECT id, hour(event_time) AS hour_extracted, value FROM test_dates WHERE hour(event_time) - 2 = 10 GROUP BY hour_extracted, value HAVING SUM(value) IS NOT NULL;",
+        "SELECT dt.id, hour(dt.event_time) - COALESCE(NULLIF(SUM(value), 0), 1) AS hour_adjusted FROM test_dates dt JOIN (SELECT id, hour(event_time) FROM test_dates WHERE event_time < TIMESTAMP '2023-01-01 00:00:00') sub ON dt.id = sub.id GROUP BY dt.id, hour_adjusted HAVING hour_adjusted > 0;",
+        "CREATE TEMP TABLE temp_summary AS SELECT hour(event_time) AS hour, SUM(value) AS total_value FROM test_dates GROUP BY hour;",
+        "SELECT hour, total_value - (SELECT COUNT(*) FROM temp_summary WHERE hour < 10) AS adjusted_value FROM temp_summary WHERE adjusted_value IS NOT NULL ORDER BY adjusted_value;",
+        "SELECT dt.id, hour(dt.event_time) - CAST('3' AS INTEGER) AS hour_shifted FROM (SELECT * FROM test_dates WHERE value IS NOT NULL) dt WHERE hour_shifted >= 0;"
+    ]
+}

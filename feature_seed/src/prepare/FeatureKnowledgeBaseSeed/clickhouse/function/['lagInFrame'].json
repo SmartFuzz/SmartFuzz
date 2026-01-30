@@ -1,0 +1,14 @@
+[
+    "CREATE TABLE stock_prices(    `date`   Date,    `open`   Float32,    `high`   Float32,    `low`    Float32,    `close`  Float32,    `volume` UInt32) Engine = Memory;",
+    "INSERT INTO stock_prices FORMAT Values    ('2024-06-01', 110.00, 115.50, 109.50, 115.00, 500000000),    ('2024-06-02', 112.00, 116.00, 111.50, 115.50, 400000000),    ('2024-06-03', 113.62, 115.00, 112.00, 115.00, 438392000),    ('2024-06-04', 115.72, 116.60, 114.04, 116.44, 403324000),    ('2024-06-05', 118.37, 122.45, 117.47, 122.44, 528402000);",
+    "SELECT    date,    close,    lagInFrame(close, 1, close) OVER (ORDER BY date ASC) AS previous_day_close,    COALESCE(ROUND(close - previous_day_close, 2)) AS delta,    COALESCE(ROUND((delta / previous_day_close) * 100, 2)) AS percent_change    FROM stock_prices ORDER BY date DESC;",
+    "SELECT    date,    close,    lagInFrame(close, 2, close) OVER (ORDER BY date ASC) AS two_days_ago_close,    DELTA(close, two_days_ago_close) AS delta,    COALESCE(ROUND((delta / two_days_ago_close) * 100, 2)) AS percent_change    FROM (        SELECT date, close FROM stock_prices WHERE volume > 450000000) ORDER BY date ASC;",
+    "SELECT    date,    close,    lagInFrame(close) OVER (PARTITION BY open ORDER BY date ASC) AS previous_open_close    FROM stock_prices;",
+    "CREATE TABLE stock_transactions(    `transaction_date` Date,    `stock_id` UInt32,    `quantity` UInt32,    `price` Float32) Engine = Memory;",
+    "INSERT INTO stock_transactions FORMAT Values    ('2024-06-01', 1, 1000, 115.00),    ('2024-06-02', 1, 1500, 114.50),    ('2024-06-03', 1, 2000, 113.75);",
+    "SELECT    st.transaction_date,    st.price,    lagInFrame(st.price, 1, 0) OVER (PARTITION BY st.stock_id ORDER BY st.transaction_date ASC) AS previous_price,    (st.price - previous_price) AS price_difference    FROM stock_transactions AS st ORDER BY st.transaction_date ASC;",
+    "SELECT    date,    close,    lagInFrame(close, 1) OVER (ORDER BY date ASC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS previous_day_close    FROM stock_prices;",
+    "SELECT    date,    close,    lagInFrame(close, 1, 0) OVER (PARTITION BY (CASE WHEN close < 115 THEN 1 ELSE 2 END) ORDER BY date ASC) AS lagged_close    FROM stock_prices;",
+    "CREATE TABLE stock_aggregates AS    SELECT    date, SUM(volume) AS total_volume    FROM stock_prices    GROUP BY date;",
+    "SELECT    sa.date,    sa.total_volume,    lagInFrame(sa.total_volume, 1, 0) OVER (ORDER BY sa.date ASC) AS previous_total_volume    FROM stock_aggregates AS sa;"
+]

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/44774",
+  "title": "Got nil pointer error when multiple Apply is used with CTE",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n```\r\ndrop table if exists t1;\r\ncreate table t1(a int);\r\ninsert into t1 values(1), (2);\r\nSELECT * FROM t1 dt WHERE EXISTS( WITH RECURSIVE qn AS (SELECT a AS b UNION ALL SELECT b+1 FROM qn WHERE b=0 or b = 1) SELECT * FROM qn dtqn1 where exists (select /*+ NO_DECORRELATE() */ b from qn where dtqn1.b+1));\r\n```\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\nruns ok\r\n### 3. What did you see instead (Required)\r\nERROR 1105 (HY000): runtime error: invalid memory address or nil pointer dereference\r\n### 4. What is your TiDB version? (Required)\r\n```\r\nMySQL [test]> select tidb_version();\r\n+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| tidb_version()                                                                                                                                                                                                                                                           |\r\n+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| Release Version: v7.2.0-alpha-467-g9696d8f7c3\r\nEdition: Community\r\nGit Commit Hash: 9696d8f7c3dffac156764d4f2b127bdc755a499b\r\nGit Branch: master\r\nUTC Build Time: 2023-06-19 08:15:44\r\nGoVersion: go1.20.1\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: unistore |\r\n+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n1 row in set (0.001 sec)\r\n```\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2023-06-19T05:44:32Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t2;",
+    "CREATE TABLE t2(a INT, b VARCHAR(10), c DATE DEFAULT NULL);",
+    "INSERT INTO t2 VALUES(1, 'test', '2023-01-01'), (2, NULL, NULL);",
+    "SELECT * FROM (SELECT a AS b FROM t2 WHERE a < 5) AS qn WHERE EXISTS (SELECT b FROM (SELECT a AS b FROM t2) AS dtqn1 WHERE dtqn1.b = 3);",
+    "UPDATE t2 SET b = 'updated' WHERE a = 1;"
+  ],
+  "key_bug_features": [
+    "Multiple Apply with CTE causes nil pointer error"
+  ]
+}

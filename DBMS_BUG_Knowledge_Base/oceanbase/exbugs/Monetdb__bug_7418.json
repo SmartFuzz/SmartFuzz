@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7418",
+  "title": "MonetDB server crashes in `bind_col_exp`",
+  "description": "MonetDB server crashes in `bind_col_exp`.\n\n**To Reproduce**\n```sql\nCREATE TABLE v0 ( v1 BIGINT NOT NULL PRIMARY KEY ) ; \n SELECT 0 IS NOT NULL FROM v0 ORDER BY AVG ( max ( 331 ) ) OVER ( ORDER BY 634 NULLS FIRST ) NULLS LAST ; \n SELECT * FROM v0 ORDER BY v1 ;  \n```\n\n**Backtrace of the Crash**\n```c\n#0 0x7fa8aeb62ae3 (bind_col_exp+0xa3)\n#1 0x7fa8aeb62500 (rel_base_projection+0x100)\n#2 0x7fa8aeb5714e (_rel_projections+0x8ae)\n#3 0x7fa8aeb1d725 (rel_table_projections+0x315)\n#4 0x7fa8aeb1aaef (rel_select_exp+0x9ff)\n#5 0x7fa8aeb11c20 (rel_subquery+0x5f0)\n#6 0x7fa8aeb11ee3 (rel_selects+0x233)\n#7 0x7fa8aeaf8d72 (rel_semantic+0x442)\n#8 0x7fa8ae8edcf3 (sql_symbol2relation+0x93)\n#9 0x7fa8ae91ab84 (SQLparser+0x624)\n#10 0x7fa8ae919cbc (SQLengine_+0xa5c)\n#11 0x7fa8ae9174fe (SQLengine+0x3e)\n#12 0x7fa8aee952cf (runScenario+0x6f)\n#13 0x7fa8aee964de (MSscheduleClient+0xb6e)\n#14 0x7fa8aefcd182 (doChallenge+0x132)\n#15 0x7fa8afcf68a7 (thread_starter+0xc7)\n#16 0x7fa8ae811609 (start_thread+0xd9)\n#17 0x7fa8ae734133 (clone+0x43)\n```\n\n**Software versions**\n - MonetDB version number: v11.47.11 (Jun2023-SP2)\n - OS and version: Ubuntu 20.04\n - From docker image monetdb/monetdb:Jun2023-SP2\n\nAn example of steps to reproduce in docker container (**write the poc into /tmp/test.sql first**):\n```bash\ndocker container rm monetdb_test -f                                 # remove the old one\ndocker run -e MDB_DB_ADMIN_PASS=monetdb --name monetdb_test -itd monetdb/monetdb:Jun2023-SP2\n                                                                    # start monetdb in docker\ndocker exec monetdb_test bash -c 'echo -n -e \"user=monetdb\\npassword=monetdb\\n\" > /root/.monetdb'\n                                                                    # set username and password\nsleep 10                                                            # wait the server start\ndocker exec monetdb_test bash -c \"grep '/usr/bin/[m]server5' /proc/*/cmdline -lR\"\n                                                                    # check the existence of mserver5 process\ncat /tmp/test.sql | docker exec -i monetdb_test mclient monetdb     # run test case\ndocker exec monetdb_test bash -c \"grep '/usr/bin/[m]server5' /proc/*/cmdline -lR\" || { echo \"[CRASH] Mserver5 process does NOT exist.\"; exit 1; }\n                                                                    # check the existence of mserver5 process\necho \"[INFO] Server normal.\"\n```\n\nIt can also be reproduced on MonetDB Dec2023_root, self-compiled by `CC=clang-12 CXX=clang++-12 cmake /root/monetdb -DCMAKE_BUILD_TYPE=RelWithDebInfo`.\n\n**Issue labeling**\nbug",
+  "date": "2023-11-15T16:39:21Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT PRIMARY KEY, value FLOAT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table (id, value) VALUES (1, 10.5), (2, NULL), (3, 20.0);",
+    "SELECT AVG(value) OVER (ORDER BY created_at) FROM test_table ORDER BY id;",
+    "CREATE TABLE another_table (ref_id INT, description VARCHAR(255), FOREIGN KEY (ref_id) REFERENCES test_table(id));",
+    "INSERT INTO another_table (ref_id, description) VALUES (1, 'First entry'), (2, 'Second entry'), (3, NULL);"
+  ],
+  "key_bug_features": [
+    "SELECT with ORDER BY and AVG causes server crash"
+  ]
+}

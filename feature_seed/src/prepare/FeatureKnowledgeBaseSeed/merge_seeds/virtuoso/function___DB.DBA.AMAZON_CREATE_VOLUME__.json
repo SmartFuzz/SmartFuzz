@@ -1,0 +1,51 @@
+CREATE TABLE EC2_Instances (instance_id varchar, availability_zone varchar);
+INSERT INTO EC2_Instances (instance_id, availability_zone) VALUES ('i-1234567890abcdef0', 'us-east-1a');
+CREATE TABLE EBS_Volumes (volume_id varchar, attached_instance varchar, availability_zone varchar);
+CREATE PROCEDURE test_create_volume()
+{
+  declare access_key, sec_token, zone varchar;
+access_key := 'AKIAJI7ZL427TI5EDF5A';
+sec_token  := 'CGI/UMaXf2LRUctaj/HGJ57UNy/t7fNCshh8wpJg';
+zone       := (SELECT availability_zone FROM EC2_Instances WHERE instance_id = 'i-1234567890abcdef0');
+DB.DBA.AMAZON_CREATE_VOLUME (access_key, zone, sec_token);
+};
+CREATE PROCEDURE test_boundary_conditions() 
+{
+  declare access_key, sec_token, zone varchar;
+access_key := 'AKIAJI7ZL427TI5EDF5A';
+sec_token  := 'CGI/UMaXf2LRUctaj/HGJ57UNy/t7fNCshh8wpJg';
+zone       := 'us-east-1a';
+DB.DBA.AMAZON_CREATE_VOLUME (access_key, zone, sec_token);
+zone       := 'us-east-1b';
+DB.DBA.AMAZON_CREATE_VOLUME (access_key, zone, sec_token);
+};
+CREATE PROCEDURE test_create_volume_with_marketplace_codes() 
+{
+  declare marketplace_code varchar;
+marketplace_code := (SELECT marketplace_code FROM EBS_Volumes WHERE volume_id = 'vol-1234567890abcdef0');
+DB.DBA.AMAZON_CREATE_VOLUME ('fake_access_key', 'us-east-1a', 'fake_secret_token');
+};
+CREATE PROCEDURE test_create_volume_invalid_access() 
+{
+  declare invalid_access_key, sec_token, zone varchar;
+invalid_access_key := 'INVALID_ACCESS_KEY';
+sec_token := 'CGI/UMaXf2LRUctaj/HGJ57UNy/t7fNCshh8wpJg';
+zone := 'us-east-1a';
+DB.DBA.AMAZON_CREATE_VOLUME (invalid_access_key, zone, sec_token);
+};
+CREATE PROCEDURE test_create_volume_invalid_zone() 
+{
+  declare access_key, sec_token, invalid_zone varchar;
+access_key := 'AKIAJI7ZL427TI5EDF5A';
+sec_token := 'CGI/UMaXf2LRUctaj/HGJ57UNy/t7fNCshh8wpJg';
+invalid_zone := 'invalid-zone';
+DB.DBA.AMAZON_CREATE_VOLUME (access_key, invalid_zone, sec_token);
+};
+CREATE PROCEDURE test_volume_creation_multiple_instances() 
+{
+  declare access_key, sec_token varchar;
+access_key := 'AKIAJI7ZL427TI5EDF5A';
+sec_token := 'CGI/UMaXf2LRUctaj/HGJ57UNy/t7fNCshh8wpJg';
+INSERT INTO EBS_Volumes (volume_id, availability_zone) VALUES ('vol-1', 'us-east-1a'), ('vol-2', 'us-east-1a');
+DB.DBA.AMAZON_CREATE_VOLUME (access_key, 'us-east-1a', sec_token);
+};

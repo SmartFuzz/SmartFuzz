@@ -1,0 +1,24 @@
+{
+    "function": "IPv4NumToStringClassC(num)",
+    "operator": "IS NULL",
+    "sql_array": [
+        "CREATE TABLE test.hits (ClientIP UInt32, EventDate Date) ENGINE = MergeTree() ORDER BY EventDate;",
+        "INSERT INTO test.hits VALUES (toUInt32('192.168.1.1'), '2023-10-01'), (toUInt32('10.0.0.1'), '2023-10-02'), (toUInt32('172.16.0.1'), '2023-10-03'), (toUInt32(NULL), '2023-10-04');",
+        "SELECT IPv4NumToStringClassC(ClientIP) AS ip_class_c, COUNT() AS count FROM test.hits WHERE ClientIP IS NULL GROUP BY ip_class_c HAVING COUNT() > 0 ORDER BY count DESC LIMIT 5;",
+        "SELECT a.ip_class_c, COUNT(*) FROM (SELECT IPv4NumToStringClassC(ClientIP) AS ip_class_c FROM test.hits) AS a WHERE a.ip_class_c IS NOT NULL GROUP BY a.ip_class_c HAVING COUNT(*) > 1;",
+        "SELECT IPv4NumToStringClassC(ClientIP) AS ip_class_c FROM test.hits WHERE ClientIP IS NOT NULL AND EventDate = toDate('2023-10-02') ORDER BY ip_class_c;",
+        "SELECT IPv4NumToStringClassC(ClientIP) AS ip_class_c, SUM(CASE WHEN ClientIP IS NULL THEN 1 ELSE 0 END) AS null_count FROM test.hits GROUP BY ip_class_c;",
+        "CREATE TABLE test.joined_data (ClientIP UInt32, EventDate Date, UserID UInt32) ENGINE = MergeTree() ORDER BY EventDate;",
+        "INSERT INTO test.joined_data VALUES (toUInt32('192.168.1.100'), '2023-10-01', 1), (toUInt32(NULL), '2023-10-02', 2), (toUInt32('10.0.1.1'), '2023-10-03', 3), (toUInt32('172.16.2.11'), '2023-10-04', 4);",
+        "SELECT j.ip_class_c, COUNT() FROM (SELECT IPv4NumToStringClassC(ClientIP) AS ip_class_c FROM test.hits) AS h JOIN (SELECT IPv4NumToStringClassC(ClientIP) AS j_ip_class_c FROM test.joined_data WHERE UserID IS NOT NULL) AS j ON h.ip_class_c = j.j_ip_class_c GROUP BY j.ip_class_c;",
+        "SELECT COUNT() FROM (SELECT DISTINCT IPv4NumToStringClassC(ClientIP) AS ip_class_c FROM test.hits) AS distinct_ips WHERE ip_class_c IS NOT NULL;",
+        "CREATE TABLE test.nullable_data (ClientIP Nullable(UInt32), EventDate Date) ENGINE = MergeTree() ORDER BY EventDate;",
+        "INSERT INTO test.nullable_data VALUES (toUInt32('192.168.0.1'), '2023-10-01'), (NULL, '2023-10-02'), (toUInt32('10.0.0.5'), '2023-10-03');",
+        "SELECT COUNT(*) FROM test.nullable_data WHERE ClientIP IS NULL;",
+        "SELECT IPv4NumToStringClassC(ClientIP) AS ip_class_c FROM test.nullable_data WHERE ClientIP IS NOT NULL ORDER BY ip_class_c DESC LIMIT 10;",
+        "CREATE TABLE test.extreme_cases (ClientIP UInt32, EventDate Date, Value String) ENGINE = MergeTree() ORDER BY EventDate;",
+        "INSERT INTO test.extreme_cases VALUES (toUInt32('255.255.255.255'), '2023-10-01', ''), (toUInt32('0.0.0.0'), '2023-10-02', 'test'), (toUInt32(NULL), '2023-10-03', 'boundary'), (toUInt32('192.0.2.146'), '2023-10-04', 'edge');",
+        "SELECT DISTINCT IPv4NumToStringClassC(ClientIP) AS ip_class_c, COUNT(Value) FROM test.extreme_cases GROUP BY ip_class_c HAVING COUNT(Value) > 0 ORDER BY COUNT(Value) DESC;",
+        "SELECT a.ip_class_c, COUNT() FROM (SELECT IPv4NumToStringClassC(ClientIP) AS ip_class_c FROM test.extreme_cases WHERE Value IS NOT NULL) AS a WHERE a.ip_class_c IS NOT NULL GROUP BY a.ip_class_c;"
+    ]
+}

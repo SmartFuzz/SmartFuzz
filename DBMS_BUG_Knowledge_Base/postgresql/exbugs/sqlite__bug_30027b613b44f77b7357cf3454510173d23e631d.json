@@ -1,0 +1,21 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/30027b613b",
+  "title": "DELETE trigger on WITHOUT ROWID table not fired for REPLACE op",
+  "description": "dan added on 2017-01-04 19:12:11:\nIf \"PRAGMA recursive_triggers=ON\" is configured, then DELETE triggers should fire for any rows deleted by REPLACE conflict handling. This is broken for WITHOUT ROWID tables in 3.16:\nPRAGMA recursive_triggers = 1;\n CREATE TABLE t1(a PRIMARY KEY, b) WITHOUT ROWID;\n CREATE TABLE del(a, b);\n CREATE TRIGGER t1d AFTER DELETE ON t1 BEGIN\n   INSERT INTO del VALUES(old.a, old.b);\n END;\n INSERT INTO t1 VALUES(1, 'one');\n REPLACE INTO t1 VALUES(1, 'two');  -- causes DELETE, should fire trigger but does not\n SELECT * FROM del;\nWith version 3.15, the final SELECT correctly returns a single row - {1, 'one'}. 3.16 returns zero rows.\ndrh added on 2017-01-04 21:26:20:\nThis problem was introduced by check-in [925840cf] and first appeared in\nthe 3.16.0 release.  The problem was first detected by the Firefox regression\ntests (see https://bugzilla.mozilla.org/show_bug.cgi?id=1328161) shortly\nafter the 3.16.0 release.\nAs far as we know at this time, \nthe minimum conditions necessary to invoke this problem are:\nRecursive triggers enabled by \"PRAGMA recursive_triggers=ON\".\nA WITHOUT ROWID table.\nA DELETE trigger on the WITHOUT ROWID table.\nRun an INSERT OR REPLACE operation on the WITHOUT ROWID table that\n      overwrites a preexisting row.\nThe DELETE trigger is suppose to fire in that case, but it does not in\nversion 3.16.0.\nCheck-in [925840cf] is a performance optimization that helps REPLACE operations\nrun faster by directly overwriting the existing row rather than doing separate\ndelete and insert operations.  But fewer b-tree manipulations are required\nif the row is simply overwritten.  Unfortunately, optimizing out the delete \noperation also seems to have disabled the DELETE trigger.\ndrh added on 2017-01-05 14:23:37:\nThe same optimization from check-in [925840cf] also causes problems with\nforeign key constraint enforcements on REPLACE statements for WITHOUT ROWID\ntables that lack secondary indexes.\nThe optimization that causes all the trouble is seen here:\nhttps://www.sqlite.org/src/artifact/0db6364a6a64e521?ln=1561-1564.\nThat block of code causes the separate OP_Delete operation on REPLACE to \nbe omitted, causing the record to be directly overwritten, for WITHOUT ROWID\ntables that lack secondary indexes.\nThe correct optimization is here:\nhttps://www.sqlite.org/src/artifact/7af46a3be2656f5e?ln=1552-1569.\nThe problem is that the original change in 3.16.0 and 3.16.1 omitted\nconditions 4 and 5, and thus omitted the separate OP_Delete operation in\ncases where it was actually needed.",
+  "date": "2017-01-04 19:12:118.60 years ago",
+  "vulnerable_version": "3.16",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE EXTENSION IF NOT EXISTS \"pg_trgm\";",
+    "CREATE TABLE t1(a INTEGER PRIMARY KEY, b TEXT, c REAL, d BYTEA);",
+    "CREATE TABLE del(a INTEGER, b TEXT);",
+    "CREATE OR REPLACE FUNCTION t1d() RETURNS TRIGGER AS $$ BEGIN INSERT INTO del VALUES(OLD.a, OLD.b);",
+    "RETURN OLD;",
+    "END;"
+  ],
+  "key_bug_features": [
+    "DELETE trigger not fired on REPLACE for WITHOUT ROWID tables"
+  ]
+}

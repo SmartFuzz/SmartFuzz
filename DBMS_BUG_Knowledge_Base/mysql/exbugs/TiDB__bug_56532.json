@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/56532",
+  "title": "subquery in window function cannot reference column outside, while mysql can",
+  "description": "## Bug Report\r\n\r\nWhen using subquery in window function, the subselect cannot reference columns of outer query.\r\nWhen using window function in `coalesce`, the subquery outside window function cannot reference columns of outer query too.\r\n\r\n### 1. Minimal reproduce step (Required)\r\n```sql\r\ncreate table t1 (c1 int primary key);\r\ncreate table t2 (c1 int primary key, c2 text);\r\n\r\nselect \r\n  count((select ref_1.c2 from t1 limit 1)) \r\nfrom t2 as ref_1\r\ngroup by ref_1.c1;\r\n\r\nselect \r\n  count((select ref_1.c2 from t1 limit 1)) over (partition by ref_1.c1)\r\nfrom t2 as ref_1;\r\n\r\nselect \r\ncoalesce(\r\n    count(*) over (partition by ref_1.c1), \r\n    (select ref_1.c2 from t1)\r\n)\r\nfrom t2 as ref_1;\r\n```\r\n\r\n\r\n### 2. What did you expect to see? (Required)\r\nIn MySQL:\r\n```\r\nmysql> create table t1 (c1 int primary key);\r\nQuery OK, 0 rows affected (0.01 sec)\r\n\r\nmysql> create table t2 (c1 int primary key, c2 text);\r\nQuery OK, 0 rows affected (0.02 sec)\r\n\r\nmysql> select \r\n    -> count((select ref_1.c2 from t1 limit 1)) \r\n    -> from t2 as ref_1\r\n    -> group by ref_1.c1;\r\nEmpty set (0.00 sec)\r\n\r\nmysql> select \r\n    -> count((select ref_1.c2 from t1 limit 1)) over (partition by ref_1.c1)\r\n    -> from t2 as ref_1;\r\nEmpty set (0.00 sec)\r\n\r\nmysql> select \r\n    -> coalesce(\r\n    ->     count(*) over (partition by ref_1.c1), \r\n    ->     (select ref_1.c2 from t1)\r\n    -> )\r\n    -> from t2 as ref_1;\r\nEmpty set (0.00 sec)\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\nIn TiDB:\r\n```\r\ntidb> create table t1 (c1 int primary key);\r\nQuery OK, 0 rows affected (0.14 sec)\r\n\r\ntidb> create table t2 (c1 int primary key, c2 text);\r\nQuery OK, 0 rows affected (0.17 sec)\r\n\r\ntidb> select \r\n    -> count((select ref_1.c2 from t1 limit 1)) \r\n    -> from t2 as ref_1\r\n    -> group by ref_1.c1;\r\nEmpty set (0.01 sec)\r\n\r\ntidb> select \r\n    -> count((select ref_1.c2 from t1 limit 1)) over (partition by ref_1.c1)\r\n    -> from t2 as ref_1;\r\nERROR 1054 (42S22): Unknown column 'ref_1.c2' in 'field list'\r\n\r\ntidb> select \r\n    -> coalesce(\r\n    ->     count(*) over (partition by ref_1.c1), \r\n    ->     (select ref_1.c2 from t1)\r\n    -> )\r\n    -> from t2 as ref_1;\r\nERROR 1054 (42S22): Unknown column 'ref_1.c2' in 'field list'\r\n\r\n```\r\n### 4. What is your TiDB version? (Required)\r\n8.1.0 and latest nightly version\r\n\r\n### about us\r\nWe are the BASS team from the School of Cyber Science and Technology at Beihang University. Our main focus is on system software security, operating systems, and program analysis research, as well as the development of automated program testing frameworks for detecting software defects. Using our self-developed database vulnerability testing tool, we have identified the above-mentioned vulnerabilities in TiDB that may lead to database logic error.",
+  "date": "2024-10-10T07:42:03Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t3 (c1 int primary key, c2 varchar(255) NOT NULL, c3 float DEFAULT NULL);",
+    "INSERT INTO t3 (c1, c2, c3) VALUES (1, 'test', 1.5), (2, 'example', NULL), (3, 'sample', 2.5);",
+    "SELECT count((SELECT t3.c2 FROM t3 WHERE t3.c1 = 1 LIMIT 1)) FROM t3 AS ref_2 GROUP BY ref_2.c1;",
+    "SELECT count((SELECT (SELECT t3.c2 FROM t3 LIMIT 1))) FROM t3 AS ref_2 GROUP BY ref_2.c1;",
+    "SELECT COALESCE(count(*) OVER (PARTITION BY ref_2.c1), (SELECT ref_2.c2 FROM t3 WHERE ref_2.c1 = 2)) FROM t3 AS ref_2;"
+  ],
+  "key_bug_features": [
+    "Subquery in window function cannot reference outer query columns"
+  ]
+}

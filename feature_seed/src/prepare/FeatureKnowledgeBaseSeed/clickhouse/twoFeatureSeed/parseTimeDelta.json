@@ -1,0 +1,22 @@
+{
+    "function": "parseTimeDelta",
+    "operator": "a = b",
+    "sql_array": [
+        "CREATE TABLE test_timing (id UInt32, duration String, data Nullable(Int32));",
+        "INSERT INTO test_timing VALUES (1, '11s+22min', 10), (2, '1yr2mo', NULL), (3, '30min', 5);",
+        "SELECT parseTimeDelta(duration) AS delta, id FROM test_timing WHERE data IS NOT NULL;",
+        "SELECT id, parseTimeDelta(duration) AS delta FROM test_timing WHERE delta = 1320.0;",
+        "SELECT id, parseTimeDelta(duration) AS delta FROM test_timing WHERE delta IS NULL;",
+        "SELECT id FROM test_timing WHERE parseTimeDelta(duration) = (SELECT parseTimeDelta('5yr3mo') - parseTimeDelta('1yr2mo'));",
+        "SELECT id, parseTimeDelta(duration) AS delta FROM test_timing GROUP BY id, delta HAVING delta > 600;",
+        "SELECT id, (SELECT COUNT() FROM test_timing WHERE data IS NOT NULL) AS non_null_count, parseTimeDelta(duration) AS delta FROM test_timing WHERE delta IS NOT NULL ORDER BY delta DESC;",
+        "CREATE TABLE temp_timing (id UInt32, duration String);",
+        "INSERT INTO temp_timing VALUES (1, '1d'), (2, '3hrs'), (3, '4mo');",
+        "SELECT id FROM temp_timing WHERE parseTimeDelta(duration) < (SELECT parseTimeDelta('3d') + parseTimeDelta('1min')) AND duration != '';",
+        "SELECT id, parseTimeDelta('1s+1000ms+1000us') AS total_delta FROM temp_timing WHERE parseTimeDelta(duration) = total_delta;",
+        "CREATE TABLE join_test (id UInt32, duration String, ref_id UInt32);",
+        "INSERT INTO join_test VALUES (1, '11s+22min', 1), (2, '1yr2mo', 2), (3, 'invalid', 1);",
+        "SELECT jt.id AS join_id, jt.duration, tt.id AS test_id FROM join_test jt JOIN test_timing tt ON parseTimeDelta(jt.duration) = tt.data;",
+        "SELECT id FROM test_timing WHERE id IN (SELECT ref_id FROM join_test WHERE parseTimeDelta(duration) IS NOT NULL);"
+    ]
+}

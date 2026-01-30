@@ -1,0 +1,23 @@
+{
+    "function": "xml_namespace_scope",
+    "operator": "XPath /",
+    "sql_array": [
+        "CREATE TABLE test_xml (id INT PRIMARY KEY, xml_content XML);",
+        "INSERT INTO test_xml (id, xml_content) VALUES (1, '<root><child>Test</child></root>');",
+        "INSERT INTO test_xml (id, xml_content) VALUES (2, '<root><child>Example</child></root>');",
+        "SELECT id, xml_namespace_scope(xpath_string('/root/child', xml_content), 1) AS namespace_scope FROM test_xml;",
+        "SELECT id, (SELECT xml_namespace_scope(xpath_string('/root/*', xml_content), 0) FROM test_xml AS inner_tbl WHERE inner_tbl.id = test_xml.id) AS inner_scope FROM test_xml;",
+        "SELECT id, xml_namespace_scope(xpath_string('/root/child', xml_content), 1) AS namespace_scope FROM test_xml WHERE id IN (SELECT id FROM test_xml WHERE xml_content IS NOT NULL);",
+        "CREATE TABLE complex_xml (id INT PRIMARY KEY, xml_content XML, data_value VARCHAR(255));",
+        "INSERT INTO complex_xml (id, xml_content, data_value) VALUES (1, '<parent xmlns:ns=\"http://example.com\"><child>Value1</child></parent>', 'Sample Value 1');",
+        "INSERT INTO complex_xml (id, xml_content, data_value) VALUES (2, '<parent xmlns:ns=\"http://example.com\"><child></child></parent>', NULL);",
+        "SELECT id, xml_namespace_scope(xml_content, 1) AS namespaces FROM complex_xml GROUP BY data_value HAVING COUNT(*) > 1;",
+        "SELECT id, (SELECT COUNT(*) FROM complex_xml AS inner_tbl WHERE inner_tbl.xml_content IS NOT NULL AND inner_tbl.id = complex_xml.id) AS non_null_count FROM complex_xml;",
+        "SELECT id, xml_namespace_scope(xpath_string('/parent/child', xml_content), 1) AS child_namespace FROM complex_xml WHERE data_value IS NOT NULL ORDER BY child_namespace;",
+        "CREATE TABLE edge_case_xml (id INT PRIMARY KEY, xml_content XML, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO edge_case_xml (id, xml_content) VALUES (1, '<root></root>');",
+        "INSERT INTO edge_case_xml (id, xml_content) VALUES (2, NULL);",
+        "SELECT id, xml_namespace_scope(xpath_string('/root', xml_content), 1) AS namespaces FROM edge_case_xml WHERE xml_content IS NOT NULL OR xml_content IS NULL;",
+        "SELECT id, xml_namespace_scope(xpath_string('/root/child', xml_content), 1) AS namespace_scope FROM edge_case_xml UNION SELECT id, xml_namespace_scope(xpath_string('/root/*', xml_content), 0) FROM edge_case_xml WHERE xml_content IS NULL;"
+    ]
+}

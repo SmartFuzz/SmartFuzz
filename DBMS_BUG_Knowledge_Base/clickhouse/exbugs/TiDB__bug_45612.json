@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/45612",
+  "title": "having item should be resolved to grouping expressions under rollup",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n```\r\nCREATE TABLE `sales` (\r\n  `year` int DEFAULT NULL,\r\n  `country` varchar(20) DEFAULT NULL,\r\n  `product` varchar(32) DEFAULT NULL,\r\n  `profit` int DEFAULT NULL\r\n)\r\nalter table sales set tiflash replica 1\r\nSELECT year+2, SUM(profit) AS profit FROM sales GROUP BY year+2, year+profit WITH ROLLUP having year+2 > 2002;\r\n```\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\nSpark does\r\n```\r\n== Optimized Logical Plan ==\r\nSort [(year + 2)#64 ASC NULLS FIRST, profit#62L ASC NULLS FIRST], true\r\n+- Aggregate [(year#6 + 2)#68, (year#6 + profit#9)#69, spark_grouping_id#67L], [(year#6 + 2)#68 AS (year + 2)#64, sum(profit#9) AS profit#62L]\r\n   +- Filter (isnotnull((year#6 + 2)#68) AND ((year#6 + 2)#68 > 2002))\r\n      +- Expand [[profit#9, (year#6 + 2)#65, (year#6 + profit#9)#66, 0], [profit#9, (year#6 + 2)#65, null, 1], [profit#9, null, null, 3]], [profit#9, (year#6 + 2)#68, (year#6 + profit#9)#69, spark_grouping_id#67L]\r\n         +- Project [profit#9, (year#6 + 2) AS (year#6 + 2)#65, (year#6 + profit#9) AS (year#6 + profit#9)#66]\r\n            +- Relation spark_catalog.default.sales[year#6,country#7,product#8,profit#9] csv\r\n\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\nMySQL and TiDB does\r\n```\r\nmysql> SELECT year+2, SUM(profit) AS profit FROM sales GROUP BY year+2, year+profit WITH ROLLUP having year+2 > 2002;\r\nERROR 1054 (42S22): Unknown column 'year' in 'having clause'\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2023-07-27T07:49:58Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE sales (year Int32, country String, product String, profit Int32, quantity Int32);",
+    "INSERT INTO sales (year, country, product, profit, quantity) VALUES (2001, 'USA', 'Widget', 100, 10), (2002, 'Canada', 'Gadget', 150, 20), (2003, 'USA', 'Widget', 200, 30);",
+    "SELECT year + 1 AS adjusted_year, SUM(profit) AS total_profit FROM sales GROUP BY adjusted_year WITH ROLLUP HAVING adjusted_year > 2002;",
+    "SELECT year + 2 AS adjusted_year, SUM(profit) AS profit FROM sales GROUP BY adjusted_year, year + profit WITH ROLLUP HAVING adjusted_year > 2002;",
+    "SELECT country, SUM(profit) AS total_profit FROM sales GROUP BY country WITH ROLLUP HAVING country IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "HAVING clause referencing non-aggregated column in rollup query"
+  ]
+}

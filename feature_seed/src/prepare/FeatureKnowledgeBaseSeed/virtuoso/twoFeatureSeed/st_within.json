@@ -1,0 +1,17 @@
+{
+    "function": "st_within",
+    "operator": "XPath Operator: xpath_integer",
+    "sql_array": [
+        "CREATE TABLE geospatial_data (id INT PRIMARY KEY, geo GEOMETRY, value INT);",
+        "INSERT INTO geospatial_data (id, geo, value) VALUES (1, ST_Point(0, 52), 10), (2, ST_Point(1, 53), 20), (3, ST_Point(2, 54), 30);",
+        "CREATE TABLE xml_data (id INT PRIMARY KEY, data XML);",
+        "INSERT INTO xml_data (id, data) VALUES (1, '<root><value>1</value></root>'), (2, '<root><value>2</value></root>');",
+        "SELECT g.id, g.value, g.geo FROM geospatial_data g WHERE ST_Within(g.geo, ST_Point(0, 52), 100) AND xpath_integer('/root/value', xml_data.data) = g.value FROM xml_data;",
+        "SELECT g1.id, g1.geo FROM geospatial_data g1 JOIN geospatial_data g2 ON ST_Within(g1.geo, g2.geo) WHERE g2.value > 10;",
+        "SELECT g1.id, g1.value, g2.id FROM geospatial_data g1 JOIN (SELECT geo, value FROM geospatial_data WHERE value < 30) g2 ON ST_Within(g1.geo, g2.geo) GROUP BY g1.id, g1.value HAVING COUNT(g2.id) > 0;",
+        "SELECT (SELECT ST_Within(g.geo, ST_Point(0, 52), 100) FROM geospatial_data g WHERE g.value IS NOT NULL) AS within_check FROM xml_data WHERE xpath_integer('/root/value', data) > 1;",
+        "SELECT ST_Within(g.geo, ST_Point(1, NULL), 50) AS within_check FROM geospatial_data g WHERE g.id IN (SELECT id FROM xml_data WHERE data IS NOT NULL);",
+        "SELECT g.id, g.value, ST_Within(g.geo, ST_Point(g.value * 0.1, g.value * 0.5), 100) AS within_check FROM geospatial_data g HAVING within_check = TRUE;",
+        "SELECT g.id, json_build_object('within', ST_Within(g.geo, ST_Point(g.value::FLOAT, 54.0), 10)::INTEGER) AS within_info FROM geospatial_data g WHERE g.value < 100 ORDER BY within_info->>'within' DESC;"
+    ]
+}

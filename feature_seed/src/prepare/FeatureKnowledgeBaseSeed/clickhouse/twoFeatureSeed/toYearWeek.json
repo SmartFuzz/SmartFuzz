@@ -1,0 +1,19 @@
+{
+    "function": "toYearWeek",
+    "operator": "a != ANY (subquery)",
+    "sql_array": [
+        "CREATE TABLE test_dates (id UInt32, event_date Date, value String);",
+        "INSERT INTO test_dates VALUES (1, '2016-12-27', 'A'), (2, '2021-12-31', 'B'), (3, '2022-01-01', 'C'), (4, NULL, 'D');",
+        "SELECT toYearWeek(event_date, 1) AS yearWeek1 FROM test_dates WHERE value != ANY (SELECT value FROM test_dates WHERE event_date IS NOT NULL);",
+        "SELECT event_date, toYearWeek(toDate(value), 3) AS weekYear FROM test_dates WHERE id != ANY (SELECT id FROM test_dates WHERE event_date < '2021-12-30');",
+        "SELECT id, event_date, value FROM test_dates WHERE toYearWeek(event_date) != ANY (SELECT toYearWeek(event_date) FROM test_dates WHERE event_date IS NOT NULL);",
+        "CREATE TABLE temp_dates AS SELECT id, toISOYear(event_date) AS iso_year, value FROM test_dates WHERE value IS NOT NULL;",
+        "SELECT iso_year, COUNT(*) FROM temp_dates GROUP BY iso_year HAVING iso_year != ANY (SELECT toISOYear(max(event_date)) FROM test_dates);",
+        "INSERT INTO temp_dates VALUES (10, '2021-12-27', 'E'), (11, '2022-01-03', 'F');",
+        "SELECT a.id, a.event_date, a.value FROM test_dates a JOIN temp_dates b ON a.value != b.value AND toYearWeek(a.event_date, 3) == toYearWeek(b.iso_year, 1);",
+        "SELECT DISTINCT id FROM test_dates WHERE value is NULL OR value != ANY (SELECT value FROM test_dates WHERE LENGTH(value) > 0);",
+        "CREATE TABLE edge_dates (id UInt32, start_date Date, end_date Date, description String);",
+        "INSERT INTO edge_dates VALUES (1, '2023-01-01', '2023-12-31', 'Year boundary'), (2, '2022-12-31', '2023-01-01', 'Crossing year'), (3, NULL, '2023-01-01', 'Null start');",
+        "SELECT toYearWeek(start_date) AS year_week FROM edge_dates WHERE start_date IS NOT NULL AND end_date != ANY (SELECT end_date FROM edge_dates WHERE description = 'Crossing year');"
+    ]
+}

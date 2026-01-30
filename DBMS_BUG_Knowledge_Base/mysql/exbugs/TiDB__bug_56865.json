@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/56865",
+  "title": "When the maximum value of the `time` type is exceeded, the returned result is confusing",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n```\r\ncreate table lrr_test(`COL1` time DEFAULT NULL);\r\ninsert into lrr_test values('838:59:59');\r\nselect col1,adddate(col1, interval 10 hour_minute) from lrr_test where adddate(col1, interval 10 hour_minute) is null;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\nMysql: \r\n+-----------+----------------------------------------+\r\n| col1      | adddate(col1, interval 10 hour_minute) |\r\n+-----------+----------------------------------------+\r\n| 838:59:59 | NULL                                   |\r\n+-----------+----------------------------------------+\r\n\r\n### 3. What did you see instead (Required)\r\nSince adddate(col1, interval 10 hour_minute) returns `839:09:59`, why can it be returned in the` isnull` judgment?\r\n\r\n> mysql> select col1,adddate(col1, interval 10 hour_minute) from lrr_test where adddate(col1, interval 10 hour_minute) is null;\r\n> +-----------+----------------------------------------+\r\n> | col1      | adddate(col1, interval 10 hour_minute) |\r\n> +-----------+----------------------------------------+\r\n> | 838:59:59 | 839:09:59                              |\r\n> +-----------+----------------------------------------+\r\n> 1 row in set, 1 warning (0.66 sec)\r\n> \r\n> mysql> show warnings;\r\n> +---------+------+-------------------------------------------------------------------------------+\r\n> | Level   | Code | Message                                                                       |\r\n> +---------+------+-------------------------------------------------------------------------------+\r\n> | Warning | 1690 | evaluation failed: Duration value is out of range in '(838:59:59 - 00:10:00)' |\r\n> +---------+------+-------------------------------------------------------------------------------+\r\n> 1 row in set (0.03 sec)\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\nRelease Version: v8.4.0\r\nEdition: Community\r\nGit Commit Hash: 2511e928966110964414e6bbb630a565a9870a52\r\nGit Branch: HEAD\r\nUTC Build Time: 2024-10-27 16:16:04\r\nGoVersion: go1.23.2\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv\r\n",
+  "date": "2024-10-28T06:19:19Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE lrr_test2(`COL1` TIME DEFAULT NULL, `COL2` INT NOT NULL);",
+    "INSERT INTO lrr_test2 VALUES('838:59:59', 1);",
+    "INSERT INTO lrr_test2 VALUES('23:59:59', 2);",
+    "SELECT COL1, ADDTIME(COL1, '10:00:00') FROM lrr_test2 WHERE COL2 = 1 AND ADDTIME(COL1, '10:00:00') IS NULL;",
+    "SELECT COL1, COL2 FROM lrr_test2 WHERE COL1 IS NOT NULL AND COL2 > 0;"
+  ],
+  "key_bug_features": [
+    "Exceeding maximum value of time type causes confusion"
+  ]
+}

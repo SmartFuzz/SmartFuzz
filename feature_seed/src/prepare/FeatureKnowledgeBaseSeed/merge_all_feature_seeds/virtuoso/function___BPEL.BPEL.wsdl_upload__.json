@@ -1,0 +1,17 @@
+CREATE TABLE BPEL_PartnerLinks (id INT PRIMARY KEY, link_name VARCHAR(255));
+INSERT INTO BPEL_PartnerLinks (id, link_name) VALUES (1, 'LoanFlow');
+INSERT INTO BPEL_PartnerLinks (id, link_name) VALUES (2, 'PaymentFlow');
+CREATE TABLE BPEL_WSDLs (id INT PRIMARY KEY, partner_link_id INT, wsdl_content TEXT, FOREIGN KEY (partner_link_id) REFERENCES BPEL_PartnerLinks(id));
+BPEL.BPEL.wsdl_upload (1, 'file:/LoanFlow.wsdl', null, 'wsdl');
+BPEL.BPEL.wsdl_upload (2, 'http://example.com/PaymentFlow.wsdl', null, 'wsdl');
+BPEL.BPEL.wsdl_upload (1, 'http://example.com/LoanFlow.wsdl', null, 'wsdl');
+BPEL.BPEL.wsdl_upload (1, 'file:/empty.wsdl', null, 'wsdl');
+BPEL.BPEL.wsdl_upload (1, NULL, null, 'wsdl');
+SELECT * FROM BPEL_WSDLs WHERE partner_link_id = (SELECT id FROM BPEL_PartnerLinks WHERE link_name = 'LoanFlow');
+SELECT * FROM BPEL_WSDLs WHERE partner_link_id IN (SELECT id FROM BPEL_PartnerLinks WHERE link_name LIKE 'Loan%');
+SELECT pl.link_name, w.wsdl_content FROM BPEL_PartnerLinks pl JOIN BPEL_WSDLs w ON pl.id = w.partner_link_id WHERE pl.link_name = 'LoanFlow';
+DELETE FROM BPEL_WSDLs WHERE partner_link_id = (SELECT id FROM BPEL_PartnerLinks WHERE link_name = 'PaymentFlow') AND wsdl_content IS NULL;
+BPEL.BPEL.wsdl_upload (1, 'file:/LoanFlow_Expanded.wsdl', null, 'wsdl');
+CREATE TABLE BPEL_Logs (log_id INT PRIMARY KEY, log_message VARCHAR(255), log_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO BPEL_Logs (log_id, log_message) VALUES (1, 'WSDL uploaded successfully for LoanFlow');
+INSERT INTO BPEL_Logs (log_id, log_message) VALUES (2, 'Failed to upload WSDL for PaymentFlow due to URL issue');

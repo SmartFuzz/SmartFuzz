@@ -1,0 +1,13 @@
+CREATE TABLE test_table (id INT, description TEXT, value BITSTRING);
+INSERT INTO test_table (id, description, value) VALUES (1, 'Sample>>>>text<<<', '101'), (2, 'Another example', '110');
+SELECT id, rtrim(description, '<>') AS cleaned_description, ~value AS inverted_value FROM test_table;
+SELECT id, rtrim(description, '<>') AS cleaned_desc FROM test_table WHERE ~value = '0'::BITSTRING;
+SELECT id, COUNT(*) OVER (PARTITION BY rtrim(description, '<>')) AS count_by_cleaned FROM test_table;
+SELECT id FROM (SELECT id, rtrim(description, '<>') AS cleaned_desc FROM test_table WHERE id IS NOT NULL) AS sub WHERE ~'111'::BITSTRING = '0'::BITSTRING;
+CREATE TABLE another_table (group_id INT, amount DECIMAL);
+INSERT INTO another_table (group_id, amount) VALUES (1, 10.5), (2, NULL), (1, 20.25);
+SELECT t.id, SUM(a.amount) AS total_amount, rtrim(a.group_id::TEXT, '0')::TEXT FROM test_table AS t JOIN another_table AS a ON t.id = a.group_id GROUP BY t.id, a.group_id;
+SELECT id, rtrim(description, '<>') AS cleaned_description FROM test_table WHERE value IS NOT NULL AND rtrim(description, '<>') <> '' ORDER BY id;
+DROP TABLE IF EXISTS temp_table;
+CREATE TEMPORARY TABLE temp_table AS SELECT id, rtrim(description, '<>') AS cleaned_description FROM test_table WHERE description IS NOT NULL;
+SELECT cleaned_description, ~'1101'::BITSTRING AS inverted_value FROM temp_table WHERE cleaned_description <> '';

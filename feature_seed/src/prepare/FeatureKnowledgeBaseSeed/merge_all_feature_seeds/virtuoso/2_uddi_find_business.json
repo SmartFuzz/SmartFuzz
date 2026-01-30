@@ -1,0 +1,11 @@
+CREATE TABLE businesses (id INT PRIMARY KEY, name VARCHAR(100), xml_data XML, created_at TIMESTAMP);
+INSERT INTO businesses (id, name, xml_data, created_at) VALUES (1, 'Business One', '<business><id>1</id><name>Business One</name></business>', NOW());
+INSERT INTO businesses (id, name, xml_data, created_at) VALUES (2, 'Business Two', '<business><id>2</id><name>Business Two</name></business>', NOW());
+SELECT uddi_find_business(xpath_integer(xml_data, '/business/id')) AS business_id FROM businesses WHERE created_at > NOW() - INTERVAL '30 days' GROUP BY xpath_integer(xml_data, '/business/id') HAVING COUNT(*) > 1;
+SELECT X.path, uddi_find_business(X.value) FROM (SELECT xpath_integer(xml_data, '/business/id') AS path, xml_data FROM businesses) AS X WHERE path IS NOT NULL ORDER BY path;
+SELECT uddi_find_business(xpath_integer(xml_data, '/business/id')) AS business_id FROM businesses WHERE name IS NULL OR name = '' GROUP BY name HAVING COUNT(*) >= 1;
+SELECT COUNT(*), MAX(uddi_find_business(xpath_integer(xml_data, '/business/id'))) FROM businesses WHERE xml_data IS NOT NULL GROUP BY xpath_integer(xml_data, '/business/id');
+CREATE TABLE temp_businesses AS SELECT * FROM businesses;
+DELETE FROM temp_businesses WHERE xpath_integer(xml_data, '/business/id') IS NULL;
+SELECT uddi_find_business(xpath_integer(xml_data, '/business/id')) FROM (SELECT xml_data FROM businesses WHERE xml_data IS NOT NULL ) AS subquery WHERE xpath_integer(xml_data, '/business/id') IN (SELECT DISTINCT xpath_integer(xml_data, '/business/id') FROM businesses);
+SELECT MAX(COALESCE(uddi_find_business(xpath_integer(xml_data, '/business/id')), 0)) FROM businesses WHERE created_at < '1970-01-01';

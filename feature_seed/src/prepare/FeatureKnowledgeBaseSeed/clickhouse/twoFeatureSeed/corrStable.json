@@ -1,0 +1,17 @@
+{
+    "function": "corrStable",
+    "operator": "SELECT a OR b",
+    "sql_array": [
+        "CREATE TABLE test_data (id UInt32, x_value Float64 DEFAULT 0, y_value Float64 DEFAULT 0);",
+        "INSERT INTO test_data (id, x_value, y_value) VALUES (1, 1.5, NULL), (2, -2.3, 3.4), (3, 0.0, 10.1), (4, NULL, NULL), (5, 5.5, -1.1);",
+        "SELECT corrStable(x_value, y_value) AS correlation FROM test_data WHERE x_value IS NOT NULL OR (y_value IS NOT NULL);",
+        "CREATE TABLE temp_data AS SELECT id, x_value, y_value FROM test_data WHERE x_value > 0 OR x_value < -1;",
+        "SELECT id, corrStable(x_value, y_value) FROM (SELECT * FROM temp_data) GROUP BY id HAVING corrStable(x_value, y_value) IS NOT NULL;",
+        "INSERT INTO temp_data (id, x_value, y_value) VALUES (6, NaN, 1.0), (7, 2.0, -2.5), (8, 3.7, NULL);",
+        "SELECT corrStable(CAST(NULLIF(x_value, 0) AS Float64), y_value) FROM temp_data GROUP BY id HAVING id < 7 OR y_value > 0;",
+        "SELECT id, corrStable(x_value, y_value) AS correlation FROM (SELECT DISTINCT x_value, y_value FROM test_data WHERE id > 2 OR id < 1) GROUP BY id ORDER BY correlation DESC;",
+        "CREATE TABLE join_data (key UInt32, value1 Float64, value2 Float64);",
+        "INSERT INTO join_data (key, value1, value2) VALUES (1, 0.5, -1.0), (2, NULL, 9.9), (3, 5.5, 0.5);",
+        "SELECT A.key, corrStable(A.value1, B.value2) FROM test_data A LEFT JOIN join_data B ON A.id = B.key WHERE A.x_value IS NOT NULL OR B.value2 IS NOT NULL GROUP BY A.key;"
+    ]
+}

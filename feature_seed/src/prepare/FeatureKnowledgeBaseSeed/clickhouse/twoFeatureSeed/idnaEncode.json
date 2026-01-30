@@ -1,0 +1,16 @@
+{
+    "function": "idnaEncode",
+    "operator": "SELECT a AND b",
+    "sql_array": [
+        "CREATE TABLE domain_test (id UInt32, domain String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO domain_test VALUES (1, 'stra\u00dfe.m\u00fcnchen.de'), (2, 'example.com'), (3, '\u0444\u0438\u0440\u043c\u0430.\u0440\u0444');",
+        "SELECT id, idnaEncode(domain) AS encoded_domain FROM domain_test WHERE id = 1 AND encoded_domain IS NOT NULL;",
+        "SELECT id, (idnaEncode(domain) AND (id > 1)) AS logic_test FROM domain_test;",
+        "SELECT id, idnaEncode((CASE WHEN domain = '' THEN 'empty.domain' ELSE domain END)) AS encoded_test FROM domain_test HAVING encoded_test IS NOT NULL;",
+        "INSERT INTO domain_test VALUES (4, '\ud83d\ude03.test');",
+        "SELECT id, idnaEncode(domain) FROM domain_test WHERE domain LIKE '%test%' AND id NOT IN (SELECT id FROM domain_test WHERE id > 2);",
+        "CREATE TABLE temp_domains AS SELECT id, idnaEncode(domain) FROM domain_test;",
+        "SELECT id, SUM(CASE WHEN idnaEncode(domain) IS NOT NULL THEN 1 ELSE 0 END) OVER(PARTITION BY id) AS total_encoded_domains FROM domain_test;",
+        "SELECT id FROM domain_test WHERE id IN (SELECT DISTINCT id FROM domain_test WHERE idnaEncode(domain) IS NOT NULL AND id > 1 AND domain NOT IN ('example.com')) AND id < 3;"
+    ]
+}

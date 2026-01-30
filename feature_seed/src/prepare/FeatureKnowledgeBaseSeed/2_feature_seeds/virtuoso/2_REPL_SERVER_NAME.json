@@ -1,0 +1,15 @@
+CREATE TABLE replication_test (id INT PRIMARY KEY, dsn VARCHAR(255), server_name VARCHAR(255));
+INSERT INTO replication_test (id, dsn, server_name) VALUES (1, 'localhost:1121', REPL_SERVER_NAME('localhost:1121'));
+SELECT EXISTS (SELECT 1 FROM replication_test WHERE server_name IS NOT NULL);
+INSERT INTO replication_test (id, dsn, server_name) VALUES (2, 'test_dsn', REPL_SERVER_NAME(NULL));
+SELECT id, dsn, server_name FROM replication_test WHERE EXISTS (SELECT 1 FROM replication_test WHERE id = 1 AND server_name = REPL_SERVER_NAME(dsn));
+SELECT COUNT(*) FROM (SELECT dsn, REPL_SERVER_NAME(dsn) AS derived_server_name FROM replication_test GROUP BY dsn HAVING derived_server_name IS NOT NULL) AS derived_table;
+SELECT dsn, (CASE WHEN EXISTS (SELECT 1 FROM replication_test WHERE server_name LIKE '%demoserver%') THEN REPL_SERVER_NAME(dsn) ELSE 'No Server' END) AS server_status FROM replication_test;
+CREATE TEMPORARY TABLE edge_case_test (id INT, value VARCHAR(50));
+INSERT INTO edge_case_test (id, value) VALUES (1, ''), (2, 'test_value');
+SELECT EXISTS (SELECT 1 FROM edge_case_test WHERE value IS NULL OR value = '');
+SELECT REPL_SERVER_NAME((SELECT dsn FROM replication_test WHERE id = (SELECT MAX(id) FROM replication_test)));
+SELECT EXISTS (SELECT 1 FROM replication_test WHERE server_name = REPL_SERVER_NAME(dsn) AND dsn LIKE '%localhost%');
+CREATE TABLE complex_test (id INT, dsn VARCHAR(255), server_name VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO complex_test (id, dsn, server_name) VALUES (1, 'localhost:1121', REPL_SERVER_NAME('localhost:1121'));
+SELECT COUNT(*) FROM complex_test WHERE EXISTS (SELECT 1 FROM complex_test b WHERE b.id = complex_test.id AND b.server_name = REPL_SERVER_NAME(b.dsn));

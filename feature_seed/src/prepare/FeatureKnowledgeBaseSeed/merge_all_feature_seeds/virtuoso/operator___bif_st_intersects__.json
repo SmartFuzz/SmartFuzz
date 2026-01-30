@@ -1,0 +1,18 @@
+CREATE TABLE geom_a (id INT, geom GEOMETRY);
+CREATE TABLE geom_b (id INT, geom GEOMETRY);
+INSERT INTO geom_a (id, geom) VALUES (1, ST_GeomFromText('POINT(1 1)', 4326));
+INSERT INTO geom_a (id, geom) VALUES (2, ST_GeomFromText('POLYGON((0 0, 0 2, 2 2, 2 0, 0 0))', 4326));
+INSERT INTO geom_b (id, geom) VALUES (1, ST_GeomFromText('POINT(1 1)', 4326));
+INSERT INTO geom_b (id, geom) VALUES (2, ST_GeomFromText('LINESTRING(1 1, 3 3)', 4326));
+SELECT bif:st_intersects(a.geom, b.geom) FROM geom_a AS a, geom_b AS b WHERE a.id = 1 AND b.id = 1;
+SELECT bif:st_intersects(a.geom, b.geom) FROM geom_a AS a JOIN geom_b AS b ON a.id = b.id WHERE a.id = 2;
+SELECT a.id, b.id FROM geom_a AS a JOIN geom_b AS b ON bif:st_intersects(a.geom, b.geom) WHERE a.id < 3 AND b.id < 3;
+SELECT COUNT(*) FROM geom_a AS a JOIN geom_b AS b ON bif:st_intersects(a.geom, b.geom);
+SELECT a.id FROM geom_a AS a WHERE EXISTS (SELECT 1 FROM geom_b AS b WHERE bif:st_intersects(a.geom, b.geom));
+SELECT a.id, b.id FROM geom_a AS a CROSS JOIN geom_b AS b WHERE bif:st_intersects(a.geom, b.geom) AND a.id < 3;
+SELECT a.id FROM geom_a AS a WHERE bif:st_intersects(a.geom, (SELECT b.geom FROM geom_b AS b WHERE b.id = 2));
+SELECT a.id FROM geom_a AS a WHERE NOT bif:st_intersects(a.geom, (SELECT b.geom FROM geom_b AS b WHERE b.id = 1));
+CREATE TABLE geom_c (id INT, geom GEOMETRY);
+INSERT INTO geom_c (id, geom) VALUES (1, ST_GeomFromText('POINT(1 1)', 4326));
+INSERT INTO geom_c (id, geom) VALUES (2, ST_GeomFromText('POINT(3 3)', 4326));
+SELECT bif:st_intersects((SELECT geom FROM geom_a WHERE id = 1), (SELECT geom FROM geom_c WHERE id = 2));

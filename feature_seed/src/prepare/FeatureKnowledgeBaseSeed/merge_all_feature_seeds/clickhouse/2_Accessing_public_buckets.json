@@ -1,0 +1,11 @@
+CREATE TABLE stock_data (id UInt32, price Float64, date DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO stock_data VALUES (1, 150.5, '2023-01-01 10:00:00'), (2, 152.0, '2023-01-02 11:30:00'), (3, NULL, '2023-01-03 12:00:00'), (4, 155, '2023-01-04 09:00:00');
+SELECT id, price, date, (price > 151 AND date < '2023-01-03 12:00:00') AS is_high_price FROM stock_data WHERE price IS NOT NULL;
+SELECT * FROM s3('https://datasets-documentation.s3.eu-west-3.amazonaws.com/aapl_stock.csv', NOSIGN, 'CSVWithNames') WHERE (SELECT COUNT() FROM stock_data) > 1;
+SELECT id, COUNT() FROM stock_data GROUP BY price HAVING price > (SELECT AVG(price) FROM stock_data WHERE price IS NOT NULL) AND price IS NOT NULL;
+SELECT id, price, (price + (SELECT MAX(price) FROM stock_data WHERE price IS NOT NULL)) AS total_price FROM stock_data WHERE price IS NOT NULL;
+SELECT * FROM s3( (SELECT 'https://datasets-documentation.s3.eu-west-3.amazonaws.com/aapl_stock.csv' AS url), NOSIGN, 'CSVWithNames') WHERE SELECT AVG(price) FROM stock_data;
+CREATE TABLE bucket_test (url String, header String) ENGINE = Memory;
+INSERT INTO bucket_test VALUES ('https://datasets-documentation.s3.eu-west-3.amazonaws.com/aapl_stock.csv', 'CSVWithNames');
+SELECT url, header, (SELECT COUNT() FROM stock_data WHERE price IS NOT NULL) AS stock_count FROM bucket_test WHERE url IS NOT NULL AND (SELECT MIN(price) FROM stock_data WHERE price IS NOT NULL) > 100;
+SELECT * FROM s3( (SELECT url FROM bucket_test), NOSIGN, (SELECT header FROM bucket_test WHERE header IS NOT NULL LIMIT 1)) LIMIT (SELECT COUNT() FROM stock_data WHERE price IS NOT NULL) > 5;

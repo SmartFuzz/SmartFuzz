@@ -1,0 +1,5 @@
+CREATE TABLE t AS SELECT 2000+i%10 AS year, 1+i%3 AS month, i%4 AS c, i%5 AS d FROM RANGE(0,20) tbl(i);
+COPY t TO '__TEST_DIR__/partition_rec_cte' (FORMAT PARQUET, PARTITION_BY (year, month));
+CREATE VIEW partitioned_tbl AS FROM '__TEST_DIR__/partition_rec_cte/**/*.parquet';
+WITH RECURSIVE cte AS ( 	SELECT 0 AS count, 1999 AS selected_year 	UNION ALL 	SELECT COUNT(*) AS count, MAX(partitioned_tbl.year) 	FROM partitioned_tbl, (SELECT MAX(selected_year) AS next_year FROM cte) 	WHERE partitioned_tbl.year = (SELECT MAX(selected_year) + 1 FROM cte) 	HAVING COUNT(*)>0 ) SELECT SUM(count), MIN(selected_year), MAX(selected_year) FROM cte WHERE count>0;
+CREATE OR REPLACE VIEW partitioned_tbl AS FROM read_parquet('__TEST_DIR__/partition_rec_cte/**/*.parquet', union_by_name=True);

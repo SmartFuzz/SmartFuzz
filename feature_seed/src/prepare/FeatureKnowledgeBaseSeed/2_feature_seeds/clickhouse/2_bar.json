@@ -1,0 +1,8 @@
+CREATE TABLE test.hits (EventTime DateTime, Value Int64) ENGINE = MergeTree() ORDER BY EventTime;
+INSERT INTO test.hits VALUES (now(), 100000), (now() - interval 1 hour, 200000), (now() - interval 2 hours, NULL), (now() - interval 3 hours, 300000);
+SELECT toHour(EventTime) AS h, COUNT() AS c, bar(c, 0, 600000, 20) AS bar FROM test.hits GROUP BY h HAVING c >= 1;
+SELECT h, c FROM (SELECT toHour(EventTime) AS h, COUNT() AS c FROM test.hits WHERE Value != ANY (SELECT DISTINCT Value FROM test.hits WHERE Value IS NOT NULL) GROUP BY h) WHERE c > 0;
+SELECT COUNT(*) AS total, bar(total, 0, (SELECT MAX(Value) FROM test.hits), 30) AS bar FROM (SELECT Value AS total FROM test.hits WHERE Value IS NOT NULL AND EventTime > now() - interval 4 hours GROUP BY Value HAVING COUNT(*) >= 1) AS sub;
+CREATE TABLE test.temp AS SELECT * FROM test.hits WHERE Value IS NOT NULL;
+SELECT bar(c, 0, 300000, 15) AS bar, Value FROM (SELECT Value, COUNT() AS c FROM test.temp WHERE Value != ANY (SELECT DISTINCT Value FROM test.hits WHERE Value IS NULL GROUP BY Value) GROUP BY Value) ORDER BY bar DESC;
+SELECT DISTINCT bar(c, 0, 600000, 25) AS bar FROM (SELECT c FROM (SELECT COUNT() AS c FROM test.hits WHERE EventTime < now() GROUP BY Value) WHERE Value < 250000) AS filtered WHERE c != ANY (SELECT Value FROM test.hits WHERE EventTime >= now() - interval 1 day);

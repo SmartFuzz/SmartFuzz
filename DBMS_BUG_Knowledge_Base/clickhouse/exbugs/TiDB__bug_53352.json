@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/53352",
+  "title": "Cast json to `datetime` didn't have a correct fsp",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```sql\r\ncreate table t (j json);\r\ninsert into t values (cast(cast(\"2024-10-24 11:11:11.12346\" as datetime(6)) as json));\r\nselect cast(j as datetime(6)) from t;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\n```\r\n+----------------------------+\r\n| cast(j as datetime(6))     |\r\n+----------------------------+\r\n| 2024-10-24 11:11:11.123460 |\r\n+----------------------------+\r\n1 row in set (0.00 sec)\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n```\r\n+------------------------+\r\n| cast(j as datetime(6)) |\r\n+------------------------+\r\n| 2024-10-24 11:11:11    |\r\n+------------------------+\r\n1 row in set (0.00 sec)\r\n```\r\n\r\nActually, there is another bug: `insert into t values (cast(\"2024-10-24 11:11:11.12346\" as datetime(6)));` will fail on MySQL, but it successes on TiDB.\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2024-05-17T06:16:25Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id UInt32, j String, created_at DateTime64(6));",
+    "INSERT INTO test_table (id, j, created_at) VALUES (1, CAST('2024-10-24 11:11:11.12346' AS String), now());",
+    "INSERT INTO test_table (id, j, created_at) VALUES (2, '2024-10-24 11:11:11.12346', CAST('2024-10-24 11:11:11.12346' AS DateTime64(6)));",
+    "SELECT id, parseDateTime64BestEffort(j, 6) AS casted_datetime FROM test_table WHERE j IS NOT NULL;",
+    "SELECT id, parseDateTime64BestEffort(j, 6) AS casted_datetime FROM test_table WHERE created_at < now();"
+  ],
+  "key_bug_features": [
+    "Casting json to datetime loses fractional seconds"
+  ]
+}

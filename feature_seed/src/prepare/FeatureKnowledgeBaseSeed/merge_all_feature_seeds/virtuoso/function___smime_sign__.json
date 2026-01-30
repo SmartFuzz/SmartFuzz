@@ -1,0 +1,10 @@
+CREATE TABLE email_keys (id INT, public_key STRING, private_key STRING, password STRING);
+INSERT INTO email_keys VALUES (1, file_to_string('thwate_pub.pem'), file_to_string('thwate_pri.pem'), 'very_secret_password');
+CREATE TABLE ca_certificates (id INT, ca_cert STRING);
+INSERT INTO ca_certificates VALUES (1, file_to_string('thwate_ca.pem'));
+SELECT smime_sign('Boundary test with nested queries', (SELECT public_key FROM email_keys WHERE id = 1), (SELECT private_key FROM email_keys WHERE id = 1), (SELECT password FROM email_keys WHERE id = 1), vector((SELECT ca_cert FROM ca_certificates WHERE id = 1)), 4 * 16 + 1);
+SELECT smime_sign('Edge case with empty strings', '', '', '', vector(''), 0);
+SELECT smime_sign('Long input test', REPEAT('a', 1000), file_to_string('thwate_pri.pem'), 'very_secret_password', vector(file_to_string('thwate_ca.pem')), 4 * 16 + 2);
+SELECT smime_sign('Test with special characters', '!@#$%^&*()-_=+', file_to_string('thwate_pri.pem'), 'very_secret_password', vector(file_to_string('thwate_ca.pem')), 4 * 16 + 3);
+SELECT smime_sign('Test with NULL values', NULL, file_to_string('thwate_pri.pem'), 'very_secret_password', vector(file_to_string('thwate_ca.pem')), NULL);
+SELECT smime_sign((SELECT STRING_AGG(content) FROM (SELECT 'First Line' AS content UNION SELECT 'Second Line' AS content) AS combined), file_to_string('thwate_pub.pem'), file_to_string('thwate_pri.pem'), 'very_secret_password', vector(file_to_string('thwate_ca.pem')), 4 * 16 + 4);

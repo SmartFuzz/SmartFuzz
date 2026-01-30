@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/44114",
+  "title": "Error `value out of range` happen when run schrdll",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n1. tiup playground make a cluster\r\n```\r\nuse test;\r\n\r\nCREATE TABLE `c3531056` (\r\n  `f97e9c56` decimal(3,0) DEFAULT '-462',\r\n  `db817f20` decimal(47,26) NOT NULL DEFAULT '-396970320060942017866.97018824734158683559217482',\r\n  PRIMARY KEY (`db817f20`) /*T![clustered_index] CLUSTERED */,\r\n  KEY `5c670b09` (`f97e9c56`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_bin COMMENT='90285ce1';\r\n\r\nINSERT INTO `c3531056` VALUES (3,0.00000000000000000000000000),(5,0.06110000000000000000000000),(939,0.39000000000000000000000000),(2,0.62800000000000000000000000),(274,44.17000000000000000000000000),(9,818.00000000000000000000000000),(4,9084.01000000000000000000000000);\r\n\r\nCREATE TABLE `5e5e56aa` (\r\n  `3d6934c3` date NOT NULL DEFAULT '8503-02-11',\r\n  `32b36f71` date DEFAULT '2100-08-19',\r\n  `5f716feb` year(4) DEFAULT '2098',\r\n  `b7e5941d` tinytext DEFAULT NULL,\r\n  PRIMARY KEY (`3d6934c3`) /*T![clustered_index] CLUSTERED */,\r\n  UNIQUE KEY `bf803c98` (`32b36f71`,`5f716feb`,`3d6934c3`),\r\n  KEY `1c309b2b` (`3d6934c3`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_bin COMMENT='cc8d5ab1';\r\n\r\nINSERT INTO `5e5e56aa` VALUES ('1974-04-08','2033-06-16',2033,NULL),('1997-02-14','1980-12-27',1971,'2B#KzTnWb'),('2000-04-22','2002-09-28',2026,'N='),('2033-02-01','1979-07-22',1981,'0OXbSemvPqK#PlW'),('2033-07-22','2002-10-15',1985,'(ip!_B@^NBA#@YH'),('8503-02-11','2036-08-25',NULL,NULL);\r\n\r\n( select  /*+ use_index_merge( `5e5e56aa` ) */   `5e5e56aa`.`3d6934c3` as r0 , reverse( `5e5e56aa`.`b7e5941d` ) as r1 from `5e5e56aa` where `5e5e56aa`.`b7e5941d` <= 'nzq'    for update ) intersect ( select     replace( `c3531056`.`db817f20` , `c3531056`.`f97e9c56` , `c3531056`.`db817f20` ) as r0 , `c3531056`.`db817f20` as r1 from `c3531056`    order by r0,r1 limit 18  ) order by 1 limit 334;\r\n```\r\n### 2. What did you expect to see? (Required)\r\n\r\nthe normal result\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nstrconv.Atoi: parsing \"01000000000000000000000000\": value out of range\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\nnightly\r\n\r\n",
+  "date": "2023-05-23T10:04:28Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE test_table ( id INTEGER PRIMARY KEY, amount DECIMAL(5,2) NOT NULL );",
+    "INSERT INTO test_table VALUES (1, 999.99), (2, 1000.00), (3, 1000.01);",
+    "CREATE TABLE another_table ( date_field DATE NOT NULL, value_field DECIMAL(10,5) DEFAULT NULL );",
+    "INSERT INTO another_table VALUES ('2023-01-01', NULL), ('2023-01-02', 123456.78901), ('2023-01-03', 1234567.89012);",
+    "SELECT a.date_field, a.value_field FROM another_table a JOIN test_table t ON a.value_field <= t.amount WHERE t.amount IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Inserting values exceeding decimal range in table"
+  ]
+}

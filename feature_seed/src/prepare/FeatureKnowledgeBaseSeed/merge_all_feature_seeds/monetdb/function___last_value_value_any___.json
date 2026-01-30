@@ -1,0 +1,13 @@
+CREATE TABLE sales (id INT, amount FLOAT, sale_date DATE);
+INSERT INTO sales VALUES (1, 100.50, '2023-01-01');
+INSERT INTO sales VALUES (2, 200.75, '2023-01-02');
+INSERT INTO sales VALUES (3, 150.25, '2023-01-03');
+INSERT INTO sales VALUES (4, 300.00, '2023-01-04');
+CREATE TABLE employees (id INT, name VARCHAR(100));
+INSERT INTO employees VALUES (1, 'Alice');
+INSERT INTO employees VALUES (2, 'Bob');
+SELECT last_value(amount) OVER (ORDER BY sale_date RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS last_amount FROM sales;
+SELECT e.name, last_value(s.amount) OVER (PARTITION BY e.id ORDER BY s.sale_date) AS last_sale_amount FROM employees e LEFT JOIN sales s ON e.id = s.id;
+WITH ranked_sales AS (SELECT id, amount, ROW_NUMBER() OVER (PARTITION BY id ORDER BY sale_date) as rn FROM sales) SELECT last_value(amount) OVER (PARTITION BY id ORDER BY sale_date ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) FROM ranked_sales WHERE rn = 1;
+SELECT id, last_value(amount) OVER (ORDER BY sale_date ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS last_two_sales FROM sales;
+SELECT id, last_value(amount) OVER (PARTITION BY id ORDER BY sale_date DESC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS last_amount FROM (SELECT id, amount, sale_date FROM sales) AS subquery;

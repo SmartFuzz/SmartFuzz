@@ -1,0 +1,16 @@
+CREATE TABLE tokens (authToken VARCHAR(255) PRIMARY KEY, userId INT);
+INSERT INTO tokens (authToken, userId) VALUES ('token1', 1);
+INSERT INTO tokens (authToken, userId) VALUES ('token2', 2);
+CREATE TABLE user_sessions (sessionId INT PRIMARY KEY, authToken VARCHAR(255), sessionData TEXT);
+INSERT INTO user_sessions (sessionId, authToken, sessionData) VALUES (1, 'token1', 'data1');
+INSERT INTO user_sessions (sessionId, authToken, sessionData) VALUES (2, 'token2', 'data2');
+DELETE FROM user_sessions WHERE authToken = (SELECT authToken FROM tokens WHERE userId = 1);
+SELECT * FROM user_sessions WHERE authToken = 'token1';
+SELECT COUNT(*) FROM user_sessions WHERE authToken IN (SELECT authToken FROM tokens WHERE userId = 2);
+UPDATE tokens SET authToken = NULL WHERE authToken = 'token1';
+SELECT * FROM tokens WHERE authToken IS NULL;
+SELECT DISTINCT authToken FROM tokens WHERE userId IN (SELECT userId FROM tokens WHERE authToken LIKE 'token%') ORDER BY authToken;
+DELETE FROM tokens WHERE authToken IN (SELECT authToken FROM user_sessions WHERE sessionId > 1);
+SELECT t.authToken, COUNT(u.sessionId) FROM tokens t LEFT JOIN user_sessions u ON t.authToken = u.authToken GROUP BY t.authToken HAVING COUNT(u.sessionId) > 0;
+CREATE TABLE audit_log (logId INT PRIMARY KEY, authToken VARCHAR(255), action VARCHAR(255), actionTime TIMESTAMP);
+INSERT INTO audit_log (logId, authToken, action, actionTime) VALUES (1, 'token1', 'discarded', NOW());

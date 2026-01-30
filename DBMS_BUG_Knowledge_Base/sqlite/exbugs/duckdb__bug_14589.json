@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14589",
+  "title": "Discrepancy Between Count and Sum Queries in SQL",
+  "description": "### What happens?\n\n```sql\r\nSELECT COUNT(*) \r\nFROM v0 \r\nWHERE (CURRENT_DATE, c0) != (CAST(NULL AS TEXT), '0');\r\n\r\n\r\nSELECT SUM(CASE WHEN (CURRENT_DATE, c0) != (CAST(NULL AS TEXT), '0') THEN 1 ELSE 0 END) \r\nFROM v0;\r\n```\r\nThe two SQL queries have a common sub-clause: (CURRENT_DATE, c0) != (CAST(NULL AS TEXT), '0').\r\n\r\nThe first query counts all the rows for which this condition is TRUE. The second query calculates the total sum, where the CASE WHEN clause takes the value 1 when this condition is TRUE, thus increasing the sum by 1.\r\n\r\nIt seems that both queries should return the same result, but they return 0 and 1, respectively.\n\n### To Reproduce\n\n```sql\r\nDROP TABLE IF EXISTS t0; \r\nDROP TABLE IF EXISTS t1;  \r\nDROP VIEW IF EXISTS v0;  \r\nCREATE TABLE t0 (c0 TEXT);  \r\nCREATE TABLE t1 (c0 TEXT);  \r\n\r\nCREATE VIEW v0 AS \r\nSELECT t0.c0 \r\nFROM t1 \r\nLEFT JOIN t0 ON t1.c0 = t0.c0;\r\nINSERT INTO t1(c0) VALUES ('example_value');\r\n\r\nSELECT COUNT(*) \r\nFROM v0 \r\nWHERE (CURRENT_DATE, c0) != (CAST(NULL AS TEXT), '0');\r\n\r\n\r\nSELECT SUM(CASE WHEN (CURRENT_DATE, c0) != (CAST(NULL AS TEXT), '0') THEN 1 ELSE 0 END) \r\nFROM v0;\r\n```\n\n### OS:\n\nWindows 10 x86_64\n\n### DuckDB Version:\n\n1.1.2\n\n### DuckDB Client:\n\nPython\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nWang Zhuangda\n\n### Affiliation:\n\nXiamen University\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have not tested with any build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nNo - Other reason (please specify in the issue body)\n\n### Did you include all code required to reproduce the issue?\n\n- [X] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [X] Yes, I have",
+  "date": "2024-10-28 13:21:38",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS test_table1;",
+    "CREATE TABLE test_table1 (id INTEGER, value TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table1 (id, value) VALUES (1, 'test_value'), (2, NULL), (3, '0');",
+    "SELECT COUNT(*) FROM test_table1 WHERE (DATETIME('now'), value) != (NULL, '0');",
+    "SELECT SUM(CASE WHEN (DATETIME('now'), value) != (NULL, '0') THEN 1 ELSE 0 END) FROM test_table1;"
+  ],
+  "key_bug_features": [
+    "Discrepancy in COUNT and SUM query results"
+  ]
+}

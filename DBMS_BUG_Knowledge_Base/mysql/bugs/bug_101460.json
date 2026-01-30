@@ -1,0 +1,28 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=101460",
+  "title": "Wrong result produced when left joining information_schema tables",
+  "vulnerable_database": "MySQL Server: Optimizer",
+  "date": "2020-11-04 13:25:00",
+  "vulnerable_version": "8.0",
+  "description": "",
+  "poc": [
+    "create database x;",
+    "use x;",
+    "create table a (i int primary key);",
+    "create table b (\ni1 int,\ni2 int,\nconstraint fk1 foreign key (i1) references a (i),\nconstraint fk2 foreign key (i2) references a (i)\n);",
+    "select index_schema, table_name, index_name from information_schema.statistics where table_schema = 'x';",
+    "select constraint_schema, table_name, constraint_name from information_schema.table_constraints where table_schema = 'x';",
+    "select s.index_name, c.constraint_name\nfrom information_schema.STATISTICS s\nleft outer join information_schema.TABLE_CONSTRAINTS c\non (\ns.INDEX_SCHEMA = c.CONSTRAINT_SCHEMA\nand s.TABLE_NAME = c.TABLE_NAME\nand s.INDEX_NAME = c.CONSTRAINT_NAME\n)\nwhere s.TABLE_SCHEMA in ('x');",
+    "select s.index_name, c.constraint_name\nfrom information_schema.STATISTICS s\njoin information_schema.TABLE_CONSTRAINTS c\non (\ns.INDEX_SCHEMA = c.CONSTRAINT_SCHEMA\nand s.TABLE_NAME = c.TABLE_NAME\nand s.INDEX_NAME = c.CONSTRAINT_NAME\n)\nwhere s.TABLE_SCHEMA in ('x');"
+  ],
+  "key_bug_features": [
+    "Left joining information_schema tables produces wrong results"
+  ],
+  "bug_features_seed": [
+    "CREATE DATABASE test_db;",
+    "USE test_db;",
+    "CREATE TABLE users (id INT PRIMARY KEY, name VARCHAR(100), created_at DATETIME DEFAULT CURRENT_TIMESTAMP);",
+    "CREATE TABLE orders (order_id INT PRIMARY KEY, user_id INT, amount DECIMAL(10, 2), FOREIGN KEY (user_id) REFERENCES users(id));",
+    "SELECT u.name, o.amount FROM users u LEFT JOIN orders o ON u.id = o.user_id WHERE o.amount IS NULL;"
+  ]
+}

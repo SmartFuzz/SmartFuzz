@@ -1,0 +1,12 @@
+CREATE TABLE test_table (id INTEGER PRIMARY KEY, bit_col BITSTRING, date_col DATE, interval_col INTERVAL);
+INSERT INTO test_table VALUES (1, bitstring('101', 8), DATE '2021-01-01', INTERVAL '5 days');
+INSERT INTO test_table VALUES (2, bitstring('1111111', 7), DATE '2023-01-01', INTERVAL '10 days');
+INSERT INTO test_table VALUES (3, bitstring('0', 1), DATE '2022-12-31', INTERVAL '2 weeks');
+SELECT id, bit_col, date_col + (SELECT MIN(interval_col) FROM test_table WHERE id != 1) AS modified_date FROM test_table WHERE bit_col IS NOT NULL;
+SELECT id, bit_col, (bitstring('10', 4) + bitstring('1010', 4))::BITSTRING AS combined_bits FROM test_table WHERE bit_col IS NOT NULL;
+SELECT id, date_col, (DATE '2023-01-01' + INTERVAL (SELECT COUNT(*) FROM test_table WHERE date_col <= DATE '2022-12-31') || ' days') AS future_date FROM test_table ORDER BY future_date;
+SELECT COUNT(*) AS total, DATE '2021-01-01' + INTERVAL (CASE WHEN total > 1 THEN 5 ELSE 1 END) DAY AS adjusted_date FROM (SELECT id, date_col FROM test_table GROUP BY id, date_col) AS subquery HAVING DATE '2021-01-01' < adjusted_date;
+SELECT id, LAG(date_col + INTERVAL 3 DAY) OVER (ORDER BY date_col) AS previous_date FROM test_table;
+DROP TABLE IF EXISTS temp_table;
+CREATE TEMPORARY TABLE temp_table AS SELECT id, bitstring(bit_col || '00', 10) AS extended_bits FROM test_table;
+SELECT id, extended_bits, (SELECT COUNT(*) FROM temp_table) + (SELECT COUNT(*) FROM test_table) AS total_count FROM temp_table;

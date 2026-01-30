@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=103939",
+  "title": "Can't create table with composite PK if auto_increment column isn't first",
+  "description": "When a table has a composite primary key with one of the key columns being an auto_increment column, that column can't be the second column of the key.\r\n\r\nI don't see a good reason for this limitation other than some internals leaking into the DDL, so I'm guessing, this is a bug.\nHow to repeat:\n-- This works\r\ncreate table t1 (\r\n  a int not null auto_increment,\r\n  b int not null,\r\n  constraint t1_pk primary key (a, b)\r\n);\r\n\r\n-- This doesn't work, it fails with\r\n-- SQL Error [1075] [42000]: Incorrect table definition; there can be only one auto column and it must be defined as a key\r\ncreate table t2 (\r\n  a int not null auto_increment,\r\n  b int not null,\r\n  constraint t2_pk primary key (b, a)\r\n);\r\n\r\n-- This works\r\ncreate table t3 (\r\n  a int not null auto_increment,\r\n  b int not null,\r\n  constraint t3_pk primary key (b, a),\r\n  constraint t3_uk unique (b)\r\n);\r\n\r\n-- But the unique key cannot be dropped either:\r\nalter table t3 drop constraint t2_uk;\nSuggested fix:\nI'm not sure where the bug or inconsistency is. Either, this limitation should also apply to t1, or (better), this limitation should be lifted and t2 should be an acceptable table definition, or, at least, the error message should be more clear why t1 is ok and t2 is not.",
+  "date": "2021-06-08 08:04:00",
+  "vulnerable_version": "8.0.24, 8.0.25, 5.7.34",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t4 (id INT NOT NULL, name VARCHAR(50) NOT NULL, age INT, PRIMARY KEY (name, id));",
+    "CREATE TABLE t5 (id INT NOT NULL, description TEXT, created_at TIMESTAMP DEFAULT NOW(), PRIMARY KEY (created_at, id));",
+    "INSERT INTO t4 (name, age) VALUES ('Alice', 30);",
+    "INSERT INTO t5 (description) VALUES ('Sample description');",
+    "SELECT * FROM t4 WHERE age IS NULL OR age > 25;"
+  ],
+  "key_bug_features": [
+    "Composite PK with auto_increment column not first"
+  ]
+}

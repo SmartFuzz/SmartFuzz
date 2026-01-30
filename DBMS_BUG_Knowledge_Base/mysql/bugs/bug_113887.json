@@ -1,0 +1,25 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=113887",
+  "title": "MySQL fails to execute query if a subquery refer to a column of parent table",
+  "vulnerable_database": "MySQL Server: Parser",
+  "date": "2024-02-04 02:12:00",
+  "vulnerable_version": "8.0",
+  "description": "It should not report error. Currently MySQL reports:\r\n\r\nERROR 1247 (42S22): Reference 'c1' not supported (forward reference in item list)\nHow to repeat:\nTable definations:\r\nCREATE TABLE `t8` (\r\n  `a` int DEFAULT NULL,\r\n  `b` int DEFAULT NULL\r\n);\r\nCREATE TABLE `td4` (\r\n  `id` int DEFAULT NULL\r\n);\r\nCREATE TABLE `t6` (\r\n  `a` int DEFAULT NULL\r\n);\r\n\r\nThe reproduce query:\r\n\r\nselect  ref_0.b as c0\r\nfrom\r\n  test.t8 as ref_0\r\nwhere (EXISTS (\r\n        select  ref_0.b as c10\r\n          from\r\n            (select (\r\n                    select  ref_2.a as c0\r\n                      from (select  ref_4.id as c0,\r\n                              ref_0.a as c1\r\n                            from\r\n                              test.td4 as ref_4) as subq_0\r\n                      limit 1) as c0,\r\n                  ref_0.a as c2\r\n                from\r\n                  test.t6 as ref_2) as subq_1\r\n          limit 122));\r\n\r\nBTW, it is OK if I change query to:\r\n\r\nselect  ref_0.b as c0\r\nfrom\r\n  test.t8 as ref_0\r\nwhere (EXISTS (\r\n        select  ref_0.b as c10\r\n          from\r\n            (select (\r\n                    select  ref_2.a as c0\r\n                      from (select  ref_4.id as c0,\r\n                              ref_0.a as c1\r\n                            from\r\n                              test.td4 as ref_4) as subq_0\r\n                      limit 1) as c0,\r\n                  ref_0.b as c2\r\n                from\r\n                  test.t6 as ref_2) as subq_1));",
+  "poc": [
+    "CREATE TABLE `t8` (\n`a` int DEFAULT NULL,\n`b` int DEFAULT NULL\n);",
+    "CREATE TABLE `td4` (\n`id` int DEFAULT NULL\n);",
+    "CREATE TABLE `t6` (\n`a` int DEFAULT NULL\n);",
+    "select  ref_0.b as c0\nfrom\ntest.t8 as ref_0\nwhere (EXISTS (\nselect  ref_0.b as c10\nfrom\n(select (\nselect  ref_2.a as c0\nfrom (select  ref_4.id as c0,\nref_0.a as c1\nfrom\ntest.td4 as ref_4) as subq_0\nlimit 1) as c0,\nref_0.a as c2\nfrom\ntest.t6 as ref_2) as subq_1\nlimit 122));",
+    "select  ref_0.b as c0\nfrom\ntest.t8 as ref_0\nwhere (EXISTS (\nselect  ref_0.b as c10\nfrom\n(select (\nselect  ref_2.a as c0\nfrom (select  ref_4.id as c0,\nref_0.a as c1\nfrom\ntest.td4 as ref_4) as subq_0\nlimit 1) as c0,\nref_0.b as c2\nfrom\ntest.t6 as ref_2) as subq_1));"
+  ],
+  "key_bug_features": [
+    "Subquery referencing parent table column causes execution failure"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE `t8` (`a` int DEFAULT NULL, `b` varchar(255) DEFAULT NULL);",
+    "CREATE TABLE `td4` (`id` int NOT NULL PRIMARY KEY, `value` float DEFAULT NULL);",
+    "CREATE TABLE `t6` (`a` int DEFAULT NULL, `description` text DEFAULT NULL);",
+    "INSERT INTO `t8` (`a`, `b`) VALUES (1, 'test1'), (2, 'test2'), (3, NULL);",
+    "SELECT ref_0.b AS c0 FROM test.t8 AS ref_0 WHERE (EXISTS (SELECT ref_0.b AS c10 FROM (SELECT (SELECT ref_2.a AS c0 FROM (SELECT ref_4.id AS c0, ref_0.a AS c1 FROM test.td4 AS ref_4) AS subq_0 LIMIT 1) AS c0, ref_0.a AS c2 FROM test.t6 AS ref_2) AS subq_1 LIMIT 1));"
+  ]
+}

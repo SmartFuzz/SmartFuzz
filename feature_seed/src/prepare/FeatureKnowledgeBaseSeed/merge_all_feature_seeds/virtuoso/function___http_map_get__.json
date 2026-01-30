@@ -1,0 +1,17 @@
+CREATE TABLE http_mapping (id INT PRIMARY KEY, virtual_host VARCHAR(255), path VARCHAR(255), value VARCHAR(255));
+INSERT INTO http_mapping (id, virtual_host, path, value) VALUES (1, 'localhost', '/home', 'default_page');
+INSERT INTO http_mapping (id, virtual_host, path, value) VALUES (2, 'localhost', '/home', 'security_level');
+INSERT INTO http_mapping (id, virtual_host, path, value) VALUES (3, 'localhost', '/home', 'vsp_uid');
+SELECT value FROM http_mapping WHERE virtual_host = 'localhost' AND path = '/home' AND id = 1;
+SELECT value FROM http_mapping WHERE virtual_host = 'localhost' AND path IN ('/home', '/about') AND id IN (1, 2);
+SELECT COUNT(*) FROM http_mapping WHERE virtual_host = 'localhost' AND value IS NOT NULL;
+SELECT virtual_host, path, value FROM http_mapping WHERE id IN (SELECT id FROM http_mapping WHERE value LIKE 'default%');
+SELECT virtual_host, path FROM http_mapping WHERE id = (SELECT MAX(id) FROM http_mapping) AND value NOT LIKE 'security%';
+CREATE TABLE user_access (user_id INT, security_level VARCHAR(50), FOREIGN KEY (user_id) REFERENCES users(id));
+SELECT COUNT(*) FROM user_access WHERE security_level = (SELECT value FROM http_mapping WHERE path = '/home' AND virtual_host = 'localhost');
+SELECT a.virtual_host, b.path, b.value FROM http_mapping a JOIN user_access b ON a.id = b.user_id WHERE a.value = 'default_page';
+SELECT DISTINCT value FROM http_mapping WHERE virtual_host = 'localhost' ORDER BY value DESC LIMIT 10;
+INSERT INTO http_mapping (id, virtual_host, path, value) VALUES (4, 'example.com', '/contact', NULL);
+SELECT COALESCE((SELECT value FROM http_mapping WHERE virtual_host = 'localhost' AND path = '/nonexistent'), 'default') AS fallback_value;
+UPDATE http_mapping SET value = 'new_default_page' WHERE path = '/home' AND virtual_host = 'localhost';
+DELETE FROM http_mapping WHERE value = 'old_value' AND virtual_host = 'localhost' AND path = '/old_path';

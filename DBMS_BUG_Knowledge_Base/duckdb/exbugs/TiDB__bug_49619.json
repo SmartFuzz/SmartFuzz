@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/49619",
+  "title": "TiDB can not record replayer stats correcly",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n1. Create a table:\r\n```sql\r\nCREATE TABLE tableA (\r\n\t\tcolumnA VARCHAR(255),\r\n\t\tcolumnB DATETIME,\r\n\t\tcolumnC VARCHAR(255)\r\n\t)`\r\n```\r\n2. Dump the replayed:\r\n```sql\r\nplan replayer dump explain SELECT * from tableA where SUBSTRING_INDEX(tableA.columnC, '_', 1) = tableA.columnA\r\n```\r\n3. Check the `plan_replayer_status` table: `select * from mysql.plan_replayer_status where sql_digest = ? and plan_digest = ? and origin_sql is not null`\r\n\r\n### 2. What did you expect to see? (Required)\r\nWe can find `SELECT * from tableA where SUBSTRING_INDEX(tableA.columnC, '_', 1) = tableA.columnA` in the records.\r\n\r\n### 3. What did you see instead (Required)\r\nTiDB ignored it.\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n```console\r\nmysql> select tidb_version();\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| tidb_version()                                                                                                                                                                                                                                                                               |\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| Release Version: v7.1.0\r\nEdition: Community\r\nGit Commit Hash: 635a4362235e8a3c0043542e629532e3c7bb2756\r\nGit Branch: heads/refs/tags/v7.1.0\r\nUTC Build Time: 2023-05-30 10:50:03\r\nGoVersion: go1.20.3\r\nRace Enabled: false\r\nTiKV Min Version: 6.2.0-alpha\r\nCheck Table Before Drop: false\r\nStore: tikv |\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n1 row in set (0.00 sec)\r\n```\r\n\r\n",
+  "date": "2023-12-20T09:33:43Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE tableB (id INTEGER PRIMARY KEY, name VARCHAR(100) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO tableB (id, name) VALUES (1, 'test_value');",
+    "CREATE TABLE tableC (ref_id INTEGER, description TEXT, FOREIGN KEY (ref_id) REFERENCES tableB(id));",
+    "INSERT INTO tableC (ref_id, description) VALUES (1, NULL);",
+    "SELECT * FROM tableB WHERE name LIKE '%' || (SELECT description FROM tableC WHERE ref_id = 1) || '%';"
+  ],
+  "key_bug_features": [
+    "TiDB ignores specific SQL query for plan replayer"
+  ]
+}

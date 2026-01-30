@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/89694",
+  "title": "clickhouse server crashes when insert data to CoalescingMergeTree",
+  "description": "### Company or project name\n_No response_\n### Describe the unexpected behaviour\nWhen performing a simple INSERT statement into a table with String columns, ClickHouse crashes with a segmentation fault on macOS.\nThis occurs even with very basic schemas (no special data types or functions).\nThe crash consistently happens when inserting rows that include long strings — e.g., long names like \"ALYAA HANNAN IZZAH BINTI MOHD JEFFREY TAN KAH JUN\".\n### Which ClickHouse versions are affected?\nClickHouse local version 25.8.1.2533 (official build).\n### How to reproduce\nDROP TABLE IF EXISTS client;\nCREATE TABLE client\n(\ncode String,\nname String,\nemail String,\ncontact_number String,\nlast_reviewed_at DateTime64(3, 'UTC')\n)\nENGINE = CoalescingMergeTree()\nORDER BY code;\n-- ✅ This works\nINSERT INTO client (code, name) VALUES ('A001', 'John Doe');\n-- 💥 This crashes ClickHouse on macOS\nINSERT INTO client (name, code, email, contact_number, last_reviewed_at)\nVALUES\n('ALYAA HANNAN IZZAH BINTI MOHD JEFFREY TAN KAH JUN', '12345', 'JEFFREY@YAHOO.COM', '017234444', now());\n### Expected behavior\nThe insert should succeed or return an error message, not crash the ClickHouse server.\n### Error message and/or stacktrace\n<img width=\"1609\" height=\"300\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/000aea68-4da0-4dd7-98e1-bf6f1fcdaf9d\" />\n### Additional context\n_No response_",
+  "date": "2025-11-07T08:09:15Z",
+  "vulnerable_version": "25.8.1.2533",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS client;",
+    "CREATE TABLE client (code VARCHAR(255), name VARCHAR(255), email VARCHAR(255), contact_number VARCHAR(255), last_reviewed_at TIMESTAMP(3)) PARTITION BY HASH(code) PARTITIONS 4;",
+    "INSERT INTO client (code, name, email, contact_number, last_reviewed_at) VALUES ('A002', 'Jane Smith', 'JANE@EXAMPLE.COM', '0123456789', CURRENT_TIMESTAMP());",
+    "INSERT INTO client (name, code, email, contact_number, last_reviewed_at) VALUES (CONCAT('A', LPAD('', 10000, 'B')), 'A003', 'TEST@EXAMPLE.COM', '0198765432', CURRENT_TIMESTAMP());",
+    "SELECT * FROM client WHERE LENGTH(name) > 50;"
+  ],
+  "key_bug_features": [
+    "Inserting long strings into CoalescingMergeTree crashes server"
+  ]
+}

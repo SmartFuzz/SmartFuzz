@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, data BLOB, timestamp_col TIMESTAMP WITH TIME ZONE);
+INSERT INTO test_table (id, data, timestamp_col) VALUES (1, x'0012FF', TIMESTAMP '2023-10-01 10:00:00+00:00');
+INSERT INTO test_table (id, data, timestamp_col) VALUES (2, x'0000FF', TIMESTAMP '2023-10-01 10:05:00+00:00');
+INSERT INTO test_table (id, data, timestamp_col) VALUES (3, x'FFFFFFFF', TIMESTAMP '2023-10-01 10:10:00+00:00');
+SELECT octet_length(data) AS data_length, time(3) with time zone timestamp_col FROM test_table WHERE id = (SELECT MAX(id) FROM test_table);
+SELECT id, octet_length(data) + CAST(time(3) with time zone '18:40:05.123+02:00' AS INT) AS length_with_time FROM test_table WHERE id IS NOT NULL;
+SELECT id, octet_length(data), time(3) with time zone timestamp_col FROM test_table WHERE octet_length(data) IS NULL OR timestamp_col IS NULL;
+SELECT AVG(octet_length(data)) AS avg_data_length, time(3) with time zone MAX(timestamp_col) AS latest_time FROM test_table GROUP BY id HAVING octet_length(data) > 1;
+CREATE TABLE temp_test_table AS SELECT id, octet_length(data) AS data_length FROM test_table WHERE data IS NOT NULL;
+SELECT a.id, a.data_length FROM (SELECT id, octet_length(data) AS data_length FROM temp_test_table) AS a JOIN test_table b ON a.id = b.id WHERE b.timestamp_col < time(3) with time zone '20:00:00+00:00';
+DROP TABLE temp_test_table;

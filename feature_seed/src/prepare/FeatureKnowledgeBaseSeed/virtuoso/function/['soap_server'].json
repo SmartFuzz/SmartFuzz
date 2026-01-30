@@ -1,0 +1,15 @@
+[
+    "CREATE TABLE test_soap_requests (id INT PRIMARY KEY, request XML, response VARCHAR);",
+    "INSERT INTO test_soap_requests (id, request) VALUES (1, '<soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\"><soap:Body><testRequest/></soap:Body></soap:Envelope>');",
+    "INSERT INTO test_soap_requests (id, request) VALUES (2, '<soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\"><soap:Body><anotherRequest/><nestedRequest><innerRequest/></nestedRequest></anotherRequest></soap:Body></soap:Envelope>');",
+    "SELECT soap_server(request) FROM test_soap_requests WHERE id = 1;",
+    "SELECT soap_server(request) AS response, id FROM test_soap_requests WHERE response IS NULL;",
+    "UPDATE test_soap_requests SET response = soap_server(request) WHERE id = 2;",
+    "SELECT id, soap_server(request) AS response FROM test_soap_requests WHERE request LIKE '%nestedRequest%';",
+    "SELECT (SELECT soap_server(request) FROM test_soap_requests WHERE id = 1) AS firstResponse, (SELECT soap_server(request) FROM test_soap_requests WHERE id = 2) AS secondResponse;",
+    "CREATE TABLE response_logs (log_id INT PRIMARY KEY, response_text VARCHAR, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO response_logs (log_id, response_text) SELECT id, soap_server(request) FROM test_soap_requests;",
+    "SELECT * FROM response_logs WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '1 day';",
+    "DELETE FROM test_soap_requests WHERE id = 1 AND response IS NOT NULL;",
+    "CREATE VIEW valid_responses AS SELECT id, response FROM test_soap_requests WHERE response IS NOT NULL;"
+]

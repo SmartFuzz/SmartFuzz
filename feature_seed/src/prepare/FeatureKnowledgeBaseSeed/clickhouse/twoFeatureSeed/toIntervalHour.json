@@ -1,0 +1,16 @@
+{
+    "function": "toIntervalHour",
+    "operator": "a != b",
+    "sql_array": [
+        "CREATE TABLE fuzz_test (id Int32, event_time DateTime, duration String, PRIMARY KEY (id));",
+        "INSERT INTO fuzz_test VALUES (1, '2024-01-01 10:00:00', '5'), (2, '2024-06-15 08:00:00', '12.5'), (3, NULL, '7');",
+        "SELECT id, event_time + toIntervalHour(CAST(duration AS Int32)) AS adjusted_time FROM fuzz_test WHERE adjusted_time IS NOT NULL AND adjusted_time != event_time;",
+        "SELECT id, COUNT(*) FROM fuzz_test GROUP BY id HAVING COUNT(*) != toIntervalHour(1);",
+        "WITH (SELECT MAX(duration) FROM fuzz_test WHERE duration IS NOT NULL) AS max_duration SELECT *, toIntervalHour(CAST(max_duration AS Float64)) AS max_interval FROM fuzz_test WHERE duration != '';",
+        "SELECT id, toIntervalHour(24) as hour_interval FROM fuzz_test WHERE event_time != event_time + toIntervalHour(CAST(duration AS Float64));",
+        "CREATE TABLE temp_fuzz (id Int32, start_time DateTime, end_time DateTime, PRIMARY KEY (id));",
+        "INSERT INTO temp_fuzz VALUES (1, '2024-01-05 09:00:00', '2024-01-05 10:00:00'), (2, '2024-02-10 12:00:00', NULL);",
+        "SELECT id, end_time - start_time AS duration FROM temp_fuzz WHERE end_time != start_time + toIntervalHour(1.5);",
+        "WITH (SELECT avg(duration) AS avg_dur FROM fuzz_test WHERE duration != '') AS avg_duration SELECT id, toIntervalHour(CAST(avg_duration AS Int32)) + toIntervalHour(2) AS total_interval FROM fuzz_test HAVING total_interval IS NOT NULL AND total_interval != adjusted_time;"
+    ]
+}

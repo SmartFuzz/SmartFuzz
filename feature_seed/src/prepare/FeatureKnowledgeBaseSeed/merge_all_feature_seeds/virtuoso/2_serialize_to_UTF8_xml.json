@@ -1,0 +1,14 @@
+CREATE TABLE test_data (id INT, text_data LONG VARCHAR, xml_data LONG NVARCHAR, num_data FLOAT);
+INSERT INTO test_data VALUES (1, 'Test String', '<?xml version="1.0"?><root><child>Value</child></root>', 123.456);
+INSERT INTO test_data VALUES (2, NULL, NULL, 789.012);
+INSERT INTO test_data VALUES (3, '', '<?xml version="1.0"?><root><child>Value</child></root>', NULL);
+SELECT serialize_to_UTF8_xml(text_data) FROM test_data WHERE id >= (SELECT COUNT(*) FROM test_data WHERE num_data >= 100);
+SELECT serialize_to_UTF8_xml(xml_data) FROM test_data WHERE num_data >= (SELECT MAX(num_data) FROM test_data WHERE text_data IS NOT NULL);
+SELECT id, serialize_to_UTF8_xml(text_data) AS xml_representation FROM test_data WHERE xml_data IS NOT NULL GROUP BY id HAVING id >= 1 ORDER BY xml_representation;
+SELECT id, serialize_to_UTF8_xml(num_data::VARCHAR) FROM test_data WHERE num_data >= 123.000 AND text_data IS NULL;
+SELECT id, serialize_to_UTF8_xml(COALESCE(text_data, 'Default Value')) FROM test_data WHERE id >= 2;
+SELECT id, serialize_to_UTF8_xml(xtree_doc(xml_data)) FROM test_data WHERE id IN (SELECT id FROM test_data WHERE text_data IS NOT NULL) ORDER BY id;
+SELECT id, COUNT(*) FROM test_data GROUP BY serialize_to_UTF8_xml(text_data) HAVING COUNT(*) >= 1;
+SELECT serialize_to_UTF8_xml(CONCAT(text_data, ' - ', xml_data)) FROM test_data WHERE id >= 1;
+SELECT serialize_to_UTF8_xml(NULL) WHERE 1 >= 1;
+SELECT serialize_to_UTF8_xml((SELECT text_data FROM test_data WHERE id = 1)) AS serialized_text FROM test_data WHERE num_data >= 100;

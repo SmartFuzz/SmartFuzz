@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=105351",
+  "title": "Data insertion exception in version 8.0.27",
+  "description": "We found a serious problem. When inserting with insert select statement, there are data exceptions\nHow to repeat:\nCREATE TABLE test(ID INT,FIELDNAME VARCHAR(100));\r\nINSERT INTO test VALUES(1,'36245');\r\n\r\nThe result of the query is displayed：\r\n\r\nSELECT \r\n  MAX(id)+1 ,\r\n  '27141' id2\r\nFROM\r\n  test a \r\n  GROUP BY id2 ;\r\n\r\n----------------------------------------\r\nMAX(id)+1  id2     \r\n---------  --------\r\n        2  27141   \r\n\r\nHowever, if you insert this result into the test table：\r\nINSERT INTO test \r\nSELECT \r\n  MAX(id)+1 ,\r\n  '27141' id2\r\nFROM\r\n  test a \r\n  GROUP BY id2 ;\r\n\r\nselect * from test;\r\n\r\n    ID  FIELDNAME  \r\n------  -----------\r\n     1  36245      \r\n(NULL)  27141      \r\n\r\nThe ID of the data inserted above turned out to be null\nSuggested fix:\nWe changed the way we wrote the sentence, but it was correct：\r\n\r\nINSERT INTO test \r\nSELECT \r\n  MAX(id+1),\r\n  '27141' id2\r\nFROM\r\n  test a \r\n  GROUP BY id2",
+  "date": "2021-10-28 02:10:00",
+  "vulnerable_version": "8.0.27",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test2(ID INT PRIMARY KEY, FIELDNAME VARCHAR(100), VALUE DECIMAL(10,2));",
+    "INSERT INTO test2 (FIELDNAME, VALUE) VALUES ('Item1', 10.50);",
+    "INSERT INTO test2 (FIELDNAME, VALUE) VALUES ('Item2', NULL);",
+    "INSERT INTO test2 (ID, FIELDNAME) SELECT MAX(ID)+1, 'Item3' FROM test2 WHERE VALUE IS NOT NULL;",
+    "SELECT ID, FIELDNAME FROM test2 WHERE VALUE IS NULL;"
+  ],
+  "key_bug_features": [
+    "Inserting MAX(id)+1 results in null ID"
+  ]
+}

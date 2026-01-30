@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/86770",
+  "title": "PRIMARY KEY expression in column declaration does not work with COMMENT",
+  "description": "### Company or project name\nCompany: ClickHouse\nProject: sqitchers/sqitch\n### Describe the unexpected behaviour\nAn inline `PRIMARY KEY` declaration works:\n``` SQL\nCREATE TABLE releases (\nversion REAL PRIMARY KEY\n) ENGINE = MergeTree;\n```\nAs does an inline `COMMENT` with a PK after the table declaration:\n``` SQL\nCREATE TABLE releases (\nversion REAL COMMENT 'Version of the registry.'\n) ENGINE = MergeTree PRIMARY KEY(version);\n```\nBut it does not work to inline both `PRIMARY KEY` and `COMMENT`:\n``` SQL\nCREATE TABLE releases (\nversion REAL PRIMARY KEY COMMENT 'Version of the registry.'\n) ENGINE = MergeTree;\n```\nThe error:\n```\nSyntax error: failed at position 54 (COMMENT) (line 2, col 30):\nCREATE TABLE releases (\nversion REAL PRIMARY KEY COMMENT 'Version of the registry.'\n) ENGINE = MergeTree;\nExpected one of: SETTINGS, token, Comma, ClosingRoundBracket\n```\nWhat does work, unexpectedly (to me), is to put the `COMMENT` _before_ the `PRIMARY KEY`:\n``` SQL\nCREATE TABLE releases (\nversion REAL COMMENT 'Version of the registry.' PRIMARY KEY\n) ENGINE = MergeTree;\n```\nI guess there is an order required, though I don't see why. It also deviates from how other database engines support comment syntax. Here's MySQL, for example:\n``` SQL\nCREATE TABLE releases (\nversion         FLOAT(4, 1)   PRIMARY KEY\nCOMMENT 'Version of the registry.'\n) ENGINE  InnoDB,\nCHARACTER SET 'utf8',\nCOMMENT 'Sqitch registry releases.'\n;\n```\n### Which ClickHouse versions are affected?\nI'm running 25.9.1.1112.\n### How to reproduce\nFire up Clickhouse and run",
+  "date": "2025-09-05T22:05:32Z",
+  "vulnerable_version": "25.9.1.1112",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE releases (version FLOAT PRIMARY KEY COMMENT 'Version of the registry.') ENGINE=InnoDB;",
+    "CREATE TABLE releases_v2 (version FLOAT COMMENT 'Version of the registry.') ENGINE=InnoDB;",
+    "CREATE TABLE releases_v3 (id INT UNSIGNED, version FLOAT, description VARCHAR(255) COMMENT 'Description of the release.') ENGINE=InnoDB;",
+    "INSERT INTO releases_v3 (id, version, description) VALUES (1, 1.0, 'Initial release');",
+    "SELECT * FROM releases_v3 WHERE version > 0.5;"
+  ],
+  "key_bug_features": [
+    "Inline PRIMARY KEY and COMMENT in column declaration"
+  ]
+}

@@ -1,0 +1,11 @@
+CREATE TABLE test_edge_cases (id Int32, value String, number Float64);
+INSERT INTO test_edge_cases VALUES (1, '32767'), (2, '32768'), (3, '-32768.99'), (4, 'NaN'), (5, 'Inf'), (6, ''), (7, NULL);
+SELECT toInt16(value) AS converted_value, (SELECT AVG(toInt16(value)) FROM test_edge_cases WHERE number IS NOT NULL) AND (SELECT COUNT(*) FROM test_edge_cases WHERE value != '') AS non_empty_count;
+SELECT id, CASE WHEN value IS NULL THEN 0 ELSE toInt16(value) END AS safe_conversion FROM test_edge_cases HAVING safe_conversion > toInt16(-1) AND safe_conversion < toInt16(1) ORDER BY safe_conversion;
+SELECT toInt16(value) + (SELECT COUNT(*) FROM test_edge_cases WHERE id = 1 AND value IS NOT NULL) AS complex_sum, (SELECT toInt16(value) FROM test_edge_cases WHERE id = 2) AND (SELECT toInt16(number) FROM test_edge_cases WHERE id = 3) AS logical_check FROM test_edge_cases;
+WITH (SELECT SUM(toInt16(value)) FROM test_edge_cases WHERE value NOT LIKE '%NaN%' OR value IS NOT NULL) AS total_sum SELECT total_sum, (total_sum = toInt16(0)) AS is_zero FROM test_edge_cases;
+SELECT id, value, (SELECT toInt16(value) WHERE value IS NOT NULL) AND (SELECT toInt16(number) WHERE number < 0) AS context_check FROM test_edge_cases WHERE value != '';
+SELECT id, toInt16(if(value IS NULL, '0', value)) AS safe_conversion FROM test_edge_cases GROUP BY id HAVING safe_conversion = toInt16(-1) OR safe_conversion = toInt16(0);
+CREATE TEMPORARY TABLE tmp_test AS SELECT toInt16(value) AS converted_value, id FROM test_edge_cases WHERE id < 5;
+SELECT tmp_test.converted_value, (SELECT COUNT(*) FROM tmp_test WHERE converted_value > 0) AND (SELECT COUNT(*) FROM tmp_test WHERE converted_value < 0) AS logical_counts FROM tmp_test;
+SELECT number, (toInt16(value) AND number) AS bool_check FROM test_edge_cases WHERE value IS NOT NULL;

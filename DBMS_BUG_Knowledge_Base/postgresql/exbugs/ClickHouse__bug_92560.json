@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/92560",
+  "title": "JSON Array to String cast adds extra single quotes",
+  "description": "### Company or project name\n_No response_\n### Question\nWhen casting a JSON subcolumn to String, the result depends on its dynamic type.\nIf the subcolumn type is Array, casting via ::String adds extra single quotes around array elements, which changes the original data representation.\nUsing toJSONString() preserves the correct JSON for arrays, but if the dynamic type is String, it wraps the value in extra double quotes.\nIs this behavior expected, and is there a recommended way to convert JSON subcolumns to text without changing the original data, regardless of whether the dynamic type is String or Array?\nExample:\nhttps://fiddle.clickhouse.com/3515f1da-70fd-4f1b-80a0-24d525e12887\n```sql\nCREATE TABLE json_test (\njson JSON\n) ENGINE = Memory;\nINSERT INTO json_test VALUES\n('{\"a\": \"test\"}'),\n('{\"a\": [\"test\", {\"c\": [1]}]}');\nSELECT\njson.a::String AS string,\ntoJSONString(json.a) AS json_string,\nif(\nstartsWith(dynamicType(json.a), 'Array'),\ntoJSONString(json.a),\njson.a::String\n) AS correct\nFROM json_test;\n```\n| string               | json_string        | correct            |\n|----------------------|--------------------|--------------------|\n| test                 | \"test\"             | test               |\n| ['test','{\"c\":[1]}'] | [\"test\",{\"c\":[1]}] | [\"test\",{\"c\":[1]}] |",
+  "date": "2025-12-18T15:43:49Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE json_test_1 (json JSONB);",
+    "INSERT INTO json_test_1 VALUES ('{\"a\": \"example\"}'), ('{\"a\": [\"example\", {\"d\": [2]}]}');",
+    "CREATE TABLE json_test_2 (id SERIAL PRIMARY KEY, json JSONB);",
+    "INSERT INTO json_test_2 (id, json) VALUES (1, '{\"b\": \"sample\"}'), (2, '{\"b\": [\"sample\", {\"e\": [3]}]}');",
+    "SELECT json->>'a' AS string, jsonb_pretty(json->'a') AS json_string FROM json_test_1;"
+  ],
+  "key_bug_features": [
+    "Casting JSON Array to String adds extra single quotes"
+  ]
+}

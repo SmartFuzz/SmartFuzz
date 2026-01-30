@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/e39d032577",
+  "title": "Assertion fault on a query containing \"x IN (?)\"",
+  "description": "drh added on 2014-03-20 11:52:02:\nThe following SQL generates an assertion fault:\nCREATE TABLE t1(a,b);\nCREATE INDEX t1ab ON t1(b,a);\nSELECT * FROM t1 WHERE a=? AND b IN (?);\nThe problem appears to have been introduced by the NGQP cut-over on\n2013-06-26 (check-in [0fe31f60ca] for version 3.8.0).\ndrh added on 2014-03-20 13:31:59:\nThe failing assert() statement is incorrect.  So compiling without -DSQLITE_DEBUG\nand thus omitting all assert() statements is an easy work-around.\nThis problem only arises in cases where there is a multi-column index and\nthe earlier column is constrained by \"x IN (?1)\" and the later column is\nconstrained by \"y=?2\".  The fix on trunk is to change the parser so that\nwhen the right-hand side of IN is a single expression, the IN operator is\nconverted into ==.  This accomplishes the same thing, and it results in \ntighter VDBE code in the corner-case of a single value on the RHS of IN.\nSince after the change above, all IN operators have two or more elements on\ntheir RHS, the assert() statement is now correct and is retained.",
+  "date": "2014-03-20 11:52:0211.39 years ago",
+  "vulnerable_version": "3.8.4.1",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(a INTEGER, b TEXT NOT NULL);",
+    "CREATE INDEX t1ab ON t1(b, a);",
+    "INSERT INTO t1(a, b) VALUES (1, 'value1'), (2, 'value2'), (3, 'value3');",
+    "SELECT * FROM t1 WHERE a = 1 AND b = 'value1';",
+    "SELECT * FROM t1 WHERE a IN (2, 3) AND (b = 'value2' OR b = 'value3');"
+  ],
+  "key_bug_features": [
+    "Query with multi-column index and IN operator"
+  ]
+}

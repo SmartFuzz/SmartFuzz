@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id INTEGER, data VARCHAR(255), created_at TIMESTAMP);
+INSERT INTO test_data (id, data, created_at) VALUES (1, '', NOW()), (2, 'Sample text', NULL), (3, repeat('A', 1000), NOW());
+CREATE TABLE compression_check (val VARCHAR, compressed_val BLOB);
+INSERT INTO compression_check (val, compressed_val) SELECT data, gz_compress(data) FROM test_data;
+SELECT id, gz_compress(data) AS compressed_data, datatype(gz_compress(data)) FROM test_data WHERE datatype(data) = 'string' AND length(data) > 0;
+SELECT id, compressed_val, datatype(compressed_val) FROM compression_check WHERE compressed_val IS NOT NULL;
+SELECT id, COUNT(*) OVER (PARTITION BY datatype(gz_compress(data))) AS count_per_type FROM test_data GROUP BY id, gz_compress(data) HAVING count_per_type > 1;
+SELECT gz_compress(data), id FROM test_data WHERE id IN (SELECT id FROM test_data WHERE data IS NOT NULL AND length(data) < 5);
+WITH tmp AS (SELECT id, data, gz_compress(data) AS compressed_data FROM test_data) SELECT id, compressed_data, datatype(compressed_data) FROM tmp WHERE id > 1;
+UPDATE compression_check SET compressed_val = gz_compress(data) WHERE id = 2;

@@ -1,0 +1,18 @@
+{
+    "function": "generateRandomStructure",
+    "operator": "a == b",
+    "sql_array": [
+        "CREATE TABLE fuzz_test (id UUID DEFAULT generateUUIDv4(), str_col String, int_col Int32, float_col Float64, timestamp_col DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO fuzz_test (str_col, int_col, float_col, timestamp_col) VALUES ('test1', 1, 1.5, now()), ('test2', 2, 2.5, now() + INTERVAL 1 DAY), (NULL, NULL, NULL, NULL);",
+        "SELECT * FROM fuzz_test WHERE int_col == (SELECT generateRandomStructure(0));",
+        "SELECT generateRandomStructure(3) AS random_structure FROM fuzz_test WHERE str_col == 'test' AND int_col == (SELECT COUNT(*) FROM fuzz_test) GROUP BY random_structure HAVING COUNT(*) > 1;",
+        "SELECT str_col, int_col, generateRandomStructure(2) AS random_structure FROM fuzz_test JOIN (SELECT generateRandomStructure(5) AS inner_structure) AS t ON int_col == (SELECT COUNT(*) FROM fuzz_test) WHERE str_col != '' GROUP BY str_col, int_col ORDER BY generateRandomStructure(1) ASC;",
+        "SELECT COUNT(*) FROM (SELECT generateRandomStructure(NULL) AS random_structure FROM fuzz_test GROUP BY random_structure HAVING random_structure == 'id UUID, str_col String');",
+        "CREATE TABLE temp_test AS SELECT generateRandomStructure(4) AS structure FROM fuzz_test LIMIT 1;",
+        "SELECT * FROM (SELECT generateRandomStructure(1) AS random_structure FROM fuzz_test) WHERE random_structure == (SELECT str_col FROM fuzz_test LIMIT 1);",
+        "CREATE TABLE edge_case_test (id Int32, null_col Nullable(String), check_col String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO edge_case_test (id, check_col) VALUES (1, 'test'), (2, 'another'), (3, NULL);",
+        "SELECT * FROM edge_case_test WHERE NULL == null_col OR check_col == 'test';",
+        "SELECT generateRandomStructure(2) AS random_structure FROM edge_case_test WHERE check_col != '' OR null_col IS NULL GROUP BY random_structure HAVING count(*) > 1;"
+    ]
+}

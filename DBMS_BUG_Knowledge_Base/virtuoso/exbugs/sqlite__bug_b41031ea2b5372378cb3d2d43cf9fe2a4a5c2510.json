@@ -1,0 +1,21 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/b41031ea2b",
+  "title": "ALTER TABLE returns an error on certain schemas",
+  "description": "drh added on 2018-09-16 20:03:33:\nThe newly enhanced ALTER TABLE in SQLite 3.25.0 hits an assertion fault when\nthere are operations on an rtree virtual table in the body of the trigger.\nCREATE TABLE t1(a INTEGER PRIMARY KEY, b);\nCREATE VIRTUAL TABLE t2 USING rtree(id,x0,x1);\nCREATE TRIGGER r1 AFTER UPDATE ON t1 BEGIN\n   DELETE FROM t2 WHERE id = OLD.a;\nEND;\nALTER TABLE t1 RENAME TO t3;\ndrh added on 2018-09-16 20:33:15:\nFurther information:\nThe assert() seems harmless.  But after removing it the ALTER TABLE statement\nreturns an error.\nIn version 3.25.0, the ALTER TABLE statement has been enhanced to run a\ntest-parse of the whole schema after it alters the schema, to make sure that\nthe edits it performed on the schema didn't break anything.  There is a bug\nin this test-parse logic that gives a false positive when a virtual table is\nused inside the body of a trigger.\nSo, the ALTER TABLE statement seemed to work correctly, but the extra sanity\nchecking logic that runs at the end found a false-positive which causes the\nALTER TABLE to rollback.  This makes ALTER TABLE unusable for schemas that\nhave triggers in which virtual tables are used in the body of the trigger.\nBecause the failed ALTER TABLE is run inside a nested transaction which\nrollbacks after the failure, the failure does not cause corruption or otherwise\nharm the database file in any way.  The ALTER TABLE simply fails to work.",
+  "date": "2018-09-16 20:03:336.90 years ago",
+  "vulnerable_version": "3.25.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(a INTEGER PRIMARY KEY, b VARCHAR(255) DEFAULT 'default');",
+    "CREATE VIRTUAL TABLE t2 USING rtree(id, x0, x1);",
+    "CREATE TRIGGER r1 AFTER UPDATE ON t1 DELETE FROM t2 WHERE id = OLD.a;",
+    "INSERT INTO t1(a, b) VALUES (1, 'test');",
+    "DROP TABLE t3 IF EXISTS;",
+    "CREATE TABLE t3 AS SELECT * FROM t1;"
+  ],
+  "key_bug_features": [
+    "ALTER TABLE fails with triggers using virtual tables"
+  ]
+}

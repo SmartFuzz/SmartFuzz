@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id INT, value INT, description VARCHAR(50));
+INSERT INTO test_table (id, value, description) VALUES (1, 7, 'test row 1'), (2, 15, 'test row 2'), (3, NULL, 'test row 3'), (4, 31, NULL);
+CREATE TABLE another_table (ref_id INT, ref_value INT);
+INSERT INTO another_table (ref_id, ref_value) VALUES (1, 3), (2, 5), (3, 8), (4, 15);
+SELECT id, value, bit_count(value & (SELECT AVG(ref_value) FROM another_table)) AS bit_count_result FROM test_table WHERE value IS NOT NULL ORDER BY bit_count_result DESC;
+SELECT id, value, (bit_count(value) + COALESCE(NULLIF(ref_dummy, 0), 1)) AS composite_value FROM test_table LEFT JOIN (SELECT 1 AS ref_dummy) AS ref ON test_table.id = ref.ref_dummy GROUP BY id, value HAVING composite_value > 3 ORDER BY composite_value;
+SELECT id, value, (bit_count(value) - bit_count(NULLIF(value, 0) & (SELECT SUM(ref_value) FROM another_table))) AS adjusted_value FROM test_table WHERE value IS NOT NULL;
+SELECT t.id, bit_count(t.value & a.ref_value) AS combined_bits FROM test_table t JOIN another_table a ON t.id = a.ref_id WHERE t.value IS NOT NULL;
+SELECT id, value, bit_count((value & 15) | (SELECT COUNT(*) FROM another_table)) AS complex_bits FROM test_table WHERE id NOT IN (SELECT ref_id FROM another_table) ORDER BY complex_bits;
+CREATE TEMPORARY TABLE temp_table AS SELECT id, bit_count(value) AS bit_result FROM test_table WHERE value IS NOT NULL;
+SELECT DISTINCT id, bit_result FROM temp_table WHERE bit_result > (SELECT AVG(bit_result) FROM temp_table);

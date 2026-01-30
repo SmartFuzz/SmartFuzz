@@ -1,0 +1,16 @@
+CREATE TABLE websites (id INT PRIMARY KEY, url VARCHAR(255), path VARCHAR(255), status INT);
+CREATE TABLE retrieval_logs (log_id INT PRIMARY KEY, website_id INT, retrieval_time TIMESTAMP, FOREIGN KEY (website_id) REFERENCES websites(id));
+INSERT INTO websites (id, url, path, status) VALUES (1, 'www.foo.com', 'sites/www_foo_com', 0);
+INSERT INTO websites (id, url, path, status) VALUES (2, 'www.bar.com', 'sites/www_bar_com', 0);
+INSERT INTO websites (id, url, path, status) VALUES (3, 'www.skip.me', 'sites/www_skip_me', 0);
+WS.WS.SERV_QUEUE_TOP ('www.foo.com', 'sites/www_foo_com', 0, 0, 'DB.DBA.my_hook', vector ('www.skip.me', 'www.bar.com'));
+WS.WS.SERV_QUEUE_TOP ('www.bar.com', 'sites/www_bar_com', 0, 0, 'DB.DBA.my_hook', vector ('www.foo.com', 'www.skip.me'));
+WS.WS.SERV_QUEUE_TOP ('www.skip.me', 'sites/www_skip_me', 0, 0, 'DB.DBA.my_hook', vector ('www.foo.com', 'www.bar.com'));
+SELECT url FROM websites WHERE status = 0 AND id IN (SELECT website_id FROM retrieval_logs WHERE retrieval_time > NOW() - INTERVAL '1 DAY');
+SELECT w.url, l.retrieval_time FROM websites w JOIN retrieval_logs l ON w.id = l.website_id WHERE l.retrieval_time < NOW() - INTERVAL '1 HOUR';
+DELETE FROM retrieval_logs WHERE retrieval_time < NOW() - INTERVAL '30 DAY';
+SELECT COUNT(*) FROM websites WHERE status = 0;
+WS.WS.SERV_QUEUE_TOP ('www.newsite.com', 'sites/www_newsite_com', 0, 1, 'DB.DBA.my_hook', vector ('www.foo.com', 'www.bar.com'));
+INSERT INTO websites (id, url, path, status) VALUES (4, 'www.newsite.com', 'sites/www_newsite_com', 0);
+WITH recent_retrievals AS (SELECT website_id FROM retrieval_logs WHERE retrieval_time > NOW() - INTERVAL '1 HOUR') SELECT w.url FROM websites w WHERE w.id IN (SELECT website_id FROM recent_retrievals);
+CREATE INDEX idx_website_status ON websites(status);

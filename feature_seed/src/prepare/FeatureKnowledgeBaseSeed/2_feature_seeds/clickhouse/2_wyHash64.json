@@ -1,0 +1,9 @@
+CREATE TABLE test_table (id UInt64, str_col String, nullable_col Nullable(String), num_col Int32, date_col DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table (id, str_col, nullable_col, num_col, date_col) VALUES (1, 'ClickHouse', NULL, 100, now()), (2, 'EdgeCase', 'value', 200, now() - INTERVAL 1 DAY), (3, '', 'NULLTEST', -300, now() - INTERVAL 2 DAY);
+SELECT wyHash64(str_col) AS Hash FROM test_table WHERE str_col != ANY (SELECT nullable_col FROM test_table WHERE num_col < 0) AND date_col > now() - INTERVAL 1 DAY GROUP BY Hash HAVING Hash != wyHash64('EdgeCase');
+SELECT wyHash64(CAST(str_col AS String)) AS Hash FROM test_table WHERE id != ANY (SELECT id FROM test_table WHERE num_col >= (SELECT MAX(num_col) FROM test_table) OR nullable_col IS NULL LIMIT 1) ORDER BY Hash;
+SELECT wyHash64(CONCAT(str_col, IFNULL(nullable_col, 'NULL'))) AS Hash FROM test_table WHERE id = ANY (SELECT id FROM test_table WHERE date_col < now() - INTERVAL 1 DAY) GROUP BY Hash HAVING Hash = wyHash64('ClickHouseEdgeCase');
+WITH (SELECT wyHash64(str_col) FROM test_table WHERE num_col < 0) AS hash_values SELECT id, str_col FROM test_table WHERE wyHash64(str_col) != ANY (hash_values);
+SELECT wyHash64('TestValue') AS TestHash, COUNT(*) FROM test_table WHERE str_col != ANY (SELECT str_col FROM test_table WHERE str_col != '') GROUP BY TestHash HAVING TestHash != wyHash64('NonExistentValue');
+CREATE TABLE temp_table AS SELECT str_col, wyHash64(str_col) AS Hash FROM test_table UNION ALL SELECT 'EdgeCase', wyHash64('EdgeCase');
+SELECT COUNT(*) FROM test_table WHERE wyHash64(str_col) NOT IN (SELECT Hash FROM temp_table);

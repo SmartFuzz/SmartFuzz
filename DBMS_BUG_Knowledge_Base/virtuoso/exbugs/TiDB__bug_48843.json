@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/48843",
+  "title": "Auto_id_cache goroutine leak",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n```\r\ncreate table t1 (a int not null auto_increment,b int, primary key (a)) engine=myisam auto_increment=3 auto_id_cache 1;\r\ninsert into t1 values (1,1),(NULL,3),(NULL,4);\r\ndrop table t1;\r\n```\r\n\r\nCreate table stmt leaks some goroutines.\r\nInsert stmt also leaks some goroutines.\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\nNo goroutine leak.\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n```\r\ngoroutine 343 [select, 13 minutes]:\r\ngoogle.golang.org/grpc/internal/grpcsync.(*CallbackSerializer).run(0xc000f4c920, {0x63424e8, 0xc000f1adc0})\r\n\t/go/pkg/mod/google.golang.org/grpc@v1.59.0/internal/grpcsync/callback_serializer.go:83 +0x112\r\ncreated by google.golang.org/grpc/internal/grpcsync.NewCallbackSerializer in goroutine 1\r\n\t/go/pkg/mod/google.golang.org/grpc@v1.59.0/internal/grpcsync/callback_serializer.go:55 +0x129\r\n\r\ngoroutine 344 [select, 13 minutes]:\r\ngoogle.golang.org/grpc/internal/grpcsync.(*CallbackSerializer).run(0xc000f4ca00, {0x63424e8, 0xc000f1b040})\r\n\t/go/pkg/mod/google.golang.org/grpc@v1.59.0/internal/grpcsync/callback_serializer.go:83 +0x112\r\ncreated by google.golang.org/grpc/internal/grpcsync.NewCallbackSerializer in goroutine 1\r\n\t/go/pkg/mod/google.golang.org/grpc@v1.59.0/internal/grpcsync/callback_serializer.go:55 +0x129\r\n\r\ngoroutine 345 [select, 13 minutes]:\r\ngoogle.golang.org/grpc/internal/grpcsync.(*CallbackSerializer).run(0xc000f4ca60, {0x63424e8, 0xc000f1b090})\r\n\t/go/pkg/mod/google.golang.org/grpc@v1.59.0/internal/grpcsync/callback_serializer.go:83 +0x112\r\ncreated by google.golang.org/grpc/internal/grpcsync.NewCallbackSerializer in goroutine 1\r\n\t/go/pkg/mod/google.golang.org/grpc@v1.59.0/internal/grpcsync/callback_serializer.go:55 +0x129\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\nmaster\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2023-11-23T09:06:54Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (id INT NOT NULL, name VARCHAR(255), created_at TIMESTAMP DEFAULT NOW(), PRIMARY KEY (id));",
+    "INSERT INTO t2 (id, name) VALUES (DEFAULT, 'Alice'), (DEFAULT, NULL), (DEFAULT, 'Bob'), (DEFAULT, NULL);",
+    "CREATE TABLE t3 (x INT, y INT, z INT, PRIMARY KEY (x));",
+    "INSERT INTO t3 (x, y, z) VALUES (1, 2, 3), (3, NULL, 3), (NULL, 4, 4);",
+    "SELECT * FROM t3 WHERE z IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Auto_increment with auto_id_cache leaks goroutines"
+  ]
+}

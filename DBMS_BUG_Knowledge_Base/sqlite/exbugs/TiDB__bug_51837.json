@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/51837",
+  "title": "The behavior of foreign keys in \"SHOW CREATE TABLE\" differs from MySQL.",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\nI'm using parallel_tests with Ruby.\r\nI copy the schema for use, but since foreign keys have schemas, I need to fix the discrepancy in results.\r\n\r\n```\r\nCREATE TABLE `foos` (\r\n  `id` int(11) NOT NULL AUTO_INCREMENT,\r\n  `name` varchar(255) DEFAULT NULL,\r\n  PRIMARY KEY (`id`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;\r\n\r\nCREATE TABLE `bars` (\r\n  `id` int(11) NOT NULL AUTO_INCREMENT,\r\n  `foo_id` int(11) NOT NULL,\r\n  PRIMARY KEY (`id`),\r\n  CONSTRAINT `fk_xxx` FOREIGN KEY (`foo_id`) REFERENCES `foos` (`id`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;\r\n\r\nSHOW CREATE TABLE bars \\G\r\n```\r\n\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\n```\r\nmysql> SHOW CREATE TABLE bars \\G\r\n******************** 1. row ********************\r\n       Table: bars\r\nCreate Table: CREATE TABLE `bars` (\r\n  `id` int(11) NOT NULL AUTO_INCREMENT,\r\n  `foo_id` int(11) NOT NULL,\r\n  PRIMARY KEY (`id`),\r\n  CONSTRAINT `fk_xxx` FOREIGN KEY (`foo_id`) REFERENCES `foo` (`id`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n```\r\nmysql> SHOW CREATE TABLE bars \\G\r\n******************** 1. row ********************\r\n       Table: bars\r\nCreate Table: CREATE TABLE `bars` (\r\n  `id` int(11) NOT NULL AUTO_INCREMENT,\r\n  `foo_id` int(11) NOT NULL,\r\n  PRIMARY KEY (`id`),\r\n  CONSTRAINT `fk_xxx` FOREIGN KEY (`foo_id`) REFERENCES `schema_name`.`foo` (`id`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;\r\n```\r\n\r\n\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n```\r\nmysql> SELECT tidb_version() \\G\r\n*************************** 1. row ***************************\r\ntidb_version(): Release Version: v7.5.1\r\nEdition: Community\r\nGit Commit Hash: 7d16cc79e81bbf573124df3fd9351c26963f3e70\r\nGit Branch: heads/refs/tags/v7.5.1\r\nUTC Build Time: 2024-02-27 14:21:44\r\nGoVersion: go1.21.6\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv\r\n1 row in set (0.00 sec)\r\n```\r\n\r\n",
+  "date": "2024-03-16T11:21:48Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE products (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, price REAL NOT NULL);",
+    "CREATE TABLE orders (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER NOT NULL, quantity INTEGER NOT NULL, FOREIGN KEY (product_id) REFERENCES products (id));",
+    "INSERT INTO products (name, price) VALUES ('Widget', 19.99);",
+    "INSERT INTO orders (product_id, quantity) VALUES (1, 5);",
+    "SELECT sql FROM sqlite_master WHERE type='table' AND name='orders';"
+  ],
+  "key_bug_features": [
+    "Foreign key schema reference in SHOW CREATE TABLE output"
+  ]
+}

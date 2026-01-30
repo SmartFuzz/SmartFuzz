@@ -1,0 +1,9 @@
+CREATE TABLE test_table (id INT, timestamp_column TIMESTAMP, bitstring_column BITSTRING);
+INSERT INTO test_table (id, timestamp_column, bitstring_column) VALUES (1, make_timestamp(1667810584123456), '1010'::BITSTRING);
+INSERT INTO test_table (id, timestamp_column, bitstring_column) VALUES (2, make_timestamp(0), '1111'::BITSTRING);
+INSERT INTO test_table (id, timestamp_column, bitstring_column) VALUES (3, make_timestamp(1234567890000000), NULL);
+SELECT id, make_timestamp(COALESCE(NULLIF(timestamp_column, make_timestamp(0)), 1667810584123456)) AS computed_timestamp, bitstring_column | '0001'::BITSTRING AS updated_bitstring FROM test_table WHERE id IN (SELECT id FROM test_table WHERE id IS NOT NULL);
+WITH temp_table AS (SELECT id, timestamp_column, bitstring_column | '0011'::BITSTRING AS modified_bitstring FROM test_table WHERE timestamp_column > make_timestamp(1100000000000000)) SELECT id, modified_bitstring FROM temp_table ORDER BY id;
+SELECT COUNT(*) FROM (SELECT DISTINCT id, (make_timestamp(1667810584123456) | make_timestamp(1667810584123456)) as combined_timestamps FROM test_table GROUP BY id HAVING combined_timestamps IS NOT NULL) AS derived_table;
+SELECT id, make_timestamp(COALESCE(NULL, 1667810584123456)) AS safe_timestamp, bitstring_column | '1110'::BITSTRING FROM test_table WHERE bitstring_column IS NOT NULL AND id < (SELECT MAX(id) FROM test_table);
+SELECT id FROM (SELECT id, make_timestamp(microseconds) FROM (SELECT id, 1667810584123456 AS microseconds FROM test_table) sub) AS outer_table WHERE EXISTS (SELECT 1 FROM test_table WHERE timestamp_column IS NOT NULL AND modified_bitstring | '1000'::BITSTRING IS NOT NULL);

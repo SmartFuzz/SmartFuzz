@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/284",
+  "title": "wrong results for geo filterting using st_intersects",
+  "description": "Using VOS 7.1 stable (07.10.3207-pthreads for Linux), I loaded almost the complete LinkedGeoData and selected parts of DBpedia.\nThe issue occurs when send the following geo-query for cities about 100 km around the center of Germany:\nSELECT ?lgd, SAMPLE(?wkt), SAMPLE(?name)\nFROM <http://linkedgeodata.org> {\n  ?lgd a lgdo:City;\n  rdfs:label ?name;\n  geom:geometry [ogc:asWKT ?wkt ].\n\n  FILTER ( langMatches(lang(?name), '') )\n  FILTER ( bif:st_intersects (?wkt, bif:st_point (10.447683, 51.163375), 100) )\n  FILTER NOT EXISTS { ?lgd a lgdm:Way }\n} GROUP BY ?lgd;\n\nRunning the query the first time after a VOS-Server (re-)start, takes quite long, but yields four correct results (Kassel, Göttingen, Jena, Erfurt) with the following geometries:\nPOINT(11.0296 50.9778)\nPOINT(11.5833 50.9331)\nPOINT(9.93521 51.5328)\nPOINT(9.4763 51.309)\n\nHowever, if I repeat the exact same query another time, Virtuoso returns four (apparently) random cities from different parts of the world: Ibagué, Магнитогорск, Cauayan, Cedar Rapids with the following geometries:\nPOINT(-91.6704 41.9759)\nPOINT(121.767 16.9344)\nPOINT(58.9833 53.4243)\nPOINT(-75.2411 4.44355)\n\nEvery repeated execution of the query then yield deterministically the same four out of place results. You also get the same four correct results after every server restart, but only once.\nThe complete query with prefix definitions  and the complete output from isql can be found in  this gist",
+  "date": "2015-01-08 16:43:08",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE geo_cities (id UInt32, name String, geom String, population UInt32);",
+    "INSERT INTO geo_cities (id, name, geom, population) VALUES (1, 'Kassel', 'POINT(9.4763 51.309)', 197000);",
+    "INSERT INTO geo_cities (id, name, geom, population) VALUES (2, 'Göttingen', 'POINT(9.93521 51.5328)', 120000);",
+    "SELECT name, geom FROM geo_cities WHERE has(geom, 'POINT(10.447683 51.163375)') AND population > 100000;",
+    "SELECT COUNT(*) FROM geo_cities WHERE geom IS NOT NULL AND population BETWEEN 50000 AND 200000;"
+  ],
+  "key_bug_features": [
+    "Repeated geo-query returns incorrect results after first execution"
+  ]
+}

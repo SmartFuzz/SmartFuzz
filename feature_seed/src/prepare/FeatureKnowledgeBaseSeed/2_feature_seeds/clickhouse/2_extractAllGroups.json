@@ -1,0 +1,10 @@
+CREATE TABLE fuzz_test (id UInt32, data String, value Float64, created_at DateTime DEFAULT now());
+INSERT INTO fuzz_test VALUES (1, 'abc=123, 8="hkl"', 100.0, now()), (2, 'xyz=456, 7="def"', 200.5, now()), (3, '', NULL, now());
+SELECT id, extractAllGroups(data, '([a-z]+)=([0-9]+)') AS extracted FROM fuzz_test WHERE data != '' AND value == value;
+WITH extracted AS (SELECT id, extractAllGroups(data, '([a-z]+)=([0-9]+)') AS groups FROM fuzz_test) SELECT id, groups FROM extracted WHERE arrayJoin(groups) != [];
+SELECT id, arrayJoin(extractAllGroups(data, '([a-z]+)=([0-9]+)')) AS group_values FROM fuzz_test WHERE NOT(group_values[1] IS NULL) GROUP BY id HAVING count(group_values) > 1;
+CREATE TABLE temp_fuzz (id UInt32, text_data String) ENGINE = Memory;
+INSERT INTO temp_fuzz SELECT id, extractAllGroups(data, '([a-z]+)=([0-9]+)') FROM fuzz_test WHERE data IS NOT NULL;
+SELECT id FROM temp_fuzz WHERE (SELECT count(*) FROM fuzz_test) > 1 AND text_data == '' GROUP BY id;
+SELECT id, created_at, extractAllGroups(data, '([a-z]+)=([0-9]+)') FROM fuzz_test WHERE created_at < toDateTime('2023-01-01 00:00:00');
+DROP TABLE temp_fuzz;

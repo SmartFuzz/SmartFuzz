@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/43379",
+  "title": "ORDINAL_POSITION from information_schema.columns is incorrect when filtering",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```\r\ncreate table t1 (a int, b int, c int);\r\nselect column_name, ordinal_position from information_schema.columns where table_schema=database() and table_name='t1' and column_name='c';\r\n\r\n```\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\n`select ordinal_position from information_schema.columns where /* ... */ column_name='c'` should show `3` because this is the 3rd column in the table. However, filtering using a WHERE clause seems to reset the `ordinal_position` counter so that it refers to the position in the resultset?\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nMySQL [test]> create table t1 (a int, b int, c int);\r\nseQuery OK, 0 rows affected (0.54 sec)\r\n\r\nMySQL [test]> select column_name, ordinal_position from information_schema.columns where table_schema=database() and table_name='t1';\r\n+-------------+------------------+\r\n| column_name | ordinal_position |\r\n+-------------+------------------+\r\n| a           |                1 |\r\n| b           |                2 |\r\n| c           |                3 |\r\n+-------------+------------------+\r\n3 rows in set (0.00 sec)\r\n\r\nMySQL [test]> select column_name, ordinal_position from information_schema.columns where table_schema=database() and table_name='t1' and column_name='c';\r\n+-------------+------------------+\r\n| column_name | ordinal_position |\r\n+-------------+------------------+\r\n| c           |                1 |\r\n+-------------+------------------+\r\n1 row in set (0.00 sec)\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n```\r\nMySQL [test]> select tidb_version()\\G\r\n*************************** 1. row ***************************\r\ntidb_version(): Release Version: v7.0.0\r\nEdition: Community\r\nGit Commit Hash: 8783269d3d97f3fd1858c083170eacaf7b732bcd\r\nGit Branch: HEAD\r\nUTC Build Time: 2023-04-12 18:44:47\r\nGoVersion: go1.20\r\nRace Enabled: false\r\nTiKV Min Version: 6.2.0-alpha\r\nCheck Table Before Drop: false\r\nStore: tikv\r\n```",
+  "date": "2023-04-24T17:05:31Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (x INTEGER, y VARCHAR, z TIMESTAMP, w FLOAT, v BOOLEAN);",
+    "INSERT INTO t2 (x, y, z, w, v) VALUES (1, 'test', TIMESTAMP '2023-01-01 00:00:00', 3.14, TRUE);",
+    "SELECT column_name, ordinal_position FROM information_schema.columns WHERE table_name='t2' AND column_name='y';",
+    "SELECT column_name, ordinal_position FROM information_schema.columns WHERE table_name='t2' AND ordinal_position > 2;",
+    "SELECT column_name, ordinal_position FROM information_schema.columns WHERE table_name='t2' AND column_name IS NULL;"
+  ],
+  "key_bug_features": [
+    "Filtering with WHERE clause resets ordinal_position counter"
+  ]
+}

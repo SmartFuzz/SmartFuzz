@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14779",
+  "title": "Inconsistency in DECIMAL CAST ",
+  "description": "### What happens?\r\n\r\n**Double to Decimal cast** suffers from floating point inaccuracies [Similar to https://github.com/duckdb/duckdb/issues/3091]\r\n\r\n**Decimal to Decimal cast** in case of downcast to a lower width does not round up [Similar to https://github.com/duckdb/duckdb/pull/12036] \r\n\r\n**Varchar to Decimal cast** results into incorrect values when varchar is a double depicted in scientific notation \r\n\r\nLooks like we have few corner cases to handle for above scenarios\r\n\r\n### To Reproduce\r\n\r\n**Double to Decimal cast**  \r\n```\r\nselect cast(cast(cast ('199999999999999.999' as decimal(38,10)) as double) as decimal(38,9));  --INCONSISTENT \r\n```\r\n\r\nReturns 199999999999999.983222784 \r\nExpected [in Athena/Trino] 200000000000000.0\r\n\r\n```\r\nselect cast(cast ('199999999999999.999' as decimal(38,10)) as double); \r\n```\r\n\r\nReturns 200000000000000.0 \r\nExpected [in Athena/Trino] 200000000000000.0 \r\n\r\n```\r\nselect cast(cast(cast ('-2455555555.33' as decimal(38,10)) as double) as decimal(38,9)); --INCONSISTENT \r\n```\r\n\r\nReturns -2455555555.329999872\r\nExpected [in Athena/Trino]  -2455555555.330000000\r\n\r\n```\r\nselect cast(cast(cast ('-245555555.33' as decimal(38,10)) as double) as decimal(38,9));\r\n```\r\n\r\nReturns -245555555.330000000\r\nExpected [in Athena/Trino] -245555555.330000000\r\n\r\n**Decimal to Decimal cast - Downcast Rounding**\r\n\r\n```\r\nselect cast(cast ('1.9999999999' as decimal(38,10)) as decimal(30,9)); --INCONSISTENT \r\n```\r\n\r\nReturns 1.999999999 \r\nExpected [in Athena/Trino] 2.000000000 \r\n\r\n```\r\nselect cast(cast ('1.9999999999' as decimal(38,10)) as decimal(38,9));\r\n```\r\n\r\nReturns 2.000000000  \r\nExpected [in Athena/Trino] 2.000000000 \r\n\r\n```\r\nselect cast(cast ('1.9999999999' as decimal(30,10)) as decimal(38,9));\r\n```\r\n\r\nReturns 2.000000000  \r\nExpected [in Athena/Trino] 2.000000000 \r\n\r\n\r\n**Varchar (scientific notation double) to Decimal cast**\r\n```\r\nselect CAST('7e-15' as DECIMAL(38,10)) ;  ---INCORRECT, rounding off even though not expected \r\n```\r\n\r\nReturns  0.0000000001\r\nExpected [in Athena/Trino]   0.0000000000\r\n\r\nWhen it's not scientific notation, result is as expected\r\n```\r\nselect CAST('0.000000000000007' as DECIMAL(38,10)) ;  --CORRECT, consistent with trino / expected \r\n```\r\n\r\nReturns  0.0000000000\r\nExpected [in Athena/Trino]  0.0000000000\r\n\r\n### OS:\r\n\r\nAMD64, ARM64\r\n\r\n### DuckDB Version:\r\n\r\n1.1.0\r\n\r\n### DuckDB Client:\r\n\r\nJAVA\r\n\r\n### Hardware:\r\n\r\n_No response_\r\n\r\n### Full Name:\r\n\r\nSimran Batra\r\n\r\n### Affiliation:\r\n\r\nArcesium Pvt. Ltd.\r\n\r\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\r\n\r\nI have tested with a stable release\r\n\r\n### Did you include all relevant data sets for reproducing the issue?\r\n\r\nYes\r\n\r\n### Did you include all code required to reproduce the issue?\r\n\r\n- [X] Yes, I have\r\n\r\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\r\n\r\n- [X] Yes, I have",
+  "date": "2024-11-11 07:21:52",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_fuzzing (id INTEGER, value DECIMAL(38,10), double_value DOUBLE);",
+    "INSERT INTO test_fuzzing VALUES (1, '199999999999999.999', 199999999999999.999);",
+    "INSERT INTO test_fuzzing VALUES (2, '-2455555555.33', -2455555555.33);",
+    "SELECT id, CAST(value AS DECIMAL(30,9)) FROM test_fuzzing WHERE double_value > 0;",
+    "SELECT CAST(double_value AS DECIMAL(38,10)) FROM test_fuzzing WHERE value IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Inconsistent casting between Double and Decimal types"
+  ]
+}

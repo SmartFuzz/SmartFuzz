@@ -1,0 +1,13 @@
+CREATE TABLE geometries (id INT PRIMARY KEY, geom GEOMETRY, name VARCHAR(100));
+INSERT INTO geometries (id, geom, name) VALUES (1, POINT(1 1), 'Point A'), (2, POINT(2 2), 'Point B'), (3, POINT(NULL), 'Point C');
+SELECT soap_wsdl('Soap Service') AS wsdl, bif:st_distance(geom, (SELECT geom FROM geometries WHERE id = 1)) AS distance FROM geometries;
+SELECT g1.id, soap_wsdl(g1.name) AS wsdl, bif:st_distance(g1.geom, g2.geom) AS distance FROM geometries g1 JOIN geometries g2 ON g1.id != g2.id WHERE g1.name != '' GROUP BY g1.id, g1.name HAVING distance IS NOT NULL;
+SELECT soap_wsdl(CONCAT(name, ' - Service')) AS wsdl, bif:st_distance(geom, (SELECT POINT(0 0) AS origin)) AS distance FROM geometries WHERE geom IS NOT NULL ORDER BY distance DESC;
+CREATE TABLE services (id INT PRIMARY KEY, service_name VARCHAR(100), geometry GEOMETRY);
+INSERT INTO services (id, service_name, geometry) VALUES (1, 'Service A', POINT(0 0)), (2, 'Service B', POINT(3 3));
+SELECT s.id, soap_wsdl(s.service_name), sub.distance FROM services s LEFT JOIN (SELECT id, bif:st_distance(geometry, POINT(1 1)) AS distance FROM services) sub ON s.id = sub.id WHERE sub.distance < 5.0;
+UPDATE geometries SET geom = POINT(2 2) WHERE id = 3;
+SELECT soap_wsdl('Updated Service') AS wsdl WITH ORDINALITY, bif:st_distance(geom, POINT(NULL)) FROM geometries;
+DROP TABLE IF EXISTS temp_services;
+CREATE TEMPORARY TABLE temp_services AS SELECT id, soap_wsdl(name) AS wsdl FROM geometries WHERE geom IS NOT NULL;
+SELECT COUNT(*) FROM temp_services WHERE wsdl IS NULL;

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/921",
+  "title": "SPARQL with VALUES clause after WHERE does not work (generated from a SERVICE clause)",
+  "description": "See answer to SERVICE against Virtuoso DBPedia Gives “Virtuoso S0022 Error SQ200 : No Column” on StackOveflow.\nI run a SPARQL query in a local GraphDB triplestore that contains a SERVICE clause that goes to DBPedia Virtuoso. The query basically fetches labels of some DBPedia URIs directly from DBPedia (note the subquery executes first to fetch local results, before passing in these results to the SERVICE clause):\nSELECT DISTINCT ?uri (STR(?theLabel) AS ?label)\nWHERE {\n {\n  SELECT DISTINCT ?uri\n  WHERE {\n    ?domain a <http://xmlns.com/foaf/0.1/Person> .\n    ?domain <http://virtual-assembly.org/pair#hasKeyword> ?uri .\n  }\n  }\n\n  SERVICE <http://dbpedia.org/sparql> {\n    ?uri <http://www.w3.org/2000/01/rdf-schema#label> ?theLabel .\n    FILTER(lang(?theLabel) = 'fr')\n  }\n\n}\nORDER BY ?label\n\nI get the following error from Virtuoso while evaluating the service clause Virtuoso S0022 Error SQ200 :\nQuery evaluation error: org.eclipse.rdf4j.query.QueryEvaluationException: Virtuoso S0022 Error SQ200: No column uri.\n\nSPARQL query:\nPREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX sesame: <http://www.openrdf.org/schema/sesame#>\nPREFIX owl: <http://www.w3.org/2002/07/owl#>\nPREFIX xsd: <http://www.w3.org/2001/XMLSchema#>\nPREFIX fn: <http://www.w3.org/2005/xpath-functions#>\n\nSELECT  ?theLabel ?__rowIdx WHERE {\n ?uri <http://www.w3.org/2000/01/rdf-schema#label> ?theLabel .\n FILTER(lang(?theLabel) = 'fr')\n}\nVALUES (?__rowIdx ?uri) {  (\"0\" <http://dbpedia.org/resource/Semantic_Web> ) (\"1\" <http://dbpedia.org/resource/Peer-to-peer> ) (\"2\" <http://dbpedia.org/resource/Collaboration> ) (\"3\" <http://dbpedia.org/resource/Free_software> ) (\"4\" <http://dbpedia.org/resource/Social_transformation> ) (\"5\" <http://dbpedia.org/resource/Social_network> ) (\"6\" <http://dbpedia.org/resource/Ecology> ) (\"7\" <http://dbpedia.org/resource/Activism> ) (\"8\" <http://dbpedia.org/resource/Supernatural> ) (\"9\" <http://dbpedia.org/resource/Sociology> ) (\"10\" <http://dbpedia.org/resource/Natural_science> ) (\"11\" <http://dbpedia.org/resource/Popular_science> ) (\"12\" <http://dbpedia.org/resource/Cooperation> ) (\"13\" <http://dbpedia.org/resource/Wikimedia_Commons> ) (\"14\" <http://dbpedia.org/resource/Musician> ) }\n\n(HTTP status 500)\n\nThe query received by Virtuoso is valid SPARQL, with a VALUES clause after the WHERE clause. As mentioned in the StackOverflow question, putting the VALUES clause inside the WHERE would work, but I don't have my hand on how GraphDB generates that SPARQL.\nThis is blocking any attempt to have federated query from GraphDB to Virtuoso.",
+  "date": "2020-06-24 07:35:53",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id Int32, uri String, label String, lang String);",
+    "INSERT INTO test_table (id, uri, label, lang) VALUES (1, 'http://dbpedia.org/resource/Semantic_Web', 'Web sémantique', 'fr');",
+    "INSERT INTO test_table (id, uri, label, lang) VALUES (2, 'http://dbpedia.org/resource/Peer-to-peer', 'Pair à pair', 'fr');",
+    "SELECT uri, label FROM test_table WHERE lang = 'fr' AND uri IS NOT NULL ORDER BY label;",
+    "SELECT DISTINCT uri, label FROM test_table WHERE lang = 'fr' ORDER BY label;"
+  ],
+  "key_bug_features": [
+    "VALUES clause after WHERE in SPARQL query causes error"
+  ]
+}

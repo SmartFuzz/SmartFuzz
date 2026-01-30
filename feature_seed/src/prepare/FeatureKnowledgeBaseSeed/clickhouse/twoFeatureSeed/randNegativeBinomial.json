@@ -1,0 +1,17 @@
+{
+    "function": "randNegativeBinomial",
+    "operator": "IS NOT NULL",
+    "sql_array": [
+        "CREATE TABLE test_rand_null (id UInt64, value Nullable(Float64));",
+        "INSERT INTO test_rand_null VALUES (1, NULL), (2, 3.5), (3, NULL), (4, 7.2);",
+        "SELECT id, randNegativeBinomial(10, CAST(value IS NOT NULL AS Float64)) AS rand_value FROM test_rand_null WHERE value IS NOT NULL;",
+        "SELECT id, sum(randNegativeBinomial(5, -0.1)) AS rand_sum FROM (SELECT id, randNegativeBinomial(100, .6) AS experiments FROM numbers(10)) GROUP BY id HAVING rand_sum IS NOT NULL;",
+        "CREATE TABLE test_join (id UInt64, experiments UInt64, probability Nullable(Float64));",
+        "INSERT INTO test_join VALUES (1, 10, 0.2), (2, 20, NULL), (3, 15, 0.4);",
+        "SELECT j.id, randNegativeBinomial(j.experiments, IF(j.probability IS NOT NULL, j.probability, 0.5)) FROM test_join j JOIN test_rand_null r ON j.id = r.id WHERE r.value IS NOT NULL;",
+        "SELECT j.id, randNegativeBinomial(j.experiments, 1 - j.probability) AS negative_value FROM test_join j WHERE j.probability IS NULL;",
+        "WITH (SELECT min(value) FROM test_rand_null) AS min_value SELECT id, randNegativeBinomial(5, CASE WHEN min_value < 0.5 THEN 0.8 ELSE 0.2 END) AS computed_value FROM test_rand_null WHERE value IS NOT NULL;",
+        "SELECT randNegativeBinomial(100, NULL) AS random_value FROM numbers(5) WHERE randNegativeBinomial(100, .5) IS NOT NULL;",
+        "DROP TABLE IF EXISTS test_join;"
+    ]
+}

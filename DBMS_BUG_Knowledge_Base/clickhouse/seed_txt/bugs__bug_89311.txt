@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS default.test_v2 (
+    list_id LowCardinality(String),
+    item String,
+    created_at DateTime,
+    price Float64,
+    is_active UInt8
+) ENGINE = ReplacingMergeTree() PRIMARY KEY (list_id) ORDER BY (list_id, created_at);
+INSERT INTO default.test_v2 SELECT t.list_id, g.item, g.created_at, g.price, g.is_active FROM generateRandom('item String, created_at DateTime, price Float64, is_active UInt8', 1, 100, 1) g CROSS JOIN (SELECT generateUUIDv7() list_id FROM numbers(2)) t LIMIT 100000;
+ALTER TABLE default.test_v2 ADD PROJECTION prj_list_id_created_at ( SELECT * ORDER BY (list_id, created_at) );
+ALTER TABLE default.test_v2 MATERIALIZE PROJECTION prj_list_id_created_at;
+SELECT * FROM default.test_v2 WHERE list_id = '019a369d-0a96-7fbd-853c-a4335fd2ee9f' ORDER BY created_at LIMIT 100 OFFSET 6000 SETTINGS optimize_use_projections = 1, preferred_optimize_projection_name = 'prj_list_id_created_at';

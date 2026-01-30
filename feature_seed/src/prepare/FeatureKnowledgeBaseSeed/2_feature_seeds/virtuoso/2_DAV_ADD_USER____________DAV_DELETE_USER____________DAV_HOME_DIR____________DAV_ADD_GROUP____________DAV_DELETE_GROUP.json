@@ -1,0 +1,13 @@
+CREATE TABLE users (uid VARCHAR(255) PRIMARY KEY, pwd VARCHAR(255), gid VARCHAR(255), perms INT, home VARCHAR(255), full_name VARCHAR(255), email VARCHAR(255));
+CREATE TABLE groups (gid VARCHAR(255) PRIMARY KEY);
+INSERT INTO groups (gid) VALUES ('davgroup');
+INSERT INTO users (uid, pwd, gid, perms, home, full_name, email) VALUES ('davuser', 'secret', 'davgroup', 110100000, '/home/davuser', 'Test User Account', 'nobody@foo.bar');
+SELECT DAV_HOME_DIR(uid) FROM users WHERE perms > (SELECT AVG(perms) FROM users) AND gid IN (SELECT gid FROM groups WHERE gid = 'davgroup');
+SELECT * FROM users WHERE uid = (SELECT uid FROM users WHERE email IS NULL OR email = '') AND perms > 100000 AND EXISTS (SELECT 1 FROM groups WHERE gid = users.gid);
+SELECT COUNT(*) AS user_count FROM users WHERE NOT (uid > 'zzzzzzz' OR gid IS NULL);
+SELECT DAV_DELETE_USER(uid) FROM users WHERE home IS NOT NULL AND (perms < 0 OR home = '');
+SELECT CASE WHEN DAV_DELETE_GROUP(gid) THEN 'Group deleted' ELSE 'Group not found' END as result FROM groups WHERE gid = (SELECT gid FROM users WHERE uid = 'davuser' AND perms > 110000);
+SELECT COUNT(*) FROM users WHERE EXISTS (SELECT 1 FROM groups WHERE gid = 'davgroup') AND (DAV_ADD_USER('newuser', 'password', 'davgroup', 110100000, NULL, NULL, 'New User', NULL, NULL, NULL) IS NULL OR uid IS NULL);
+SELECT DAV_ADD_GROUP('newgroup', '', 'dav') WHERE (SELECT COUNT(*) FROM users WHERE home IS NOT NULL) > (SELECT COUNT(*) FROM groups);
+INSERT INTO users (uid, pwd, gid, perms, home) VALUES ('user1', 'pass1', 'davgroup', -2147483648, '/home/user1');
+INSERT INTO users (uid, pwd, gid, perms, home, full_name, email) VALUES ('user2', 'pass2', NULL, 0, '/home/user2', 'User Two', 'user2@example.com');

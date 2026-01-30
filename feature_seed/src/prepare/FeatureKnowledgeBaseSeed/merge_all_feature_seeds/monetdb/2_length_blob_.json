@@ -1,0 +1,12 @@
+CREATE TABLE test_data (id INT PRIMARY KEY, blob_data BLOB, ip_address INET);
+INSERT INTO test_data (id, blob_data, ip_address) VALUES (1, x'00123456789ABCDEF', inet '192.168.1.5');
+INSERT INTO test_data (id, blob_data, ip_address) VALUES (2, x'0000', inet '192.168.1.1');
+INSERT INTO test_data (id, blob_data, ip_address) VALUES (3, x'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF', inet '10.0.0.100');
+SELECT id, length(blob_data) AS blob_length FROM test_data WHERE blob_length > 0;
+SELECT id, blob_data FROM test_data WHERE blob_data IS NOT NULL AND length(blob_data) >> 0;
+SELECT t1.id, length(t1.blob_data), t2.ip_address FROM test_data t1 JOIN test_data t2 ON length(t1.blob_data) = length(t2.blob_data) WHERE t1.ip_address >> inet '192.168.1.0/24';
+SELECT COUNT(*) FROM (SELECT DISTINCT id, length(blob_data) AS blob_length FROM test_data WHERE blob_length < 50 HAVING blob_length IS NOT NULL) AS subquery;
+CREATE TEMPORARY TABLE temp_ips (temp_ip INET);
+INSERT INTO temp_ips (temp_ip) VALUES (inet '192.168.1.255'), (inet '192.169.1.1');
+SELECT id, blob_data FROM test_data WHERE ip_address >> (SELECT temp_ip FROM temp_ips) ORDER BY length(blob_data) ASC;
+SELECT id, SUM(CASE WHEN length(blob_data) = 0 THEN 1 ELSE 0 END) AS zero_length_records FROM test_data GROUP BY id HAVING SUM(zero_length_records) > 0;

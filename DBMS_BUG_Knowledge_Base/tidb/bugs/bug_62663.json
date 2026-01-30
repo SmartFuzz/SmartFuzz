@@ -1,0 +1,25 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/62663",
+  "title": "Unexpected assertion failed with sub query",
+  "vulnerable_database": "tidb",
+  "date": "2025-07-28T12:14:28Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\nBuild TiDB with `make server_check`, then run\n\n```SQL\nuse test\nCREATE TABLE `t1` (`c1` timestamp PRIMARY KEY);\nselect * from (select c1 from t1 limit 1) t where c1 in ('2034-05-27', '2001-06-27') and c1 in (null, '1996-06-27');\n```\n\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\n\nSucceed\n\n### 3. What did you see instead (Required)\n\n```SQL\nERROR 1105 (HY000): assert failed\n```\n\nAnd if we don't build with enableassert, the plan is\n\n```SQL\n+------------------------------+---------+-----------+---------------+--------------------------------20:12:37 [33/168]\n----------------------------------------------------------------------------------------------+                        \n| id                           | estRows | task      | access object | operator info                                   \n                                                                                              |                        \n+------------------------------+---------+-----------+---------------+-------------------------------------------------\n----------------------------------------------------------------------------------------------+                        \n| Selection_10                 | 0.80    | root      |               | or(0, eq(test.t1.c1, 1996-06-27 00:00:00.000000)\n), or(eq(test.t1.c1, 2034-05-27 00:00:00.000000), eq(test.t1.c1, 2001-06-27 00:00:00.000000)) |                        \n| └─Limit_11                   | 1.00    | root      |               | offset:0, count:1                               \n                                                                                              |                        \n|   └─TableReader_17           | 1.00    | root      |               | data:Limit_16                                   \n                                                                                              |                        \n|     └─Limit_16               | 1.00    | cop[tikv] |               | offset:0, count:1                               \n                                                                                              |                        \n|       └─TableFullScan_15     | 1.00    | cop[tikv] | table:t1      | keep order:false, stats:pseudo                  \n                                                                                              |                        \n+------------------------------+---------+-----------+---------------+-------------------------------------------------\n----------------------------------------------------------------------------------------------+                        \n5 rows in set (0.00 sec)  \n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "poc": [
+    "use test",
+    "CREATE TABLE `t1` (`c1` timestamp PRIMARY KEY);",
+    "select * from (select c1 from t1 limit 1) t where c1 in ('2034-05-27', '2001-06-27') and c1 in (null, '1996-06-27');"
+  ],
+  "poc_type": "sql_text",
+  "state": "closed",
+  "key_bug_features": [
+    "Subquery with conflicting timestamp conditions"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE `t2` (`c1` timestamp NOT NULL, `c2` int DEFAULT 0);",
+    "INSERT INTO `t2` (`c1`, `c2`) VALUES ('2023-01-01', 1), ('2024-01-01', 2), ('2025-01-01', 3);",
+    "SELECT * FROM (SELECT c1 FROM t2 WHERE c2 > 1) AS subquery WHERE c1 IN ('2023-01-01', '2024-01-01') AND c1 IN (NULL, '2025-01-01');",
+    "CREATE TABLE `t3` (`c1` timestamp DEFAULT NULL, `c2` varchar(255) NOT NULL);",
+    "INSERT INTO `t3` (`c1`, `c2`) VALUES (NULL, 'test1'), ('2022-12-31', 'test2');"
+  ]
+}

@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id INT, value DOUBLE, timestamp TIMESTAMP);
+INSERT INTO test_table VALUES (1, 10.5, TIMESTAMP '2023-01-01 10:00:00'), (2, 2.3, TIMESTAMP '2023-01-02 11:00:00'), (3, 5.7, TIMESTAMP '2023-01-01 12:00:00'), (4, NULL, TIMESTAMP '2023-01-03 13:00:00'), (5, 8.1, TIMESTAMP '2023-01-04 14:00:00');
+CREATE TABLE other_table (id INT, related_value DOUBLE);
+INSERT INTO other_table VALUES (1, 1.1), (2, 3.4), (3, 5.5);
+SELECT arg_min(value, id, 2) FROM (SELECT value, id FROM test_table WHERE value IS NOT NULL ORDER BY value ASC) AS subquery GROUP BY id HAVING COUNT(value) >= 1;
+SELECT (TIMESTAMP '2023-05-01 12:00:00' - INTERVAL (SELECT COUNT(*) FROM other_table WHERE related_value > 3) DAY) AS adjusted_timestamp, arg_min(value, id, 1) FROM test_table GROUP BY id ORDER BY adjusted_timestamp DESC;
+SELECT arg_min(value, -1.0 * COUNT(*), 2) FROM test_table GROUP BY id HAVING COUNT(*) > 0;
+SELECT id, value, (TIMESTAMP '2023-01-01 10:00:00' - INTERVAL (SELECT COUNT(*) FROM other_table WHERE related_value = 3.4) DAY) AS adjusted_time FROM test_table WHERE value < (SELECT MAX(value) FROM test_table WHERE value IS NOT NULL);
+SELECT arg_min(value, value * 2.0, 3) FROM (SELECT value FROM test_table WHERE value IS NOT NULL ORDER BY value ASC) AS intermediate GROUP BY value HAVING COUNT(value) > 0;
+CREATE TEMPORARY TABLE temp_table AS SELECT id, (TIMESTAMP '2023-05-05 15:00:00' - INTERVAL 2 DAY) AS temp_time FROM test_table WHERE value IS NOT NULL;
+SELECT arg_min(value, id, 1) FROM temp_table WHERE temp_time > TIMESTAMP '2023-05-03 10:00:00';

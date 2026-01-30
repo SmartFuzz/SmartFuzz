@@ -1,0 +1,28 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=103583",
+  "title": "Dump/Restore fails with nested VIEWS having ROLLUP over DISTINCT groups",
+  "vulnerable_database": "MySQL Server: DDL",
+  "date": "2021-05-05 08:21:00",
+  "vulnerable_version": "8.0.24, 8.0.23, 8.0.21",
+  "description": "Assuming following 2 views\r\n\r\nCREATE VIEW v2 AS SELECT 4711 AS XYZ;\r\nCREATE VIEW v1 AS\r\n  SELECT  \r\n    1                   AS A  \r\n   ,COUNT(DISTINCT (1)) AS B\r\nFROM v2\r\n  GROUP BY A WITH ROLLUP;\r\n\r\nDumping, restoring the dumped file and calling SHOW CREATE VIEW v1; leads to following error:\r\n\r\nFAILS with ERROR 1064 (42000) at line 1: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'distinct count(distinct 4711)) AS `B` from `dbfail`.`v2` group by `A` with rollu' at line 1\n\nIn my understanding the dumpfile looks OK. I assume the import/restore can't handle it.\r\n\r\nIt works fine\r\n- in 8.0.18\r\n- without the ROLLUP modifier\r\n- or without the DISTINCT count\r\n- or when v2 is a TABLE\r\n- OR SURPRISINGLY, and actually the reason for this post ... The failure depends on the names of the views. More precise, their appearance in the dumpfile! If we switch the names of the views v1<->v2 its OK\nHow to repeat:\nThe first part is the working one and the second fails due to switched view names.\r\n\r\nSCHEMA=dbok\r\nINNERVIEWNAME=v1\r\nOUTERVIEWNAME=v2\r\nmysql -e \"DROP DATABASE IF EXISTS $SCHEMA; \\\r\n          CREATE DATABASE $SCHEMA; \\\r\n          USE $SCHEMA; \\\r\n          CREATE VIEW $INNERVIEWNAME AS SELECT 4711 AS anything; \\\r\n          CREATE VIEW $OUTERVIEWNAME AS SELECT 4711 AS A, COUNT(DISTINCT(4711)) AS B FROM $INNERVIEWNAME GROUP BY A WITH ROLLUP; \\\r\n          SHOW CREATE VIEW $OUTERVIEWNAME;\"\r\nrm -rf ./$SCHEMA.mysql\r\nmysqldump $SCHEMA > ./$SCHEMA.mysql\r\nmysql $SCHEMA < ./$SCHEMA.mysql\r\nmysql -e \"USE $SCHEMA; SHOW CREATE VIEW $OUTERVIEWNAME;\"\n\nSCHEMA=dbfail\r\nINNERVIEWNAME=v2\r\nOUTERVIEWNAME=v1\r\nmysql -e \"DROP DATABASE IF EXISTS $SCHEMA; \\\r\n          CREATE DATABASE $SCHEMA; \\\r\n          USE $SCHEMA; \\\r\n          CREATE VIEW $INNERVIEWNAME AS SELECT 4711 AS anything; \\\r\n          CREATE VIEW $OUTERVIEWNAME AS SELECT 4711 AS A, COUNT(DISTINCT(4711)) AS B FROM $INNERVIEWNAME GROUP BY A WITH ROLLUP; \\\r\n          SHOW CREATE VIEW $OUTERVIEWNAME;\"\r\nrm -rf ./$SCHEMA.mysql\r\nmysqldump $SCHEMA > ./$SCHEMA.mysql\r\nmysql $SCHEMA < ./$SCHEMA.mysql\r\nmysql -e \"USE $SCHEMA; SHOW CREATE VIEW $OUTERVIEWNAME;\"",
+  "poc": [
+    "CREATE VIEW v2 AS SELECT 4711 AS XYZ;",
+    "CREATE VIEW v1 AS\nSELECT\n1                   AS A\n,COUNT(DISTINCT (1)) AS B\nFROM v2\nGROUP BY A WITH ROLLUP;",
+    "SHOW CREATE VIEW v1;",
+    "DROP DATABASE IF EXISTS $SCHEMA;",
+    "CREATE DATABASE $SCHEMA;",
+    "CREATE VIEW $INNERVIEWNAME AS SELECT 4711 AS anything;",
+    "CREATE VIEW $OUTERVIEWNAME AS SELECT 4711 AS A, COUNT(DISTINCT(4711)) AS B FROM $INNERVIEWNAME GROUP BY A WITH ROLLUP;",
+    "SHOW CREATE VIEW $OUTERVIEWNAME;"
+  ],
+  "key_bug_features": [
+    "Dump/Restore fails with nested VIEWS and ROLLUP"
+  ],
+  "bug_features_seed": [
+    "CREATE DATABASE test_db;",
+    "USE test_db;",
+    "CREATE TABLE test_table (id INT PRIMARY KEY, value VARCHAR(255) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table (id, value) VALUES (1, 'test1'), (2, 'test2'), (3, NULL);",
+    "CREATE VIEW test_view AS SELECT id, COUNT(DISTINCT value) AS distinct_count FROM test_table GROUP BY id WITH ROLLUP;"
+  ]
+}

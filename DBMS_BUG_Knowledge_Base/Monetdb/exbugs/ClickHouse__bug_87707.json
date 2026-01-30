@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/87707",
+  "title": "Hanging SHOW TABLES for DatabaseDataLake",
+  "description": "### Company or project name\n### Describe what's wrong\n`SHOW TABLES` and `SHOW TABLES FROM hms` do not works, just hang.\nSometimes its not possible to exit client with SIGINT from the hang.\nUsage of `DataLakeCatalog` for unhappy paths is broken. It should return in several seconds with trouble description. But it waits for something without any response till client's `SOCKET_TIMEOUT`.\nIt's all after you've fixed wrong thrift URL leading by non informative errors:\n```\nDB::Exception: std::invalid_argument: stoi: no conversion. (STD_EXCEPTION)\n```\n```\nDB::Exception: apache::thrift::transport::TTransportException: Could not resolve host for client socket.. (STD_EXCEPTION) (version 25.8.6.11 (official build))\n```\n```\nDB::Exception: apache::thrift::transport::TTransportException: connect() failed: Connection timed out. (STD_EXCEPTION) (version 25.8.6.11 (official build))\n```\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\n```\nsudo dpkg -i clickhouse-common-static_25.8.6.11_amd64.deb\nmkdir -p _ch/bin && _ch\nln -s /usr/bin/clickhouse ./bin/clickhouse-server\nln -s /usr/bin/clickhouse ./bin/clickhouse-client\n./bin/clickhouse-server --daemon\n./bin/clickhouse-client\n```\n```\nSET allow_experimental_database_iceberg = 1;\nSET allow_experimental_database_hms_catalog = 1;\nDROP DATABASE hms;\nCREATE DATABASE hms ENGINE = DataLakeCatalog('thrift://some-url-here:9083', 'user', 'password')\nSETTINGS catalog_type = 'hive',\nstorage_endpoint='https://s3-url-here.org/',         -- the same whith  storage_endpoint='s3-url-here.org'\nwarehouse = 'some',\nregion = '';\n```\n```\n:) SHOW TABLES FROM hms;\nSHOW TABLES FROM hms\nQuery id: e4493ced-02dd-4ee5-976c-d77594619598\n// < -- HANGING HERE\nTimeout exceeded while receiving data from server. Waited for 300 seconds, timeout is 300 seconds.\nCancelling query.\n// < -- STILL HANGING HERE\n```\nSometimes it's not possible to exit from client\n```\n:) q\nBye.\n^C^C^C^C",
+  "date": "2025-09-26T15:14:18Z",
+  "vulnerable_version": "25.8.6.11",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE DATABASE test_db;",
+    "CREATE TABLE test_db.test_table (id INT, name VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, nullable_col INT NULL);",
+    "INSERT INTO test_db.test_table (id, name, created_at, nullable_col) VALUES (1, 'test_name', CURRENT_TIMESTAMP, NULL);",
+    "SELECT * FROM test_db.test_table WHERE nullable_col IS NULL;",
+    "SELECT table_name FROM sys.tables WHERE schema_name = 'test_db';"
+  ],
+  "key_bug_features": [
+    "SHOW TABLES hangs with DataLakeCatalog usage"
+  ]
+}

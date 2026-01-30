@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/59480",
+  "title": "TiFlash cannot execute normally when using ELT function",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n\n```sql\nCREATE TABLE t0(c1 DATE, PRIMARY KEY(c1));\nINSERT IGNORE INTO t0 VALUES ('8397-05-16');\nALTER TABLE t0 SET TIFLASH REPLICA 1;\n\nSELECT /*+ read_from_storage(tiflash[t0]) */ *\nFROM t0\nWHERE ELT(CAST('-392983269' AS UNSIGNED), (('') <= (c1)));\n```\n\n### 2. What did you expect to see? (Required)\n\nTiflash should execute normally.\n\n### 3. What did you see instead (Required)\n\nTiflash is stuck.\n\n```sql\nmysql> explain SELECT /*+ read_from_storage(tiflash[t0]) */ * FROM t0 WHERE ELT(CAST('-392983269' AS UNSIGNED), (('') <= (c1)));\n+----------------------------+---------+--------------+---------------+-----------------------------------------------------------------------------+\n| id                         | estRows | task         | access object | operator info                                                               |\n+----------------------------+---------+--------------+---------------+-----------------------------------------------------------------------------+\n| TableReader_13             | 0.80    | root         |               | MppVersion: 2, data:ExchangeSender_12                                       |\n| └─ExchangeSender_12        | 0.80    | mpp[tiflash] |               | ExchangeType: PassThrough                                                   |\n|   └─Selection_11           | 0.80    | mpp[tiflash] |               | elt(18446744073316568347, cast(le(NULL, test.t0.c1), var_string(20)))       |\n|     └─TableFullScan_10     | 1.00    | mpp[tiflash] | table:t0      | pushed down filter:empty, keep order:false, stats:partial[c1:unInitialized] |\n+----------------------------+---------+--------------+---------------+-----------------------------------------------------------------------------+\n4 rows in set, 2 warnings (0.05 sec)\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\nRelease Version: v8.5.0",
+  "date": "2025-02-12T08:57:01Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1(id Int32, name String, created_at DateTime DEFAULT now());",
+    "INSERT INTO t1 VALUES (1, 'Alice'), (2, 'Bob');",
+    "CREATE TABLE t2(user_id Int32, score Float64, CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES t1(id));",
+    "INSERT INTO t2 VALUES (1, 95.5), (2, NULL);",
+    "SELECT * FROM t2 WHERE (score IS NULL) AND (1 IN (user_id));"
+  ],
+  "key_bug_features": [
+    "Using ELT function with TiFlash causes execution failure"
+  ]
+}

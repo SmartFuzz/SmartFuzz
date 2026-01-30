@@ -1,0 +1,22 @@
+{
+    "HTML": [
+        "https://docs.openlinksw.com/virtuoso/fn_ttlp_mt_local_file/"
+    ],
+    "Title": [
+        "DB.DBA.TTLP_MT_LOCAL_FILE"
+    ],
+    "Feature": [
+        "DB.DBA.TTLP_MT_LOCAL_FILE(path, base, graph, flags, log_mode, threads)"
+    ],
+    "Description": [
+        "parses TTL (TURTLE or N3 resource) and places its triples into DB.DBA.RDF_QUAD on multiple threads.",
+        "Loads the TTL (TURTLE or N3 resource) file on multiple threads, using parallel I/O and multiprocessing if available. The function commit partial transactions while it runs so the transaction log may contain part of loading. Moreover, the function may or may not leave a transaction log, depending on log_mode . Hence, after successful load, one may need to execute the checkpoint statement to make sure that a server restart does not wipe out the results."
+    ],
+    "Examples": [
+        "SQL>DB.DBA.TTLP_MT_LOCAL_FILE ('tmp/users.ttl', '', 'http://example.com');\nDone. -- 381 msec.\nSQL>sparql\nselect *\nfrom <http://example.com>\nwhere {?s ?p ?o}\nlimit 10;\ns             p                   o\nVARCHAR       VARCHAR             VARCHAR\nhttp://www.openlinksw.com/virtrdf-data-formats#SysUsers-GranteeId-format          http://www.w3.org/1999/02/22-rdf-syntax-ns#type            http://www.openlinksw.com/schemas/virtrdf#QuadMapFormat\nhttp://www.openlinksw.com/virtrdf-data-formats#SysUsers-GranteeId-format          http://www.openlinksw.com/schemas/virtrdf#qmfSuperFormats  nodeID://1000272018\nhttp://www.openlinksw.com/virtrdf-data-formats#SysUsers-GranteeId-format          http://www.openlinksw.com/schemas/virtrdf#inheritFrom      http://www.openlinksw.com/virtrdf-data-formats#sql-integer-uri-fn\nhttp://www.openlinksw.com/virtrdf-data-formats#SysUsers-GranteeId-format          http://www.openlinksw.com/schemas/virtrdf#noInherit        http://www.openlinksw.com/schemas/virtrdf#qmfCustomString1\nhttp://www.openlinksw.com/virtrdf-data-formats#SysUsers-GranteeId-format          http://www.openlinksw.com/schemas/virtrdf#qmfCustomString1 DB.DBA.RDF_DF_GRANTEE_ID_URI\nhttp://www.openlinksw.com/virtrdf-data-formats#SysUsers-UserId-format             http://www.w3.org/1999/02/22-rdf-syntax-ns#type            http://www.openlinksw.com/schemas/virtrdf#QuadMapFormat\nhttp://www.openlinksw.com/virtrdf-data-formats#SysUsers-UserId-format             http://www.openlinksw.com/schemas/virtrdf#qmfSuperFormats  nodeID://1000272019\nhttp://www.openlinksw.com/virtrdf-data-formats#SysUsers-UserId-format             http://www.openlinksw.com/schemas/virtrdf#inheritFrom      http://www.openlinksw.com/virtrdf-data-formats#sql-integer-uri\nhttp://www.openlinksw.com/virtrdf-data-formats#SysUsers-UserId-format             http://www.openlinksw.com/schemas/virtrdf#noInherit        http://www.openlinksw.com/schemas/virtrdf#qmfCustomString1\nhttp://www.openlinksw.com/virtrdf-data-formats#SysUsers-UserId-format             http://www.openlinksw.com/schemas/virtrdf#qmfCustomString1 http://example.com/sys/user?id=%d\n10 Rows. -- 30 msec.",
+        "SQL>create procedure SPARQL_DAWG_LOAD_REMOTE_DATFILE (in full_uri varchar, in in_resultset integer := 0)\n{\n  declare REPORT varchar;\n  declare graph_uri, dattext varchar;\n  declare app_env any;\n  app_env := null;\n  whenever sqlstate '*' goto err_rep;\n  if (not in_resultset)\n    result_names (REPORT);\n  dattext := cast (XML_URI_GET_AND_CACHE (full_uri) as varchar);\n  SPARQL_REPORT (sprintf ('Downloading %s: %d bytes',\n      full_uri, length (dattext) ) );\n  graph_uri := full_uri;\n  delete from RDF_QUAD where G = DB.DBA.RDF_MAKE_IID_OF_QNAME (graph_uri);\n  if ((full_uri like '%.ttl') or (full_uri like '%.nt') or (full_uri like '%.n3'))\n    DB.DBA.TTLP_MT_LOCAL_FILE (dattext, full_uri, graph_uri);\n  else -- if (rel_path like '%.rdf')\n    DB.DBA.RDF_LOAD_RDFXML_MT (dattext, full_uri, graph_uri);\n  return graph_uri;\nerr_rep:\n  result (sprintf ('%s: %s', __SQL_STATE, __SQL_MESSAGE));\n  return graph_uri;\n}\n;\nDone. -- 891 msec\nSQL> select SPARQL_DAWG_LOAD_REMOTE_DATFILE('http://www.openlinksw.com/dataspace/kidehen@openlinksw.com/weblog/kidehen@openlinksw.com%27s%20BLOG%20%5B127%5D/sioc.ttl');\nREPORT\nVARCHAR\nDownloading http://www.openlinksw.com/dataspace/kidehen@openlinksw.com/weblog/kidehen@openlinksw.com%27s%20BLOG%20%5B127%5D/sioc.ttl: 12768 bytes\nhttp://www.openlinksw.com/dataspace/kidehen@openlinksw.com/weblog/kidehen@openlinksw.com%27s%20BLOG%20%5B127%5D/sioc.ttl\n2 Rows. -- 1382 msec."
+    ],
+    "Category": [
+        "RDF data function"
+    ]
+}

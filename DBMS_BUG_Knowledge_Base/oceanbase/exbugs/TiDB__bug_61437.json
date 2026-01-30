@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/61437",
+  "title": "Inconsistent results for WHERE CONCAT(FLOAT_COL, ...) between TiKV and TiFlash",
+  "description": "## Bug Report\n\n### 1. Minimal reproduce step (Required)\n```\nDROP TABLE IF EXISTS t0 ;\nCREATE TABLE t0(c0 FLOAT );\nINSERT INTO t0 VALUES (1.17549435E-38);\nALTER TABLE t0 SET TIFLASH REPLICA 1;\n\nSELECT /*+ read_from_storage(tikv[t0]) */ t0.c0 FROM t0 WHERE CONCAT(t0.c0, t0.c0, t0.c0);\nSELECT /*+ read_from_storage(tiflash[t0]) */ t0.c0 FROM t0 WHERE CONCAT(t0.c0, t0.c0, t0.c0);\n```\n\n### 2. What did you expect to see? (Required)\nThe same query returns the same results on both TiKV and TiFlash.\n### 3. What did you see instead (Required)\n```\nmysql> SELECT /*+ read_from_storage(tikv[t0]) */ t0.c0 FROM t0 WHERE CONCAT(t0.c0, t0.c0, t0.c0);\n+-------------+\n| c0          |\n+-------------+\n| 1.17549e-38 |\n+-------------+\n1 row in set, 1 warning (0.00 sec)\n\nmysql> show warnings;\n+---------+------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| Level   | Code | Message                                                                                                                                                                                               |\n+---------+------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| Warning | 1292 | evaluation failed: Truncated incorrect INTEGER value: '0.0000000000000000000000000000000000000117549440.0000000000000000000000000000000000000117549440.000000000000000000000000000000000000011754944' |\n+---------+------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n1 row in set (0.00 sec)\n\nmysql> SELECT /*+ read_from_storage(tiflash[t0]) */ t0.c0 FROM t0 WHERE CONCAT(t0.c0, t0.c0, t0.c0);\nEmpty set (0.02 sec)\n```\n### 4. What is your TiDB version? (Required)\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| tidb_version()                                                                                                                                                                                                                               |\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| Release Version: v8.5.0\nEdition: Community\nGit Commit Hash: d13e52ed6e22cc5789bed7c64c861578cd2ed55b\nGit Branch: HEAD\nUTC Build Time: 2024-12-18 02:26:06\nGoVersion: go1.23.3\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv |\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+",
+  "date": "2025-05-30T15:00:43Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t1;",
+    "CREATE TABLE t1(c1 FLOAT, c2 INT, c3 VARCHAR(50));",
+    "INSERT INTO t1 VALUES (1.17549435E-38, 1, 'test1'), (NULL, 2, 'test2'), (3.40282347E+38, 3, 'test3');",
+    "SELECT c1 FROM t1 WHERE c1 IS NOT NULL AND c2 IS NOT NULL;",
+    "SELECT c1 FROM t1 WHERE c1 IS NOT NULL AND c3 IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "WHERE CONCAT on FLOAT_COL in TiKV and TiFlash"
+  ]
+}

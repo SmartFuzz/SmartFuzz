@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/88002",
+  "title": "Exception: Not found column Timestamp in block during merge on GraphiteMergeTree/ReplicatedGraphiteMergeTree  Table",
+  "description": "### Company or project name\n_No response_\n### Describe the unexpected behaviour\nAfter upgrading from v25.3 to v25.8 MERGE_PARTS operations started to fail. This seems to only fail for \"old\" data where the Timestamp column's TTL value  has been exceeded(see schema in the how to reproduce section)\n### Which ClickHouse versions are affected?\nv25.7, v25.8, v25.10\nI haven't tried v25.9\nv25.6 is unaffected\n### How to reproduce\nUse clickhouse v25.8\n1. I used the schema below\n```sql\nCREATE DATABASE graphite;\nCREATE TABLE IF NOT EXISTS graphite.graphite_tmp (\nPath String CODEC(ZSTD(3)),\nValue Float64 CODEC(Gorilla, LZ4),\nTime UInt32 CODEC(DoubleDelta, LZ4),\nDate Date CODEC(DoubleDelta, LZ4),\nTimestamp UInt32 CODEC(DoubleDelta, LZ4) TTL Date + INTERVAL 1 DAY\n) ENGINE = GraphiteMergeTree('graphite_rollup')\nPARTITION BY toYYYYMM(Date)\nORDER BY (Path, Time)\nTTL Date + INTERVAL 1 YEAR;\n```\nFor configuration I am using defaults. Happy to dump it out if necessary.\n2. I then inserted data in the 202503 partition (I had data from another table here)\n```sql\nINSERT INTO graphite.graphite_tmp (Date, Time, Path, Value, Timestamp)\nSELECT\ntoDate('2025-03-01') AS Date,\ntoDateTime('2025-03-01 00:00:00') + number * 30 AS Time,\nconcat('servers.', toString(intDiv(number, 1000)), '.', arrayElement(['cpu.load','mem.used','disk.io'], (number % 3) + 1)) AS Path,\n50 + 10 * sin(number / 200) + rand() % 5 AS Value,\n1 AS Version\nFROM numbers(1000000000);\n```\n3. Watch the log once the MERGE_PARTS operations starts you'll see the stacktrace.\n### Expected behavior\nOn versions before v25.7 the merge would succeed without any issue.\n### Error message and/or stacktrace\nBelow are stack traces I got on both ReplicatedGraphiteMergeTree and GraphiteMergeTree\n**ReplicatedGraphiteMergeTree**\n```\nCode: 10. DB::Exception: Not found column Timestamp in block. There are only columns: Path, Time, Value, Date. (NOT_FOUND_COLUMN_IN_BLOCK), Stack trace (when copying this message, always include the lines below):\n0. DB::Exception::Exception(DB::Exception::MessageMasked&&, int, bool) @ 0x00000000133ab85f\n1. DB::Exception::Exception(String&&, int, String, bool) @ 0x000000000c8569ce\n2. DB::Exception::Exception(PreformattedMessage&&, int) @ 0x000000000c856480\n3. DB::Exception::Exception<String const&, String>(int, FormatStringHelperImpl<std::type_identity<String const&>::type, std::type_identity<String>::type>, String const&, String&&) @ 0x000000000d85812b\n4. DB::Block::getPositionByName(String const&, bool) const @ 0x0000000016a8ab24\n5. DB::GraphiteRollupSortedAlgorithm::GraphiteRollupSortedAlgorithm(std::shared_ptr<DB::Block const>, unsigned long, DB::SortDescription, unsigned long, unsigned long, DB::Graphite::Params, long) @ 0x0000000019edf512",
+  "date": "2025-10-02T03:04:46Z",
+  "vulnerable_version": "25.8.7.3",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE DATABASE IF NOT EXISTS test_db;",
+    "CREATE TABLE IF NOT EXISTS test_db.test_table (id INT, name VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, value DOUBLE PRECISION, timestamp INT) PRIMARY KEY (id);",
+    "INSERT INTO test_db.test_table (id, name, value, timestamp) VALUES (1, 'test1', 10.5, 1), (2, 'test2', 20.0, 2), (3, 'test3', 30.0, 3);",
+    "INSERT INTO test_db.test_table (id, name, value, timestamp) SELECT number, CONCAT('test', number), number * 1.5, number FROM generate_series(1, 5) AS number;",
+    "SELECT * FROM test_db.test_table WHERE timestamp IS NULL OR timestamp > 2;"
+  ],
+  "key_bug_features": [
+    "MERGE_PARTS operations fail for old data with exceeded TTL"
+  ]
+}

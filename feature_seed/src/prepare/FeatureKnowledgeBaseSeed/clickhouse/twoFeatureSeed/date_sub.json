@@ -1,0 +1,16 @@
+{
+    "function": "date_sub",
+    "operator": "x -> expr",
+    "sql_array": [
+        "CREATE TABLE test_dates (id Int32, event_date DateTime, value String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_dates VALUES (1, toDateTime('2020-01-01 12:00:00'), 'Event A'), (2, toDateTime('2020-02-15 15:30:00'), 'Event B'), (3, toDateTime('2020-03-20 18:45:00'), 'Event C');",
+        "SELECT id, date_sub(YEAR, 1, event_date) AS adjusted_date FROM test_dates WHERE value = (SELECT value FROM test_dates WHERE id = 2);",
+        "SELECT id, (event_date -> date_sub(DAY, 7, event_date)) AS week_before FROM test_dates WHERE event_date IS NOT NULL;",
+        "SELECT id, COUNT(*) AS event_count, sum(x -> (date_sub(MONTH, 1, event_date) IS NOT NULL)) AS monthly_events FROM test_dates GROUP BY id HAVING event_count > 0;",
+        "SELECT id, value, date_sub(DAY, 1, event_date) AS day_before FROM test_dates WHERE event_date < (SELECT MAX(event_date) FROM test_dates WHERE value LIKE '%Event%');",
+        "SELECT id, (CASE WHEN event_date IS NULL THEN NULL ELSE date_sub(YEAR, x -> (id + 1), event_date) END) AS adjusted_year FROM test_dates;",
+        "CREATE TABLE temp_dates AS SELECT date_sub(MONTH, 2, event_date) AS temp_date FROM test_dates WHERE value = 'Event A' WITH NO DATA;",
+        "INSERT INTO temp_dates SELECT date_sub(YEAR, 5, event_date) FROM test_dates WHERE id = 3;",
+        "SELECT date_sub(DAY, NULL, event_date) AS null_date FROM test_dates WHERE id = 1;"
+    ]
+}

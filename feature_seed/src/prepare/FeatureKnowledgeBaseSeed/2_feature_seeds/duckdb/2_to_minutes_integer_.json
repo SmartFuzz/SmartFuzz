@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id INTEGER PRIMARY KEY, event_time TIMESTAMP, duration INTEGER);
+INSERT INTO test_table (id, event_time, duration) VALUES (1, TIMESTAMP '2023-10-01 14:00:00', 30), (2, TIMESTAMP '2023-10-01 15:00:00', NULL), (3, TIMESTAMP '2023-10-01 12:00:00', 120);
+SELECT id, event_time + INTERVAL to_minutes(duration) MINUTE AS new_event_time FROM test_table WHERE duration IS NOT NULL;
+SELECT id, event_time, duration FROM test_table WHERE event_time + INTERVAL to_minutes(COALESCE(duration, 0)) MINUTE > TIMESTAMP '2023-10-01 14:30:00';
+SELECT id, event_time, duration, event_time + INTERVAL 5 DAY AS future_event FROM test_table WHERE (event_time + INTERVAL to_minutes(duration)) IS NOT NULL GROUP BY id, event_time, duration HAVING future_event < TIMESTAMP '2023-10-15 00:00:00';
+SELECT a.id, a.event_time + INTERVAL to_minutes(a.duration) MINUTE AS extended_time FROM test_table a JOIN (SELECT id, MIN(event_time) AS earliest_event FROM test_table GROUP BY id HAVING COUNT(*) > 1) b ON a.id = b.id WHERE a.event_time >= b.earliest_event;
+CREATE TABLE secondary_table (name VARCHAR, end_time TIMESTAMP);
+INSERT INTO secondary_table (name, end_time) VALUES ('Event A', TIMESTAMP '2023-10-01 15:00:00'), (NULL, TIMESTAMP '2023-10-01 16:00:00'), ('Event B', TIMESTAMP '2023-10-01 14:30:00');
+SELECT a.id, a.event_time, b.name, b.end_time FROM test_table a LEFT JOIN secondary_table b ON a.event_time + INTERVAL to_minutes(a.duration) MINUTE = b.end_time WHERE (b.name IS NULL OR LENGTH(b.name) = 0) ORDER BY a.event_time;
+SELECT id, event_time + INTERVAL to_minutes(COALESCE(duration, 60)) MINUTE AS extended_time FROM test_table WHERE NOT (event_time IS NULL);
+SELECT id, COUNT(*) AS count, AVG(to_minutes(COALESCE(duration, 1))) AS avg_duration FROM test_table GROUP BY id HAVING avg_duration > to_minutes(1) ORDER BY count DESC;

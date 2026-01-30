@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/839",
+  "title": "VALUES clause with 2 integers leads to Virtuoso 37000 Error SP031",
+  "description": "Hello everyone,\nas mentioned in the title the usage of VALUES clause with 2 integers and using these integers to compare values in a FILTER clause (Query below) leads to an internal error:\nVirtuoso 37000 Error SP031: SPARQL compiler: Internal error: ssg_print_rvr_fixed_val(): no SPART_VARR_FIXED\nWhat I have tried which doesn't lead to an error but is semantically equal:\n\nUsing a fixed integer instead of a variable for either ?x and/or ?y\nUsing BIND instead of VALUES for ?x and/or ?y also works, e.g. BIND(100 AS ?x) before FILTER\n\nHere is the query:\nPREFIX  bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/>\nPREFIX  rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX  rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\nPREFIX  bsbm-inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/>\n\nSELECT  ?product ?label\nWHERE\n  { VALUES ( ?productType ?productFeature1 ?productFeature2 ?x ?y ) {\n      ( bsbm-inst:ProductType1 bsbm-inst:ProductFeature142 bsbm-inst:ProductFeature144 100 400 )\n    } #variables\n    ?product  rdfs:label            ?label ;\n              rdf:type              ?productType ;\n              bsbm:productFeature   ?productFeature1 ;\n              bsbm:productPropertyNumeric1  ?p1\n    FILTER ( ?p1 > ?x )\n    ?product  bsbm:productPropertyNumeric3  ?p3\n    FILTER ( ?p3 < ?y )\n    OPTIONAL\n      { ?product  bsbm:productFeature  ?productFeature2 ;\n                  rdfs:label           ?testVar\n      }\n    FILTER ( ! bound(?testVar) )\n  }\nORDER BY ?label\nLIMIT   10\n\nVirtuoso version 07.20.3229 on Darwin (x86_64-apple-darwin14.5.0), Single Server Edition on MacOS Mojave 10.14.4\nHas anyone encountered this issue yet?\nBest regards",
+  "date": "2019-04-02 17:22:21",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE products (id INT PRIMARY KEY, label VARCHAR(255), productType VARCHAR(255), productFeature1 VARCHAR(255), productPropertyNumeric1 INT, productPropertyNumeric3 INT);",
+    "INSERT INTO products (id, label, productType, productFeature1, productPropertyNumeric1, productPropertyNumeric3) VALUES (1, 'Product A', 'ProductType1', 'ProductFeature142', 150, 350);",
+    "INSERT INTO products (id, label, productType, productFeature1, productPropertyNumeric1, productPropertyNumeric3) VALUES (2, 'Product B', 'ProductType1', 'ProductFeature144', 200, 450);",
+    "SELECT label FROM products WHERE productPropertyNumeric1 > 100 AND productPropertyNumeric3 < 400;",
+    "SELECT label FROM products WHERE productPropertyNumeric1 > 150 AND productPropertyNumeric3 < 400 LIMIT 10;"
+  ],
+  "key_bug_features": [
+    "VALUES clause with two integers in FILTER comparison"
+  ]
+}

@@ -1,0 +1,17 @@
+CREATE TABLE backup_test (id INT PRIMARY KEY, data VARCHAR(255));
+INSERT INTO backup_test (id, data) VALUES (1, 'test1');
+INSERT INTO backup_test (id, data) VALUES (2, 'test2');
+backup_clear_context();
+backup_online ('backup-20231015_', 1000);
+INSERT INTO backup_test (id, data) VALUES (3, 'test3');
+backup_online ('backup-20231015_', 2000);
+INSERT INTO backup_test (id, data) VALUES (4, 'test4');
+backup_online ('backup-20231015_', 3000);
+SELECT * FROM backup_test WHERE id IN (SELECT id FROM backup_test WHERE data LIKE 'test%');
+DROP TABLE backup_test;
+CREATE TABLE backup_logs (log_id SERIAL PRIMARY KEY, log_data TEXT);
+INSERT INTO backup_logs (log_data) SELECT CONCAT('Backup completed for: ', id) FROM backup_test;
+backup_clear_context();
+backup_online ('backup-20231015_full_', 500);
+SELECT COUNT(*) FROM backup_logs WHERE log_data IS NOT NULL;
+SELECT * FROM backup_logs WHERE log_data NOT LIKE '%error%';

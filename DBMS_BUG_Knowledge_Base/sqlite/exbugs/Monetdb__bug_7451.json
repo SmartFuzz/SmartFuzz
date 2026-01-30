@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7451",
+  "title": "Unexpected result when using `BETWEEN` and `CAST`",
+  "description": "Consider the test cases below. It is unexpected that the third query return `0 null`, since the second query returns `true, true`, which means that the `WHERE` clause in the third query should be evaluated to `true, true` and thus return two rows in the table. Besides, if change the columns to wildcard (`*`), the query returns two rows as expected.\n\n**To Reproduce**\n\n```sql\nDROP TABLE t0 CASCADE;\nDROP TABLE t1 CASCADE;\n\nCREATE TABLE t0(c0 VARCHAR, PRIMARY KEY(c0)); -- PK is needed\nCREATE TABLE t1(c1 INTEGER, c2 VARCHAR(500));\nINSERT INTO t0 ( c0) VALUES ('a');\nINSERT INTO t0 (c0) VALUES (false);\nINSERT INTO t1 ( c1) VALUES ( 0);\n\nSELECT t1.c1, t1.c2 FROM t1, t0; -- 0 null, 0 null\nSELECT (NOT CAST((true BETWEEN t1.c2 AND t0.c0) AS VARCHAR)) FROM t1, t0; -- true, true\nSELECT t1.c1, t1.c2 FROM t1, t0 WHERE (NOT CAST((true BETWEEN t1.c2 AND t0.c0) AS VARCHAR));\n-- Expected: 0 null, 0 null (2 rows)\n-- Actual: 0 null (1 rows)\n\n-- This query could return expected result\nSELECT * FROM t1, t0 WHERE (NOT CAST((true BETWEEN t1.c2 AND t0.c0) AS VARCHAR)); -- 2 rows\n```\n\n**Expected behavior**\nAs mentioned above\n\n**Screenshots**\nN/A\n\n**Software versions**\nBuild from source:\n\n```\n> docker exec monetdb-test mserver5 --version --dbname=monetdb\nMonetDB 5 server 11.50.0 (hg id: 1a6a23b) (64-bit, 128-bit integers)\nThis is an unreleased version\nCopyright (c) 1993 - July 2008 CWI\nCopyright (c) August 2008 - 2023 MonetDB B.V., all rights reserved\nVisit https://www.monetdb.org/ for further information\nFound 503.5GiB available memory, 128 available cpu cores\nLibraries:\nCompiled by: @fdb2b8a5a74e (x86_64-pc-linux-gnu)\nCompilation: /usr/bin/cc \nLinking    : /usr/bin/ld\n```\n\n**Issue labeling**\nBug\n\n**Additional context**\nAdd any other context about the problem here.",
+  "date": "2024-01-31T07:30:54Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t2;",
+    "CREATE TABLE t2(c0 BOOLEAN, c1 INTEGER, c2 TEXT);",
+    "INSERT INTO t2 (c0, c1, c2) VALUES (1, 1, 'x');",
+    "INSERT INTO t2 (c0, c1, c2) VALUES (0, 2, 'y');",
+    "SELECT c1, c2 FROM t2 WHERE (NOT (c0 BETWEEN 'a' AND c2));"
+  ],
+  "key_bug_features": [
+    "Unexpected behavior with BETWEEN and CAST in WHERE clause"
+  ]
+}

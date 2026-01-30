@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/88543",
+  "title": "S3 Vector table engine",
+  "description": "### Company or project name\nClickHouse Inc.\n### Use case\nApproximate neighbor search over billions of vectors\n### Describe the solution you'd like\nS3 Vectors is [a special kind](https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-vectors-getting-started.html#s3-vectors-query-vectors-tutorial) of S3 bucket which store key-value pairs.\n- the keys are strings (these corresponds to a string column in ClickHouse)\n- the values are vectors (these corresponds to embeddings over the string column)\n- optionally, there can be extra attributes per key-value pair (these corresponds to other columns in ClickHouse)\nThe API to interact with S3 Vectors is simple.\n- You need to calculate embeddings on your own, e.g. using a UDF.\n- Then simply add as many key-value pairs as you like to the bucket\n- The search API does usual kNN search. It is approximate (AWS seems to use heavy quantization), and it uses post-filtering in case you need to filter by certain attributes. AWS does not explain the internal data organization of S3 Vectors, others found out the characteristics [by experimentation](https://medium.com/@zilliz_learn/will-amazon-s3-vectors-kill-vector-databases-or-save-them-1ab3ab5c1c96).\nWe could have an S3 Vectors table engine, similar to the existing S3 table engine:\n```sql\nCREATE TABLE (text String, embeddings Array(Float64)) ENGINE = S3Vector;\n```\nThis will allow using extra attributes + postfiltering.\nIndex maintenance in S3 vectors is incremental because it uses the SPFresh algorithm internally. This is good because it helps with INSERTs/UPDATEs/DELETEs. We probably don't even want merges or a sorting key for such a table engine.\nGeneral advantages:\n- Low usage costs per query against a S3 Vector index\n- Not bound to main memory (like Usearch that is currently used in ClickHouse's [vector similarity index](https://clickhouse.com/docs/engines/table-engines/mergetree-family/annindexes#vector-similarity-index)), i.e. unlimited large vector sizes\nGeneral disadvantages:\n- Index creation and search has no tuning knobs (unlike HNSW or Qbits)\n- The solution is proprietary to S3.\n### Describe alternatives you've considered\nThe existing solutions in ClickHouse have disadvantages:\n- exact search via brute-force scan: slow and costs proportional to data set size\n- vector similarity indexes: bound to main memory\n- Qbits: faster than brute-force scans but costs still grow proportionally to data set size\n### Additional context\n_No response_",
+  "date": "2025-10-14T19:24:33Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test_vectors (id INT UNSIGNED, text VARCHAR(255), embeddings JSON, attributes VARCHAR(255)) CHARACTER SET utf8mb4;",
+    "INSERT INTO test_vectors (id, text, embeddings, attributes) VALUES (1, 'vector1', JSON_ARRAY(0.1, 0.2, 0.3), 'attr1');",
+    "INSERT INTO test_vectors (id, text, embeddings) VALUES (2, 'vector2', JSON_ARRAY(0.4, 0.5, 0.6));",
+    "SELECT * FROM test_vectors WHERE attributes IS NOT NULL;",
+    "SELECT text, JSON_UNQUOTE(JSON_EXTRACT(embeddings, '$[0]')) AS embedding_value FROM test_vectors WHERE id = 1;"
+  ],
+  "key_bug_features": [
+    "S3 Vectors table engine for approximate neighbor search"
+  ]
+}

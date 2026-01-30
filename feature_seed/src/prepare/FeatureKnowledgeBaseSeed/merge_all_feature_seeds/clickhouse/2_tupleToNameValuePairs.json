@@ -1,0 +1,17 @@
+CREATE TABLE complex_test (col1 Tuple(user_ID UInt64, session_ID UInt64, score Float64) ENGINE = MergeTree() ORDER BY user_ID;
+INSERT INTO complex_test VALUES (tuple(1, 1001, 3.5)), (tuple(2, 1002, 4.5)), (tuple(3, 1003, 2.1));
+SELECT tupleToNameValuePairs(tuple((SELECT score FROM complex_test WHERE session_ID < 1002))) AS named_pairs WHERE named_pairs[1] < named_pairs[2];
+CREATE TABLE test_values (id UInt64, values Tuple(a String, b Int32)) ENGINE = Memory;
+INSERT INTO test_values VALUES (1, tuple('first', 100)), (2, tuple('second', null));
+SELECT arrayJoin(tupleToNameValuePairs(values)) AS name_value_pairs WHERE tupleElement(name_value_pairs, 1) < 'second';
+CREATE TABLE edge_cases (num Tuple(a Float64, b UInt64)) ENGINE = Memory;
+INSERT INTO edge_cases VALUES (tuple(1.5, 2)), (tuple(null, 3));
+SELECT arrayJoin(tupleToNameValuePairs(num)) AS name_value_pairs WHERE tupleElement(name_value_pairs, 1) < 2.0;
+CREATE TABLE mixed_types (tuple_data Tuple(value1 Int64, value2 String)) ENGINE = Memory;
+INSERT INTO mixed_types VALUES (tuple(10, 'ten')), (tuple(20, 'twenty'));
+SELECT tupleToNameValuePairs(tuple(SELECT tuple_data FROM mixed_types WHERE tupleElement(tuple_data, 1) = 'ten')) WHERE (tupleElement(data, 1) < 'twenty');
+CREATE TABLE join_test (id1 UInt64, col1 Tuple(a UInt64, b Float64)) ENGINE = Memory;
+INSERT INTO join_test VALUES (1, tuple(1, 1.1)), (2, tuple(2, 2.2));
+CREATE TABLE join_test_2 (id2 UInt64, col2 Tuple(c UInt64, d String)) ENGINE = Memory;
+INSERT INTO join_test_2 VALUES (1, tuple(2, 'equal')), (3, tuple(1, 'one'));
+SELECT tupleToNameValuePairs(col1) AS name_value_pairs FROM join_test INNER JOIN join_test_2 ON tupleElement(name_value_pairs, 1) < id2 ORDER BY name_value_pairs[2] DESC;

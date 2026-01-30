@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=101105",
+  "title": "Incorrect grouping by GROUP BY with timezone",
+  "description": "From MySQL 8.0.20 and later version, I can see regression on a select group by sentences would not work correctly when specifying a timezone, the result returns duplicate dates.\r\n\r\nPrevious releases work fine.\nHow to repeat:\nPrepare environment:\r\n\r\nApply attached SQL file.\r\n\r\nExec query, it's return expected output:\r\n\r\n```\r\nmysql> set time_zone = 'UTC';\r\nmysql> select date(from_unixtime(date_received)) as `dt`, count(distinct pid) FROM test2 GROUP by `dt`;\r\n+------------+---------------------+\r\n| dt         | count(distinct pid) |\r\n+------------+---------------------+\r\n| 2020-07-30 |                  10 |\r\n| 2020-07-31 |                  10 |\r\n| 2020-08-01 |                  10 |\r\n| 2020-08-02 |                  10 |\r\n+------------+---------------------+\r\n4 rows in set (0.00 sec)\r\n```\r\n\r\nBut when we change timezone and exec this query it's return output with duplicate dates:\r\n\r\n```\r\nmysql> set time_zone = 'America/Los_Angeles';\r\nmysql> select date(from_unixtime(date_received)) as `dt`, count(distinct pid) FROM test2 GROUP by `dt`;\r\n+------------+---------------------+\r\n| dt         | count(distinct pid) |\r\n+------------+---------------------+\r\n| 2020-07-30 |                   3 |\r\n| 2020-07-29 |                   2 |\r\n| 2020-07-30 |                   2 |\r\n| 2020-07-29 |                   1 |\r\n| 2020-07-30 |                   1 |\r\n| 2020-07-29 |                   1 |\r\n| 2020-07-30 |                   1 |\r\n| 2020-07-29 |                   1 |\r\n| 2020-07-30 |                   1 |\r\n| 2020-07-29 |                   2 |\r\n| 2020-07-30 |                   7 |\r\n| 2020-07-29 |                   3 |\r\n| 2020-07-30 |                   2 |\r\n| 2020-07-29 |                  10 |\r\n| 2020-07-30 |                   1 |\r\n| 2020-07-29 |                   6 |\r\n| 2020-07-30 |                   1 |\r\n| 2020-07-29 |                  10 |\r\n| 2020-07-30 |                  10 |\r\n| 2020-07-31 |                   2 |\r\n| 2020-07-30 |                   1 |\r\n| 2020-07-31 |                   1 |\r\n| 2020-07-30 |                   1 |\r\n| 2020-07-31 |                   2 |\r\n| 2020-07-30 |                   2 |\r\n| 2020-07-31 |                   2 |\r\n| 2020-07-30 |                   2 |\r\n| 2020-07-31 |                   1 |\r\n| 2020-07-30 |                   1 |\r\n| 2020-07-31 |                   2 |\r\n| 2020-07-30 |                   1 |\r\n| 2020-07-31 |                   2 |\r\n| 2020-07-30 |                  10 |\r\n| 2020-07-31 |                  10 |\r\n| 2020-08-01 |                   4 |\r\n| 2020-07-31 |                   2 |\r\n| 2020-08-01 |                   1 |\r\n| 2020-07-31 |                   1 |\r\n| 2020-08-01 |                   5 |\r\n| 2020-07-31 |                   1 |\r\n| 2020-08-01 |                   1 |\r\n| 2020-07-31 |                   2 |\r\n| 2020-08-01 |                   2 |\r\n| 2020-07-31 |                  10 |\r\n| 2020-08-01 |                   1 |\r\n| 2020-07-31 |                  10 |\r\n| 2020-08-01 |                  10 |\r\n+------------+---------------------+\r\n47 rows in set (0.01 sec)\r\n```",
+  "date": "2020-10-09 13:09:00",
+  "vulnerable_version": "8.0.20, 8.0.21",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test3 (date_received int unsigned NOT NULL, pid int unsigned NOT NULL, status ENUM('active', 'inactive') NOT NULL DEFAULT 'active');",
+    "INSERT INTO test3 VALUES (1596286909, 1, 'active'), (1596286908, 2, 'inactive'), (1596286907, 3, 'active'), (1596286906, 4, 'inactive'), (1596286905, 5, 'active');",
+    "SELECT DATE(FROM_UNIXTIME(date_received)) AS dt, COUNT(DISTINCT pid) FROM test3 GROUP BY dt;",
+    "SELECT SET_TIME_ZONE('UTC');",
+    "SELECT SET_TIME_ZONE('America/New_York');"
+  ],
+  "key_bug_features": [
+    "GROUP BY behavior affected by timezone setting"
+  ]
+}

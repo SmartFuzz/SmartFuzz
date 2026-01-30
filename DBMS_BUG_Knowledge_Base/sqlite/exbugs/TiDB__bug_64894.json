@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/64894",
+  "title": "ddl: CREATE TABLE LIKE waits for ADD INDEX but copies outdated schema",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n\n1. Start a TiDB cluster (master containing PR #54110).\n2. Prepare a test table with enough rows to make ADD INDEX take some time:\n\n```sql\nCREATE DATABASE IF NOT EXISTS ddl_test;\nUSE ddl_test;\n\nDROP TABLE IF EXISTS a, b;\n\nCREATE TABLE a (\n  id INT PRIMARY KEY,\n  c  INT\n);\n```\n3. In session 1, run `ALTER TABLE a ADD INDEX idx_c(c);`\n4. When the DDL job is in reorg/running state (you can check via ADMIN SHOW DDL JOBS), open Session 2 and run `CREATE TABLE b LIKE a; SHOW CREATE TABLE b\\G`\n5. Observe: `CREATE TABLE b LIKE a` is blocked until `ALTER TABLE a ADD INDEX` finishes, but `SHOW CREATE TABLE b` still does not contain `idx_c`,\n\n### 2. What did you expect to see? (Required)\n\n- `CREATE TABLE b LIKE a` should copy the latest schema of table a (after `ADD INDEX` is finished),\n- So `SHOW CREATE TABLE b` should contain `KEY idx_c (c)`.\n\nIn other words, once TiDB already makes CREATE TABLE LIKE wait for the running DDL job on a, it is natural for users to expect that the “LIKE” operation uses the up-to-date TableInfo of a, not the old snapshot at the time the statement was submitted.\n\n### 3. What did you see instead (Required)\n\n- CREATE TABLE b LIKE a does wait for ALTER TABLE a ADD INDEX idx_c(c) to finish (you can see it being blocked and only returning after the ADD INDEX job is done).\n- However, SHOW CREATE TABLE b still shows:\n```sql\nmysql> SHOW CREATE TABLE b\\G\n*************************** 1. row ***************************\n       Table: b\nCreate Table: CREATE TABLE `b` (\n  `id` int NOT NULL,\n  `c` int DEFAULT NULL,\n  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin\n1 row in set (0.01 sec)\n```\n\n### 4. What is your TiDB version? (Required)\n```\nRelease Version: v9.0.0-beta.2.pre-852-g45b1597\nEdition: Community\nGit Commit Hash: 45b15978606a977f4ade719c9ea8a16d94794f0f\nGit Branch: HEAD\n```\n\n",
+  "date": "2025-12-07T14:38:23Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE IF NOT EXISTS ddl_test.a (id INTEGER PRIMARY KEY, c INTEGER, d TEXT NOT NULL DEFAULT 'default');",
+    "INSERT INTO ddl_test.a (id, c) VALUES (1, 10), (2, NULL), (3, 20);",
+    "CREATE INDEX idx_c ON ddl_test.a(c);",
+    "CREATE TABLE ddl_test.b AS SELECT * FROM ddl_test.a WHERE 0;",
+    "SELECT sql FROM sqlite_master WHERE name='b';"
+  ],
+  "key_bug_features": [
+    "CREATE TABLE LIKE waits for ADD INDEX completion"
+  ]
+}

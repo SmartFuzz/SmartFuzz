@@ -1,0 +1,19 @@
+{
+    "function": "parseDateTimeBestEffortUSOrNull",
+    "operator": "IS NULL",
+    "sql_array": [
+        "CREATE TABLE test_dates (id UInt32, date_str Nullable(String));",
+        "INSERT INTO test_dates VALUES (1, '2021-01-01 10:00:00'), (2, NULL), (3, 'invalid-date'), (4, '2022-12-31 23:59:59');",
+        "SELECT id, parseDateTimeBestEffortUSOrNull(date_str) AS parsed_date FROM test_dates WHERE parsed_date IS NULL;",
+        "SELECT id, date_str, IS_NULL(parsed_date) AS is_null_date FROM (SELECT id, parseDateTimeBestEffortUSOrNull(date_str) AS parsed_date FROM test_dates) AS sub;",
+        "SELECT id, parseDateTimeBestEffortUSOrNull(IF(date_str IS NULL, '2023-01-01', date_str)) AS safe_date FROM test_dates;",
+        "CREATE TABLE test_results (id UInt32, result Nullable(DateTime));",
+        "INSERT INTO test_results VALUES (1, NULL), (2, now()), (3, parseDateTimeBestEffortUSOrNull('2023/03/15 15:30:00'));",
+        "SELECT id, result, IS_NULL(result) AS result_null FROM test_results WHERE IS_NULL(parseDateTimeBestEffortUSOrNull(result) OR NULL);",
+        "SELECT id, COUNT(*) AS total, COUNT(IF(parseDateTimeBestEffortUSOrNull(date_str) IS NULL, 1, NULL)) AS null_count FROM test_dates GROUP BY id HAVING null_count > 0;",
+        "WITH (SELECT COUNT(*) AS cnt FROM (SELECT id, parseDateTimeBestEffortUSOrNull(date_str) FROM test_dates WHERE date_str IS NOT NULL)) AS temp_count SELECT id, cnt, IS_NULL(cnt) AS is_null FROM temp_count;",
+        "CREATE TABLE complex_dates (id UInt32, start_date Nullable(String), end_date Nullable(String));",
+        "INSERT INTO complex_dates VALUES (1, '2021-07-01', NULL), (2, NULL, '2022-01-01'), (3, 'invalid-start', '2022-02-01');",
+        "SELECT id, parseDateTimeBestEffortUSOrNull(start_date) AS start_parsed, parseDateTimeBestEffortUSOrNull(end_date) AS end_parsed FROM complex_dates WHERE IS_NULL(start_parsed) OR IS_NULL(end_parsed);"
+    ]
+}

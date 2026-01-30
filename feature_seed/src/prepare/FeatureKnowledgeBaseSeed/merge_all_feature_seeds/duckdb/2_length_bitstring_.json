@@ -1,0 +1,16 @@
+CREATE TABLE test_table (id INT, value BITSTRING);
+INSERT INTO test_table (id, value) VALUES (1, '1101011'::BITSTRING), (2, '1110'::BITSTRING), (3, NULL);
+CREATE TABLE date_table (event_date DATE, duration INTERVAL);
+INSERT INTO date_table (event_date, duration) VALUES (DATE '2022-01-01', INTERVAL '5 DAY'), (DATE '2023-01-01', INTERVAL NULL);
+SELECT id, length(value) AS length_value, (SELECT COUNT(*) FROM date_table) AS event_count FROM test_table WHERE value IS NOT NULL;
+SELECT id, value, DATE '2023-03-15' + INTERVAL length(value) DAY AS new_date FROM test_table WHERE length(value) > 4;
+SELECT dt.event_date, dt.duration, (length(tt.value) + 1) AS adjusted_length FROM date_table dt JOIN test_table tt ON dt.event_date = DATE '2022-01-01' + INTERVAL 5 DAY WHERE length(tt.value) IS NOT NULL;
+SELECT id, length(value) AS length_value FROM test_table GROUP BY id HAVING length(value) > 3;
+SELECT id, length(value) AS length_value, (SELECT COUNT(*) FROM date_table WHERE duration IS NOT NULL) AS non_null_durations FROM test_table WHERE LENGTH(value) < 10 ORDER BY length_value DESC;
+SELECT (SELECT COUNT(*) FROM test_table) AS total_entries, (SELECT SUM(length(value)) FROM test_table WHERE value IS NOT NULL) AS total_length FROM DUAL;
+SELECT id, (DATE '1990-01-01' + INTERVAL 4 DAY + INTERVAL length(value) DAY) AS future_date FROM test_table WHERE value IS NOT NULL;
+CREATE TABLE another_table (name VARCHAR, active BOOLEAN);
+INSERT INTO another_table (name, active) VALUES ('Test1', TRUE), ('Test2', FALSE), ('Test3', NULL);
+SELECT tt.id, tt.value, at.name, at.active FROM test_table tt JOIN another_table at ON length(tt.value) > 3 OR at.active IS NULL;
+CREATE TABLE temp_table AS SELECT id, length(value) AS length_value FROM test_table;
+SELECT id, (length_value + (SELECT COUNT(*) FROM temp_table)) AS final_value FROM temp_table;

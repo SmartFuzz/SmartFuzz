@@ -1,0 +1,16 @@
+{
+    "function": "unbin",
+    "operator": "a NOT LIKE s",
+    "sql_array": [
+        "CREATE TABLE test_fuzzing (id UInt32, binary_data String, num_val UInt64, str_val String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_fuzzing VALUES (1, '001100000011000100110010', 10, 'example1'), (2, '0100110101111001010100110101000101001100', 20, 'example2'), (3, '001011010', 30, 'example3');",
+        "SELECT id, UNBIN(binary_data) AS decoded_bin FROM test_fuzzing WHERE decoded_bin NOT LIKE 'l%';",
+        "SELECT id, bin_num FROM (SELECT id, reinterpretAsUInt64(reverse(UNBIN(binary_data))) AS bin_num FROM test_fuzzing) AS subquery WHERE bin_num NOT LIKE 2;",
+        "SELECT id, COUNT(*) FROM test_fuzzing GROUP BY id HAVING reinterpretAsUInt64(reverse(UNBIN(binary_data))) NOT LIKE 0 OR (NULLIF(num_val, 0) IS NOT NULL);",
+        "CREATE TABLE temp_fuzzing AS SELECT id, binary_data, UNBIN(binary_data) AS unbin_result, num_val FROM test_fuzzing;",
+        "INSERT INTO temp_fuzzing SELECT id, binary_data, UNBIN(binary_data) FROM test_fuzzing WHERE binary_data NOT LIKE '0%';",
+        "SELECT id, UNBIN(binary_data) AS unbinResult FROM temp_fuzzing GROUP BY id HAVING unbinResult NOT LIKE ANY(['\\x00', '\\x01']);",
+        "SELECT id, UNBIN(binary_data) AS decoded_bin FROM temp_fuzzing WHERE decoded_bin NOT LIKE CONCAT('example', '') AND id IN (SELECT id FROM temp_fuzzing WHERE num_val > 15);",
+        "DROP TABLE IF EXISTS temp_fuzzing;"
+    ]
+}

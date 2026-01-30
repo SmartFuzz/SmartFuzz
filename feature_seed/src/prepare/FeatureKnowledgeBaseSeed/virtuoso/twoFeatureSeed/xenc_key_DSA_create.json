@@ -1,0 +1,16 @@
+{
+    "function": "xenc_key_DSA_create",
+    "operator": "IS NULL",
+    "sql_array": [
+        "CREATE TABLE dsa_keys (id SERIAL PRIMARY KEY, key_name VARCHAR(100), public_key BYTEA, private_key BYTEA);",
+        "INSERT INTO dsa_keys (key_name, public_key, private_key) VALUES ('testKey1', NULL, NULL);",
+        "SELECT xenc_key_DSA_create(key_name) AS generated_key FROM dsa_keys WHERE public_key IS NULL;",
+        "SELECT xenc_key_DSA_create('testKey' || id) FROM dsa_keys WHERE private_key IS NULL OR public_key IS NULL;",
+        "SELECT COUNT(*) FROM dsa_keys WHERE EXISTS (SELECT 1 FROM dsa_keys AS inner_keys WHERE inner_keys.id = dsa_keys.id AND inner_keys.public_key IS NULL);",
+        "WITH generated_keys AS (SELECT id, xenc_key_DSA_create(key_name) AS key_data FROM dsa_keys) SELECT key_data FROM generated_keys WHERE key_data IS NULL;",
+        "SELECT id FROM dsa_keys WHERE key_name IS NOT NULL AND (SELECT COUNT(*) FROM dsa_keys AS other_keys WHERE other_keys.id = dsa_keys.id) < 1;",
+        "CREATE TABLE temp_keys (temp_key BYTEA, created_at TIMESTAMP DEFAULT NOW());",
+        "INSERT INTO temp_keys (temp_key) VALUES (xenc_key_DSA_create(COALESCE((SELECT key_name FROM dsa_keys LIMIT 1), 'fallbackKey')));",
+        "SELECT COUNT(*) FROM (SELECT xenc_key_DSA_create(key_name) AS key_data FROM dsa_keys WHERE key_name IS NOT NULL HAVING key_data IS NULL) AS temp WHERE key_data IS NULL;"
+    ]
+}

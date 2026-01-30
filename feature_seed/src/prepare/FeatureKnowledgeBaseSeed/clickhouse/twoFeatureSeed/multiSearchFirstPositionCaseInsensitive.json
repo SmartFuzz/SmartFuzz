@@ -1,0 +1,21 @@
+{
+    "function": "multiSearchFirstPositionCaseInsensitive",
+    "operator": "a > b",
+    "sql_array": [
+        "CREATE TABLE fuzz_test (id Int32, name String, description String, created_at DateTime, value Float64);",
+        "INSERT INTO fuzz_test VALUES (1, 'HELLO WORLD', 'Testing multiSearchFirstPositionCaseInsensitive function', now(), 100.0), (2, 'goodbye', 'CASE SENSITIVITY', now(), 200.5), (3, 'woah', 'Edge CASE TEST', now(), null);",
+        "SELECT id, name, multiSearchFirstPositionCaseInsensitive(description, ['wor', 'goodbye', 'TESTING']) AS position FROM fuzz_test WHERE position > 0 AND created_at > now() - INTERVAL 1 DAY;",
+        "SELECT id, multiSearchFirstPositionCaseInsensitive(name, ['hElLo', 'GoodBye']) AS position, value FROM fuzz_test WHERE value > 150.0 ORDER BY position DESC;",
+        "SELECT id, name FROM fuzz_test WHERE multiSearchFirstPositionCaseInsensitive(name, ['hello', 'HELL']) > 0 HAVING COUNT(*) > 1;",
+        "CREATE TABLE temp_fuzz AS SELECT id, multiSearchFirstPositionCaseInsensitive(name, ['woah', 'goodbye']) AS result FROM fuzz_test WHERE created_at IS NOT NULL;",
+        "SELECT COUNT(*) FROM temp_fuzz WHERE result > 0;",
+        "SELECT id, multiSearchFirstPositionCaseInsensitive( CAST(value AS String), ['100', '200']) AS position FROM fuzz_test WHERE position > 0;",
+        "SELECT * FROM fuzz_test WHERE NULLIF(multiSearchFirstPositionCaseInsensitive(name, ['empty', 'EMPTY']), 0) IS NOT NULL;",
+        "CREATE TABLE edge_cases (edge_id Int32, edge_name String, edge_value Float64) ENGINE = MergeTree() ORDER BY edge_id;",
+        "INSERT INTO edge_cases VALUES (1, '', 0.0), (2, '   ', 1.0), (3, 'undefined', NULL);",
+        "SELECT edge_id, edge_name, multiSearchFirstPositionCaseInsensitive(edge_name, [';', '  ', 'undefined']) AS pos FROM edge_cases WHERE pos = 0;",
+        "SELECT edge_id FROM edge_cases WHERE edge_value > (SELECT MAX(value) FROM fuzz_test) - 1;",
+        "UPDATE fuzz_test SET name = 'ALL CAPS TEST' WHERE id = 2;",
+        "DROP TABLE IF EXISTS temp_fuzz;"
+    ]
+}

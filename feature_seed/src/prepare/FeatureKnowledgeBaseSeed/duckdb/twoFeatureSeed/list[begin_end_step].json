@@ -1,0 +1,19 @@
+{
+    "function": "list[begin:end:step]",
+    "operator": "+",
+    "sql_array": [
+        "CREATE TABLE test_table (id INTEGER PRIMARY KEY, timestamp_col TIMESTAMP, float_col FLOAT, string_col VARCHAR);",
+        "INSERT INTO test_table (id, timestamp_col, float_col, string_col) VALUES (1, TIMESTAMP '2023-10-01 00:00:00', 123.456, 'Sample Text');",
+        "INSERT INTO test_table (id, timestamp_col, float_col, string_col) VALUES (2, TIMESTAMP '2023-10-02 00:00:00', NULL, 'Another Sample');",
+        "INSERT INTO test_table (id, timestamp_col, float_col, string_col) VALUES (3, TIMESTAMP '1992-01-01 00:00:00', 0.0, '');",
+        "SELECT id, list[float_col:-:1] FROM (SELECT id, float_col FROM test_table WHERE float_col IS NOT NULL) AS subquery;",
+        "SELECT id, timestamp_col, (TIMESTAMP '2023-10-03 00:00:00' + INTERVAL list[1:3:1]) AS new_timestamp FROM test_table WHERE id = 1;",
+        "SELECT id, (list[float_col:1:1] + 5) AS incremented_value FROM test_table WHERE string_col IN (SELECT string_col FROM test_table WHERE id > 0);",
+        "CREATE TABLE joined_table (id INTEGER, ref_id INTEGER, value FLOAT);",
+        "INSERT INTO joined_table (id, ref_id, value) VALUES (1, 1, 10.5), (2, 1, 20.0), (3, 2, 30.0);",
+        "SELECT t.id, SUM(j.value) + list[j.value:1:1] AS total_value FROM test_table AS t LEFT JOIN joined_table AS j ON t.id = j.ref_id GROUP BY t.id HAVING total_value > 15;",
+        "SELECT id, (string_col || CAST(TIMESTAMP '2023-10-03 00:00:00' + INTERVAL (SELECT COUNT(*) FROM joined_table) DAY AS VARCHAR)) AS combined_value FROM test_table WHERE string_col IS NOT NULL;",
+        "SELECT id, MAX(list[float_col:0::1] - 1) OVER (PARTITION BY id) AS max_adjusted_value FROM test_table WHERE float_col IS NOT NULL ORDER BY id;",
+        "SELECT id, COUNT(*) OVER (PARTITION BY list[1:3:2]) AS count_per_step FROM (SELECT id, list[float_col:0::1] FROM test_table) AS subquery HAVING count_per_step > 1;"
+    ]
+}

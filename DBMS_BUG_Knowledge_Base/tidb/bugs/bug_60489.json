@@ -1,0 +1,30 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/60489",
+  "title": "join with view produces 'interface conversion' with a small change on join condition",
+  "vulnerable_database": "tidb",
+  "date": "2025-04-10T11:27:26Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\n\nThe second query only remove 'not' from the join condition in comparison with the first query, but it meets some internal error.\n\n### 1. Minimal reproduce step (Required)\n\n```sql\nCREATE TABLE t0(c0 CHAR);\nCREATE VIEW v0(c0) AS SELECT NULL;\n\n\nSELECT *\nFROM v0\n         JOIN t0 ON NOT((v0.c0) <=> (t0.c0))\nWHERE ((COALESCE(v0.c0, INET6_ATON(v0.c0))));-- 0 row\n\n\nSELECT *\nFROM v0\n         JOIN t0 ON ((v0.c0) <=> (t0.c0))\nWHERE ((COALESCE(v0.c0, INET6_ATON(v0.c0))));\n-- [HY000][1105] interface conversion: expression. Expression is *expression. ScalarFunction, not *expression. Column\n```\n\n### 2. What did you expect to see? (Required)\nI expect the second query to produce result normally.\n\n### 3. What did you see instead (Required)\n\nThe second query produces:\n```sql\n-- [HY000][1105] interface conversion: expression. Expression is *expression. ScalarFunction, not *expression. Column\n```\n### 4. What is your TiDB version? (Required)\n\n```\nRelease Version: v9.0.0-beta.1.pre-389-g21f9bb7b7a\nEdition: Community\nGit Commit Hash: 21f9bb7b7a7478d825c4dee4fbf2ce913e3e7cf1\nGit Branch: HEAD\nUTC Build Time: 2025-03-11 09:37:34\nGoVersion: go1.23.7\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv\n```\n\n",
+  "poc": [
+    "CREATE TABLE t0(c0 CHAR);",
+    "CREATE VIEW v0(c0) AS SELECT NULL;",
+    "SELECT *",
+    "FROM v0",
+    "         JOIN t0 ON NOT((v0.c0) <=> (t0.c0))",
+    "WHERE ((COALESCE(v0.c0, INET6_ATON(v0.c0))));-- 0 row",
+    "         JOIN t0 ON ((v0.c0) <=> (t0.c0))",
+    "WHERE ((COALESCE(v0.c0, INET6_ATON(v0.c0))));"
+  ],
+  "poc_type": "sql_text",
+  "state": "open",
+  "key_bug_features": [
+    "join condition change from NOT to equality"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t1(c1 INT, c2 VARCHAR(255) NOT NULL);",
+    "CREATE VIEW v1 AS SELECT c1 FROM t1 WHERE c1 IS NOT NULL;",
+    "INSERT INTO t1(c1, c2) VALUES (1, 'test'), (2, NULL), (3, 'example');",
+    "SELECT * FROM v1 JOIN t1 ON (v1.c1 <=> t1.c1) WHERE t1.c2 IS NULL;",
+    "SELECT * FROM v1 JOIN t1 ON NOT(v1.c1 <=> t1.c1) WHERE COALESCE(t1.c2, 'default') = 'default';"
+  ]
+}

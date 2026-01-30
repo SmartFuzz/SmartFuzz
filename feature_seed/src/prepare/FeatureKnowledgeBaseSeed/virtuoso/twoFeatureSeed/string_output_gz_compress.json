@@ -1,0 +1,17 @@
+{
+    "function": "string_output_gz_compress",
+    "operator": "||",
+    "sql_array": [
+        "CREATE TABLE test_data (id INTEGER PRIMARY KEY, text_data VARCHAR(255), numeric_data INTEGER, date_data DATE);",
+        "INSERT INTO test_data (id, text_data, numeric_data, date_data) VALUES (1, '', 3, '2023-10-01');",
+        "INSERT INTO test_data (id, text_data, numeric_data, date_data) VALUES (2, 'text1', 5, '2023-10-02');",
+        "INSERT INTO test_data (id, text_data, numeric_data, date_data) VALUES (3, 'text2', NULL, '2023-10-03');",
+        "CREATE PROCEDURE compress_test (IN input_id INTEGER) BEGIN DECLARE input_text VARCHAR(255); DECLARE compressed_result ANY; SELECT text_data INTO input_text FROM test_data WHERE id = input_id; SET compressed_result = string_output(); SELECT string_output_gz_compress(input_text || 'AdditionalData', compressed_result); END;",
+        "CALL compress_test(1);",
+        "SELECT id, string_output_gz_compress(text_data || ' - ' || MD5(CAST(numeric_data AS VARCHAR)), string_output()) AS compressed_length FROM test_data WHERE numeric_data IS NOT NULL GROUP BY id HAVING compressed_length < 50;",
+        "CREATE TEMPORARY TABLE join_test AS SELECT a.id, a.text_data, b.numeric_data FROM test_data a INNER JOIN test_data b ON a.id = 1 AND b.numeric_data IS NULL;",
+        "SELECT string_output_gz_compress('Combined data: ' || (SELECT text_data FROM join_test), string_output()) FROM dual;",
+        "SELECT DISTINCT string_output_gz_compress(text_data || ' (compressed)', string_output()) AS gz_size FROM test_data WHERE text_data IS NOT NULL;",
+        "WITH data_summary AS (SELECT id, COUNT(*) AS count_val FROM test_data GROUP BY id HAVING COUNT(*) > 1) SELECT string_output_gz_compress('Count: ' || count_val, string_output()) FROM data_summary;"
+    ]
+}

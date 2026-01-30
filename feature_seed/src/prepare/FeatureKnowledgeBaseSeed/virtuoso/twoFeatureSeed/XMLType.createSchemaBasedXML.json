@@ -1,0 +1,17 @@
+{
+    "function": "XMLType.createSchemaBasedXML",
+    "operator": "EXISTS",
+    "sql_array": [
+        "CREATE TABLE xml_test (id INT PRIMARY KEY, xml_data XMLType);",
+        "INSERT INTO xml_test (id, xml_data) VALUES (1, XMLType('<sample-xml/>'));",
+        "INSERT INTO xml_test (id, xml_data) VALUES (2, XMLType('<sample-xml/>'));",
+        "SELECT EXISTS (SELECT 1 FROM xml_test WHERE xml_data.createSchemaBasedXML('http://www.example.com/test.xsd').getSchemaURL() IS NOT NULL);",
+        "SELECT id, xml_data.createSchemaBasedXML(NULL) AS schema_less_copy FROM xml_test WHERE EXISTS (SELECT 1 FROM xml_test AS x2 WHERE x2.id = xml_test.id AND x2.xml_data IS NOT NULL);",
+        "CREATE TABLE more_xml_test (id INT, schema_url VARCHAR(255), FOREIGN KEY (id) REFERENCES xml_test(id));",
+        "INSERT INTO more_xml_test (id, schema_url) VALUES (1, 'http://www.example.com/schema1.xsd');",
+        "INSERT INTO more_xml_test (id, schema_url) VALUES (2, NULL);",
+        "SELECT m.id, xml_data.createSchemaBasedXML(m.schema_url) AS new_xml FROM xml_test AS x LEFT JOIN more_xml_test AS m ON x.id = m.id WHERE m.schema_url IS NOT NULL OR EXISTS (SELECT 1 FROM more_xml_test WHERE id = m.id);",
+        "SELECT id, COUNT(*) AS cnt FROM more_xml_test GROUP BY id HAVING MAX(schema_url IS NOT NULL) = 1;",
+        "SELECT id, COALESCE(m.schema_url, 'http://default.com/schema.xsd') AS valid_url FROM more_xml_test AS m WHERE EXISTS (SELECT 1 FROM xml_test WHERE xml_data IS NOT NULL);"
+    ]
+}

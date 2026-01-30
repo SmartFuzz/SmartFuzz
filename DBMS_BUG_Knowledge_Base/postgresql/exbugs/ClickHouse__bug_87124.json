@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/87124",
+  "title": "Flink SQL Connection to ClickHouse MySQL Interface: Wrong Sequence-ID Protocol Error",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\n## Issue: Flink SQL Connect to ClickHouse via MySQL Interface Error\n## Scenario\n```\nFlink SQL connect ClickHouse MySQL interface\n# Since ClickHouse doesn't have a native Flink connector, I'm trying to use ClickHouse MySQL interface as an alternative, but encountering errors.\n```\n## ClickHouse Config\n```xml\n# ClickHouse 24.10\n# users.xml\n<mysql4dev_user_dev01>\n<profile>default</profile>\n<password_double_sha1_hex>7c2b435db234f81bd736b9932080147ed96ff2bd</password_double_sha1_hex>\n<quota>default</quota>\n<access_management>1</access_management>\n<named_collection_control>1</named_collection_control>\n<show_named_collections>1</show_named_collections>\n<show_named_collections_secrets>1</show_named_collections_secrets>\n</mysql4dev_user_dev01>\n```\n## Flink SQL:\n```sql\n# Flink version 1.17.2\nDROP TABLE IF EXISTS mysql_ck_db_dev;\nCREATE TABLE mysql_ck_db_dev (\nuser_id INT,\nmessage STRING,\nPRIMARY KEY (user_id) NOT ENFORCED\n) WITH (\n'connector' = 'jdbc',\n'url' = 'jdbc:mysql://192.168.2.246:19004/dev_tes',\n'username' ='mysql4dev_user_dev01' ,\n'password' = 'XIdbuBE0',\n'table-name' = 'my_first_table'\n);\nSELECT * FROM mysql_ck_db_dev;\n```\n## Flink SQL Execution Error:\n```js\njobmanager    | 2025-09-15 11:29:21,477 INFO  org.apache.flink.streaming.api.operators.collect.CollectSinkOperatorCoordinator [] - Received sink socket server address: /172.18.0.4:34913\ntaskmanager2  | 2025-09-15 11:29:21,486 INFO  org.apache.flink.runtime.taskmanager.Task                    [] - Source: mysql_ck_db_dev[13] -> ConstraintEnforcer[14] -> Sink: Collect table sink (1/1)#0 (8b5d5a11792a8b8e52e7fd22b52c36ee_cbc357ccb763df2852fee8c4fc7d55f2_0_0) switched from INITIALIZING to RUNNING.\njobmanager    | 2025-09-15 11:29:21,493 INFO  org.apache.flink.runtime.executiongraph.ExecutionGraph       [] - Source: mysql_ck_db_dev[13] -> ConstraintEnforcer[14] -> Sink: Collect table sink (1/1) (8b5d5a11792a8b8e52e7fd22b52c36ee_cbc357ccb763df2852fee8c4fc7d55f2_0_0) switched from INITIALIZING to RUNNING.\ntaskmanager2  | 2025-09-15 11:29:21,503 WARN  org.apache.flink.runtime.taskmanager.Task                    [] - Source: mysql_ck_db_dev[13] -> ConstraintEnforcer[14] -> Sink: Collect table sink (1/1)#0 (8b5d5a11792a8b8e52e7fd22b52c36ee_cbc357ccb763df2852fee8c4fc7d55f2_0_0) switched from RUNNING to FAILED with failure cause:\ntaskmanager2  | java.lang.IllegalArgumentException: open() failed.Received packet with wrong sequence-id: 0. Expected: 3.\ntaskmanager2  | \tat org.apache.flink.connector.jdbc.table.JdbcRowDataInputFormat.openInputFormat(JdbcRowDataInputFormat.java:118) ~[flink-connector-jdbc-3.1.2-1.17.jar:3.1.2-1.17]\ntaskmanager2  | \tat org.apache.flink.streaming.api.functions.source.InputFormatSourceFunction.run(InputFormatSourceFunction.java:79) ~[flink-dist-1.17.2.jar:1.17.2]\ntaskmanager2  | \tat org.apache.flink.streaming.api.operators.StreamSource.run(StreamSource.java:110) ~[flink-dist-1.17.2.jar:1.17.2]",
+  "date": "2025-09-15T11:48:34Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE mysql_ck_db_dev_v2 (user_id INT, message TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (user_id));",
+    "INSERT INTO mysql_ck_db_dev_v2 (user_id, message) VALUES (1, 'Hello World');",
+    "INSERT INTO mysql_ck_db_dev_v2 (user_id, message) VALUES (2, NULL);",
+    "SELECT user_id, message FROM mysql_ck_db_dev_v2 WHERE user_id = (SELECT MAX(user_id) FROM mysql_ck_db_dev_v2);",
+    "DROP TABLE IF EXISTS mysql_ck_db_dev_v2;"
+  ],
+  "key_bug_features": [
+    "Received packet with wrong sequence-id during Flink SQL execution"
+  ]
+}

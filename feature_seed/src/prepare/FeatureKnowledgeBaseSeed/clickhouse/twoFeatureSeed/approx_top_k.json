@@ -1,0 +1,18 @@
+{
+    "function": "approx_top_k",
+    "operator": "a = ALL (subquery)",
+    "sql_array": [
+        "CREATE TABLE test_data (k String, w UInt64) ENGINE = MergeTree() ORDER BY k;",
+        "INSERT INTO test_data VALUES ('alpha', 1), ('beta', 1), ('alpha', 2), ('beta', 3), ('gamma', 4), ('alpha', 5);",
+        "SELECT k, approx_top_k(2)(w) FROM test_data GROUP BY k HAVING k = ALL (SELECT k FROM test_data WHERE w > 0);",
+        "SELECT approx_top_k(3, 5)(k) FROM (SELECT DISTINCT k FROM test_data WHERE w IN (SELECT MAX(w) FROM test_data)) WHERE k IS NOT NULL;",
+        "CREATE TABLE temp_data AS SELECT k, w FROM test_data WHERE w BETWEEN 1 AND 5;",
+        "SELECT approx_top_k(4)(k) FROM temp_data WHERE k = ALL (SELECT k FROM temp_data WHERE w < (SELECT AVG(w) FROM test_data));",
+        "INSERT INTO test_data VALUES (NULL, 2), (NULL, 3), ('delta', NULL);",
+        "SELECT approx_top_k(10)(k) FROM test_data WHERE k = ALL (SELECT DISTINCT k FROM test_data WHERE w IS NOT NULL) GROUP BY k ORDER BY w DESC;",
+        "CREATE TABLE boundary_test (bordered Float64) ENGINE = MergeTree() ORDER BY bordered;",
+        "INSERT INTO boundary_test VALUES (1.0), (1.0000001), (1.9999999), (NULL), (2.5), (-1.0);",
+        "SELECT approx_top_k(2)(bordered) FROM boundary_test WHERE bordered = ALL (SELECT bordered FROM boundary_test WHERE bordered IS NOT NULL);",
+        "SELECT approx_top_k(2)(k) FROM test_data WHERE k = ALL (SELECT k FROM (SELECT DISTINCT k FROM test_data WHERE k LIKE 'a%'));"
+    ]
+}

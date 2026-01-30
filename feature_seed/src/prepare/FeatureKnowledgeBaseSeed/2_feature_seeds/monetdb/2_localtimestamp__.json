@@ -1,0 +1,14 @@
+CREATE TABLE test_table (id SERIAL PRIMARY KEY, timestamp_col TIMESTAMP, ip_col INET);
+INSERT INTO test_table (timestamp_col, ip_col) VALUES (localtimestamp(), inet '192.168.1.5');
+INSERT INTO test_table (timestamp_col, ip_col) VALUES (localtimestamp() + interval '1 hour', inet '192.168.1.6');
+INSERT INTO test_table (timestamp_col, ip_col) VALUES (localtimestamp() - interval '1 hour', inet '192.168.1.7');
+SELECT id, timestamp_col FROM test_table WHERE ip_col <> inet '192.168.1.5' AND timestamp_col = localtimestamp();
+SELECT id, COUNT(*) FROM test_table GROUP BY ip_col HAVING MAX(timestamp_col) <> localtimestamp();
+SELECT DISTINCT date_trunc('minute', timestamp_col) FROM test_table WHERE ip_col <> inet '192.168.1.6';
+SELECT id FROM test_table WHERE NOT (localtimestamp() <> timestamp_col) AND ip_col <> inet '192.168.1.5';
+SELECT (SELECT COUNT(*) FROM test_table WHERE ip_col <> inet '192.168.1.6') AS count_not_equal, localtimestamp() FROM test_table;
+CREATE TEMPORARY TABLE temp_table (temp_ip INET);
+INSERT INTO temp_table VALUES (inet '192.168.1.8');
+SELECT temp_ip, localtimestamp() FROM temp_table WHERE temp_ip <> (SELECT ip_col FROM test_table LIMIT 1);
+SELECT CASE WHEN localtimestamp() <> (SELECT MAX(timestamp_col) FROM test_table) THEN 'Mismatch' ELSE 'Match' END AS timestamp_check;
+UPDATE test_table SET ip_col = inet '192.168.1.9' WHERE timestamp_col < localtimestamp() - interval '2 days';

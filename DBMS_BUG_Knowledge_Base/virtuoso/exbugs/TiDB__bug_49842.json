@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/49842",
+  "title": "incorrect tableDual plan caused by corner case values and partition",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n``` SQL\r\nCREATE TABLE `t428fc8c8` (\r\n  `col_51` bigint(20) unsigned NOT NULL,\r\n  PRIMARY KEY (`col_51`) /*T![clustered_index] CLUSTERED */,\r\n  UNIQUE KEY `idx_28` (`col_51`),\r\n  KEY `idx_29` (`col_51`),\r\n  KEY `idx_31` (`col_51`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin\r\nPARTITION BY HASH (`col_51`) PARTITIONS 4;\r\ndesc SELECT 1  FROM `t428fc8c8` WHERE `t428fc8c8`.`col_51` BETWEEN 9223372036854775807 AND 9223372036854775808;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nTableScan\r\n### 3. What did you see instead (Required)\r\n``` SQL\r\nmysql> desc SELECT 1  FROM `t428fc8c8` WHERE `t428fc8c8`.`col_51` BETWEEN 9223372036854775807 AND 9223372036854775808;\r\n+-------------------+---------+------+---------------+---------------+\r\n| id                | estRows | task | access object | operator info |\r\n+-------------------+---------+------+---------------+---------------+\r\n| Projection_6      | 0.00    | root |               | 1->Column#2   |\r\n| └─TableDual_7     | 0.00    | root |               | rows:0        |\r\n+-------------------+---------+------+---------------+---------------+\r\n2 rows in set, 1 warning (0.00 sec)\r\n```\r\n### 4. What is your TiDB version? (Required)\r\ncb7d2b7df71ce588c898995e2bfa6b04bda72044\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2023-12-27T08:51:42Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE test_partition ( id bigint NOT NULL, value varchar(255) DEFAULT NULL, PRIMARY KEY (id)) INDEX BY id;",
+    "INSERT INTO test_partition (id, value) VALUES (9223372036854775807, 'max boundary value');",
+    "INSERT INTO test_partition (id, value) VALUES (0, 'zero value');",
+    "SELECT * FROM test_partition WHERE id >= 9223372036854775807 AND id < 9223372036854775808;",
+    "SELECT COUNT(*) FROM test_partition WHERE value IS NULL;"
+  ],
+  "key_bug_features": [
+    "Partitioning with corner case values in bigint column"
+  ]
+}

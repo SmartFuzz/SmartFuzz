@@ -1,0 +1,21 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=104250",
+  "title": "kill query will case some mysql client block",
+  "description": "at sometimes the kill query will case some mysql client block.\r\n\r\nconn1 (use mysql client) to execut a muilt-statment;\r\nconn2 (use mysql client) kill query conn1;\r\nthe conn1 may block for read mysqld response.\r\n\r\nThe conn1 block reason is that the kill query happen at the muilt-statment one statement have finsh and the next statement not start, the packet response to the\r\nclient have finsh with ok and SERVER_MORE_RESULTS_EXISTS status also in the packet. And at the THD::send_kill_message() the get_stmt_da()->is_set() will be true, so the packet with ok and SERVER_MORE_RESULTS_EXISTS will response to the client, but this query is interrupt, no more messages will be responsed. But the client will wait next response message.\nHow to repeat:\n1.add this code at sql_parse.cc:1856 before the 'while (!thd->killed && (parser_state.m_lip.found_semicolon != nullptr) &&'\r\n    \r\n```\r\n      DBUG_EXECUTE_IF(\"test_muilt_statement_error\", {\r\n        thd->killed = THD::KILL_QUERY;\r\n      });\r\n``` \r\n2.make with the debug and make install\r\n\r\n3.use the mysql to login;\r\nmysql> create database test;\r\nQuery OK, 1 row affected (0.14 sec)\r\n\r\nmysql> use test;\r\nDatabase changed\r\n\r\nmysql> create table t1(c1 int, c2 int);\r\nQuery OK, 0 rows affected (0.09 sec)\r\n\r\nmysql> SET @@session.debug=\"+d,test_muilt_statement_error\";\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nmysql> delimiter //\r\nmysql> insert into t1 values(1, 1);\r\n    -> insert into t1 values(2, 2);\r\n    -> //\r\nQuery OK, 1 row affected (0.02 sec)\r\n....block",
+  "date": "2021-07-08 06:47:00",
+  "vulnerable_version": "8.0.25",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE SCHEMA test_db;",
+    "SET SCHEMA 'test_db';",
+    "CREATE TABLE users(id INT PRIMARY KEY, name VARCHAR(100) NOT NULL, age INT CHECK (age >= 0));",
+    "INSERT INTO users VALUES(1, 'Alice', 30);",
+    "INSERT INTO users VALUES(2, NULL, 25);",
+    "SELECT * FROM users;"
+  ],
+  "key_bug_features": [
+    "kill query during multi-statement execution causes client block"
+  ]
+}

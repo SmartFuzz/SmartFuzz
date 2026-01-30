@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/18221-5d3b9545177fe006%40postgresql.org",
+  "title": "BUG #18221: Unexpected Query Result",
+  "description": "The following bug has been logged on the website:\nBug reference:      18221\nLogged by:          Jinsheng Ba\nEmail address:      bajinsheng(at)u(dot)nus(dot)edu\nPostgreSQL version: 16.1\nOperating system:   Ubuntu\nDescription:\nPlease see this test case:\nCREATE TABLE t0(c0 INT);\nCREATE TABLE t1(c0 serial);\nCREATE TABLE t2(c0 serial);\nCREATE TABLE t3(c0 INT);\nINSERT INTO t3(c0) VALUES(1), (1), (2), (3);\nINSERT INTO t2(c0) VALUES(0), (-1691506874), (514432934), (1678038555), (0),\n(1642626911);\nINSERT INTO t1(c0) VALUES(-1647179285), (-1273316451), (-922427340);\nINSERT INTO t1(c0) VALUES((NULL)::INT);\nINSERT INTO t0(c0) VALUES(4);\nCREATE VIEW v0(c1, c2) AS (SELECT DISTINCT ON (t2.c0) t2.c0, abs(t1.c0) FROM\nt1, t3, t2);\nANALYZE(VERBOSE);\nSELECT (v0.c1) BETWEEN (1) AND (v0.c2) FROM t0, v0 CROSS JOIN t3; -- 4\ntrues\nSELECT t3.c0 FROM t0, v0 CROSS JOIN t3 WHERE (v0.c1) BETWEEN (1) AND\n(v0.c2); -- 8 rows\nThe expression (v0.c1) BETWEEN (1) AND (v0.c2) is evaluated to true for 4\nrows in the first query, while the second query returns 8 rows\nunexpectedly.\nIf I remove the ANALYZE statement, the second returns 4 rows, which is\nexpected.",
+  "date": "2023-12-02 02:47:55",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE t4(c0 INT, c1 VARCHAR(255) NOT NULL);",
+    "INSERT INTO t4(c0, c1) VALUES(1, 'test1'), (2, 'test2'), (3, NULL), (4, 'test4');",
+    "CREATE TABLE t5(c0 INT PRIMARY KEY, c1 FLOAT DEFAULT 0.0);",
+    "INSERT INTO t5(c0, c1) VALUES(1, 1.5), (2, NULL), (3, -1.0);",
+    "SELECT COUNT(*) FROM t4 WHERE c0 IN (SELECT c0 FROM t5 WHERE c1 IS NOT NULL);"
+  ],
+  "key_bug_features": [
+    "ANALYZE statement affects query result row count"
+  ]
+}

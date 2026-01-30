@@ -1,0 +1,11 @@
+CREATE TABLE test_data (id INT, value FLOAT, xml_data XML, category VARCHAR(255));
+INSERT INTO test_data (id, value, xml_data, category) VALUES (1, 10.5, '<root><data>1</data></root>', 'A');
+INSERT INTO test_data (id, value, xml_data, category) VALUES (2, NULL, '<root><data>2</data></root>', 'B');
+INSERT INTO test_data (id, value, xml_data, category) VALUES (3, 20.0, NULL, 'A');
+INSERT INTO test_data (id, value, xml_data, category) VALUES (4, 15.5, '<root><data>3</data></root>', NULL);
+SELECT REGR_SLOPE(value, CAST(xpath_integer('/root/data', xml_data) AS FLOAT)) AS slope FROM test_data WHERE category IS NOT NULL GROUP BY category HAVING slope > 0;
+SELECT category, REGR_SLOPE(value, COALESCE(NULLIF(CAST(xpath_integer('/root/data', xml_data) AS FLOAT), 0), 1)) AS slope FROM test_data GROUP BY category HAVING slope < MAX(value);
+WITH ranked_data AS (SELECT value, xpath_integer('/root/data', xml_data) AS extracted_value, ROW_NUMBER() OVER (PARTITION BY category ORDER BY value) AS rn FROM test_data) SELECT REGR_SLOPE(value, extracted_value) AS slope FROM ranked_data WHERE rn = 1;
+CREATE TEMPORARY TABLE temp_data AS SELECT id, value + 1 AS adjusted_value FROM test_data WHERE value IS NOT NULL;
+INSERT INTO temp_data (id, adjusted_value) SELECT id, NULLIF(value, 0) FROM test_data WHERE value IS NOT NULL;
+SELECT REGR_SLOPE(adjusted_value, NULLIF(xpath_integer('/root/data', xml_data), 0)) FROM temp_data JOIN test_data ON temp_data.id = test_data.id WHERE test_data.category = 'A';

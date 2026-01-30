@@ -1,0 +1,16 @@
+{
+    "function": "DB.DBA.AMAZON_CREATE_VOLUME",
+    "operator": "SPARQL Logical &&",
+    "sql_array": [
+        "CREATE TABLE volumes (volume_id SERIAL PRIMARY KEY, access_key VARCHAR(255), zone VARCHAR(50), sec_token VARCHAR(255), size INT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO volumes (access_key, zone, sec_token, size) VALUES ('AKIAJI7ZL427TI5EDF5A', 'us-east-1a', 'CGI/UMaXf2LRUctaj/HGJ57UNy/t7fNCshh8wpJg', 100);",
+        "SELECT DB.DBA.AMAZON_CREATE_VOLUME(access_key, zone, sec_token) FROM volumes WHERE zone = 'us-east-1a' AND size = (SELECT MAX(size) FROM volumes) AND access_key IS NOT NULL;",
+        "CREATE TEMPORARY TABLE temp_key AS SELECT access_key, MAX(size) as max_size FROM volumes GROUP BY access_key HAVING MAX(size) > 50;",
+        "SELECT DB.DBA.AMAZON_CREATE_VOLUME(access_key, zone, sec_token) FROM temp_key, volumes WHERE temp_key.max_size < (SELECT AVG(size) FROM volumes) && volumes.sec_token IS NOT NULL;",
+        "INSERT INTO volumes (access_key, zone, sec_token, size) VALUES (NULL, 'us-east-1b', 'CGI/UMaXf2LRUctaj/HGJ57UNy/t7fNCshh8wpJg', -10);",
+        "SELECT DB.DBA.AMAZON_CREATE_VOLUME(access_key, zone, sec_token) FROM volumes WHERE (access_key IS NULL OR zone = 'us-west-1') && created_at > NOW() - INTERVAL '1 day';",
+        "WITH volume_details AS (SELECT access_key, COUNT(*) AS volume_count FROM volumes GROUP BY access_key HAVING COUNT(*) > 1) SELECT DB.DBA.AMAZON_CREATE_VOLUME(v.access_key, v.zone, v.sec_token) FROM volumes v JOIN volume_details vd ON v.access_key = vd.access_key;",
+        "SELECT DB.DBA.AMAZON_CREATE_VOLUME(access_key, zone, sec_token) FROM (SELECT DISTINCT access_key, zone, sec_token FROM volumes WHERE size > 0) tmp WHERE access_key = 'AKIAJI7ZL427TI5EDF5A' && sec_token IS NOT NULL;",
+        "ALTER TABLE volumes ADD COLUMN created_at TIMESTAMP DEFAULT NOW();"
+    ]
+}

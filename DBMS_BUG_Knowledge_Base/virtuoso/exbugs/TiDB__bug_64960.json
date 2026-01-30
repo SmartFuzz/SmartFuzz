@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/64960",
+  "title": "softdelete for unique index is not correct",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n\n```\ncreate table t1 (id int primary key, v1 int unique, v2 int unique, v3 int unique) softdelete = 'on';\ninsert into t1 (id, v1, v2, v3) values (1, 1, 1, 1), (2, 2, 2, 2), (3, 3, 3, 3), (4, 4, 4, 4);\nupdate t1 set _tidb_softdelete_time = now() where id in (1, 2);\n```\n\n### 2. What did you expect to see? (Required)\n\n```\nmysql> insert into t1 (id, v1, v2, v3) values (1, 2, 5, 5);\nQuery OK, 1 row affected (0.01 sec)\n\nmysql> select * from t1;\n+----+------+------+------+-----------------------+\n| id | v1   | v2   | v3   | _tidb_softdelete_time |\n+----+------+------+------+-----------------------+\n|  1 |    1 |    1 |    1 |        20251210202602 |\n|  2 |    2 |    2 |    2 |        20251210202602 |\n|  3 |    3 |    3 |    42 |                  NULL |\n|  4 |    4 |    4 |    4 |                  NULL |\n+----+------+------+------+-----------------------+\n4 rows in set (0.00 sec)\n```\n\n### 3. What did you see instead (Required)\n\n```\nmysql> insert into t1 (id, v1, v2, v3) values (1, 2, 3, 5) on duplicate key update v3 = 42;\nQuery OK, 2 rows affected (0.01 sec)\n\nmysql> select * from t1;\n+----+------+------+------+-----------------------+\n| id | v1   | v2   | v3   | _tidb_softdelete_time |\n+----+------+------+------+-----------------------+\n|  3 |    3 |    3 |   42 |                  NULL |\n|  4 |    4 |    4 |    4 |                  NULL |\n+----+------+------+------+-----------------------+\n2 rows in set (0.00 sec)\n```\n\nThere is no conflict, so id=1,2 row should not be deleted.\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\nfeature/active-active\n",
+  "date": "2025-12-10T12:05:38Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (id INT PRIMARY KEY, v1 INT UNIQUE, v2 INT UNIQUE, v3 INT UNIQUE, v4 VARCHAR(255) DEFAULT NULL);",
+    "INSERT INTO t2 (id, v1, v2, v3, v4) VALUES (1, 1, 1, 1, 'a'), (2, 2, 2, 2, 'b'), (3, 3, 3, 3, 'c');",
+    "UPDATE t2 SET _tidb_softdelete_time = CURRENT_TIMESTAMP WHERE id IN (1, 2);",
+    "INSERT INTO t2 (id, v1, v2, v3, v4) VALUES (3, 2, 3, 4, 'd') ON CONFLICT (id) DO UPDATE SET v3 = 42;",
+    "SELECT * FROM t2 WHERE v1 IS NOT NULL AND v2 > 1;"
+  ],
+  "key_bug_features": [
+    "softdelete for unique index handling during insert"
+  ]
+}

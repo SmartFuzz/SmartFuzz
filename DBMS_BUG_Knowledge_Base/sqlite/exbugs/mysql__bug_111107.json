@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=111107",
+  "title": "CallableStatement::getParameterMetaData reports incorrect parameterCount",
+  "description": "When getting the parameterCount for a procedure via callableStatement.getParameterMetaData().getParameterCount(), the result is one less that the actual parameter count (i.e. the number of placeholders).\nHow to repeat:\nHere is a JUnit test that demonstrates the error.\r\nThis test will fail.\r\n\r\n    @Test\r\n    void callStoredProcedure()  {\r\n        try (Connection connection = ds.getConnection()) {\r\n            try (Statement statement = connection.createStatement()) {\r\n                statement.execute(\"DROP PROCEDURE IF EXISTS test.badParameterCount\");\r\n                String definition = \"\"\"\r\n                        CREATE PROCEDURE test.badParameterCount(a BIGINT, b BIGINT, c BIGINT, d BIGINT)\r\n                        BEGIN\r\n                            SELECT 1;\r\n                        END\r\n                        \"\"\";\r\n                statement.execute(definition);\r\n            }\r\n            try (PreparedStatement ps = connection.prepareCall(\"CALL test.badParameterCount(?,?,null,null)\")) {\r\n                ParameterMetaData pmd = ps.getParameterMetaData();\r\n                assertEquals(2, pmd.getParameterCount(), \"parameter count\");\r\n            }\r\n        } catch (SQLException e) {\r\n            fail(e);\r\n        }\r\n    }\nSuggested fix:\nIn\nhttps://github.com/mysql/mysql-connector-j/blob/release/8.0/src/main/user-impl/java/com/my...\nline 181, there is an if statement that skips adding the first placeholder if it maps to the zeroth parameter. I believe that this should only apply to functions, not procedures.\r\n(See the use of isFunctionCall on line 178.)\r\n\r\nSo, the if statement should be something along the lines of:\r\n\r\nif (localParameterMap[i] != 0 || !this.isFunctionCall) {",
+  "date": "2023-05-22 15:54:00",
+  "vulnerable_version": "8.0.33, 8.1.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test.data_types (id INTEGER PRIMARY KEY, name TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, amount REAL NOT NULL);",
+    "INSERT INTO test.data_types (id, name, amount) VALUES (1, 'Test', 100.50);",
+    "CREATE TABLE test.exampleProcedure(a INTEGER, b TEXT, c REAL, d DATETIME);",
+    "INSERT INTO test.exampleProcedure(a, b, c, d) VALUES (1, 'Sample', NULL, CURRENT_TIMESTAMP);",
+    "SELECT * FROM test.data_types WHERE amount > (SELECT AVG(amount) FROM test.data_types);"
+  ],
+  "key_bug_features": [
+    "CallableStatement.getParameterMetaData returns incorrect parameter count"
+  ]
+}

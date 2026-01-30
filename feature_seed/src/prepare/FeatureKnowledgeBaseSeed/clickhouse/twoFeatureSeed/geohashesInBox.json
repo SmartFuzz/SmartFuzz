@@ -1,0 +1,16 @@
+{
+    "function": "geohashesInBox",
+    "operator": "a <= b",
+    "sql_array": [
+        "CREATE TABLE geolocation_data (id UInt32, longitude Float64, latitude Float64, precision UInt8, data String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO geolocation_data VALUES (1, 24.55, 40.65, 4, 'Point A'), (2, 24.75, 40.80, 3, 'Point B'), (3, NULL, NULL, 5, 'Point C'), (4, 180, 90, 1, 'Point D');",
+        "SELECT id, geohashesInBox(longitude, latitude, longitude + 0.5, latitude + 0.5, precision) AS geohashes FROM geolocation_data WHERE precision <= 6;",
+        "SELECT id, geohashesInBox(longitude, latitude, longitude + 0.5, latitude + 0.5, precision) AS geohashes FROM geolocation_data WHERE longitude <= 0 AND latitude <= 0;",
+        "SELECT id, geohashesInBox(longitude_min, latitude_min, longitude_max, latitude_max, 4) AS geohashes FROM (SELECT MIN(longitude) AS longitude_min, MIN(latitude) AS latitude_min, MAX(longitude) AS longitude_max, MAX(latitude) AS latitude_max FROM geolocation_data) GROUP BY id HAVING COUNT(*) > 1;",
+        "WITH (SELECT geohashesInBox(0, 0, 0, 0, 10) AS geo_hash) AS g SELECT id FROM geolocation_data WHERE geo_hash IS NOT NULL AND precision <= (SELECT COUNT(*) FROM geolocation_data);",
+        "CREATE TABLE temp_geohashes AS SELECT id, geohashesInBox(longitude, latitude, longitude + 0.1, latitude + 0.1, precision) AS geohashes FROM geolocation_data WHERE geohashes IS NOT NULL;",
+        "ALTER TABLE geolocation_data ADD COLUMN geohashes Array(String);",
+        "INSERT INTO geolocation_data (id, longitude, latitude, precision, data, geohashes) VALUES (5, 24.1, 40.1, 5, 'Point E', geohashesInBox(24.1, 40.1, 24.2, 40.2, 5));",
+        "SELECT COUNT(DISTINCT precision) AS precision_count FROM (SELECT geohashesInBox(longitude_min, latitude_min, longitude_max, latitude_max, precision) AS geo_hash FROM geolocation_data WHERE precision <= 4) WHERE geo_hash[1] IS NOT NULL;"
+    ]
+}

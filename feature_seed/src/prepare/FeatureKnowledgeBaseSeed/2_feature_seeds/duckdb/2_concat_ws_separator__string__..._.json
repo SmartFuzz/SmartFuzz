@@ -1,0 +1,15 @@
+CREATE TABLE fruit_data (id INTEGER PRIMARY KEY, name VARCHAR, harvest_date TIMESTAMP, quantity INTEGER);
+INSERT INTO fruit_data (id, name, harvest_date, quantity) VALUES (1, 'Banana', TIMESTAMP '2023-01-01 10:00:00', 10);
+INSERT INTO fruit_data (id, name, harvest_date, quantity) VALUES (2, 'Apple', TIMESTAMP '2023-01-02 11:00:00', 20);
+INSERT INTO fruit_data (id, name, harvest_date, quantity) VALUES (3, 'Melon', TIMESTAMP '2023-01-03 12:00:00', NULL);
+INSERT INTO fruit_data (id, name, harvest_date, quantity) VALUES (4, NULL, TIMESTAMP '2023-01-04 13:00:00', 30);
+SELECT concat_ws(', ', name, (harvest_date + INTERVAL quantity DAY)::VARCHAR) AS fruit_info FROM fruit_data HAVING quantity IS NOT NULL;
+WITH merged_data AS (SELECT id, concat_ws(' - ', name, harvest_date::VARCHAR) AS combined_info FROM fruit_data WHERE quantity IS NOT NULL) SELECT combined_info FROM merged_data WHERE combined_info IS NOT NULL;
+SELECT CONCAT_WS(', ', 'Fruits:', (SELECT string_agg(name) FROM fruit_data WHERE harvest_date > TIMESTAMP '2023-01-01 00:00:00')) AS fruit_summary;
+CREATE TABLE sales_data (sale_id INTEGER PRIMARY KEY, fruit_id INTEGER, sale_date TIMESTAMP, sold_quantity INTEGER, FOREIGN KEY (fruit_id) REFERENCES fruit_data(id));
+INSERT INTO sales_data (sale_id, fruit_id, sale_date, sold_quantity) VALUES (1, 1, TIMESTAMP '2023-01-10 10:00:00', NULL);
+INSERT INTO sales_data (sale_id, fruit_id, sale_date, sold_quantity) VALUES (2, 2, TIMESTAMP '2023-01-11 11:00:00', 15);
+INSERT INTO sales_data (sale_id, fruit_id, sale_date, sold_quantity) VALUES (3, 3, TIMESTAMP '2023-01-12 12:00:00', 5);
+SELECT concat_ws(', ', fd.name, (sd.sale_date + INTERVAL sd.sold_quantity DAY)::VARCHAR) AS sale_info FROM fruit_data fd JOIN sales_data sd ON fd.id = sd.fruit_id WHERE sd.sold_quantity IS NOT NULL;
+SELECT fd.name, COUNT(sd.sale_id) AS total_sales FROM fruit_data fd LEFT JOIN sales_data sd ON fd.id = sd.fruit_id GROUP BY fd.name HAVING COUNT(sd.sale_id) > 0;
+WITH temp AS (SELECT id, CONCAT_WS(' : ', name, (harvest_date + INTERVAL 1 DAY)::VARCHAR) AS detail FROM fruit_data) SELECT detail FROM temp WHERE id NOT IN (SELECT fruit_id FROM sales_data WHERE sold_quantity IS NULL);

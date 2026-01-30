@@ -1,0 +1,25 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/4e8e4857d3",
+  "title": "Crash on query using an OR term in the WHERE clause",
+  "vulnerable_version": "3.27.0",
+  "date": "2019-02-08 03:01:596.51 years ago",
+  "path": "/home/crawl_bugs/sqlite/ticket_output/ticket_info_4e8e4857d3.json",
+  "poc": [
+    "end of the following SQL crashes due to a NULL pointer\ndereference.\nCREATE TABLE t1(aa, bb);",
+    "CREATE INDEX t1x1 on t1(abs(aa), abs(bb));",
+    "INSERT INTO t1 VALUES(-2,-3),(+2,-3),(-2,+3),(+2,+3);",
+    "SELECT * FROM (t1) \n WHERE ((abs(aa)=1 AND 1=2) OR abs(aa)=2)\n   AND abs(bb)=3;"
+  ],
+  "vulnerable_database": "sqlite",
+  "description": "drh added on 2019-02-08 03:01:59:\nThe query at the end of the following SQL crashes due to a NULL pointer\ndereference.\nCREATE TABLE t1(aa, bb);\nCREATE INDEX t1x1 on t1(abs(aa), abs(bb));\nINSERT INTO t1 VALUES(-2,-3),(+2,-3),(-2,+3),(+2,+3);\nSELECT * FROM (t1) \n WHERE ((abs(aa)=1 AND 1=2) OR abs(aa)=2)\n   AND abs(bb)=3;\nThis ticket derives from a separate ticket that was reported against\nSystem.Data.SQLite:\nhttps://system.data.sqlite.org/index.html/info/b0778fcc041fdca4\nBisecting shows that the problem was introduced for SQLite version\n3.20.0 (2017-08-01) by check-in [712267c9c08fdcef] (2017-06-23).\ndrh added on 2019-02-08 04:20:21:\nThe real problem here is in the optimization of check-in [a47efb7c8520a0111]\nthat tries to make use of expression values pulled from columns of an\nexpression index, rather than recomputing the value of the expression.\nWhen processing a multi-index OR clause, the transformations on the expressions\nto convert them from their original expressions into a reference to the index\ncolumn become invalid when processing moves on to the next index of a multi-index\nOR.  The solution is to simply disable that optimization for a multi-index OR.\nThe optimization at [712267c9c08fdcef] that was found by bisect is blameless\nhere, I think.  That optimization merely enabled this particular test case\nto work, and was not the underlying cause of the problem.",
+  "key_bug_features": [
+    "Query using an OR term in the WHERE clause"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t2(id INTEGER PRIMARY KEY, value TEXT, amount REAL CHECK(amount >= 0));",
+    "INSERT INTO t2 VALUES(1, 'test1', 10.5), (2, 'test2', NULL), (3, 'test3', -5.0);",
+    "CREATE INDEX t2x1 ON t2(value, amount);",
+    "SELECT * FROM t2 WHERE (value IS NULL OR amount > 0) AND (value = 'test1' OR id = 2);",
+    "SELECT * FROM t2 WHERE (amount IS NOT NULL OR value = 'test3') AND (id < 3 OR value LIKE 'test%');"
+  ]
+}

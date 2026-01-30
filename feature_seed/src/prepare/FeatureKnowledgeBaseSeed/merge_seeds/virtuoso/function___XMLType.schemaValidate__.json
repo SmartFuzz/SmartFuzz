@@ -1,0 +1,17 @@
+CREATE TABLE test_xml (id INT PRIMARY KEY, xml_data XMLType);
+INSERT INTO test_xml (id, xml_data) VALUES (1, XMLType('<validElement />', 'file://xmlschema/test0001/clean.xsd'));
+INSERT INTO test_xml (id, xml_data) VALUES (2, XMLType('<invalidElement />', 'file://xmlschema/test0001/clean.xsd'));
+SELECT xml_data.schemaValidate() FROM test_xml WHERE id = 1;
+SELECT xml_data.schemaValidate() FROM test_xml WHERE id = 2;
+SELECT xml_data.schemaValidate() FROM (SELECT xml_data FROM test_xml WHERE id = 1) AS valid_xml;
+SELECT (SELECT xml_data FROM test_xml WHERE id = 1).schemaValidate();
+SELECT xml_data FROM test_xml WHERE EXISTS (SELECT * FROM test_xml WHERE id = 2 AND xml_data.schemaValidate() IS NOT NULL);
+SELECT xml_data.schemaValidate() FROM (SELECT XMLType('<anotherInvalidElement />', 'file://xmlschema/test0001/clean.xsd') AS xml_data) AS subquery WHERE xml_data IS NOT NULL;
+CREATE TABLE another_test_xml (id INT PRIMARY KEY, xml_schema XMLType);
+INSERT INTO another_test_xml (id, xml_schema) VALUES (3, XMLType('<nested><validElement /></nested>', 'file://xmlschema/test0001/clean.xsd'));
+SELECT xml_schema.schemaValidate() FROM another_test_xml WHERE id = 3;
+INSERT INTO another_test_xml (id, xml_schema) VALUES (4, XMLType('<nested><invalidElement /></nested>', 'file://xmlschema/test0001/clean.xsd'));
+SELECT xml_schema.schemaValidate() FROM another_test_xml WHERE id = 4;
+SELECT CASE WHEN xml_schema.schemaValidate() IS NULL THEN 'Valid' ELSE 'Invalid' END AS validation_result FROM another_test_xml WHERE id = 3;
+SELECT xml_schema.schemaValidate() FROM (SELECT XMLType('<someOtherValidElement />', 'file://xmlschema/test0001/clean.xsd') AS xml_schema) AS nested_query;
+SELECT (SELECT xml_schema FROM another_test_xml WHERE id = 3).schemaValidate() AS validation_result;

@@ -1,0 +1,16 @@
+CREATE TABLE users (username VARCHAR(50), status VARCHAR(10), details JSON);
+INSERT INTO users (username, status, details) VALUES ('user1', 'active', '{"session": "12345", "permissions": ["read", "write"]}');
+INSERT INTO users (username, status, details) VALUES ('user2', 'disconnected', '{"session": "67890", "permissions": ["read"]}');
+INSERT INTO users (username, status, details) VALUES ('db_test', 'active', '{"session": "13579", "permissions": ["execute"]}');
+SELECT COUNT(*) FROM users WHERE json_array_length(details -> 'permissions') > 1;
+SELECT username FROM users WHERE status IS NOT NULL AND LENGTH(username) > 4;
+SELECT username FROM users WHERE status = 'active' AND json_array_length(details -> 'permissions') = 1;
+SELECT username FROM users WHERE (CASE WHEN status = 'active' THEN disconnect_user(username) ELSE NULL END) IS NULL;
+SELECT username, disconnect_user(username) FROM users WHERE username LIKE 'user%' AND json_array_length(details -> 'permissions') = 2;
+SELECT username FROM users WHERE username IN (SELECT username FROM users WHERE LENGTH(status) < 10) AND disconnect_user(username) = 0;
+SELECT username, COUNT(*) OVER (PARTITION BY status) FROM users GROUP BY username, status HAVING COUNT(*) > 1;
+CREATE TEMPORARY TABLE temp_users AS SELECT * FROM users WHERE status = 'active';
+INSERT INTO temp_users SELECT username, status FROM users WHERE json_array_length(details -> 'permissions') = 0 AND status IS NOT NULL;
+SELECT disconnect_user(username) FROM (SELECT username FROM temp_users WHERE status = 'active' ORDER BY username DESC) AS derived_table WHERE json_array_length(details -> 'permissions') < 3;
+SELECT 'Disconnected users count: ' || disconnect_user(username) FROM temp_users WHERE json_array_length(details) IS NOT NULL;
+DELETE FROM users WHERE json_array_length(details -> 'permissions') = 0;

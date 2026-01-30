@@ -1,0 +1,11 @@
+CREATE TABLE test_packages (id INT PRIMARY KEY, name VARCHAR(255), version VARCHAR(50), installed BOOLEAN);
+INSERT INTO test_packages (id, name, version, installed) VALUES (1, 'Virtuoso', '7.2.1', TRUE), (2, 'package_A', '1.5', TRUE), (3, 'package_B', NULL, FALSE);
+SELECT id, name, bif:eval(VAD_CHECK_INSTALLABILITY(name, version)) AS install_check FROM test_packages WHERE installed IS NULL OR installed = FALSE;
+SELECT name, AVG(CASE WHEN version IS NULL THEN 0 ELSE CAST(version AS DECIMAL(10,2)) END) AS avg_version FROM test_packages GROUP BY name HAVING avg_version > 1.0;
+CREATE TABLE log (log_id INT PRIMARY KEY, package_id INT, log_message VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (package_id) REFERENCES test_packages(id));
+INSERT INTO log (log_id, package_id, log_message) VALUES (1, 1, 'Installation check successful'), (2, 2, 'Installation check failed due to missing version'), (3, 3, 'Package not installed');
+SELECT l.log_id, p.name, l.log_message, bif:eval(VAD_CHECK_INSTALLABILITY(p.name, p.version)) AS check_result FROM log l JOIN test_packages p ON l.package_id = p.id WHERE l.created_at >= NOW() - INTERVAL '1 DAY';
+SELECT CASE WHEN SUM(CAST(installed AS INT)) > 0 THEN 'Some packages installed' ELSE 'No packages installed' END AS installation_status FROM test_packages;
+CREATE TABLE temp_server_status (status_id INT PRIMARY KEY, package_id INT, status VARCHAR(50) CHECK (status IN ('UP', 'DOWN')), FOREIGN KEY (package_id) REFERENCES test_packages(id));
+INSERT INTO temp_server_status (status_id, package_id, status) VALUES (1, 1, 'UP'), (2, 2, 'DOWN');
+SELECT s.status_id, p.name, CASE WHEN s.status = 'UP' THEN 'Active' ELSE 'Inactive' END AS server_status FROM temp_server_status s JOIN test_packages p ON s.package_id = p.id WHERE s.status IS NOT NULL;

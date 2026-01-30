@@ -1,0 +1,25 @@
+{
+    "function": "backup\n, \n        backup_close\n, \n        backup_flush\n, \n        backup_prepare\n, \n        backup_row",
+    "operator": "!=",
+    "sql_array": [
+        "CREATE TABLE test_backup (id INTEGER PRIMARY KEY, data TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO test_backup (data) VALUES ('Test data 1'), ('Test data 2'), ('NULL data'), (NULL), ('Another test');",
+        "BEGIN; INTERSECT SELECT id, data FROM test_backup WHERE data != 'NULL data' AND created_at != '2023-01-01 00:00:00';",
+        "SELECT backup('/dev/null') WHERE (SELECT COUNT(*) FROM test_backup) != 0;",
+        "SELECT backup_prepare(); SELECT * FROM test_backup WHERE (data != 'Test data 2');",
+        "SELECT backup_row((SELECT _ROW FROM test_backup WHERE data = 'Test data 1'));",
+        "SELECT backup_flush();",
+        "SELECT backup_row((SELECT _ROW FROM test_backup WHERE created_at IS NOT NULL));",
+        "SELECT backup_close();",
+        "SELECT backup('/dev/null') WHERE NOT EXISTS (SELECT * FROM test_backup WHERE id != 1);",
+        "SELECT backup_prepare(); SELECT COUNT(*) FROM test_backup WHERE data != 'Test data 1' GROUP BY data HAVING COUNT(data) != 2;",
+        "SELECT backup_flush(); SELECT * FROM (SELECT id, data FROM test_backup) AS tbl WHERE data != 'NULL data';",
+        "SELECT backup('/dev/null') FROM test_backup WHERE (SELECT COUNT(*) FROM test_backup WHERE data IS NULL) != 0;",
+        "CREATE TABLE another_backup (id INTEGER PRIMARY KEY, info VARCHAR(255) NOT NULL, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO another_backup (info) VALUES ('Sample info 1'), ('Sample info 2 with a long text that could lead to edge cases of storage.');",
+        "SELECT backup_prepare(); SELECT COUNT(*) FROM another_backup WHERE info != 'Sample info 1';",
+        "SELECT backup_row((SELECT _ROW FROM another_backup WHERE info LIKE '%long%')) WHERE (SELECT COUNT(*) FROM another_backup) != 0;",
+        "SELECT backup_flush(); SELECT backup('/dev/null') WHERE EXISTS (SELECT * FROM another_backup WHERE updated_at IS NOT NULL AND info IS NOT NULL);",
+        "SELECT backup_close();"
+    ]
+}

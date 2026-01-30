@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=108326",
+  "title": "confusing result about json value",
+  "description": "if create a json value with a binary string, it will be different between columns and constant\nHow to repeat:\ncreate table test (a json);\r\ninsert into test select json_objectagg('a', b'01010101');\r\n\r\nselect json_type(json_extract(a, '$.a')) from test; -- STRING\r\nselect json_type(json_extract(json_object('a', b'01010101'), '$.a')); --BLOB\r\n\r\nthe value is the same but one comes from a table, the type of it is \"string\", another is BLOB, and it causes:\r\n\r\nmysql> select * from test where  json_extract(a, '$.a') = \"base64:type15:VQ==\";\r\n+-----------------------------+\r\n| a                           |\r\n+-----------------------------+\r\n| {\"a\": \"base64:type15:VQ==\"} |\r\n+-----------------------------+\r\n1 row in set (0.00 sec)\n\nwell, if we use the constant value, we get:\r\n\r\nmysql> select json_extract(json_object('a', b'01010101'), '$.a') = \"base64:type15:VQ==\";\r\n+---------------------------------------------------------------------------+\r\n| json_extract(json_object('a', b'01010101'), '$.a') = \"base64:type15:VQ==\" |\r\n+---------------------------------------------------------------------------+\r\n|                                                                         0 |\r\n+---------------------------------------------------------------------------+\r\n1 row in set (0.00 sec)\n\nI do not think a value should be affected by where it comes from",
+  "date": "2022-08-30 02:56:00",
+  "vulnerable_version": "8.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_json (id INT PRIMARY KEY AUTO_INCREMENT, a JSON, b VARCHAR(255) NOT NULL);",
+    "INSERT INTO test_json (a, b) VALUES (json_object('key1', CAST('01010101' AS BINARY)), 'test_value');",
+    "SELECT json_type(json_extract(a, '$.key1')) FROM test_json WHERE b = 'test_value';",
+    "SELECT json_extract(json_object('key1', CAST('01010101' AS BINARY)), '$.key1') AS extracted_value, extracted_value = 'base64:type15:VQ==' FROM (SELECT json_extract(a, '$.key1') AS extracted_value FROM test_json) AS subquery;",
+    "SELECT * FROM test_json WHERE json_extract(a, '$.key1') IS NULL;"
+  ],
+  "key_bug_features": [
+    "json value type differs between columns and constants"
+  ]
+}

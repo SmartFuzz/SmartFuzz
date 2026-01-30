@@ -1,0 +1,16 @@
+{
+    "function": "ST_M",
+    "operator": "XPath Operator: xpath_split",
+    "sql_array": [
+        "CREATE TABLE geo_data (id SERIAL PRIMARY KEY, point GEOMETRY, xml_data XML);",
+        "INSERT INTO geo_data (point, xml_data) VALUES (ST_Point(10, 20, 30, 40), '<data><value>245.3</value><value>invalid</value></data>');",
+        "INSERT INTO geo_data (point, xml_data) VALUES (ST_Point(15, 25, 35, NULL), '<data><value>NULL</value><value>100.5</value></data>');",
+        "SELECT id, ST_M(point) AS mileage FROM geo_data WHERE ST_M(point) > 0 AND id IN (SELECT id FROM geo_data WHERE xpath_split(xml_data, '/data/value')::TEXT[] @> ARRAY[NULL]);",
+        "SELECT id, ST_M(point) AS mileage, xpath_split(xml_data, '/data/value') FROM geo_data GROUP BY id, ST_M(point) HAVING AVG(ST_M(point)) IS NOT NULL;",
+        "SELECT AVG(ST_M(point)) OVER (PARTITION BY id), ST_M(point) FROM geo_data WHERE xpath_split(xml_data, '/data/value')::TEXT[] @> ARRAY['245.3'] ORDER BY ST_M(point) DESC;",
+        "SELECT id, ST_M(point) FROM geo_data WHERE regexp_matches(ST_M(point)::TEXT, '^[0-9]*\\.[0-9]{1,2}$') IS NOT NULL;",
+        "SELECT ST_M(point), (SELECT avg(ST_M(point)) FROM geo_data) FROM geo_data WHERE ST_M(point) < (SELECT max(ST_M(point)) FROM geo_data ORDER BY ST_M(point) ASC) AND xml_data IS NOT NULL;",
+        "CREATE TABLE temp_data AS SELECT ST_M(point) AS mileage, xpath_split(xml_data, '/data/value') FROM geo_data WHERE id IS NOT NULL;",
+        "DROP TABLE IF EXISTS temp_data;"
+    ]
+}

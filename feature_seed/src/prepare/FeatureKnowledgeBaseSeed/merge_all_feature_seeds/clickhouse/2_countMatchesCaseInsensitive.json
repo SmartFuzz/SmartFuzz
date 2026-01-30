@@ -1,0 +1,12 @@
+CREATE TABLE test_table (id UInt64, name Nullable(String), description String, created_at DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, 'Example', 'This is a test description'), (2, NULL, 'Another test description'), (3, 'Another Example', 'Example description');
+SELECT countMatchesCaseInsensitive(name, 'example') AS match_count, id FROM test_table WHERE description IS NOT NULL GROUP BY id HAVING match_count > 0;
+SELECT id, countMatchesCaseInsensitive(description, 'test') AS matches FROM test_table WHERE name IS NULL OR name = '' GROUP BY id HAVING matches > 0;
+SELECT countMatchesCaseInsensitive((SELECT description FROM test_table WHERE id = t.id AND name IS NOT NULL), 'Test') AS match_count FROM test_table t;
+SELECT t1.id, countMatchesCaseInsensitive(t1.description, 'example') FROM (SELECT * FROM test_table WHERE name IS NULL) AS t1 GROUP BY t1.id HAVING countMatchesCaseInsensitive(t1.description, 'example') > 0;
+SELECT countMatchesCaseInsensitive(name, 'test') FROM (SELECT id, name IS NULL AS is_name_null FROM test_table) GROUP BY is_name_null HAVING is_name_null = 1;
+SELECT countMatchesCaseInsensitive(name, 'example') FROM test_table WHERE created_at = (SELECT MAX(created_at) FROM test_table) AND name IS NOT NULL GROUP BY id HAVING countMatchesCaseInsensitive(name, 'example') > 0;
+SELECT COUNT(*) AS total FROM (SELECT id, countMatchesCaseInsensitive(name, 'exemplar') AS match_count FROM test_table WHERE name IS NOT NULL GROUP BY id HAVING match_count > 0) AS filtered;
+CREATE TABLE test_table_nulls AS test_table WITH NO DATA;
+INSERT INTO test_table_nulls SELECT * FROM test_table WHERE name IS NULL;
+SELECT countMatchesCaseInsensitive(name, 'test') + if(name IS NULL, 1, 0) AS adjusted_count FROM test_table_nulls;

@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id INT PRIMARY KEY, xml_data XML, created_at TIMESTAMP DEFAULT NOW(), num_value DECIMAL(10, 5) NOT NULL);
+INSERT INTO test_data (id, xml_data, num_value) VALUES (1, '<root><value>Hello World</value></root>', 123.45678);
+INSERT INTO test_data (id, xml_data, num_value) VALUES (2, '<root><value>Nice to meet you!</value></root>', 0.00001);
+INSERT INTO test_data (id, xml_data, num_value) VALUES (3, '<root><value></value></root>', NULL);
+SELECT id, xpath_split(xml_data, '<value>') AS split_values, ROUND(num_value, 2) AS rounded_value, msec_time() AS current_time FROM test_data WHERE num_value IS NOT NULL ORDER BY current_time DESC;
+CREATE TEMPORARY TABLE temp_view AS SELECT id, msec_time() AS fetch_time, xml_data FROM test_data WHERE created_at > NOW() - INTERVAL '1 DAY';
+SELECT id, xpath_split(xml_data, '<value>') AS split_values FROM (SELECT id, xml_data FROM temp_view WHERE fetch_time < msec_time()) AS subquery;
+SELECT AVG(num_value) AS average_value, COUNT(*) AS total_records FROM test_data GROUP BY msec_time() % 2 HAVING average_value > 100;
+UPDATE test_data SET num_value = NULL WHERE id = 2 AND num_value IS NOT NULL;
+SELECT id, COALESCE(CAST(xpath_split(xml_data, '<value>') AS VARCHAR), 'No Value') AS final_value, msec_time() AS execution_time FROM test_data WHERE xml_data IS NOT NULL;

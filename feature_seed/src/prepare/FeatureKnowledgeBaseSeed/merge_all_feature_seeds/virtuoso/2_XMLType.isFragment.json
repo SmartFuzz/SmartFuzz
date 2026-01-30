@@ -1,0 +1,11 @@
+CREATE TABLE users (id INT PRIMARY KEY, name VARCHAR(255), created_at TIMESTAMP NULL);
+INSERT INTO users VALUES (1, 'Alice', NULL), (2, 'Bob', '2023-01-01 10:00:00'), (3, 'Charlie', NULL);
+CREATE TABLE user_data (user_id INT REFERENCES users(id), user_info XML);
+INSERT INTO user_data VALUES (1, '<data><item>item1</item><item>item2</item></data>'), (2, '<data><item>item3</item><item>item4</item><item>item5</item></data>');
+SELECT u.name, XMLType(xml_tree_doc('<root><data><user_id>' || u.id || '</user_id></data></root>')).isFragment() FROM users u WHERE u.created_at IS NULL;
+SELECT u.name, XMLType(XMLAGG(XMLELEMENT ('data', user_info))).isFragment() FROM user_data ud JOIN users u ON ud.user_id = u.id GROUP BY u.name HAVING COUNT(ud.user_id) > 1;
+SELECT u.name, XMLType(XMLAGG(XMLELEMENT ('data', user_info))).isFragment(), COUNT(*) OVER (PARTITION BY u.name) AS user_count FROM user_data ud JOIN users u ON ud.user_id = u.id GROUP BY u.id;
+SELECT DISTINCT u.id, XMLType(xml_tree_doc('<root><a>' || CAST(u.id AS VARCHAR) || '</a></root>')).isFragment() FROM users u WHERE u.created_at IS NOT NULL UNION SELECT u.id, 0 FROM users u WHERE u.name = '';
+SELEXT XMLType(XMLAGG(XMLELEMENT ('data', user_info))).isFragment() FROM ( SELECT ud.user_info FROM user_data ud JOIN users u ON ud.user_id = u.id WHERE u.created_at IS NULL ) AS subquery;
+CREATE TABLE temp_data AS SELECT u.id, XMLType(xml_tree_doc('<root><user><id>' || u.id || '</id></user></root>')) AS xml_output FROM users u;
+SELECT * FROM temp_data WHERE xml_output.isFragment() = 1;

@@ -1,0 +1,15 @@
+{
+    "function": "cfg_item_count",
+    "operator": "JSON Operator: json_get",
+    "sql_array": [
+        "CREATE TABLE config_section (id SERIAL PRIMARY KEY, name VARCHAR(255), json_col JSON);",
+        "INSERT INTO config_section (name, json_col) VALUES ('Parameters', '{\"key\":\"value1\",\"another_key\":\"value2\"}');",
+        "SELECT cfg_item_count(virtuoso_ini_path(), json_get(json_col, 'key')) FROM config_section WHERE id = 1;",
+        "SELECT json_get(json_col, 'key'), COUNT(*) OVER () AS total_items FROM config_section WHERE name LIKE 'Param%' GROUP BY json_get(json_col, 'key');",
+        "SELECT cfg_item_count(virtuoso_ini_path(), 'Parameters') + COALESCE(NULLIF(json_get(json_col, 'missing_key'), ''), '0')::INTEGER FROM config_section GROUP BY json_col HAVING COUNT(*) > 0;",
+        "SELECT * FROM (SELECT json_get(json_col, 'key') AS json_key, cfg_item_count(virtuoso_ini_path(), name) AS item_count FROM config_section) AS sub WHERE item_count <= 10;",
+        "CREATE TEMPORARY TABLE temp_config AS SELECT json_get(json_col, 'another_key') AS another_value, cfg_item_count(virtuoso_ini_path(), json_get(json_col, 'key')) AS key_count FROM config_section;",
+        "SELECT CASE WHEN key_count IS NULL THEN 0 ELSE key_count END AS safe_count FROM temp_config WHERE another_value IS NOT NULL;",
+        "DROP TABLE IF EXISTS temp_config;"
+    ]
+}

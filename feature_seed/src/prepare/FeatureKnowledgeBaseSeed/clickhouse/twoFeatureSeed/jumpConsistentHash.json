@@ -1,0 +1,16 @@
+{
+    "function": "jumpConsistentHash",
+    "operator": "a ILIKE s",
+    "sql_array": [
+        "CREATE TABLE test_hash_operators (key UInt64, bucket_count UInt32, str_value String);",
+        "INSERT INTO test_hash_operators VALUES (1, 10, 'example'), (2, 20, 'TestString'), (3, 30, NULL), (18446744073709551615, 12, 'another example');",
+        "SELECT jumpConsistentHash((SELECT key FROM test_hash_operators WHERE str_value ILIKE '%Example%'), bucket_count) AS hash_value FROM test_hash_operators;",
+        "SELECT key, jumpConsistentHash(key, bucket_count) AS hash_value FROM test_hash_operators WHERE str_value ILIKE '%' || CAST(NULL AS String) || '%';",
+        "SELECT key, bucket_count, jumpConsistentHash(key, bucket_count) AS hash_value FROM test_hash_operators WHERE key ILIKE '1' AND key IN (SELECT key FROM test_hash_operators WHERE bucket_count > 5);",
+        "SELECT DISTINCT bucket_count, jumpConsistentHash(key, bucket_count) AS hash_value FROM test_hash_operators GROUP BY bucket_count HAVING jumpConsistentHash(key, bucket_count) ILIKE '1%';",
+        "SELECT key, COUNT(*) OVER (PARTITION BY jumpConsistentHash(key, bucket_count)) AS hash_count FROM test_hash_operators WHERE bucket_count IS NOT NULL;",
+        "SELECT jumpConsistentHash(key, bucket_count) AS hash_value FROM test_hash_operators WHERE ILIKE(str_value, 'test') AND (bucket_count > 0 OR str_value IS NULL);",
+        "SELECT key, jumpConsistentHash(key, bucket_count) AS hash_value FROM (SELECT key, bucket_count FROM test_hash_operators WHERE str_value ILIKE '%' || 'example' || '%') AS subquery WHERE key > (SELECT COUNT(*) FROM test_hash_operators);",
+        "CREATE TABLE temp_hash_test AS SELECT jumpConsistentHash(key, bucket_count) AS hash_value FROM test_hash_operators WHERE str_value IS NOT NULL;"
+    ]
+}

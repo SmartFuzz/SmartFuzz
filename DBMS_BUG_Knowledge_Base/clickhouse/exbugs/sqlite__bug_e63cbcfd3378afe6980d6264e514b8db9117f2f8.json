@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/e63cbcfd33",
+  "title": "Database table/index contents mismatch (corruption) caused by FK processing",
+  "description": "dan added on 2019-05-07 19:09:47:\nThe following script ends up with the table b-tree for table \"parent\" containing the integer value 123, and the index b-tree for the PRIMARY KEY of \"parent\" containing text value \"123\". A corrupt database.\nPRAGMA foreign_keys = true;\nCREATE TABLE parent(\n  p TEXT PRIMARY KEY\n);\nCREATE TABLE child(\n  c INTEGER UNIQUE,\n  FOREIGN KEY(c) REFERENCES parent(p) DEFERRABLE INITIALLY DEFERRED\n);\n\nBEGIN;\n  INSERT INTO child VALUES(123);\n  INSERT INTO parent VALUES('123');\nCOMMIT;\nPRAGMA integrity_check;\nThe problem is that right before inserting the record into the table b-tree for \"parent\", the equivalent of \"SELECT count(*) FROM child WHERE c='123'\" is run to check for foreign key constraint violation resolutions. When integer affinity is applied to the '123', it is also applied to the value that will be inserted into table \"parent\".\ndan added on 2019-05-07 19:13:02:\nThis is a long-standing bug. Has been present since before 3.8.0 (2013).",
+  "date": "2019-05-07 19:09:476.26 years ago",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE parent(p String PRIMARY KEY, p2 Int32);",
+    "CREATE TABLE child(c Int32 UNIQUE, c2 String) ENGINE = MergeTree() ORDER BY c;",
+    "INSERT INTO child VALUES(123, 'child_text');",
+    "INSERT INTO parent VALUES('123', 1), ('456', 2);",
+    "SELECT count(*) FROM child WHERE c = 123;"
+  ],
+  "key_bug_features": [
+    "Foreign key constraint check with integer affinity mismatch"
+  ]
+}

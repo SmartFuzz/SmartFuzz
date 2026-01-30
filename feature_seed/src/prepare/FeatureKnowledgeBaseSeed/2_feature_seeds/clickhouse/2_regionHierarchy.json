@@ -1,0 +1,12 @@
+CREATE TABLE regions (id UInt32, name String, parent_id UInt32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO regions VALUES (1, 'Region A', NULL), (2, 'Region B', 1), (3, 'Region C', 2), (4, 'Region D', 3), (5, 'Region E', 4);
+SELECT regionHierarchy(id) AS hierarchy, arrayMap(x -> toString(x) || ' (' || COALESCE(name, 'Unknown') || ')', hierarchy) AS names FROM regions WHERE id IN (SELECT DISTINCT parent_id FROM regions WHERE parent_id IS NOT NULL);
+SELECT id, regionHierarchy(id) AS hierarchy, arrayJoin(hierarchy) AS parent_id FROM regions GROUP BY id, hierarchy HAVING length(hierarchy) > 1;
+SELECT id, regionHierarchy(COALESCE(id, 0)) AS hierarchy FROM regions WHERE id = (SELECT DISTINCT parent_id FROM regions WHERE parent_id IS NOT NULL LIMIT 1) + INTERVAL 1 DAY;
+SELECT r.id, r.name, r.parent_id, now() + INTERVAL (SELECT COUNT(*) FROM regions) DAY AS future_date FROM regions r JOIN regions p ON r.parent_id = p.id WHERE p.name IS NOT NULL;
+SELECT now() AS current_time, arrayMap(r -> r + INTERVAL 1 DAY, regionHierarchy(id)) AS future_hierarchies FROM regions GROUP BY id HAVING id = (SELECT MIN(id) FROM regions) OR parent_id IS NULL;
+CREATE TABLE temp_dates (date_field DateTime) ENGINE = MergeTree() ORDER BY date_field;
+INSERT INTO temp_dates VALUES (now()), (toDateTime('2024-01-01')), (toDateTime('2024-12-31')), (toDateTime('2024-06-30 12:00:00'));
+SELECT date_field, date_field + toIntervalDay(5) AS plus_five_days FROM temp_dates WHERE date_field < now() + INTERVAL (SELECT COUNT(*) FROM temp_dates) DAY;
+SELECT regionHierarchy(asUInt32('{NULL}')) AS hierarchy FROM system.numbers LIMIT 1;
+SELECT id, regionHierarchy(id), ARRAY_AGG(name) AS names FROM regions GROUP BY id HAVING COUNT(id) > 1 AND arrayMap(x -> x % 2, regionHierarchy(id)) = [0, 0];

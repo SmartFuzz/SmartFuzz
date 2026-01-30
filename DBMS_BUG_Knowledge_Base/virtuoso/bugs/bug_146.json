@@ -1,0 +1,33 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/146",
+  "title": "Problem with getting DATATYPE xsd:string back",
+  "vulnerable_database": "Virtuoso",
+  "date": "2014-03-05 10:41:18",
+  "vulnerable_version": "",
+  "description": "Tested on 7.1, same problem exists on 6.1.8, (and 6.1.7 IIRC), but not 6.1.6\nTest data:\nPREFIX vocab: <http://example.com/vocab#>\n\nWITH <http://test.graph/>\nINSERT {\n  <http://example.com/Book/1> a vocab:Book;\n                              vocab:title \"Book 1\" .\n}\n\nQuery:\nPREFIX vocab: <http://example.com/vocab#>\n\nSELECT DISTINCT ?me ?var3 DATATYPE(?var3) AS ?var4\nWHERE {\n  GRAPH <http://test.graph/> {\n    ?me vocab:title ?var3\n  }\n}\n\nasking for HTML: works\nasking for XML:\nVirtuoso 22023 Error SR544: Function __xsd_type() can not find XML Schema datatype that matches SQL datatype UNAME (217)",
+  "poc": [
+    "PREFIX vocab: <http://example.com/vocab#>\n\nWITH <http://test.graph/>\nINSERT {\n  <http://example.com/Book/1> a vocab:Book;\n                              vocab:title \"Book 1\" .\n}",
+    "PREFIX vocab: <http://example.com/vocab#>\n\nSELECT DISTINCT ?me ?var3 DATATYPE(?var3) AS ?var4\nWHERE {\n  GRAPH <http://test.graph/> {\n    ?me vocab:title ?var3\n  }\n}"
+  ],
+  "key_bug_features": [
+    "DATATYPE function fails for XML output"
+  ],
+  "bug_feature_seed": [
+    "SPARQL PREFIX vocab: <http://example.com/vocab#> INSERT DATA { GRAPH <http://test.graph/> { <http://example.com/Book/1> a vocab:Book ; vocab:title \"Book 1\" . } };",
+    "SPARQL PREFIX vocab: <http://example.com/vocab#> SELECT ?me ?title FROM <http://test.graph/> WHERE { ?me vocab:title ?title };",
+    "SPARQL PREFIX vocab: <http://example.com/vocab#> SELECT ?me ?title (DATATYPE(?title) AS ?dt) FROM <http://test.graph/> WHERE { ?me vocab:title ?title };",
+    "SPARQL PREFIX vocab: <http://example.com/vocab#> SELECT (STR(?title) AS ?s) (DATATYPE(?title) AS ?dt) FROM <http://test.graph/> WHERE { ?me vocab:title ?title };",
+    "SPARQL PREFIX vocab: <http://example.com/vocab#> INSERT DATA { GRAPH <http://test.graph/> { <http://example.com/Book/2> vocab:title \"Book 2\"^^<http://www.w3.org/2001/XMLSchema#string> . } };",
+    "SPARQL PREFIX vocab: <http://example.com/vocab#> SELECT ?me ?title (DATATYPE(?title) AS ?dt) FROM <http://test.graph/> WHERE { ?me vocab:title ?title };",
+    "SPARQL PREFIX vocab: <http://example.com/vocab#> INSERT DATA { GRAPH <http://test.graph/> { <http://example.com/Book/3> vocab:title \"Book 3\"@en . } };",
+    "SPARQL PREFIX vocab: <http://example.com/vocab#> SELECT ?me ?title (LANG(?title) AS ?lang) (DATATYPE(?title) AS ?dt) FROM <http://test.graph/> WHERE { ?me vocab:title ?title };",
+    "SPARQL PREFIX vocab: <http://example.com/vocab#> SELECT ?me ?title (BOUND(DATATYPE(?title)) AS ?b) FROM <http://test.graph/> WHERE { ?me vocab:title ?title };"
+  ],
+  "bug_features_seed": [
+    "CREATE GRAPH <http://test.graph/>;",
+    "CREATE TABLE vocab:Book (id INT PRIMARY KEY, title VARCHAR(255) NOT NULL);",
+    "INSERT INTO vocab:Book (id, title) VALUES (1, 'Book 1');",
+    "SELECT DISTINCT ?me ?var3 DATATYPE(?var3) AS ?var4 FROM vocab:Book WHERE ?me = 1;",
+    "SELECT DISTINCT ?me ?var3 DATATYPE(?var3) AS ?var4 WHERE ?var3 IS NULL;"
+  ]
+}

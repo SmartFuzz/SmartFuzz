@@ -1,0 +1,13 @@
+{
+    "function": "distinctDynamicTypes",
+    "operator": "[x1, ...]",
+    "sql_array": [
+        "DROP TABLE IF EXISTS test_complex; CREATE TABLE test_complex(x UInt32, y Dynamic) ENGINE = Memory; INSERT INTO test_complex VALUES (1, [1, 2, 3]), (2, NULL), (3, ('Hello')), (4, [4.5, 'test']), (5, [100, 200]), (6, ('2020-01-01')), (7, ([1.1, 2.2])), (8, (map(1, 2))), (9, (map('a', 'b')));",
+        "SELECT distinctDynamicTypes(y) FROM (SELECT DISTINCT y FROM test_complex) AS distinct_y WHERE x > 5;",
+        "SELECT DISTINCT x, distinctDynamicTypes(y) as types FROM (SELECT x, y FROM test_complex WHERE x % 2 = 0) GROUP BY x, y HAVING NOT y IS NULL;",
+        "SELECT x, (SELECT distinctDynamicTypes(y) FROM test_complex WHERE y IS NOT NULL AND x BETWEEN 1 AND 8) as dynamic_types FROM test_complex ORDER BY x;",
+        "CREATE TABLE IF NOT EXISTS test_nested (a Int32, b Dynamic) ENGINE = Memory; INSERT INTO test_nested VALUES (1, [NULL]), (2, ([1, 2, 3])), (3, ('Some string')), (4, (map('key', 'value'))), (5, (map(42, 13))), (6, (NULL));",
+        "SELECT x, distinctDynamicTypes(arrayConcat(y, ['extra'])) FROM test_complex GROUP BY x, y HAVING x > (SELECT MAX(a) FROM test_nested WHERE b IS NOT NULL) ORDER BY x;",
+        "SELECT x, distinctDynamicTypes(y) FROM test_complex WHERE y IN (SELECT distinctDynamicTypes(b) FROM test_nested WHERE a < 5) GROUP BY x, y;"
+    ]
+}

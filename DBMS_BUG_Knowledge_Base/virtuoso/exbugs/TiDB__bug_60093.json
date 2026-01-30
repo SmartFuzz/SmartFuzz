@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/60093",
+  "title": "Join Involving View and ATAN2 function produce wrong result",
+  "description": "## Bug Report\n\n### 1. Minimal reproduce step (Required)\n\n```\nCREATE TABLE t0(c0 int);\n\nCREATE TABLE t1(c0 DECIMAL);\n\nINSERT INTO t1(c0) VALUES (1687);\nINSERT  INTO t0(c0) VALUES (0);\n\n\nCREATE VIEW v0(c0) AS SELECT CAST(((t1.c0)DIV(t1.c0)) AS DECIMAL) FROM t1;\n\n\nSELECT * FROM v0 INNER JOIN t0 ON ( (v0.c0 LIKE CAST(v0.c0 AS CHAR) ) <= (((t0.c0))) AND ((NOT (ATAN2(t0.c0, v0.c0)))) );\n\n```\n\n### 2. What did you expect to see? (Required)\n\n```\nEmpty result\n```\n\n### 3. What did you see instead (Required)\n```\n1.000000000000000000000000000000 , 0\n```\nMore importantly, if I just create a identical table instead of using view:\n```\nCREATE TABLE t0(c0 int);\nINSERT  INTO t0(c0) VALUES (0);\n\nCREATE TABLE v0(c0 DECIMAL);\nINSERT INTO v0(c0) VALUES (1.00000);\n\nSELECT * FROM v0 INNER JOIN t0 ON ( (v0.c0 LIKE CAST(v0.c0 AS CHAR) ) <= (((t0.c0))) AND ((NOT (ATAN2(t0.c0, v0.c0)))) );\n\n```\nIt will produce correct result which is same as that of mysql.\n\n### 4. What is your TiDB version? (Required)\n\n```\n Release Version: v9.0.0-beta.1.pre-389-g21f9bb7b7a\nEdition: Community\nGit Commit Hash: 21f9bb7b7a7478d825c4dee4fbf2ce913e3e7cf1\nGit Branch: HEAD\nUTC Build Time: 2025-03-11 09:37:34\nGoVersion: go1.23.7\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv |\n```\n\n",
+  "date": "2025-03-14T11:30:37Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2(c0 INT, c1 DECIMAL(10, 2) NOT NULL DEFAULT 0.00);",
+    "INSERT INTO t2(c0, c1) VALUES (1, 2.50);",
+    "CREATE VIEW v1 AS SELECT c0, ATAN(c0 / NULLIF(c1, 0)) AS angle FROM t2 WHERE c0 > 0;",
+    "SELECT * FROM v1 INNER JOIN t0 ON (v1.angle IS NOT NULL AND v1.c0 = t0.c0);",
+    "CREATE TABLE t3(c0 FLOAT, c1 VARCHAR(20));"
+  ],
+  "key_bug_features": [
+    "Join involving view and ATAN2 function"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+    "function": "arrayShiftLeft",
+    "operator": "a GLOBAL NOT IN ...",
+    "sql_array": [
+        "CREATE TABLE test_array_data (id UInt32, values Array(Int32), fill_value Int32) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_array_data VALUES (1, [1, 2, 3, 4, 5], 0), (2, [6, 7, 8, 9, 10], 1), (3, [], 42);",
+        "SELECT id, arrayShiftLeft(values, 2, fill_value) as shifted_values FROM test_array_data WHERE id GLOBAL NOT IN (SELECT id FROM test_array_data WHERE fill_value = 0);",
+        "SELECT id, arrayShiftLeft(values, -1, -1) AS shifted_neg_1 FROM test_array_data HAVING shifted_neg_1 GLOBAL NOT IN (SELECT arrayShiftLeft(values, 0) FROM test_array_data);",
+        "CREATE TABLE temp_array_data AS SELECT arrayShiftLeft(values, 3, NULL) AS modified_values FROM test_array_data WHERE id > 1;",
+        "INSERT INTO temp_array_data SELECT values FROM (SELECT arrayShiftLeft(values, 1, fill_value) AS values FROM test_array_data) AS sub;",
+        "SELECT id, arrayShiftLeft(NULL, 2, -1) AS null_shift FROM test_array_data WHERE fill_value GLOBAL NOT IN (SELECT fill_value FROM test_array_data);",
+        "SELECT id, arrayShiftLeft(values, 2) AS shifted_vals FROM test_array_data WHERE (shifted_vals IS NOT NULL) AND (id GLOBAL NOT IN (SELECT DISTINCT id FROM test_array_data WHERE fill_value IS NOT NULL));",
+        "SELECT a.id, arrayShiftLeft(b.values, 1) AS b_shifted FROM test_array_data AS a JOIN (SELECT id, arrayShiftLeft(values, 1) AS values FROM test_array_data) AS b ON a.id = b.id WHERE a.values GLOBAL NOT IN (SELECT fill_value FROM test_array_data);",
+        "SELECT id, arrayShiftLeft(values, 4, 'fallback') AS filled_shifted FROM test_array_data GROUP BY id HAVING filled_shifted GLOBAL NOT IN ('a', 'b', 'c');"
+    ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/86ba67afaf",
+  "title": "Incorrect affinity for CHECK constraints",
+  "description": "drh added on 2020-02-01 14:30:11:\nAffinity transformations on an INSERT occur after the CHECK constraint checks,\nnot before.  This can cause problems.  For example:\nCREATE TABLE t1(x INTEGER CHECK(typeof(x)=='text'));\nINSERT INTO t1 VALUES('123');\nPRAGMA integrity_check;\nThe initial insert succeeds because the input is TEXT before affinity is applied.\nBut afterwards, the CHECK constraint will always fail.\nThis problem was reported on the mailing list by Keith Medcalf.  The\nproblem has existed in the code since before version 3.1.0 (2015-01-21).\ndrh added on 2020-02-03 16:07:19:\nCheck-in [1d4f86201dab9a22] causes affinity to be applied prior to CHECK\nconstraint processing, and thereby clears the integrity-check problem.\nIt turns out that this was already being done for tables that contained one\nor more generated columns.  Now it is done for all tables.\nThere is the potential to break legacy databases, however.  After this fix,\nthe INSERT in the example shown in the initial problem statement\nabove now fails.  Formerly, the INSERT worked, but a subsequent\nintegrity-check failed.  If an application uses a schema like the one shown\nin the example but never calls integrity-check, that application would work\nfine in version 3.31.1 and earlier\nbut would begin to report constraint errors when\nupgrading to 3.32.0.  On the other hand, why would an application ever add\na CHECK constraint that requires the input type to an INSERT to be different\nfrom the column type?  That's just weird.  One can argue that a programmer\nwho does something like that deserves whatever happens.\nA more common construct is to try to provide \"strict\" type checking using\nconstructs like this:\nCREATE TABLE t2(x INT CHECK(typeof(x)=='integer'));\nINSERT INTO t2(x) VALUES('123');\nThe INSERT into t2 used to fail.  But after this bug is fixed, the INSERT\nwill succeed, as the '123' string is converted into an integer 123 prior\nto the CHECK constraint running.  If an application is doing this, then the\nfix should not cause any new constraint failures.  However, it will fail to\nprevent the use of a string value to specify an integer constant.  The CHECK\nconstraint will continue to enforce the rule that no non-integer values are\nallowed in the column, which seems to be the intent.  But it will allow\ninteger values to be added using string-literal or floating-point literal\nnotation, rather than just integer literal notation.  That seems harmless\nand unlikely to break anything.",
+  "date": "2020-02-01 14:30:115.52 years ago",
+  "vulnerable_version": "3.31.1",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t3(y DOUBLE CHECK(y IS NOT NULL AND y = CAST(y AS DOUBLE));",
+    "INSERT INTO t3(y) VALUES('3.14');",
+    "CREATE TABLE t4(z VARCHAR(255) CHECK(z IS NOT NULL AND z REGEXP '^[0-9]+$'));",
+    "INSERT INTO t4(z) VALUES(NULL);",
+    "INSERT INTO t4(z) VALUES('456');"
+  ],
+  "key_bug_features": [
+    "Affinity transformations occur after CHECK constraint checks"
+  ]
+}

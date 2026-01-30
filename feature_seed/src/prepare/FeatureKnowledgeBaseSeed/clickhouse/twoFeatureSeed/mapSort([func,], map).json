@@ -1,0 +1,17 @@
+{
+    "function": "mapSort([func,], map)",
+    "operator": "a GLOBAL IN ...",
+    "sql_array": [
+        "CREATE TABLE test_map_data (key String, value Int32) ENGINE = MergeTree() ORDER BY key;",
+        "INSERT INTO test_map_data VALUES ('key1', 3), ('key2', 2), ('key3', 1), (NULL, 4);",
+        "SELECT mapSort(map(key, value)) AS sorted_map FROM test_map_data WHERE key IS NOT NULL;",
+        "SELECT mapSort((k, v) -> v + 1, map(key, value)) AS sorted_map FROM test_map_data WHERE key GLOBAL IN (SELECT DISTINCT key FROM test_map_data WHERE value > 2);",
+        "SELECT mapSort(map(key, value)) AS sorted_map FROM test_map_data GROUP BY key HAVING count(*) > 1;",
+        "SELECT key, mapSort((k, v) -> v * 2, map(key, value)) AS doubled_sorted_map FROM test_map_data WHERE value GLOBAL IN (SELECT value FROM test_map_data WHERE value < 4) GROUP BY key;",
+        "SELECT mapSort(map(key, value)) AS sorted_map FROM (SELECT key, value FROM test_map_data WHERE value IS NOT NULL) WHERE key IS NOT NULL;",
+        "SELECT mapSort(map(key, coalesce(value, 0))) AS sorted_map FROM test_map_data WHERE NOT key GLOBAL IN (SELECT key FROM test_map_data WHERE value IS NULL);",
+        "CREATE TABLE test_junction (id Int32, map_key String, map_value Int32) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_junction VALUES (1, 'key1', 100), (2, 'key2', 200), (3, 'key3', NULL);",
+        "SELECT id, mapSort(map(map_key, map_value)) AS sorted_map FROM test_junction GROUP BY id HAVING id GLOBAL IN (SELECT DISTINCT id FROM test_junction WHERE map_value IS NOT NULL);"
+    ]
+}

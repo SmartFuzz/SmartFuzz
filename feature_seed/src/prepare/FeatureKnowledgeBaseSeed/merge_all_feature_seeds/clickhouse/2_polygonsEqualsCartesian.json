@@ -1,0 +1,10 @@
+CREATE TABLE geo_shapes (id UInt64, polygon Array(Array(Float64))) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO geo_shapes VALUES (1, [[[(1., 1.), (1., 4.), (4., 4.), (4., 1.)]]]), (2, [[[(1., 1.), (3., 3.), (3., 1.), (1., 1.)]]]);
+CREATE TABLE other_shapes (id UInt64, polygon Array(Array(Float64))) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO other_shapes VALUES (1, [[[(1., 1.), (1., 4.), (4., 4.), (4., 1.), (1., 1.)]]]), (2, [[[(1., 1.), (3., 3.), (2., 2.), (1., 1.)]]]);
+SELECT id, polygonsEqualsCartesian(polygon, (SELECT polygon FROM other_shapes WHERE id == 1)) AS are_equal FROM geo_shapes WHERE are_equal == true;
+SELECT id FROM geo_shapes WHERE polygonsEqualsCartesian(polygon, (SELECT polygon FROM other_shapes WHERE id == 2)) AND polygon != (1, 1);
+SELECT id, COUNT(*) FROM geo_shapes GROUP BY id HAVING polygonsEqualsCartesian(polygon, [[[(1., 1.), (1., 4.), (4., 4.), (4., 1.), (1., 1.)]]]) == true;
+SELECT g.id, o.id FROM geo_shapes AS g JOIN other_shapes AS o ON polygonsEqualsCartesian(g.polygon, o.polygon) WHERE g.id != o.id;
+SELECT id, polygonsEqualsCartesian(polygon, [[[(1., 1.), (1., 4.), (4., 4.), (4., 1.), (5., 5.)]]]) AS is_equal FROM geo_shapes WHERE is_equal == false;
+SELECT g.id FROM geo_shapes g JOIN other_shapes o ON g.id == o.id WHERE (polygonsEqualsCartesian(g.polygon, o.polygon) OR polygonsEqualsCartesian(g.polygon, [[[(1., 1.), (1., 4.), (4., 4.), (4., 1.)]]])) AND g.id IS NOT NULL;

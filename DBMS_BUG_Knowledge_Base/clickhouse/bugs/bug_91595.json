@@ -1,0 +1,22 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/91595",
+  "title": "uniqThetaIntersect does not works for empty merge states",
+  "vulnerable_database": "ClickHouse",
+  "date": "2025-12-05T17:10:17Z",
+  "vulnerable_version": "",
+  "description": "### Company or project name\nSummarization\n### Describe what's wrong\nI am trying to merge the theta sketches based on some predicate, If the predicate results in no sketch being selected then intersect returns the count from first sketch, wherein the result should be 0.\nFiddle [Link](https://fiddle.clickhouse.com/090ba1db-65cc-4425-b3f4-4939579990a7)\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\n```sql\nCREATE TABLE TEST_AGG(\nCID UInt32,\nUSERS AggregateFunction(uniqTheta, UInt32)\n) ENGINE = AggregatingMergeTree() ORDER BY CID;\nINSERT INTO TEST_AGG VALUES (1, arrayReduce('uniqThetaState', [1, 2]::Array(UInt32))), (2, arrayReduce('uniqThetaState', [2, 3]::Array(UInt32)));\nSELECT finalizeAggregation(\nuniqThetaIntersect(\nuniqThetaMergeStateIf(USERS, CID = 1),\nuniqThetaMergeStateIf(USERS, CID = 3)\n)\n) FROM TEST_AGG;\n```\n### Expected behavior\nThe final select query should return 0 as the result, because there was an empty state to intersect with it.\n### Error message and/or stacktrace\n_No response_\n### Additional context\n_No response_",
+  "poc": [
+    "CREATE TABLE TEST_AGG(\n    CID UInt32,\n    USERS AggregateFunction(uniqTheta, UInt32)\n) ENGINE = AggregatingMergeTree() ORDER BY CID;",
+    "INSERT INTO TEST_AGG VALUES (1, arrayReduce('uniqThetaState', [1, 2]::Array(UInt32))), (2, arrayReduce('uniqThetaState', [2, 3]::Array(UInt32)));"
+  ],
+  "key_bug_features": [
+    "uniqThetaIntersect fails with empty merge states"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE TEST_AGG_1(CID UInt32, USERS AggregateFunction(uniqTheta, UInt32)) ENGINE = AggregatingMergeTree() ORDER BY CID;",
+    "INSERT INTO TEST_AGG_1 VALUES (1, arrayReduce('uniqThetaState', [1, 2]::Array(UInt32))), (2, arrayReduce('uniqThetaState', [2, 3]::Array(UInt32)));",
+    "CREATE TABLE TEST_AGG_2(CID UInt32, USERS AggregateFunction(uniqTheta, UInt32)) ENGINE = AggregatingMergeTree() ORDER BY CID;",
+    "INSERT INTO TEST_AGG_2 VALUES (3, arrayReduce('uniqThetaState', [4, 5]::Array(UInt32))), (4, arrayReduce('uniqThetaState', [6]::Array(UInt32)));",
+    "SELECT finalizeAggregation(uniqThetaIntersect(uniqThetaMergeStateIf(USERS, CID = 1), uniqThetaMergeStateIf(USERS, CID = 5)) ) FROM TEST_AGG_1;"
+  ]
+}

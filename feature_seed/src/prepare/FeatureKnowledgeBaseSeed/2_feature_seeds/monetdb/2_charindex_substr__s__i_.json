@@ -1,0 +1,18 @@
+CREATE TABLE fuzz_test (id SERIAL PRIMARY KEY, event_time TIMESTAMP(3) WITH TIME ZONE, description VARCHAR(255));
+INSERT INTO fuzz_test (event_time, description) VALUES (timestamp(3) with time zone '2020-09-28 18:40:05.123+02:00', 'Sample event 1');
+INSERT INTO fuzz_test (event_time, description) VALUES (timestamp(3) with time zone '2023-01-01 00:00:00.000+00:00', 'Sample event 2');
+INSERT INTO fuzz_test (event_time, description) VALUES (timestamp(3) with time zone '2023-01-01 00:00:00.000+01:00', NULL);
+CREATE TABLE nested_test (id SERIAL PRIMARY KEY, str_value VARCHAR(255), ref_id INT REFERENCES fuzz_test(id));
+INSERT INTO nested_test (str_value, ref_id) VALUES ('sample', 1);
+INSERT INTO nested_test (str_value, ref_id) VALUES ('highigh', 1);
+SELECT id, charindex('gh', str_value, 1) AS position FROM nested_test WHERE charindex('gh', str_value, 1) > 0;
+SELECT nt.id, nt.str_value, ft.description FROM nested_test nt JOIN fuzz_test ft ON nt.ref_id = ft.id WHERE charindex('event', ft.description, 1) >= 0;
+SELECT nt.id, charindex('gh', nt.str_value, 1) + 1 AS adjusted_position FROM nested_test nt WHERE nt.ref_id IN (SELECT id FROM fuzz_test WHERE event_time > timestamp(3) with time zone '2022-12-31 23:59:59.999+00:00');
+SELECT COUNT(*) FROM nested_test WHERE charindex('xyz', str_value, 1) IS NULL;
+SELECT str_value, COUNT(*) OVER (PARTITION BY charindex('gh', str_value, 1)) AS count_position FROM nested_test GROUP BY str_value;
+SELECT timestamp(3) with time zone '2023-01-01 00:00:00.000+00:00' AS new_event, charindex('gh', 'highigh', 1) AS found_position WHERE found_position > 0;
+UPDATE nested_test SET str_value = 'updated' WHERE charindex('igh', str_value, 1) = 2;
+DROP TABLE IF EXISTS nested_test;
+ALTER TABLE fuzz_test ADD COLUMN new_column VARCHAR(100);
+UPDATE fuzz_test SET new_column = 'New value' WHERE event_time IS NOT NULL;
+SELECT ft.id, charindex('gh', str_value || ' ' || new_column, 1) AS combined_position FROM fuzz_test ft JOIN nested_test nt ON nt.ref_id = ft.id WHERE nt.str_value IS NOT NULL;

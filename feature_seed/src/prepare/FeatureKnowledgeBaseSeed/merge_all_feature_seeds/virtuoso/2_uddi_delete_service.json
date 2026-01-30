@@ -1,0 +1,11 @@
+CREATE TABLE business_services (id INT PRIMARY KEY, name VARCHAR(255), creation_date DATE, status INT);
+INSERT INTO business_services (id, name, creation_date, status) VALUES (1, 'Service A', '2022-01-01', NULL), (2, 'Service B', '2021-05-15', 1), (3, 'Service C', '2023-03-20', 0);
+SELECT uddi_delete_service(id) FROM business_services WHERE status BETWEEN 0 AND 1;
+SELECT id, name, (CASE WHEN creation_date IS NULL THEN 'No Date' ELSE 'Has Date' END) AS date_status FROM business_services WHERE status BETWEEN 0 AND 1;
+SELECT id FROM (SELECT id, name, status FROM business_services WHERE creation_date BETWEEN '2021-01-01' AND CURRENT_DATE) AS filtered_services WHERE EXISTS (SELECT 1 FROM business_services b WHERE b.id = filtered_services.id AND b.status IS NOT NULL);
+SELECT COUNT(*) FROM business_services WHERE status IS NULL AND creation_date BETWEEN '2021-01-01' AND CURRENT_DATE;
+WITH service_deletion AS (SELECT id FROM business_services WHERE id BETWEEN (SELECT MIN(id) FROM business_services) AND (SELECT MAX(id) FROM business_services)) RETURNING id) SELECT uddi_delete_service(id) FROM service_deletion;
+INSERT INTO business_services (id, name, creation_date, status) SELECT 4, 'Service D', CURRENT_DATE, NULL WHERE NOT EXISTS (SELECT 1 FROM business_services WHERE status IS NOT NULL) AND 4 BETWEEN 3 AND 5;
+CREATE TABLE service_history (service_id INT, modified_date DATE, PRIMARY KEY(service_id, modified_date));
+INSERT INTO service_history (service_id, modified_date) SELECT id, creation_date FROM business_services WHERE status BETWEEN 0 AND 1;
+SELECT COUNT(*) FROM business_services WHERE name LIKE '%' || (SELECT name FROM business_services WHERE status BETWEEN 0 AND 1 LIMIT 1) || '%' AND creation_date IS NOT NULL;

@@ -1,0 +1,15 @@
+CREATE TABLE test_params (id INT PRIMARY KEY, param_name VARCHAR(255), param_value VARCHAR(255));
+INSERT INTO test_params (id, param_name, param_value) VALUES (1, 'username', 'test_user');
+INSERT INTO test_params (id, param_name, param_value) VALUES (2, 'password', 'p@ssw0rd');
+INSERT INTO test_params (id, param_name, param_value) VALUES (3, 'session_id', NULL);
+SELECT http_param('username') AS user_param, bif:sha1(http_param('password')) AS hashed_password FROM test_params WHERE param_name = 'username';
+SELECT user_param, hashed_password FROM (SELECT http_param() AS user_param, bif:sha1(param_value) AS hashed_password FROM test_params WHERE param_name IN ('username', 'password')) AS user_data WHERE user_param IS NOT NULL;
+SELECT COUNT(*) FROM test_params WHERE param_value IS NULL GROUP BY param_name HAVING COUNT(*) > 0;
+SELECT http_param('session_id') AS session_param, bif:sha1(http_param('session_id')) AS hashed_session FROM test_params WHERE http_param('session_id') IS NOT NULL;
+SELECT t1.param_name, t1.param_value FROM test_params t1 JOIN (SELECT http_param('username') AS user_param FROM test_params) t2 ON t1.param_name = t2.user_param;
+SELECT param_name, COUNT(*) FROM test_params GROUP BY param_name HAVING COUNT(*) > 1 ORDER BY COUNT(*) DESC;
+SELECT DISTINCT param_value FROM test_params WHERE LENGTH(param_value) = 0 UNION ALL SELECT DISTINCT NOT http_param('param_value') AS invalid_params;
+SELECT t1.param_name, bif:sha1(t1.param_value) FROM test_params t1 WHERE LENGTH(t1.param_value) < 10;
+SELECT t2.session_param, t1.param_value FROM (SELECT http_param('session_id') AS session_param FROM test_params) t2 LEFT JOIN test_params t1 ON t2.session_param = t1.param_value WHERE t1.param_value IS NOT NULL;
+UPDATE test_params SET param_value = 'new_value' WHERE param_name = 'username' AND param_value IS NOT NULL;
+DROP TABLE IF EXISTS temporary_params;

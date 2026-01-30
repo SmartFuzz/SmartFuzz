@@ -1,0 +1,10 @@
+CREATE TABLE test_vectors (id UInt32, vector Tuple(Float64, Float64), label String);
+INSERT INTO test_vectors VALUES (1, (0, 0), 'A'), (2, (3, 4), 'B'), (3, (1, 1), 'C'), (4, (2.5, NULL), 'D');
+SELECT id, L2Distance(vector, (2, 2)) AS distance FROM test_vectors WHERE distance < 3.5;
+SELECT id, (SELECT L2Distance(vector, (1, 2)) FROM test_vectors WHERE label = 'B') AS distance_from_B FROM test_vectors;
+SELECT id, L2Distance((1, 1), vector) AS distance FROM test_vectors WHERE distance = (SELECT MIN(L2Distance(vector, (0, 0))) FROM test_vectors);
+SELECT id, L2Distance(vector, (2, 3)) AS distance, COUNT(*) OVER (PARTITION BY label) AS label_count FROM test_vectors GROUP BY id, distance HAVING distance > 1.0;
+SELECT id, L2Distance((1, 1), (2, 2)) AS static_distance FROM test_vectors WHERE vector = (SELECT vector FROM test_vectors WHERE id = 2);
+SELECT id, L2Distance((3, NULL), vector) AS distance FROM test_vectors WHERE distance IS NOT NULL AND vector = (SELECT vector FROM test_vectors WHERE id = 3 LIMIT 1);
+SELECT id FROM test_vectors WHERE EXISTS (SELECT 1 FROM test_vectors t2 WHERE L2Distance(vector, t2.vector) < 5 AND t2.label = 'A');
+SELECT id, L2Distance(vector, (1.1, 1.2)) AS distance FROM test_vectors WHERE distance = (SELECT MAX(L2Distance((0,0), vector)) FROM test_vectors) AND vector != (3, 4);

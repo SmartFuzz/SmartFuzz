@@ -1,0 +1,29 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=101706",
+  "title": "check table can't find duplicate error in table",
+  "vulnerable_database": "MySQL Server: InnoDB storage engine",
+  "date": "2020-11-21 16:51:00",
+  "vulnerable_version": "8.0",
+  "description": "I am trying to fix this issue #68021.\r\n\r\nAnd add these fix to my code\r\n\r\ndiff --git a/storage/innobase/row/row0ins.cc b/storage/innobase/row/row0ins.cc\r\nindex e7938a63879..6a97c49d519 100644\r\n--- a/storage/innobase/row/row0ins.cc\r\n+++ b/storage/innobase/row/row0ins.cc\r\n@@ -1914,8 +1914,22 @@ static MY_ATTRIBUTE((warn_unused_result)) dberr_t\r\n     found. This means it is possible for another transaction to\r\n     insert a duplicate key value but MDL protection on DD tables\r\n     will prevent insertion of duplicates into unique secondary indexes*/\r\n-    const ulint lock_type =\r\n+    ulint lock_type =\r\n         index->table->skip_gap_locks() ? LOCK_REC_NOT_GAP : LOCK_ORDINARY;\r\n+    /* If the transaction isolation level is no stronger than\r\n+       READ COMMITTED, then avoid gap locks. */\r\n+\r\n+    if (!page_rec_is_supremum(rec)\r\n+        && thr_get_trx(thr)->isolation_level\r\n+        <= TRX_ISO_READ_COMMITTED) {\r\n+      lock_type = LOCK_REC_NOT_GAP;\r\n+    } else {\r\n+      lock_type = LOCK_ORDINARY;\r\n+    }\r\n+\r\n+    if (index->table->skip_gap_locks()) {\r\n+      lock_type = LOCK_REC_NOT_GAP;\r\n+    }\r\n\r\n     if (page_rec_is_infimum(rec)) {\r\n       continue;\r\n\r\nI know that change the lock_type from LOCK_ORDINARY to LOCK_REC_NOT_GAP will cause duplicate key in table.\r\n\r\nHowever, I find the \"check table\" can't find the duplicate key error in the table\nHow to repeat:\n-- Prepare test data\r\nCREATE TABLE `t` (\r\n  `c1` int(11) NOT NULL AUTO_INCREMENT,\r\n  `c2` int(11) DEFAULT NULL,\r\n  PRIMARY KEY (`c1`),\r\n  UNIQUE KEY `c2` (`c2`)\r\n) ENGINE=InnoDB AUTO_INCREMENT=10;\r\n\r\ninsert into t values(10, 9);\r\ninsert into t values(12, 5);\r\n\r\n-- session 1\r\nmysql> begin;\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nmysql> delete from t where c2=5;\r\nQuery OK, 1 row affected (0.00 sec)\r\n\r\n-- session 2\r\nmysql> insert into t select 2,5;\r\n\r\n-- session 3\r\nmysql> insert into t select 1,5;\r\n\r\n-- session 1\r\nmysql> commit;\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nmysql> select * from t;\r\n+----+------+\r\n| c1 | c2   |\r\n+----+------+\r\n|  1 |    5 |\r\n|  2 |    5 |\r\n| 10 |    9 |\r\n+----+------+\r\n3 rows in set (0.00 sec)\r\n\r\nmysql> check table t;\r\n+--------+-------+----------+----------+\r\n| Table  | Op    | Msg_type | Msg_text |\r\n+--------+-------+----------+----------+\r\n| test.t | check | status   | OK       |\r\n+--------+-------+----------+----------+\r\n1 row in set (0.00 sec)",
+  "poc": [
+    "CREATE TABLE `t` (\n`c1` int(11) NOT NULL AUTO_INCREMENT,\n`c2` int(11) DEFAULT NULL,\nPRIMARY KEY (`c1`),\nUNIQUE KEY `c2` (`c2`)\n) ENGINE=InnoDB AUTO_INCREMENT=10;",
+    "insert into t values(10, 9);",
+    "insert into t values(12, 5);",
+    "begin;",
+    "delete from t where c2=5;",
+    "insert into t select 2,5;",
+    "insert into t select 1,5;",
+    "commit;",
+    "select * from t;"
+  ],
+  "key_bug_features": [
+    "check table fails to detect duplicate key errors"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE `test_table` (\n`id` int(11) NOT NULL AUTO_INCREMENT,\n`value` varchar(255) NOT NULL,\n`unique_value` int(11) UNIQUE,\nPRIMARY KEY (`id`)\n) ENGINE=InnoDB;",
+    "INSERT INTO `test_table` (`value`, `unique_value`) VALUES ('test1', 1);",
+    "INSERT INTO `test_table` (`value`, `unique_value`) VALUES ('test2', 2);",
+    "INSERT INTO `test_table` (`value`, `unique_value`) VALUES ('test3', NULL);",
+    "INSERT INTO `test_table` (`value`, `unique_value`) VALUES ('test4', 1);"
+  ]
+}

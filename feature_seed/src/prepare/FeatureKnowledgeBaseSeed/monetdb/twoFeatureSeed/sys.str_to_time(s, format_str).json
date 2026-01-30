@@ -1,0 +1,21 @@
+{
+    "function": "sys.str_to_time(s, format_str)",
+    "operator": "+",
+    "sql_array": [
+        "CREATE TABLE test_times (id INT PRIMARY KEY, time_str VARCHAR(20), time_zone CHAR(5));",
+        "INSERT INTO test_times (id, time_str, time_zone) VALUES (1, '14:30:00', 'UTC'), (2, '12:15:30', 'PST'), (3, '18:45:10', 'CET');",
+        "SELECT id, sys.str_to_time(time_str, '%H:%M:%S') + (interval '1' second * (0)) AS adjusted_time FROM test_times;",
+        "SELECT id, sys.str_to_time(time_str, '%H:%M:%S') + (interval '1' second * (7 * 24 * 60 * 60)) AS adjusted_time FROM test_times WHERE adjusted_time IS NOT NULL;",
+        "SELECT id, COUNT(*) OVER(PARTITION BY sys.str_to_time(time_str, '%H:%M:%S')) AS count_per_time FROM test_times;",
+        "SELECT id, (sys.str_to_time(time_str, '%H:%M:%S') + (interval '1' second * (1))) AS future_time FROM test_times WHERE time_str IS NOT NULL;",
+        "SELECT id, sys.str_to_time(NULL, '%H:%M:%S') + (interval '0' second) AS null_test FROM test_times;",
+        "CREATE TABLE event_times (event_id INT PRIMARY KEY, event_time VARCHAR(20));",
+        "INSERT INTO event_times (event_id, event_time) VALUES (1, '2023-10-01 09:30:49'), (2, '2023-10-01 12:45:00');",
+        "SELECT a.id, a.time_str, sys.str_to_time(a.time_str, '%H:%M:%S') + (interval '2' hours) AS converted_time FROM test_times a JOIN event_times b ON a.id = b.event_id;",
+        "SELECT a.id, (sys.str_to_time(a.time_str, '%H:%M:%S') + (interval '3' hour)) AS adjusted_time, b.event_time FROM test_times a LEFT JOIN event_times b ON a.id = b.event_id HAVING adjusted_time IS NOT NULL;",
+        "SELECT (sys.str_to_time(time_str, '%H:%M:%S') + (interval '1' second * (60))) AS time_shifted FROM test_times ORDER BY time_shifted DESC;",
+        "CREATE TEMPORARY TABLE temp_times AS SELECT a.id, sys.str_to_time(a.time_str, '%H:%M:%S') AS time_converted FROM test_times a WHERE a.time_str <> '';",
+        "SELECT id, time_converted + (interval '1' seconds) AS incremented_time FROM temp_times WHERE time_converted IS NOT NULL;",
+        "DROP TABLE temp_times;"
+    ]
+}

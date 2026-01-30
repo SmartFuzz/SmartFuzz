@@ -1,0 +1,14 @@
+CREATE TABLE server_timezone_test (id Int32, value String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO server_timezone_test VALUES (1, 'test1'), (2, 'test2');
+SELECT serverTimeZone() AS timezone, id FROM server_timezone_test;
+SELECT serverTimeZone() AS timezone, COUNT(*) FROM server_timezone_test GROUP BY timezone;
+SELECT serverTimeZone() AS timezone FROM server_timezone_test WHERE value LIKE 'test%';
+SELECT serverTimeZone() FROM server_timezone_test AS t1 JOIN (SELECT DISTINCT id FROM server_timezone_test WHERE value = 'test1') AS t2 ON t1.id = t2.id;
+WITH (SELECT COUNT(*) FROM server_timezone_test) AS total_count SELECT serverTimeZone() AS timezone, total_count;
+CREATE TABLE distributed_test AS server_timezone_test ENGINE = Distributed(cluster_name, default, server_timezone_test);
+INSERT INTO distributed_test VALUES (3, 'test3'), (4, 'test4');
+SELECT serverTimeZone() FROM distributed_test;
+SELECT DISTINCT serverTimeZone() AS timezone FROM distributed_test WHERE value IN (SELECT value FROM server_timezone_test WHERE id < 3);
+SELECT serverTimeZone() AS timezone, id + 10 AS new_id FROM server_timezone_test ORDER BY new_id;
+SELECT serverTimeZone(), (SELECT COUNT(*) FROM server_timezone_test) AS total FROM server_timezone_test GROUP BY timezone;
+SELECT serverTimeZone() AS timezone, AVG(id) FROM server_timezone_test GROUP BY timezone HAVING AVG(id) > 1;

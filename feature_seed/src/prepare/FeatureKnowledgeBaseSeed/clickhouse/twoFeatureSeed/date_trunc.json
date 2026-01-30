@@ -1,0 +1,16 @@
+{
+    "function": "date_trunc",
+    "operator": "a[N]",
+    "sql_array": [
+        "CREATE TABLE test_dates (id UInt32, event_time DateTime64(6), timestamps Array(DateTime64(6), 'UTC'));",
+        "INSERT INTO test_dates VALUES (1, now(), [now(), now() + INTERVAL 1 DAY, now() - INTERVAL 1 HOUR]);",
+        "SELECT id, date_trunc('hour', arrayElement(timestamps, 1)) AS truncated_time FROM test_dates WHERE date_trunc('minute', event_time) = date_trunc('minute', now());",
+        "SELECT id, date_trunc('day', event_time), arrayJoin(timestamps) AS ts FROM test_dates WHERE date_trunc('week', ts) = date_trunc('week', now()) GROUP BY id, date_trunc('day', event_time) HAVING count(*) > 1;",
+        "SELECT date_trunc('month', arrayElement(timestamps, 2)), arrayMap(x -> date_trunc('second', x), timestamps) AS truncated_timestamps FROM test_dates WHERE id IN (SELECT id FROM test_dates WHERE event_time > '2023-01-01 00:00:00') ORDER BY truncated_timestamps;",
+        "SELECT id, date_trunc('quarter', event_time) AS truncated_event_time, count(*) OVER (PARTITION BY date_trunc('quarter', event_time)) AS count_per_quarter FROM test_dates LIMIT 10;",
+        "CREATE TABLE test_numeric (id UInt32, value String, event_time DateTime64(6));",
+        "INSERT INTO test_numeric VALUES (1, '2023-01-01 10:00:00', now()), (2, '2023-01-01 10:05:00', now() - INTERVAL 5 MINUTE);",
+        "SELECT id, date_trunc('hour', parseDateTime64BestEffort(value, 6)), event_time FROM test_numeric WHERE toUnixTimestamp(date_trunc('hour', parseDateTime64BestEffort(value, 6))) = toUnixTimestamp(event_time);",
+        "SELECT id, date_trunc('year', event_time) AS year_truncated, NULLIF(count(*), 0) AS non_zero_count FROM test_dates GROUP BY year_truncated HAVING non_zero_count IS NOT NULL;"
+    ]
+}

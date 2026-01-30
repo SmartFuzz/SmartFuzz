@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/808",
+  "title": "Bulk import modifies geospatial coordinates of geometries",
+  "description": "Hi I also noticed that all geometries I have imported unnecessarily upscaled the accuracy introducing errors for no reason at all. The decimals from the source are increased from 4 and 5 to 12.\nBelow there are 3 triples representing feature http://sws.geonames.org/251155/ with geometry http://www.geonames.org/geometry_1:\n<http://sws.geonames.org/251155/> <http://www.geonames.org/ontology#hasGeometry> <http://www.geonames.org/geometry_1> .\n<http://www.geonames.org/geometry_1> <http://www.geonames.org/ontology#asWKT> \"POINT(24.16443 39.0917)\"^^<http://www.opengis.net/ont/geosparql#wktLiteral> .\n<http://www.geonames.org/geometry_1> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.opengis.net/ont/sf#Point> .\n\nWhen querying the imported WKT value of the geometry, it is twofold modified, first as per #803 and second the decimals of the (x,y) coordinates have increased. The query below exhibits this:\nPREFIX geof: <http://www.opengis.net/def/function/geosparql/>\nselect ?s1 ?o1 (geof:buffer(?o1,4, <http://www.opengis.net/def/uom/OGC/1.0/metre>) as ?ret) where {\n\tGRAPH <http://geographica.di.uoa.gr/dataset/geonames> {?s1 <http://www.geonames.org/ontology#asWKT> ?o1}\n}\norder by ?s1\nlimit 1\n\nThe results are:\n s1 \to1 \tret\nhttp://www.geonames.org/geometry_1\n\n\"POINT(24.164430618286 39.091701507568)\"^^<http://www.openlinksw.com/schemas/virtrdf#Geometry>\n\nPOLYGON((28.164430618286 39.091701507568,28.087571739899 38.311340219504,27.859948748331 37.560967778108,27.490309067496 36.86942057549,26.992857743032 36.263274382822,26.386711550365 35.765823058358,25.695164347746 35.396183377523,24.944791906351 35.168560385955,24.164430618286 35.091701507568,23.384069330222 35.168560385955,22.633696888826 35.396183377523,21.942149686208 35.765823058358,21.33600349354 36.263274382822,20.838552169076 36.86942057549,20.468912488241 37.560967778108,20.241289496673 38.311340219504,20.164430618286 39.091701507568,20.241289496673 39.872062795633,20.468912488241 40.622435237029,20.838552169076 41.313982439647,21.33600349354 41.920128632315,21.942149686208 42.417579956779,22.633696888826 42.787219637614,23.384069330222 43.014842629181,24.164430618286 43.091701507568,24.944791906351 43.014842629181,25.695164347746 42.787219637614,26.386711550365 42.417579956779,26.992857743032 41.920128632315,27.490309067496 41.313982439647,27.859948748331 40.622435237029,28.087571739899 39.872062795633,28.164430618286 39.091701507568))\n\nAdditionally, #806 is confirmed again, because we are requesting for a buffer of 4 meters around a point which is located in the middle of the Aegean sea and the returned buffer which is a polygon covers the entire Greece and extends even further.\nRegards",
+  "date": "2018-11-22 08:47:19",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE geonames_geometry (id INTEGER PRIMARY KEY, geometry VARCHAR NOT NULL, precision DECIMAL(12, 10));",
+    "INSERT INTO geonames_geometry (id, geometry, precision) VALUES (1, 'POINT(24.16443 39.0917)', 5.0000000000);",
+    "INSERT INTO geonames_geometry (id, geometry, precision) VALUES (2, 'POINT(25.00000 40.00000)', 4.0000000000);",
+    "SELECT id, geometry, precision FROM geonames_geometry WHERE precision > 4.0000000000;",
+    "UPDATE geonames_geometry SET geometry = 'POINT(24.164430618286 39.091701507568)' WHERE id = 1;"
+  ],
+  "key_bug_features": [
+    "Bulk import increases geospatial coordinate decimal precision"
+  ]
+}

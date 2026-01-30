@@ -1,0 +1,14 @@
+CREATE TABLE test_blob (id INTEGER PRIMARY KEY, data LONG VARBINARY);
+INSERT INTO test_blob (id, data) VALUES (1, CAST('0000' AS LONG VARBINARY));
+INSERT INTO test_blob (id, data) VALUES (2, CAST('00FF' AS LONG VARBINARY));
+INSERT INTO test_blob (id, data) VALUES (3, CAST(SUBSTRING(CONVERT('1234567890' USING UTF8) FROM 1 FOR 5) AS LONG VARBINARY));
+INSERT INTO test_blob (id, data) VALUES (4, CAST(REPEAT(CHAR(0x00), 1048576) AS LONG VARBINARY));
+CREATE TABLE test_join (id INTEGER PRIMARY KEY, blob_id INTEGER, description VARCHAR(255), FOREIGN KEY (blob_id) REFERENCES test_blob(id));
+INSERT INTO test_join (id, blob_id, description) VALUES (1, 1, 'Test Blob 1');
+INSERT INTO test_join (id, blob_id, description) VALUES (2, 2, 'Test Blob 2');
+SELECT j.description, b.data FROM test_join j JOIN test_blob b ON j.blob_id = b.id WHERE LENGTH(b.data) = 4;
+SELECT COUNT(*) FROM test_blob WHERE LENGTH(data) > 0 AND LENGTH(data) <= 1048576;
+SELECT * FROM test_blob WHERE data IS NOT NULL AND id IN (SELECT blob_id FROM test_join WHERE description LIKE '%Blob%');
+UPDATE test_blob SET data = CAST('FFFF' AS LONG VARBINARY) WHERE id = 2;
+DELETE FROM test_blob WHERE LENGTH(data) = 0;
+SELECT b.id, b.data FROM test_blob b WHERE b.id NOT IN (SELECT blob_id FROM test_join) ORDER BY b.id DESC LIMIT 5;

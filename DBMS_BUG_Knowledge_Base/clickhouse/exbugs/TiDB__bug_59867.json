@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/59867",
+  "title": "GC Stats Blocked Indefinitely",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n1. Start a TiDB cluster: `tiup playground v8.5.1`\n2. Run the below queries and do the same operation 1 million times.\n```sql\nCREATE DATABASE IF NOT EXISTS test;\nUSE test;\nCREATE TABLE sbtest (\n    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,\n    name VARCHAR(255) NOT NULL\n)\nPARTITION BY RANGE (id) (\n    PARTITION p0 VALUES LESS THAN (100),\n    PARTITION p1 VALUES LESS THAN (200),\n    PARTITION p2 VALUES LESS THAN (300),\n    PARTITION p3 VALUES LESS THAN (400)\n);\nINSERT INTO sbtest (name) VALUES ('Test1'), ('Test2'), ('Test3'), ('Test4');\nANALYZE TABLE sbtest;\nCREATE TABLE sbtest_new LIKE sbtest;\nINSERT INTO sbtest_new SELECT * FROM sbtest;\nDROP TABLE sbtest;\nALTER TABLE sbtest_new RENAME TO sbtest;\nANALYZE TABLE sbtest;\n```\n3. Check how many rows in the mysql.stats_meta table:\n```sql\nselect * from mysql.stats_meta\n```\n4. Wait for 20 minutes and check again:\n```sql\nselect * from mysql.stats_meta\n```\n### 2. What did you expect to see? (Required)\nThe old table's metadata has been deleted.\n\n### 3. What did you see instead (Required)\nIt is still in the mysql.stats_meta table.\n\n### 4. What is your TiDB version? (Required)\nv8.5.1\n\n",
+  "date": "2025-03-03T09:19:25Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE DATABASE IF NOT EXISTS test_db;",
+    "CREATE TABLE employee (id UInt32 NOT NULL, name String NOT NULL, salary Decimal(10, 2) DEFAULT 0.00, hire_date Date, department_id UInt32);",
+    "INSERT INTO employee (id, name, salary, hire_date, department_id) VALUES (1, 'Alice', 50000.00, '2023-01-15', 1), (2, 'Bob', NULL, '2023-02-20', 2);",
+    "SELECT count() FROM employee;",
+    "DROP TABLE IF EXISTS employee;"
+  ],
+  "key_bug_features": [
+    "ANALYZE TABLE after dropping and renaming partitions"
+  ]
+}

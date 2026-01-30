@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/18137",
+  "title": "Can't load large list columns from parquet files",
+  "description": "### What happens?\n\nMy use case is that I'm working with parquet files that contain a column consisting of large fixed size lists of tiny integers.\n\nI want to process the list columns as arrays or matrices in polars/numpy but also sometimes use duckdb `list_*` functions.\n\nMy problem is that 6GB of parquet files causes ~90GB of temporary data to be staged to disk before the duckdb process crashes on a machine with 32GB RAM. \n\nI'm not sure if I should be adopting a different approach or if I'm trying to do something very odd. Any thoughts would be appreciated. \n\n### To Reproduce\n\n## Data generation script\n\n```python\n# /// script\n# dependencies = [\n#   \"polars\",\n#   \"numpy\"\n# ]\n# ///\n\nimport numpy as np\nimport polars as pl\n\nn_samples = 500_000\nn_variants = 1_000\nd = {}\nd.setdefault(\"gts\", [])\n\nfor i in range(n_variants):\n    d[\"gts\"].append(\n        pl.Series(np.random.randint(0, 2, size=(n_samples, 2), dtype=np.uint8))\n    )\n\n\nfor i in range(20):\n    (\n        pl.DataFrame(d)\n        .with_columns(\n            pl.col(\"gts\").cast(\n                pl.Array(pl.Array(pl.UInt8, shape=(2,)), shape=(n_samples,))\n            )\n        )\n        .with_row_index()\n        .with_columns(pl.lit(f\"batch{i}\").alias(\"batch\"))\n        .write_parquet(\"data/\", partition_by=[\"batch\"])\n    )\n```\n\n```\n$ uv run script.py\n```\n\n## Failing SQL script\n\n```sql\nCREATE VIEW parquet_view AS SELECT * FROM read_parquet(\"data/**/*.parquet\", hive_partitioning = true);\n\nSELECT count(batch) AS n_rows FROM parquet_view;\n\nCREATE OR REPLACE TABLE sample_ids AS\nSELECT index\nFROM parquet_view;\n\nSELECT count(index) FROM sample_ids;\n\n-- start breaking\n\nCREATE OR REPLACE TABLE explode_now AS\nSELECT *\nFROM parquet_view;\n\nSELECT count(gts) FROM explode_now;\n```\n\n### OS:\n\nmacOS arm64 15.5 (24F74)\n\n### DuckDB Version:\n\nv1.3.1 (Ossivalis) 2063dda3e6\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nBenjamin Wingfield\n\n### Affiliation:\n\nEMBL-EBI\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a stable release\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "date": "2025-07-03 14:48:28",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_large_lists (id UInt32, gts Array(Array(UInt8)));",
+    "INSERT INTO test_large_lists SELECT i, array(array(rand() % 256, rand() % 256)) FROM numbers(500000) AS i;",
+    "CREATE VIEW list_view AS SELECT id, gts FROM test_large_lists;",
+    "SELECT COUNT(*) FROM list_view WHERE gts IS NOT NULL;",
+    "SELECT id, arrayJoin(gts) AS inner_list FROM list_view;"
+  ],
+  "key_bug_features": [
+    "Loading large list columns from parquet files"
+  ]
+}

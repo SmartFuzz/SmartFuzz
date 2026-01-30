@@ -1,0 +1,14 @@
+CREATE TABLE test_table (id UInt32, value Nullable(Int32));
+INSERT INTO test_table VALUES (1, 10), (2, NULL), (3, 20), (4, 30);
+SELECT EXISTS(SELECT * FROM test_table WHERE value IS NULL) AS has_nulls, EXISTS(SELECT * FROM test_table WHERE value > 25) AS has_high_values;
+SELECT a.id, a.value FROM test_table a WHERE EXISTS(SELECT value FROM test_table b WHERE b.value < 15 AND a.id = b.id);
+SELECT COUNT(*) FROM test_table WHERE EXISTS(SELECT * FROM jdbc('jdbc:mysql://localhost:3306/?user=root&password=root','schema','table') WHERE EXISTS(SELECT * FROM test_table WHERE value > 15));
+CREATE TABLE temp_table (num Nullable(Int32), num_str String);
+INSERT INTO temp_table VALUES (NULL, '1'), (2, '2'), (3, '3'), (NULL, '');
+SELECT * FROM temp_table WHERE EXISTS(SELECT * FROM test_table WHERE num = toInt32(value));
+SELECT value, COUNT(*) FROM test_table GROUP BY value HAVING EXISTS(SELECT * FROM temp_table WHERE num_str LIKE concat('%', value));
+SELECT id, value FROM test_table WHERE value IS NOT NULL AND EXISTS(SELECT 1 FROM temp_table WHERE num = toInt32OrZero('1') OR num IS NULL) OR EXISTS(SELECT * FROM jdbc('jdbc:mysql://localhost:3306/?user=root&password=root','schema','unrelated_table'));
+CREATE TABLE another_table (data String, amount Decimal(10,2));
+INSERT INTO another_table VALUES ('A', 100.00), ('B', NULL), ('C', 200.00);
+SELECT data, COUNT(*) FROM another_table WHERE EXISTS(SELECT * FROM test_table WHERE value = toInt32OrZero(data)) GROUP BY data HAVING COUNT(*) < 5;
+SELECT EXISTS(SELECT * FROM another_table WHERE amount > 50) AS above_threshold, EXISTS(SELECT * FROM temp_table WHERE num_str = '') AS empty_check;

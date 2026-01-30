@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id INTEGER, timestamp_col TIMESTAMP, text_col TEXT, value_col DOUBLE);
+INSERT INTO test_data VALUES (1, TIMESTAMP '2023-03-15 10:00:00', '🤦🏼‍♂️🤦🏽‍♀️', 42.0), (2, TIMESTAMP '2023-03-16 11:00:00', NULL, 17.7), (3, TIMESTAMP '2023-03-17 12:00:00', 'A🦑B🦑C', NULL);
+SELECT id, right_grapheme(text_col, 1) AS last_grapheme, timestamp_col + INTERVAL 1 DAY AS next_day FROM test_data WHERE value_col IS NOT NULL GROUP BY id, text_col ORDER BY next_day;
+SELECT id, COUNT(*) as row_count FROM (SELECT id, right_grapheme(text_col, 2) AS grapheme_pair FROM test_data WHERE timestamp_col + INTERVAL -1 DAY < CURRENT_TIMESTAMP) AS derived GROUP BY id HAVING row_count > 0;
+SELECT t1.id, right_grapheme(t1.text_col, 2) AS last_twogr, t2.timestamp_col AS t2_time FROM test_data t1 JOIN test_data t2 ON t1.value_col + COALESCE(t2.value_col, 0) > 50 WHERE t1.id = 1 GROUP BY t1.id, t2.timestamp_col;
+CREATE TABLE additional_data (extra_id INTEGER, date_col TIMESTAMP, description TEXT);
+INSERT INTO additional_data VALUES (1, TIMESTAMP '2023-12-31 23:59:59', 'No Data'), (2, TIMESTAMP NULL, 'NULL Date');
+SELECT ad.extra_id, right_grapheme(ad.description, 5) AS description_grapheme, ad.date_col + INTERVAL 3 DAY AS adjusted_date FROM additional_data ad JOIN test_data td ON ad.extra_id = td.id WHERE ad.date_col IS NOT NULL OR td.value_col IS NULL;
+SELECT td.id, AVG(td.value_col) OVER (PARTITION BY right_grapheme(td.text_col, 1)) AS avg_value FROM test_data td WHERE right_grapheme(td.text_col, 1) IS NOT NULL;
+SELECT timestamp_col, right_grapheme(SUBSTRING(text_col FROM 1 FOR 2), 1) FROM test_data WHERE TIMESTAMP '2023-01-01 00:00:00' + INTERVAL 5 HOUR > timestamp_col;

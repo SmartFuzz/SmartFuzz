@@ -1,0 +1,12 @@
+CREATE TABLE test_table (id Int64, value String, nullable_value Nullable(Int64)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, '1234'), (2, '-890.56'), (3, 'abc'), (4, '9223372036854775808'), (5, NULL);
+SELECT id, toInt64(value) AS converted_value FROM test_table WHERE toInt64(value) IS NOT NULL;
+SELECT id, toInt64(-1 * toInt64(value)) AS negated_value FROM test_table WHERE toInt64(value) IS NOT NULL GROUP BY id, negated_value HAVING negated_value < -1000;
+SELECT id, (x -> toInt64(value)) AS lambda_converted FROM test_table WHERE value != '' AND id IN (SELECT id FROM test_table WHERE nullable_value IS NOT NULL) ORDER BY lambda_converted;
+SELECT id, toInt64(NULLIF(value, '')) AS converted_value FROM test_table WHERE id = 3 HAVING converted_value IS NULL;
+SELECT id, (x -> x + 1)(toInt64(value)) AS incremented_value FROM test_table WHERE toInt64(value) < 0;
+SELECT id, COUNT(*) FROM test_table WHERE toInt64(value) >= 0 GROUP BY id HAVING COUNT(*) > 0;
+SELECT id, COALESCE(toInt64(value), 0) AS coalesced_value FROM test_table ORDER BY coalesced_value;
+CREATE TEMPORARY TABLE temp_table AS SELECT id, toInt64(value) AS converted_value FROM test_table WHERE id < 4;
+SELECT tt.id, tt.converted_value, tt.converted_value * -1 AS negated FROM temp_table AS tt WHERE tt.converted_value IS NOT NULL;
+SELECT id, (x -> toInt64(NULLIF(value, 'abc'))) AS lambda_convert FROM test_table WHERE id BETWEEN 1 AND 4 HAVING lambda_convert IS NOT NULL ORDER BY lambda_convert DESC;

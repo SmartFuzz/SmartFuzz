@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id INTEGER, ascii_code INTEGER, description TEXT);
+INSERT INTO test_table (id, ascii_code, description) VALUES (1, 65, 'A'), (2, 90, 'Z'), (3, NULL, 'NULL CASE');
+CREATE TABLE secondary_table (date_column DATE);
+INSERT INTO secondary_table (date_column) VALUES (DATE '1990-01-01'), (DATE '1992-03-22');
+SELECT t1.id, chr(t1.ascii_code) AS char_value, DATE '1990-01-01' + t2.id AS new_date FROM test_table t1 JOIN secondary_table t2 ON t1.id = COALESCE(t2.date_column, 0);
+SELECT id, chr(ascii_code) AS char_value, DATE '1992-03-22' + (CASE WHEN ascii_code IS NULL THEN 0 ELSE ascii_code END) AS adjusted_date FROM test_table WHERE ascii_code IS NOT NULL GROUP BY id, char_value ORDER BY adjusted_date;
+SELECT id, chr(ascii_code + 1), DATE '1990-01-01' + id AS final_date FROM test_table WHERE id IN (SELECT id FROM test_table WHERE ascii_code < 70);
+SELECT id, chr(ascii_code) AS test_char, DATE '1990-01-01' + COUNT(*) AS total_days FROM test_table t1 JOIN secondary_table t2 ON t2.date_column > DATE '1990-01-01' GROUP BY id, ascii_code HAVING SUM(t1.id) > 1;
+CREATE TABLE mixed_table (data_point VARCHAR, numeric_value FLOAT, value_date DATE);
+INSERT INTO mixed_table (data_point, numeric_value, value_date) VALUES ('Test 1', 12.5, DATE '2000-01-01'), ('Test 2', 0.1, DATE '1995-12-31');
+SELECT t1.data_point, t1.numeric_value, chr(CAST(t1.numeric_value AS INTEGER)) AS char_value, t1.value_date + (SELECT COUNT(*) FROM mixed_table) FROM mixed_table t1 WHERE t1.numeric_value IS NOT NULL;

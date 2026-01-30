@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/50296",
+  "title": "query gets incorrect result when using binary type",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n```\r\nCREATE TABLE `t2592d2ba` (\r\n  `col_1` int(10) unsigned NOT NULL DEFAULT '4218867186',\r\n  `col_2` tinyint(1) NOT NULL,\r\n  UNIQUE KEY `idx_1` (`col_1`),\r\n  PRIMARY KEY (`col_1`) /*T![clustered_index] NONCLUSTERED */,\r\n  UNIQUE KEY `idx_3` (`col_1`,`col_2`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci\r\nPARTITION BY HASH (`col_1`) PARTITIONS 6;\r\nINSERT INTO `t2592d2ba` VALUES (2448007782,1), (527670686,1), (186019110,1), (2717803868,1), (1298903873,1), (898070011,1), (546731633,1), (1862079368,1), (1308738411,1), (2642905701,1), (2174574170,1), (3671727434,1), (3241957545,1), (2903973206,1), (4263152544,1), (482369162,1), (3287475707,1), (1079500981,1), (3924782077,1), (2172379159,1), (4282612844,1), (4219193657,1), (4085565346,1), (4176141291,0), (365718721,0), (4118127292,0), (3949012407,0), (848225649,0), (548783475,0), (3582322467,0), (2640690466,1), (1277880725,0), (2066827082,0), (795537339,1), (2658290493,1), (2467967102,1), (1042078725,0), (2184825916,1), (3052066128,0), (144842590,1), (2194698418,1), (3851266868,1), (2663359401,1), (2893111043,0), (839415446,0), (4041645171,0), (1182226140,0), (1681827205,1), (2857994129,0), (402899433,1), (2577971043,0), (4119144277,1), (546569302,1), (4290939649,0), (2,1), (3849318389,0), (1307165944,0), (3878890017,1), (184805261,1), (2856342507,1), (2147483648,1), (3014668728,1), (311357370,1), (3286555982,1), (4138590712,1), (1578146154,1), (947522718,0), (1151828680,0), (3000208780,1), (3177749430,1), (1074938063,1), (4165240487,1), (696995924,1), (3798067517,1), (3513513411,0), (1488231769,1), (0,1);\r\n\r\nSELECT  WEIGHT_STRING(`t2592d2ba`.`col_2`) is null as col_12051 FROM `t2592d2ba` WHERE `t2592d2ba`.`col_2` = 0;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n``` \r\n`col_12051 is null` should be zero.\r\n```\r\n### 3. What did you see instead (Required)\r\n\r\n``` sql\r\nmysql> SELECT  WEIGHT_STRING(`t2592d2ba`.`col_2`) is null as col_12051 FROM `t2592d2ba` WHERE `t2592d2ba`.`col_2` = 0;\r\n+-----------+\r\n| col_12051 |\r\n+-----------+\r\n|         1 |\r\n|         1 |\r\n|         1 |\r\n|         1 |\r\n|         1 |\r\n|         1 |\r\n|         1 |\r\n|         1 |\r\n|         1 |\r\n|         1 |\r\n|         1 |\r\n|         1 |\r\n|         1 |\r\n|         1 |\r\n|         1 |\r\n|         1 |\r\n|         1 |\r\n|         1 |\r\n|         1 |\r\n|         1 |\r\n|         1 |\r\n|         1 |\r\n|         1 |\r\n+-----------+\r\n23 rows in set, 1 warning (0.00 sec)\r\n\r\nmysql> SELECT  SUM(WEIGHT_STRING(`t2592d2ba`.`col_2`) is null) as col_12051 FROM `t2592d2ba` WHERE `t2592d2ba`.`col_2` = 0;\r\n+-----------+\r\n| col_12051 |\r\n+-----------+\r\n|         0 |\r\n+-----------+\r\n1 row in set, 1 warning (0.01 sec)\r\n```\r\n### 4. What is your TiDB version? (Required)\r\n56c619f1f5ea8e3f9970fe664729074b5123683a\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2024-01-10T18:53:24Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE test_table ( id INTEGER NOT NULL, value BLOB NOT NULL, status INTEGER DEFAULT 0, PRIMARY KEY (id), UNIQUE (value));",
+    "INSERT INTO test_table VALUES (1, 'abc', 1), (2, 'def', 0), (3, 'ghi', 1), (4, 'jkl', 0);",
+    "SELECT (CASE WHEN status IS NULL THEN 1 ELSE 0 END) as is_null FROM test_table WHERE value = 'abc';",
+    "CREATE TABLE another_table ( ref_id INTEGER NOT NULL, description TEXT, FOREIGN KEY (ref_id) REFERENCES test_table(id));",
+    "INSERT INTO another_table VALUES (1, 'Test description 1'), (2, 'Test description 2');"
+  ],
+  "key_bug_features": [
+    "WEIGHT_STRING function with binary type returns incorrect results"
+  ]
+}

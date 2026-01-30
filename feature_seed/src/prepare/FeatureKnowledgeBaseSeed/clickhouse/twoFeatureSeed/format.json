@@ -1,0 +1,17 @@
+{
+    "function": "format",
+    "operator": "a GLOBAL NOT IN ...",
+    "sql_array": [
+        "CREATE TABLE test_data (a String, b UInt32, c DateTime) ENGINE = MergeTree() ORDER BY a;",
+        "INSERT INTO test_data VALUES ('Hello', 111, '2023-01-01 00:00:00'), ('World', 123, '2023-01-02 00:00:00'), (NULL, 0, NULL);",
+        "SELECT * FROM format(JSONEachRow, 'a String, b UInt32, c DateTime', $${\"a\": \"Hello\", \"b\": 111, \"c\": \"2023-01-01 00:00:00\"}{\"a\": \"World\", \"b\": 123, \"c\": \"2023-01-02 00:00:00\"}${$}{\"a\": NULL, \"b\": 0, \"c\": NULL}$) AS json_format WHERE b GLOBAL NOT IN (SELECT b FROM test_data WHERE a IS NOT NULL) HAVING json_format.b >= 100;",
+        "SELECT a FROM (SELECT a, count(*) as cnt FROM (SELECT * FROM format(JSONEachRow, 'a String, b UInt8', $${\"a\": \"EmptyString\", \"b\": 0}$$) UNION ALL SELECT * FROM test_data) GROUP BY a HAVING cnt > 1) AS grouped_data GLOBAL NOT IN (SELECT a FROM test_data WHERE b < 150);",
+        "CREATE TABLE temp_data (d Nullable(String), e Float32) ENGINE = Memory;",
+        "INSERT INTO temp_data VALUES (NULL, 1.5), ('Test', 2.5);",
+        "SELECT d FROM format(CSV, 'd Nullable(String), e Float32', 'Test, 1.5\n, NaN\n') WHERE e GLOBAL NOT IN (SELECT e FROM temp_data WHERE d IS NOT NULL) ORDER BY d;",
+        "SELECT a, b + nested_val FROM (SELECT a, b, c, floor(c) as nested_val FROM test_data) WHERE a GLOBAL NOT IN (SELECT a FROM temp_data) HAVING nested_val IS NOT NULL;",
+        "CREATE TABLE boundary_table (x DateTime, y Int32) ENGINE = MergeTree() ORDER BY x;",
+        "INSERT INTO boundary_table VALUES ('2023-01-01 00:00:00', 1), ('2023-01-31 23:59:59', 2147483647), ('2023-02-01 00:00:00', -2147483648);",
+        "SELECT * FROM format(CSV, 'x DateTime, y Int32', '2023-01-01 00:00:00, 1\n2023-01-31 23:59:59, 2147483647\n2023-02-01 00:00:00, -2147483648\n') WHERE y GLOBAL NOT IN (SELECT y FROM boundary_table WHERE x > '2023-01-01');"
+    ]
+}

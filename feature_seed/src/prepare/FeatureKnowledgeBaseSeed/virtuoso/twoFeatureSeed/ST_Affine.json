@@ -1,0 +1,18 @@
+{
+    "function": "ST_Affine",
+    "operator": "IS NULL",
+    "sql_array": [
+        "CREATE TABLE geospatial_data (id SERIAL PRIMARY KEY, geom GEOMETRY, value NUMERIC, description TEXT);",
+        "INSERT INTO geospatial_data (geom, value, description) VALUES (ST_EWKT_READ('POLYGON((1 3,2 4,1 5,0 4,1 3))'), 10.5, NULL);",
+        "INSERT INTO geospatial_data (geom, value, description) VALUES (ST_EWKT_READ('POLYGON((2 3,3 4,2 5,1 4,2 3))'), NULL, 'Test Polygon');",
+        "SELECT ST_AFFINE(geom, NULLIF(value, 0), 3, 1, 0.3, 0.001, 0.002) FROM geospatial_data WHERE id IS NOT NULL;",
+        "SELECT COUNT(*) FROM (SELECT ST_AFFINE(geom, 1.0, 2.0, 1.0, 0.5, 0.003, 0.004) AS transformed_geom FROM geospatial_data WHERE value IS NULL) AS subquery HAVING COUNT(*) > 0;",
+        "SELECT geom FROM geospatial_data WHERE (ST_AFFINE(geom, 1, 1, 1, 0, 0, 0) IS NOT NULL) IS NULL;",
+        "SELECT ST_AFFINE(geom, value, 0.5, 0, 0.001, 0.002) FROM geospatial_data WHERE geom IS NOT NULL;",
+        "WITH transformed AS (SELECT ST_AFFINE(geom, 10, 5, 2, 0.001, 0.002) AS new_geom FROM geospatial_data) SELECT COUNT(*) FROM transformed WHERE new_geom IS NULL;",
+        "SELECT ST_AFFINE(geom, 1.0, 2.0, 1.0, 0.1, 0.001, CASE WHEN value IS NOT NULL THEN value ELSE 0 END) FROM geospatial_data WHERE description IS NULL;",
+        "CREATE TEMPORARY TABLE temp_data (temp_geom GEOMETRY, temp_value NUMERIC);",
+        "INSERT INTO temp_data (temp_geom, temp_value) SELECT ST_AFFINE(geom, value, 1, 2, 0.5, 0.003) FROM geospatial_data WHERE value IS NOT NULL;",
+        "SELECT temp_geom FROM temp_data WHERE temp_value IS NOT NULL AND temp_value = (SELECT MAX(value) FROM geospatial_data) LIMIT 5;"
+    ]
+}

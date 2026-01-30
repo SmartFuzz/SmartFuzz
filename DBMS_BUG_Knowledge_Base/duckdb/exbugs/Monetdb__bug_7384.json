@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7384",
+  "title": "MonetDB server 11.46.0 crashes at `__nss_database_lookup`",
+  "description": "MonetDB server 11.46.0 crashes at `__nss_database_lookup` after executing SQL statements through mclient.\n\n**To Reproduce**\nUse the `mclient` binary to connect MonetDB server and execute the following stmts: \n```sql\ncreate schema test;\ndrop schema test cascade;\ncreate schema test;\nset schema test;\nCREATE TABLE test (sect int NOT NULL auto_increment, PRIMARY KEY (sect));\ncreate trigger count after delete on test for each row insert into test values (1);\ndelete from test;\n```\n**Expected behavior**\nExecuting statements successfully or throwing errors, instead of breaking down the whole MonetDB server.\n\n**Backtrace**\n```\n#0 0x7f76ea76ebee (__nss_database_lookup+0x2078e)\n#1 0x7f76eadf66fd (OPTemptybindImplementation+0x4fd)\n#2 0x7f76eae124f1 (OPTwrapper+0x191)\n#3 0x7f76eacdae23 (optimizeMALBlock+0x1a3)\n#4 0x7f76ea98391f (SQLoptimizeQuery+0x1df)\n#5 0x7f76ea94c57b (SQLparser+0x7eb)\n#6 0x7f76ea94b87b (SQLengine_+0x59b)\n#7 0x7f76ea94a343 (SQLengine+0x23)\n#8 0x7f76eacd96cf (runScenario+0x4f)\n#9 0x7f76eacda16c (MSscheduleClient+0x68c)\n#10 0x7f76ead81c2b (doChallenge+0xfb)\n#11 0x7f76eb400ba0 (THRstarter+0x100)\n#12 0x7f76eb470cc4 (thread_starter+0x34)\n#13 0x7f76ea7e5609 (start_thread+0xd9)\n#14 0x7f76ea70a133 (clone+0x43)\n```\n**Screenshots**\n![image](https://github.com/MonetDB/MonetDB/assets/16066116/1e715f63-90e6-4dc1-a2f1-9f129ffd75be)\n\n\n**Software versions**\n - MonetDB server version: 11.46.0 (hg id: 63a42c2) (pulled from the master branch)\n - MonetDB client version: mclient, version 11.48.0 (hg id: 63a42c2)\n - OS and version: ubuntu 20.04\n - Self-installed and compiled. The command line of compilation: `CC=clang-12 CXX=clang++-12 cmake /root/monetdb_master -DCMAKE_BUILD_TYPE=RelWithDebInfo`\n\n**Issue labeling**\nbug\n\n**Additional context**\nThe MonetDB here runs in-memory database. The command line of starting MonetDB server is `mserver5 --in-memory`.\n\nUsing the mlient or unixODBC with command line like `isql monetdb -e` can reproduce the crash. But command line `isql monetdb` (without the -e option) cannot reproduce it.",
+  "date": "2023-06-16T18:25:56Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE SCHEMA test_schema;",
+    "CREATE TABLE test_schema.test (id INT NOT NULL, name VARCHAR(50), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id));",
+    "CREATE OR REPLACE FUNCTION test_trigger() RETURNS TRIGGER AS $$ BEGIN INSERT INTO test_schema.test VALUES (OLD.id, OLD.name);",
+    "RETURN OLD;",
+    "END;",
+    "$$ LANGUAGE plpgsql;"
+  ],
+  "key_bug_features": [
+    "create trigger count after delete on test"
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7045",
+  "title": "A value filtered in a subquery finds its way to a later filter in the outer query",
+  "vulnerable_database": "monetdb",
+  "date": "2021-01-25T12:01:40Z",
+  "vulnerable_version": "Unknown",
+  "description": "A value filtered in a subquery finds its way to a later filter in the outer query.\n\n**To Reproduce**\n\n1. (Create and) connect to a MonetDB database \n2. Issue the following queries:\n```\nCREATE TEMPORARY TABLE delme AS SELECT '0-71' AS wheelsoff ON COMMIT PRESERVE ROWS;\nINSERT INTO delme VALUES ('1550');\nSELECT count(*)  FROM (SELECT wheelsoff FROM delme WHERE wheelsoff NOT LIKE '%-%') AS t WHERE cast(wheelsoff AS int) = 0;\nCREATE TEMPORARY TABLE delme2 AS (SELECT wheelsoff FROM delme WHERE wheelsoff NOT LIKE '%-%') ON COMMIT PRESERVE ROWS;\nSELECT count(*)  FROM delme2 WHERE cast(wheelsoff AS int) = 1550;\n```\nThe first SELECT query fails with:\n```\nconversion of string '0-71' to type int failed.\n```\neven though the table `t` does not have such a value. And indeed, when we \"split the work\", using the last two commands, we do get the correct result in the last query.\n\n**Expected behavior**\nAll queries should succeed. The last query should return 1.\n\n**Software versions**\n - MonetDB 11.33.3\n - OS and version: Devuan Beowulf (~= Debian Buster without systemd)\n - Self-built with: `--enable-optimize --enable-rintegration` and extra compiler flags `-O3 -march=native`.",
+  "poc": [
+    "CREATE TEMPORARY TABLE delme AS SELECT '0-71' AS wheelsoff ON COMMIT PRESERVE ROWS;",
+    "INSERT INTO delme VALUES ('1550');",
+    "SELECT count(*)  FROM (SELECT wheelsoff FROM delme WHERE wheelsoff NOT LIKE '%-%') AS t WHERE cast(wheelsoff AS int) = 0;",
+    "CREATE TEMPORARY TABLE delme2 AS (SELECT wheelsoff FROM delme WHERE wheelsoff NOT LIKE '%-%') ON COMMIT PRESERVE ROWS;",
+    "SELECT count(*)  FROM delme2 WHERE cast(wheelsoff AS int) = 1550;"
+  ],
+  "key_bug_features": [
+    "Subquery value incorrectly affects outer query filtering"
+  ],
+  "bug_features_seed": [
+    "CREATE TEMPORARY TABLE test_table AS SELECT '100-200' AS range_value ON COMMIT PRESERVE ROWS;",
+    "INSERT INTO test_table VALUES ('3000');",
+    "SELECT count(*) FROM (SELECT range_value FROM test_table WHERE range_value NOT LIKE '%-%') AS subquery WHERE cast(range_value AS int) = 100;",
+    "CREATE TEMPORARY TABLE filtered_table AS (SELECT range_value FROM test_table WHERE range_value NOT LIKE '%-%') ON COMMIT PRESERVE ROWS;",
+    "SELECT count(*) FROM filtered_table WHERE cast(range_value AS int) = 3000;"
+  ]
+}

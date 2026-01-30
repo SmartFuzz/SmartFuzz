@@ -1,0 +1,18 @@
+CREATE TABLE test_hash (id UInt64, data Array(String));
+INSERT INTO test_hash VALUES (1, array('e','x','a')), (2, array('e','x','A')), (3, array('m','p','l','e')), (4, array('m','p','l','e','!'));
+SELECT id, metroHash64(data) AS hash_value FROM test_hash;
+SELECT metroHash64(array(1, 2, 3), array(1.0, 2.0, 3.0), 'testString', toDateTime('2020-01-01 00:00:00')) AS complex_hash;
+SELECT metroHash64((1, 'a'), (1, 'a')) AS tuple_hash, toTypeName(tuple_hash) AS hash_type;
+SELECT metroHash64(1, array(1, 2), ('key', 'value')) AS mixed_hash FROM system.numbers LIMIT 5;
+CREATE TABLE data_test (key String, value Int32) ENGINE = MergeTree() ORDER BY key;
+INSERT INTO data_test VALUES ('key1', 1), ('key2', 2);
+SELECT metroHash64(key, value) AS data_hash FROM data_test;
+WITH (SELECT arrayJoin(['test', 'value']) AS v) AS subquery SELECT metroHash64(v) AS subquery_hash FROM subquery;
+SELECT metroHash64(arrayMap(x -> x * 2, range(1, 5))) AS mapped_hash;
+SELECT metroHash64(array('string'), 10, toDate('2021-01-01')) AS boundary_test;
+CREATE TABLE test_join (id UInt64, keyword String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_join VALUES (1, 'hello'), (2, 'world');
+SELECT a.id, metroHash64(a.keyword, b.keyword) AS joined_hash FROM test_join AS a JOIN test_join AS b ON a.id = b.id;
+SELECT metroHash64(1, toString(2), 'example') AS varied_types_hash;
+SELECT metroHash64((1, 2, 3), (3, 2, 1)) AS differing_tuples_hash;
+SELECT metroHash64('a', 'b', 'c', 'd') AS multi_string_hash;

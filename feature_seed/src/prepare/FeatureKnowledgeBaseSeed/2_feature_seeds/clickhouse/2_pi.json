@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id UInt32, value Float64, category String, created_at DateTime);
+INSERT INTO test_data VALUES (1, pi(), 'A', now()), (2, pi() * 2, 'B', toDateTime('2023-01-01 00:00:00')), (3, NULL, 'C', now());
+SELECT id, transform(value, [0, pi(), pi() * 2], [value, value + 1, value - 1], 0) AS transformed_value FROM test_data WHERE value IS NOT NULL HAVING transformed_value > 0;
+SELECT id, multiIf(value < 1.0, 'Low', value < 3.0, 'Medium', 'High') AS value_category, count(*) OVER (PARTITION BY category) AS category_count FROM test_data;
+SELECT category, AVG(transform(value, [0, pi()], [value, value + 1.123456], 0)) AS avg_value FROM test_data GROUP BY category HAVING avg_value IS NOT NULL;
+SELECT id, value, multiIf(value IS NULL, 'Missing', transform(value, [0, pi(), pi() * 2], [value, 1.0, 2.0], 0)) AS value_transformed FROM test_data WHERE created_at >= now() - interval 10 day ORDER BY value_transformed;
+CREATE TABLE temp_data AS SELECT category, count() AS item_count FROM test_data GROUP BY category HAVING item_count > 1;
+INSERT INTO temp_data SELECT category, COUNT(*) FROM test_data WHERE category IS NOT NULL GROUP BY category;
+SELECT t.id, multiIf(NULL IS NULL, 'Is Null', 'Is Not Null') AS null_check FROM test_data AS t WHERE t.value <= pi() AND t.value IS NOT NULL;
+SELECT DISTINCT category, pi() AS pi_value FROM test_data ORDER BY pi_value DESC;

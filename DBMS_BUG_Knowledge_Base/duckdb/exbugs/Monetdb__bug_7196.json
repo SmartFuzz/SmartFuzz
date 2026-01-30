@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7196",
+  "title": "BATproject2: does not match always",
+  "description": "Heyo, I was trying to test some things to make our analytics stuff more stable. Basically I create a table, start a transaction on 2 clients, one alters the table to add a new column, the other client inserts some data. Instead of rolling back it ends up corrupting the table entirely it seems like?\n\nI've read over the optimistic concurrency control so I'm not sure if this is *actually* a bug or expected behavior here. \n\n**To Reproduce**\n\n Client 1\n```\nsql>create table test (id bigint);\noperation successful\nsql>select * from test;\n+----+\n| id |\n+====+\n+----+\n0 tuples\nsql>start transaction;\nauto commit mode: off\nsql>alter table test add column data int; # To be clear this is run BEFORE the insert in the second client.\noperation successful\nsql>commit;\nauto commit mode: on\nsql>select * from test;\nGDK reported error: BATproject2: does not match always\n```\n\nClient 2\n```\nsql>select * from test;\n+----+\n| id |\n+====+\n+----+\n0 tuples\nsql>start transaction;\nauto commit mode: off\nsql>insert into test values (1); # This is run AFTER the alter\n1 affected row\nsql>commit;\nauto commit mode: on\nsql>select * from test;\nGDK reported error: BATproject2: does not match always\n```\n\n**Expected behavior**\nI know this is a violation of the OCC rules on concurrent connections but wasn't expecting the table to not be recoverable afterwards.\n\n**Screenshots**\n\n**Software versions**\nMonetDB: MonetDB Database Server Toolkit v11.41.11 (Jul2021-SP1)\nOS: Linux 839c464b9757 5.10.0-8-cloud-amd64 #1 SMP Debian 5.10.46-4 (2021-08-03) x86_64 x86_64 x86_64 GNU/Linux\nUsing the docker image here: https://hub.docker.com/r/monetdb/monetdb\n\n\n**Issue labeling **\nTable corruption, concurrent transactions,\n\n**Additional context**",
+  "date": "2021-11-18T02:41:22Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE TABLE test1 (id BIGINT, name VARCHAR(50), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "CREATE TABLE test2 (id INT PRIMARY KEY, value FLOAT CHECK (value >= 0));",
+    "ALTER TABLE test1 ADD COLUMN age INT;",
+    "INSERT INTO test2 (id, value) VALUES (1, 10.5);",
+    "SELECT * FROM test1 WHERE age IS NULL;"
+  ],
+  "key_bug_features": [
+    "Concurrent transactions cause table corruption on alteration and insertion"
+  ]
+}

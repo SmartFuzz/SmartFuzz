@@ -1,0 +1,10 @@
+CREATE TABLE test_sentiment (id UInt32, text String, score Float32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_sentiment VALUES (1, 'Шарик - хороший пёс'), (2, 'Шарик - пёс'), (3, 'Шарик - плохой пёс'), (4, '');
+SELECT id, detectTonality(text) AS sentiment FROM test_sentiment WHERE EXISTS (SELECT 1 FROM test_sentiment AS t2 WHERE t2.score > 0 AND t2.id = test_sentiment.id);
+SELECT count(*) FROM test_sentiment WHERE EXISTS (SELECT text FROM test_sentiment WHERE detectTonality(text) IS NOT NULL);
+SELECT id, detectTonality(text) AS sentiment FROM test_sentiment GROUP BY id HAVING sentiment IS NOT NULL OR sentiment = 0;
+SELECT text, detectTonality(text) AS sentiment FROM test_sentiment WHERE EXISTS (SELECT * FROM test_sentiment t2 WHERE t2.text LIKE '%пёс%') ORDER BY sentiment ASC;
+CREATE TABLE sentiment_analysis AS SELECT detectTonality(text) AS sentiment FROM test_sentiment WHERE text IS NOT NULL;
+SELECT t1.id, detectTonality(t1.text) AS sentiment FROM test_sentiment t1 JOIN (SELECT id FROM test_sentiment WHERE score IS NULL) t2 ON t1.id = t2.id;
+INSERT INTO test_sentiment SELECT id + 10, 'Шарик - неплохой пёс' FROM test_sentiment WHERE EXISTS (SELECT 1 WHERE text <> '');
+SELECT text, EXISTS (SELECT 1 FROM test_sentiment WHERE detectTonality(text) < 0) AS is_negative FROM test_sentiment GROUP BY text HAVING is_negative = 1;

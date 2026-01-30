@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/52432",
+  "title": "txn: unexpected behavior for point-get and `LOCK IN SHARE MODE`",
+  "description": "## Bug Report\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\nUsing `LOCK IN SHARED MODE` in a point-get query:\r\n\r\n```\r\nset @@tidb_enable_noop_functions='OFF';\r\ncreate table t(a int key, b int);\r\ninsert into t values (1, 1), (2, 2);\r\nselect * from t where a=1 lock in share mode;\r\nselect * from t where b=1 lock in share mode;\r\n```\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nAccording to [TiDB document](https://docs.pingcap.com/tidb/stable/pessimistic-transaction), TiDB should report an error using `SHARE IN LOCK MODE` when `tidb_enable_noop_functions=OFF`.\r\n\r\n### 3. What did you see instead (Required)\r\n```\r\ntidb> select * from t where a=1 lock in share mode;\r\n+---+------+\r\n| a | b    |\r\n+---+------+\r\n| 1 |    1 |\r\n+---+------+\r\n1 row in set (5.80 sec)\r\n\r\ntidb> select * from t where b=1 lock in share mode;\r\nERROR 1235 (42000): function LOCK IN SHARE MODE has only noop implementation in tidb now, use tidb_enable_noop_functions to enable these functions\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\nAll versions of TiDB have this issue, I believe.\r\n\r\n### 5. Root cause analysis\r\n\r\nNotice that for `select * from t where a=1 lock in share mode`, TiDB uses a 'fast path' for point-get, we didn't handle `LOCK IN SHARE MODE` in this path.",
+  "date": "2024-04-09T02:43:04Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1(a INT PRIMARY KEY, b VARCHAR(255), c DATE);",
+    "INSERT INTO t1 VALUES (1, 'test', '2023-01-01'), (2, 'example', NULL);",
+    "SELECT * FROM t1 WHERE a = 1;",
+    "SELECT * FROM t1 WHERE b = 'test';",
+    "SELECT * FROM t1 WHERE c IS NULL;"
+  ],
+  "key_bug_features": [
+    "Using LOCK IN SHARE MODE in a point-get query"
+  ]
+}

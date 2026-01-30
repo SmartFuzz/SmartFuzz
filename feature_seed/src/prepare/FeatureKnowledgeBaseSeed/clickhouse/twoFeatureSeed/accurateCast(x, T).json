@@ -1,0 +1,16 @@
+{
+    "function": "accurateCast(x, T)",
+    "operator": "EXTRACT",
+    "sql_array": [
+        "CREATE TABLE test_dates (id UInt32, date_col DateTime, value Float32) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_dates VALUES (1, '2023-01-01 12:00:00', 123.456), (2, '2023-06-15 18:30:00', NULL), (3, '2023-12-31 23:59:59', 0.0001);",
+        "SELECT accurateCast(EXTRACT(MONTH FROM date_col) + value, 'UInt8') AS month_value FROM test_dates WHERE value IS NOT NULL;",
+        "SELECT id, EXTRACT(DAY FROM date_col) AS day, accurateCast(value, 'Float64') AS accurate_value FROM test_dates WHERE value > 0;",
+        "SELECT id, date_col, EXTRACT(YEAR FROM date_col) / accurateCast(NULLIF(value, 0), 'UInt8') AS year_division FROM test_dates WHERE value IS NOT NULL ORDER BY year_division;",
+        "CREATE TABLE test_numbers (num UInt8, description String) ENGINE = MergeTree() ORDER BY num;",
+        "INSERT INTO test_numbers VALUES (1, 'One'), (255, 'Max'), (0, 'Zero'), (17, 'Seventeen');",
+        "SELECT n.num, accurateCast(n.num, 'Int8') + EXTRACT(MONTH FROM toDate('2023-01-01')) AS computed_value FROM test_numbers n WHERE n.description LIKE '%One%';",
+        "SELECT t.id, t.date_col, accurateCast(EXTRACT(SECOND FROM t.date_col), 'UInt8') AS seconds FROM test_dates t WHERE accurateCast(t.value, 'UInt8') > 0;",
+        "SELECT n.num, COUNT(*) AS num_count FROM test_numbers n JOIN (SELECT accurateCast(EXTRACT(DAY FROM date_col), 'UInt8') AS day_value FROM test_dates) d ON d.day_value = n.num GROUP BY n.num HAVING num_count > 1;"
+    ]
+}

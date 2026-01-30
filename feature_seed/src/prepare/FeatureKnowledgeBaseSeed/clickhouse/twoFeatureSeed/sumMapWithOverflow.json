@@ -1,0 +1,17 @@
+{
+    "function": "sumMapWithOverflow",
+    "operator": "a <> b",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, statusMap Nested(status UInt8, requests Int32), date DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table VALUES (1, [1, 2, 2, 3], [10, 10, -5, 20]), (2, [3, 4, 5], [30, 20, 10]), (3, [6, 7, 8], [5, -5, NULL]);",
+        "SELECT id, sumMapWithOverflow(statusMap.status, statusMap.requests) AS summed FROM test_table GROUP BY id HAVING summed.2 <> 0;",
+        "SELECT id, toTypeName(sumMapWithOverflow(statusMap.status, statusMap.requests)) AS status_type FROM test_table WHERE statusMap.requests[1] <> 20;",
+        "CREATE TABLE outer_table (group_id UInt32, statusMap Nested(status UInt8, requests Int32)) ENGINE = MergeTree() ORDER BY group_id;",
+        "INSERT INTO outer_table VALUES (1, [1, 2], [10, 20]), (2, [1, 2, 3], [30, 40, -20]);",
+        "SELECT ot.group_id, sumMapWithOverflow(ot.statusMap.status, ot.statusMap.requests) AS outer_summed FROM outer_table ot WHERE ot.group_id <> 1 GROUP BY ot.group_id;",
+        "SELECT tt.id, (SELECT sumMapWithOverflow(statusMap.status, statusMap.requests) FROM test_table WHERE test_table.id = tt.id) AS inner_summed FROM test_table tt WHERE inner_summed.1 <> 0;",
+        "CREATE TABLE temp_table AS SELECT * FROM test_table WHERE date = '2000-01-01 00:00:00';",
+        "SELECT date, sumMapWithOverflow(statusMap.status, statusMap.requests) FROM temp_table JOIN outer_table ON temp_table.id <> outer_table.group_id GROUP BY date;",
+        "SELECT id, sumMapWithOverflow(statusMap.status, statusMap.requests) FROM test_table WHERE EXISTS (SELECT 1 FROM outer_table WHERE outer_table.group_id <> test_table.id) GROUP BY id;"
+    ]
+}

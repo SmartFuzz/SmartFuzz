@@ -1,0 +1,15 @@
+CREATE TABLE subscriptions (id INT PRIMARY KEY, name VARCHAR(255), sync_interval INT);
+CREATE TABLE scheduled_jobs (job_id INT PRIMARY KEY, subscription_id INT, job_time TIMESTAMP, FOREIGN KEY (subscription_id) REFERENCES subscriptions(id));
+INSERT INTO subscriptions (id, name, sync_interval) VALUES (1, 'Daily Backup', 24);
+INSERT INTO subscriptions (id, name, sync_interval) VALUES (2, 'Hourly Sync', 1);
+INSERT INTO subscriptions (id, name, sync_interval) VALUES (3, 'Weekly Report', 168);
+INSERT INTO scheduled_jobs (job_id, subscription_id, job_time) VALUES (1, 1, NOW() + INTERVAL '24 hours');
+INSERT INTO scheduled_jobs (job_id, subscription_id, job_time) VALUES (2, 2, NOW() + INTERVAL '1 hour');
+INSERT INTO scheduled_jobs (job_id, subscription_id, job_time) VALUES (3, 3, NOW() + INTERVAL '168 hours');
+SELECT sj.job_id, s.name, sj.job_time FROM scheduled_jobs sj JOIN subscriptions s ON sj.subscription_id = s.id WHERE sj.job_time > NOW();
+SELECT COUNT(*) FROM scheduled_jobs WHERE job_time < NOW() AND subscription_id = (SELECT id FROM subscriptions WHERE name = 'Hourly Sync');
+DELETE FROM scheduled_jobs WHERE job_time < NOW() AND subscription_id = (SELECT id FROM subscriptions WHERE sync_interval < 2);
+UPDATE scheduled_jobs SET job_time = job_time + INTERVAL '1 hour' WHERE job_time < NOW() AND job_id IN (SELECT job_id FROM scheduled_jobs WHERE subscription_id = 2);
+SELECT s.name, COUNT(sj.job_id) AS job_count FROM subscriptions s LEFT JOIN scheduled_jobs sj ON s.id = sj.subscription_id GROUP BY s.name HAVING job_count > 1;
+INSERT INTO scheduled_jobs (job_id, subscription_id, job_time) SELECT ROW_NUMBER() OVER (), id, NOW() + INTERVAL '1 hour' FROM subscriptions;
+CREATE VIEW active_jobs AS SELECT sj.job_id, s.name FROM scheduled_jobs sj JOIN subscriptions s ON sj.subscription_id = s.id WHERE sj.job_time > NOW();

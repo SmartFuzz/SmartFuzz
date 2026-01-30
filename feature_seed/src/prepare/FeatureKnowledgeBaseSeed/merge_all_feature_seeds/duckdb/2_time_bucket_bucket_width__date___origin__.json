@@ -1,0 +1,10 @@
+CREATE TABLE test_dates (id INTEGER, event_date DATE, duration INTERVAL, status VARCHAR);
+INSERT INTO test_dates VALUES (1, DATE '1990-12-31', INTERVAL '5 days', 'active'), (2, DATE '1992-04-20', INTERVAL '2 weeks', 'inactive'), (3, DATE '2000-01-01', INTERVAL '1 month', 'active');
+SELECT id, time_bucket(INTERVAL '2 weeks', event_date) AS bucketed_date, event_date - duration AS adjusted_date FROM test_dates WHERE status = 'active';
+SELECT id, COUNT(*) AS event_count FROM (SELECT time_bucket(INTERVAL '1 month', event_date) AS month_bucket FROM test_dates GROUP BY month_bucket HAVING month_bucket <= (SELECT DATE '2000-12-31')) AS monthly_events GROUP BY id;
+SELECT dt.id, dt.event_date, (dt.event_date - INTERVAL '5 days') AS prior_date FROM test_dates dt JOIN (SELECT time_bucket(INTERVAL '1 week', event_date) AS weekly_bucket FROM test_dates) AS tb ON dt.event_date = tb.weekly_bucket;
+CREATE TABLE temp_edges (point_id INTEGER, point_date DATE);
+INSERT INTO temp_edges VALUES (1, DATE '2000-01-01'), (2, DATE '2000-01-02'), (3, NULL);
+SELECT te.point_id, time_bucket(INTERVAL '1 day', COALESCE(te.point_date, DATE '2000-01-01')) AS aligned_date FROM temp_edges te WHERE te.point_date IS NOT NULL OR te.point_id = 3;
+SELECT e.point_id, (time_bucket(INTERVAL '2 days', e.point_date) - INTERVAL '1 day') AS shifted_date FROM temp_edges e WHERE point_date IS NOT NULL;
+SELECT t1.id, COUNT(t1.event_date) AS total_events FROM test_dates t1 LEFT JOIN test_dates t2 ON t1.id = t2.id AND t2.event_date BETWEEN t1.event_date - INTERVAL '2 weeks' AND t1.event_date GROUP BY t1.id HAVING total_events > 1;

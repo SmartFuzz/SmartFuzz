@@ -1,0 +1,10 @@
+CREATE TABLE test_fuzzing (id Int32, value Float64, nullable_value Nullable(String), threshold Float64);
+INSERT INTO test_fuzzing (id, value, nullable_value, threshold) VALUES (1, 10.5, 'test', 5.0), (2, 20.0, NULL, 15.0), (3, -5.0, 'edge', 0.0);
+SELECT id, value, hasThreadFuzzer() AS fuzzing_effective FROM test_fuzzing WHERE value < threshold AND (nullable_value IS NULL OR hasThreadFuzzer()) ORDER BY value;
+SELECT id, value, threshold, hasThreadFuzzer() AS fuzzing_effective FROM test_fuzzing WHERE hasThreadFuzzer() AND (value < threshold OR value > 15.0);
+SELECT id, value, threshold, hasThreadFuzzer() AS fuzzing_effective FROM test_fuzzing HAVING fuzzing_effective AND SUM(value) < 20.0 GROUP BY id, value, threshold;
+SELECT id FROM (SELECT value, threshold FROM test_fuzzing WHERE (value < threshold) AND hasThreadFuzzer()) AS subquery WHERE id = 1;
+SELECT id, SUM(value) AS total_value FROM (SELECT id, value FROM test_fuzzing WHERE value < threshold) AS inner_query GROUP BY id;
+SELECT outer.id FROM (SELECT id, value FROM test_fuzzing WHERE value < threshold) AS outer JOIN (SELECT id FROM test_fuzzing WHERE hasThreadFuzzer()) AS inner ON outer.id = inner.id;
+INSERT INTO test_fuzzing (id, value, nullable_value, threshold) VALUES (4, NULL, 'another', 0.0), (5, 25.3, NULL, -10.0);
+ALTER TABLE test_fuzzing ADD COLUMN created_at DateTime DEFAULT now();

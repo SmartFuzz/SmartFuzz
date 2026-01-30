@@ -1,0 +1,18 @@
+{
+    "function": "ngramSimHashCaseInsensitiveUTF8",
+    "operator": "a GLOBAL NOT IN ...",
+    "sql_array": [
+        "CREATE TABLE TestStrings (id UInt32, str String);",
+        "INSERT INTO TestStrings VALUES (1, 'ClickHouse'), (2, 'clickhouse'), (3, 'CLICKHOUSE'), (4, 'DataBase');",
+        "SELECT ngramSimHashCaseInsensitiveUTF8(str) AS hash_value FROM TestStrings WHERE id GLOBAL NOT IN (SELECT id FROM TestStrings WHERE str = 'DataBase');",
+        "CREATE TABLE AnotherTable (id UInt32, reference String);",
+        "INSERT INTO AnotherTable VALUES (1, 'ClickHouse'), (2, 'DataBase');",
+        "SELECT a.hash_value FROM (SELECT ngramSimHashCaseInsensitiveUTF8(str, 5) AS hash_value FROM TestStrings) AS a WHERE a.hash_value GLOBAL NOT IN (SELECT ngramSimHashCaseInsensitiveUTF8(reference) FROM AnotherTable);",
+        "SELECT a.str FROM (SELECT str, ngramSimHashCaseInsensitiveUTF8(str) AS hash_value FROM TestStrings GROUP BY str HAVING hash_value < 128) AS a WHERE id GLOBAL NOT IN (SELECT id FROM (SELECT id FROM TestStrings WHERE str = ''));",
+        "SELECT ngramSimHashCaseInsensitiveUTF8(NULL) AS null_hash WHERE id GLOBAL NOT IN (SELECT id FROM TestStrings WHERE id = 3);",
+        "CREATE TABLE EdgeCaseStrings (id UInt32, str String, created_at DateTime);",
+        "INSERT INTO EdgeCaseStrings VALUES (1, '2023-01-01'), (2, '2023-12-31'), (3, NULL);",
+        "SELECT ngramSimHashCaseInsensitiveUTF8(str) FROM EdgeCaseStrings WHERE created_at GLOBAL NOT IN (SELECT created_at FROM EdgeCaseStrings WHERE id = 2);",
+        "SELECT ngramSimHashCaseInsensitiveUTF8(str, 1) AS single_gram_hash FROM TestStrings WHERE id <= 2 GLOBAL NOT IN (SELECT id FROM AnotherTable WHERE LENGTH(reference) > 10);"
+    ]
+}

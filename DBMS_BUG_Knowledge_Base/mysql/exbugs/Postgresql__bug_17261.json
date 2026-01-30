@@ -1,0 +1,21 @@
+{
+  "url": "https://www.postgresql.org/message-id/17261-b27dbaa13eba2220%40postgresql.org",
+  "title": "BUG #17261: FK ON UPDATE CASCADE can break referential integrity with columns of different types",
+  "description": "The following bug has been logged on the website:\nBug reference:      17261\nLogged by:          Marcus Gartner\nEmail address:      marcus(at)cockroachlabs(dot)com\nPostgreSQL version: 14.0\nOperating system:   macOS Big Sur 11.6\nDescription:\nIt is possible to break foreign key referential integrity when the FK\ncolumns have different types and updates are cascaded from the parent\nrelation to the child relation. As far as I can tell from the documentation\non FKs\n(\nhttps://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-FK\n)\nthis behavior is not expected. The example below shows how to reproduce the\nissue.\nThis behavior is present on 14.0 and 13.3. I did not test any other\nversions.\n-- To reproduce:\nCREATE TABLE p (d DECIMAL(10, 2) PRIMARY KEY);\nCREATE TABLE c (d DECIMAL(10, 0) REFERENCES p(d) ON UPDATE CASCADE);\nINSERT INTO p VALUES (1.00);\nINSERT INTO c VALUES (1);\n-- Update the parent row value to 1.45.\nUPDATE p SET d = 1.45 WHERE d = 1.00;\nSELECT * FROM p;\n--    d\n--  ------\n--   1.45\n-- The FK constraint integrity is not upheld.\n-- I would expect the update to have failed, because 1 (the\n-- value of the assignment cast from 1.45 to DECIMAL(10, 0))\n-- does not exist in p.\nSELECT * FROM c;\n--   d\n--  ---\n--   1",
+  "date": "2021-11-01 21:09:00",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE parent_table (id INT AUTO_INCREMENT PRIMARY KEY, value DECIMAL(10, 2));",
+    "CREATE TABLE child_table (id INT AUTO_INCREMENT PRIMARY KEY, parent_id INT, child_value DECIMAL(10, 0), FOREIGN KEY (parent_id) REFERENCES parent_table(id) ON UPDATE CASCADE);",
+    "INSERT INTO parent_table (value) VALUES (2.50);",
+    "INSERT INTO child_table (parent_id, child_value) VALUES (1, 2);",
+    "UPDATE parent_table SET value = 2.75 WHERE id = 1;",
+    "SELECT * FROM child_table;"
+  ],
+  "key_bug_features": [
+    "FK ON UPDATE CASCADE with different column types"
+  ]
+}

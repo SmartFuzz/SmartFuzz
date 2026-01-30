@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/cad1ab4cb7",
+  "title": "Segfault due to LEFT JOIN flattening optimization",
+  "description": "drh added on 2017-05-23 01:17:09:\nThe following SQL causes SQLite 3.19.0 to segfault:\nSELECT *\nFROM (SELECT 1 a) s\nLEFT JOIN (\n    SELECT 1 b, * FROM (\n        SELECT * FROM (\n            SELECT 1 c\n        ) x\n    ) x\n) x;\nThe problem is the new LEFT JOIN flattening optimization in the just released\nSQLite 3.19.0.  No prior versions of SQLite are affected.\nThe problem was reported by Mark Brand.\ndrh added on 2017-05-23 12:35:04:\nAnother test case:\nSELECT *\nFROM (SELECT 1 a) s\nLEFT JOIN (\n    SELECT c+1 b, * FROM (\n        SELECT * FROM (\n            SELECT 1 c\n        ) x\n    ) x\n) x;\ndrh added on 2017-05-23 15:18:38:\nFurther test cases for faults in the LEFT JOIN query flattener:\nCREATE TABLE t1(c PRIMARY KEY,a TEXT(10000),b TEXT (10000));\nSELECT * FROM (SELECT 111) LEFT JOIN (SELECT c+222 FROM t1) GROUP BY 1;\nAnd\nCREATE TABLE t1(c PRIMARY KEY) WITHOUT ROWID;\nSELECT * FROM (SELECT 111) LEFT JOIN (SELECT c+222 FROM t1) GROUP BY 1;",
+  "date": "2017-05-23 01:17:098.22 years ago",
+  "vulnerable_version": "3.19.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(c INTEGER PRIMARY KEY, a TEXT, b DOUBLE);",
+    "INSERT INTO t1(a, b) VALUES ('test', 1.5);",
+    "SELECT * FROM (SELECT 1 AS a) AS s LEFT JOIN (SELECT b, * FROM (SELECT * FROM t1) AS x) AS x;",
+    "CREATE TABLE t2(d INTEGER, e TEXT DEFAULT 'default');",
+    "SELECT * FROM (SELECT 111) AS s LEFT JOIN (SELECT d + 222 AS d FROM t2) AS x GROUP BY 1;"
+  ],
+  "key_bug_features": [
+    "LEFT JOIN flattening optimization causing segfault"
+  ]
+}

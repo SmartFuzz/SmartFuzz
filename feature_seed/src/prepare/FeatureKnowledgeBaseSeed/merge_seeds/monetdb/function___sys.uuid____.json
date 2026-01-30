@@ -1,0 +1,11 @@
+CREATE TABLE users (id UUID PRIMARY KEY, name VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO users (id, name) VALUES (sys.uuid(), 'Alice');
+INSERT INTO users (id, name) VALUES (sys.uuid(), 'Bob');
+SELECT * FROM users WHERE name = 'Alice' AND id = sys.uuid();
+CREATE TABLE orders (order_id UUID PRIMARY KEY, user_id UUID, amount DECIMAL(10, 2), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO orders (order_id, user_id, amount) VALUES (sys.uuid(), (SELECT id FROM users WHERE name = 'Bob'), 99.99);
+SELECT u.name, o.amount FROM users u JOIN orders o ON u.id = o.user_id WHERE o.amount > 50 AND o.order_id = sys.uuid();
+SELECT COUNT(*) FROM users WHERE id IN (SELECT user_id FROM orders WHERE order_id = sys.uuid());
+CREATE TABLE transactions (transaction_id UUID PRIMARY KEY, order_id UUID, status VARCHAR(20));
+INSERT INTO transactions (transaction_id, order_id, status) VALUES (sys.uuid(), (SELECT order_id FROM orders WHERE amount = 99.99), 'completed');
+SELECT t.transaction_id FROM transactions t LEFT JOIN orders o ON t.order_id = o.order_id WHERE o.user_id = (SELECT id FROM users WHERE name = 'Alice') AND t.transaction_id = sys.uuid();

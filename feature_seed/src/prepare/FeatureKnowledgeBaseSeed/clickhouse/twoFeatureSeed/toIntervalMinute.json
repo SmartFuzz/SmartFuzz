@@ -1,0 +1,22 @@
+{
+    "function": "toIntervalMinute",
+    "operator": "x",
+    "sql_array": [
+        "CREATE TABLE test_table (id Int32, created_at DateTime, value Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table VALUES (1, '2024-06-15 10:00:00', 10.5), (2, '2024-06-15 10:12:00', NULL), (3, '2024-06-15 10:15:00', 20.1);",
+        "WITH (SELECT value FROM test_table WHERE value IS NOT NULL) AS filtered_values, toIntervalMinute(15) AS interval_value SELECT created_at + interval_value AS new_time FROM filtered_values;",
+        "SELECT id, value + multiIf(value IS NULL, 0, value) AS adjusted_value FROM test_table;",
+        "CREATE TABLE temp_table AS SELECT id, created_at + toIntervalMinute(CAST(value AS Int32)) AS adjusted_time FROM test_table; DROP TABLE IF EXISTS temp_table;",
+        "SELECT COUNT(*) FROM test_table WHERE multiIf(created_at < now() - toIntervalMinute(15), true, false);",
+        "SELECT id, value, (created_at + toIntervalMinute(value)) AS adjusted_time FROM test_table WHERE value IS NOT NULL;",
+        "WITH toIntervalMinute(CAST(5 AS String)) AS test_interval SELECT created_at, value, created_at + test_interval AS new_time FROM test_table;",
+        "SELECT id, created_at, multiIf(value IS NULL, 'N/A', toString(value)) AS value_string FROM test_table;",
+        "WITH NULL AS test_null SELECT id, created_at + toIntervalMinute(ABS(NULL)) AS null_case FROM test_table;",
+        "SELECT id, COUNT(*) OVER (PARTITION BY value) AS value_count FROM test_table GROUP BY value ORDER BY value;",
+        "CREATE TABLE join_test (ref_id Int32, ref_value String) ENGINE = MergeTree() ORDER BY ref_id;",
+        "INSERT INTO join_test VALUES (1, 'A'), (2, 'B'), (3, 'C');",
+        "SELECT tt.id, tt.value, jt.ref_value, tt.created_at + toIntervalMinute(jt.ref_id) AS computed_time FROM test_table tt LEFT JOIN join_test jt ON tt.id = jt.ref_id;",
+        "WITH (SELECT COUNT(*) FROM test_table WHERE value > 0) AS positive_count SELECT id, IF(value IS NULL, positive_count, value) AS result FROM test_table;",
+        "SELECT DISTINCT id, created_at FROM test_table WHERE id IN (SELECT ref_id FROM join_test) HAVING created_at > now() - toIntervalMinute(CAST(value AS Int64));"
+    ]
+}

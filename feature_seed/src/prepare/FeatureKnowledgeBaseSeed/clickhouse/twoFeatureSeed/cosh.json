@@ -1,0 +1,21 @@
+{
+    "function": "cosh",
+    "operator": "a.N",
+    "sql_array": [
+        "CREATE TABLE test_table (id Int32, value Float64, vector Array(Float64)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table VALUES (1, 0.0, [1.0, 2.0]), (2, 5.0, [3.0, 4.0]), (3, NULL, [NULL, 6.0]);",
+        "SELECT id, cosh(value + tupleElement(vector, 1)) AS hyper_cosh FROM test_table WHERE value IS NOT NULL;",
+        "SELECT id, cosh(value) AS hyper_cosh FROM test_table WHERE id IN (SELECT id FROM test_table WHERE value >= 0);",
+        "SELECT id, cosh(value) AS hyper_cosh FROM test_table GROUP BY id HAVING hyper_cosh > 1;",
+        "SELECT id, cosh(value + tupleElement(vector, 2)) AS hyper_cosh FROM test_table WHERE id IN (SELECT id FROM test_table WHERE value <= 5.0);",
+        "SELECT id, cosh(value) AS hyper_cosh, COUNT(*) OVER (PARTITION BY value) AS cnt FROM test_table ORDER BY hyper_cosh DESC;",
+        "SELECT id, cosh(value + 10.0) AS result FROM (SELECT id, value FROM test_table WHERE vector[1] IS NOT NULL) WHERE result < 5;",
+        "CREATE TABLE temp_table AS SELECT * FROM test_table WHERE value IS NOT NULL;",
+        "INSERT INTO temp_table SELECT id, cosh(value) AS hyper_cosh, vector FROM test_table WHERE value IS NOT NULL AND id < 3;",
+        "SELECT tupleElement((SELECT groupArray(id) FROM temp_table WHERE vector[1] IS NOT NULL), 1) AS first_id;",
+        "SELECT cosh(NULLCAST(value AS Float64)) AS hyper_cosh FROM test_table;",
+        "SELECT cosh(COALESCE(value, 0) + 8) AS hyper_cosh FROM test_table GROUP BY id HAVING hyper_cosh > 1;",
+        "SELECT id, cosh(value + tupleElement(vector, 1)) AS hyper_cosh FROM test_table WHERE id IN (SELECT id FROM temp_table WHERE vector[1] IS NOT NULL) HAVING hyper_cosh < 20;",
+        "DROP TABLE temp_table;"
+    ]
+}

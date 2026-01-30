@@ -1,0 +1,16 @@
+{
+    "function": "listagg(col_expr varchar, separator varchar)",
+    "operator": "<<",
+    "sql_array": [
+        "CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR(50), value INT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO test_table (id, name, value) VALUES (1, 'A', 100), (2, 'B', NULL), (3, 'C', -50), (4, 'D', 0);",
+        "CREATE TABLE reference_table (ref_id INT PRIMARY KEY, ref_value VARCHAR(20));",
+        "INSERT INTO reference_table (ref_id, ref_value) VALUES (1, 'Value1'), (2, 'Value2');",
+        "SELECT name, listagg(CAST(value << 1 AS VARCHAR), ', ') OVER (PARTITION BY name) AS aggregated_value FROM test_table;",
+        "SELECT t.id, t.name, listagg(CAST(t.value AS VARCHAR), '; ') WITHIN GROUP (ORDER BY t.value) AS aggregated_values FROM test_table AS t WHERE t.value IS NOT NULL GROUP BY t.id HAVING COUNT(t.value) > 1;",
+        "SELECT rt.ref_value, SUM(t.value << 2) AS total_value FROM reference_table rt JOIN test_table t ON rt.ref_id = (t.id << 1) WHERE t.value IS NOT NULL GROUP BY rt.ref_value HAVING SUM(t.value << 2) > 100;",
+        "SELECT DISTINCT name, (listagg(name, ', ') OVER (PARTITION BY name ORDER BY created_at)) << 2 AS combined_names FROM test_table WHERE value IS NOT NULL;",
+        "SELECT t1.name, listagg(t1.value << 1, '|') OVER (ORDER BY t1.id) AS shifted_values FROM test_table t1 INNER JOIN reference_table rt ON t1.id = rt.ref_id << 1 WHERE t1.value IS NOT NULL GROUP BY t1.name;",
+        "SELECT rt.ref_value, COUNT(*) AS num_rows FROM reference_table rt LEFT JOIN test_table t ON rt.ref_id = t.id << 2 WHERE t.value IS NULL GROUP BY rt.ref_value HAVING num_rows > 0;"
+    ]
+}

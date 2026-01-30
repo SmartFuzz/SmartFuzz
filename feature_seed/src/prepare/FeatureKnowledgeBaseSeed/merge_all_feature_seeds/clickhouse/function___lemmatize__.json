@@ -1,0 +1,12 @@
+CREATE TABLE test_words (word String, language String) ENGINE = MergeTree() ORDER BY word;
+INSERT INTO test_words VALUES ('wolves', 'en'), ('running', 'en'), ('better', 'en'), ('feet', 'en');
+SELECT lemmatize(language, word) FROM test_words WHERE language = 'en';
+SELECT lemmatize(language, word) FROM (SELECT word, language FROM test_words WHERE word LIKE '%s') AS subquery;
+SELECT word, lemmatize(language, word) FROM test_words WHERE language = 'en' AND word IN (SELECT word FROM test_words WHERE length(word) > 4);
+SELECT lemmatize('en', word) AS lemma FROM (SELECT word FROM test_words WHERE length(word) > 4) WHERE lemma IS NOT NULL;
+SELECT w.word, lemmatize(w.language, w.word) FROM (SELECT word, language FROM test_words) AS w WHERE w.word != 'running';
+CREATE TABLE another_test (id UInt32, description String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO another_test VALUES (1, 'The wolves are howling.');
+SELECT at.id, lemmatize('en', arrayJoin(splitByString(' ', description))) AS lemma FROM another_test at WHERE description LIKE '%wolves%';
+WITH (SELECT COUNT(*) FROM test_words) AS total_words SELECT lemmatize('en', word) FROM test_words WHERE total_words > 0;
+SELECT lemmatize('en', 'children') AS lemma WHERE NOT EXISTS (SELECT * FROM test_words WHERE word = 'children');

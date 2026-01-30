@@ -1,0 +1,21 @@
+{
+  "url": "https://www.postgresql.org/message-id/18325-0ea613ec0a06757f%40postgresql.org",
+  "title": "BUG #18325: Possible bug with plpgsql function + ALTER TABLE DROP COLUMN",
+  "description": "The following bug has been logged on the website:\nBug reference:      18325\nLogged by:          Antti Risteli\nEmail address:      antti(at)kiinnost(dot)us\nPostgreSQL version: 16.1\nOperating system:   Debian Linux\nDescription:\nHi,\nwe encountered a production problem after dropping a column that was used in\na\nplpgsql function. While I am not 100% certain that this is a bug it was at\nleast\nnot mentioned in any documentation I found. While I'm not very familiar\nwith\nPostgreSQL internals I believe the cause might be related to a plan being\ncached\nand not properly invalidated as the function call works from another\nconnection\ninitiated after the ALTER TABLE.\nWe initially encountered this on version 14.10 but it also happens on\n16.1.\nHere's a reproduction (which still might not be minimal but it is heavily\nsimplified from our actual case) when ran from a single connection:\nDROP TABLE IF EXISTS abc;\nCREATE TABLE abc (pk integer, test_id text);\nINSERT INTO abc VALUES (122,'ejife');\nCREATE OR REPLACE FUNCTION test_function() RETURNS integer\nAS $body$\nDECLARE\nabc_record abc;\nabc_records abc[] = array[]::abc[];\nabc_record2 abc;\nBEGIN\nFOR abc_record IN SELECT * FROM abc\nLOOP\nabc_records := abc_records || abc_record;\nFOR abc_record2 IN SELECT * FROM unnest(abc_records)\nLOOP\nRETURN abc_record2.pk;\nEND LOOP;\nEND LOOP;\nRETURN 1;\nEND\n$body$\nLANGUAGE plpgsql;\n-- this prints 122\nSELECT test_function();\nALTER TABLE abc DROP COLUMN test_id;\n-- this should print 122\nSELECT test_function();\n-- but it actually prints\nERROR:  attribute 2 of type record has been dropped\nCONTEXT:  PL/pgSQL function test_function() line 10 at FOR over SELECT\nrows\nAt this point SELECT test_function() works normally on connections opened\nafter\nALTER TABLE.\nBr,\nantti",
+  "date": "2024-02-02 18:39:42",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS xyz;",
+    "CREATE TABLE xyz (id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255), age INT);",
+    "INSERT INTO xyz (name, age) VALUES ('Alice', 30), ('Bob', NULL);",
+    "CREATE FUNCTION get_age() RETURNS INT DETERMINISTIC BEGIN DECLARE user_record xyz;",
+    "DECLARE done INT DEFAULT FALSE;",
+    "DECLARE age_value INT;"
+  ],
+  "key_bug_features": [
+    "plpgsql function fails after ALTER TABLE DROP COLUMN"
+  ]
+}

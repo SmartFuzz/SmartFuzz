@@ -1,0 +1,28 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/63680",
+  "title": "Inconsistent behaviour of `\\\\` in normal query and prepared statement",
+  "vulnerable_database": "tidb",
+  "date": "2025-09-23T03:01:10Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\nHi,\n\nThe following test case contains two equivalent queries, one in normal select, and another in prepared statement.\n\nHowever, the normal select returns  `0` and the prepared statement returns `1`. I think the result of the normal select is correct as there is only `A` in t0.c0. \n\n```\nCREATE TABLE t0(c0 CHAR(100));\nINSERT INTO t0 VALUES ('A');\nSELECT (('\\\\6' IS TRUE) NOT IN (t0.c0, CAST(449007834 AS DECIMAL))) FROM t0;\n\nSET @a = 449007834;\nPREPARE prepare_query FROM \"SELECT (('\\\\6' IS TRUE) NOT IN (t0.c0, CAST(? AS DECIMAL))) FROM t0\";\nEXECUTE prepare_query USING @a;\n```\n\nThe same issue exists in MySQL and has been confirmed. https://bugs.mysql.com/bug.php?id=118982\n\n\n### 2. What is your TiDB version? (Required)\n\nRelease Version: v9.0.0-beta.2.pre-196-g312226f869\\nEdition: Community\\nGit Commit Hash: 312226f869d56922135e1c177cac6c90319c3134\\nGit Branch: HEAD\\nUTC Build Time: 2025-09-21 08:27:14\\nGoVersion: go1.23.11\\nRace Enabled: false\\nCheck Table Before Drop: false\\nStore: unistore\\nKernel Type: Classic\n\n",
+  "poc": [
+    "CREATE TABLE t0(c0 CHAR(100));",
+    "INSERT INTO t0 VALUES ('A');",
+    "SELECT (('\\\\6' IS TRUE) NOT IN (t0.c0, CAST(449007834 AS DECIMAL))) FROM t0;",
+    "SET @a = 449007834;",
+    "PREPARE prepare_query FROM \"SELECT (('\\\\6' IS TRUE) NOT IN (t0.c0, CAST(? AS DECIMAL))) FROM t0\";",
+    "EXECUTE prepare_query USING @a;"
+  ],
+  "poc_type": "sql_text",
+  "state": "open",
+  "key_bug_features": [
+    "Inconsistent handling of backslashes in queries"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t1(c1 VARCHAR(50), c2 INT, c3 DECIMAL(10,2));",
+    "INSERT INTO t1 VALUES ('B', 1, 10.00);",
+    "SELECT (('\\6' IS TRUE) NOT IN (c1, CAST(c2 AS CHAR)) OR c3 IS NULL) FROM t1;",
+    "SET @b = 1;",
+    "PREPARE prepare_query_2 FROM 'SELECT (('\\6' IS TRUE) NOT IN (c1, CAST(? AS CHAR)) OR c3 IS NULL) FROM t1';"
+  ]
+}

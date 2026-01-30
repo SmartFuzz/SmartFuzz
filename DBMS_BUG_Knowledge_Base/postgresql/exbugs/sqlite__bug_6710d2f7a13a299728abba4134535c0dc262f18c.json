@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/6710d2f7a1",
+  "title": "LEFT JOIN fails to fetch row",
+  "description": "mrigger added on 2019-08-17 14:43:41:\nConsider the following test case:\nCREATE TABLE t0(c0);\nCREATE VIEW v0(c0) AS SELECT TYPEOF(1) FROM t0;\nINSERT INTO t0(c0) VALUES (0), (1);\nSELECT * FROM t0 LEFT JOIN v0 ON t0.c0 WHERE NOT(v0.c0 = 'a'); -- unexpected: fetches no row\nI would expect the last query to be equivalent to the following query:\nSELECT * FROM t0 LEFT JOIN v0 ON t0.c0 WHERE v0.c0 != 'a'; -- fetches two rows\nWhile the first query does not fetch any rows, the second one fetches two rows.\ndrh added on 2019-08-17 17:11:14:\nThe expression \"typeof(1)\" appears to be constant, always returning the\nstring 'integer'.  However, because it originates from the right-hand side\nof a LEFT JOIN, it might also sometimes be NULL, and so it is not really\nconstant.  The logic that factors out constant expressions (to avoid\nevaluating them multiple times) failed to detect this and factored out\nthe \"typeof(1)\" expression.  The fix is to disable the constant-expression\nfactoring optimization when evaluating expressions that originate on the\nright-hand side of a LEFT JOIN.\nCheck-in [500c9152daaf11cf]",
+  "date": "2019-08-17 14:43:415.98 years ago",
+  "vulnerable_version": "3.29.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(c1 INTEGER, c2 TEXT, c3 REAL);",
+    "CREATE VIEW v1 AS SELECT pg_typeof(c1) FROM t1;",
+    "INSERT INTO t1(c1, c2, c3) VALUES (NULL, 'test', 3.14), (2, 'example', NULL);",
+    "SELECT * FROM t1 LEFT JOIN v1 ON t1.c1 WHERE NOT(v1.c1 = 'integer');",
+    "SELECT * FROM t1 LEFT JOIN v1 ON t1.c1 WHERE v1.c1 != 'integer';"
+  ],
+  "key_bug_features": [
+    "Constant-expression factoring in LEFT JOIN with NULL values"
+  ]
+}

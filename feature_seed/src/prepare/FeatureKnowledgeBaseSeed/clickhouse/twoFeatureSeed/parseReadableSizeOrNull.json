@@ -1,0 +1,19 @@
+{
+    "function": "parseReadableSizeOrNull",
+    "operator": "a LIKE s",
+    "sql_array": [
+        "CREATE TABLE file_sizes (id UInt64, size String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO file_sizes VALUES (1, '1 B'), (2, '1 KiB'), (3, '3 MB'), (4, '5.314 KiB'), (5, 'invalid');",
+        "SELECT id, size, parseReadableSizeOrNull(size) AS byte_size FROM file_sizes WHERE parseReadableSizeOrNull(size) IS NOT NULL;",
+        "SELECT id, size, parseReadableSizeOrNull(size) AS byte_size FROM file_sizes WHERE size LIKE '%B' OR size LIKE '%KiB';",
+        "SELECT id, parseReadableSizeOrNull(size) AS byte_size FROM file_sizes GROUP BY size HAVING byte_size > 1024;",
+        "SELECT a.id, b.size, parseReadableSizeOrNull(b.size) AS byte_size FROM file_sizes AS a JOIN file_sizes AS b ON a.id != b.id AND parseReadableSizeOrNull(b.size) IS NOT NULL;",
+        "SELECT size, parseReadableSizeOrNull(size) AS byte_size FROM file_sizes WHERE size LIKE '3 MB' AND size NOT LIKE 'invalid';",
+        "SELECT id, COUNT(*) AS cnt FROM file_sizes GROUP BY parseReadableSizeOrNull(size) HAVING cnt > 1;",
+        "SELECT a.id, a.size, parseReadableSizeOrNull(a.size) AS byte_size FROM (SELECT * FROM file_sizes) AS a WHERE byte_size IS NOT NULL OR byte_size IS NULL;",
+        "CREATE TABLE temp_sizes AS SELECT * FROM file_sizes WHERE size NOT LIKE '%invalid%';",
+        "INSERT INTO temp_sizes SELECT * FROM file_sizes WHERE parseReadableSizeOrNull(size) IS NULL;",
+        "SELECT size, parseReadableSizeOrNull(size) AS byte_size FROM temp_sizes ORDER BY byte_size DESC;",
+        "DROP TABLE temp_sizes;"
+    ]
+}

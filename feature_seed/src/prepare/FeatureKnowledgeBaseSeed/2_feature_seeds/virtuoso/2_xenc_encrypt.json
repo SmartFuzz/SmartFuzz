@@ -1,0 +1,12 @@
+CREATE TABLE test_data (id INT PRIMARY KEY, data TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, encrypted_data TEXT);
+INSERT INTO test_data (id, data) VALUES (1, '<Envelope><Body>Test Data</Body></Envelope>');
+INSERT INTO test_data (id, data) VALUES (2, '<Envelope><Body>Another Test</Body></Envelope>');
+INSERT INTO test_data (id, data) VALUES (3, '<Envelope><Body></Body></Envelope>');
+SELECT id, xenc_encrypt(data, 1, NULL, vector(), '/Envelope/Body', xenc_key_inst_create('myAES', xenc_key_inst_create('rsa-test')), 'Content') AS encrypted FROM test_data WHERE data IS NOT NULL;
+SELECT id, xenc_encrypt(data, 1, NULL, vector(), '/Envelope/Body', xenc_key_inst_create('myAES', xenc_key_inst_create('rsa-test')), 'Content') AS encrypted FROM test_data WHERE LENGTH(data) = 0;
+SELECT id, xenc_encrypt(data, 1, NULL, vector(), xpath_split(data, '/Envelope/Body'), xenc_key_inst_create('myAES', xenc_key_inst_create('rsa-test')), 'Content') AS encrypted FROM test_data WHERE created_at < NOW() - INTERVAL '1 DAY';
+SELECT id, COUNT(*) OVER () AS total, xenc_encrypt(data, 1, NULL, vector(), xpath_split(data, '/Envelope/Body'), xenc_key_inst_create('myAES', xenc_key_inst_create('rsa-test')), 'Content') AS encrypted FROM test_data GROUP BY id ORDER BY id DESC;
+SELECT id, xenc_encrypt(data, 1, NULL, vector(), xpath_split(data, '/Envelope/Body'), xenc_key_inst_create('myAES', xenc_key_inst_create('rsa-test')), 'Content') AS encrypted_data FROM test_data WHERE id IN (SELECT id FROM test_data WHERE created_at IS NULL) HAVING COUNT(*) > 0;
+ALTER TABLE test_data ADD COLUMN status VARCHAR(255);
+UPDATE test_data SET status = xenc_encrypt(data, 1, NULL, vector(), '/Envelope/Body', xenc_key_inst_create('myAES', xenc_key_inst_create('rsa-test')), 'Content') WHERE status IS NULL;
+SELECT id, data, NULLIF(xenc_encrypt(data, 1, NULL, vector(), xpath_split(data, '/Envelope/Body'), xenc_key_inst_create('myAES', xenc_key_inst_create('rsa-test')), 'Content'), '') AS encrypted FROM test_data WHERE data LIKE '%Test%';

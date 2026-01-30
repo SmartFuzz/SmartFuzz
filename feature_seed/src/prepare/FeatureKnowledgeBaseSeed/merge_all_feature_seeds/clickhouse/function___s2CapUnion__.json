@@ -1,0 +1,16 @@
+CREATE TABLE caps (index UInt64, center Float64, radius Float64);
+INSERT INTO caps VALUES (1, 3814912406305146967, 1.0);
+INSERT INTO caps VALUES (2, 1157347770437378819, 1.0);
+SELECT s2CapUnion(center, radius) AS capUnion FROM caps;
+CREATE TABLE additional_caps (index UInt64, center Float64, radius Float64);
+INSERT INTO additional_caps VALUES (1, 3814912406305146967, 0.5);
+INSERT INTO additional_caps VALUES (2, 1157347770437378819, 2.0);
+SELECT s2CapUnion(c1.center, c1.radius, c2.center, c2.radius) AS capUnion FROM caps AS c1 JOIN additional_caps AS c2 ON c1.index = c2.index;
+SELECT s2CapUnion(c1.center, c1.radius, c2.center, c2.radius) AS capUnion FROM (SELECT center, radius FROM caps WHERE radius >= 1.0) AS c1, (SELECT center, radius FROM additional_caps WHERE radius < 1.5) AS c2;
+SELECT s2CapUnion(c1.center, c1.radius, c2.center, c2.radius) AS capUnion FROM (SELECT center, radius FROM caps WHERE radius > 0) AS c1 CROSS JOIN (SELECT center, radius FROM additional_caps WHERE radius < 3) AS c2;
+CREATE TABLE complex_caps (index UInt64, center Float64, radius1 Float64, radius2 Float64);
+INSERT INTO complex_caps VALUES (1, 3814912406305146967, 1.0, 0.5);
+INSERT INTO complex_caps VALUES (2, 1157347770437378819, 1.0, 2.0);
+SELECT s2CapUnion(center, radius1, center, radius2) AS capUnion FROM complex_caps;
+SELECT COUNT(*) FROM (SELECT s2CapUnion(center1, radius1, center2, radius2) AS capUnion FROM (SELECT center AS center1, radius AS radius1 FROM caps) AS a, (SELECT center AS center2, radius AS radius2 FROM additional_caps) AS b);
+SELECT DISTINCT s2CapUnion(center1, radius1, center2, radius2) AS capUnion FROM (SELECT center AS center1, radius AS radius1 FROM caps WHERE index % 2 = 0) AS a JOIN (SELECT center AS center2, radius AS radius2 FROM additional_caps WHERE radius > 1.0) AS b;

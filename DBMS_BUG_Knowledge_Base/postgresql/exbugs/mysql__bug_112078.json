@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=112078",
+  "title": "redo log is never flushed",
+  "description": "Even if  innodb_flush_log_at_trx_commit=1, the redo log file is never flushed on Windows. That breaks the durability promise, the client must not get an OK from an update/insert/delete, until the data is durably stored.  The redo log is also cached in OS, thus an OS crash can easily lose the data, even with battery-backed write cache.\nHow to repeat:\nStart mysqld with --skip-log-bin. It is not strictly necessary, but will better illustrate the issue\r\n\r\n> create table t(i int);\r\n# wait a couple of second until all writes are finished\r\n\r\nNow, start recording mysqld.exe's filesystem and TCP activity with procmon\r\n(\nhttps://learn.microsoft.com/en-us/sysinternals/downloads/procmon\n)\r\n\r\n> insert  into t(i) values(1);\r\n\r\nStop recording, look into the procmon output.\r\n\r\n1. There is a TCPSend event, *before any file is flushed by mysqld*.\r\n   Which means server sends update confirmation (OK packet) via MySQL protocol\r\n   before data is persistent.\r\n\r\n2. There is no flush for the redo log, ever, not even once per second.\r\n   (once-per-second is usually done for innodb_flush_log_at_trx_commit=0|2)",
+  "date": "2023-08-15 23:04:00",
+  "vulnerable_version": "8.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (id SERIAL PRIMARY KEY, name VARCHAR(50) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t1 (id, name) VALUES (1, 'Test Name');",
+    "CREATE TABLE t2 (ref_id INT, value NUMERIC(10, 2) CHECK (value >= 0));",
+    "INSERT INTO t2 (ref_id, value) VALUES (1, NULL);",
+    "SELECT t1.name, (SELECT COUNT(*) FROM t2 WHERE ref_id = t1.id) AS value_count FROM t1;"
+  ],
+  "key_bug_features": [
+    "Redo log not flushed on Windows with innodb_flush_log_at_trx_commit=1"
+  ]
+}

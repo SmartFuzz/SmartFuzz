@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/53894",
+  "title": "TiKV and TiFlash behave differently when using `right` function with negative number and type conversion",
+  "description": "### 1. Minimal reproduce step (Required)\r\n```sql\r\ncreate table t1 (c1 text, c2 int);\r\nalter table t1 set tiflash replica 1;\r\ninsert into t1 (c1,c2) values ('k5tis', -65), ('x', 1), ('jp2hmweyyb', 1);\r\n\r\nselect /*+ read_from_storage(tiflash[t1]) */ right(c1 , cast(c2 as unsigned)) from t1;\r\n```\r\n### 2. What did you expect to see? (Required)\r\n```\r\nmysql> select /*+ read_from_storage(tikv[t1]) */ right(c1 , cast(c2 as unsigned)) from t1;\r\n+----------------------------------+\r\n| right(c1 , cast(c2 as unsigned)) |\r\n+----------------------------------+\r\n|                                  |\r\n| x                                |\r\n| b                                |\r\n+----------------------------------+\r\n3 rows in set (0.00 sec)\r\n\r\nmysql> select right('abcde', cast(-65 as unsigned));\r\n+---------------------------------------+\r\n| right('abcde', cast(-65 as unsigned)) |\r\n+---------------------------------------+\r\n|                                       |\r\n+---------------------------------------+\r\n1 row in set (0.00 sec)\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n```\r\nmysql> select /*+ read_from_storage(tiflash[t1]) */ right(c1 , cast(c2 as unsigned)) from t1;\r\n+----------------------------------+\r\n| right(c1 , cast(c2 as unsigned)) |\r\n+----------------------------------+\r\n| k5tis                            |\r\n| x                                |\r\n| b                                |\r\n+----------------------------------+\r\n3 rows in set (0.01 sec)\r\n```\r\n\r\n\r\n### 4. What is your TiDB version? (Required)\r\n```\r\nRelease Version: v8.2.0-alpha-292-g7629a0d\r\nEdition: Community\r\nGit Commit Hash: 7629a0d68595c4d11c25fc059208f3efd838c2c1\r\nGit Branch: HEAD\r\nUTC Build Time: 2024-06-04 03:27:25\r\nGoVersion: go1.21.10\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv\r\n```\r\ntopology:\r\n\r\ndistributed.yaml:\r\n```\r\nglobal:\r\n  user: \"tidb\"\r\n  ssh_port: 22\r\n  deploy_dir: \"/tidb-deploy\"\r\n  data_dir: \"/tidb-data\"\r\n\r\npd_servers:\r\n  - host: 10.0.2.31\r\n\r\ntidb_servers:\r\n  - host: 10.0.2.21\r\n\r\ntikv_servers:\r\n  - host: 10.0.2.11\r\n  - host: 10.0.2.12\r\n  - host: 10.0.2.13\r\n\r\nmonitoring_servers:\r\n  - host: 10.0.2.8\r\n\r\ngrafana_servers:\r\n  - host: 10.0.2.8\r\n\r\nalertmanager_servers:\r\n  - host: 10.0.2.8\r\n\r\ntiflash_servers:\r\n  - host: 10.0.2.32\r\n```\r\n\r\n\r\n\r\n### about us\r\nWe are the BASS team from the School of Cyber Science and Technology at Beihang University. Our main focus is on system software security, operating systems, and program analysis research, as well as the development of automated program testing frameworks for detecting software defects. Using our self-developed database vulnerability testing tool, we have identified the above-mentioned vulnerabilities in TiDB that may lead to database logic error.",
+  "date": "2024-06-08T09:13:46Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (c1 VARCHAR(50), c2 INTEGER, c3 FLOAT, c4 DATE);",
+    "INSERT INTO t2 (c1, c2, c3, c4) VALUES ('test1', -10, 1.5, '2023-01-01'), ('test2', 5, 2.5, NULL), ('test3', 0, -3.5, '2023-01-03');",
+    "SELECT SUBSTR(c1, LENGTH(c1) - CAST(c2 AS INTEGER) + 1) FROM t2 WHERE c3 IS NOT NULL;",
+    "CREATE TABLE t3 (c1 TEXT NOT NULL, c2 INTEGER DEFAULT 0);",
+    "INSERT INTO t3 (c1, c2) VALUES ('example', -1), ('sample', 2);"
+  ],
+  "key_bug_features": [
+    "right function with negative number and type conversion"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+    "function": "TOTP_generate",
+    "operator": "REGEXP",
+    "sql_array": [
+        "CREATE TABLE users (id INT PRIMARY KEY, secret_key VARCHAR(64), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, last_login DATETIME NULL);",
+        "INSERT INTO users (id, secret_key) VALUES (1, hex2bin('3132333435363738393031323334353637383930313233343536373839303132'));",
+        "SELECT UPPER(TOTP_generate(stringdate('1970-01-01Z'), stringdate('2603-10-11 11:33:20Z'), 30, 8, secret_key, 'hmac-sha256')) AS totp FROM users WHERE secret_key IS NOT NULL;",
+        "CREATE TABLE log (user_id INT, action VARCHAR(255), action_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id));",
+        "INSERT INTO log (user_id, action) VALUES (1, 'login'), (1, 'attempted login with incorrect password');",
+        "SELECT user_id, COUNT(*) AS attempts FROM log GROUP BY user_id HAVING attempts > 1;",
+        "SELECT user_id, TOTP_generate(stringdate('1970-01-01Z'), STRINGDATE('2603-10-11 11:33:20Z'), 30, 8, secret_key, 'hmac-sha256') AS generated_totp FROM users WHERE generated_totp REGEXP '^[0-9]{6}$';",
+        "SELECT user_id FROM log WHERE user_id IN (SELECT id FROM users WHERE TOTP_generate(stringdate('1970-01-01Z'), stringdate('2603-10-11 11:33:20Z'), 30, 8, secret_key, 'hmac-sha256') REGEXP '^[0-9]{6}$');",
+        "CREATE TABLE temp_data (data_value VARCHAR(50) CHECK (data_value != ''), creation_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO temp_data (data_value) VALUES ('normal value'), (NULL), ('');",
+        "SELECT data_value FROM temp_data WHERE data_value IS NULL OR TOTP_generate(stringdate('1970-01-01Z'), stringdate('2603-10-11 11:33:20Z'), 30, 8, 'sample_key', 'hmac-sha256') REGEXP '^.*$';",
+        "SELECT user_id FROM users WHERE secret_key LIKE '%k2%' AND id IN (SELECT user_id FROM log WHERE action_time > NOW() - INTERVAL '1 DAY');"
+    ]
+}

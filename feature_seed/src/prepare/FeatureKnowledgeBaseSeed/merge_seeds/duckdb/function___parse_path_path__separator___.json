@@ -1,0 +1,14 @@
+CREATE TABLE test_paths (path VARCHAR);
+INSERT INTO test_paths VALUES ('/path/to/file.csv'), ('C:\path\to\file.csv'), ('relative/path/to/file.csv'), ('another/path/to/file.txt'), ('//path/to/file.xml');
+SELECT parse_path(path, 'system') AS components FROM test_paths;
+SELECT parse_path(path, 'both_slash') AS components FROM test_paths;
+SELECT parse_path(path, 'forward_slash') AS components FROM test_paths;
+SELECT parse_path(path, 'backslash') AS components FROM test_paths;
+CREATE TABLE file_extensions AS (SELECT parse_path(path, 'system') AS components FROM test_paths);
+SELECT components[1] AS directory FROM file_extensions WHERE components[0] IS NOT NULL;
+SELECT components[ARRAY_LENGTH(components) - 1] AS filename FROM file_extensions WHERE components IS NOT NULL;
+CREATE TABLE nested_paths AS (SELECT parse_path(p.path, 'system') AS components FROM (SELECT path FROM test_paths) p);
+SELECT DISTINCT components FROM nested_paths WHERE components[2] LIKE 'to/%';
+INSERT INTO test_paths VALUES ('/path/to/directory/');
+SELECT parse_path(path, 'both_slash') AS components FROM test_paths WHERE path LIKE '/path/%';
+SELECT parse_path(path, 'forward_slash') AS components FROM test_paths WHERE components[ARRAY_LENGTH(components) - 1] LIKE '%.csv';

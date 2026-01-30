@@ -1,0 +1,19 @@
+{
+    "function": "Arguments",
+    "operator": "s1 || s2",
+    "sql_array": [
+        "CREATE TABLE hudi_test (id UInt32, name String, created_at DateTime, data Float64, compression_type String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO hudi_test VALUES (1, 'test1', '2023-10-01 00:00:01', 3.14159, 'gzip'), (2, 'test2', '2023-10-02 00:00:02', NULL, 'none');",
+        "SELECT * FROM hudi_test WHERE name || ' extra' IS NOT NULL;",
+        "SELECT id, name || ' - ' || toString(created_at) AS full_name FROM hudi_test WHERE data IS NOT NULL;",
+        "SELECT (SELECT COUNT(*) FROM hudi_test WHERE name = 'test1') AS cnt_test1, id || '-' || name AS identifier FROM hudi_test GROUP BY id, identifier HAVING cnt_test1 > 0;",
+        "CREATE TABLE hudi_data AS SELECT id, name, compression_type FROM hudi_test WHERE created_at > '2023-10-01 00:00:00' FORMAT 'ID UInt32, NAME String, COMPRESSION_TYPE String';",
+        "SELECT SUM(data) AS total_data, name || COALESCE(compression_type, 'no compression') AS data_info FROM hudi_test GROUP BY name HAVING total_data > 0;",
+        "SELECT COUNT(*) AS non_null_data FROM (SELECT data FROM hudi_test WHERE data IS NOT NULL) AS data_check WHERE non_null_data > 1;",
+        "INSERT INTO hudi_data SELECT id, name, 'brotli' || '-' || compression_type FROM hudi_test WHERE name IS NOT NULL;",
+        "SELECT name, AVG(data) AS average_data FROM hudi_test WHERE created_at < now() - INTERVAL 1 DAY GROUP BY name HAVING average_data >= 3.0 ORDER BY average_data DESC;",
+        "SELECT * FROM (SELECT id, name, coalesce(NULLIF(compression_type, 'none'), 'default') AS compressed FROM hudi_test) AS compressed_data WHERE compressed_data.compressed != 'default' ORDER BY id;",
+        "CREATE TABLE hudi_test_nested AS SELECT id, name || ' ' || toString(created_at) AS combined_name FROM hudi_test WHERE data > 0 FORMAT 'ID UInt32, COMBINED_NAME String';",
+        "SELECT CONCAT(name, ' created on ', toString(created_at)) AS event_desc FROM (SELECT * FROM hudi_test WHERE created_at IS NOT NULL) AS events WHERE length(event_desc) > 10;"
+    ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/431",
+  "title": "Missing support for non-point geometry types in  VirtuosoInputStream (VirtJdbc4_1 / 7.2.0_p1)",
+  "description": "It appears that the virtjdbc4_1.jar driver of VOS 7.2.0_p1 does not implement reading rdf boxes for any geometry type except point - for e.g. LINESTRING it gives an error:\nSparql Insert Into <http://example.org/test/> { <http://example.org/foo>    <http://www.opengis.net/ont/geosparql#asWKT> \"LINESTRING(126.440000 37.463300,126.451000 37.449200)\"^^<http://www.openlinksw.com/schemas/virtrdf#Geometry> }\n\nVirtGraph graph = new VirtGraph(\"http://example.org/test/\", /* your connection settings */);\ngraph.find(null, null, null);\nwill cause\nCaused by: virtuoso.jdbc4.VirtuosoException: General error\n    at virtuoso.jdbc4.VirtuosoInputStream.readRdfBox(VirtuosoInputStream.java:472\n        ...\nCaused by: java.lang.NumberFormatException: For input string: \"RING(12.236400\"\n    at sun.misc.FloatingDecimal.readJavaFormatString(FloatingDecimal.java:1250)\n\nIntelliJ will show a decompiled version of the class where the VirtuosoInputStream tries to remove the first 6 characters - i.e. POINT( from the string and try to parse a subsequent double - however, that won't work for a line string.\nI tried using the VirtJdbc 2 and 3 drivers, however, they do not work with the fixed VirtJena version of #360",
+  "date": "2015-06-25 11:42:17",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE geometry_test (id INT PRIMARY KEY, geom BLOB NOT NULL);",
+    "INSERT INTO geometry_test (id, geom) VALUES (1, 'POINT(126.440000 37.463300)');",
+    "INSERT INTO geometry_test (id, geom) VALUES (2, 'LINESTRING(126.440000 37.463300, 126.451000 37.449200)');",
+    "SELECT id, ST_AsText(geom) FROM geometry_test WHERE geom IS NOT NULL;",
+    "UPDATE geometry_test SET geom = 'POLYGON((126.440000 37.463300, 126.451000 37.449200, 126.440000 37.463300))' WHERE id = 1;"
+  ],
+  "key_bug_features": [
+    "Non-point geometry types not supported in VirtuosoInputStream"
+  ]
+}

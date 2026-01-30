@@ -1,0 +1,11 @@
+CREATE TABLE test_http (id INT PRIMARY KEY, url VARCHAR(255), response_body VARCHAR(255));
+INSERT INTO test_http (id, url) VALUES (1, 'http://example.com/api/resource');
+INSERT INTO test_http (id, url) VALUES (2, 'https://example.com/api/resource');
+SELECT id, http_client_ext(url) AS response FROM test_http WHERE http_client_ext(url) IS NOT NULL;
+SELECT id, http_client_ext(concat(url, '/extra')) AS response FROM test_http WHERE id = 1 AND (http_client_ext(url) = 'response_data' OR url IS NULL);
+SELECT id FROM test_http WHERE id IN (SELECT id FROM test_http WHERE http_client_ext(url) IS NOT NULL) GROUP BY id HAVING COUNT(*) = (SELECT COUNT(*) FROM test_http);
+SELECT id, COUNT(*) OVER (PARTITION BY id) AS cnt FROM test_http WHERE http_client_ext(url) = 'response_data' OR response_body IS NULL ORDER BY cnt DESC;
+CREATE TABLE temp_responses (response_id INT, response_content VARCHAR(255) NOT NULL);
+INSERT INTO temp_responses (response_id, response_content) VALUES (1, http_client_ext('http://another-example.com'));
+SELECT * FROM temp_responses WHERE response_content = COALESCE(http_client_ext('http://third-example.com'), 'default_response');
+SELECT id FROM test_http JOIN temp_responses ON test_http.id = temp_responses.response_id WHERE http_client_ext(CONCAT(test_http.url, '/fallback')) IS NOT NULL OR temp_responses.response_content IS NOT NULL;

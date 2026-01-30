@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=105075",
+  "title": "part field of unsigned bigint type",
+  "description": "When defining a range columns partition table and the part field is of unsigned bigint type, i cannot create a partition with a part range greater than LLONG_MAX.\nHow to repeat:\nmysql-> CREATE TABLE t ( id BIGINT UNSIGNED, k INT )\r\nPARTITION BY RANGE COLUMNS(id) (\r\n  PARTITION part1 VALUES LESS THAN(10)\r\n);\r\n\r\nmysql-> alter table t add partition (partition p0 values less than(9223372036854775816));\nSuggested fix:\nI think the problem is mainly caused by generate_partition_syntax. In the get_cs_converted_part_value_from_string function, the judgment of unsigned_flag should be added to correctly handle unsigned data.",
+  "date": "2021-09-29 13:00:00",
+  "vulnerable_version": "5.7",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t ( id UInt64, k Int32, name String ) ENGINE = MergeTree() ORDER BY id PARTITION BY (id % 10);",
+    "ALTER TABLE t ADD PARTITION p0 VALUES LESS THAN(9223372036854775808);",
+    "INSERT INTO t (id, k, name) VALUES (5, 1, 'Alice');",
+    "INSERT INTO t (id, k, name) VALUES (18446744073709551615, 2, 'Bob');",
+    "SELECT * FROM t WHERE id IS NULL OR k > 1;"
+  ],
+  "key_bug_features": [
+    "Partitioning with unsigned bigint exceeding LLONG_MAX"
+  ]
+}

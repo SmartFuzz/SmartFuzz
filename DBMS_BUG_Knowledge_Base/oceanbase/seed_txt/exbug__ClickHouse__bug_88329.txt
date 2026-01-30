@@ -1,0 +1,5 @@
+CREATE DATABASE test2 ENGINE=Replicated('/clickhouse/tables/test2','{shard}','{replica}');
+CREATE TABLE test2.raw_source_local (id Int32, time DateTime, value Float64 DEFAULT 0.0) ENGINE=ReplicatedMergeTree() PRIMARY KEY id ORDER BY id;
+INSERT INTO test2.raw_source_local (id, time, value) SELECT number AS id, toDateTime('2024-01-01 00:00:00') + INTERVAL number SECOND AS time, rand() * 100 AS value FROM dual CONNECT BY LEVEL <= 1000;
+CREATE TABLE test2.table_for_mv (sum_value Float64, date Date, count_id UInt32) ENGINE=ReplicatedMergeTree() PRIMARY KEY date ORDER BY date;
+CREATE MATERIALIZED VIEW test2.mv_from_raw_source_local_to_table TO test2.table_for_mv AS SELECT SUM(value) AS sum_value, toDate(time) AS date, COUNT(*) AS count_id FROM test2.raw_source_local GROUP BY toDate(time);

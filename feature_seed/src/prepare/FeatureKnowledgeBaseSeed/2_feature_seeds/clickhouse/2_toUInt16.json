@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id UInt16, value String, amount Float64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, '10'), (2, '20.56'), (3, '300'), (4, '65535'), (5, NULL), (6, '65536'), (7, 'Inf'), (8, 'NaN');
+SELECT id, toUInt16(value) AS converted_amount FROM test_table WHERE value != ANY (SELECT value FROM test_table WHERE amount >= 100.0) AND toUInt16(amount) IS NOT NULL;
+SELECT id, toUInt16(COALESCE(value, '0')) AS fallback_value FROM test_table WHERE toUInt16(value) != ANY (SELECT toUInt16(CAST(value AS Float64)) FROM test_table WHERE id < 5);
+SELECT toUInt16(value), value FROM test_table GROUP BY value HAVING toUInt16(value) != ANY (SELECT amount FROM test_table WHERE amount < 0);
+CREATE TABLE test_table_2 (id UInt16, data String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table_2 VALUES (1, 'test1'), (2, 'test2'), (3, 'test3'), (4, 'test4');
+SELECT t1.id, toUInt16(t1.value) AS converted_value FROM test_table t1 JOIN test_table_2 t2 ON toUInt16(t1.value) != ANY (SELECT toUInt16(data) FROM test_table_2);
+SELECT toUInt16(NULLIF(value, '')) AS non_empty_value, COUNT(*) FROM test_table GROUP BY non_empty_value HAVING non_empty_value != ANY (SELECT toUInt16(value) FROM test_table WHERE value IS NOT NULL);
+SELECT id, amount, toUInt16(CAST(amount AS Float32)) AS rounded_amount FROM test_table WHERE toUInt16(value) != ANY (SELECT toUInt16(value) * 10 FROM test_table WHERE amount IS NOT NULL AND amount > 100000);

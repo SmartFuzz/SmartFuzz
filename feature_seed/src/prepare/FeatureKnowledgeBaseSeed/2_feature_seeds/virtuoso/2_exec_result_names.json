@@ -1,0 +1,34 @@
+CREATE TABLE users (U_ID INTEGER PRIMARY KEY, U_NAME VARCHAR(255), U_EMAIL VARCHAR(255) UNIQUE, U_DOB DATE);
+INSERT INTO users (U_ID, U_NAME, U_EMAIL, U_DOB) VALUES (1, 'John Doe', 'john@example.com', '1990-01-01');
+INSERT INTO users (U_ID, U_NAME, U_EMAIL, U_DOB) VALUES (2, 'Jane Smith', 'jane@example.com', NULL);
+CREATE PROCEDURE fetch_user_data ()
+{
+  DECLARE meta, _dt any;
+DECLARE inx INTEGER;
+EXEC ('SELECT U_ID, U_NAME FROM users WHERE U_DOB IS NOT NULL', null, null, null, 0, meta, _dt);
+inx := 0;
+EXEC_RESULT_NAMES(meta[0]);
+WHILE (inx < LENGTH(_dt))
+    {
+      EXEC_RESULT(_dt[inx]);
+inx := inx + 1;
+}
+};
+SELECT U_ID, U_NAME, bif:crc64(CONCAT(U_NAME, COALESCE(U_EMAIL, 'unknown'))) AS UserHash FROM users ORDER BY UserHash;
+CREATE TABLE transactions (T_ID INTEGER PRIMARY KEY, U_ID INTEGER, T_AMOUNT DECIMAL(10, 2), T_TIMESTAMP TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (U_ID) REFERENCES users(U_ID));
+INSERT INTO transactions (T_ID, U_ID, T_AMOUNT) VALUES (1, 1, 100.50), (2, 1, NULL), (3, 2, 200.75);
+SELECT U.U_ID, U.U_NAME, SUM(T.T_AMOUNT) AS TotalAmount FROM users U LEFT JOIN transactions T ON U.U_ID = T.U_ID GROUP BY U.U_ID, U.U_NAME HAVING TotalAmount IS NOT NULL;
+CREATE PROCEDURE aggregate_user_transactions ()
+{
+  DECLARE meta, _dt any;
+DECLARE inx INTEGER;
+EXEC ('SELECT U_ID, SUM(T_AMOUNT) FROM transactions GROUP BY U_ID HAVING SUM(T_AMOUNT) > 0', null, null, null, 0, meta, _dt);
+inx := 0;
+EXEC_RESULT_NAMES(meta[0]);
+WHILE (inx < LENGTH(_dt))
+    {
+      EXEC_RESULT(_dt[inx]);
+inx := inx + 1;
+}
+};
+SELECT bif:crc64(CAST(U_ID AS VARCHAR)) AS UserIDHash, COUNT(*) FROM users GROUP BY UserIDHash HAVING COUNT(*) > 1;

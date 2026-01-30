@@ -1,0 +1,11 @@
+CREATE TABLE Employees (FirstName VARCHAR(100), LastName VARCHAR(100), Title VARCHAR(100), Salary NUMERIC(10, 2), StartDate DATE);
+INSERT INTO Employees VALUES ('Nancy', 'Davolio', 'Sales Representative', 60000.00, '2020-01-15');
+INSERT INTO Employees VALUES ('Janet', 'Leverling', 'Sales Representative', 65000.00, '2019-02-20');
+INSERT INTO Employees VALUES ('Michael', 'Suyama', 'Sales Executive', 70000.00, '2018-03-10');
+INSERT INTO Employees VALUES (NULL, 'Peacock', 'Sales Representative', 58000.00, NULL);
+INSERT INTO Employees VALUES ('Robert', 'King', 'Sales Representative', 62000.00, '2021-05-12');
+SELECT XMLAGG(XMLELEMENT('Emp', XMLATTRIBUTES(Title AS 'Role'), XMLAGG(XMLELEMENT('Name', CONCAT(FirstName, ' ', LastName))) ORDER BY Salary DESC)) FROM (SELECT * FROM Employees WHERE Title IS NOT NULL ORDER BY Salary DESC) AS subquery;
+SELECT XMLAGG(XMLELEMENT('Emp', XMLATTRIBUTES(COALESCE(Title, 'Unknown') AS 'Role'), XMLAGG(XMLELEMENT('Name', CONCAT(FirstName, ' ', LastName)))) ORDER BY StartDate) FROM Employees WHERE Salary > 60000 OR NULLIF(Salary, 0) IS NULL;
+SELECT XMLAGG(XMLELEMENT('Emp', XMLATTRIBUTES(Title AS 'Role'), XMLAGG(XMLELEMENT('Name', CONCAT(FirstName, ' ', LastName))))) FROM (SELECT FirstName, LastName, Title, Salary FROM Employees WHERE Title IS NOT NULL AND StartDate BETWEEN '2019-01-01' AND '2021-12-31' ORDER BY FirstName ASC, Salary DESC) AS emp_data WHERE Salary IS NOT NULL;
+SELECT xpath_string('//Emp[Title="Sales Representative"]/Name', XMLAGG(XMLELEMENT('Emp', XMLATTRIBUTES(Title AS 'Role'), XMLAGG(XMLELEMENT('Name', CONCAT(FirstName, ' ', LastName))))) FROM Employees) FROM DUAL;
+SELECT (SELECT COUNT(*) FROM Employees) AS Total_Employees, XMLAGG(XMLELEMENT('Emp', XMLATTRIBUTES(Title AS 'Role'), XMLAGG(XMLELEMENT('Name', CONCAT(FirstName, ' ', LastName)))) ORDER BY NULLIF(Salary, -1)) AS Employee_XML FROM Employees GROUP BY Title HAVING COUNT(*) > 2;

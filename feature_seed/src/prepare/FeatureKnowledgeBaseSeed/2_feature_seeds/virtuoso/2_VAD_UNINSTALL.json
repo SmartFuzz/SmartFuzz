@@ -1,0 +1,10 @@
+CREATE TABLE vad_test (id INT PRIMARY KEY, package_name VARCHAR(255), uninstall_status BOOLEAN, entries INT);
+INSERT INTO vad_test (id, package_name, uninstall_status, entries) VALUES (1, 'test_package', FALSE, 10), (2, 'another_package', TRUE, NULL);
+SELECT id, VAD_UNINSTALL(package_name) FROM vad_test WHERE uninstall_status = TRUE AND entries = (SELECT MAX(entries) * 2 FROM vad_test WHERE entries IS NOT NULL);
+UPDATE vad_test SET uninstall_status = TRUE WHERE id IN (SELECT id FROM vad_test WHERE package_name LIKE 'test_%' AND (entries IS NULL OR entries < 5));
+SELECT id, VAD_UNINSTALL(UPPER(package_name) || ' ' || CAST(entries AS VARCHAR)) * entries AS result FROM vad_test WHERE UNINSTALL_STATUS = FALSE HAVING result > 20;
+CREATE TABLE vad_resources (resource_id INT, resource_type VARCHAR(50), is_active BOOLEAN, FOREIGN KEY (resource_id) REFERENCES vad_test(id));
+INSERT INTO vad_resources (resource_id, resource_type, is_active) VALUES (1, 'VSP', TRUE), (2, 'XSLT', FALSE);
+SELECT r.resource_id, r.resource_type, VAD_UNINSTALL(r.resource_type) * 1 FROM vad_resources r JOIN vad_test t ON r.resource_id = t.id WHERE t.uninstall_status IS TRUE;
+SELECT id, (SELECT COUNT(*) FROM vad_resources WHERE is_active = TRUE) * VAD_UNINSTALL(package_name) FROM vad_test WHERE uninstall_status IS NOT NULL AND (entries IS NULL OR entries = 10);
+DROP TABLE vad_resources;

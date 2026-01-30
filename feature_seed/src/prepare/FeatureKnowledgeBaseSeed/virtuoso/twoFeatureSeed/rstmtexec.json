@@ -1,0 +1,17 @@
+{
+    "function": "rstmtexec",
+    "operator": "bif:st_overlaps",
+    "sql_array": [
+        "CREATE TABLE spatial_data (id INT PRIMARY KEY, geom GEOMETRY NOT NULL, data TEXT);",
+        "INSERT INTO spatial_data VALUES (1, ST_GeomFromText('POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))'), 'Sample 1');",
+        "INSERT INTO spatial_data VALUES (2, ST_GeomFromText('POLYGON((0.5 0.5, 1.5 0.5, 1.5 1.5, 0.5 1.5, 0.5 0.5))'), 'Sample 2');",
+        "SELECT id, rstmtexec('SELECT COUNT(*) FROM spatial_data WHERE bif:st_overlaps(geom, ST_GeomFromText('POLYGON((0 0, 1 1, 0 1, 0 0))'))') AS overlap_count FROM spatial_data WHERE data IS NOT NULL;",
+        "SELECT id, rstmtexec('SELECT AVG(id) FROM spatial_data WHERE bif:st_overlaps(geom, ST_GeomFromText('POLYGON((0 0, 1 1, 1 0, 0 0))'))') AS avg_id FROM spatial_data GROUP BY id HAVING avg_id > 0;",
+        "SELECT DISTINCT geom FROM spatial_data WHERE bif:st_overlaps(geom, ST_GeomFromText('POLYGON((0 0, 1 1, 0 1, 0 0))')) AND rstmtexec('SELECT COUNT(*) FROM spatial_data WHERE id > 0') = 1;",
+        "SELECT id, NULLIF(rstmtexec('SELECT COUNT(*) FROM spatial_data'), 0) AS non_zero_count FROM spatial_data GROUP BY id HAVING non_zero_count IS NOT NULL;",
+        "WITH filtered AS (SELECT id, geom FROM spatial_data WHERE data LIKE '%Sample%') SELECT rstmtexec('SELECT SUM(id) FROM filtered') AS total FROM filtered WHERE bif:st_overlaps(geom, ST_GeomFromText('POLYGON((0 0, 1 1, 0 1, 0 0))'));",
+        "SELECT rstmtexec('SELECT MIN(id) FROM spatial_data WHERE geom IS NOT NULL AND ST_Area(geom) > 0') AS min_id;",
+        "DROP TABLE IF EXISTS tmp_table;",
+        "CREATE TABLE tmp_table AS SELECT geom, rstmtexec('SELECT COUNT(*) FROM spatial_data WHERE bif:st_overlaps(geom, ST_GeomFromText('POLYGON((0 0, 2 2, 2 0, 0 0))'))') AS overlap_count FROM spatial_data;"
+    ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=103298",
+  "title": "Potentially wrong results",
+  "description": "The following two queries may produce inconsistent result. \r\n\r\nThe first query: \r\nmysql> SELECT (NOT ((COALESCE('x')) != (t1.c1))) from t1;\r\n+------------------------------------+\r\n| (NOT ((COALESCE('x')) != (t1.c1))) |\r\n+------------------------------------+\r\n|                                  1 |\r\n+------------------------------------+\r\n\r\nThe second query: \r\nmysql> SELECT t1.c1 from t1 Where (NOT ((COALESCE('x')) != (t1.c1)));\r\nEmpty set, 1 warning (0.17 sec)\r\n\r\nBecause the result of the expresssion, '(NOT ((COALESCE('x')) != (t1.c1)))',is true(please check the first query),the second query will produce one row.But the  result of the second query is empty.\nHow to repeat:\nCREATE TABLE t1 (\r\n  c0 int,\r\n  c1 decimal(10,0),\r\n  UNIQUE KEY c1 (c1)\r\n);\r\ninsert into t1 select 0,0;\r\n\r\nSELECT (NOT ((COALESCE('x')) != (t1.c1))) from t1;\r\nSELECT t1.c1 from t1 Where (NOT ((COALESCE('x')) != (t1.c1)));",
+  "date": "2021-04-13 09:19:00",
+  "vulnerable_version": "8.0.22, 5.7.33, 8.0.23",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (id INTEGER, value VARCHAR(255), amount DECIMAL(10,2), UNIQUE (value));",
+    "INSERT INTO t2 (id, value, amount) VALUES (1, 'test', 100.50), (2, NULL, 200.00);",
+    "SELECT (NOT ((COALESCE(value, 'default')) != (amount))) FROM t2;",
+    "SELECT value FROM t2 WHERE (NOT ((COALESCE(value, 'default')) != (amount)));",
+    "SELECT (NOT ((COALESCE(NULL) != (amount)))) FROM t2;"
+  ],
+  "key_bug_features": [
+    "Inconsistent results from NOT and COALESCE expressions"
+  ]
+}

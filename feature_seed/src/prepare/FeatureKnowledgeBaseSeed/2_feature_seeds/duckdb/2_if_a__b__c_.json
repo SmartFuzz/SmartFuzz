@@ -1,0 +1,13 @@
+CREATE TABLE test_table (id INT, ts TIMESTAMP, value VARCHAR(50));
+INSERT INTO test_table VALUES (1, TIMESTAMP '1992-03-27 01:02:03', 'High'), (2, TIMESTAMP '2000-01-01 00:00:00', 'Low'), (3, TIMESTAMP '1900-01-01 12:00:00', NULL);
+SELECT t1.id, IF(t1.ts > TIMESTAMP '2000-01-01', 'Recent', IF(t1.value IS NULL, 'No Value', t1.value)) AS result FROM test_table t1 WHERE IF(t1.id = 1, t1.ts < TIMESTAMP '1995-01-01', t1.ts >= TIMESTAMP '1990-01-01');
+SELECT t1.id, (t1.ts - INTERVAL (IF(t1.id = 3, 5, 3) DAY)) AS adjusted_time FROM test_table t1 WHERE t1.value IS NOT NULL ORDER BY adjusted_time;
+SELECT IF(SUM(CASE WHEN t1.value = 'High' THEN 1 ELSE 0 END) > 1, AVG(t2.value::FLOAT), 0) AS average_value FROM test_table t1 LEFT JOIN (SELECT id, value AS value FROM test_table WHERE value IS NOT NULL) t2 ON t1.id = t2.id GROUP BY t1.id HAVING adjusted_time = (SELECT MAX(t3.ts - INTERVAL 10 DAY) FROM test_table t3);
+CREATE TABLE join_table (id INT, ref_id INT, description VARCHAR(100));
+INSERT INTO join_table VALUES (1, 1, 'Description 1'), (2, NULL, 'Description 2'), (3, 1, NULL);
+SELECT IF(t4.ref_id IS NULL, 'No Reference', 'Has Reference') AS reference_status, t4.description FROM join_table t4 JOIN test_table t5 ON t4.ref_id = t5.id WHERE t4.description IS NOT NULL AND (t4.description - 'Description 1') IS NOT NULL;
+SELECT IF(t5.value IS NULL, 'Undefined', COUNT(t5.id)) AS count_value FROM test_table t5 GROUP BY IF(t5.value IS NULL, 'No Value', t5.value) HAVING count_value > 0 ORDER BY count_value DESC;
+DROP TABLE test_table;
+CREATE TEMP TABLE temp_table (start_ts TIMESTAMP, end_ts TIMESTAMP, flag BOOLEAN);
+INSERT INTO temp_table VALUES (TIMESTAMP '2023-01-01 00:00:00', TIMESTAMP '2023-01-02 00:00:00', TRUE), (TIMESTAMP '2023-01-03 00:00:00', TIMESTAMP '2023-01-04 00:00:00', FALSE);
+SELECT IF(flag, start_ts, end_ts) AS relevant_time FROM temp_table WHERE IF(start_ts IS NULL, end_ts IS NOT NULL, TRUE);

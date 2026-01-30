@@ -1,0 +1,10 @@
+CREATE TABLE test_hash_interval (key UInt64, bucket_count UInt16, created_at DateTime DEFAULT now());
+INSERT INTO test_hash_interval VALUES (16045690984833335023, 2, now()), (12345678901234567890, 32768, now() - INTERVAL 4 DAY), (98765432101234567890, 0, NULL);
+SELECT key, bucket_count, kostikConsistentHash(key, bucket_count) AS hash_value FROM test_hash_interval WHERE bucket_count > 0 AND created_at + INTERVAL 1 DAY < now();
+SELECT key, bucket_count, kostikConsistentHash(key, bucket_count) AS hash_value FROM test_hash_interval WHERE bucket_count = 2 OR created_at >= now() - INTERVAL 3 HOUR;
+SELECT key, COUNT(*) AS count, MAX(kostikConsistentHash(key, bucket_count)) AS max_hash FROM test_hash_interval GROUP BY key HAVING count > 1;
+SELECT key, bucket_count, (kostikConsistentHash(key, IFNULL(bucket_count, 2)) + INTERVAL 2 DAY) AS adjusted_hash FROM test_hash_interval WHERE created_at IS NOT NULL ORDER BY adjusted_hash DESC;
+CREATE TABLE temp_data AS SELECT key, bucket_count, kostikConsistentHash(key, bucket_count) AS hash_value FROM test_hash_interval;
+SELECT key, bucket_count, hash_value FROM temp_data WHERE hash_value BETWEEN 0 AND 32767;
+SELECT key, kostikConsistentHash(key, bucket_count) AS hash1, kostikConsistentHash(bucket_count, 2) AS hash2 FROM test_hash_interval WHERE bucket_count > 30000 AND hash1 != hash2;
+DROP TABLE temp_data;

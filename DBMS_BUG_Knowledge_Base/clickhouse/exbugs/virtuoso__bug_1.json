@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/1",
+  "title": "Inference in combination with rdfs_rule_set and isIRI/isBlank not working",
+  "description": "The functions isIRI/isBLANK always return true/false for inferred\nbindings whether the bound value is a BNode or not.\nThis behaviour was observed with the Windows (Windows XP) and\nthe Linux version (Ubuntu 10.04) of Virtuoso 6.1.4.\nSteps to reproduce the problem:\n1. Insert some test data:\nPREFIX owl: <http://www.w3.org/2002/07/owl#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX test: <http://example/inferencetest#>\n\ninsert into <http://example/inferencetest#> {\n    test:Tree a owl:Class ;\n    rdfs:subClassOf [\n        a owl:Restriction ;\n        owl:onProperty test:hasChildren ;\n        owl:allValuesFrom test:Node\n    ] .\n    test:Node a owl:Class .\n    test:TheTree a test:Tree\n}\n\n2. Create rule set:\nrdfs_rule_set('http://example/inferencetest#', 'http://example/inferencetest#')\n\n3. Execute SPARQL query with inference rules:\ndefine input:inference 'http://example/inferencetest#'\n\nselect *\nfrom <http://example/inferencetest#>\nwhere {\n    ?s a ?o filter (isIRI(?s) && isIRI(?o))\n}\n\n4. Observations:\nThe restriction BNode is filtered in the case when it occurs\nas asserted ?s but not in the case when it is an inferred ?o.",
+  "date": "2012-03-26 12:37:51",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE test.Tree (id Int32, type String);",
+    "CREATE TABLE test.Node (id Int32, value Nullable(String));",
+    "INSERT INTO test.Tree (id, type) VALUES (1, 'Tree');",
+    "INSERT INTO test.Node (id, value) VALUES (1, 'Node1'), (2, NULL);",
+    "SELECT * FROM test.Tree t JOIN test.Node n ON t.id = n.id WHERE (n.value IS NOT NULL AND n.value != '') OR n.value IS NULL;"
+  ],
+  "key_bug_features": [
+    "isIRI/isBLANK incorrectly handle inferred bindings"
+  ]
+}

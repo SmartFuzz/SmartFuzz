@@ -1,0 +1,14 @@
+{
+    "function": "dateadd",
+    "operator": "XML Operator: xml_tree_doc",
+    "sql_array": [
+        "CREATE TABLE test_dates (id INT PRIMARY KEY, event_date DATETIME, xml_data XML);",
+        "INSERT INTO test_dates (id, event_date, xml_data) VALUES (1, stringdate('2021-12-01 10:00:00'), xml_tree_doc('<event><name>Start</name><time>2021-12-01T10:00:00</time></event>'));",
+        "INSERT INTO test_dates (id, event_date, xml_data) VALUES (2, stringdate('2022-01-01 12:00:00'), xml_tree_doc('<event><name>New Year</name><time>2022-01-01T12:00:00</time></event>'));",
+        "SELECT id, dateadd('day', 5, event_date) AS new_date, xml_data FROM test_dates WHERE event_date < dateadd('month', 1, stringdate('2022-01-01 12:00:00'));",
+        "SELECT id, xml_data, COUNT(*) OVER (PARTITION BY xml_data ORDER BY id) AS count FROM test_dates WHERE xml_data IS NOT NULL AND xml_data = xml_tree_doc('<event><name>Start</name><time>2021-12-01T10:00:00</time></event>');",
+        "SELECT t1.id, dateadd('hour', 24, MAX(t2.event_date)) AS max_date, t1.xml_data FROM test_dates t1 JOIN test_dates t2 ON t1.id = t2.id WHERE t2.event_date IS NOT NULL GROUP BY t1.id, t1.xml_data HAVING MAX(t2.event_date) > now();",
+        "SELECT event_date, xml_tree_doc(CONCAT('<date>', stringdate(dateadd('year', -1, event_date)), '</date>')) AS parsed_date FROM test_dates WHERE xml_data IS NOT NULL UNION ALL SELECT event_date, xml_tree_doc('<date>NULL</date>') FROM test_dates WHERE xml_data IS NULL;",
+        "WITH xml_values AS (SELECT xml_data FROM test_dates WHERE event_date > dateadd('day', -10, now())) SELECT id, xml_tree_doc('<values>' || STRING_AGG(xml_values.xml_data) || '</values>') AS aggregated_xml FROM test_dates, xml_values WHERE test_dates.id = 1 GROUP BY id;"
+    ]
+}

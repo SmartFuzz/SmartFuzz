@@ -1,0 +1,34 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/58184",
+  "title": "`INFORMATION_SCHEMA.columns` performance regression after fix #54343",
+  "vulnerable_database": "tidb",
+  "date": "2024-12-12T02:33:38Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n\n```\nuse test;\ndrop table if exists t;\ncreate table t(a int);\ninsert into t values(1);\ninsert into t select * from t;\ninsert into t select * from t;\ninsert into t select * from t;\ninsert into t select * from t;\ninsert into t select * from t;\ninsert into t select * from t;\ninsert into t select * from t;\ninsert into t select * from t;\ninsert into t select * from t;\ninsert into t select * from t;\ninsert into t select * from t;\ninsert into t select * from t;\ninsert into t select * from t;\ninsert into t select * from t;\ninsert into t select * from t;\ninsert into t select * from t;\ninsert into t select * from t;\ninsert into t select * from t;\ninsert into t select * from t;\ninsert into t select * from t;\ninsert into t select * from t;\ncreate view v as select * from t where a = (select max(t2.a) from t t2);\ncreate view v2 as select * from t where a = (select max(t2.a) from t t2);\ncreate view v3 as select * from t where a = (select max(t2.a) from t t2);\ncreate view v4 as select * from t where a = (select max(t2.a) from t t2);\ncreate view v5 as select * from t where a = (select max(t2.a) from t t2);\ncreate view v6 as select * from t where a = (select max(t2.a) from t t2);\nselect count(1) from INFORMATION_SCHEMA.columns;\n```\n\nthanks for @wshwsh12\n\n### 2. What did you expect to see? (Required)\n\nbefore the fix, there's some warnings but the execution time is small\n\nuse v6.5.8\n\n```\nmysql> select count(1) from INFORMATION_SCHEMA.columns;\n+----------+\n| count(1) |\n+----------+\n|     4629 |\n+----------+\n1 row in set, 6 warnings (0.03 sec)\n```\n\n### 3. What did you see instead (Required)\n\nafter the fix, execution is slow\n\nuse nightly (~8.6)\n\n```\nmysql> select count(1) from INFORMATION_SCHEMA.columns;\n+----------+\n| count(1) |\n+----------+\n|     4981 |\n+----------+\n1 row in set (0.74 sec)\n```\n\nuse v6.5.11\n\n```\nmysql> select count(1) from INFORMATION_SCHEMA.columns;\n+----------+\n| count(1) |\n+----------+\n|     4635 |\n+----------+\n1 row in set (0.66 sec)\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "poc": [
+    "use test;",
+    "drop table if exists t;",
+    "create table t(a int);",
+    "insert into t values(1);",
+    "insert into t select * from t;",
+    "create view v as select * from t where a = (select max(t2.a) from t t2);",
+    "create view v2 as select * from t where a = (select max(t2.a) from t t2);",
+    "create view v3 as select * from t where a = (select max(t2.a) from t t2);",
+    "create view v4 as select * from t where a = (select max(t2.a) from t t2);",
+    "create view v5 as select * from t where a = (select max(t2.a) from t t2);",
+    "create view v6 as select * from t where a = (select max(t2.a) from t t2);",
+    "select count(1) from INFORMATION_SCHEMA.columns;"
+  ],
+  "poc_type": "sql_text",
+  "state": "closed",
+  "key_bug_features": [
+    "select count(1) from INFORMATION_SCHEMA.columns"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t1 (id INT PRIMARY KEY, name VARCHAR(50), created_at DATETIME DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t1 (id, name) VALUES (1, 'test1'), (2, 'test2'), (3, 'test3');",
+    "CREATE TABLE t2 (t1_id INT, value DECIMAL(10, 2), FOREIGN KEY (t1_id) REFERENCES t1(id));",
+    "INSERT INTO t2 (t1_id, value) SELECT id, ROUND(RAND() * 100, 2) FROM t1;",
+    "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 't1';"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+    "function": "date_add",
+    "operator": "SELECT NOT a",
+    "sql_array": [
+        "CREATE TABLE test_dates (id Int32, date_value DateTime, string_value String, nullable_date DateTime Nullable);",
+        "INSERT INTO test_dates VALUES (1, '2020-01-01 00:00:00', 'test1', NULL), (2, '2021-12-31 23:59:59', 'test2', '2021-12-31 12:00:00'), (3, NULL, 'test3', NULL);",
+        "SELECT id, date_add(YEAR, NOT NULL(date_value) + 1, date_value) AS new_date FROM test_dates WHERE NOT(date_value IS NULL) GROUP BY id, new_date HAVING new_date < date_add(YEAR, 1, NOW()) ORDER BY new_date;",
+        "SELECT id, date_add(DAY, IFNULL(string_value, '3'), date_value) AS incremented_date FROM test_dates WHERE date_value IS NOT NULL HAVING incremented_date > '2021-01-01';",
+        "SELECT id, date_add(DAY, 1, date_add(YEAR, -1, date_value)) AS previous_year_date FROM test_dates WHERE string_value NOT LIKE 'test%';",
+        "SELECT id, date_add(YEAR, (SELECT COUNT() FROM test_dates d WHERE d.id = test_dates.id AND d.date_value IS NOT NULL) , date_value) AS adjusted_date FROM test_dates WHERE date_value IS NOT NULL ORDER BY adjusted_date;",
+        "SELECT id, date_add(DAY, NOT date_value IS NULL, date_value) AS shifted_date FROM test_dates WHERE date_value IS NOT NULL;",
+        "SELECT id, date_add(MONTH, IF(string_value = 'test1', 1, 0), date_value) AS conditionally_shifted_date FROM test_dates WHERE NOT EXISTS (SELECT 1 FROM test_dates d WHERE d.string_value = test_dates.string_value AND d.id != test_dates.id);",
+        "CREATE TABLE temp_dates AS SELECT id, date_add(YEAR, index, date_value) FROM test_dates CROSS JOIN (SELECT number AS index FROM numbers(5)) WHERE date_value IS NOT NULL;",
+        "SELECT date_add(DAY, (CASE WHEN nullable_date IS NULL THEN 0 ELSE 7 END), NULLIF(date_value, '2021-12-31 00:00:00')) AS calculated_date FROM test_dates;"
+    ]
+}

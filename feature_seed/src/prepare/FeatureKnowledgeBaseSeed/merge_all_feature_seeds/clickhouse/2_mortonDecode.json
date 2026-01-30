@@ -1,0 +1,10 @@
+CREATE TABLE morton_test (code UInt64, tuple_size Int32) ENGINE = MergeTree() ORDER BY code;
+INSERT INTO morton_test VALUES (53, 3), (1, 1), (32768, 2), (0, 1);
+SELECT mortonDecode(2, code) FROM morton_test WHERE code GLOBAL NOT IN (SELECT code FROM morton_test WHERE tuple_size = 1);
+SELECT COUNT(*) FROM (SELECT mortonDecode(3, code) AS decoded FROM morton_test) AS t WHERE decoded GLOBAL NOT IN (SELECT tuple_size FROM morton_test);
+CREATE TABLE morton_data (n1 UInt32, n2 UInt32, n3 UInt16, n4 UInt16, n5 UInt8, n6 UInt8, n7 UInt8, n8 UInt8) ENGINE = MergeTree() ORDER BY n1;
+INSERT INTO morton_data VALUES (1, 2, 3, 4, 5, 6, 7, 8), (1000000000, 2000000000, 300, 400, 5, 6, 7, 8);
+SELECT untuple(mortonDecode(8, mortonEncode(n1, n2, n3, n4, n5, n6, n7, n8))) FROM morton_data WHERE (n1, n2) GLOBAL NOT IN (SELECT n1, n2 FROM morton_data WHERE n3 IS NULL);
+WITH (SELECT COUNT() FROM morton_test) AS total_count SELECT code, mortonDecode(1, code) AS decoded FROM morton_test WHERE total_count GLOBAL NOT IN (SELECT COUNT(*) FROM morton_data);
+SELECT SUM(decoded) FROM (SELECT untuple(mortonDecode(2, code)) AS decoded FROM morton_test) GROUP BY decoded HAVING decoded GLOBAL NOT IN (SELECT code FROM morton_test);
+SELECT DISTINCT (SELECT mortonDecode(2, code) FROM morton_test) AS decoded FROM morton_test WHERE tuple_size GLOBAL NOT IN (SELECT tuple_size FROM morton_test WHERE code IS NULL);

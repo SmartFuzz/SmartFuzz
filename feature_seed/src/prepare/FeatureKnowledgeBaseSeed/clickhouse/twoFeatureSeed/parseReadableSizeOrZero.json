@@ -1,0 +1,17 @@
+{
+    "function": "parseReadableSizeOrZero",
+    "operator": "EXTRACT",
+    "sql_array": [
+        "CREATE TABLE test_sizes (id UInt64, size String, created DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_sizes VALUES (1, '1 B', now()), (2, '1 KiB', now()), (3, '3 MB', now()), (4, 'invalid', now()), (5, '5.314 KiB', now());",
+        "SELECT id, size, parseReadableSizeOrZero(size) AS bytes FROM test_sizes;",
+        "SELECT id, size, bytes, EXTRACT(MONTH FROM created) AS month_created FROM (SELECT id, size, parseReadableSizeOrZero(size) AS bytes FROM test_sizes) WHERE bytes > 0;",
+        "SELECT id, size, bytes, EXTRACT(YEAR FROM created) AS year_created FROM (SELECT id, size, parseReadableSizeOrZero(size) AS bytes FROM test_sizes) GROUP BY year_created HAVING sum(bytes) > 1024;",
+        "SELECT t1.id, t1.size, t2.bytes FROM (SELECT id, size, parseReadableSizeOrZero(size) AS bytes FROM test_sizes) AS t1 JOIN (SELECT id, parseReadableSizeOrZero(size) AS bytes FROM test_sizes WHERE size LIKE '%.%') AS t2 ON t1.id = t2.id;",
+        "SELECT id, size, bytes FROM (SELECT id, size, parseReadableSizeOrZero(size) AS bytes FROM test_sizes) WHERE bytes IS NULL OR bytes = 0;",
+        "CREATE TABLE test_dates (id UInt64, date_created DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_dates VALUES (1, '2023-01-01 00:00:00'), (2, '2023-02-01 01:01:01'), (3, '2023-03-01 02:02:02');",
+        "SELECT d.id, EXTRACT(DAY FROM d.date_created) AS day_created, EXTRACT(MONTH FROM d.date_created) AS month_created, parseReadableSizeOrZero('1 MiB') AS size_in_bytes FROM test_dates AS d;",
+        "SELECT d.id, d.date_created, EXTRACT(YEAR FROM d.date_created) AS year_created, (SELECT count(*) FROM test_sizes) + parseReadableSizeOrZero('500 KiB') AS total_count FROM test_dates AS d WHERE EXTRACT(HOUR FROM d.date_created) = 0;"
+    ]
+}

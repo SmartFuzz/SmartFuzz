@@ -1,0 +1,17 @@
+{
+    "function": "try_strptime(text, format-list)",
+    "operator": "-",
+    "sql_array": [
+        "CREATE TABLE test_table (id INT, timestamp_col VARCHAR, interval_col INTERVAL, value_col NUMERIC);",
+        "INSERT INTO test_table (id, timestamp_col, interval_col, value_col) VALUES (1, '4/15/2023 10:56:00', INTERVAL '5 DAYS', 100.0);",
+        "INSERT INTO test_table (id, timestamp_col, interval_col, value_col) VALUES (2, '5/15/2023 10:56:00', INTERVAL '10 DAYS', NULL);",
+        "INSERT INTO test_table (id, timestamp_col, interval_col, value_col) VALUES (3, 'invalid date', INTERVAL '3 MINUTES', 300.0);",
+        "INSERT INTO test_table (id, timestamp_col, interval_col, value_col) VALUES (4, '', INTERVAL '1 DAY', 200.0);",
+        "SELECT id, try_strptime(timestamp_col, ['%d/%m/%Y %H:%M:%S', '%m/%d/%Y %H:%M:%S']) AS parsed_timestamp, value_col FROM test_table WHERE value_col IS NOT NULL ORDER BY parsed_timestamp;",
+        "SELECT id, try_strptime(timestamp_col, ['%d/%m/%Y %H:%M:%S', '%m/%d/%Y %H:%M:%S']) - interval_col AS adjusted_timestamp FROM test_table WHERE try_strptime(timestamp_col, ['%d/%m/%Y %H:%M:%S', '%m/%d/%Y %H:%M:%S']) IS NOT NULL;",
+        "SELECT id, COUNT(*) AS count FROM (SELECT id, (try_strptime(timestamp_col, ['%d/%m/%Y %H:%M:%S', '%m/%d/%Y %H:%M:%S']) - interval_col) AS adjusted_timestamp FROM test_table) AS subquery GROUP BY id HAVING count > 0;",
+        "SELECT a.id, (try_strptime(a.timestamp_col, ['%d/%m/%Y %H:%M:%S', '%m/%d/%Y %H:%M:%S']) - a.interval_col) AS new_time FROM test_table a JOIN test_table b ON a.value_col = b.value_col WHERE a.id <> b.id OR a.value_col IS NULL;",
+        "SELECT DISTINCT (try_strptime(timestamp_col, ['%d/%m/%Y %H:%M:%S', '%m/%d/%Y %H:%M:%S']) - INTERVAL 10 DAY) AS final_time FROM test_table WHERE value_col IS NOT NULL;",
+        "CREATE TEMP TABLE temp_table AS SELECT id, try_strptime(timestamp_col, ['%d/%m/%Y %H:%M:%S', '%m/%d/%Y %H:%M:%S']) AS parsed_time FROM test_table WHERE try_strptime(timestamp_col, ['%d/%m/%Y %H:%M:%S', '%m/%d/%Y %H:%M:%S']) IS NOT NULL;"
+    ]
+}

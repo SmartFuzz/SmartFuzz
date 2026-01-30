@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/873",
+  "title": "Bind issue",
+  "description": "executing the following query on (http://54.36.55.224:8892/sparql, virtuoso Version: 07.20.3217 Build: Aug 22 2018), I receive strange results....\nPREFIX n0:<http://www.w3.org/1999/02/22-rdf-syntax-ns#>\nPREFIX n1:<http://semanticweb.org/askelys/>\nPREFIX n2:<http://www.w3.org/2000/01/rdf-schema#>\nSELECT DISTINCT ?annee0 ?s ?t WHERE {\n?OpenMedic0 n0:type n1:OpenMedic.\n?OpenMedic0 n1:annee ?annee0.\n  BIND( regex(str(?annee0),\"2015\",\"i\") AS ?s ).\n{\n    BIND (regex(str(?annee0),\"2015\",\"i\") AS ?t).\n}\n}  LIMIT 1000\n\nresults :\n\ne0 | s | t\n-- | -- | --\n1 | 2014 | \"0\"^^xsd:integer | \"0\"^^xsd:integer\n2 | 2015 | \"1\"^^xsd:integer | \"0\"^^xsd:integer\n3 | 2016 | \"0\"^^xsd:integer | \"0\"^^xsd:integer\n4 | 2017 | \"0\"^^xsd:integer | \"0\"^^xsd:integer\n5 | 2018 | \"0\"^^xsd:integer | \"0\"^^xsd:integer\n\nIt's seems that the second bind (encaspuled) have wrong results.\nIf I replace this second bind directly with a filter (so FILTER(regex(str(?annee0),\"2015\",\"i\"))), the query works and I receive only 2015 results.",
+  "date": "2019-09-19 09:10:10",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE OpenMedic (id INT PRIMARY KEY, annee VARCHAR(10) NOT NULL);",
+    "INSERT INTO OpenMedic (id, annee) VALUES (1, '2014'), (2, '2015'), (3, '2016'), (4, '2017'), (5, '2018');",
+    "CREATE TABLE OpenMedicResults (id INT, s INT, t INT, FOREIGN KEY (id) REFERENCES OpenMedic(id));",
+    "INSERT INTO OpenMedicResults (id, s, t) SELECT id, CASE WHEN annee REGEXP '2015' THEN 1 ELSE 0 END, CASE WHEN annee REGEXP '2015' THEN 1 ELSE 0 END FROM OpenMedic;",
+    "SELECT DISTINCT annee, s, t FROM OpenMedicResults WHERE s = 1;"
+  ],
+  "key_bug_features": [
+    "Second BIND with regex produces incorrect results"
+  ]
+}

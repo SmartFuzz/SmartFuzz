@@ -1,0 +1,12 @@
+CREATE TABLE Employees (ID INT PRIMARY KEY, Name VARCHAR(255), Location GEOMETRY);
+INSERT INTO Employees (ID, Name, Location) VALUES (1, 'Alice', ST_GeomFromText('POINT(10 10)', 4326));
+INSERT INTO Employees (ID, Name, Location) VALUES (2, 'Bob', ST_GeomFromText('POINT(20 20)', 4326));
+SELECT att_local_name('MyDSN', 'Schema.Employees') AS LocalName, bif:st_distance(Location, ST_GeomFromText('POINT(15 15)', 4326)) AS Distance FROM Employees WHERE ST_IsValid(Location) = TRUE;
+SELECT att_local_name('AnotherDSN', 'Public.Table1') AS FullName, AVG(bif:st_distance(Location, ST_GeomFromText('POINT(5 5)', 4326))) as AvgDistance FROM Employees GROUP BY att_local_name('AnotherDSN', 'Public.Table1') HAVING AVG(bif:st_distance(Location, ST_GeomFromText('POINT(5 5)', 4326))) > 5;
+CREATE TABLE Locations (ID INT PRIMARY KEY, Point GEOMETRY NOT NULL);
+INSERT INTO Locations (ID, Point) VALUES (1, ST_GeomFromText('POINT(0 0)', 4326));
+INSERT INTO Locations (ID, Point) VALUES (2, ST_GeomFromText('POINT(30 30)', 4326));
+SELECT att_local_name('DataSource', 'dbo.Locations') AS LocationName, bif:st_distance(E.Location, L.Point) AS Dist FROM Employees AS E JOIN Locations AS L ON bif:st_distance(E.Location, L.Point) < 15;
+SELECT ID, Name, att_local_name('DataSource', 'uba.Locations') AS Local, bif:st_distance(Location, (SELECT ST_GeomFromText('POINT(5 5)', 4326) AS Near) FROM Employees) AS Calculation FROM Employees WHERE Name IS NOT NULL AND bif:st_distance(Location, (SELECT ST_GeomFromText('POINT(5 5)', 4326)) FROM Employees) < 10;
+CREATE TEMPORARY TABLE TempLocations AS (SELECT ID, Location FROM Locations WHERE ST_Distance(Point, ST_GeomFromText('POINT(10 10)', 4326)) IS NOT NULL);
+SELECT att_local_name('TempDSN', 'TempLocations') AS TempLocationName, COUNT(*) FROM TempLocations WHERE bif:st_distance(Point, ST_GeomFromText('POINT(15 15)', 4326)) < 50 GROUP BY att_local_name('TempDSN', 'TempLocations');

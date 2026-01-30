@@ -1,0 +1,15 @@
+CREATE TABLE mime_parts (id INT PRIMARY KEY, content_type VARCHAR(100), content_transfer_encoding VARCHAR(100), content TEXT);
+INSERT INTO mime_parts (id, content_type, content_transfer_encoding, content) VALUES (1, 'text/plain', '8bit', 'this is a first');
+INSERT INTO mime_parts (id, content_type, content_transfer_encoding, content) VALUES (2, 'text/plain', 'base64', 'dGhpcyBpcyBhIHNlY29uZA==');
+INSERT INTO mime_parts (id, content_type, content_transfer_encoding, content) VALUES (3, 'text/html', '8bit', '<b>this is a bold second</b>');
+SELECT MIME_BODY(vector(MIME_PART(NULL, NULL, NULL, (SELECT content FROM mime_parts WHERE id = 1)), MIME_PART(NULL, NULL, 'base64', (SELECT content FROM mime_parts WHERE id = 2))));
+SELECT MIME_BODY(vector(MIME_PART(NULL, NULL, NULL, 'This is a plain text part'), MIME_PART(NULL, NULL, 'base64', 'U29tZSBzdWJqZWN0IGRhdGE=')));
+SELECT MIME_BODY(vector(MIME_PART(NULL, NULL, 'quoted-printable', 'this is quoted printable content'), MIME_PART(NULL, NULL, NULL, (SELECT content FROM mime_parts WHERE id = 3))));
+SELECT MIME_BODY(vector(MIME_PART(NULL, NULL, NULL, 'Text part with no encoding'), MIME_PART(NULL, NULL, '8bit', 'Another text part')));
+CREATE TABLE additional_parts (id INT PRIMARY KEY, content TEXT);
+INSERT INTO additional_parts (id, content) VALUES (1, 'This is an additional part 1');
+INSERT INTO additional_parts (id, content) VALUES (2, 'This is an additional part 2');
+SELECT MIME_BODY(vector(MIME_PART(NULL, NULL, NULL, (SELECT content FROM additional_parts WHERE id = 1)), MIME_PART(NULL, NULL, NULL, (SELECT content FROM additional_parts WHERE id = 2))));
+SELECT MIME_BODY(vector(MIME_PART(NULL, NULL, NULL, ''), MIME_PART(NULL, NULL, NULL, (SELECT content FROM mime_parts WHERE id = 1))));
+SELECT MIME_BODY(vector(MIME_PART(NULL, NULL, NULL, 'Part with NULL content'), MIME_PART(NULL, NULL, 'base64', (SELECT content FROM mime_parts WHERE id = 2))));
+SELECT MIME_BODY(vector(MIME_PART(NULL, NULL, NULL, (SELECT content FROM mime_parts WHERE id = 1)), MIME_PART(NULL, NULL, NULL, (SELECT content FROM additional_parts WHERE id = 1))));

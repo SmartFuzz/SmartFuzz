@@ -1,0 +1,21 @@
+{
+  "url": "https://www.postgresql.org/message-id/17182-a6baa001dd1784be%40postgresql.org",
+  "title": "BUG #17182: Race condition on concurrent DROP and CREATE of dependent object",
+  "description": "The following bug has been logged on the website:\nBug reference:      17182\nLogged by:          Alexander Lakhin\nEmail address:      exclusion(at)gmail(dot)com\nPostgreSQL version: 14beta3\nOperating system:   Ubuntu 20.04\nDescription:\nAs result of the following script:\nfor i in `seq 100`; do\n( { for n in `seq 20`; do echo \"DROP DOMAIN i;\"; done } | psql ) >psql1.log\n2>&1 &\n( echo \"\nCREATE DOMAIN i AS int;\nCREATE FUNCTION f1() RETURNS i LANGUAGE SQL RETURN 1;\nCREATE FUNCTION f2() RETURNS i LANGUAGE SQL RETURN 2;\nCREATE FUNCTION f3() RETURNS i LANGUAGE SQL RETURN 3;\nCREATE FUNCTION f4() RETURNS i LANGUAGE SQL RETURN 4;\nCREATE FUNCTION f5() RETURNS i LANGUAGE SQL RETURN 5;\n\" | psql ) >psql2.log 2>&1 &\nwait\npsql -c \"DROP DOMAIN i CASCADE\" >psql3.log 2>&1\ndone\nI get several broken functions with the invalid return type:\nSELECT f1()\nERROR:  cache lookup failed for type 16519\nCONTEXT:  SQL function \"f1\" during inlining\n\\df\nERROR:  cache lookup failed for type 16519\n(\\df is effectively unusable when such functions exist)\nSELECT pp.oid, proname, pronamespace, proowner, prolang, prorettype FROM\npg_proc pp INNER JOIN pg_namespace pn ON (pp.pronamespace = pn.oid) WHERE\npn.nspname='public'\noid  | proname | pronamespace | proowner | prolang | prorettype\n-------+---------+--------------+----------+---------+------------\n16520 | f1      |         2200 |       10 |      14 |      16519\n16521 | f2      |         2200 |       10 |      14 |      16519\n16564 | f3      |         2200 |       10 |      14 |      16563\n16565 | f4      |         2200 |       10 |      14 |      16563\n16616 | f5      |         2200 |       10 |      14 |      16615\n(5 rows)\nThe similar behaviour is reproduced with \"CREATE SCHEMA s; CREATE FUNCTION\ns.funcX ... / DROP SCHEMA s;\", but \\df *.func* shows such functions with the\nempty schema column.",
+  "date": "2021-09-04 06:00:00",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE DOMAIN test_domain AS INTEGER;",
+    "CREATE FUNCTION test_func1() RETURNS test_domain AS 'SELECT NULL;",
+    "' LANGUAGE SQL;",
+    "CREATE FUNCTION test_func2() RETURNS test_domain AS 'SELECT 2147483647;",
+    "' LANGUAGE SQL;",
+    "CREATE TABLE test_table (id INTEGER PRIMARY KEY, value test_domain NOT NULL);"
+  ],
+  "key_bug_features": [
+    "Concurrent DROP and CREATE of dependent database objects"
+  ]
+}

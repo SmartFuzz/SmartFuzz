@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/85167",
+  "title": "WHERE int_index_column > float64 disable partition and primary key index search",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\n```\nCREATE TABLE users_2 (uid Int16, name String, ts Int64,\nINDEX ts_idx CAST(ts, 'Float64') TYPE minmax GRANULARITY 1000000\n) ENGINE=MergeTree\nPARTITION BY fromUnixTimestamp64Micro(ts) ORDER BY ts;\nINSERT INTO users_2 VALUES (1, 'John', 33);\nINSERT INTO users_2 VALUES (2, 'Ksenia', 1000000000000000);\nINSERT INTO users_2 VALUES (3, 'Alice', 2000000000000000);\nEXPLAIN indexes=1 SELECT * FROM users_2  WHERE ((`ts` >= 1700000000000000.) AND (`ts` <= _CAST(1800000000000000., 'Float64')));\nIndexes:\nMinMax\nCondition: true\nParts: 3/3\nGranules: 3/3\nPartition\nCondition: true\nParts: 3/3\nGranules: 3/3\nPrimaryKey\nCondition: true\nParts: 3/3\nGranules: 3/3\nSkip\nName: ts_idx\nDescription: minmax GRANULARITY 1000000\nParts: 0/3\nGranules: 0/3\n```\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nhttps://fiddle.clickhouse.com/771ddd1d-13d9-41dd-bba5-708fb890f399\n### Expected behavior\n_No response_\n### Error message and/or stacktrace\n_No response_\n### Additional context\n_No response_",
+  "date": "2025-08-06T23:16:38Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE users_3 (uid INT, name VARCHAR(255), ts FLOAT, age TINYINT NULL) ENGINE=InnoDB;",
+    "INSERT INTO users_3 (uid, name, ts, age) VALUES (1, 'John', 33.5, NULL);",
+    "INSERT INTO users_3 (uid, name, ts, age) VALUES (2, 'Ksenia', 1000000000000000.0, 25);",
+    "INSERT INTO users_3 (uid, name, ts, age) VALUES (3, 'Alice', 2000000000000000.0, 30);",
+    "SELECT * FROM users_3 WHERE ts > 1700000000000000.0 AND age IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "WHERE int_index_column > float64 disables index search"
+  ]
+}

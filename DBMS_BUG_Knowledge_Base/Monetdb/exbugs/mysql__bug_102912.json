@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=102912",
+  "title": "filter result different on a index bit column with no-index bit column",
+  "description": "version: Server version: 8.0.23 MySQL Community Server - GPL\n\ndrop table t1_no_idx;\r\ncreate table t1_no_idx(id int, col_bit bit(16));\r\ninsert into t1_no_idx values(1, 0x3135);\r\ninsert into t1_no_idx values(2, 0x0f);\r\nprepare stmt from 'select * from t1_no_idx where col_bit = ?';                                                                                                                                                                                                                set @a = 0x3135;\r\nexecute stmt using @a;\r\nprepare stmt1 from 'select * from t2 where col_bit in (?)';\r\nexecute stmt1 using @a;\r\nmysql> execute stmt1 using @a;\r\n+------+------------------+\r\n| id   | col_bit          |\r\n+------+------------------+\r\n|    2 | 0x000F           |\r\n+------+------------------+\r\n1 row in set (0.00 sec)\r\n\r\ndrop table t2_idx;\r\ncreate table t2_idx(id int, col_bit bit(16), key(col_bit));\r\ninsert into t2_idx values(1, 0x3135);\r\ninsert into t2_idx values(2, 0x0f);\r\nprepare stmt from 'select * from t2_idx where col_bit = ?';\r\nset @a = 0x3135;\r\nexecute stmt using @a;\r\n+------+------------------+\r\n| id   | col_bit          |\r\n+------+------------------+\r\n|    1 | 0x3135           |\r\n+------+------------------+\r\n1 row in set (0.00 sec)\n\nt1_no_idx is same with t2_idx expect t2_idx got idx on col_bit. But same execute got different result.\nHow to repeat:\ndrop table t1_no_idx;\r\ncreate table t1_no_idx(id int, col_bit bit(16));\r\ninsert into t1_no_idx values(1, 0x3135);\r\ninsert into t1_no_idx values(2, 0x0f);\r\nprepare stmt from 'select * from t1_no_idx where col_bit = ?';                                                                                                                                                                                                                set @a = 0x3135;\r\nexecute stmt using @a;\r\nprepare stmt1 from 'select * from t2 where col_bit in (?)';\r\nexecute stmt1 using @a;\r\n\r\ndrop table t2_idx;\r\ncreate table t2_idx(id int, col_bit bit(16), key(col_bit));\r\ninsert into t2_idx values(1, 0x3135);\r\ninsert into t2_idx values(2, 0x0f);\r\nprepare stmt from 'select * from t2_idx where col_bit = ?';\r\nset @a = 0x3135;\r\nexecute stmt using @a;",
+  "date": "2021-03-11 02:07:00",
+  "vulnerable_version": "8.0, 8.0.23, 5.7.33",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t1_no_idx;",
+    "CREATE TABLE t1_no_idx(id INT, col_bit BIT(16));",
+    "INSERT INTO t1_no_idx VALUES(1, 0x3135), (2, 0x0F);",
+    "SELECT * FROM t1_no_idx WHERE col_bit = 0x3135;",
+    "DROP TABLE IF EXISTS t2_idx;"
+  ],
+  "key_bug_features": [
+    "filtering on indexed vs non-indexed bit column"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=113631",
+  "title": "MIN, as window function, returns wrong NULL result",
+  "description": "Verified with github's trunk 87307d4ddd88405117e3f1e51323836d57ab1f57 of today.\r\n\r\nMIN() can be used as a window function, if given an OVER clause.\r\nAnd MIN() is expected, per the SQL standard, to work like this: ignore NULL values, and return the minimum of other values (or NULL if no other value).\r\n\r\nPlease look at the query below. In the window, there is no PARTITION BY, so the partition is the entire table 't' ; rows are ordered by 'a', and to build the frame we keep only from the first row up to the current row, and take the minimum of that.\r\nThe tables contains NULL,1,2. As MySQL default's is to put NULLs first in a sort, \"ORDER BY a\" leads to intermediate result NULL,1,2. So for the row which has a=NULL, its frame contains NULL, and the MIN is NULL (remove NULLs from the frame, there remains nothing, so MIN is NULL). Then for the row which has a=1, its frame contains NULL and 1, and the MIN should be *1* (remove NULLs from the frame, there remains 1, so MIN should be 1). But it is, wrongly, NULL.\r\n\r\nI tried SQL Server, PostgreSQL and DuckDB, all return the result which I expected.\r\n\r\nAlso, if I remove \"ORDER BY a\", MySQL returns the result which I expected.\nHow to repeat:\nCREATE TABLE t(a INT);\r\nINSERT INTO t VALUES (null), (1), (2);\r\nSELECT a,MIN(a) OVER (ORDER BY a  ROWS UNBOUNDED PRECEDING) FROM t;\r\n\r\nresult:\r\nNULL NULL\r\n1    NULL\r\n2    NULL\r\n\r\nPostgresql, SQL Server, DuckDB (note that for them, which support NULLS FIRST and NULLS LAST, we have to add NULLS FIRST to the ORDER BY clause in order to imitate MySQL's sort order), and MariaDB:\r\nNULL NULL\r\n1    1\r\n2    1",
+  "date": "2024-01-12 13:15:00",
+  "vulnerable_version": "8.2, 8.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t(a INT, b VARCHAR(10), c FLOAT, d DATE);",
+    "INSERT INTO t VALUES (NULL, 'test1', 1.1, '2023-01-01'), (1, 'test2', 2.2, '2023-01-02'), (2, 'test3', NULL, '2023-01-03');",
+    "SELECT a, MIN(a) OVER (ORDER BY a NULLS FIRST ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM t;",
+    "CREATE TABLE u(x INT NOT NULL, y INT DEFAULT 0);",
+    "INSERT INTO u SELECT a, MIN(a) FROM t GROUP BY a;"
+  ],
+  "key_bug_features": [
+    "MIN() window function returns incorrect NULL result"
+  ]
+}

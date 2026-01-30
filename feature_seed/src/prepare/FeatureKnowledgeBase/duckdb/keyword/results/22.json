@@ -1,0 +1,34 @@
+{
+    "HTML": [
+        "https://duckdb.org/docs/stable/sql/statements/merge_into"
+    ],
+    "Title": [
+        "MERGE INTO"
+    ],
+    "Feature": [
+        "MERGE INTO"
+    ],
+    "Description": [
+        "The MERGE INTO statement is an alternative to INSERT INTO ... ON CONFLICT that doesn't need a primary key since it allows for a custom match condition. This is a very useful alternative for upserting use cases ( INSERT + UPDATE ) when the destination table does not have a primary key constraint.",
+        "First, let's create a simple table.",
+        "The simplest upsert would be updating or inserting a whole row.",
+        "In the previous example we are updating the whole row if id matches. However, it is also a common pattern to receive a change set with some keys and the changed value. This is a good use for SET . If the match condition uses a column that has the same name in the source and destination, the keyword USING can be used in the match condition.",
+        "Another common pattern is to receive a delete set of rows, which may only contain ids of rows to be deleted.",
+        "MERGE INTO also supports more complex conditions, for example, for a given delete set we can decide to only remove rows that contain a salary bigger or equal than a certain amount.",
+        "If needed, DuckDB also supports multiple UPDATE and DELETE conditions. The RETURNING clause can be used to indicate which rows where affected by the MERGE statement.",
+        "In some cases, you may want to perform a different action specifically if the source doesn't meet a condition. For example, if we expect that data that is not present on the source shouldn't be present in the target:",
+        "There is also the possibility of specifying WHEN NOT MATCHED BY TARGET . However, the behavior is, as you may expect, the same as WHEN NOT MATCHED since by default when specifying conditions, we look at the target."
+    ],
+    "Examples": [
+        "CREATE\nTABLE\npeople\n(\nid\nINTEGER\n,\nname\nVARCHAR\n,\nsalary\nFLOAT\n);\nINSERT\nINTO\npeople\nVALUES\n(\n1\n,\n'John'\n,\n92_000.0\n),\n(\n2\n,\n'Anna'\n,\n100_000.0\n);",
+        "MERGE\nINTO\npeople\nUSING\n(\nSELECT\nunnest\n([\n3\n,\n1\n])\nAS\nid\n,\nunnest\n([\n'Sarah'\n,\n'John'\n])\nAS\nname\n,\nunnest\n([\n95_000.0\n,\n105_000.0\n])\nAS\nsalary\n)\nAS\nupserts\nON\n(\nupserts.id\n=\npeople.id\n)\nWHEN\nMATCHED\nTHEN\nUPDATE\nWHEN\nNOT\nMATCHED\nTHEN\nINSERT\n;\nFROM\npeople\nORDER\nBY\nid\n;",
+        "MERGE\nINTO\npeople\nUSING\n(\nSELECT\n1\nAS\nid\n,\n98_000.0\nAS\nsalary\n)\nAS\nsalary_updates\nUSING\n(\nid\n)\nWHEN\nMATCHED\nTHEN\nUPDATE\nSET\nsalary\n=\nsalary_updates.salary\n;\nFROM\npeople\nORDER\nBY\nid\n;",
+        "MERGE\nINTO\npeople\nUSING\n(\nSELECT\n1\nAS\nid\n,\n)\nAS\ndeletes\nUSING\n(\nid\n)\nWHEN\nMATCHED\nTHEN\nDELETE\n;\nFROM\npeople\nORDER\nBY\nid\n;",
+        "MERGE\nINTO\npeople\nUSING\n(\nSELECT\nunnest\n([\n3\n,\n2\n])\nAS\nid\n,\n)\nAS\ndeletes\nUSING\n(\nid\n)\nWHEN\nMATCHED\nAND\npeople.salary\n>=\n100_000.0\nTHEN\nDELETE\n;\nFROM\npeople\nORDER\nBY\nid\n;",
+        "-- Let's get John back in!\nINSERT\nINTO\npeople\nVALUES\n(\n1\n,\n'John'\n,\n105_000.0\n);\nMERGE\nINTO\npeople\nUSING\n(\nSELECT\nunnest\n([\n3\n,\n1\n])\nAS\nid\n,\nunnest\n([\n89_000.0\n,\n70_000.0\n])\nAS\nsalary\n)\nAS\nupserts\nUSING\n(\nid\n)\nWHEN\nMATCHED\nAND\npeople.salary\n<\n100_000.0\nTHEN\nUPDATE\nSET\nsalary\n=\nupserts.salary\n-- Second update or delete condition\nWHEN\nMATCHED\nAND\npeople.salary\n>\n100_000.0\nTHEN\nDELETE\nWHEN\nNOT\nMATCHED\nTHEN\nINSERT\nBY\nNAME\nRETURNING\nmerge_action\n,\n*\n;",
+        "CREATE\nTABLE\ntarget\nAS\nSELECT\nunnest\n([\n1\n,\n2\n])\nAS\nid\n;\nMERGE\nINTO\ntarget\nUSING\n(\nSELECT\n1\nAS\nid\n)\nsource\nUSING\n(\nid\n)\nWHEN\nMATCHED\nTHEN\nUPDATE\nWHEN\nNOT\nMATCHED\nBY\nSOURCE\nTHEN\nDELETE\nRETURNING\nmerge_action\n,\n*\n;"
+    ],
+    "Category": [
+        "MERGE INTO"
+    ]
+}

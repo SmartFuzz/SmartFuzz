@@ -1,0 +1,16 @@
+CREATE TABLE remote_data (id INT, value FLOAT, description VARCHAR(255), created_at TIMESTAMP);
+INSERT INTO remote_data (id, value, description, created_at) VALUES (1, 10.0, 'First Entry', CURRENT_TIMESTAMP);
+INSERT INTO remote_data (id, value, description, created_at) VALUES (2, NULL, 'NULL Entry', CURRENT_TIMESTAMP);
+SELECT sql_gettypeinfo('my_dsn', SQL_ALL_TYPES) AS types_info, (SELECT COUNT(*) FROM remote_data) AS total_count;
+SELECT id / CASE WHEN value IS NULL THEN 1 ELSE value END AS adjusted_id FROM remote_data;
+SELECT a.id, a.value / b.value AS ratio FROM remote_data a JOIN remote_data b ON a.id = b.id AND b.value <> 0;
+SELECT id, value, (SELECT COUNT(*) FROM remote_data WHERE value IS NOT NULL) AS non_null_count FROM remote_data;
+SELECT id, value / (MAX(value) OVER ()) AS normalized_value FROM remote_data GROUP BY id;
+SELECT id, (SELECT SQL_NO_CACHE COUNT(*) FROM remote_data WHERE value > (SELECT AVG(value) FROM remote_data)) AS count_above_avg FROM remote_data;
+SELECT id, description, (CASE WHEN LENGTH(description) > 10 THEN description ELSE NULL END) AS short_description FROM remote_data HAVING short_description IS NOT NULL;
+CREATE TABLE temp_data AS SELECT id, value FROM remote_data WHERE value IS NOT NULL;
+SELECT sql_gettypeinfo('my_dsn', 4) AS specific_type_info, (1.0 / NULL) AS division_by_null FROM temp_data;
+SELECT id, value, (sql_gettypeinfo('my_dsn', SQL_ALL_TYPES)[1][0] / 2) AS type_divided FROM remote_data;
+SELECT id, value / NULLIF(value, 0) AS safe_division FROM remote_data WHERE value IS NOT NULL;
+SELECT id, value FROM remote_data ORDER BY created_at DESC LIMIT 5;
+DROP TABLE IF EXISTS temp_data;

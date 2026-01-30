@@ -1,0 +1,16 @@
+{
+    "function": "h3EdgeLengthKm",
+    "operator": "a - b",
+    "sql_array": [
+        "CREATE TABLE geo_data (id UInt32, resolution UInt8, edgeLengthKm Float64, description String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO geo_data VALUES (1, 0, h3EdgeLengthKm(0), 'Minimum resolution for H3 edge length'), (2, 15, h3EdgeLengthKm(15), 'Maximum resolution for H3 edge length');",
+        "SELECT id, resolution, h3EdgeLengthKm(resolution) - 1.0 AS adjustedEdgeLengthKm FROM geo_data WHERE resolution BETWEEN 0 AND 15;",
+        "SELECT id, (h3EdgeLengthKm(resolution) - h3EdgeLengthKm(1)) AS diffEdgeLengthKm FROM geo_data WHERE resolution IS NOT NULL;",
+        "SELECT id, h3EdgeLengthKm(0) - NULL AS edgeAtZeroResolution FROM geo_data HAVING edgeAtZeroResolution IS NULL;",
+        "SELECT id, resolution, h3EdgeLengthKm(resolution) - (CASE WHEN resolution > 10 THEN h3EdgeLengthKm(10) ELSE 0 END) AS boundaryEdgeLength FROM geo_data;",
+        "CREATE TABLE temp_results AS SELECT id, h3EdgeLengthKm(resolution) AS originalLength FROM geo_data;",
+        "SELECT a.id, a.resolution, h3EdgeLengthKm(a.resolution) - b.originalLength AS lengthDiff FROM geo_data a JOIN temp_results b ON a.id = b.id;",
+        "SELECT id, SUM(h3EdgeLengthKm(resolution)) OVER (PARTITION BY description ORDER BY resolution ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cumulativeEdgeLength FROM geo_data ORDER BY cumulativeEdgeLength DESC;",
+        "DROP TABLE IF EXISTS temp_results;"
+    ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/85677",
+  "title": "Deprecate/remove stride argument for `Delta` / `DoubleDelta` + forbid Delta on non-numeric types",
+  "description": "As per #84383, it is no longer allowed to combine codec `DoubleDelta` and data type `FixedString(N)`.\nThis fixes\n```sql\nCREATE TABLE t0 (c0 FixedString(9) CODEC(DoubleDelta(1))) ENGINE = MergeTree() ORDER BY tuple();\nINSERT INTO TABLE t0 (c0) VALUES ('a'); -- threw an error\n```\nTo be precise, we required `datatype.isValueUnambiguouslyRepresentedInFixedSizeContiguousMemoryRegion() = 1`, now we require `datatype.isValueRepresentedByNumber() = 1`. So this affects UUID and Array as well.\nThinking about it,\n1) It would be logical to apply the same change also for codec `Delta` just for consistency, even if there are no known data corruption issues like for `DoubleDelta`. It seems generally weird to apply `Delta` or `DoubleDelta` to non-numeric types.\n2) We should also phase out the user-provided codec argument (stride size) for `Delta` and `DoubleDelta`. Can't think of a use case for numeric types, including date/times, (let alone non-numeric types) where a stride size smaller than the type width makes sense.\nBoth 1) and 2) must be done under a new MergeTree setting such that old tables continue to load.\nCC: @Ergus",
+  "date": "2025-08-14T22:09:16Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (c0 CHAR(10)) WITH (OIDS=FALSE);",
+    "CREATE TABLE t2 (c1 UUID);",
+    "INSERT INTO t1 (c0) VALUES ('test');",
+    "INSERT INTO t2 (c1) VALUES (gen_random_uuid());",
+    "SELECT * FROM t1 WHERE c0 IS NULL;"
+  ],
+  "key_bug_features": [
+    "Combining codec DoubleDelta with non-numeric data types"
+  ]
+}

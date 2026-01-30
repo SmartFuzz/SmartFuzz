@@ -1,0 +1,17 @@
+{
+    "function": "xte_node_from_nodebld",
+    "operator": "SPARQL: sameTerm",
+    "sql_array": [
+        "CREATE TABLE test_xml (id INT PRIMARY KEY, xml_data XML, string_val VARCHAR(255), numeric_val INT);",
+        "INSERT INTO test_xml (id, xml_data, string_val, numeric_val) VALUES (1, '<root><item>value</item></root>', '100', 100);",
+        "INSERT INTO test_xml (id, xml_data, string_val, numeric_val) VALUES (2, '<root><item>another_value</item></root>', '200', NULL);",
+        "SELECT xte_node_from_nodebld(xml_data, '<placeholder>new_value</placeholder>') AS new_xml, sameTerm(string_val, '100') AS term_check FROM test_xml WHERE numeric_val IS NOT NULL;",
+        "SELECT xte_node_from_nodebld(xml_data, '<placeholder>' || string_val) AS modified_xml FROM test_xml WHERE numeric_val = 100 AND sameTerm(string_val, '100');",
+        "SELECT id, COUNT(*) OVER (PARTITION BY sameTerm(string_val, '200')) AS term_count FROM test_xml GROUP BY id HAVING xte_node_from_nodebld(xml_data, '<update>test</update>') IS NOT NULL;",
+        "SELECT xte_node_from_nodebld(xml_data, '<item>' || CAST(numeric_val AS VARCHAR(255))) AS updated_xml FROM test_xml WHERE sameTerm(string_val, (SELECT MIN(string_val) FROM test_xml));",
+        "CREATE TABLE test_references (ref_id INT PRIMARY KEY, test_id INT, FOREIGN KEY (test_id) REFERENCES test_xml(id));",
+        "INSERT INTO test_references (ref_id, test_id) VALUES (1, 1), (2, 2);",
+        "SELECT t.xml_data, tr.ref_id FROM test_xml AS t JOIN test_references AS tr ON t.id = tr.test_id WHERE sameTerm(t.string_val, 'random_value') OR sameTerm(t.string_val, NULL);",
+        "SELECT t.id, xte_node_from_nodebld(t.xml_data, '<new>' || t.string_val) AS new_xml FROM test_xml AS t WHERE t.numeric_val IS NULL OR t.numeric_val = 0;"
+    ]
+}

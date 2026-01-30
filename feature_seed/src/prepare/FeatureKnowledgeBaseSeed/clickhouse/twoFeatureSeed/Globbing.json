@@ -1,0 +1,17 @@
+{
+    "function": "Globbing",
+    "operator": "a GLOBAL NOT IN ...",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, value Nullable(String), date DateTime, extra Int32) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table VALUES (1, 'example1', NOW(), 10), (2, NULL, NOW(), 20), (3, 'example3', NOW(), 30);",
+        "SELECT id, value, date, extra FROM test_table WHERE value GLOBAL NOT IN ('invalid', 'foo') AND extra > 0;",
+        "CREATE TABLE remote_test AS SELECT * FROM test_table WHERE id IN (1, 2);",
+        "SELECT * FROM remote_test WHERE id GLOBAL NOT IN (SELECT id FROM test_table) AND value IS NULL;",
+        "SELECT id, value, date, extra FROM test_table WHERE id > (SELECT MAX(id) FROM test_table) - 1;",
+        "SELECT id, COUNT(*) as count FROM test_table GROUP BY id HAVING count GLOBAL NOT IN (SELECT MIN(count) FROM (SELECT id, COUNT(*) as count FROM test_table GROUP BY id));",
+        "CREATE TABLE distributed_table AS SELECT id, date, COALESCE(value, 'default') as coalesce_value FROM test_table;",
+        "SELECT id, extra FROM distributed_table WHERE extra < 0 AND id GLOBAL NOT IN (SELECT id FROM test_table WHERE extra = 20);",
+        "INSERT INTO test_table VALUES (4, 'example4', NOW(), NULL), (5, NULL, NOW(), -10);",
+        "SELECT id, {1, 2, 3} AS replicas GLOBAL NOT IN (SELECT extra FROM test_table WHERE value IS NOT NULL);"
+    ]
+}

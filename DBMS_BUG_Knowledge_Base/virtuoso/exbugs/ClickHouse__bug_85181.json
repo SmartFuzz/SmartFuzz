@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/85181",
+  "title": "Database context not preserved in distributed queries when using dictGet function",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nWhen executing a distributed query that uses the dictGet function to access a dictionary, the database context is lost on remote nodes, causing \"**Dictionary not found**\" errors even when the dictionary exists.\n**Version Affected**: ClickHouse 25.7.1.3997\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\n**​Cluster Configuration**: 2 shards, 1 replica\n​**Component**: Distributed query execution with dictionary functions\n# Steps to Reproduce\n```\n-- Create database demo\nCREATE DATABASE demo on cluster 'all'\nENGINE = Replicated('/clickhouse/default/demo', '{shard}', '{replica}');\n-- Create test Dict\nCREATE DICTIONARY demo.dict_test\n(\ncode Int32,\nvalue String\n)\nPRIMARY KEY code\nSOURCE(FILE(path './user_files/test.ndjson' format 'JSONEachRow'))\nLAYOUT(COMPLEX_KEY_HASHED)\nLIFETIME(0);\n-- Create local table\nCREATE TABLE demo.test_local(code Int32) ENGINE = ReplicatedMergeTree() ORDER BY code;\n-- Create Cluster table\nCREATE TABLE demo.test(code Int32) ENGINE = Distributed('demo', 'demo', 'test_local', rand());\n-- Execute sql\nuse demo;\nSELECT code,dictGet('dict_test','value',code)\nFROM demo.test;\n```\n### Expected behavior\nThe query should successfully resolve the dictionary reference on all cluster nodes since:\n- The dictionary exists in the same database on all nodes\n- The query is executed within the demo database context\n### Error message and/or stacktrace\n```\n-- Exception:\n/**\nReceived exception from server (version 25.7.1):\nCode: 36. DB::Exception: Received from localhost:9000. DB::Exception: Received from ch-2:9000. DB::Exception: Dictionary (`dict_test`) not found: In scope SELECT __table1.code AS code, dictGet('dict_test', 'value', __table1.code) AS `dictGet('dict_test', 'value', code)` FROM demo.test_local AS __table1. (BAD_ARGUMENTS)\n**/\nselect hostname,type,current_database,query,databases,tables from cluster('demo','system.query_log') where initial_query_id='4c9b4549-be34-4c37-b635-024eb53fa70d';\n/**\nRow 1:\n──────the space key to toggle the display of the progress table.\nhostname:         ch-1",
+  "date": "2025-08-07T10:04:33Z",
+  "vulnerable_version": "25.7.1.3997",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE DATABASE demo;",
+    "CREATE TABLE demo.dict_test (code INT, value VARCHAR(255));",
+    "INSERT INTO demo.dict_test VALUES (1, 'value1'), (2, 'value2'), (3, NULL);",
+    "CREATE TABLE demo.test_local (code INT, name VARCHAR(255) DEFAULT 'unknown');",
+    "INSERT INTO demo.test_local VALUES (1, 'value1'), (2, 'value2'), (3, NULL);",
+    "SELECT code, value FROM demo.dict_test WHERE code IN (SELECT code FROM demo.test_local WHERE name IS NOT NULL);"
+  ],
+  "key_bug_features": [
+    "Database context lost in distributed dictGet queries"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/60067",
+  "title": "incorect query result when handling timestamp",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n\n``` SQL\nCREATE TABLE `tdccbfad6` (\n  `col_5` timestamp DEFAULT CURRENT_TIMESTAMP\n) ENGINE=InnoDB DEFAULT CHARSET=gbk COLLATE=gbk_bin;\n\nINSERT INTO `tdccbfad6` VALUES('1980-09-23 00:00:00'),('2021-12-24 00:00:00'),('2020-06-30 00:00:00'),('1975-01-24 00:00:00'),('2016-11-29 00:00:00'),('2004-08-09 00:00:00');\n\nSELECT `tdccbfad6`.`col_5` AS `r0` FROM `tdccbfad6` JOIN (SELECT CONCAT_WS(',', `tdccbfad6`.`col_5`, `tdccbfad6`.`col_5`) AS `r0` FROM `tdccbfad6` WHERE `tdccbfad6`.`col_5` IN ('2016-11-29','2021-12-24','1980-09-23','1975-01-24')) AS `st_38` ON `tdccbfad6`.`col_5`=`st_38`.`r0` WHERE `tdccbfad6`.`col_5`='2021-12-24';\n\n```\n\n### 2. What did you expect to see? (Required)\n\nMySQL:\n``` SQL\nmysql> SELECT `tdccbfad6`.`col_5` AS `r0` FROM `tdccbfad6` JOIN (SELECT CONCAT_WS(',', `tdccbfad6`.`col_5`, `tdccbfad6`.`col_5`) AS `r0` FROM `tdccbfad6` WHERE `tdccbfad6`.`col_5` IN ('2016-11-29','2021-12-24','1980-09-23','1975-01-24')) AS `st_38` ON `tdccbfad6`.`col_5`=`st_38`.`r0` WHERE `tdccbfad6`.`col_5`='2021-12-24';\n+---------------------+\n| r0                  |\n+---------------------+\n| 2021-12-24 00:00:00 |\n+---------------------+\n1 row in set, 6 warnings (0.01 sec)\n```\n### 3. What did you see instead (Required)\n``` sql\nmysql> SELECT `tdccbfad6`.`col_5` AS `r0` FROM `tdccbfad6` JOIN (SELECT CONCAT_WS(',', `tdccbfad6`.`col_5`, `tdccbfad6`.`col_5`) AS `r0` FROM `tdccbfad6` WHERE `tdccbfad6`.`col_5` IN ('2016-11-29','2021-12-24','1980-09-23','1975-01-24')) AS `st_38` ON `tdccbfad6`.`col_5`=`st_38`.`r0` WHERE `tdccbfad6`.`col_5`='2021-12-24';\nEmpty set, 4 warnings (0.01 sec)\n```\n### 4. What is your TiDB version? (Required)\n724f8e1ab8ca79ae571416079375d6569ece23d5\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "date": "2025-03-13T12:35:40Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE `test_timestamps` (`id` INT PRIMARY KEY, `event_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP, `description` VARCHAR(255));",
+    "INSERT INTO `test_timestamps` VALUES (1, '1980-09-23 00:00:00', 'Event A'), (2, '2021-12-24 00:00:00', 'Event B'), (3, '2020-06-30 00:00:00', 'Event C'), (4, '1975-01-24 00:00:00', 'Event D'), (5, '2016-11-29 00:00:00', 'Event E');",
+    "SELECT `id`, `event_time` FROM `test_timestamps` WHERE `event_time` IN ('2016-11-29 00:00:00', '2021-12-24 00:00:00');",
+    "SELECT `id`, `event_time` FROM `test_timestamps` WHERE `event_time` BETWEEN '1970-01-01 00:00:00' AND '2025-01-01 00:00:00';",
+    "SELECT `id`, `event_time` FROM `test_timestamps` WHERE `event_time` IS NULL;"
+  ],
+  "key_bug_features": [
+    "Incorrect query result when handling timestamp values"
+  ]
+}

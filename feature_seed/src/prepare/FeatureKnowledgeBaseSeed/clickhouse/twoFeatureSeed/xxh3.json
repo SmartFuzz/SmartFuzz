@@ -1,0 +1,16 @@
+{
+    "function": "xxh3",
+    "operator": "a / b",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, name String, value Float64, created_at DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table VALUES (1, 'Sample1', 100.0, now()), (2, 'Sample2', NULL, now()), (3, 'Sample3', 200.5, now());",
+        "SELECT name, xxh3(value / 2.0) AS hashed_value FROM test_table WHERE value IS NOT NULL GROUP BY name, hashed_value HAVING hashed_value > xxh3('Sample') % 100;",
+        "SELECT name, xxh3((value + CAST(NULL AS Float64)) / (value - 100.0)) AS fuzzed_hash FROM test_table WHERE value IS NOT NULL;",
+        "SELECT id, xxh3(value) AS hash_value FROM (SELECT id, value FROM test_table WHERE created_at < now() - INTERVAL 1 DAY) AS subquery ORDER BY hash_value;",
+        "SELECT name, xxh3(value / (SELECT COUNT(*) FROM test_table) + 1) AS complex_hash FROM test_table GROUP BY name HAVING complex_hash IS NOT NULL;",
+        "SELECT xxh3(NULL) AS null_hash, xxh3('Boundary_' || CAST(2147483647 AS String)), (SELECT xxh3(name) FROM test_table WHERE id = 1) / (SELECT count() FROM test_table) AS division_hash FROM test_table WHERE value IS NOT NULL;",
+        "WITH (SELECT COUNT(*) FROM test_table WHERE value IS NOT NULL) AS total_count SELECT name, xxh3(value / total_count) AS normalized_hash FROM test_table HAVING normalized_hash < xxh3('Hello') % 1000;",
+        "CREATE TABLE temp_table AS SELECT id, xxh3(name) AS name_hash FROM test_table;",
+        "INSERT INTO temp_table SELECT id, xxh3(name) FROM test_table WHERE value IS NULL;"
+    ]
+}

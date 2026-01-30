@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/759",
+  "title": "Processing a query with UNIONs and two rdfs:subClassOf* statements (for different variables) returns false positives",
+  "description": "For example, the query:\nselect (COUNT(distinct ?s) AS ?count) ?type\nwhere {\n    ?s a ?type .\n    ?type rdfs:subClassOf* foo:Foo .                # 1st subClassOf\n    {\n        ?s rdfs:label ?label .\n        filter ( CONTAINS(lcase(?label),\"x\") || CONTAINS(lcase(?label),\"y\") )\n    }\n    UNION\n    {\n        ?s ?p ?o .                                                      # ?s should be bound\n        VALUES ?p { foo:predicate1 foo:predicate2 }\n        {\n            { ?o a ?oType .\n              ?o rdfs:subClassOf* bar:Bar }       # 2nd subClassOf\n            UNION\n            { ?o rdfs:label ?label .\n              filter ( CONTAINS(lcase(?label),\"x\") || CONTAINS(lcase(?label),\"y\") ) }\n        }\n    }\n} GROUP BY ?type\nORDER BY DESC(?count)\n\nReturns many incorrect results. The results are equivalent to the same query running with the 2nd subClassOf* statement being ignored. BUT this is ONLY TRUE if the subClassOf* is itself part of a UNION. If the last UNION (dealing with ?o's label) is removed and the rdfs:subClassOf* check becomes a mandatory condition, then the results are correct.  Or, if the query is changed to the following, then the results are correct.\nselect (COUNT(distinct ?s) AS ?count) ?type\nwhere {\n    { ?s a ?type .\n      ?type rdfs:subClassOf* foo:Foo .                # 1st subClassOf\n      {\n        ?s rdfs:label ?label .\n        filter ( CONTAINS(lcase(?label),\"x\") || CONTAINS(lcase(?label),\"y\") )\n      }\n    }\n    UNION\n    {\n        ?s ?p ?o .                                                      # ?s should NOT be bound\n        VALUES ?p { foo:predicate1 foo:predicate2 }\n        ?s a ?type .\n        {\n            { ?o a ?oType .\n              ?o rdfs:subClassOf* bar:Bar }             # 1st subClassOf within this set of statements\n            UNION\n            { ?o rdfs:label ?label .\n              filter ( CONTAINS(lcase(?label),\"x\") || CONTAINS(lcase(?label),\"y\") ) }\n        }\n    }\n} GROUP BY ?type\nORDER BY DESC(?count)\n```",
+  "date": "2018-06-30 21:00:23",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INTEGER PRIMARY KEY, type TEXT, label TEXT, oType TEXT, p TEXT);",
+    "INSERT INTO test_table (id, type, label, oType, p) VALUES (1, 'foo:Foo', 'example x', 'bar:Bar', 'foo:predicate1');",
+    "INSERT INTO test_table (id, type, label, oType, p) VALUES (2, 'foo:Foo', 'example y', 'bar:Bar', 'foo:predicate2');",
+    "SELECT COUNT(DISTINCT id) AS count, type FROM test_table WHERE type = 'foo:Foo' AND (label LIKE '%x%' OR label LIKE '%y%') GROUP BY type ORDER BY count DESC;",
+    "SELECT COUNT(DISTINCT id) AS count, type FROM test_table WHERE p IN ('foo:predicate1', 'foo:predicate2') AND (oType = 'bar:Bar' OR label LIKE '%x%' OR label LIKE '%y%') GROUP BY type ORDER BY count DESC;"
+  ],
+  "key_bug_features": [
+    "UNION with multiple rdfs:subClassOf* statements causes incorrect results"
+  ]
+}

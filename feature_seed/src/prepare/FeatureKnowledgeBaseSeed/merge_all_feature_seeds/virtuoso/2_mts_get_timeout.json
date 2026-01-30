@@ -1,0 +1,11 @@
+CREATE TABLE transactions (id INT, amount DECIMAL(10, 2), created_at TIMESTAMP, status VARCHAR(20));
+INSERT INTO transactions VALUES (1, 100.00, NOW(), 'completed'), (2, NULL, NOW(), 'pending'), (3, 50.50, NOW(), 'failed');
+SELECT id, amount, mts_get_timeout(0) AS timeout FROM transactions WHERE amount IS NULL;
+SELECT id, mts_get_timeout(1) AS timeout FROM transactions WHERE (SELECT COUNT(*) FROM transactions t WHERE t.status IS NULL) > 0;
+SELECT id, status FROM transactions WHERE mts_get_timeout(0) = 0 AND status IS NOT NULL;
+SELECT COUNT(*) FROM (SELECT id, (amount IS NULL) AS is_null FROM transactions) AS subquery WHERE is_null IS TRUE;
+SELECT SUM(amount) AS total_amount FROM transactions HAVING total_amount < (SELECT COUNT(*) FROM transactions) * mts_get_timeout(1);
+CREATE TEMPORARY TABLE temp_status (status VARCHAR(20));
+INSERT INTO temp_status VALUES ('processed'), (NULL), ('failed');
+SELECT t.id, t.amount, (SELECT COUNT(*) FROM temp_status WHERE status IS NULL AND mts_get_timeout(0) > 0) AS null_count FROM transactions t WHERE EXISTS (SELECT 1 FROM temp_status ts WHERE t.status = ts.status);
+SELECT t.id, (t.amount + COALESCE(NULL, 0)) AS adjusted_amount FROM transactions t WHERE adjusted_amount IS NOT NULL;

@@ -1,0 +1,22 @@
+{
+    "function": "sys.median(col_expr)",
+    "operator": "timestamp(6)",
+    "sql_array": [
+        "CREATE TABLE test_data (id INT PRIMARY KEY, measurement DECIMAL(10, 5), event_time TIMESTAMP(6));",
+        "INSERT INTO test_data (id, measurement, event_time) VALUES (1, 23.45678, timestamp(6) '2023-01-01 12:00:00.123456'), (2, NULL, timestamp(6) '2023-01-01 12:01:00.123456'), (3, 12.34567, timestamp(6) '2023-01-01 12:02:00.123456'), (4, 34.56789, timestamp(6) '2023-01-01 12:03:00.123456'), (5, 1.23456, NULL);",
+        "CREATE TABLE filter_data (filter_id INT PRIMARY KEY, filter_value VARCHAR(50));",
+        "INSERT INTO filter_data (filter_id, filter_value) VALUES (1, 'value1'), (2, 'value2'), (3, 'value3');",
+        "SELECT sys.median(measurement) FROM (SELECT timestamp(6) '2023-01-01 12:00:00.123456' AS event_time, measurement FROM test_data) AS derived_data WHERE event_time IS NOT NULL;",
+        "SELECT sys.median(measurement) FROM test_data WHERE measurement IS NOT NULL GROUP BY measurement HAVING measurement > (SELECT MAX(measurement) / 2.0 FROM test_data);",
+        "SELECT A.event_time, sys.median(B.measurement) FROM test_data AS A JOIN filter_data AS B ON A.id = B.filter_id WHERE B.filter_value = 'value2' GROUP BY A.event_time;",
+        "SELECT sys.median(measurement) FROM (SELECT timestamp(6) '2023-01-01 12:00:00.123456' AS converted_time, measurement FROM test_data WHERE measurement IS NOT NULL) AS subquery HAVING converted_time > timestamp(6) '2023-01-01 12:00:00.123456';",
+        "CREATE TABLE boundary_data (boundary_id INT PRIMARY KEY, boundary_value DECIMAL(10,2), boundary_time TIMESTAMP(6));",
+        "INSERT INTO boundary_data (boundary_id, boundary_value, boundary_time) VALUES (1, 0, timestamp(6) '2023-01-01 00:00:00.000000'), (2, 99999999.99, timestamp(6) '2023-01-01 23:59:59.999999');",
+        "SELECT sys.median(boundary_value) FROM boundary_data WHERE boundary_value BETWEEN 0 AND 99999999.99;",
+        "SELECT DISTINCT sys.median(CAST(measurement AS DECIMAL(10, 2))) FROM test_data WHERE measurement IS NOT NULL;",
+        "SELECT sys.median(measurement) OVER (ORDER BY event_time ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS median_result FROM test_data WHERE measurement IS NOT NULL;",
+        "SELECT sys.median(measurement) FROM test_data WHERE measurement IS NOT NULL AND (event_time IS NULL OR event_time < timestamp(6) '2023-01-01 12:04:00.000000') GROUP BY event_time;",
+        "CREATE TEMPORARY TABLE temp_data AS SELECT sys.median(measurement) AS temp_median FROM test_data WHERE measurement IS NOT NULL;",
+        "SELECT temp_median FROM temp_data WHERE temp_median IS NOT NULL;"
+    ]
+}

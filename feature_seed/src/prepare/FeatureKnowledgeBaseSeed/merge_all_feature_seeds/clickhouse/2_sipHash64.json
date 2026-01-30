@@ -1,0 +1,8 @@
+CREATE TABLE test_table (id UInt32, val Nullable(String), ts DateTime) ENGINE = Memory;
+INSERT INTO test_table VALUES (1, 'test', toDateTime('2022-01-01 00:00:00')), (2, NULL, toDateTime('2022-01-02 00:00:00')), (3, 'sample', toDateTime('2022-01-03 00:00:00'));
+SELECT sipHash64(val, if(val IS NULL, 'NULL', val)) AS hash_value, IS NULL(val) AS is_val_null FROM test_table GROUP BY val HAVING is_val_null = 1;
+SELECT sipHash64(CONCAT(CAST(id AS String), ',', val), 'extra_param', 42) AS sipHash FROM test_table WHERE ts > toDateTime('2022-01-01 00:00:00') AND val IS NULL;
+SELECT sipHash64(array(val), 'constant_string', 100) AS combined_hash FROM (SELECT val FROM test_table WHERE IS NULL(val) = 0) GROUP BY val HAVING length(val) < 5;
+SELECT DISTINCT sipHash64(val, concat('Prefix_', toString(ts)), CASE WHEN val IS NULL THEN 'NULL' ELSE val END) AS complex_hash FROM test_table WHERE val IS NOT NULL ORDER BY complex_hash DESC;
+SELECT sipHash64(val) AS hash_value, createArrayIf( val IS NULL, val, (SELECT sipHash64(max(val)) FROM test_table)) AS inner_array FROM test_table GROUP BY hash_value HAVING value IN (10, 20, 30);
+SELECT sipHash64(val) AS hash_val FROM test_table WHERE (id, val) IN (SELECT id, val FROM test_table WHERE ts = (SELECT max(ts) FROM test_table) AND val IS NOT NULL) GROUP BY hash_val HAVING hash_val IS NOT NULL;

@@ -1,0 +1,17 @@
+{
+    "function": "acos",
+    "operator": "a / b",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, value Float64, description String, constrained_val Float64 DEFAULT 0.0, updated_at DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table (id, value, description) VALUES (1, 0.5, 'normal case'), (2, 1.0, 'boundary case'), (3, -1.0, 'boundary case'), (4, 0.0, 'zero case'), (5, NULL, 'null case');",
+        "SELECT id, acos(value) AS arc_cos, value / NULLIF(constrained_val, 0.0) AS safe_division FROM test_table WHERE value IS NOT NULL GROUP BY id, value HAVING arc_cos > 0.0 ORDER BY arc_cos DESC;",
+        "SELECT id, (SELECT MAX(acos(value)) FROM test_table WHERE id < t.id) AS max_arc_cos FROM test_table AS t WHERE value IS NOT NULL ORDER BY max_arc_cos ASC;",
+        "SELECT t1.id, t2.value, (acos(t1.value) / t2.value) AS computed_value FROM test_table AS t1 JOIN test_table AS t2 ON t1.id != t2.id WHERE t2.value <> 0.0 HAVING computed_value IS NOT NULL AND computed_value < 2.0;",
+        "CREATE TABLE temp_table (temp_val Float64) ENGINE = Memory; INSERT INTO temp_table (temp_val) VALUES (acos(1.0)), (acos(0.5)), (acos(-1.0));",
+        "SELECT value, acos(value), temp_val / value AS temp_ratio FROM test_table JOIN temp_table ON temp_val != 0.0 WHERE value IS NOT NULL ORDER BY temp_ratio;",
+        "UPDATE test_table SET constrained_val = 1.0 WHERE id = 1;",
+        "SELECT (NULLIF(acos(value), acos(0.5)) / NULLIF(value, 0.0)) AS division_result FROM test_table WHERE value IS NOT NULL HAVING division_result IS NOT NULL;",
+        "ALTER TABLE test_table ADD COLUMN new_val Float64 DEFAULT 0.0;",
+        "SELECT id, value, acos(value) * new_val AS mixed_computation FROM test_table WHERE new_val = 0.0 ORDER BY id;"
+    ]
+}

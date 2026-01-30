@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/383",
+  "title": "SPARQL numeric functions break on non-numeric args",
+  "description": "The following query fails with Virtuoso 22023 Error SR048: Function abs needs a numeric type as its argument, not an argument of type IRI_ID (243) on the http://dbpedia.org/sparql endpoint (Virtuoso 7.20).\nprefix dbo: <http://dbpedia.org/ontology/>\nprefix dbp: <http://dbpedia.org/property/>\n\nselect ?a ?e (abs(?e) as ?v) {\n\n  ?a a dbo:Automobile; dbp:engine ?e\n\n} limit 100\n\nThe dbp:engine predicate contains both xsd:decimal values and IRI references and guarding against non-numeric values is neither straightforward nor efficient.\nSame behaviour for all numeric functions (SPARQL 1.1 Query Language § 17.4.4), which would be expected to raise an error, i.e. to return an unbound value, if the argument is not a numeric value.",
+  "date": "2015-04-28 09:05:47",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE automobiles (id INT PRIMARY KEY, engine VARCHAR);",
+    "INSERT INTO automobiles (id, engine) VALUES (1, '123.45'), (2, 'http://example.com/engine1'), (3, NULL);",
+    "SELECT id, engine, (ABS(CAST(NULLIF(engine, '') AS DECIMAL)) AS abs_value) FROM automobiles;",
+    "SELECT id, engine FROM automobiles WHERE engine IS NOT NULL;",
+    "SELECT id, engine FROM automobiles WHERE engine LIKE 'http://%';"
+  ],
+  "key_bug_features": [
+    "Numeric functions fail with non-numeric argument types"
+  ]
+}

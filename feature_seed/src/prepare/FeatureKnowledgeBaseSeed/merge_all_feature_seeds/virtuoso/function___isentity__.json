@@ -1,0 +1,15 @@
+CREATE TABLE entities (id INT PRIMARY KEY, entity_data XML);
+INSERT INTO entities (id, entity_data) VALUES (1, '<entity>data</entity>');
+INSERT INTO entities (id, entity_data) VALUES (2, '<entity><subentity>more data</subentity></entity>');
+INSERT INTO entities (id, entity_data) VALUES (3, '<notEntity>data</notEntity>');
+SELECT isentity(entity_data) FROM entities WHERE id = 1;
+SELECT isentity(entity_data) FROM entities WHERE id IN (SELECT id FROM entities WHERE id > 0);
+SELECT e.id, isentity(e.entity_data) AS is_entity FROM entities e JOIN (SELECT DISTINCT id FROM entities WHERE id < 3) AS sub ON e.id = sub.id;
+SELECT e.id, (CASE WHEN isentity(e.entity_data) THEN 'Yes' ELSE 'No' END) AS entity_status FROM entities e WHERE EXISTS (SELECT 1 FROM entities WHERE e.id = entities.id);
+WITH entity_check AS (SELECT id, isentity(entity_data) AS is_entity FROM entities) SELECT * FROM entity_check WHERE is_entity = true;
+CREATE TABLE nested_entities (id INT PRIMARY KEY, parent_id INT, entity_data XML, FOREIGN KEY (parent_id) REFERENCES entities(id));
+INSERT INTO nested_entities (id, parent_id, entity_data) VALUES (1, 1, '<entity><child>child data</child></entity>');
+SELECT n.id, isentity(n.entity_data) FROM nested_entities n JOIN entities e ON n.parent_id = e.id WHERE e.id = 1;
+SELECT n.id, (CASE WHEN isentity(n.entity_data) THEN 'Valid Entity' ELSE 'Invalid Entity' END) AS validation FROM nested_entities n WHERE n.entity_data IS NOT NULL;
+SELECT COUNT(*) FROM entities WHERE isentity(entity_data);
+SELECT id, entity_data FROM entities WHERE isentity(entity_data) AND id NOT IN (SELECT id FROM entities WHERE entity_data IS NULL);

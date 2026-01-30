@@ -1,0 +1,13 @@
+CREATE TABLE test_dates (id UInt32, date_value String, numeric_value Float64, tuple_value Tuple(UInt32, String));
+INSERT INTO test_dates VALUES (1, '2023-01-01', 365.0, (1, 'TupleTest'));
+INSERT INTO test_dates VALUES (2, '2023-01-10', 10.0, (2, 'AnotherTest'));
+INSERT INTO test_dates VALUES (3, '', NULL, (NULL, 'NULLTest'));
+SELECT reinterpretAsDate(tupleElement((SELECT numeric_value FROM test_dates WHERE id = 1), 1)), reinterpretAsDate(date_value) FROM test_dates WHERE numeric_value IS NOT NULL;
+SELECT reinterpretAsDate(65), reinterpretAsDate(tupleElement(tuple_value, 1)) FROM test_dates WHERE date_value != '';
+SELECT id, reinterpretAsDate(tupleElement(tuple_value, 2)), numeric_value FROM test_dates WHERE reinterpretAsDate(numeric_value) IS NOT NULL GROUP BY id, numeric_value HAVING numeric_value < 20;
+SELECT a.id, a.date_value, reinterpretAsDate(a.numeric_value) AS date_converted FROM (SELECT * FROM test_dates) AS a WHERE reinterpretAsDate(a.numeric_value) >= reinterpretAsDate(0);
+SELECT id, date_value, reinterpretAsDate(if(isNull(numeric_value), 0, numeric_value)) AS safe_date FROM test_dates ORDER BY safe_date DESC;
+SELECT reinterpretAsDate(NULLIF(numeric_value, 0)), interpretAsDate(date_value) FROM test_dates WHERE id IN (SELECT id FROM test_dates WHERE date_value LIKE '%Test%');
+ALTER TABLE test_dates ADD COLUMN additional_date Date DEFAULT reinterpretAsDate(numeric_value);
+SELECT id, reinterpretAsDate(cast(numeric_value AS Int32)) FROM test_dates WHERE date_value LIKE '';
+DROP TABLE IF EXISTS test_dates;

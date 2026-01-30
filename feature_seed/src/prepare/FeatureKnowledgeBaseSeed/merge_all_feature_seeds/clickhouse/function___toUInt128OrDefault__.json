@@ -1,0 +1,15 @@
+CREATE TABLE test_table (val String);
+INSERT INTO test_table VALUES ('128'), ('abc'), ('3.14'), ('0x1A'), ('0xc0fe'), ('18446744073709551616'), ('-1'), ('NaN'), ('Inf');
+SELECT toUInt128OrDefault(val, CAST('0', 'UInt128')) FROM test_table;
+SELECT toUInt128OrDefault(val, CAST('100', 'UInt128')) FROM test_table WHERE val != 'abc';
+SELECT toUInt128OrDefault(val, CAST('0', 'UInt128')) AS converted FROM test_table WHERE val != 'abc' UNION ALL SELECT toUInt128OrDefault('0xff', CAST('0', 'UInt128'));
+SELECT toUInt128OrDefault(val, CAST('999', 'UInt128')) AS default_val FROM (SELECT '256' AS val) AS subquery;
+SELECT toUInt128OrDefault(CAST(val AS String), CAST('0', 'UInt128')) FROM (SELECT 128 AS val) AS subquery;
+SELECT toUInt128OrDefault(CAST(val AS String), DEFAULT() ) FROM (SELECT 'NaN' AS val);
+SELECT toUInt128OrDefault(CAST('3.14' AS String), CAST('0', 'UInt128')) + toUInt128OrDefault(CAST('0xc0fe' AS String), CAST('0', 'UInt128')) AS result FROM test_table;
+WITH (SELECT '1000' AS val) AS subquery SELECT toUInt128OrDefault(val, CAST('0', 'UInt128')) FROM subquery WHERE val IN ('1000', 'abcdef');
+SELECT toUInt128OrDefault(val, CAST('0', 'UInt128')) + 50 AS addition FROM (SELECT '0' AS val UNION ALL SELECT '1');
+SELECT toUInt128OrDefault('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF', CAST('0', 'UInt128')) AS max_val, toUInt128OrDefault('-1', CAST('0', 'UInt128')) AS underflow_val FROM test_table;
+SELECT toUInt128OrDefault('10', CAST('0', 'UInt128')) * toUInt128OrDefault('20', CAST('0', 'UInt128')) AS multiplied FROM (SELECT '10' AS val1, '20' AS val2) AS derived_table;
+SELECT toUInt128OrDefault(val, CAST('0', 'UInt128')) FROM test_table WHERE length(val) > 0;
+SELECT toUInt128OrDefault('999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999', CAST('0', 'UInt128')) AS overflowed_value FROM test_table;

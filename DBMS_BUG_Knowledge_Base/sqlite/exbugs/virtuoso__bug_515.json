@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/515",
+  "title": "UUID() and STRUUID() evaluated once per query rather than once per binding",
+  "description": "If you execute a query that uses UUID() or STRUUID() the same UUID is generated for each binding. For example (tested on Virtuoso 07.20.3215):\nSELECT ?s ?p ?o (STRUUID() AS ?uuid)\nWHERE {\n  ?s ?p ?o .\n}\nLIMIT 10\n\nThis leads me to believe that the UUID functions are evaluated only once per query execution rather than once per each query binding. The SPARQL specification says that \"Each call of UUID() returns a different UUID.\" It seems that Virtuoso violates that. Moreover, I think previous versions of Virtuoso implemented this correctly, so it may be a regression.",
+  "date": "2015-12-30 10:11:57",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE test_uuid (id INTEGER PRIMARY KEY, name TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_uuid (id, name) VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie');",
+    "SELECT id, name, (hex(randomblob(16)) AS uuid) FROM test_uuid WHERE id IN (SELECT id FROM test_uuid WHERE name LIKE 'A%');",
+    "SELECT DISTINCT (hex(randomblob(16)) AS str_uuid), name FROM test_uuid WHERE created_at > datetime('now', '-1 day');",
+    "SELECT id, (hex(randomblob(16)) AS uuid) FROM test_uuid WHERE id = (SELECT MAX(id) FROM test_uuid);"
+  ],
+  "key_bug_features": [
+    "UUID() and STRUUID() evaluated once per query execution"
+  ]
+}

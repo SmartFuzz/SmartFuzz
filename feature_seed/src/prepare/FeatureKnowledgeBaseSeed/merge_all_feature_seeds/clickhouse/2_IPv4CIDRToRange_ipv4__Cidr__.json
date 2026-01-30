@@ -1,0 +1,10 @@
+CREATE TABLE ip_data (id UInt32, ip_address IPv4, cidr UInt8, extra_info String);
+INSERT INTO ip_data VALUES (1, toIPv4('192.168.2.1'), 24, 'Entry 1'), (2, toIPv4('10.0.0.5'), 8, 'Entry 2'), (3, toIPv4('172.16.0.1'), 16, 'Entry 3'), (4, toIPv4('0.0.0.0'), 0, 'Edge Case');
+SELECT IPv4CIDRToRange(ip_address, cidr) - (SELECT count() FROM ip_data WHERE cidr > 12) AS range_adjusted FROM ip_data WHERE ip_address IS NOT NULL;
+SELECT id, (IPv4CIDRToRange(ip_address, cidr)).1 AS lower_range FROM ip_data WHERE (cidr - 24) < 0;
+SELECT SUM((IPv4CIDRToRange(ip_address, cidr)).2 - (IPv4CIDRToRange(toIPv4('192.168.1.1'), 16)).1) AS range_difference FROM ip_data GROUP BY cidr HAVING range_difference > 0;
+SELECT A.id, A.ip_address, IPv4CIDRToRange(A.ip_address, A.cidr) AS range, B.extra_info FROM ip_data AS A JOIN ip_data AS B ON A.id <> B.id WHERE A.cid - B.cid = 0;
+WITH (SELECT IPv4CIDRToRange(toIPv4('255.255.255.255'), 32)) AS full_range SELECT (IPv4CIDRToRange(ip_address, cidr)).1 AS subnet_start, (IPv4CIDRToRange(ip_address, 0)).2 - (full_range).2 AS boundary_check FROM ip_data;
+SELECT COUNT() FROM ip_data WHERE (IPv4CIDRToRange(ip_address, cidr)).1 IS NULL AND (cidr - 8) < 0;
+CREATE TABLE temp_ip_test AS SELECT ip_address, cidr FROM ip_data WHERE ip_address IS NOT NULL;
+INSERT INTO temp_ip_test SELECT toIPv4('172.16.5.10'), 16 FROM ip_data WHERE cidr = 16;

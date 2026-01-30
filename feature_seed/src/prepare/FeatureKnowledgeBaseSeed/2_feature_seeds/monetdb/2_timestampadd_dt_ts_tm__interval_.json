@@ -1,0 +1,10 @@
+CREATE TABLE test_dates (id SERIAL PRIMARY KEY, event_time TIMESTAMPTZ, duration INTERVAL);
+INSERT INTO test_dates (event_time, duration) VALUES (TIMESTAMP '2021-10-01 12:00:00', INTERVAL '1 day'), (TIMESTAMP '2021-12-31 23:59:59', INTERVAL '2 month');
+SELECT id, event_time, timestampadd(event_time, duration) + (INTERVAL '5' minute) AS adjusted_time FROM test_dates WHERE event_time IS NOT NULL;
+SELECT id, event_time + (INTERVAL '3' hour) AS new_time FROM test_dates WHERE event_time < timestampadd(TIMESTAMP '2022-01-01 00:00:00', INTERVAL '10' day);
+CREATE TABLE test_events (event_id SERIAL PRIMARY KEY, event_date DATE, related_id INT, FOREIGN KEY (related_id) REFERENCES test_dates(id));
+INSERT INTO test_events (event_date, related_id) VALUES (DATE '2020-12-31', 1), (DATE '2021-01-01', NULL);
+SELECT te.event_id, te.event_date, te.related_id, td.event_time + (INTERVAL '1' day) AS extended_event_time FROM test_events te LEFT JOIN test_dates td ON te.related_id = td.id WHERE td.event_time IS NOT NULL;
+SELECT te.event_id, te.event_date, timestampadd(te.event_date::TIMESTAMPTZ, duration) AS timestamp_adjusted FROM test_events te JOIN test_dates td ON te.related_id = td.id HAVING timestamp_adjusted IS NOT NULL;
+SELECT DISTINCT event_time, (event_time + (INTERVAL '1' second * (7 * 24 * 60 * 60)) + (INTERVAL '0' second)::timestamp) AS boundary_time FROM test_dates WHERE event_time + (INTERVAL '1' month) < timestampadd(TIMESTAMP '2021-01-10 10:10:10', INTERVAL '5' day);
+SELECT event_time, timestampadd(event_time, INTERVAL '0' hour) AS no_change_time FROM test_dates WHERE event_time > timestampadd(TIMESTAMP '2022-12-31 23:59:00', INTERVAL '1' second);

@@ -1,0 +1,8 @@
+CREATE TABLE test_strings (id UInt32, text String, numeric_value Float64);
+INSERT INTO test_strings VALUES (1, 'ClickHouse', 1.5), (2, 'Database', NULL), (3, '', 3.0), (4, 'Fuzzing', 7.2);
+SELECT left(text, (SELECT MAX(numeric_value) FROM test_strings WHERE numeric_value IS NOT NULL)) AS left_part, id FROM test_strings WHERE id GLOBAL IN (SELECT id FROM test_strings WHERE text != '');
+SELECT id, left(text, -1 * COUNT(*) OVER (PARTITION BY numeric_value)) AS truncated FROM test_strings GROUP BY id, text, numeric_value HAVING text != '' AND numeric_value IS NOT NULL;
+SELECT id, left(text, (SELECT MAX(numeric_value) FROM test_strings WHERE numeric_value > 0)) AS adjusted_text FROM test_strings WHERE 'Fuzz' GLOBAL IN (SELECT text FROM test_strings WHERE text != '');
+SELECT DISTINCT left(text, 3) AS sub_text FROM (SELECT text, id FROM test_strings WHERE numeric_value IS NOT NULL OR text IS NULL) AS filtered GROUP BY sub_text HAVING COUNT(sub_text) > 1;
+CREATE TEMPORARY TABLE temp_indices ENGINE = Memory AS SELECT id, left(text, 2) AS short_text FROM test_strings;
+SELECT * FROM temp_indices WHERE short_text GLOBAL IN (SELECT left(text, 2) FROM test_strings WHERE text != '');

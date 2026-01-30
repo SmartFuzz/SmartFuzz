@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/13437",
+  "title": "JSON_EXTRACT and similar functions don't allow for distinguishing between SQL NULL and JSON null",
+  "description": "### What happens?\r\n\r\nWhen a JSON document contains JSON `null` values, I cannot extract them, i.e. distinguish between the presence of a `null` value and the absence of the value.\r\n\r\n### To Reproduce\r\n\r\nConsider these two queries:\r\n\r\n```sql\r\nSELECT json '{\"a\":1,\"b\":null}'->'b';\r\nSELECT json '[1, 2, null]'->2;\r\n```\r\n\r\nThey should both produce `CAST('null' AS JSON)`. But they produce `CAST(NULL AS JSON)`, instead. As such, I cannot be certain if the value exists in the document at all, or not. E.g. the result is the same as for these queries, where the value is absent:\r\n\r\n```sql\r\nSELECT json '{\"a\":1,\"b\":null}'->'c';\r\nSELECT json '[1, 2, null]'->3;\r\n```\r\n\r\nE.g. MySQL and PostgreSQL don't expose this behaviour but clearly distinguish between SQL `NULL` and JSON `null`.\r\n\r\nA workaround seems to be to check also `JSON_TYPE`:\r\n\r\n```sql\r\nSELECT COALESCE(j->'b', CASE WHEN json_type(j, 'b') = 'NULL' THEN CAST('null' AS JSON) END)\r\nFROM\r\n  (VALUES (json '{\"a\":1,\"b\":null}')) AS j (j);\r\n```\r\n\r\nBut that workaround doesn't work in general if the JSON path is an expression, see this related problem:\r\n\r\n- https://github.com/duckdb/duckdb/issues/13436\r\n\r\nI cannot think of other workarounds right now, given that most standard SQL JSON features aren't available either, including `JSON_EXISTS` or `JSON_QUERY`, etc.\r\n\r\nAt first, I thought this bug here might not be a bug, but just a limitation. But given #13436, I got sceptical\r\n\r\n### OS:\r\n\r\nMicrosoft Windows [Version 10.0.22631.3880]\r\n\r\n### DuckDB Version:\r\n\r\n1.0.0\r\n\r\n### DuckDB Client:\r\n\r\nJDBC\r\n\r\n### Full Name:\r\n\r\nLukas Eder\r\n\r\n### Affiliation:\r\n\r\nData Geekery\r\n\r\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\r\n\r\nI have tested with a stable release\r\n\r\n### Did you include all relevant data sets for reproducing the issue?\r\n\r\nYes\r\n\r\n### Did you include all code required to reproduce the issue?\r\n\r\n- [X] Yes, I have\r\n\r\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\r\n\r\n- [X] Yes, I have",
+  "date": "2024-08-15 09:55:35",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_json (id INT PRIMARY KEY, data JSON);",
+    "INSERT INTO test_json (id, data) VALUES (1, '{\"a\":1,\"b\":null}');",
+    "INSERT INTO test_json (id, data) VALUES (2, '[1, 2, null]');",
+    "SELECT JSON_UNQUOTE(data->'$.b') AS extracted_b FROM test_json WHERE id = 1;",
+    "SELECT COALESCE(JSON_UNQUOTE(data->'$.b'), CASE WHEN JSON_TYPE(data, '$.b') = 'NULL' THEN 'null' END) AS coalesced_b FROM test_json WHERE id = 1;"
+  ],
+  "key_bug_features": [
+    "JSON functions fail to distinguish SQL NULL from JSON null"
+  ]
+}

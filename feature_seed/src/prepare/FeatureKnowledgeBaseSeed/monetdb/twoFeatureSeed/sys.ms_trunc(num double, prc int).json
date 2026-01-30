@@ -1,0 +1,17 @@
+{
+    "function": "sys.ms_trunc(num double, prc int)",
+    "operator": "<<",
+    "sql_array": [
+        "CREATE TABLE test_inet (id SERIAL PRIMARY KEY, ip_address INET NOT NULL, precision INT NOT NULL);",
+        "INSERT INTO test_inet (ip_address, precision) VALUES (inet '192.168.1.5', 2), (inet '192.168.15.10', 3), (inet '10.0.0.1', 1);",
+        "CREATE TABLE test_values (value DOUBLE NOT NULL, category INT);",
+        "INSERT INTO test_values (value, category) VALUES (1.2359, 1), (2.5678, 2), (3.1, NULL);",
+        "SELECT t1.id, sys.ms_trunc(AVG(t2.value), t1.precision) AS truncated_mean, t1.ip_address FROM test_inet t1 JOIN test_values t2 ON t1.precision << t2.category WHERE t1.ip_address << inet '192.168.1.0/24' GROUP BY t1.id, t1.ip_address, t1.precision HAVING sys.ms_trunc(SUM(t2.value), 2) IS NOT NULL ORDER BY sys.ms_trunc(MAX(t2.value), 2) DESC;",
+        "SELECT sys.ms_trunc(NULLIF(MAX(t.value), 0), t.precision) AS safe_trunc, t.ip_address FROM test_inet t LEFT JOIN test_values v ON t.precision << COALESCE(v.category, 0) GROUP BY t.id ORDER BY safe_trunc ASC;",
+        "SELECT DISTINCT t.id, t.ip_address, sys.ms_trunc(COALESCE(AVG(v.value), 0), t.precision) FROM test_inet t LEFT JOIN test_values v ON (t.ip_address << inet '192.168.1.0/24') GROUP BY t.id, t.ip_address, t.precision HAVING sys.ms_trunc(MIN(v.value), t.precision) IS NOT NULL;",
+        "CREATE TEMP TABLE tmp_values AS SELECT sys.ms_trunc(value, precision) AS truncated_value FROM test_values WHERE value IS NOT NULL;",
+        "SELECT DISTINCT tmp.truncated_value FROM tmp_values tmp WHERE tmp.truncated_value << (SELECT inet '192.168.1.0/24');",
+        "DROP TABLE IF EXISTS test_values;",
+        "ALTER TABLE test_inet ADD COLUMN region VARCHAR(50);"
+    ]
+}

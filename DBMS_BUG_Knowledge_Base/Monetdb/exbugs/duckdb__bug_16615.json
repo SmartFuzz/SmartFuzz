@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/16615",
+  "title": "PostgreSQL Regular Expression Match Operators are incorrectly implemented as synonyms of SIMILAR TO",
+  "description": "### What happens?\n\nThe [Regular Expression Match Operators](https://www.postgresql.org/docs/current/functions-matching.html#FUNCTIONS-POSIX-REGEXP) (`~`, `!~`, `~*` and `!~*`) are PostgreSQL-specific operators that match a regular expression \"anywhere within a string, unless the regular expression is explicitly anchored to the beginning or end of the string.\" The first two are case-sensitive, the other case-insensitive.\n\nThe `LIKE` patterns and `SIMILAR TO` regexes match the entire string.\n\nIn DuckDB, `~` and `SIMILAR TO` are synonyms, which breaks compatibility with PostgreSQL, while `~*` is not implemented. It looks like a bug as neither is mentioned as an exception in [PostgreSQL Compatibility](https://duckdb.org/docs/stable/sql/dialect/postgresql_compatibility), and the [documentation](https://duckdb.org/docs/stable/sql/functions/pattern_matching.html#similar-to) and comments in the code seem to consider `~` and `SIMILAR TO` as synonymous.\n\nPrior to commit 0ba2772, `~` and `SIMILAR TO` used partial matches; the first of the following examples is taken from the test cases prior to that commit, the second an adaptation.\n\n### To Reproduce\n\nQueries:\n\n```sql\nSELECT 'aaa' ~ '(a|b)';\nSELECT 'AAA' ~* '(a|b)';\n```\n\nPostgreSQL:\n\n```sql\npostgres=> SELECT 'aaa' ~ '(a|b)';\n ?column?\n----------\n t\n(1 row)\n\npostgres=> SELECT 'AAA' ~* '(a|b)';\n ?column?\n----------\n t\n(1 row)\n```\n\nDuckDB:\n\n```sql\nD SELECT 'aaa' ~ '(a|b)';\n┌───────────────────────────────────┐\n│ regexp_full_match('aaa', '(a|b)') │\n│              boolean              │\n├───────────────────────────────────┤\n│ false                             │\n└───────────────────────────────────┘\nD SELECT 'AAA' ~* '(a|b)';\nCatalog Error:\nScalar Function with name ~* does not exist!\nDid you mean \"~\"?\n```\n\n### OS:\n\nLinux x86_64\n\n### DuckDB Version:\n\nv1.2.1 8e52ec4395\n\n### DuckDB Client:\n\nCLI / Python\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nTim Hallmann\n\n### Affiliation:\n\nForschungszentrum Jülich GmbH\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a stable release\n\n### Did you include all relevant data sets for reproducing the issue?\n\nNot applicable - the reproduction does not require a data set\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "date": "2025-03-12 16:44:07",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_regex (id INTEGER PRIMARY KEY, text_column VARCHAR NOT NULL);",
+    "INSERT INTO test_regex (id, text_column) VALUES (1, 'aaa'), (2, 'AAA'), (3, 'abc'), (4, NULL);",
+    "SELECT id FROM test_regex WHERE text_column LIKE '%a%' OR text_column LIKE '%b%';",
+    "SELECT id FROM test_regex WHERE LOWER(text_column) LIKE '%a%' OR LOWER(text_column) LIKE '%b%';",
+    "SELECT id FROM test_regex WHERE text_column IS NULL OR text_column LIKE '%c%' OR text_column LIKE '%d%';"
+  ],
+  "key_bug_features": [
+    "Regular Expression Match Operators are treated as synonyms"
+  ]
+}

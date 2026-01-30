@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id UInt32, event_time String, user_id UInt32);
+INSERT INTO test_table VALUES (1, '2022-12-30 13:44:17', 2), (2, '', 3), (3, 'INVALID_DATE', 1);
+SELECT id, toDateTimeOrZero(event_time) as safe_time FROM test_table WHERE safe_time != ANY (SELECT user_id FROM test_table WHERE user_id IS NOT NULL);
+SELECT id, toDateTimeOrZero(event_time) as safe_time FROM test_table GROUP BY safe_time HAVING safe_time != ANY (SELECT user_id FROM test_table WHERE user_id > 1);
+CREATE TABLE subquery_table (sub_id UInt32, ref_user_id UInt32);
+INSERT INTO subquery_table VALUES (1, 2), (2, 1), (3, 3);
+SELECT a.id, toDateTimeOrZero(a.event_time) as safe_time FROM test_table a JOIN subquery_table b ON a.user_id = b.ref_user_id WHERE safe_time != ANY (SELECT ref_user_id FROM subquery_table WHERE ref_user_id <> 1);
+SELECT id, COUNT(*) FROM test_table GROUP BY user_id HAVING toDateTimeOrZero(event_time) != ANY (SELECT toDateTimeOrZero(event_time) FROM test_table WHERE event_time != '');
+CREATE TABLE temp_table (temp_id UInt32, temp_time String) ENGINE = Memory;
+INSERT INTO temp_table VALUES (1, '2023-01-01 00:00:00'), (2, '', (SELECT MAX(user_id) FROM test_table));
+SELECT temp_id, toDateTimeOrZero(temp_time) as safe_time FROM temp_table WHERE safe_time != ANY (SELECT toDateTimeOrZero(event_time) FROM test_table);

@@ -1,0 +1,12 @@
+CREATE TABLE TEST_XMLS (I integer primary key, XMLVAL XMLType);
+INSERT INTO TEST_XMLS VALUES (1, XMLType('<emp><empno>221</empno><ename>John</ename></emp>'));
+INSERT INTO TEST_XMLS VALUES (2, XMLType('<po><pono>331</pono><poname>PO_1</poname></po>'));
+INSERT INTO TEST_XMLS VALUES (3, XMLType('<oil-rig xml:id="14a_06" water="0.413"/><oil-rig xml:id="14b_06" water="0.402"/>'));
+SELECT e.ENAME, XMLType.getStringVal(e.XMLVAL.extract('//ename')) AS ENAME_VALUE FROM (SELECT XMLVAL, XMLVAL.extract('//*') AS emp_data FROM TEST_XMLS) AS e WHERE xpath_contains(e.emp_data, '//ename') AND e.XMLVAL.existsNode('/emp/empno') = 1;
+SELECT e.I, XMLType.getStringVal(e.XMLVAL.extract('//poname')) AS PO_NAME FROM TEST_XMLS e WHERE xpath_contains(e.XMLVAL, '//pono') AND EXISTS (SELECT 1 FROM TEST_XMLS t WHERE t.XMLVAL.existsNode('/po/poname') AND t.I = e.I);
+CREATE TABLE TEST_XMLS_EXTRA (ID integer PRIMARY KEY, DATA XMLType NOT NULL);
+INSERT INTO TEST_XMLS_EXTRA VALUES (1, XMLType('<data><value>100</value></data>'));
+INSERT INTO TEST_XMLS_EXTRA VALUES (2, XMLType('<data><value>NULL</value></data>'));
+SELECT COUNT(*) AS TOTAL_COUNT FROM TEST_XMLS_EXTRA WHERE xpath_contains(DATA, '//value') AND XMLType.getStringVal(DATA.extract('//value')) IS NOT NULL;
+SELECT AVG(CAST(XMLType.getStringVal(XMLVAL.extract('//empno')) AS INTEGER)) AS AVG_EMPNO FROM TEST_XMLS;
+SELECT e.I, e.XMLVAL FROM TEST_XMLS e JOIN TEST_XMLS_EXTRA x ON XMLType.getStringVal(e.XMLVAL.extract('//empno')) = CAST(XMLType.getStringVal(x.DATA.extract('//value')) AS INTEGER) WHERE x.ID > 0;

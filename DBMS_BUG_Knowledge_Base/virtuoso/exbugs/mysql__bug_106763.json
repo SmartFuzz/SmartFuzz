@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=106763",
+  "title": "China's DST is not right",
+  "description": "China's 1988 spring-forward transition was on April 17, not April 10. Its DST transitions in 1986/91 were at 02:00, not 00:00.\nHow to repeat:\nCREATE TABLE `t5` (\r\n  `id` int DEFAULT NULL,\r\n  `dt1` datetime DEFAULT NULL,\r\n  `dt2` timestamp NULL DEFAULT NULL\r\n) ENGINE=InnoDB;\r\n\r\nset time_zone='+0:00';\r\ninsert into t5(id,dt1,dt2) values(1,'1987-04-11 18:30:00','1987-04-11 18:30:00'); \r\ninsert into t5(id,dt1,dt2) values(2,'1987-04-11 17:30:00','1987-04-11 17:30:00');\r\ninsert into t5(id,dt1,dt2) values(1,'1987-04-11 16:30:00','1987-04-11 16:30:00'); \r\ninsert into t5(id,dt1,dt2) values(2,'1987-04-11 15:30:00','1987-04-11 15:30:00');\n\nselect * from t5;\r\n+------+---------------------+---------------------+\r\n| id   | dt1                 | dt2                 |\r\n+------+---------------------+---------------------+\r\n|    1 | 1987-04-11 18:30:00 | 1987-04-12 02:30:00 |\r\n|    2 | 1987-04-11 17:30:00 | 1987-04-12 01:30:00 |\r\n|    1 | 1987-04-11 16:30:00 | 1987-04-12 00:30:00 |\r\n|    2 | 1987-04-11 15:30:00 | 1987-04-11 23:30:00 |\r\n+------+---------------------+---------------------+\r\n\r\nset time_zone='Asia/Shanghai';\r\nselect * from t5;\r\n+------+---------------------+---------------------+\r\n| id   | dt1                 | dt2                 |\r\n+------+---------------------+---------------------+\r\n|    1 | 1987-04-11 18:30:00 | 1987-04-12 03:30:00 |\r\n|    2 | 1987-04-11 17:30:00 | 1987-04-12 02:30:00 |\r\n|    1 | 1987-04-11 16:30:00 | 1987-04-12 01:30:00 |\r\n|    2 | 1987-04-11 15:30:00 | 1987-04-11 23:30:00 |\r\n+------+---------------------+---------------------+\nSuggested fix:\nadjust start time to 2:00,not 0:00",
+  "date": "2022-03-17 16:58:00",
+  "vulnerable_version": "8.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t6 (id INTEGER NOT NULL PRIMARY KEY, dt1 TIMESTAMP NOT NULL, dt2 TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t6(id, dt1, dt2) VALUES (1, '1986-04-10 23:59:59', '1986-04-10 23:59:59');",
+    "INSERT INTO t6(id, dt1, dt2) VALUES (2, '1986-04-11 00:00:00', NULL);",
+    "SELECT id, dt1, dt2, (dt2 - dt1) AS hour_diff FROM t6 WHERE dt2 IS NOT NULL;",
+    "SET TIME ZONE 'Asia/Shanghai';"
+  ],
+  "key_bug_features": [
+    "Incorrect DST transition time for China in database"
+  ]
+}

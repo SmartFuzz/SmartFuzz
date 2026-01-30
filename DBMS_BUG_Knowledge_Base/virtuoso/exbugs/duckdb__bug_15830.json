@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/15830",
+  "title": "Failure to UPDATE on LIST column in presence of PRIMARY KEY",
+  "description": "### What happens?\n\nIf a table has a PRIMARY KEY column, then any attempt to update a (different) column of type LIST yields \n```\nSQL Error: Constraint Error: Duplicate key \"id: 1\" violates primary key constraint. If this is an unexpected constraint violation please double check with the known index limitations section in our documentation (https://duckdb.org/docs/sql/indexes).\n```\n\nI have read the documentation on index limitations, but I do not see how even \"[Over-Eager Unique Constraint Checking](https://duckdb.org/docs/sql/indexes#over-eager-unique-constraint-checking)\" would apply, as an update takes place on a _single_ column, leaving the existing row alone.\n\nNote that this also appears to be limited to LIST types, not to STRUCT types.\n\n### To Reproduce\n\nRun the following SQL:\n```\ndrop table if exists thing;\n\ncreate table thing(\n  id int primary key,\n  s int,\n  r struct(\n    e1 int,\n    e2 int\n  ),\n  v int[]\n);\n\ninsert into thing\nselect\n  1 as id,\n  2 as s,\n  struct_pack(e1 := 1, e2 := 2) as r,\n  [2, 3, 4] as v\n;\n\nupdate thing\nset \n  s = 3\nwhere\n  id = 1\n; -- works fine\n\nupdate thing\nset \n  r = struct_pack( e1 := 2, e2 := 3)\nwhere\n  id = 1\n; -- works fine\n\nupdate thing\nset \n  v = [ 5 ]\nwhere\n  id = 1\n; --- constraint error\n```\n\nThere should be no constraint errors, anywhere.\n\n### OS:\n\nx86_64\n\n### DuckDB Version:\n\n1.1.3\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nStefan Hoffmeister\n\n### Affiliation:\n\nn/a\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a stable release\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "date": "2025-01-21 16:42:32",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS test_table;",
+    "CREATE TABLE test_table(id INT PRIMARY KEY, name VARCHAR, values ARRAY<INT>, details STRUCT<field1 INT, field2 VARCHAR>);",
+    "INSERT INTO test_table VALUES (1, 'example', ARRAY(1, 2, 3), (10, 'info'));",
+    "UPDATE test_table SET values = ARRAY(4, 5) WHERE id = 1;",
+    "UPDATE test_table SET details = (20, 'updated_info') WHERE id = 1;"
+  ],
+  "key_bug_features": [
+    "UPDATE on LIST column with PRIMARY KEY constraint"
+  ]
+}

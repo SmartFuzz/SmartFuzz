@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/86150",
+  "title": "setting max_final_threads=1 makes queries significantly faster. Something wrong?",
+  "description": "### Company or project name\n_No response_\n### Describe the situation\nWe recently upgraded from clickhouse 23.12 to 25.5, and while stuff was in general faster, we found that setting max_final_threads=1 would in general make our queries much faster. E.g. from three seconds to half a second! This was not previously the case, in older versions of clickhouse, the default value of this setting works much better. So question is, if there is a bug, if the default value might need to be changed, or if it is just our specific usecases that has this curious behavior.\n### Which ClickHouse versions are affected?\n25.7.4 and 25.5.1, and probably more versions.\n### How to reproduce\nA minimal example to reproduce (both on 25.7.4 and 25.5.1)\n```\n-- 1. Drop old test table if exists\nDROP TABLE IF EXISTS test_final_partitions;\n-- 2. Create a simplified ReplacingMergeTree with timestamp partitioning\nCREATE TABLE test_final_partitions\n(\norganization_id UInt32,\nkeyword_id UInt32,\nsearch_date DateTime,\nposition_on_serp UInt32,\nversion UInt32,\nvalue String\n)\nENGINE = ReplacingMergeTree(version)\nPARTITION BY toYYYYMM(search_date)\nORDER BY (organization_id, keyword_id, search_date, position_on_serp);\n-- 3. Insert synthetic data across multiple months/partitions\n--    Let's make ~50M rows across 6 months\nINSERT INTO test_final_partitions\nSELECT\nrand() % 1000 AS organization_id,\nrand() % 100000 AS keyword_id,\ntoDateTime('2023-01-01') + (rand() % (86400*180)) AS search_date,  -- random over ~6 months\nrand() % 50 AS position_on_serp,\nnumber % 5 AS version,   -- multiple versions per row\ntoString(number)\nFROM numbers(50000000);\n```\nThen run\n`clickhouse-benchmark --query \"SELECT count() FROM test_final_partitions FINAL group by search_date\"`\nAnd\n`clickhouse-benchmark --query \"SELECT count() FROM test_final_partitions FINAL group by search_date max_final_threads=1\"`\n### Expected performance\nI was expecting the default setting for max_final_threads to provide better results. I have tried several different machines with various number of cores, and in general using one thread is faster.\n### Additional context\n_No response_",
+  "date": "2025-08-26T07:40:48Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS test_final_partitions;",
+    "CREATE TABLE test_final_partitions (organization_id INT UNSIGNED, keyword_id INT UNSIGNED, search_date DATETIME, position_on_serp INT UNSIGNED, version INT UNSIGNED, value VARCHAR(255));",
+    "INSERT INTO test_final_partitions (organization_id, keyword_id, search_date, position_on_serp, version, value) SELECT FLOOR(RAND() * 1000), FLOOR(RAND() * 100000), ADDTIME('2023-01-01 00:00:00', INTERVAL FLOOR(RAND() * 51840000) SECOND), FLOOR(RAND() * 50), MOD(number, 5), CAST(number AS CHAR) FROM (SELECT @rownum := @rownum + 1 AS number FROM (SELECT @rownum := 0) r, information_schema.tables LIMIT 50000000) AS numbers;",
+    "SELECT COUNT(*) FROM test_final_partitions WHERE organization_id IS NOT NULL GROUP BY search_date;",
+    "SELECT COUNT(*) FROM test_final_partitions WHERE position_on_serp > 25 AND version IS NULL GROUP BY search_date;"
+  ],
+  "key_bug_features": [
+    "Setting max_final_threads=1 improves query performance significantly"
+  ]
+}

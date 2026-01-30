@@ -1,0 +1,15 @@
+{
+    "function": "windowFunnel",
+    "operator": "SELECT NOT a",
+    "sql_array": [
+        "CREATE TABLE event_chain (timestamp DateTime, eventID UInt8) ENGINE = MergeTree() ORDER BY timestamp;",
+        "INSERT INTO event_chain VALUES (now() - INTERVAL 10 DAY, 1001), (now() - INTERVAL 9 DAY, 1002), (now() - INTERVAL 8 DAY, 1003), (now() - INTERVAL 7 DAY, 1004), (now() - INTERVAL 6 DAY, 1005), (now() - INTERVAL 5 DAY, 1006);",
+        "SELECT user_id, windowFunnel(6048000000000000)(timestamp, eventID = 1002, eventID = 1003, eventID = 1004) AS funnel_length FROM (SELECT event_chain.timestamp, event_chain.eventID, (SELECT COUNT() FROM event_chain WHERE eventID = 1002 AND timestamp <= event_chain.timestamp) as user_id FROM event_chain) GROUP BY user_id HAVING NOT funnel_length IS NULL ORDER BY funnel_length DESC;",
+        "SELECT city, COUNT() AS c FROM (SELECT eventID, windowFunnel(6048000000000000)(timestamp, NOT(eventID = 1004), eventID = 1003) AS level FROM event_chain WHERE timestamp < now() GROUP BY eventID) GROUP BY city ORDER BY c;",
+        "SELECT NOT(total_events > 5) AS event_check, windowFunnel(6048000000000000)(timestamp, eventID = 1001, eventID = 1002) AS event_chain_length FROM (SELECT COUNT() AS total_events, timestamp FROM event_chain GROUP BY timestamp) WHERE event_chain_length IS NOT NULL;",
+        "CREATE TABLE temp_events (ts DateTime, uid UInt32, flag UInt8) ENGINE = MergeTree() ORDER BY ts;",
+        "INSERT INTO temp_events VALUES (now() - INTERVAL 1 DAY, 1, 1), (now() - INTERVAL 1 DAY, 2, 0), (now() - INTERVAL 2 DAY, 1, 1);",
+        "SELECT COUNT(*) FROM temp_events WHERE NOT(flag = 1) AND uid IN (SELECT DISTINCT uid FROM temp_events WHERE timestamp > now() - INTERVAL 2 DAY);",
+        "SELECT SUM(windowFunnel(6048000000000000)(timestamp, eventID = 1001, eventID = 1006)) AS total_funnel FROM (SELECT timestamp, eventID FROM event_chain GROUP BY timestamp, eventID) HAVING total_funnel > 0;"
+    ]
+}

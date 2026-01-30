@@ -1,0 +1,21 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=102752",
+  "title": "plain SELECT reads different results in the same transaction",
+  "description": "From the documentation\nhttps://dev.mysql.com/doc/refman/8.0/en/innodb-transaction-isolation-levels.html\nwe see:\r\n\r\n.... Consistent reads within the same transaction read the snapshot established by the first read. This means that if you issue several plain (nonlocking) SELECT statements within the same transaction, these SELECT statements are consistent also with respect to each other. ....\n\nHowever, I could get different read results of the same query:\r\n\r\nmysql> select pk from t0;\r\n+----+\r\n| pk |\r\n+----+\r\n|  0 |\r\n|  1 |\r\n+----+\r\n2 rows in set (0.00 sec)\r\n\r\n---- two rows, but actually three rows\r\nmysql> update t0 set col0 = 1 where pk > 0; \r\nQuery OK, 2 rows affected (0.00 sec)\r\nRows matched: 2  Changed: 2  Warnings: 0\r\n\r\nmysql> select pk from t0; ---- different?\r\n+----+\r\n| pk |\r\n+----+\r\n|  0 |\r\n|  1 |\r\n|  2 |\r\n+----+\r\n3 rows in set (0.00 sec)\r\n\r\nmysql> select * from t0; -- ???\r\n+----+------+------+\r\n| pk | col0 | col1 |\r\n+----+------+------+\r\n|  0 |    1 |    2 |\r\n|  1 |    1 |    3 |\r\n|  2 |    1 |    5 |\r\n+----+------+------+\r\n3 rows in set (0.00 sec)\nHow to repeat:\ndrop table if exists t0;\r\n\r\ncreate table t0 (\r\n  pk int primary key, \r\n  col0 int, \r\n  col1 int\r\n); \r\n\r\ninsert into t0 values (0,1,2), (1,2,3);\r\n\r\n---- T1\r\nstart transaction;\r\nselect pk from t0;\r\ninsert into t0 value (2,3,5);\r\ncommit;\r\n\r\n---- T2\r\nstart transaction;\r\nselect pk from t0;\r\ninsert into t0 value (2,3,5);\r\nselect pk from t0;\r\nupdate t0 set col0 = 1 where pk > 0;\r\nselect pk from t0; ---- different?\r\ncommit;\n\n-------- how to manually reproduce --------\r\n\r\n-- T1 --\t\t\t-- T2 --\r\n\r\nstart transaction;\t\t\r\n\t\t\t\tstart transaction; \r\nselect pk from t0;\t\t\r\ninsert into t0 value (2,3,5);\t\t\r\n\t\t\t\tselect pk from t0; ---- first read\r\n\t\t\t\tinsert into t0 value (2,3,5); ---- failed\r\ncommit;\r\n\t\t\t\tselect pk from t0; ---- second read (same)\r\n\t\t\t\tupdate t0 set col0 = 1 where pk > 0; ---- also updated (2,3,5) to (2,1,5)\r\n\t\t\t\tselect pk from t0; ---- third read (different!??)\r\n\t\t\t\tcommit;",
+  "date": "2021-02-26 13:40:00",
+  "vulnerable_version": "8.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t1;",
+    "CREATE TABLE t1 (id INT PRIMARY KEY, name VARCHAR(50), value DECIMAL(10,2));",
+    "INSERT INTO t1 VALUES (1, 'A', 10.50), (2, 'B', 20.75), (3, 'C', NULL);",
+    "BEGIN;",
+    "SELECT id, name FROM t1 WHERE value IS NOT NULL;",
+    "COMMIT;"
+  ],
+  "key_bug_features": [
+    "Inconsistent results from multiple SELECTs in a transaction"
+  ]
+}

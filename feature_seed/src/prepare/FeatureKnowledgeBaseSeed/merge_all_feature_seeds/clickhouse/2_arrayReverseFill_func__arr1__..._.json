@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id Int32, arr Array(Int32), val Nullable(Int32)) ENGINE = MergeTree ORDER BY id;
+INSERT INTO test_data VALUES (1, [1, null, 3, null, 12]), (2, [5, 6, null, 14, null]), (3, [null, null, null, null, null]);
+SELECT id, arrayReverseFill(x -> not isNull(x), arr) AS filled_array FROM test_data WHERE 1 IN (SELECT count() FROM test_data WHERE arr[1] IS NOT NULL) GROUP BY id HAVING filled_array[1] NOT IN (SELECT val FROM test_data WHERE id = 3) ORDER BY id;
+SELECT id, val, arrayReverseFill(x -> x IN (SELECT max(val) FROM test_data WHERE val IS NOT NULL), arr) AS new_filled_array FROM test_data WHERE val IS NOT NULL ORDER BY new_filled_array[1] DESC;
+ALTER TABLE test_data ADD COLUMN new_col Array(String);
+INSERT INTO test_data (id, arr, val, new_col) VALUES (4, [3, null, null, 1, 0], 9, ['a', 'b', 'c']), (5, [null, 5, 10, null, 20], 5, ['x']);
+SELECT id, arrayReverseFill(x -> not isNull(x), arr) AS filled_array, SUM(val) OVER (PARTITION BY id ORDER BY val) AS running_total FROM test_data WHERE new_col[1] IN ('a', 'x') ORDER BY id;
+CREATE TABLE test_order (id Int32, quantity Float64, price Float64) ENGINE = Memory;
+INSERT INTO test_order VALUES (1, 10.0, 5.0), (2, 0.0, 12.5), (3, 6.5, null);
+SELECT id, arrayReverseFill(x -> x = 0, [quantity, price]) AS quantity_replaced FROM test_order WHERE price IN (SELECT DISTINCT price FROM test_order WHERE price IS NOT NULL) GROUP BY id HAVING quantity_replaced[1] > 0 ORDER BY id DESC;

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/57627",
+  "title": "vector index on clutstered non-int pk table might output empty result",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```sql\r\nCREATE TABLE `chunks_1_backup` (\r\n  `id` char(32) NOT NULL,\r\n  `hash` varchar(64) NOT NULL,\r\n  `text` text DEFAULT NULL,\r\n  `meta` json DEFAULT NULL,\r\n  `embedding` vector(1536) DEFAULT NULL COMMENT 'hnsw(distance=cosine)',\r\n  `document_id` int DEFAULT NULL,\r\n  `relations` json DEFAULT NULL,\r\n  `source_uri` varchar(512) DEFAULT NULL,\r\n  `index_status` enum('NOT_STARTED','PENDING','RUNNING','COMPLETED','FAILED') NOT NULL,\r\n  `index_result` text DEFAULT NULL,\r\n  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,\r\n  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP,\r\n  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,\r\n  KEY `fk_1` (`document_id`),\r\n  KEY `ix_chunks_1_id` (`id`),\r\n  VECTOR INDEX `vec_idx_embedding`((VEC_COSINE_DISTANCE(`embedding`)))\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin\r\n```\r\n\r\nInsert some data.\r\n\r\nRun SQL like `select ... from chunks_1_backup order by VEC_COSINE_DISTANCE(embedding, const) limit 10`\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nShould output valid result.\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nempty result.\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\ncurrent master",
+  "date": "2024-11-22T07:21:56Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE chunks_2 (id String NOT NULL, embedding Array(Float32) DEFAULT NULL) ENGINE = MergeTree() PRIMARY KEY id;",
+    "INSERT INTO chunks_2 (id, embedding) VALUES ('1', [0.1, 0.2, 0.3]), ('2', [0.4, 0.5, 0.6]), ('3', [0.7, 0.8, 0.9]);",
+    "SELECT * FROM chunks_2 WHERE embedding IS NOT NULL ORDER BY arrayJoin(embedding) LIMIT 5;",
+    "CREATE TABLE documents (document_id Int32 NOT NULL, content String DEFAULT NULL) ENGINE = MergeTree() PRIMARY KEY document_id;",
+    "INSERT INTO documents (document_id, content) VALUES (1, 'Document 1'), (2, 'Document 2');"
+  ],
+  "key_bug_features": [
+    "vector index on clustered non-int primary key table"
+  ]
+}

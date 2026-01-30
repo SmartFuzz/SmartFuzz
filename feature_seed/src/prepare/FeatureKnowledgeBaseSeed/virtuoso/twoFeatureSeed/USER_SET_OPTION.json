@@ -1,0 +1,16 @@
+{
+    "function": "USER_SET_OPTION",
+    "operator": "<>",
+    "sql_array": [
+        "CREATE TABLE users (id INT PRIMARY KEY, username VARCHAR(50) NOT NULL, options JSONB);",
+        "INSERT INTO users (id, username, options) VALUES (1, 'user1', '{\"option1\": \"value1\"}'), (2, 'user2', '{\"option2\": null}');",
+        "SELECT USER_SET_OPTION(username, 'option3', NULL) AS updated_option FROM users WHERE options <> '{\"option2\": null}';",
+        "SELECT (SELECT USER_SET_OPTION(username, 'option3', NULL) FROM users WHERE id = 1) <> (SELECT USER_SET_OPTION(username, 'option3', 'value3') FROM users WHERE id = 2);",
+        "SELECT u.username, USER_SET_OPTION(u.username, 'option4', 'newvalue') AS updated_option FROM users u WHERE u.username <> 'user2' GROUP BY u.username HAVING updated_option IS NOT NULL;",
+        "CREATE TABLE actions (id INT PRIMARY KEY, user_id INT, action VARCHAR(255) NULL, created_at TIMESTAMP DEFAULT NOW(), FOREIGN KEY (user_id) REFERENCES users(id));",
+        "INSERT INTO actions (id, user_id, action) VALUES (1, 1, 'login'), (2, 2, NULL), (3, 1, 'logout');",
+        "SELECT a.created_at, USER_SET_OPTION(u.username, 'action_time', a.created_at) AS time_option FROM actions a JOIN users u ON a.user_id = u.id WHERE a.action IS NULL AND u.username <> (SELECT u2.username FROM users u2 WHERE u2.id = 2);",
+        "CREATE TEMP TABLE temp_options AS SELECT id, USER_SET_OPTION(username, 'temp_option', '') AS temp_option FROM users WHERE options IS NOT NULL;",
+        "SELECT op.temp_option, COUNT(*) FROM temp_options op GROUP BY op.temp_option HAVING op.temp_option <> '';"
+    ]
+}

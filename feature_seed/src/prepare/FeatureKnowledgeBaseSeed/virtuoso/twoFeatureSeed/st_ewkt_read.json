@@ -1,0 +1,17 @@
+{
+    "function": "st_ewkt_read",
+    "operator": "bif:st_intersects",
+    "sql_array": [
+        "CREATE TABLE geospatial_features (id SERIAL PRIMARY KEY, geom GEOMETRY, name VARCHAR(100), precision_factor NUMERIC(10,5));",
+        "INSERT INTO geospatial_features (geom, name, precision_factor) VALUES (st_ewkt_read('POLYGON((0 0,0 1,1 1,1 0,0 0))'), 'Square', 0.00001);",
+        "INSERT INTO geospatial_features (geom, name, precision_factor) VALUES (st_ewkt_read('LINESTRING(0 0, 0.5 0.5, 1 1)'), 'Diagonal Line', 0.00003);",
+        "SELECT a.name, bif:st_intersects(a.geom, b.geom) AS intersects FROM geospatial_features a JOIN geospatial_features b ON a.id != b.id WHERE bif:st_intersects(a.geom, st_ewkt_read('POLYGON((0 0, 2 0, 2 2, 0 2, 0 0))')) = TRUE GROUP BY a.name HAVING COUNT(b.id) > 0;",
+        "SELECT COUNT(*) FROM (SELECT DISTINCT a.name FROM geospatial_features a WHERE bif:st_intersects(a.geom, st_translate(st_ewkt_read('POINT(1 1)'), 0.1, 0.1)) = TRUE) subquery;",
+        "SELECT ST_AsText(a.geom), a.name FROM geospatial_features a WHERE bif:st_intersects(a.geom, st_ewkt_read('POLYGON((0 0,5 0,5 5,0 5,0 0))')) OR bif:st_intersects(a.geom, st_ewkt_read('LINESTRING(5 6, 6 5)')) LIMIT 10;",
+        "SELECT a.id, bif:st_intersects(a.geom, st_ewkt_read('POINT(1 1)')) FROM geospatial_features a WHERE a.precision_factor IS NOT NULL ORDER BY a.precision_factor DESC;",
+        "SELECT a.name, st_ewkt_read('POLYGON((1 1,1 2,2 2,2 1,1 1))') as polygon, bif:st_intersects(a.geom, st_ewkt_read('POLYGON((0.5 0.5, 0.5 1.5, 1.5 1.5, 1.5 0.5, 0.5 0.5))')) FROM geospatial_features a WHERE bif:st_intersects(a.geom, st_ewkt_read('POLYGON((1 1,1 1.5,1.5 1.5,1.5 1,1 1))'));",
+        "CREATE TEMPORARY TABLE temp_features AS SELECT * FROM geospatial_features WHERE geom IS NOT NULL;",
+        "INSERT INTO temp_features (geom, name, precision_factor) VALUES (st_ewkt_read('POLYGON((3 3,3 4,4 4,4 3,3 3))'), 'Overlap Test', NULL);",
+        "SELECT a.name, COUNT(*) FROM temp_features a JOIN temp_features b ON bif:st_intersects(a.geom, b.geom) WHERE a.id != b.id GROUP BY a.name HAVING COUNT(b.id) > 1;"
+    ]
+}

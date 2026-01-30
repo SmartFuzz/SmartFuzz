@@ -1,0 +1,15 @@
+CREATE TABLE test_dates (id INT, ts TIMESTAMPTZ, vals LIST<TEXT>);
+INSERT INTO test_dates VALUES (1, TIMESTAMPTZ '2023-01-01 12:00:00', ['a', 'b', NULL]), (2, TIMESTAMPTZ '2023-01-02 12:00:00', ['c']), (3, NULL, ['d', 'e', 'f']);
+SELECT id, datetrunc('hour', ts) AS truncated_time, vals || ['g', NULL] AS combined_vals FROM test_dates WHERE datetrunc('hour', ts) IS NOT NULL;
+SELECT id, datetrunc('day', ts) AS truncated_time, (SELECT COUNT(*) FROM test_dates WHERE id <> t.id AND ts IS NOT NULL) FROM test_dates t;
+SELECT id, vals, datetrunc('minute', ts) || ['h', 'i'] AS combined_result FROM test_dates WHERE ts IS NOT NULL ORDER BY datetrunc('minute', ts);
+WITH date_cte AS (SELECT datetrunc('hour', ts) AS hour_ts FROM test_dates WHERE ts IS NOT NULL) SELECT COUNT(*) FROM date_cte WHERE hour_ts IS NOT NULL;
+SELECT id, (datetrunc('minute', ts) || ['j']) AS modified_vals FROM test_dates WHERE vals IS NOT NULL AND ts IS NOT NULL;
+SELECT id, vals, datetrunc('second', ts) FROM test_dates WHERE id IN (SELECT id FROM test_dates WHERE ts IS NOT NULL) ORDER BY vals[1] DESC;
+SELECT id, datetrunc('hour', ts) AS hour_truncate FROM test_dates WHERE ts IS NULL OR id > 1 GROUP BY id, hour_truncate HAVING COUNT(vals) IS NOT NULL;
+CREATE TABLE more_dates (id INT PRIMARY KEY, ts TIMESTAMPTZ NOT NULL, vals LIST<TEXT> NOT NULL);
+INSERT INTO more_dates SELECT id, ts, vals FROM test_dates WHERE ts IS NOT NULL;
+SELECT m.id, datetrunc('day', m.ts) AS day_truncated, m.vals || ['k'] AS new_vals FROM more_dates m JOIN test_dates ON m.id = test_dates.id WHERE m.ts < now() ORDER BY day_truncated;
+SELECT m.id, (SELECT COUNT(*) FROM more_dates WHERE vals[1] IS NULL) AS null_counts, datetrunc('minute', m.ts) FROM more_dates m GROUP BY m.id;
+SELECT DISTINCT id, datetrunc('hour', ts) || NULL FROM test_dates;
+SELECT id, datetrunc('hour', ts), (SELECT STRING_AGG(val) FROM UNNEST(vals) AS val) AS combined_vals FROM test_dates WHERE datetrunc('hour', ts) IS NOT NULL GROUP BY id, ts;

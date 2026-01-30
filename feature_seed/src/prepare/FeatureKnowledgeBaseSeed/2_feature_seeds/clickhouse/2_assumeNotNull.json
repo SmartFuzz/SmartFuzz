@@ -1,0 +1,10 @@
+CREATE TABLE test_nullable (id UInt32, y Nullable(Int32));
+INSERT INTO test_nullable VALUES (1, 5), (2, NULL), (3, 10), (4, NULL);
+SELECT id, assumeNotNull(y) AS non_null_y FROM test_nullable WHERE assumeNotNull(y) IS NOT NULL;
+SELECT id, (SELECT assumeNotNull(max(y)) FROM test_nullable) AS max_non_null_y FROM test_nullable WHERE y IS NOT NULL ORDER BY max_non_null_y DESC;
+SELECT count(*) FROM (SELECT id, y FROM test_nullable WHERE assumeNotNull(y) IS NOT NULL GROUP BY id, y HAVING y IS NOT NULL) AS sub;
+CREATE TABLE test_join (join_id UInt32, y Nullable(Int32));
+INSERT INTO test_join VALUES (1, 5), (2, 20), (3, NULL), (4, 15);
+SELECT a.id, assumeNotNull(a.y) AS y_a, b.y AS y_b FROM test_nullable AS a LEFT JOIN test_join AS b ON a.id = b.join_id WHERE a.y IS NOT NULL AND b.y IS NOT NULL;
+SELECT a.id, assumeNotNull(b.y) FROM test_nullable AS a JOIN (SELECT join_id, assumeNotNull(y) AS y FROM test_join) AS b ON a.id = b.join_id WHERE a.y IS NOT NULL;
+SELECT assumeNotNull(avg(y)) AS avg_non_null FROM (SELECT y FROM test_nullable WHERE y IS NOT NULL GROUP BY id HAVING count(y) > 1);

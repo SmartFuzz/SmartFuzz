@@ -1,0 +1,18 @@
+{
+    "function": "csv_load_file",
+    "operator": ">",
+    "sql_array": [
+        "CREATE TABLE test_import (id INT, name VARCHAR(100), value FLOAT, created_at TIMESTAMP);",
+        "INSERT INTO test_import (id, name, value, created_at) VALUES (1, 'test', 10.5, NOW());",
+        "SELECT csv_load_file('invalid_path.csv', 0, NULL, 'test_import') WHERE 1 > (SELECT COUNT(*) FROM test_import);",
+        "CREATE TABLE dynamic_import AS SELECT * FROM (SELECT id, name, value FROM test_import WHERE value > (SELECT AVG(value) FROM test_import)) AS filtered_data;",
+        "SELECT * FROM dynamic_import HAVING COUNT(*) > (SELECT COUNT(*) FROM test_import WHERE name IS NULL);",
+        "SELECT DISTINCT name FROM test_import WHERE id IN (SELECT id FROM test_import WHERE created_at >= '2023-01-01 00:00:00' AND value > (SELECT MAX(value) FROM test_import)) GROUP BY name HAVING COUNT(id) > 0;",
+        "CREATE PROCEDURE my_csv_tests (IN file_name VARCHAR) BEGIN DECLARE tb_name VARCHAR; DECLARE ar ANY; ar := csv_table_def(file_name); ar := split_and_decode(ar, 0, '\\0\\0'); tb_name := TRIM(ar[2], '\"'); EXEC(csv_table_def(file_name)); SET @row_count = csv_load_file(file_name, 0, NULL, CONCAT('DB.DBA.', tb_name)); INSERT INTO test_import SELECT * FROM (SELECT id, name, value FROM test_import WHERE id > 0) AS subquery WHERE T1.value > (SELECT AVG(T1.value) FROM test_import AS T1 WHERE T1.name IS NOT NULL); END;",
+        "DROP TABLE IF EXISTS temp_import;",
+        "CREATE TABLE temp_import AS SELECT name, value FROM test_import WHERE value IS NOT NULL;",
+        "SELECT csv_load_file('tmp/test_data.csv', 0, NULL, 'test_import') WHERE 'dummy' > 'test';",
+        "INSERT INTO test_import (id, name, value, created_at) VALUES (2, NULL, 20.5, NOW()), (3, 'example', NULL, NOW());",
+        "SELECT * FROM test_import WHERE name IS NULL OR (id > (SELECT COUNT(*) FROM test_import WHERE name IS NOT NULL)) and value IS NOT NULL ORDER BY name; "
+    ]
+}

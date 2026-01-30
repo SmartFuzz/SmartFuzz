@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=104325",
+  "title": "Prepared statements does not work with multi-value indexes",
+  "description": "MySQL returns empty result when executing prepared statement with multi-value index.\r\nDocker image sha256:52b8406e4c32b8cf0557f1b74517e14c5393aff5cf0384eff62d9e81f4985d4b\r\n8.0.25\nHow to repeat:\ncreate table Bug(\r\n    id bigint auto_increment primary key,\r\n    data JSON not null,\r\n    index idx(( CAST(data AS UNSIGNED ARRAY)))\r\n);\r\n\r\ninsert into Bug(data) values ('[\"123\", \"456\"]');\r\n\r\nprepare stmt from 'select * from Bug where ? member of(data)';\r\nset @id=123;\r\nexecute stmt using @id;\r\n# empty result set\r\n\r\nselect * from Bug where 123 member of(data);\r\n+--+--------------+\r\n|id|data          |\r\n+--+--------------+\r\n|1 |[\"123\", \"456\"]|\r\n+--+--------------+",
+  "date": "2021-07-15 12:46:00",
+  "vulnerable_version": "8.0.25",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE Bug(id BIGINT PRIMARY KEY, data JSON NOT NULL);",
+    "INSERT INTO Bug(data) VALUES ('[\"123\", \"456\"]');",
+    "CREATE TABLE AnotherBug(id INT PRIMARY KEY, bug_id BIGINT, FOREIGN KEY (bug_id) REFERENCES Bug(id));",
+    "INSERT INTO AnotherBug(bug_id) VALUES (1);",
+    "SELECT * FROM Bug WHERE 123 IN (SELECT UNNEST(data)) AND EXISTS (SELECT 1 FROM AnotherBug WHERE bug_id = Bug.id);"
+  ],
+  "key_bug_features": [
+    "Prepared statement with multi-value index returns empty result"
+  ]
+}

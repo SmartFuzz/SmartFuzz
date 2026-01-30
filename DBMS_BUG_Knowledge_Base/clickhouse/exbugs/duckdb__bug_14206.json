@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14206",
+  "title": "Unexpected result of comparison of nested types containing `NULL`",
+  "description": "### What happens?\n\nConsider the following test case. If the first query returning `false` is expected, then the second query of its negation should be `true`. However, the second query returns `NULL`. It might be related to https://github.com/duckdb/duckdb/issues/13924 and perhaps due to the pruning of the NULL values of AND.\n\n### To Reproduce\n\n```sql\r\nSELECT ((NULL,1) IS NULL)AND NULL; -- false\r\nSELECT (NOT ((NULL,1) IS NULL)AND NULL); -- NULL (unexpected)\r\n\r\n\r\n-- original test case found by TLP\r\nCREATE TABLE  t0(c0 VARCHAR);\r\nINSERT INTO t0(c0) VALUES ('randomtext');\r\n\r\nSELECT t0.c0 FROM t0; -- 1 row\r\nSELECT t0.c0 FROM t0 WHERE ((((NULL,1)) IS NULL))AND(NULL) UNION ALL SELECT t0.c0 FROM t0 WHERE (NOT ((((NULL,1)) IS NULL))AND(NULL)) UNION ALL SELECT t0.c0 FROM t0 WHERE ((((((NULL,1)) IS NULL))AND(NULL)) IS NULL); -- 0 rows\r\n\r\n```\n\n### OS:\n\nUbuntu 22.04\n\n### DuckDB Version:\n\nv1.1.2-dev76 8aca4330ac\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nSuyang Zhong\n\n### Affiliation:\n\nNUS\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a source build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [X] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [X] Yes, I have",
+  "date": "2024-10-03 04:34:44",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE nested_types(a Tuple(b Int32, c Int32));",
+    "INSERT INTO nested_types VALUES (NULL, 1), (2, NULL), (NULL, NULL);",
+    "SELECT (a IS NULL) AND (a.1 IS NULL) FROM nested_types;",
+    "SELECT NOT ((a IS NULL) AND (a.2 IS NULL)) FROM nested_types;",
+    "SELECT COUNT(*) FROM nested_types WHERE (a IS NULL) OR (a.1 IS NULL) AND (a.2 IS NULL);"
+  ],
+  "key_bug_features": [
+    "Comparison of nested types containing NULL values"
+  ]
+}

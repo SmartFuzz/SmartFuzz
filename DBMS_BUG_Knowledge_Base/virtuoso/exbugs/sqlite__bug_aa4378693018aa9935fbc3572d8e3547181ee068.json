@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/aa43786930",
+  "title": "sqlite3.c:87338: int sqlite3VdbeExec(Vdbe *): Assertion `sqlite3BtreeCursorIsValid(pCrsr)' failed.",
+  "description": "yongheng added on 2020-02-22 04:18:54:\nConsider the following poc:\n---\nCREATE TABLE v0(v1 UNIQUE, v2 UNIQUE);\nINSERT INTO v0(v2) VALUES(0);\nCREATE VIEW v4 AS SELECT *FROM v0 WHERE v2 < 10 OR v1 < 7 ORDER BY v2;\nSELECT '29' FROM v0 LEFT JOIN v4 ON NULL;\n---\n\nIt triggers an assertion on debug build of trunk.\ndrh added on 2020-02-22 13:07:53:\nThe optimization at check-in [9de3d7123007636a] allows a table that is\nconstrained by OR-connected terms to make use of a covering index.  It does\nso by substituting the covering index cursor in place of the table cursor\nwhen the table cursor is specified in the OP_Column opcode.\nThe optimization at check-in [41c27bc0ff1d3135] allows views or subqueries\nto be the right-hand table of a LEFT JOIN.\nAt the intersection of these two optimizations was a case where a table cursor\nwas marked as NullRow but was then converted into a index cursor that lacked\nthe NullRow mark.  An assert() detected that the index cursor was not\npositioned correctly.\nThe fix at check-in [f02030b3403d6773] blocks the substitution of the index\ncursor in place of the table cursor when the table cursor is marked as NullRow.",
+  "date": "2020-02-22 04:18:545.47 years ago",
+  "vulnerable_version": "trunk",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE v0(v1 INTEGER UNIQUE, v2 VARCHAR(255) UNIQUE);",
+    "INSERT INTO v0(v2) VALUES('0');",
+    "CREATE VIEW v4 AS SELECT * FROM v0 WHERE v2 < '10' OR v1 < 7 ORDER BY v2;",
+    "SELECT '29' FROM v0 LEFT JOIN v4 ON v0.v1 IS NULL;",
+    "INSERT INTO v0(v1, v2) VALUES(NULL, '5');"
+  ],
+  "key_bug_features": [
+    "Substituting index cursor for NullRow marked table cursor"
+  ]
+}

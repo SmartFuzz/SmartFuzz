@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=108756",
+  "title": "Can't insert negative number using prepared statement with MySqlDbType.Int24",
+  "description": "Setting MySqlParameter.MySqlDbType to MySqlDbType.Int24 throws an error similar to \"Out of range value for column 'data' at row 1\" when a prepared command is executed and the parameter is a negative number\r\n\r\nWhen \"command.ExecuteNonQuery()\" is executed in the attached sample, the following exception is thrown:\r\n\r\nMySql.Data.MySqlClient.MySqlException (0x80004005): Out of range value for column 'data' at row 1\r\n   at MySql.Data.MySqlClient.MySqlStream.ReadPacket()\r\n   at MySql.Data.MySqlClient.NativeDriver.GetResult(Int32& affectedRow, Int64& insertedId)\r\n   at MySql.Data.MySqlClient.Driver.GetResult(Int32 statementId, Int32& affectedRows, Int64& insertedId)\r\n   at MySql.Data.MySqlClient.Driver.NextResult(Int32 statementId, Boolean force)\r\n   at MySql.Data.MySqlClient.MySqlDataReader.NextResult()\r\n   at MySql.Data.MySqlClient.MySqlCommand.ExecuteReader(CommandBehavior behavior)\r\n   at MySql.Data.MySqlClient.MySqlCommand.ExecuteReader()\r\n   at MySql.Data.MySqlClient.MySqlCommand.ExecuteNonQuery()\nHow to repeat:\nExecute the following C#:\n\nusing var connection = new MySqlConnection(\"...\");\r\nconnection.Open();\r\n\r\nusing (var command = new MySqlCommand(@\"drop table if exists prepared_statement_test;\r\n\tcreate table prepared_statement_test(data MEDIUMINT);\", connection))\r\n{\r\n\tcommand.ExecuteNonQuery();\r\n}\r\n\r\nusing (var command = new MySqlCommand(@\"insert into prepared_statement_test(data) values(@data);\", connection))\r\n{\r\n\tcommand.Parameters.AddWithValue(\"@data\", -1).MySqlDbType = MySqlDbType.Int24;\r\n\tcommand.Prepare();\r\n\tcommand.ExecuteNonQuery();\r\n}\r\n\r\nIt can be worked around by writing:\r\n\r\n    command.Parameters.AddWithValue(\"@data\", -1).MySqlDbType = MySqlDbType.Int32;\r\n\r\nor:\r\n\r\n    command.Parameters.AddWithValue(\"@data\", -1);\nSuggested fix:\nThis appears to be an incomplete fix for\nbug #95986\n.\r\n\r\nMost likely, the UNSIGNED_MASK should not be getting added here:\nhttps://github.com/mysql/mysql-connector-net/blob/56ea6cf19d7b65e874efc2b26b579560e8126b76...",
+  "date": "2022-10-12 12:48:00",
+  "vulnerable_version": "8.0.31",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS prepared_statement_test;",
+    "CREATE TABLE prepared_statement_test(data INT NOT NULL, description VARCHAR);",
+    "INSERT INTO prepared_statement_test(data, description) VALUES(-1, 'Negative value test');",
+    "INSERT INTO prepared_statement_test(data, description) VALUES(2147483647, 'Max value test');",
+    "SELECT * FROM prepared_statement_test WHERE data < 0;"
+  ],
+  "key_bug_features": [
+    "Inserting negative number with MySqlDbType.Int24 fails"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/85313",
+  "title": "Wrong result with enable_analyzer when query uses SELECT * REPLACE + WHERE on same column",
+  "description": "### Describe what's wrong\nWhen replacing a column value by a `SELECT * REPLACE`, the WHERE clause still uses the table's value.\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\n```\nCREATE TABLE events\n(\n`app_id` UInt64,\n`network` String,\n`name_asset_group_id` UInt64,\n`date` Date\n) ENGINE = Memory;\nINSERT INTO events VALUES (0,  'snapchat', 123, '2023-08-04'),  (42, 'snapchat', 0,   '2023-08-04');\nSELECT 'new analyzer', *\nREPLACE (if(app_id = 0, 1, app_id) AS app_id)\nFROM   events\nWHERE  app_id != 0;\nSET enable_analyzer = 0;\nSELECT 'old analyzer',*\nREPLACE (if(app_id = 0, 1, app_id) AS app_id)\nFROM   events\nWHERE  app_id != 0;\n----\nnew analyzer\t42\tsnapchat\t0\t2023-08-04\nold analyzer\t1\tsnapchat\t123\t2023-08-04\nold analyzer\t42\tsnapchat\t0\t2023-08-04\n```\nhttps://fiddle.clickhouse.com/dcfea6a8-16f8-4c69-9001-9d07263106cf\n### Expected behavior\nI can use REPLACed value in WHERE",
+  "date": "2025-08-08T16:05:13Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE events_v2 (app_id BIGINT, network VARCHAR(255), name_asset_group_id BIGINT, date DATE, status VARCHAR(255));",
+    "INSERT INTO events_v2 VALUES (0, 'snapchat', 123, '2023-08-04', NULL), (42, 'snapchat', 0, '2023-08-04', 'active');",
+    "SELECT 'new analyzer', CASE WHEN app_id = 0 THEN 1 ELSE app_id END AS app_id, network, name_asset_group_id, date, status FROM events_v2 WHERE app_id != 0 AND status IS NOT NULL;",
+    "SELECT 'old analyzer', CASE WHEN app_id = 0 THEN 1 ELSE app_id END AS app_id, network, name_asset_group_id, date, status FROM events_v2 WHERE app_id != 0 AND status IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "SELECT * REPLACE with WHERE on same column"
+  ]
+}

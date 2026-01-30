@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/a753a8567d",
+  "title": "RENAME COLUMN incorrectly modifying column names in generated column expressions",
+  "description": "dan added on 2021-03-16 12:06:12:\nIf a table column is renamed, and there exists a generated column within another table within the same schema that refers to the column in the same position of its table as the renamed column, the name within the generated column expression is being modified. Normally this results in the RENAME COLUMN operation failing, but in some cases may silently modify the schema. For example:\nCREATE TABLE t1(a, b);\nCREATE TABLE t2(c, othername, extra AS (c + 1)); \nALTER TABLE t1 RENAME a to othername;     \n\nIn the above, the leftmost column of table t1 is being renamed to \"othername\". But the leftmost column of t2 (\"c\") is used in a generated column expression. Due to the bug, the \"c\" in the generated column expression is being modified to \"othername\", incorrectly changing the schema of [t2] to:\nCREATE TABLE t2(c, othername, extra AS (othername + 1)); \n\nIf \"othername\" were not also a column in t2, this would have caused an error.\ndan added on 2021-03-16 12:07:11:\nFixed by [0e255b26].\ndrh added on 2021-03-16 12:36:18:\nThis problem was discovered during internal testing.\nThe problem seems to have existed in all prior versions of\nSQLite that support generated columns, which is to say\nSQLite version 3.31.0 through 3.35.1.",
+  "date": "2021-03-16 12:06:124.40 years ago",
+  "vulnerable_version": "trunk.",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(a INTEGER, b TEXT NOT NULL);",
+    "CREATE TABLE t2(c REAL, othername INTEGER, extra GENERATED ALWAYS AS (c + 1) STORED);",
+    "INSERT INTO t1(a, b) VALUES (1, 'test');",
+    "ALTER TABLE t1 RENAME COLUMN a TO othername;",
+    "SELECT * FROM t2 WHERE extra > (SELECT AVG(c) FROM t2);"
+  ],
+  "key_bug_features": [
+    "RENAME COLUMN modifies generated column expressions incorrectly"
+  ]
+}

@@ -1,0 +1,35 @@
+CREATE TABLE test_dict (id INT PRIMARY KEY, key_name VARCHAR(50), value_num INT);
+INSERT INTO test_dict (id, key_name, value_num) VALUES (1, 'a', 100), (2, 'b', NULL), (3, 'c', -50);
+CREATE FUNCTION dict_iterator_fuzz_test ()
+{
+  DECLARE d_iter, dkey, dvalue ANY;
+d_iter := dict_new (3);
+dict_put (d_iter, 'a', 21);
+dict_put (d_iter, 'b', NULL);
+dict_put (d_iter, 'c', 42);
+dict_iter_rewind (d_iter);
+WHILE (dict_iter_next(d_iter, dkey, dvalue))
+  {
+    SELECT CASE WHEN EXISTS (SELECT 1 WHERE dkey = 'a') THEN CONCAT('Key ', dkey, ' has value: ', dvalue) ELSE 'Not Found' END;
+}
+};
+SELECT key_name, value_num FROM test_dict WHERE EXISTS (SELECT 1 FROM test_dict WHERE value_num IS NULL);
+CREATE TABLE edge_cases (num_col DECIMAL(10,2), str_col VARCHAR(100), mixed_col ANY);
+INSERT INTO edge_cases (num_col, str_col, mixed_col) VALUES (100.50, 'test', 1), (NULL, 'NULL case', 'non-numeric'), (MAX(1,2), '', '');
+SELECT * FROM edge_cases WHERE EXISTS (SELECT 1 FROM edge_cases WHERE str_col = '' AND num_col > (SELECT MAX(num_col) FROM edge_cases) / 2);
+CREATE FUNCTION dict_with_existence_test ()
+{
+  DECLARE dict, dkey, dvalue ANY;
+dict := dict_new (5);
+dict_put (dict, 'x', 99);
+dict_put (dict, 'y', -1);
+dict_iter_rewind(dict);
+WHILE (dict_iter_next(dict, dkey, dvalue))
+  {
+    SELECT EXISTS (SELECT 1 WHERE dvalue > 0);
+}
+};
+SELECT str_col, mixed_col FROM edge_cases WHERE EXISTS (SELECT 1 FROM edge_cases WHERE num_col BETWEEN -100 AND 100) GROUP BY str_col HAVING COUNT(mixed_col) > 1;
+CREATE TABLE test_conditions (val_a INT, val_b INT, complex_key VARCHAR(255));
+INSERT INTO test_conditions (val_a, val_b, complex_key) VALUES (NULL, 10, 'A'), (15, NULL, 'B'), (5, 5, 'C');
+SELECT complex_key, COUNT(*) as occurrences FROM test_conditions GROUP BY complex_key HAVING occurrences > 1 AND EXISTS (SELECT 1 FROM test_conditions WHERE val_a IS NOT NULL AND val_b IS NOT NULL);

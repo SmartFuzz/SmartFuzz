@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14630",
+  "title": "DuckDB C interface cannot correctly obtain the UUID result",
+  "description": "### What happens?\n\nIn the duckdb.h provided by DuckDB, you can see that the UUID type is actually stored using duckdb_hugeint. However, when I tried to retrieve the content corresponding to the UUID using duckdb_value_hugeint, I encountered some issues with the internal implementation.\r\n<img width=\"418\" alt=\"image\" src=\"https://github.com/user-attachments/assets/7db97f5c-02c2-4fc8-a556-6dee412fb1fc\">\r\n\r\nIn DuckDB, when C is used, GetInternalCValue is employed, and its internal implementation does not account for scenarios where the type obtained is a UUID. As a result, it resorts to fetching the default value, ultimately leading to the return of an all-zero value.\r\n<img width=\"570\" alt=\"image\" src=\"https://github.com/user-attachments/assets/0fa10cb9-7e9b-49b7-8474-cccd022d94ad\">\r\n\r\n<img width=\"649\" alt=\"image\" src=\"https://github.com/user-attachments/assets/4b3a60a1-8ac6-49a4-aaf4-cb5e69fe19cb\">\r\n\r\nIt seems that a fix could be implemented by referencing the GetValuesInternal method.\n\n### To Reproduce\n\n\r\nYou can directly look at the code analysis above\n\n### OS:\n\nx86_64\n\n### DuckDB Version:\n\nv1.1.1\n\n### DuckDB Client:\n\nC\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nAmore\n\n### Affiliation:\n\nSoftware engineer\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a source build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nNot applicable - the reproduction does not require a data set\n\n### Did you include all code required to reproduce the issue?\n\n- [X] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [X] Yes, I have",
+  "date": "2024-10-30 05:44:31",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_uuid (id INT PRIMARY KEY, uuid_col BINARY(16) NOT NULL);",
+    "INSERT INTO test_uuid (id, uuid_col) VALUES (1, UNHEX(REPLACE(UUID(), '-', ''))), (2, UNHEX(REPLACE(UUID(), '-', ''))), (3, UNHEX(REPLACE(UUID(), '-', '')));",
+    "SELECT id, CONVERT(uuid_col USING utf8) AS uuid_col FROM test_uuid WHERE id = 1;",
+    "UPDATE test_uuid SET uuid_col = UNHEX(REPLACE(UUID(), '-', '')) WHERE id = 2;",
+    "SELECT id, COALESCE(CONVERT(uuid_col USING utf8), UUID()) AS new_uuid FROM test_uuid;"
+  ],
+  "key_bug_features": [
+    "C interface fails to retrieve UUID values correctly"
+  ]
+}

@@ -1,0 +1,12 @@
+CREATE TABLE Demo.Demo."Example_Countries" (id INT PRIMARY KEY, name VARCHAR(100), shape GEOMETRY);
+INSERT INTO Demo.Demo."Example_Countries" (id, name, shape) VALUES (1, 'Country A', ST_MakePolygon(ST_MakePoint(0,0), ST_MakePoint(1,0), ST_MakePoint(1,1), ST_MakePoint(0,1), ST_MakePoint(0,0))), (2, 'Country B', ST_MakePolygon(ST_MakePoint(0,0), ST_MakePoint(2,1), ST_MakePoint(3,0), ST_MakePoint(0,0)));
+DECLARE ses ANY;
+ses := string_output();
+SELECT http_st_dxf_entity((SELECT shape FROM Demo.Demo."Example_Countries" WHERE id = 1), vector(62, 0)), ses;
+SELECT http_st_dxf_entity(geom, vector(62, 0)), ses FROM (SELECT name, deserialize(shape) as geom FROM Demo.Demo."Example_Countries" WHERE name LIKE '%Country%') AS derived;
+SELECT DISTINCT http_st_dxf_entity((SELECT shape FROM Demo.Demo."Example_Countries" WHERE id IN (SELECT id FROM Demo.Demo."Example_Countries" WHERE name ILIKE 'Country%')), vector(62, 0)), ses FROM (SELECT deserialize(shape) as geom FROM Demo.Demo."Example_Countries") AS s;
+INSERT INTO Demo.Demo."Example_Countries" (id, name, shape) VALUES (3, 'Country C', NULL), (4, 'Country D', ST_MakePolygon(ST_MakePoint(0,0), ST_MakePoint(4,2), ST_MakePoint(4,3), ST_MakePoint(0,3), ST_MakePoint(0,0)));
+SELECT http_st_dxf_entity(geom, vector(62, 0)), ses FROM (SELECT shape AS geom FROM Demo.Demo."Example_Countries" WHERE shape IS NOT NULL AND id = 3 UNION ALL SELECT shape FROM Demo.Demo."Example_Countries" WHERE shape IS NOT NULL AND id = 4) AS shapes;
+SELECT http_st_dxf_entity(geom, vector(62, 0)), ses FROM (SELECT AVG(ST_Area(shape)) AS area, shape AS geom FROM Demo.Demo."Example_Countries" GROUP BY shape HAVING AVG(ST_Area(shape)) > 5) AS large_shapes;
+CREATE TABLE temp_shapes AS (SELECT shape, shapeid FROM Demo.Demo."Example_Countries");
+SELECT http_st_dxf_entity((SELECT shape FROM temp_shapes WHERE shapeid = (SELECT MAX(id) FROM Demo.Demo."Example_Countries")), vector(62, 0)), ses;

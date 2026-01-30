@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=105326",
+  "title": "system view will be invalid with special characters table name",
+  "description": "System view sys.x$ps_schema_table_statistics_io will be invalid when statistics tables with special characters. This is because the view takes `FILE_NAME` of table performance_schema.file_summary_by_instance as table_name. However, for table whicn table name has special characters, file name and table name are inconsistent and have been converted. This will lead to sys.x$ps_schema_table_statistics_io invalid when statistics tables with special characters.\nHow to repeat:\n1.prepare data:\r\nmysql> create database testdb;\r\nQuery OK, 1 row affected (0.01 sec)\r\n\r\nmysql> use testdb;\r\nDatabase changed\r\n\r\nmysql> create table `t`(id int not null);\r\nQuery OK, 0 rows affected (0.61 sec)\r\n\r\nmysql> create table `t#`(id int not null);\r\nQuery OK, 0 rows affected (0.66 sec)\r\n\r\n2.When the table name does not contain special characters：\r\nmysql> select * from `sys`.`x$ps_schema_table_statistics_io` where table_name = 't'\\G\r\n*************************** 1. row ***************************\r\n             table_schema: testdb\r\n               table_name: t\r\n               count_read: 0\r\n sum_number_of_bytes_read: 0\r\n           sum_timer_read: 0\r\n              count_write: 7\r\nsum_number_of_bytes_write: 212992\r\n          sum_timer_write: 1088754668\r\n               count_misc: 6\r\n           sum_timer_misc: 1015060064\r\n1 row in set (0.07 sec)\r\n\r\n3.When the table name contain special characters：\r\nmysql> select * from `sys`.`x$ps_schema_table_statistics_io` where table_name = 't#'\\G\r\nEmpty set (0.07 sec)",
+  "date": "2021-10-26 12:13:00",
+  "vulnerable_version": "8.0.25, 5.7.36",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE DATABASE testdb;",
+    "CREATE TABLE t (id INTEGER NOT NULL, name VARCHAR(50), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "CREATE TABLE t_special (id INTEGER NOT NULL, description CLOB, amount DECIMAL(10, 2) DEFAULT 0.00);",
+    "INSERT INTO t (id, name) VALUES (1, 'Sample');",
+    "SELECT * FROM sys.x$ps_schema_table_statistics_io WHERE table_name = 't';"
+  ],
+  "key_bug_features": [
+    "Invalid system view with special characters in table name"
+  ]
+}

@@ -1,0 +1,10 @@
+CREATE TABLE timestamps (id INTEGER PRIMARY KEY, ts TIMESTAMPTZ, extra_info TEXT);
+INSERT INTO timestamps (id, ts, extra_info) VALUES (1, '2022-11-07 08:43:04.123456+00', 'event A'), (2, '2022-11-08 09:45:00.654321+00', 'event B'), (3, NULL, 'event C'), (4, '2022-11-10 12:00:00.123456+00', 'event D');
+SELECT id, epoch_ms(ts) - (SELECT epoch_ms(ts) FROM timestamps WHERE id = 2) AS time_diff FROM timestamps WHERE ts IS NOT NULL;
+SELECT id, epoch_ms(ts) AS ms_epoch FROM timestamps JOIN (SELECT id AS join_id, epoch_ms(ts) AS join_epoch FROM timestamps WHERE extra_info LIKE 'event%') AS join_tbl ON timestamps.id = join_tbl.join_id;
+SELECT id, epoch_ms(ts) AS ms_epoch, COUNT(*) OVER (PARTITION BY extra_info) AS info_count FROM timestamps GROUP BY id, ts ORDER BY ms_epoch;
+SELECT id, epoch_ms(ts) AS ms_epoch, CASE WHEN ts IS NULL THEN 'No Timestamp' ELSE 'Has Timestamp' END AS timestamp_status FROM timestamps WHERE ts IS NOT NULL OR extra_info IS NOT NULL;
+CREATE TEMPORARY TABLE subquery_test AS SELECT epoch_ms(ts) AS t_epoch FROM timestamps WHERE ts IS NOT NULL;
+SELECT t.id, (epoch_ms(t.ts) - (SELECT MAX(epoch_ms(sub.ts)) FROM subquery_test AS sub)) AS adjusted_epoch FROM timestamps AS t WHERE t.ts IS NOT NULL;
+SELECT id, MAX(epoch_ms(ts)) AS max_epoch FROM timestamps GROUP BY extra_info HAVING MAX(epoch_ms(ts)) > 1667780400000;
+SELECT id, epoch_ms(ts) AS epoch_value FROM timestamps WHERE epoch_ms(ts) - (SELECT MIN(epoch_ms(ts)) FROM timestamps) < 10000 ORDER BY epoch_value DESC;

@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS train_data(param1 Float64, param2 Float64, target Float64) ENGINE = Memory;
+INSERT INTO train_data VALUES (1.0, 2.0, 3.0), (4.0, 5.0, 6.0), (7.0, 8.0, 9.0);
+CREATE TABLE IF NOT EXISTS model_state ENGINE = Memory AS SELECT stochasticLinearRegressionState(0.00001, 0.1, 15, 'Adam')(target, param1, param2) AS state FROM train_data;
+WITH (SELECT state FROM model_state) AS model SELECT evalMLMethod(model, param1, param2) FROM (SELECT param1, param2 FROM train_data ORDER BY target DESC LIMIT 5);
+CREATE TABLE test_data(param1 Float64, param2 Float64) ENGINE = Memory;
+INSERT INTO test_data VALUES (1.5, 2.5), (3.5, 4.5), (5.5, 6.5);
+WITH (SELECT state FROM model_state) AS model SELECT evalMLMethod(model, param1, param2) AS predictions FROM test_data;
+CREATE TABLE IF NOT EXISTS enhanced_model_state ENGINE = Memory AS SELECT state1 + state2 FROM (SELECT stochasticLinearRegressionState(0.01, 0.1, 10, 'SGD')(target, param1, param2) AS state1 FROM train_data) AS sub1, (SELECT stochasticLinearRegressionState(0.001, 0.05, 20, 'Nesterov')(target, param1, param2) AS state2 FROM train_data) AS sub2;
+WITH (SELECT state FROM enhanced_model_state) AS combined_model SELECT evalMLMethod(combined_model, param1, param2) AS enhanced_predictions FROM test_data;
+CREATE TABLE multi_model_state ENGINE = Memory AS SELECT state1 + state2 FROM (SELECT stochasticLinearRegressionState(0.1, 0.0, 5, 'SGD')(target, param1, param2) AS state1 FROM train_data) AS t1 JOIN (SELECT stochasticLinearRegressionState(0.05, 0.1, 10, 'Momentum')(target, param1, param2) AS state2 FROM train_data) AS t2 ON t1.target = t2.target;
+WITH (SELECT state FROM multi_model_state) AS final_model SELECT evalMLMethod(final_model, param1, param2) FROM (SELECT param1, param2 FROM test_data ORDER BY param1 LIMIT 10);

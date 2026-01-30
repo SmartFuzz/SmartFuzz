@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/db4d96798d",
+  "title": "LIMIT does not work with nested views containing UNION ALL",
+  "description": "drh added on 2013-01-28 19:34:30:\nThe LIMIT on the final SELECT in the following code does not work:\nCREATE TABLE t1(x);\nINSERT INTO t1 VALUES(5);\nCREATE VIEW v1 AS SELECT x*2 FROM t1;\nCREATE VIEW v2 AS SELECT * FROM v1 UNION ALL SELECT * FROM v1;\nCREATE VIEW v4 AS SELECT * FROM v2 UNION ALL SELECT * FROM v2;\nSELECT * FROM v4 LIMIT 3;\nThe problem seems to have been introduced by check-ins [3ef468e7046b209]\nor [a79786a961dba8] on 2008-07-01.  The problem first appeared in version\n3.6.1.  The problem was detected during internal testing and has never\nbeen seen in the wild.\ndrh added on 2013-01-29 23:32:51:\nA related problem:  The following SQL leaks memory - lookaside memory in\nparticular which will result in an assert() fault when run with SQLITE_DEBUG.\nCREATE TABLE t1(x);\nINSERT INTO t1 VALUES(1),(2);\nSELECT z FROM (\n    SELECT y AS z FROM (SELECT x AS y FROM t1)\n    UNION ALL\n    SELECT y+10 FROM (SELECT x AS y FROM t1)\n)\nLIMIT 3 OFFSET 2;",
+  "date": "2013-01-28 19:34:3012.53 years ago",
+  "vulnerable_version": "3.7.15.2",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t2(a INTEGER, b TEXT, c REAL, d BOOLEAN DEFAULT FALSE);",
+    "INSERT INTO t2 VALUES(1, 'test', 3.14, NULL), (2, 'example', 2.71, TRUE), (3, 'sample', NULL, FALSE);",
+    "CREATE VIEW v3 AS SELECT a, b || ' updated' AS b_updated FROM t2 WHERE c IS NOT NULL;",
+    "CREATE VIEW v5 AS SELECT * FROM v3 UNION ALL SELECT a, 'fallback' FROM t2 WHERE d = FALSE;",
+    "SELECT * FROM v5 LIMIT 2 OFFSET 1;"
+  ],
+  "key_bug_features": [
+    "LIMIT fails in nested views with UNION ALL"
+  ]
+}

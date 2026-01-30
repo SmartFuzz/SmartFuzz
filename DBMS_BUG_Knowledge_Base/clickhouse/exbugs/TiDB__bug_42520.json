@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/42520",
+  "title": "Bad error message for DROP PARTITION of non-existing partition",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n\n```\ncreate table t (a int) partition by range (a) (partition p0 values less than (1000000));\nalter table t drop partition pNonExisting;\n```\n\nThe issue is that the number of remaining partitions are checked before the list of partitions is verified.\n\n**Note that we are currently bug compatible with MySQL** :)\n\n### 2. What did you expect to see? (Required)\n```\ntidb> create table t (a int) partition by range (a) (partition p0 values less than (1000000));\nQuery OK, 0 rows affected (0.02 sec)\n\ntidb> alter table t drop partition pNonExisting;\nERROR 1507 (HY000): Error in list of partitions to DROP\n```\n\n### 3. What did you see instead (Required)\n```\ntidb> create table t (a int) partition by range (a) (partition p0 values less than (1000000));\nQuery OK, 0 rows affected (0.02 sec)\n\ntidb> alter table t drop partition pNonExisting;\nERROR 1508 (HY000): Cannot remove all partitions, use DROP TABLE instead\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n```\ntidb_version(): Release Version: v7.1.0-alpha-25-gcc02f50146\nEdition: Community\nGit Commit Hash: cc02f501467181a2b3c62ec7736ebf1fd88c497e\nGit Branch: master\nUTC Build Time: 2023-03-23 09:33:25\nGoVersion: go1.20.2\nRace Enabled: false\nTiKV Min Version: 6.2.0-alpha\nCheck Table Before Drop: false\nStore: unistore\n```",
+  "date": "2023-03-23T09:39:07Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (id Int32, name String) ENGINE = MergeTree() ORDER BY id PARTITION BY intDiv(id, 100);",
+    "CREATE TABLE t2 (value Decimal(10, 2)) ENGINE = MergeTree() ORDER BY value PARTITION BY intDiv(toUInt64(value), 1000);",
+    "ALTER TABLE t1 DROP PARTITION 1;",
+    "INSERT INTO t2 (value) VALUES (500.00);",
+    "SELECT * FROM t2 WHERE value IS NULL;"
+  ],
+  "key_bug_features": [
+    "Dropping non-existing partition without prior verification"
+  ]
+}

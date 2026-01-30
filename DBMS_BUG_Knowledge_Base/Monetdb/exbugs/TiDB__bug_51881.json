@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/51881",
+  "title": "Tikv several time/date realted function inconsistent behavior with tidb",
+  "description": "**Case 1**\r\nset tidb_opt_projection_push_down = 'on';\r\ncreate table t1 (d date, dt datetime, t timestamp, c char(10));\r\ninsert ignore into t1 values (\"0000-00-00\", \"0000-00-00\", \"0000-00-00\", \"0000-00-00\");\r\nselect dayofmonth(\"0000-00-00\"),dayofmonth(d),dayofmonth(dt),dayofmonth(t),dayofmonth(c) from t1;\r\n--Expect\r\ndayofmonth(\"0000-00-00\")        dayofmonth(d)   dayofmonth(dt)  dayofmonth(t)   dayofmonth(c)\r\nNULL    0       0       0       NULL\r\n--Actual\r\ndayofmonth(\"0000-00-00\")        dayofmonth(d)   dayofmonth(dt)  dayofmonth(t)   dayofmonth(c)\r\nNULL    0       0       0       0\r\n\r\nselect month(\"0000-00-00\"),month(d),month(dt),month(t),month(c) from t1;\r\n--Expect\r\nmonth(\"0000-00-00\")     month(d)        month(dt)       month(t)        month(c)\r\nNULL    0       0       0       NULL\r\n--Actual\r\nmonth(\"0000-00-00\")     month(d)        month(dt)       month(t)        month(c)\r\nNULL    0       0       0       0\r\n\r\nselect year(\"0000-00-00\"),year(d),year(dt),year(t),year(c) from t1;\r\n--Expect\r\nyear(\"0000-00-00\")      year(d) year(dt)        year(t) year(c)\r\nNULL    0       0       0       NULL\r\n--Actual\r\nyear(\"0000-00-00\")      year(d) year(dt)        year(t) year(c)\r\nNULL    0       0       0       0\r\n\r\n**Case 2**\r\nset tidb_opt_projection_push_down = 'on';\r\ncreate table t(c varchar(100));\r\ninsert into t values ('2020-02-30'); \r\nselect date_format(c, '%d') from t;\r\n--Expect\r\ndate_format(c, '%d')\r\n30\r\n--Actual\r\ndate_format(c, '%d')\r\nNULL\r\n\r\n**Case 3**\r\nset tidb_opt_projection_push_down = 'on';\r\nCREATE TABLE t1 ( auto int(5) unsigned NOT NULL auto_increment, time_stamp timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY (auto));\r\ninsert into t1 values (10,CURRENT_TIMESTAMP);\r\ninsert into t1 values (NULL,CURRENT_TIMESTAMP);\r\nselect auto c0, mod(floor(time_stamp/1000000),1000000)-mod(curdate(),1000000) c1 from t1;\r\n--Expect\r\nc0, c1\r\n10,0\r\n11,0\r\n--Actual\r\nc0, c1\r\n10,0.0000\r\n11,0.0000\r\n\r\n### 1. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n| Release Version: v7.4.0-alpha-2012-gfe01d11df6-dirty\r\nEdition: Community\r\nGit Commit Hash: https://github.com/pingcap/tidb/commit/fe01d11df67ca60573b028ed4c9bc52db9a17a7e\r\nGit Branch: div_increase_prec\r\nUTC Build Time: 2024-03-15 08:10:07\r\n",
+  "date": "2024-03-19T03:46:49Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE test_dates (id INT PRIMARY KEY, invalid_date DATE, valid_date DATE);",
+    "INSERT INTO test_dates VALUES (1, '0000-00-00', '2023-01-01');",
+    "SELECT DAY(invalid_date), DAY(valid_date) FROM test_dates;",
+    "CREATE TABLE test_strings (str VARCHAR(50));",
+    "INSERT INTO test_strings VALUES ('2020-02-30'), ('2021-03-15');",
+    "SELECT str, CASE WHEN str LIKE '%-%' THEN DATE_PART('day', TO_DATE(str, 'YYYY-MM-DD')) ELSE NULL END AS day_part FROM test_strings;"
+  ],
+  "key_bug_features": [
+    "inconsistent date/time function behavior with invalid date inputs"
+  ]
+}

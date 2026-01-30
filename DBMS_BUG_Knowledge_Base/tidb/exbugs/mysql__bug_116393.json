@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=116393",
+  "title": "Degrading performance of MD5(), SHA2() functions",
+  "description": "The speed of hashing functions MD5 and SHA2 is degrading with the MySQL version going up.\r\n\r\nI used SAME config, SAME machine, and no databases.\r\n#First function\r\nSELECT BENCHMARK(10000000,md5(now()));\r\n#Second function\r\nSELECT BENCHMARK(1000000, CONCAT(SHA2(CONCAT('MySQL', 'BenchMark'), 256), POW(12345.6789, 2.71828), RAND(), MD5(NOW())));\r\n\r\nSpeed tests using different MySQL versions (duration in seconds)\r\n\r\n                            First MD5    Second Misc\r\n5.6.50 glibc 2.12           1.49         1.95\r\n8.0.21 glibc 2.17 minimal   1.46         2.17\r\n8.0.30 glibc 2.17 minimal   2.44         2.45\r\n8.0.33 glibc 2.17 minimal   2.47         2.29\r\n8.0.35 glibc 2.17 minimal   7.77         3.35\r\n8.0.37 glibc 2.17 minimal   7.72         3.29\r\n8.0.39 glibc 2.17 minimal   7.73         3.25\r\n8.0.40 glibc 2.17 minimal   7.82         3.19\r\n8.0.40 glibc 2.17           8.38         3.48\r\n8.0.40 glibc 2.28           8.26         3.47\r\n\r\nSuch kinds of functions should be kept as fast as possible.\r\n\r\nCPU:\r\nIntel(R) Xeon(R) Gold 6348 CPU @ 2.60GHz\nHow to repeat:\n#First function\r\nSELECT BENCHMARK(10000000,md5(now()));\r\n\r\n#Second function\r\nSELECT BENCHMARK(1000000, CONCAT(SHA2(CONCAT('MySQL', 'BenchMark'), 256), POW(12345.6789, 2.71828), RAND(), MD5(NOW())));",
+  "date": "2024-10-17 12:46:00",
+  "vulnerable_version": "8.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_hashing (id INT PRIMARY KEY AUTO_INCREMENT, data VARCHAR(255) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_hashing (data) VALUES (CONCAT('Test', MD5('Sample Data'))), (NULL), (CONCAT('Boundary', SHA2('Edge Case', 256)));",
+    "SELECT id, MD5(data) AS md5_hash FROM test_hashing WHERE data IS NOT NULL;",
+    "SELECT COUNT(*) FROM test_hashing WHERE SHA2(data, 256) IS NOT NULL;",
+    "SELECT BENCHMARK(10000000, SHA2(CONCAT(data, 'Extra'), 256)) FROM test_hashing;"
+  ],
+  "key_bug_features": [
+    "Degrading performance of MD5() and SHA2() functions"
+  ]
+}

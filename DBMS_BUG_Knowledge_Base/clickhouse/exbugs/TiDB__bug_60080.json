@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/60080",
+  "title": "Unexpected Empty Result When Adding OR Condition in TiDB",
+  "description": "## Bug Report\n### 1. Minimal reproduce step (Required)\nThe following SQL statements create the necessary tables and insert sample data:\n```\nDROP TABLE IF EXISTS `t0`;\nCREATE TABLE `t0` (\n  `c0` int\n) ;\n\nINSERT INTO `t0` VALUES (61);\n\nDROP TABLE IF EXISTS `t1`;\nCREATE TABLE `t1` (\n  `c1` int,\n  `c2` double \n);\nINSERT INTO `t1` VALUES (NULL,0);\n\nDROP TABLE IF EXISTS `t2`;\nCREATE TABLE `t2` (\n  `c3` varchar(100),\n  `c4` varchar(100)\n) ;\n\nINSERT INTO `t2` VALUES (NULL,NULL);\n```\n\nThen, executing the following two queries produces inconsistent behavior, which is unexpected:\nQuery 1:\n```\nselect  \n  subq_0.c_0 as c_0, \n  subq_0.c_1 as c_1, \n  subq_0.c_2 as c_2\nfrom \n  (select  \n        ref_1.c0 as c_0, \n        ref_0.c2 as c_1,  \n        ref_0.c2 as c_2\n      from \n        (t1 as ref_0\n          right join (t0 as ref_1\n            )\n          on (ref_0.c1 = ref_1.c0 ))\n       ) as subq_0\nwhere ((('' = ( \n      select  \n          (' n1`')  as c_0\n        from \n          (t2 as ref_3\n            left join t2 as ref_4\n            on (ref_3.c4 = ref_4.c3 ))\n        where ((subq_0.c_1) <> (subq_0.c_2)) \n          or (true)\n        order by c_0 desc\n         limit 1)) is null)) \n```\nOutput:\n+------+------+------+\n| c_0  | c_1  | c_2  |\n+------+------+------+\n|   61 | NULL | NULL |\n+------+------+------+\n1 row in set (0.01 sec)\n\nQuery 1:\n```\nselect  \n  subq_0.c_0 as c_0, \n  subq_0.c_1 as c_1, \n  subq_0.c_2 as c_2\nfrom \n  (select  \n        ref_1.c0 as c_0, \n        ref_0.c2 as c_1,  \n        ref_0.c2 as c_2\n      from \n        (t1 as ref_0\n          right join (t0 as ref_1\n            )\n          on (ref_0.c1 = ref_1.c0 ))\n       ) as subq_0\nwhere (('' = ( \n      select  \n          (' n1`')  as c_0\n        from \n          (t2 as ref_3\n            left join t2 as ref_4\n            on (ref_3.c4 = ref_4.c3 ))\n        where ((subq_0.c_1) <> (subq_0.c_2)) \n          or (true)\n        order by c_0 desc\n         limit 1)) is null)\n     or ('' = ( \n      select  \n          (' n1`')  as c_0\n        from \n          (t2 as ref_3\n            left join t2 as ref_4\n            on (ref_3.c4 = ref_4.c3 ))\n        where ((subq_0.c_1) <> (subq_0.c_2)) \n          or (true)\n        order by c_0 desc\n         limit 1))\n```\nOutput:\nEmpty set (0.01 sec)\n\n### 2. What did you expect to see? (Required)\nSince the second query extends the condition from the first query with an additional OR clause, it should return at least the same rows as the first query, or possibly more.\n\n### 3. What did you see instead (Required)\nThe first query returns one row (61, NULL, NULL).\nThe second query, which adds an additional OR condition, unexpectedly returns an empty set.\n\n### 4. What is your TiDB version? (Required)\n8.0.11-TiDB\nmaster b6141ec589ed8e73176692dc982a210ad7cf070b\n\nGoVersion: go1.23.4\nRace Enabled: false\nCheck Table Before Drop: false\nStore: unistore |\n",
+  "date": "2025-03-14T03:48:33Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t3;",
+    "CREATE TABLE t3 ( c5 Nullable(Int32), c6 Nullable(String) );",
+    "INSERT INTO t3 VALUES (NULL, 'test'), (42, 'example');",
+    "SELECT * FROM t3 WHERE c5 IS NULL OR c6 = 'test';",
+    "SELECT * FROM t3 WHERE c5 = 42 OR (SELECT COUNT(*) FROM t3 WHERE c6 IS NOT NULL) > 0;"
+  ],
+  "key_bug_features": [
+    "Adding OR condition leads to unexpected empty result"
+  ]
+}

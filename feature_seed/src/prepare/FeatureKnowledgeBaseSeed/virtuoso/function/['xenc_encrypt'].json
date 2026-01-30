@@ -1,0 +1,11 @@
+[
+    "CREATE TABLE soap_requests (id INTEGER PRIMARY KEY, request_body TEXT, encryption_status TEXT);",
+    "INSERT INTO soap_requests (request_body, encryption_status) VALUES ('<Envelope><Body><Data>TestData</Data></Body></Envelope>', 'unencrypted');",
+    "INSERT INTO soap_requests (request_body, encryption_status) VALUES ('<Envelope><Body><Data>AnotherTestData</Data></Body></Envelope>', 'unencrypted');",
+    "WITH encrypted_request AS (SELECT xenc_encrypt(request_body, 11, dsig_template_ext(...), vector(), '/Envelope/Body', xenc_key_inst_create('myAES', xenc_key_inst_create('rsa-test')), 'Content') AS encrypted_body FROM soap_requests WHERE encryption_status = 'unencrypted') SELECT * FROM encrypted_request;",
+    "UPDATE soap_requests SET encryption_status = 'encrypted' WHERE id = 1;",
+    "SELECT id, request_body, (SELECT COUNT(*) FROM soap_requests WHERE encryption_status = 'encrypted') AS encrypted_count FROM soap_requests;",
+    "SELECT r.id, r.request_body, xenc_encrypt(r.request_body, 11, dsig_template_ext(...), vector(), '/Envelope/Body', xenc_key_inst_create('myAES', xenc_key_inst_create('rsa-test')), 'Content') AS encrypted_body FROM soap_requests r WHERE r.encryption_status = 'unencrypted' AND EXISTS (SELECT 1 FROM soap_requests WHERE encryption_status = 'encrypted');",
+    "SELECT r.id, r.request_body FROM soap_requests r JOIN (SELECT id FROM soap_requests WHERE encryption_status = 'unencrypted') AS u ON r.id = u.id;",
+    "DELETE FROM soap_requests WHERE encryption_status = 'encrypted' AND id IN (SELECT id FROM soap_requests WHERE request_body IS NOT NULL);"
+]

@@ -1,0 +1,10 @@
+CREATE TABLE procedures (id SERIAL PRIMARY KEY, name VARCHAR(255), coverage_data JSON);
+INSERT INTO procedures (name, coverage_data) VALUES ('proc1', json_build_object('line1', 5, 'line2', 10)), ('proc2', json_build_object('line1', 3, 'line2', 7));
+SELECT pldbg_stats(NULL) AS coverage_stats FROM procedures;
+SELECT json_array_length(SELECT pldbg_stats(name) FROM procedures WHERE name IS NOT NULL) AS proc1_coverage_length;
+SELECT pg_catalog.count(*) FROM (SELECT pldbg_stats(name) AS stats FROM procedures WHERE json_array_length(coverage_data) > 0) subq GROUP BY stats;
+SELECT COUNT(*) FROM (SELECT DISTINCT pldbg_stats(name) AS stats FROM procedures WHERE json_array_length(coverage_data) = 0) AS subq HAVING COUNT(*) > 0;
+WITH counted_stats AS (SELECT name, json_array_length(pldbg_stats(name)) AS line_count FROM procedures) SELECT name, CASE WHEN line_count IS NULL THEN 'No Coverage' ELSE 'Coverage present' END AS coverage_status FROM counted_stats;
+SELECT pldbg_stats(name) FROM procedures WHERE json_array_length(coverage_data) IS NOT NULL AND name IN (SELECT name FROM procedures WHERE name NOT LIKE '%proc%');
+INSERT INTO procedures (name, coverage_data) VALUES (NULL, json_build_object('line1', NULL));
+SELECT pldbg_stats('proc1') AS proc1_stats, json_array_length(pldbg_stats('proc1')) AS length_stats FROM procedures WHERE id = 1;

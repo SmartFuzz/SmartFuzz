@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=105052",
+  "title": "GROUP_CONCAT prematurely truncates with UNION",
+  "description": "GROUP_CONCAT output is truncated prematurely when used directly with UNION (ALL). This is regardless of hitting the group_concat_max_len or not. See How to repeat for details.\nHow to repeat:\n-- Setup with group_concat_max_len = 1024\r\ndrop table if exists t1;\r\ncreate table if not exists `t1`(`a` int,`b` text)engine=innodb default charset=utf8;\r\ninsert into t1(a,b) values (2,repeat('a',500)),(2,repeat('b',500));\r\ninsert into t1(a,b) values (3,repeat('c',1000)),(3,repeat('d',1000));\r\n\r\n-- Without UNION, returns full 1001 or 1024 char for gcb as expected \r\nselect a, group_concat(`b`) as gcb from `t1` group by a;\r\n\r\n-- With UNION, prematurely truncates gcb from t1 at 341 char on both from t1\r\nselect a, group_concat(`b`) as gcb from `t1` group by a\r\nunion select 99, 'sdfs';\nSuggested fix:\nOne fix is to wrap the statement(s) with the GROUP_CONCAT in another SELECT as shown below:\r\n\r\n-- Fix: returns 1001 and 1024 char as expected for gcb\r\nselect * from (\r\n\tselect a, group_concat(`b`) as gcb from `t1` group by a) a1\r\nunion select 99, 'sdfs';",
+  "date": "2021-09-27 14:46:00",
+  "vulnerable_version": "5.7.34, 5.7.35",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t2;",
+    "CREATE TABLE t2 (id INT, name VARCHAR(255), description TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t2 (id, name, description) VALUES (1, 'Test', REPEAT('x', 600)), (2, 'Sample', REPEAT('y', 700));",
+    "SELECT id, GROUP_CONCAT(name) AS concatenated_names FROM t2 GROUP BY id;",
+    "SELECT * FROM (SELECT id, GROUP_CONCAT(description) AS concatenated_descriptions FROM t2 GROUP BY id) AS a1 UNION SELECT 3, 'Extra data';"
+  ],
+  "key_bug_features": [
+    "GROUP_CONCAT truncates when used with UNION"
+  ]
+}

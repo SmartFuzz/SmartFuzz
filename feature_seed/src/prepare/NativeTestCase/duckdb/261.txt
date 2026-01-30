@@ -1,0 +1,18 @@
+PRAGMA enable_verification;
+ATTACH '__TEST_DIR__/test_new_compression.db' AS db1 (STORAGE_VERSION 'v1.0.0');
+SET force_compression='roaring';
+CREATE TABLE db1.tbl AS SELECT CASE WHEN i%2=0 THEN NULL ELSE i END i FROM range(10000) t(i);
+SET force_compression='zstd';
+CREATE TABLE db1.str_tbl AS SELECT STRING_AGG('long_string_' || i, '-') FROM range(1000) t(i);
+SELECT COUNT(*)>0 FROM pragma_storage_info('db1.tbl') WHERE compression='Roaring';
+SELECT COUNT(*)>0 FROM pragma_storage_info('db1.str_tbl') WHERE compression='ZSTD';
+DETACH db1;
+ATTACH '__TEST_DIR__/test_new_compression.db' AS db1 (STORAGE_VERSION 'v1.2.0');
+SET force_compression='roaring';
+CREATE TABLE db1.tbl2 AS FROM db1.tbl;
+CHECKPOINT db1;
+SET force_compression='zstd';
+CREATE TABLE db1.str_tbl2 AS FROM db1.str_tbl;
+CHECKPOINT db1;
+SELECT COUNT(*)>0 FROM pragma_storage_info('db1.tbl2') WHERE compression='Roaring';
+SELECT COUNT(*)>0 FROM pragma_storage_info('db1.str_tbl2') WHERE compression='ZSTD';

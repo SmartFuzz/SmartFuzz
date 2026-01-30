@@ -1,0 +1,17 @@
+{
+    "function": "{fn IFNULL(arg1, arg2)}",
+    "operator": "time(3) with time zone",
+    "sql_array": [
+        "CREATE TABLE test_timestamps (id SERIAL PRIMARY KEY, event_time TIMESTAMP, time_zone_info TIME(3) WITH TIME ZONE, description VARCHAR(100));",
+        "INSERT INTO test_timestamps (event_time, time_zone_info, description) VALUES (CURRENT_TIMESTAMP, time(3) with time zone '15:30:00.000+00:00', 'Event A');",
+        "INSERT INTO test_timestamps (event_time, time_zone_info, description) VALUES (CURRENT_TIMESTAMP, NULL, 'Event B');",
+        "SELECT id, {fn IFNULL(time_zone_info, 'UTC')} AS resolved_time_zone FROM test_timestamps WHERE event_time IS NOT NULL;",
+        "SELECT id, {fn IFNULL(NULL, 'Default Description')} AS event_description FROM test_timestamps WHERE {fn IFNULL(time_zone_info, time(3) with time zone '12:00:00.000+01:00')} = 'UTC';",
+        "SELECT id, event_time, {fn IFNULL(event_time, time(3) with time zone '23:59:59.999+00:00')} AS adjusted_time FROM test_timestamps WHERE event_time > (SELECT MIN(event_time) FROM test_timestamps);",
+        "CREATE TABLE related_events (event_id INT, related_id INT, FOREIGN KEY (event_id) REFERENCES test_timestamps(id));",
+        "INSERT INTO related_events (event_id, related_id) VALUES (1, 2), (1, NULL);",
+        "SELECT te.id, {fn IFNULL(REPLACE(te.description, 'Event', 'Test'), 'No Description')} AS event_info FROM test_timestamps te JOIN related_events re ON te.id = re.event_id WHERE re.related_id IS NOT NULL;",
+        "SELECT id, event_time, {fn IFNULL(time(3) with time zone '00:00:00.000+00:00', event_time::time WITH TIME ZONE)} AS converted_time FROM test_timestamps GROUP BY event_time HAVING COUNT(*) > 1;",
+        "SELECT te.id, te.event_time, {fn IFNULL(time(3) with time zone CONVERT(te.event_time, CHAR), time(3) with time zone '01:00:00.000+02:00')} AS coerced_time FROM test_timestamps te WHERE te.event_time IS NOT NULL ORDER BY adjusted_time DESC;"
+    ]
+}

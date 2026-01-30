@@ -1,0 +1,26 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14463",
+  "title": "Text arrays not escaped when serialized to text",
+  "vulnerable_database": "DuckDB",
+  "date": "2024-10-21 09:54:15",
+  "vulnerable_version": "",
+  "description": "### What happens?\r\n\r\nWhen a text array is serialized to text (e.g. during CSV write), the strings are not escaped, which means the serialized string cannot be coherently deserialized.\r\n\r\n### To Reproduce\r\n\r\n```sql\r\nselect ['a,c', 'b']::text as arr;\r\n```\r\n```text\r\n┌──────────┐\r\n│   arr    │\r\n│ varchar  │\r\n├──────────┤\r\n│ [a,c, b] │\r\n└──────────┘\r\n```\r\n```sql\r\nselect len(['a,c', 'b']) as before, len(['a,c', 'b']::text::text[]) as after;\r\n```\r\n```text\r\n┌────────┬───────┐\r\n│ before │ after │\r\n│ int64  │ int64 │\r\n├────────┼───────┤\r\n│      2 │     3 │\r\n└────────┴───────┘\r\n```\r\n\r\n### OS:\r\n\r\nUbuntu 22.04 x86_64\r\n\r\n### DuckDB Version:\r\n\r\n1.1.2\r\n\r\n### DuckDB Client:\r\n\r\nCLI\r\n\r\n### Hardware:\r\n\r\n_No response_\r\n\r\n### Full Name:\r\n\r\nMarco Slot\r\n\r\n### Affiliation:\r\n\r\nCrunchy Data\r\n\r\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\r\n\r\nI have tested with a stable release\r\n\r\n### Did you include all relevant data sets for reproducing the issue?\r\n\r\nYes\r\n\r\n### Did you include all code required to reproduce the issue?\r\n\r\n- [X] Yes, I have\r\n\r\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\r\n\r\n- [X] Yes, I have",
+  "poc": [
+    "select ['a,c', 'b']::text as arr;",
+    "select len(['a,c', 'b']) as before, len(['a,c', 'b']::text::text[]) as after;",
+    "select '''' || list_reduce(['a,c', 'b'], (x, y) -> x || ''', ''' || y) || '''' as arr;",
+    "select '''' || list_reduce(['a,''c', 'b'], (x, y) -> x || ''', ''' || y) || '''' as arr;",
+    "select ['hello, world'] arr) to '/tmp/test.csv';",
+    "select len(arr) from read_csv('/tmp/test.csv', columns={'arr':'TEXT[]'});"
+  ],
+  "key_bug_features": [
+    "Text arrays not escaped during serialization to text"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INTEGER PRIMARY KEY, arr TEXT[] NOT NULL);",
+    "INSERT INTO test_table (id, arr) VALUES (1, ['a,c', 'b']);",
+    "SELECT arr, len(arr) AS arr_length FROM test_table WHERE id = 1;",
+    "SELECT '''' || list_reduce(arr, (x, y) -> x || ''', ''' || y) || '''' AS escaped_arr FROM test_table;",
+    "SELECT len(['hello, world']) AS before, len(['hello, world']::text::text[]) AS after;"
+  ]
+}

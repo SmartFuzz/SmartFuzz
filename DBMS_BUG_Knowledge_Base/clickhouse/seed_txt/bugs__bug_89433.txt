@@ -1,0 +1,22 @@
+CREATE TABLE tbl1
+(
+    `id1` LowCardinality(String),
+    `id2` LowCardinality(String),
+    `v` Int64,
+    `created_at` DateTime DEFAULT now()
+)
+ENGINE = MergeTree
+ORDER BY (id1, id2, v);
+INSERT INTO tbl1 VALUES ('x', 'y', 10), ('x', 'z', 20), (NULL, 'y', 30);
+CREATE TABLE join_engine1
+(
+    `id1` LowCardinality(String),
+    `id2` LowCardinality(String),
+    `v` Int64,
+    `status` Enum8('active' = 1, 'inactive' = 2)
+)
+ENGINE = Join(ANY, LEFT, id1, id2);
+INSERT INTO join_engine1 VALUES ('x', 'y', 10, 'active'), ('x', 'z', 20, 'inactive');
+SELECT uniq(id2) AS count
+FROM tbl1
+WHERE joinGet('join_engine1', 'v', id1, id2) = v AND id1 IS NOT NULL;

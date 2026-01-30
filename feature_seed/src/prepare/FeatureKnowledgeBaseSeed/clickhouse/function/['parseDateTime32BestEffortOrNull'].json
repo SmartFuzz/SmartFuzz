@@ -1,0 +1,12 @@
+[
+    "CREATE TABLE events (event_time String) ENGINE = MergeTree() ORDER BY event_time;",
+    "INSERT INTO events VALUES ('2023-10-01 12:00:00'), ('invalid_date'), ('2023-10-02 15:30:45'), ('2023-10-03 08:00:00');",
+    "SELECT parseDateTime32BestEffortOrNull(event_time, 'UTC') AS event_timestamp FROM events;",
+    "CREATE TABLE processed_events AS SELECT parseDateTime32BestEffortOrNull(event_time, 'UTC') AS event_timestamp FROM events;",
+    "SELECT * FROM processed_events WHERE event_timestamp IS NOT NULL;",
+    "CREATE TABLE other_events (event_id UInt32, event_time String) ENGINE = MergeTree() ORDER BY event_id;",
+    "INSERT INTO other_events VALUES (1, '2023-10-01 10:00:00'), (2, '2023-10-02 14:30:00'), (3, 'invalid_format');",
+    "SELECT a.event_id, parseDateTime32BestEffortOrNull(a.event_time, 'UTC') AS event_timestamp, b.event_timestamp FROM other_events a JOIN processed_events b ON a.event_id = 1;",
+    "SELECT parseDateTime32BestEffortOrNull('2023-10-10 09:15:00', 'UTC') AS valid_timestamp UNION SELECT parseDateTime32BestEffortOrNull('wrong_format') AS invalid_timestamp;",
+    "SELECT COUNT(*) FROM (SELECT parseDateTime32BestEffortOrNull(event_time, 'UTC') AS event_timestamp FROM events) WHERE event_timestamp IS NULL;"
+]

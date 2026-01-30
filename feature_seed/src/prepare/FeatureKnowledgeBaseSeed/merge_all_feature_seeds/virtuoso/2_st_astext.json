@@ -1,0 +1,15 @@
+CREATE TABLE geo_data (id INT PRIMARY KEY, geo GEOMETRY, attribute VARCHAR(100));
+INSERT INTO geo_data (id, geo, attribute) VALUES (1, ST_GeomFromText('POINT(1 1)'), 'point1'), (2, ST_GeomFromText('POINT(2 2)'), 'point2');
+SELECT a.id, bif:crc64(ST_astext(a.geo)) AS crc_value FROM geo_data a WHERE bif:crc64(ST_astext(a.geo)) IS NOT NULL;
+SELECT b.id, COUNT(*) AS geo_count FROM geo_data b JOIN (SELECT geo FROM geo_data WHERE NULLIF(ST_astext(geo), '') IS NOT NULL) AS subq ON b.geo = subq.geo GROUP BY b.id HAVING geo_count > 1;
+SELECT DISTINCT ST_astext(g.geo), bif:crc64(ST_astext(g.geo)) AS crc_hash FROM geo_data g WHERE bif:crc64(ST_astext(g.geo)) IN (SELECT bif:crc64(ST_astext(g2.geo)) FROM geo_data g2 WHERE g2.id <> g.id);
+CREATE TABLE temp_geo (temp_id INT PRIMARY KEY, geom GEOMETRY);
+INSERT INTO temp_geo (temp_id, geom) SELECT g.id, ST_GeomFromText(CONCAT('POINT(', g.id * -1, ' ', g.id, ')')) FROM geo_data g WHERE g.id < 5;
+SELECT COUNT(*) AS null_handling_count FROM temp_geo WHERE geom IS NULL OR bif:crc64(ST_astext(geom)) IS NULL;
+UPDATE geo_data SET geo = ST_GeomFromText('POINT(3 3)') WHERE id = 1;
+SELECT ST_astext(NULLIF(ST_GeomFromText('POINT(NAN NAN)'), null)) AS boundary_case;
+SELECT g1.id, ST_astext(g1.geo) AS geo_text, bif:crc64(ST_astext(g2.geo)) AS crc_value FROM geo_data g1 LEFT JOIN geo_data g2 ON ST_astext(g1.geo) = ST_astext(g2.geo) WHERE g1.id <> g2.id;
+SELECT g.id, ST_astext(g.geo) AS geo_text, SUM(bif:crc64(ST_astext(g.geo))) OVER (PARTITION BY g.id) AS total_crc FROM geo_data g;
+CREATE TABLE complex_geo (c_id INT, c_geom GEOMETRY, CONSTRAINT geom_check CHECK (ST_GeometryType(c_geom) IN ('POINT', 'LINESTRING')));
+INSERT INTO complex_geo (c_id, c_geom) VALUES (1, ST_GeomFromText('POINT(10 10)'), (SELECT COALESCE(ST_GeomFromText('LINESTRING(0 0, 5 5)'), NULL)));
+SELECT DISTINCT c_id, bif:crc64(ST_astext(c_geom)) AS crc_hash FROM complex_geo WHERE c_id IN (SELECT c_id FROM complex_geo WHERE ST_astext(c_geom) IS NOT NULL);

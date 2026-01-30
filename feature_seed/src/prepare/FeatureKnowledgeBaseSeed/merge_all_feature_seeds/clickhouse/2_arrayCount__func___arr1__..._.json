@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id UInt32, values Array(Int32), status String, created_at DateTime, score Float64 DEFAULT 0.0);
+INSERT INTO test_table (id, values, status, created_at) VALUES (1, [1, 2, 0, -3, 5], 'active', now()), (2, [0, 0, 0], 'inactive', now());
+SELECT id, arrayCount(x -> x > 0, values) AS positive_count FROM test_table WHERE status = 'active';
+SELECT id, arrayCount(x -> x IN (SELECT value FROM (SELECT 1 AS value UNION ALL SELECT 2 UNION ALL SELECT 5)), values) AS matching_count FROM test_table WHERE status = 'active' GROUP BY id HAVING matching_count > 1;
+SELECT id, arrayCount(x -> x IS NULL, values) AS null_count FROM test_table GROUP BY id HAVING null_count = 0;
+CREATE TABLE temp_scores (user_id UInt32, score Float32);
+INSERT INTO temp_scores (user_id, score) VALUES (1, NULL), (2, 99.99), (3, 0.0);
+SELECT t.id, arrayCount(x -> x IN (SELECT score FROM temp_scores WHERE score IS NOT NULL), t.values) AS valid_scores_count FROM test_table t JOIN temp_scores s ON t.id = s.user_id GROUP BY t.id HAVING valid_scores_count > 0;
+SELECT id, arrayCount(x -> x >= (SELECT min(score) FROM temp_scores), values) AS successful_attempts FROM test_table WHERE created_at < now() GROUP BY id;
+SELECT id, arrayCount(x -> x NOT IN (0, 2) AND s.status IS NOT NULL, values) AS filtered_count FROM test_table s WHERE s.created_at >= '2023-01-01' GROUP BY id HAVING filtered_count > 0;
+SELECT id, arrayCount(x -> toString(x) IN ('1', '2', '3'), CAST(values AS Array(String))) AS string_matched_count FROM test_table GROUP BY id HAVING string_matched_count > 0;

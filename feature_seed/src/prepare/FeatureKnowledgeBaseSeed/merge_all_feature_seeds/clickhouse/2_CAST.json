@@ -1,0 +1,10 @@
+CREATE TABLE test_cast_operator (id UInt32, value String, created_at DateTime);
+INSERT INTO test_cast_operator (id, value, created_at) VALUES (1, '2023-10-15 10:00:00', now()), (2, 'invalid-date', now()), (3, '12345', now());
+SELECT id, value, CAST(created_at AS Date) AS date_only, CASE WHEN CAST(value AS Nullable(UInt32)) IS NOT NULL THEN 'Valid' ELSE 'Invalid' END AS validity FROM test_cast_operator;
+SELECT id, value, a > 100 ? CAST(value AS Int32) : CAST(value AS UInt8) AS adjusted_value FROM test_cast_operator WHERE a IS NOT NULL;
+SELECT id, a ? CAST(value AS String) : 'NULL' AS output FROM (SELECT id, CAST(value AS Nullable(Int32)) AS a FROM test_cast_operator) GROUP BY id, a;
+SELECT id, COUNT(*) AS value_count, AVG(CAST(value AS Nullable(Float64)) IF(1 > 0, 1.0, NULL) ) AS avg_value FROM test_cast_operator GROUP BY id HAVING avg_value IS NOT NULL;
+CREATE TABLE test_join (id UInt32, ref_id UInt32, status String);
+INSERT INTO test_join (id, ref_id, status) VALUES (1, 1, 'active'), (2, NULL, 'inactive'), (3, 1, 'active');
+SELECT t1.id, t1.value, CAST(NULLIF(t1.value, '') AS Nullable(Int32)) AS safe_value, t2.status FROM test_cast_operator AS t1 LEFT JOIN test_join AS t2 ON t1.id = t2.ref_id WHERE safe_value IS NOT NULL;
+SELECT t1.id, CAST(t1.value AS Nullable(Int32)) AS casted_value, a ? 'Even' : 'Odd' AS even_odd FROM (SELECT id, value, CAST(value AS Int8) AS a FROM test_cast_operator) AS t1 WHERE casted_value IS NOT NULL ORDER BY casted_value;

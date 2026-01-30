@@ -1,0 +1,11 @@
+CREATE TABLE test_data (id UInt32, x Float64, y Float64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_data VALUES (1, 1.0, 2.0), (2, 2.0, 3.0), (3, NULL, 6.0), (4, 4.0, 7.0), (5, 5.0, 8.0), (6, 6.0, NULL);
+SELECT arrayReduce('simpleLinearRegression', x, y) FROM test_data GROUP BY id HAVING x IS NOT NULL;
+SELECT id, x, y, (y - arrayReduce('simpleLinearRegression', x, y).1) AS residual FROM test_data;
+WITH (SELECT arrayReduce('simpleLinearRegression', x, y) FROM test_data) AS coef SELECT id, coef.1 AS k, coef.2 AS b FROM test_data WHERE (x - y) BETWEEN -1 AND 1;
+SELECT SUM(y - (arrayReduce('simpleLinearRegression', x, y.1) * x + arrayReduce('simpleLinearRegression', x, y.2))) AS total_residuals FROM test_data WHERE y IS NOT NULL;
+CREATE TABLE test_data_ext (id UInt32, x Nullable(Float64), y Nullable(Float64)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_data_ext VALUES (1, 1.0, 2.0), (2, 2.0, NULL), (3, NULL, 3.0), (4, NULL, NULL), (5, 5.0, 5.0);
+SELECT arrayReduce('simpleLinearRegression', arrayMap(n -> IF(isNull(n), 0, n), x), arrayMap(n -> IF(isNull(n), 0, n), y)) FROM test_data_ext;
+WITH (SELECT count(*) FROM test_data_ext WHERE x IS NULL) AS null_count SELECT arrayReduce('simpleLinearRegression', x, y) AS regression_results FROM test_data_ext WHERE null_count < 2 GROUP BY y HAVING count(*) > 1;
+SELECT DISTINCT arrayReduce('simpleLinearRegression', x, (y - 5)) AS adjusted_regression FROM test_data_ext GROUP BY id ORDER BY adjusted_regression DESC;

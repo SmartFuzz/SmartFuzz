@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/130",
+  "title": "VOS7 Query execution time estimation way off",
+  "description": "VOS7 2701d3f\nFor this query I get:\n\nVirtuoso 42000 Error The estimated execution time 881833 (sec) exceeds the limit of 80000 (sec).\n\nSPARQL query:\nPREFIX s: <http://schema.org/>\nPREFIX gr: <http://purl.org/goodrelations/v1#>\nPREFIX gml: <http://www.opengis.net/ont/gml#>\nPREFIX adms: <http://www.w3.org/ns/adms#>\nPREFIX skos: <http://www.w3.org/2004/02/skos/core#>\nCONSTRUCT {\n ?kontrola s:geo ?c ;\n      s:title ?objectName;\n      s:description ?desc.\n?c s:latitude ?lat; s:longitude ?lng .\n}\nFROM <http://linked.opendata.cz/resource/dataset/coi.cz/kontroly-sankce-zakazy>\nFROM <http://linked.opendata.cz/resource/dataset/geocoordinates/google/schema.org>\nFROM <http://linked.opendata.cz/resource/dataset/ares/or>\nWHERE {\n?kontrola a s:CheckAction ;\n      s:location ?address ;\n      s:location/s:geo ?c ;\n      s:object ?object.\n?object adms:identifier/skos:notation ?ic .\nOPTIONAL {?object gr:legalName ?objectName .}\n?c s:longitude ?lng;\n        s:latitude ?lat .\n?address s:streetAddress ?street;\n              s:addressLocality ?locality;\n              s:postalCode ?psc .\nBIND (CONCAT('<a href=\"', ?object, '\">', COALESCE(CONCAT(?ic, ': ', ?objectName), ?ic), '</a>\\n', ?street, '\\n', ?psc, ' ', ?locality) as ?desc)\n}\nIt takes about 10-20 seconds to execute (when I set the estimation limit above 900 000 seconds)",
+  "date": "2014-02-03 07:39:55",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE kontrola (id INT PRIMARY KEY, geo VARCHAR(255), title VARCHAR(255), description TEXT);",
+    "CREATE TABLE object (id INT PRIMARY KEY, identifier VARCHAR(255), legalName VARCHAR(255));",
+    "INSERT INTO kontrola (id, geo, title, description) VALUES (1, 'Point(30 10)', 'Check 1', NULL);",
+    "INSERT INTO object (id, identifier, legalName) VALUES (1, 'IC-001', 'Object Name 1');",
+    "SELECT k.title, COALESCE(o.legalName, 'No Name') AS objectName FROM kontrola k LEFT JOIN object o ON k.id = o.id WHERE k.geo IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Estimated execution time exceeds specified limit"
+  ]
+}

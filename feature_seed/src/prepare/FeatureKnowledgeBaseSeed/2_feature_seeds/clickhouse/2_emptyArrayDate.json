@@ -1,0 +1,9 @@
+CREATE TABLE test_table (id Int32, date_col Date, value_col Float64, array_col Array(Date));
+INSERT INTO test_table VALUES (1, '2023-01-01', 1.5, emptyArrayDate()), (2, '2023-01-02', NULL, emptyArrayDate()), (3, NULL, 3.5, emptyArrayDate());
+SELECT id, date_col, value_col, array_col FROM test_table WHERE value_col GLOBAL IN (SELECT max(value_col) FROM test_table WHERE date_col IS NOT NULL) AND date_col IS NOT NULL;
+SELECT id, date_col, value_col, array_col FROM test_table WHERE value_col GLOBAL IN (emptyArrayDate()) AND (value_col IS NULL OR date_col = '2023-01-01');
+SELECT id, date_col, value_col FROM test_table WHERE date_col = (SELECT max(date_col) FROM test_table WHERE value_col > 0) AND value_col GLOBAL IN (SELECT value_col FROM test_table WHERE date_col < '2023-01-03');
+SELECT id, count(*) FROM test_table GROUP BY id HAVING count(*) > 0 AND id GLOBAL IN (SELECT id FROM test_table WHERE date_col < '2023-01-02');
+SELECT id, date_col, value_col FROM (SELECT id, date_col, value_col, array_col FROM test_table) AS sub WHERE value_col GLOBAL IN (SELECT arrayJoin(array_col) FROM test_table WHERE date_col IS NOT NULL);
+CREATE TABLE temp_table AS SELECT id, date_col, toInt32(value_col + 1) as incremented_value FROM test_table WHERE array_col = emptyArrayDate();
+SELECT * FROM temp_table WHERE incremented_value > 2 AND id GLOBAL IN (SELECT DISTINCT id FROM test_table WHERE value_col IS NOT NULL UNION SELECT DISTINCT id FROM test_table WHERE date_col IS NOT NULL);

@@ -1,0 +1,16 @@
+{
+    "function": "toIntervalYear",
+    "operator": "SELECT a OR b",
+    "sql_array": [
+        "CREATE TABLE test_intervals (id Int32, start_date Date, duration String) ENGINE = Memory;",
+        "INSERT INTO test_intervals VALUES (1, toDate('2023-01-01'), '1'), (2, toDate('2022-01-01'), '2'), (3, toDate('2024-01-01'), NULL);",
+        "SELECT id, start_date + toIntervalYear(CAST(duration AS Int32)) AS end_date FROM test_intervals WHERE start_date < toDate('2024-06-15') OR duration IS NULL;",
+        "SELECT end_date, (CASE WHEN duration IS NULL THEN TRUE ELSE duration = '2' END) AS is_duration_two FROM (SELECT start_date + toIntervalYear(COALESCE(CAST(duration AS Int32), 0)) AS end_date, duration FROM test_intervals) HAVING is_duration_two;",
+        "CREATE TABLE complex_intervals (id Int32, period StartInterval, duration Float64) ENGINE = Memory;",
+        "INSERT INTO complex_intervals VALUES (1, toIntervalYear(1), 1.5), (2, toIntervalYear(-1), 2.0), (3, toIntervalYear(0), NULL);",
+        "SELECT id, period + toIntervalYear(IF(duration IS NULL, 0, CAST(duration AS Int32))) AS adjusted_period FROM complex_intervals WHERE adjusted_period IS NOT NULL OR duration IS NOT NULL;",
+        "CREATE TABLE aggregated_intervals (group_id Int32, duration Float32) ENGINE = Memory;",
+        "INSERT INTO aggregated_intervals VALUES (1, 1.0), (1, 2.0), (1, NULL), (2, 3.0);",
+        "SELECT group_id, SUM(IF(duration IS NOT NULL, duration, 0)) AS total_duration, toIntervalYear(ROUND(total_duration)) AS total_interval FROM aggregated_intervals GROUP BY group_id HAVING total_duration > 1.5 OR total_duration IS NULL;"
+    ]
+}

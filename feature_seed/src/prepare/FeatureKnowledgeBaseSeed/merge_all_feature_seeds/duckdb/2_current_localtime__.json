@@ -1,0 +1,12 @@
+CREATE TABLE test_table (id INTEGER, event_time TIMESTAMP, price DECIMAL(10, 2));
+INSERT INTO test_table (id, event_time, price) VALUES (1, '2023-01-01 12:00:00', 100.50), (2, NULL, 150.00), (3, '2023-12-31 23:59:59', 200.75);
+WITH local_time AS (SELECT current_localtime() AS local_now) SELECT t.id, t.event_time - (SELECT local_now FROM local_time) AS time_diff FROM test_table t WHERE t.event_time IS NOT NULL;
+SELECT id, event_time, price, (current_localtime() - event_time) AS local_price_difference FROM test_table WHERE price > 100.00 ORDER BY local_price_difference;
+CREATE TABLE another_table (user_id INTEGER, last_seen TIMESTAMPTZ);
+INSERT INTO another_table (user_id, last_seen) VALUES (1, TIMESTAMPTZ '2023-01-01 10:00:00 UTC'), (2, TIMESTAMPTZ '2023-02-01 08:30:00 UTC'), (3, NULL);
+SELECT a.user_id, a.last_seen, (current_localtime() - a.last_seen) AS last_seen_difference FROM another_table a WHERE a.last_seen IS NOT NULL AND (current_localtime() - a.last_seen) > INTERVAL '1 DAY';
+SELECT t.id, (t.event_time - INTERVAL 5 DAY) AS old_time, (current_localtime() - t.event_time) AS time_since_event FROM test_table t WHERE t.event_time IS NOT NULL UNION ALL SELECT a.user_id, a.last_seen, current_localtime() - a.last_seen FROM another_table a WHERE a.last_seen IS NOT NULL;
+CREATE TABLE mixed_table (mix_id VARCHAR PRIMARY KEY, mix_time TIMESTAMP);
+INSERT INTO mixed_table (mix_id, mix_time) VALUES ('event_A', '2023-01-01 12:00:00'), ('event_B', NULL), ('event_C', '2023-02-01 15:30:00');
+SELECT mix_id, mix_time, current_localtime() - (mix_time + INTERVAL '2 HOUR') AS adjusted_time FROM mixed_table WHERE mix_time IS NOT NULL ORDER BY adjusted_time;
+WITH time_stats AS (SELECT price, AVG(current_localtime() - event_time) AS average_time FROM test_table WHERE event_time IS NOT NULL GROUP BY price) SELECT * FROM time_stats HAVING average_time < INTERVAL '3 HOURS';

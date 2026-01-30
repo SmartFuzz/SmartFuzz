@@ -1,0 +1,15 @@
+{
+    "function": "arrayEnumerateUniq(arr, ...)",
+    "operator": "a * b",
+    "sql_array": [
+        "CREATE TABLE test.visits (CounterID UInt32, Sign Int8, Goals Array(Int32));",
+        "INSERT INTO test.visits VALUES (160656, 1, [1, 1, 1, 2]), (160656, 1, [1, 2, 2, 3]), (160657, 0, [1, 1, 2, 3]);",
+        "SELECT Goals.ID AS GoalID, sum(Sign * arrayEnumerateUniq(Goals) * 0.1) AS Reaches, sumIf(Sign, num = 1) AS Visits FROM test.visits ARRAY JOIN Goals, arrayEnumerateUniq(Goals, [1,2,2,3]) AS num WHERE CounterID IN (SELECT CounterID FROM test.visits WHERE Sign > 0) GROUP BY GoalID HAVING Reaches > 0 ORDER BY Reaches DESC LIMIT 10;",
+        "SELECT a.GoalID, a.Reaches, a.Visits FROM (SELECT Goals.ID AS GoalID, sum(Sign) AS Reaches, arrayEnumerateUniq(Goals.ID) AS num FROM test.visits ARRAY JOIN Goals GROUP BY Goals.ID) AS a JOIN (SELECT Goals.ID AS GoalID, arrayEnumerateUniq(Goals.ID) AS num FROM test.visits ARRAY JOIN Goals WHERE CounterID = 160656) AS b ON a.GoalID = b.GoalID WHERE a.Reaches > 1;",
+        "CREATE TABLE test.edge_cases (ID UInt32, Value Array(String));",
+        "INSERT INTO test.edge_cases VALUES (1, ['test1', 'test2', 'test3']), (2, ['test1', NULL, 'test2']), (3, [NULL, NULL, NULL]);",
+        "SELECT arrayEnumerateUniq(arrayMap(x -> if(x IS NULL, '', x), Value)) AS nums FROM test.edge_cases;",
+        "SELECT arrayEnumerateUniq(arraySelect(x * 2, arrayFilter(y -> y IS NOT NULL, Value))) AS nums, Count(*) OVER () AS TotalCount FROM test.edge_cases;",
+        "SELECT max(GoalID) * min(arrayEnumerateUniq(Goals.ID)) FROM (SELECT Goals.ID AS GoalID, Goals FROM test.visits ARRAY JOIN Goals GROUP BY Goals.ID) WHERE GoalID IN (SELECT CounterID FROM test.visits WHERE Sign = 0);"
+    ]
+}

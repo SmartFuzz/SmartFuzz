@@ -1,0 +1,16 @@
+{
+    "function": "reinterpretAsInt256",
+    "operator": "INTERVAL",
+    "sql_array": [
+        "CREATE TABLE test_data (id Int32, value Float64, date_field DateTime, string_field String, uuid_field UUID) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_data VALUES (1, NULL, now(), 'test1', generateUUIDv4()), (2, 3.14159, now() - INTERVAL 1 DAY, 'test2', generateUUIDv4()), (3, 1.0, now() - INTERVAL 2 DAY, 'test3', generateUUIDv4()), (4, 2.71828, now() - INTERVAL 3 DAY, NULL, generateUUIDv4());",
+        "SELECT id, reinterpretAsInt256(toFloat64(value) + INTERVAL 1 DAY) AS reinterpret_date, reinterpretAsInt256(CAST(date_field AS Int64)) AS reinterpret_epoch FROM test_data WHERE string_field IS NOT NULL;",
+        "SELECT id, value, date_field, reinterpretAsInt256(value) AS reinterpret_value FROM test_data WHERE value IS NOT NULL AND date_field > now() - INTERVAL 5 DAY ORDER BY reinterpret_value;",
+        "SELECT id, reinterpretAsInt256(toUInt64(id)), reinterpretAsInt256('', 0) AS empty_string_reinterpret, date_field - INTERVAL 1 HOUR AS adjusted_date FROM test_data WHERE uuid_field IS NOT NULL GROUP BY id, adjusted_date HAVING reinterpretAsInt256(CAST(adjusted_date AS Float64)) > 0;",
+        "SELECT id, date_field, (value + reinterpretAsInt256(NULLIF(value, 0))) AS adjusted_value FROM test_data WHERE date_field >= now() - INTERVAL 1 WEEK ORDER BY adjusted_value DESC;",
+        "WITH (SELECT value FROM test_data WHERE uuid_field IS NOT NULL) AS subq SELECT id, reinterpretAsInt256(COALESCE((SELECT AVG(value) FROM subq), 0)) AS average_value, date_field + INTERVAL 1 MONTH AS future_date FROM test_data WHERE value < 10.0 GROUP BY id, future_date HAVING adjusted_value > 0;",
+        "SELECT reinterpretAsInt256(toDate('2021-01-01')), reinterpretAsInt256(toDateTime('2021-01-01 12:34:56')) + INTERVAL 1 MONTH AS interval_adjusted FROM test_data;",
+        "SELECT id, date_field, reinterpretAsInt256(toUInt8(id) + 255), value + reinterpretAsInt256(toFloat64(date_field - INTERVAL 2 DAY)) AS combined_expression FROM test_data HAVING combined_expression IS NOT NULL ORDER BY id;",
+        "ALTER TABLE test_data ADD COLUMN new_column Int256 DEFAULT reinterpretAsInt256(0);"
+    ]
+}

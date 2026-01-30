@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/53943",
+  "title": "Bit shift for BLOB type behaves incosistently with MySQL8 ",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\ninit db\r\n```sql\r\ncreate table t2(a blob);\r\ncreate table t3(a blob);\r\ninsert into t2 values(0xC2A0);\r\ninsert into t3 values(0xC2);\r\nselect * from t2,t3 where t2.a like concat(\"%\",t3.a,\"%\");\r\n```\r\n\r\nThen running:\r\n```sql\r\nselect * from t2,t3 where (t2.a >> 4) = t3.a;\r\nselect * from t2,t3 where (t2.a >> 8) = t3.a;\r\n```\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\nMySQL8.0.33 shows empty set for each query.\r\n```sql\r\nEmpty set (0.01 sec)\r\nEmpty set (0.01 sec)\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nTiDB 8.1 shows one row with warning.\r\n```sql\r\n+------+------+\r\n| a    | a    |\r\n+------+------+\r\n|      | �     |\r\n+------+------+\r\n1 row in set, 2 warnings (0.00 sec)\r\n+------+------+\r\n| a    | a    |\r\n+------+------+\r\n|      | �     |\r\n+------+------+\r\n1 row in set, 2 warnings (0.01 sec)\r\n> show warnings;\r\n+---------+------+---------------------------------------+\r\n| Level   | Code | Message                               |\r\n+---------+------+---------------------------------------+\r\n| Warning | 1292 | Truncated incorrect INTEGER value: '' |\r\n| Warning | 1292 | Truncated incorrect DOUBLE value: '�'  |\r\n+---------+------+---------------------------------------+\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n```sql\r\n+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| tidb_version()\r\n                                               |\r\n+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| Release Version: v8.1.0\r\nEdition: Community\r\nGit Commit Hash: 945d07c5d5c7a1ae212f6013adfb187f2de24b23\r\nGit Branch: HEAD\r\nUTC Build Time: 2024-05-21 03:51:57\r\nGoVersion: go1.21.10\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv |\r\n+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n1 row in set (0.00 sec)\r\n```\r\n",
+  "date": "2024-06-11T11:55:09Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t4(a BLOB, b INTEGER NOT NULL);",
+    "INSERT INTO t4 VALUES(0xC2A0, 1);",
+    "INSERT INTO t4 VALUES(0xC2, 2);",
+    "SELECT * FROM t4 WHERE (CAST(t4.a AS INTEGER) >> 4) IS NOT NULL;",
+    "SELECT * FROM t4 WHERE (CAST(t4.a AS INTEGER) >> 8) = CAST(0xC2 AS INTEGER);"
+  ],
+  "key_bug_features": [
+    "Bit shift operation on BLOB type inconsistently returns results"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7016",
+  "title": "Database crashes when use similarity function on a table with more than 200k records ",
+  "vulnerable_database": "monetdb",
+  "date": "2020-12-05T06:14:42Z",
+  "vulnerable_version": "Unknown",
+  "description": "In we use the built-in similarity function in query sql and the nubmer of rows in table exceed 200K, the database crashes.\n\n**To Reproduce**\n-- Create a table named t_199999 and populated with 199999 rows;\nCREATE TABLE t_199999 (s1 string, s2 string);\n-- Create a table named t_200000 and populated with 200000 rows;\nCREATE TABLE t_200000 (s1 string, s2 string);\n\nexecute the sql query:\n-- this works well\nselect count(1) from t_199999 where similarity(s1, s2)> 0.5;  \n-- this crashes the database\nselect count(1) from t_200000 where similarity(s1, s2)> 0.5;  \n\n**Expected behavior**\nthe database should work well if we use similarity function even if the table row numbers exceed 200000.\n\n**Software versions**\n - MonetDB version number [x86_64-20201013]\n - OS and version: [both Window 7 and Centos 7]\n - Installed from release package",
+  "poc": [
+    "CREATE TABLE t_199999 (s1 string, s2 string);",
+    "CREATE TABLE t_200000 (s1 string, s2 string);",
+    "select count(1) from t_199999 where similarity(s1, s2)> 0.5;",
+    "select count(1) from t_200000 where similarity(s1, s2)> 0.5;"
+  ],
+  "key_bug_features": [
+    "similarity function on tables exceeding 200k records"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t_199999 (s1 STRING, s2 STRING, s3 INT CHECK (s3 >= 0));",
+    "CREATE TABLE t_200000 (s1 STRING, s2 STRING, s3 INT CHECK (s3 >= 0));",
+    "INSERT INTO t_199999 (s1, s2, s3) SELECT 'value' || i, 'value' || i, i FROM generate_series(1, 199999) AS i;",
+    "INSERT INTO t_200000 (s1, s2, s3) SELECT 'value' || i, 'value' || i, i FROM generate_series(1, 200000) AS i;",
+    "SELECT count(1) FROM t_200000 WHERE similarity(s1, s2) > 0.5 AND s3 IS NOT NULL;"
+  ]
+}

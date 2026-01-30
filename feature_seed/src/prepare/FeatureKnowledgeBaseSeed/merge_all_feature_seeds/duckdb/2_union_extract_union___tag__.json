@@ -1,0 +1,13 @@
+CREATE TABLE test_union (id INT, data UNION(STRING, INT));
+INSERT INTO test_union (id, data) VALUES (1, 'value1'), (2, 42), (3, NULL);
+SELECT id, union_extract(data, 'k') + INTERVAL 1 HOUR AS result FROM test_union WHERE id = 1;
+SELECT id, union_extract(data, 'k') + INTERVAL 2 HOUR AS result FROM test_union WHERE id IN (SELECT id FROM test_union WHERE data IS NOT NULL);
+SELECT DISTINCT id, union_extract(data, 'k') + CAST('5 HOURS' AS INTERVAL) AS result FROM test_union HAVING result IS NOT NULL;
+CREATE TABLE test_dates (event_date DATE, event_time TIME);
+INSERT INTO test_dates (event_date, event_time) VALUES ('2023-10-01', '10:00:00'), ('2023-10-02', NULL);
+SELECT event_date, event_time + INTERVAL 3 HOUR AS adjusted_time FROM test_dates WHERE event_time IS NOT NULL;
+WITH temp AS (SELECT id, union_extract(data, 'k') AS extracted_data FROM test_union WHERE data IS NOT NULL) SELECT SUM(COALESCE(extracted_data::INTEGER, 0)) + INTERVAL 1 DAY AS total_adjusted FROM temp;
+CREATE TABLE test_join (a STRING, b INT, c UNION(INT, STRING));
+INSERT INTO test_join (a, b, c) VALUES ('join1', 100, 1), ('join2', 200, 'value2');
+SELECT t1.a, t2.b + INTERVAL 1 HOUR AS b_adjusted FROM test_join t1 JOIN test_union t2 ON union_extract(t2.data, 'k')::STRING = t1.a WHERE t1.b < 200;
+SELECT b, union_extract(c, 'k') + INTERVAL 12 MINUTE AS modified_time FROM test_join GROUP BY b, c HAVING modified_time IS NOT NULL;

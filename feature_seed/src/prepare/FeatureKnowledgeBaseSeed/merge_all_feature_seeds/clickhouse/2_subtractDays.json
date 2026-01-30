@@ -1,0 +1,10 @@
+CREATE TABLE test_dates (id UInt32, event_date Date, num_days Int32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_dates VALUES (1, toDate('2024-01-01'), 31), (2, toDate('2024-01-30'), -15), (3, toDate('2023-12-31'), 0);
+SELECT id, event_date, subtractDays(event_date, num_days) AS new_date FROM test_dates WHERE (num_days = 31 ? event_date IS NOT NULL : event_date IS NULL);
+CREATE TABLE temp_dates AS SELECT subtractDays(event_date, num_days) AS new_date FROM test_dates WHERE num_days < 0;
+INSERT INTO temp_dates SELECT subtractDays(toDate('2024-01-01'), CAST('10' AS Int32));
+SELECT id, event_date, subtractDays(event_date, (num_days ? 1 : 0)) AS adjusted_date FROM test_dates GROUP BY id, event_date HAVING adjusted_date < toDate('2024-01-01');
+WITH (SELECT COUNT(*) FROM test_dates) AS count_days SELECT id, event_date, subtractDays(event_date, count_days / 2) AS median_adj_date FROM test_dates ORDER BY median_adj_date DESC;
+SELECT id, event_date, subtractDays(event_date, NULLIF(num_days, 0)) AS adjusted_date FROM test_dates WHERE event_date = (SELECT max(event_date) FROM test_dates) ? CAST('2025-01-01' AS Date) : toDate('2024-12-31');
+CREATE TABLE test_results AS SELECT id, subtractDays(event_date, num_days) AS subtracted_date FROM test_dates WHERE subtracted_date IS NOT NULL;
+DROP TABLE IF EXISTS test_dates;

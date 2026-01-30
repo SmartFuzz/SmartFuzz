@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=105819",
+  "title": "Conversion from Blob/Text column value to double does not return a truncation er",
+  "description": "String-to-number conversion produces warnings or errors only with CHAR/VARCHAR type. No warnings/errors with TEXT/BLOB.\r\n\r\nmysql> create table t(a text, b blob);\r\nQuery OK, 0 rows affected (0.06 sec)\r\nmysql> insert into t set a='檝汛', b='好';\r\nQuery OK, 1 row affected (0.01 sec)\r\nmysql> select * from t where a = 26;\r\nEmpty set (0.01 sec)\r\n\r\nmysql> update t set a = 44 where a = 26;\r\nQuery OK, 0 rows affected (0.00 sec)\r\nRows matched: 0  Changed: 0  Warnings: 0\r\nmysql> insert into t select * from t where  a = 26;\r\nQuery OK, 0 rows affected (0.00 sec)\r\nRecords: 0  Duplicates: 0  Warnings: 0\r\nmysql> delete from t where a = 26;\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nmysql> select * from t where b = 26;\r\nEmpty set (0.01 sec)\r\nmysql> update t set b = 44 where b = 26;\r\nQuery OK, 0 rows affected (0.00 sec)\r\nRows matched: 0  Changed: 0  Warnings: 0\r\nmysql> insert into t select * from t where  b = 26;\r\nQuery OK, 0 rows affected (0.00 sec)\r\nRecords: 0  Duplicates: 0  Warnings: 0\r\nmysql> delete from t where b = 26;\r\nQuery OK, 0 rows affected (0.01 sec)\nHow to repeat:\ncreate table t(a text, b blob);\r\n\tinsert into t set a='檝汛', b='好';\r\n\r\ncase1:\r\n\tselect * from t where a = 26;\r\n\tselect * from t where b = 26;\r\n\r\ncase2:\r\n\tupdate t set a = 44 where a = 26;\r\n\tinsert into t select * from t where  a = 26;\r\n\tdelete from t where a = 26;\r\n\r\n\tupdate t set b = 44 where b = 26;\r\n\tinsert into t select * from t where  b = 26;\r\n\tdelete from t where b = 26;\nSuggested fix:\nExpected result:\r\n\r\nCase1 should return a truncated warning, and case2 should return a truncated error.",
+  "date": "2021-12-07 09:48:00",
+  "vulnerable_version": "8.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_table(id INT, name TEXT, value BLOB);",
+    "INSERT INTO test_table(id, name, value) VALUES (1, 'Sample', 'Data');",
+    "SELECT * FROM test_table WHERE name = 1;",
+    "UPDATE test_table SET value = 'NewData' WHERE id = 1;",
+    "DELETE FROM test_table WHERE value = 1;"
+  ],
+  "key_bug_features": [
+    "String-to-number conversion with TEXT/BLOB types"
+  ]
+}

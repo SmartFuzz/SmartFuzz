@@ -1,0 +1,22 @@
+{
+    "function": "VAD_CHECK_UNINSTALLABILITY",
+    "operator": "AND",
+    "sql_array": [
+        "CREATE TABLE packages (id INT PRIMARY KEY, name VARCHAR(100), version VARCHAR(10), is_installed BOOLEAN);",
+        "INSERT INTO packages (id, name, version, is_installed) VALUES (1, 'test-package', '1.0', TRUE);",
+        "INSERT INTO packages (id, name, version, is_installed) VALUES (2, 'another-package', '1.1', TRUE);",
+        "SELECT VAD_CHECK_UNINSTALLABILITY(name) AND (SELECT COUNT(*) FROM packages WHERE is_installed = TRUE) > 0 FROM packages WHERE version = '1.0';",
+        "SELECT VAD_CHECK_UNINSTALLABILITY('test-package') AND NULL IS NOT NULL;",
+        "SELECT VAD_CHECK_UNINSTALLABILITY(NULLIF(name, '')) AND (SELECT COUNT(*) FROM packages WHERE is_installed IS NOT NULL) FROM packages WHERE id < 3;",
+        "SELECT VAD_CHECK_UNINSTALLABILITY(name) AND (SELECT MAX(version) FROM packages WHERE id < 3 AND name LIKE 'test-%') IS NOT NULL;",
+        "SELECT VAD_CHECK_UNINSTALLABILITY(name) AND (SELECT AVG(COALESCE(id, 0)) FROM packages) > 1 FROM packages;",
+        "SELECT CASE WHEN VAD_CHECK_UNINSTALLABILITY(name) THEN 'Safe to uninstall' ELSE 'Cannot uninstall' END AS uninstall_status FROM packages;",
+        "CREATE TABLE temp_uninstall_check (package_id INT, can_uninstall BOOLEAN);",
+        "INSERT INTO temp_uninstall_check (package_id, can_uninstall) SELECT id, VAD_CHECK_UNINSTALLABILITY(name) FROM packages WHERE is_installed = TRUE;",
+        "SELECT AVG(CASE WHEN can_uninstall THEN 1 ELSE 0 END) FROM temp_uninstall_check GROUP BY package_id HAVING AVG(can_uninstall) < 0.5;",
+        "SELECT VAD_CHECK_UNINSTALLABILITY(name) AND (SELECT COUNT(*) FROM packages WHERE id IN (SELECT package_id FROM temp_uninstall_check WHERE can_uninstall = FALSE)) > 1 FROM packages;",
+        "SELECT DISTINCT VAD_CHECK_UNINSTALLABILITY(name) AND (SELECT MIN(id) FROM packages) IS NOT NULL AS uninstallable FROM packages HAVING uninstallable = TRUE;",
+        "SELECT VAD_CHECK_UNINSTALLABILITY(name) AND 1 / (SELECT COUNT(*) FROM packages WHERE is_installed) IS NOT NULL FROM packages WHERE name IS NOT NULL;",
+        "SELECT VAD_CHECK_UNINSTALLABILITY(name) AND EXISTS (SELECT 1 FROM packages WHERE is_installed = TRUE AND id > 0);"
+    ]
+}

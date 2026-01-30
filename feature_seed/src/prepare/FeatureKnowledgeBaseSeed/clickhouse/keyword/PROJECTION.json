@@ -1,0 +1,23 @@
+[
+    "CREATE TABLE test_table (user_id UInt32, user_name String, user_agent String) ENGINE = MergeTree() ORDER BY user_id;",
+    "ALTER TABLE test_table ADD PROJECTION user_name_projection (SELECT user_name, COUNT() AS count GROUP BY user_name);",
+    "INSERT INTO test_table VALUES (1, 'Alice', 'Firefox'), (2, 'Bob', 'Chrome'), (3, 'Charlie', 'Safari'), (4, 'Alice', 'Chrome');",
+    "ALTER TABLE test_table ADD PROJECTION agent_projection (SELECT user_agent, COUNT() AS count GROUP BY user_agent);",
+    "SELECT * FROM test_table WHERE user_name = 'Alice';",
+    "SELECT COUNT() FROM test_table GROUP BY user_agent;",
+    "SELECT user_name, COUNT(*) FROM test_table GROUP BY user_name ORDER BY count DESC;",
+    "ALTER TABLE test_table MATERIALIZE PROJECTION user_name_projection;",
+    "SELECT projections FROM system.query_log WHERE query LIKE '%user_name_projection%';",
+    "ALTER TABLE test_table CLEAR PROJECTION user_name_projection;",
+    "CREATE TABLE another_table (id UInt32, test_column String) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO another_table VALUES (1, 'Test1'), (2, 'Test2');",
+    "SELECT a.user_name, b.test_column FROM test_table AS a JOIN another_table AS b ON a.user_id = b.id;",
+    "CREATE TABLE combined_table AS SELECT user_name, user_agent FROM test_table; ALTER TABLE combined_table ADD PROJECTION combined_projection (SELECT user_name, user_agent);",
+    "ALTER TABLE combined_table DROP PROJECTION combined_projection;",
+    "SELECT DISTINCT user_agent FROM test_table WHERE user_agent LIKE '%Chrome%';",
+    "ALTER TABLE test_table ADD PROJECTION user_name_date_projection (SELECT user_name, toStartOfMonth(today()) AS month, COUNT() AS count GROUP BY user_name, month);",
+    "SELECT user_name, COUNT() FROM test_table WHERE user_agent IN (SELECT user_agent FROM another_table) GROUP BY user_name;",
+    "ALTER TABLE test_table DROP PROJECTION agent_projection;",
+    "INSERT INTO test_table VALUES (5, 'Alice', 'Firefox'), (6, 'Bob', 'Safari');",
+    "SELECT user_name, AVG(user_id) AS avg_id FROM test_table GROUP BY user_name HAVING avg_id > 2;"
+]

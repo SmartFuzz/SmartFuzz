@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/56814",
+  "title": "lightning: auto increment value became much larger than expected after physical import with parallel import enabled",
+  "description": "## Bug Report\r\n\r\nWe made a cut-over to TiDB \r\n\r\nThe table is Messages table with Auto increment on \"ID\"\r\nto maintain the ID sequence the table was created with \"auto_id_cache\" as below\r\n\r\n**) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci AUTO_INCREMENT=730234878 /*T![auto_id_cache] AUTO_ID_CACHE=1 */**\r\n\r\nIn the MySQL last sequence was \"**14609942**\" but in TiDB ID was incremented by a vast number \"**730170668**\" pl find as below\r\n\r\nmysql> select id,updatedAt from messages where id >=14609942 limit 10;\r\n+-----------+------------+\r\n| id        | updatedAt  |\r\n+-----------+------------+\r\n|  14609942 | 1729291247 |  ----> MySQL\r\n| 730170668 | 1729313914 | -----> TIDB \r\n| 730170669 | 1729313914 |\r\n| 730170670 | 1729313914 |\r\n| 730170671 | 1729313914 |\r\n| 730170672 | 1729313914 |\r\n| 730170673 | 1729313914 |\r\n| 730170674 | 1729313914 |\r\n| 730170675 | 1729313914 |\r\n| 730170676 | 1729313914 |\r\n+-----------+------------+\r\n\r\nthe TIDB has added or incremented the value on its own, This is a critical bug making TiDB unusable in production\r\n\r\n### 1. Minimal reproduce step (Required)\r\n1,Create the table structure same as MySQL also have auto_id_cache=1 to maintain compatibility.\r\n2, Migrate the data to TiDB using DM and setup replication. till this point ID would be matching\r\n3, Stop or Pause the DM\r\n4, Point the application directly to use TiDB, you can see a huge jump in auto increment value.\r\n\r\n### 2. What did you expect to see? (Required)\r\nwe expected the same sequence to be continue with TiDB, making it compatible\r\n\r\n### 3. What did you see instead (Required)\r\nwe see a complete new ID sequence has been introduced, breaking the application \r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\nRelease Version: v8.1.1\r\nEdition: Community\r\nGit Commit Hash: a7df4f9845d5d6a590c5d45dad0dcc9f21aa8765\r\nGit Branch: HEAD\r\nUTC Build Time: 2024-08-22 05:49:03\r\nGoVersion: go1.21.13\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv\r\n",
+  "date": "2024-10-24T03:14:39Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE `messages` ( `id` bigint unsigned NOT NULL AUTO_INCREMENT, `muid` varchar(100) DEFAULT NULL, `conversationId` varchar(255) DEFAULT NULL, `sender` varchar(100) NOT NULL, `receiverType` enum('group','user') NOT NULL DEFAULT 'user', `receiver` varchar(100) NOT NULL, PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 AUTO_INCREMENT=14609942;",
+    "INSERT INTO `messages` (`muid`, `conversationId`, `sender`, `receiverType`, `receiver`) VALUES ('msg1', 'conv1', 'user1', 'user', 'user2');",
+    "INSERT INTO `messages` (`muid`, `conversationId`, `sender`, `receiverType`, `receiver`) VALUES ('msg2', 'conv2', 'user2', 'group', 'group1');",
+    "SELECT id, updatedAt FROM messages WHERE id >= 14609942 ORDER BY id LIMIT 10;",
+    "UPDATE `messages` SET `updatedAt` = NULL WHERE `id` = 730170668;"
+  ],
+  "key_bug_features": [
+    "Auto increment value jumps after physical import with parallel import"
+  ]
+}

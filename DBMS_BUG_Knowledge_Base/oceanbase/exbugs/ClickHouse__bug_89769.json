@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/89769",
+  "title": "Lazy materialization isn't in query plan for Distributed / cluster()",
+  "description": "### Company or project name\n_No response_\n### Describe the unexpected behaviour\nWhen I query a `Distributed` table, or `cluster('{cluster}', my.table)`, the lazy materialization optimization isn't included in the query plan, but it is when I query the underlying (local) table. The query also runs slower, so I suspect the optimization is not being used.\n### Which ClickHouse versions are affected?\nTested on 25.11.1.1569 (downloaded from CI)\n### How to reproduce\nI created the following table (probably doesn't need to be replicated, but I already have a cluster and Replicated db):\n```\nCREATE TABLE repl.foo (ts DateTime64(9), message String) ENGINE = ReplicatedMergeTree ORDER BY ts\nAS SELECT number, number from numbers(1000000);\n```\nThen, I try to query the `message` column only for the most recent row:\n```\nEXPLAIN actions = 1 SELECT message FROM repl.foo\nORDER BY ts ASC LIMIT 1\n```\n...and it returns the expected lazy materialization steps:\n```\nExpression (Project names)\nActions: INPUT : 0 -> __table1.message String : 0\nINPUT :: 1 -> __table1.ts DateTime64(9) : 1\nALIAS __table1.message :: 0 -> message String : 2\nPositions: 2\nLazilyRead (Lazily Read)\nLazily read columns: message\nLimit (preliminary LIMIT)\nLimit 1\nOffset 0\nSorting (Sorting for ORDER BY)\n...\n```\nHowever, if I create a Distributed table on top, and repeat the query, the lazy step seems to disappear, and the `ReadFromMergeTree` step looks like it will read `message` before any sorting or limiting:\n```\nCREATE TABLE repl.foo_dist AS repl.foo\nENGINE = Distributed('{cluster}', repl, foo);\nEXPLAIN actions = 1 SELECT message FROM repl.foo_dist\nORDER BY ts ASC LIMIT 1;\nExpression (Project names)\nActions: INPUT : 0 -> __table1.message String : 0\nINPUT :: 1 -> __table1.ts DateTime64(9) : 1\nALIAS __table1.message :: 0 -> message String : 2\nPositions: 2\nLimit (preliminary LIMIT)\nLimit 1\nOffset 0\nSorting (Merge sorted streams after aggregation stage for ORDER BY)\nSort description: __table1.ts ASC\nLimit 1\nUnion",
+  "date": "2025-11-09T00:06:54Z",
+  "vulnerable_version": "25.11.1.1569",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE repl.bar (id INT UNSIGNED, value FLOAT, created_at TIMESTAMP) PARTITION BY RANGE (YEAR(created_at)) (PARTITION p1 VALUES LESS THAN (2023));",
+    "INSERT INTO repl.bar VALUES (1, 3.14, NOW()), (2, 2.71, NOW()), (3, NULL, NOW());",
+    "CREATE TABLE repl.bar_dist AS repl.bar ENGINE = Distributed('{cluster}', repl, bar);",
+    "SELECT value FROM repl.bar_dist WHERE id = 2 ORDER BY created_at DESC LIMIT 1;",
+    "SELECT COUNT(*) FROM (SELECT DISTINCT value FROM repl.bar_dist WHERE value IS NOT NULL) AS subquery;"
+  ],
+  "key_bug_features": [
+    "Lazy materialization missing in Distributed table query plan"
+  ]
+}

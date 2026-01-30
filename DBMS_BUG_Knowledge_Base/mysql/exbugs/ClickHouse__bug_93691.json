@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/93691",
+  "title": "Error message 'All elements of Enum data type must be of form ...' is not quite accurate",
+  "description": "### Company or project name\n_No response_\n### Describe the unexpected behaviour\nThis is a very very minor issue.\n```\n:) create table tttm2 (f Enum('A', 'AA', 'B'=42, 'C'=43)) Engine=MergeTree order by tuple();\n```\nfails with\n```\nReceived exception:\nCode: 223. DB::Exception: All elements of Enum data type must be of form: 'name' = number or 'name', where name is string literal and number is an integer. (UNEXPECTED_AST_STRUCTURE)\n```\nAlthough\n```\n:) create table tttm1 (f Enum('A', 'B'=42, 'C'=43)) Engine=MergeTree order by tuple();\n```\nworks Ok, although the constraint  \"All elements of Enum data type must be of form\" is violated (if we read it as \"only one form is allowed\")\nOptions\n1. Do nothing\n2. Do nothing but change error message to something else (I've tried, but seems unreadable)\n3. Properly prohibit this mix and change message to something like \"Enum elements must be either all explicitly assigned integer values ('name' = number) or all implicitly assigned ('name'). Mixing both styles in the same Enum is not allowed\"\n4. Allow this mix in a more smart and flexible way, e.g. to make Enum('A', 'AA', 'B'=42, 'C'=43, 'Z') is equivalent to Enum('A'=0, 'AA'=1, 'B'=42, 'C'=43, 'Z'=43)\nI suppose that (3) is Ok and current behavior is not intentional.\nI can implement if it is confirmed.\n### Which ClickHouse versions are affected?\n25.12.2.54\n### How to reproduce\nSee description\n### Expected behavior\n_No response_\n### Error message and/or stacktrace\n_No response_\n### Additional context\n_No response_",
+  "date": "2026-01-08T12:21:52Z",
+  "vulnerable_version": "25.12.2.54",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test_enum1 (status ENUM('active', 'inactive', 'pending') DEFAULT 'active', status_value INT DEFAULT 0) ENGINE=InnoDB;",
+    "CREATE TABLE test_enum2 (level ENUM('low', 'medium', 'high') DEFAULT 'low', level_value INT DEFAULT 0) ENGINE=InnoDB;",
+    "INSERT INTO test_enum1 (status, status_value) VALUES ('active', 0), ('inactive', 0), ('pending', 1);",
+    "INSERT INTO test_enum2 (level, level_value) VALUES ('low', 0), ('medium', 10), ('high', 20);",
+    "SELECT * FROM test_enum1 WHERE status = 'pending';"
+  ],
+  "key_bug_features": [
+    "Mixing explicit and implicit Enum element assignments"
+  ]
+}

@@ -1,0 +1,18 @@
+CREATE TABLE fuzz_test (id UInt32, value Float64, string_val String, uuid_val UUID, date_val Date);
+INSERT INTO fuzz_test VALUES (1, 2.5, 'max_value', '00000000-0000-0000-0000-000000000001', '2023-10-01');
+INSERT INTO fuzz_test VALUES (2, 0.0, '', '00000000-0000-0000-0000-000000000002', '2000-01-01');
+INSERT INTO fuzz_test VALUES (3, -5.0, 'boundary_test', '00000000-0000-0000-0000-000000000003', '2024-12-31');
+SELECT id, reinterpretAsUInt32(value) AS reinterpret_float, reinterpretAsUInt32(string_val) AS reinterpret_string, reinterpretAsUInt32(uuid_val) AS reinterpret_uuid FROM fuzz_test;
+SELECT id, reinterpretAsUInt32(value - 1.5) AS adjusted_value FROM fuzz_test WHERE adjusted_value < reinterpretAsUInt32(0.0);
+SELECT COUNT(*) AS total FROM fuzz_test WHERE reinterpretAsUInt32(value) < reinterpretAsUInt32(2.5);
+SELECT id, value, reinterpretAsUInt32(value) AS reinterpret_value FROM fuzz_test WHERE reinterpret_value < (SELECT MIN(reinterpretAsUInt32(value)) FROM fuzz_test WHERE value IS NOT NULL);
+CREATE TABLE fuzz_join (id UInt32, group_id UInt32, description String);
+INSERT INTO fuzz_join VALUES (1, 1, 'first group'), (2, 2, 'second group'), (3, 1, 'third group');
+SELECT f.id, f.value, j.description FROM fuzz_test AS f JOIN fuzz_join AS j ON reinterpretAsUInt32(f.string_val) = j.id ORDER BY f.value DESC;
+SELECT id, COUNT(*) AS cnt FROM fuzz_test GROUP BY reinterpretAsUInt32(string_val) HAVING cnt > 1;
+SELECT id, reinterpretAsUInt32(value) AS reinterpreted_value FROM fuzz_test WHERE id IN (SELECT id FROM fuzz_test WHERE value IS NOT NULL AND reinterpretAsUInt32(value) < 1000) ORDER BY reinterpreted_value;
+CREATE TABLE edge_case_test (id UInt32 PRIMARY KEY, number_value Nullable(Int32), date_val DateTime);
+INSERT INTO edge_case_test VALUES (1, 2147483646, '2023-10-01 12:00:00'), (2, NULL, '1900-01-01 00:00:00');
+SELECT reinterpretAsUInt32(number_value) AS uint_reinterpretation FROM edge_case_test WHERE number_value IS NOT NULL AND uint_reinterpretation < 10000;
+CREATE TEMPORARY TABLE temp_table AS SELECT f.id, reinterpretAsUInt32(f.value) AS temp_value FROM fuzz_test AS f WHERE f.value = 0.0;
+SELECT * FROM temp_table WHERE temp_value < 1 ORDER BY temp_value DESC;

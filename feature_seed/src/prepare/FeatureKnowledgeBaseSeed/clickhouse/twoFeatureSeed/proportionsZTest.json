@@ -1,0 +1,16 @@
+{
+    "function": "proportionsZTest",
+    "operator": "a = b",
+    "sql_array": [
+        "CREATE TABLE test_data (id UInt64, successes_x UInt64, successes_y UInt64, trials_x UInt64, trials_y UInt64, conf_level Float64, pool_type String);",
+        "INSERT INTO test_data VALUES (1, 10, 11, 100, 101, 0.95, 'unpooled'), (2, 20, 19, 200, 201, 0.90, 'pooled');",
+        "SELECT proportionsZTest(successes_x = trials_x, successes_y, trials_x, trials_y, conf_level, pool_type) FROM test_data WHERE successes_x > 5;",
+        "SELECT proportionsZTest(successes_x, successes_y, trials_x + trials_y, GREATEST(trials_x, trials_y), conf_level, pool_type) FROM test_data WHERE successes_y IS NOT NULL;",
+        "SELECT id, proportionsZTest(successes_x, successes_y, trials_x, CASE WHEN trials_y = 0 THEN 1 ELSE trials_y END, 0.95, 'pooled') AS z_stat FROM test_data GROUP BY id HAVING z_stat > 0;",
+        "SELECT COUNT(*) AS total, proportionsZTest(COUNTIF(successes_x), COUNTIF(successes_y), COUNT(trials_x), COUNT(trials_y), 0.95, 'unpooled') FROM (SELECT * FROM test_data) AS subquery;",
+        "SELECT proportionsZTest(successes_x, CASE WHEN successes_y = 0 THEN NULL ELSE successes_y END, trials_x, trials_y, conf_level, pool_type) AS p_value FROM test_data WHERE id = 1;",
+        "SELECT id, proportionsZTest(successes_x, successes_y, trials_x, trials_y, conf_level, 'pooled') AS stats FROM test_data WHERE id IN (SELECT id FROM test_data WHERE id <= 2);",
+        "CREATE TABLE temp_results AS SELECT id, proportionsZTest(successes_x, successes_y, trials_x, trials_y, conf_level, pool_type) AS result FROM test_data;",
+        "SELECT result FROM temp_results WHERE result = (SELECT MAX(result) FROM temp_results) AND id = 1;"
+    ]
+}

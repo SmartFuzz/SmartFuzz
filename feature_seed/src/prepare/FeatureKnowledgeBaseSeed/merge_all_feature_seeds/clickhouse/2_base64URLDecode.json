@@ -1,0 +1,10 @@
+CREATE TABLE test_table (url_string String, number_value Int32, nullable_string Nullable(String), valid_base64_string String);
+INSERT INTO test_table (url_string, number_value, nullable_string, valid_base64_string) VALUES ('aHR0cDovL2NsaWNraG91c2UuY29t', 10, NULL, 'SGVsbG8gV29ybGQh');
+SELECT base64URLDecode(url_string) AS decoded_url, number_value FROM test_table WHERE base64URLDecode(url_string) > 'http://clickhouse.com' AND number_value > 5;
+SELECT (base64URLDecode(nullable_string) IS NOT NULL) AS is_not_null FROM (SELECT nullable_string FROM test_table) AS subquery WHERE is_not_null = true;
+SELECT decoded_value, number_value FROM (SELECT base64URLDecode(valid_base64_string) AS decoded_value, number_value FROM test_table WHERE number_value > 5) WHERE decoded_value > 'Hello World!' ORDER BY decoded_value ASC;
+SELECT base64URLDecode(url_string) AS decoded_url, COUNT(*) OVER (PARTITION BY number_value) AS count_per_number FROM test_table GROUP BY base64URLDecode(url_string), number_value HAVING count_per_number > 1;
+UPDATE test_table SET nullable_string = base64URLDecode(valid_base64_string) WHERE number_value <= (SELECT MAX(number_value) FROM test_table);
+CREATE TABLE secondary_table (ref_url String, single_value Int32, unique_constraint UInt64 UNIQUE);
+INSERT INTO secondary_table (ref_url, single_value, unique_constraint) VALUES ('dGVzdA==', 20, 1), ('bm9uZQ==', 30, 2);
+SELECT base64URLDecode(test_table.url_string) AS decoded_url, secondary_table.single_value FROM test_table JOIN secondary_table ON number_value < secondary_table.single_value WHERE decoded_url > 'http://nonexistent.com' AND (nullable_string IS NULL OR number_value = 10) ORDER BY decoded_url;

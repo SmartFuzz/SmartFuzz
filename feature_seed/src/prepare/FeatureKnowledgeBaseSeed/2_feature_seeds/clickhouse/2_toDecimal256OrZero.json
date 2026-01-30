@@ -1,0 +1,10 @@
+CREATE TABLE fuzz_test (id UInt32, value String, created_at DateTime) ENGINE = Memory;
+INSERT INTO fuzz_test VALUES (1, '0.0001'), (2, '123.456'), (3, 'Inf'), (4, 'NaN'), (5, '99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999');
+SELECT id, toDecimal256OrZero(value, 38) AS decimal_value FROM fuzz_test WHERE toDecimal256OrZero(value, 38) = ALL (SELECT toDecimal256OrZero(value, 38) FROM fuzz_test WHERE id > 1);
+SELECT id, toDecimal256OrZero(value, 38) AS decimal_value FROM fuzz_test WHERE toDecimal256OrZero(value, 38) IN (SELECT toDecimal256OrZero(value, 38) FROM fuzz_test WHERE id = 1 OR value = 'NaN');
+SELECT id, value, toDecimal256OrZero(value, 20) AS decimal_value, COUNT(*) OVER (PARTITION BY toDecimal256OrZero(value, 20)) AS value_count FROM fuzz_test HAVING decimal_value = ALL (SELECT toDecimal256OrZero('0.0001', 20));
+CREATE TABLE fuzz_test_joins (id UInt32, reference_value String) ENGINE = Memory;
+INSERT INTO fuzz_test_joins VALUES (1, '100.01'), (2, '200.00'), (3, '300.00');
+SELECT a.id, a.value, toDecimal256OrZero(a.value, 38) AS decimal_value FROM fuzz_test a JOIN fuzz_test_joins b ON toDecimal256OrZero(a.value, 38) = ALL (SELECT toDecimal256OrZero(reference_value, 38) FROM fuzz_test_joins);
+SELECT value, toDecimal256OrZero(value, 38) AS decimal_value FROM fuzz_test GROUP BY decimal_value HAVING decimal_value > 0;
+SELECT AVG(toDecimal256OrZero(value, 20)) AS avg_value FROM fuzz_test HAVING avg_value = ALL (SELECT SUM(toDecimal256OrZero(value, 20)) FROM fuzz_test WHERE id < 4);

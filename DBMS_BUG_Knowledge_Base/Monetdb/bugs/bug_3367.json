@@ -1,0 +1,26 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/3367",
+  "title": "Fully qualified order by column gives \"relational query without result\"",
+  "vulnerable_database": "monetdb",
+  "date": "2020-11-30T12:34:45Z",
+  "vulnerable_version": "Unknown",
+  "description": "",
+  "poc": [
+    "create table x as select name, 1 as a from sys.tables with data;",
+    "WITH y AS (\r\n   SELECT name, a, row_number() OVER(ORDER BY x.a DESC) as r FROM x\r\n  )\r\n  SELECT name, a FROM y WHERE r <= 20 ORDER BY r;",
+    "WITH y AS (\r\n   SELECT name, a, row_number() OVER(ORDER BY x.a DESC) as r FROM x\r\n  )\r\n  SELECT name, a FROM y WHERE r <= 20 ORDER BY y.r;",
+    "create table x as select id, CAST(1 as double) as prob from sys.functions with data;",
+    "create table y as select id, CAST(1 as double) as prob from sys.functions with data;",
+    "with x1 as ( select id, prob, row_number() OVER(ORDER BY id desc) as r from x)\r\n select y.*, x1.prob\r\n from x1, y\r\n where x1.r <=2\r\n and x1.id = y.id\r\n -- order by r;"
+  ],
+  "key_bug_features": [
+    "Fully qualified order by column in subquery"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE users (id INT PRIMARY KEY, name VARCHAR(100), age INT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO users (id, name, age) VALUES (1, 'Alice', 30), (2, 'Bob', 25), (3, 'Charlie', NULL);",
+    "WITH ranked_users AS (SELECT id, name, age, ROW_NUMBER() OVER(ORDER BY users.age DESC) AS r FROM users) SELECT name, age FROM ranked_users WHERE r <= 2 ORDER BY r;",
+    "CREATE TABLE orders (order_id INT PRIMARY KEY, user_id INT, amount DECIMAL(10, 2), FOREIGN KEY (user_id) REFERENCES users(id));",
+    "INSERT INTO orders (order_id, user_id, amount) VALUES (1, 1, 100.50), (2, 2, NULL), (3, 3, 75.00);"
+  ]
+}

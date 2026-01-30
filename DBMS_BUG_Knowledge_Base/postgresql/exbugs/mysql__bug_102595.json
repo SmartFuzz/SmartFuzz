@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=102595",
+  "title": "Internal error: JSON wrapper: unexpected type from json_unquote json_extract",
+  "description": "I assume Internal Error are always a bug, not my fault.\r\nIt is generated in \"json_unquote(y);\" when y is null returned by json_extract.\r\nThere's a good chance it is related to\nhttps://bugs.mysql.com/102594\nmysql> delimiter ^\r\nmysql> create database if not exists bug^\r\nQuery OK, 1 row affected, 1 warning (0.00 sec)\r\n\r\nmysql> drop function if exists bug.func^\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nmysql> create function bug.func()returns boolean\r\n    -> begin\r\n    ->      declare y json;\r\n    ->      declare z json;\r\n    ->      SET y= json_extract(json_object(),\"$.x\"); \r\n    ->      set z = json_unquote(y);\r\n    ->    return \"x\";\r\n    -> end;^\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nmysql> select bug.func()^\r\nERROR 1815 (HY000): Internal error: JSON wrapper: unexpected type\nHow to repeat:\ndelimiter ^\r\ncreate database if not exists bug^\r\ndrop function if exists bug.func^\r\ncreate function bug.func()returns boolean\r\nbegin\r\n     declare y json;\r\n     declare z json;\r\n     SET y= json_extract(json_object(),\"$.x\"); \r\n     set z = json_unquote(y);\r\n   return \"x\";\r\nend;^\r\nselect bug.func()^",
+  "date": "2021-02-14 23:00:00",
+  "vulnerable_version": "5.7.31, 5.7.33",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE DATABASE bug;",
+    "CREATE TABLE test_table (id SERIAL PRIMARY KEY, data JSON, name VARCHAR(255) NOT NULL);",
+    "INSERT INTO test_table (id, data, name) VALUES (1, json_build_object('x', NULL), 'test_name');",
+    "SELECT COALESCE(data->>'x', 'NULL') FROM test_table WHERE id = 1;",
+    "DROP FUNCTION IF EXISTS bug_func();"
+  ],
+  "key_bug_features": [
+    "json_unquote fails when json_extract returns null"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/93613",
+  "title": "Inconsistent work with non-explicit timezone",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nWhen table with DateTime/DateTime64 column created in session with not default timezone, this timezone is used in `where` condition until server restarted. After that default timezone is used.\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\n```\nset session_timezone='Asia/Istanbul';\ncreate table mv (time DateTime) engine=MergeTree() order by time;\ninsert into mv values ('2025-01-01 04:00:00'),('2025-01-01 05:00:00'),('2025-01-01 06:00:00');\nselect * from mv where time>='2025-01-01 05:00:00'\n┌────────────────time─┐\n1. │ 2025-01-01 05:00:00 │\n2. │ 2025-01-01 06:00:00 │\n└─────────────────────┘\n2 rows in set.\n```\nRestart clickhouse server.\n```\nselect * from mv where time>='2025-01-01 02:00:00';\n┌────────────────time─┐\n1. │ 2025-01-01 02:00:00 │\n2. │ 2025-01-01 03:00:00 │\n└─────────────────────┘\n2 rows in set.\nset session_timezone='Asia/Istanbul';\nselect * from mv where time>='2025-01-01 02:00:00';\n┌────────────────time─┐\n1. │ 2025-01-01 05:00:00 │\n2. │ 2025-01-01 06:00:00 │\n└─────────────────────┘\n2 rows in set.\nselect * from mv where time>='2025-01-01 05:00:00';\nOk.\n0 rows in set.\n```\nBefore restart `where` condition uses `Asiz/Istanbul` timezone, after restart - `UTC`.\nThis is because table columns are created during `create table` query with actual on that moment timezone, and later this type is reused during filter step.\nThe same with views:\n```\ncreate table mv2 (time DateTime) engine=MergeTree() order by time;\ninsert into mv2 values ('2025-01-01 01:00:00'),('2025-01-01 02:00:00'),('2025-01-01 03:00:00');\ncreate view v1 (time DateTime) as select * from mv2 settings session_timezone='Asia/Istanbul';\nselect * from v1 where time>='2025-01-01 02:00:00';\n┌────────────────time─┐\n1. │ 2025-01-01 02:00:00 │\n2. │ 2025-01-01 03:00:00 │\n└─────────────────────┘\ncreate view v2 (time DateTime64) as select * from mv2 settings session_timezone='Asia/Istanbul';",
+  "date": "2026-01-07T17:01:12Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "SET time_zone = 'Asia/Istanbul';",
+    "CREATE TABLE mv3 (time DATETIME, value INT) ENGINE=InnoDB;",
+    "INSERT INTO mv3 (time, value) VALUES ('2025-01-01 03:00:00', 1), ('2025-01-01 04:00:00', 2), ('2025-01-01 05:00:00', 3);",
+    "SELECT * FROM mv3 WHERE time >= '2025-01-01 04:00:00';",
+    "CREATE VIEW v3 AS SELECT time, value FROM mv3 WHERE value > 1;"
+  ],
+  "key_bug_features": [
+    "Inconsistent timezone usage after server restart"
+  ]
+}

@@ -1,0 +1,13 @@
+CREATE TABLE retention_test(date Date, uid Int32) ENGINE = Memory;
+INSERT INTO retention_test SELECT '2020-01-01', number FROM numbers(5);
+INSERT INTO retention_test SELECT '2020-01-02', number FROM numbers(10);
+INSERT INTO retention_test SELECT '2020-01-03', number FROM numbers(15);
+SELECT uid, retention(date = '2020-01-01', date = '2020-01-02') AS r1 FROM retention_test GROUP BY uid;
+SELECT uid, retention(date = '2020-01-01', date = '2020-01-02', date = '2020-01-03') AS r2 FROM retention_test WHERE date IN ('2020-01-01', '2020-01-02', '2020-01-03') GROUP BY uid ORDER BY uid ASC;
+SELECT uid, retention(date = '2020-01-01', date = '2020-01-02', date = '2020-01-03', date = '2020-01-04') AS r FROM retention_test WHERE date IN ('2020-01-01', '2020-01-02', '2020-01-03', '2020-01-04') GROUP BY uid ORDER BY uid DESC;
+CREATE TABLE retention_test_2(date Date, uid Int32) ENGINE = Memory;
+INSERT INTO retention_test_2 SELECT '2020-01-01', number + 5 FROM numbers(5);
+SELECT rt.uid, retention(rt.date = '2020-01-01', rt2.date = '2020-01-02') AS combined FROM retention_test rt JOIN retention_test_2 rt2 ON rt.uid = rt2.uid WHERE rt.date IN ('2020-01-01') GROUP BY rt.uid;
+SELECT uid, sum(r[1]) AS total_conditions_met FROM (SELECT uid, retention(date = '2020-01-01', date = '2020-01-02', date = '2020-01-03') AS r FROM retention_test WHERE date IN ('2020-01-01', '2020-01-02', '2020-01-03') GROUP BY uid) AS subquery GROUP BY uid;
+SELECT uid, arrayJoin(retention(date = '2020-01-01', date = '2020-01-02', date = '2020-01-03')) AS event_conditions FROM retention_test WHERE date IN ('2020-01-01', '2020-01-02', '2020-01-03') ORDER BY uid;
+SELECT uid, retention(date = '2021-01-01', date = '2021-01-02') AS r3 FROM (SELECT * FROM retention_test WHERE uid < 10) AS filtered WHERE date >= '2021-01-01' GROUP BY uid;

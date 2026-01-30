@@ -1,0 +1,16 @@
+{
+    "function": "normalizeQueryKeepNames",
+    "operator": "x -> expr",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, name String, created_at DateTime, score Float64, complex_name String DEFAULT 'default_value');",
+        "INSERT INTO test_table (id, name, created_at, score) VALUES (1, 'Alice', '2023-10-01 00:00:00', 89.5), (2, 'Bob', '2023-10-02 12:00:00', NULL), (3, '', '2023-10-03 15:30:00', 99.0);",
+        "SELECT normalizeQueryKeepNames('SELECT id, name, score FROM test_table WHERE score > 80 AND name IS NOT NULL AND created_at < NOW()'), (SELECT COUNT(*) FROM test_table WHERE created_at > '2023-10-01') AS active_count;",
+        "SELECT id, name, created_at FROM (SELECT id, name, created_at, score FROM test_table WHERE normalizeQueryKeepNames(name) LIKE '%li%') AS subquery WHERE score IS NULL OR score > 75;",
+        "SELECT SUM(score) OVER (PARTITION BY name ORDER BY created_at) AS cumulative_score FROM (SELECT id, name, score, created_at FROM test_table WHERE created_at >= '2023-10-01') AS grouped_table;",
+        "SELECT complex_name, COUNT(*) FROM (SELECT id, normalizeQueryKeepNames(name) AS complex_name FROM test_table GROUP BY id, name) GROUP BY complex_name HAVING COUNT(*) > 1;",
+        "SELECT AVG(score) AS average_score FROM test_table WHERE score IS NOT NULL AND created_at BETWEEN '2023-10-01' AND '2023-10-02';",
+        "SELECT id -> (x -> x + 1) AS incremented_id FROM test_table;",
+        "SELECT id, normalizeQueryKeepNames('SELECT score FROM test_table WHERE id = ' || toString(id)) FROM test_table;",
+        "SELECT id, score FROM test_table ORDER BY (normalizeQueryKeepNames(name) IS NULL OR normalizeQueryKeepNames(name) = '') DESC, created_at DESC;"
+    ]
+}

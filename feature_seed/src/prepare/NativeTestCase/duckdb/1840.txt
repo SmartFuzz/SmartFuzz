@@ -1,0 +1,13 @@
+SET checkpoint_threshold='1TB';
+PRAGMA disable_checkpoint_on_shutdown;
+SET debug_checkpoint_sleep_ms=${sleep_time};
+ATTACH '__TEST_DIR__/concurrent_checkpoint_wal${sleep_time}.db' AS concurrent_checkpoint_wal;
+CREATE TABLE concurrent_checkpoint_wal.integers(i INTEGER);
+INSERT INTO concurrent_checkpoint_wal.integers SELECT * FROM range(${threadid} * 100, (${threadid} + 1) * 100);
+SELECT CASE WHEN MAX(i) <= ANY_VALUE(regexp_extract(s, 'Max: (\d+)', 1)::INT) THEN NULL ELSE CONCAT('Stats ', ANY_VALUE(s), ' but got value ', MAX(i)) END FROM (SELECT stats(i) s, i FROM concurrent_checkpoint_wal.integers);
+CHECKPOINT concurrent_checkpoint_wal;
+SELECT COUNT(*), SUM(i) FROM concurrent_checkpoint_wal.integers;
+DETACH concurrent_checkpoint_wal;
+ATTACH '__TEST_DIR__/concurrent_checkpoint_wal${sleep_time}.db' AS concurrent_checkpoint_wal;
+SELECT COUNT(*), SUM(i) FROM concurrent_checkpoint_wal.integers;
+DETACH concurrent_checkpoint_wal;

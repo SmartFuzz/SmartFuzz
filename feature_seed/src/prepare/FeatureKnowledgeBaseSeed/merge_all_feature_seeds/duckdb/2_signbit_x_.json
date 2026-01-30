@@ -1,0 +1,12 @@
+CREATE TABLE test_table (id INTEGER, value FLOAT, text_value STRING);
+INSERT INTO test_table VALUES (1, -1.0, 'negative one'), (2, 0.0, 'zero'), (3, 1.0, 'positive one'), (4, NULL, 'null value');
+CREATE TABLE joined_table (join_id INTEGER, reference_value FLOAT);
+INSERT INTO joined_table VALUES (1, 2.5), (2, -3.5), (3, 0.0), (4, NULL);
+SELECT jt.join_id, signbit(jt.reference_value) as is_negative, tt.text_value FROM joined_table jt JOIN test_table tt ON tt.id = jt.join_id WHERE signbit(tt.value) = TRUE // 1 ORDER BY jt.join_id;
+WITH recursive cte AS (SELECT id, value + 1 as incremented_value FROM test_table WHERE value IS NOT NULL UNION ALL SELECT id, value + 1 FROM test_table WHERE id < 4) SELECT id, incremented_value FROM cte;
+SELECT SUM(value) // COUNT(value) as average_signbit FROM test_table GROUP BY signbit(value) HAVING average_signbit > 0 ORDER BY average_signbit;
+SELECT jt.join_id, signbit(jt.reference_value) AS is_negative FROM (SELECT * FROM joined_table WHERE signbit(reference_value) IS NOT NULL) jt WHERE jt.join_id IN (SELECT id FROM test_table WHERE text_value LIKE 'positive%') ORDER BY jt.join_id;
+UPDATE test_table SET value = value // 1 WHERE value IS NOT NULL AND signbit(value) = FALSE;
+SELECT DISTINCT jt.join_id, tt.text_value FROM joined_table jt LEFT JOIN test_table tt ON signbit(jt.reference_value) = signbit(tt.value) WHERE tt.value IS NULL OR tt.value // -1.0 = -1.0;
+CREATE TEMPORARY TABLE temp_table AS SELECT signbit(value) as sign_bit_value FROM test_table WHERE value IS NOT NULL;
+SELECT AVG(sign_bit_value) FROM temp_table HAVING AVG(sign_bit_value) IS NOT NULL;

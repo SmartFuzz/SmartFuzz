@@ -1,0 +1,18 @@
+{
+    "function": "struct_pack(name := any, ...)",
+    "operator": "&",
+    "sql_array": [
+        "CREATE TABLE test_table (id INT, value STRING, num_val INT, nullable_val INT, composite STRUCT<component1 INT, component2 STRING>);",
+        "INSERT INTO test_table VALUES (1, 'example', 15, NULL, struct_pack(component1 := 5, component2 := 'A')), (2, 'test', 0, 3, struct_pack(component1 := 10, component2 := 'B'));",
+        "SELECT id, struct_pack(num := num_val, str := value), (num_val & 3) AS bitwise AND_result FROM test_table WHERE nullable_val IS NULL OR (num_val & 15) = 0;",
+        "SELECT id, COUNT(*) AS C_count, struct_pack(val_count := COUNT(value), max_num := MAX(num_val & 7)) FROM (SELECT DISTINCT id, value, num_val FROM test_table WHERE value LIKE 'e%') GROUP BY id HAVING MAX(num_val & 15) > 2;",
+        "SELECT id FROM (SELECT id, struct_pack(value := value, calculated_num := (num_val & 15) + NULLIF(nullable_val, 0)) AS composite_val FROM test_table) AS derived_table WHERE composite_val.num_val IS NOT NULL;",
+        "WITH computed AS (SELECT id, struct_pack(val := value, num_result := (num_val & num_val)) AS result FROM test_table) SELECT result.val, (SELECT COUNT(*) FROM computed WHERE result.num_result > 0) AS valid_count FROM computed;",
+        "CREATE TABLE join_table (join_id INT, join_value STRING, fk_id INT);",
+        "INSERT INTO join_table VALUES (1, 'join_example', 1), (2, 'join_test', 2);",
+        "SELECT tt.id, jt.join_value, struct_pack(aggregated := COUNT(jt.join_value), and_result := (SUM(tt.num_val) & MAX(tt.num_val))) FROM test_table tt JOIN join_table jt ON tt.id = jt.fk_id GROUP BY tt.id HAVING COUNT(jt.join_value) > 1;",
+        "CREATE TABLE temp_table (temp_id INT, temp_value FLOAT, temp_nullable FLOAT);",
+        "INSERT INTO temp_table VALUES (1, 0.0, NULL), (2, NULL, NULL), (3, 1.5, 3.5);",
+        "SELECT tt.temp_id, struct_pack(null_check := NULLIF(temp_value, 0.0), and_result := (temp_value & temp_nullable)) FROM temp_table tt WHERE (temp_value IS NOT NULL AND temp_nullable IS NULL) OR (temp_nullable IS NOT NULL AND temp_value IS NULL);"
+    ]
+}

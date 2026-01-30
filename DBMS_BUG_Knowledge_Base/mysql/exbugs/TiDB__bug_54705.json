@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/54705",
+  "title": "txn: incompatbile lock behaviour for cop and point get for update read",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\nWhen `select for update` is executed outside explicit transactions, there would be `SelectLockExec` for coprocessor read queries but no `lock` for point get queries, the behaviours are in-consistent.\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```\r\ncreate table t(a int key);\r\nexplain select * from t for update;\r\nexplain select * from t where a = 1 for update;\r\n```\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\nBoth select would not have lock operations.\r\n\r\n### 3. What did you see instead (Required)\r\nThere is `SelectLockExec` on `select * from t for update;`\r\n```\r\nexplain select * from t for update;\r\n+-------------------------+----------+-----------+---------------+--------------------------------+\r\n| id                      | estRows  | task      | access object | operator info                  |\r\n+-------------------------+----------+-----------+---------------+--------------------------------+\r\n| SelectLock_5            | 10000.00 | root      |               | for update 0                   |\r\n| └─TableReader_7         | 10000.00 | root      |               | data:TableFullScan_6           |\r\n|   └─TableFullScan_6     | 10000.00 | cop[tikv] | table:t       | keep order:false, stats:pseudo |\r\n+-------------------------+----------+-----------+---------------+--------------------------------+\r\n3 rows in set (0.001 sec)\r\n```\r\n\r\nWhile the point get query dose not have `lock` flag\r\n```\r\nMySQL [test]> explain select * from t where a = 1 for update;\r\n+-------------+---------+------+---------------+---------------+\r\n| id          | estRows | task | access object | operator info |\r\n+-------------+---------+------+---------------+---------------+\r\n| Point_Get_1 | 1.00    | root | table:t       | handle:1      |\r\n+-------------+---------+------+---------------+---------------+\r\n```\r\n\r\n**Note** though the `SelectLockExec` is generated in the SQL plan, it would be skipped when building `SelectLockExec` executor at https://github.com/pingcap/tidb/blob/master/pkg/executor/builder.go#L770.\r\n\r\n### 4. What is your TiDB version? (Required)\r\nNightly 26378cbe48c35c5bc4e66be10dddce2d15428fed\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2024-07-18T04:30:12Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1(a INT PRIMARY KEY, b VARCHAR(255), c DATE);",
+    "INSERT INTO t1(a, b, c) VALUES (1, 'test', '2023-01-01');",
+    "CREATE TABLE t2(d INT, e FLOAT, FOREIGN KEY(d) REFERENCES t1(a));",
+    "INSERT INTO t2(d, e) VALUES (1, 1.5);",
+    "EXPLAIN SELECT * FROM t1 WHERE a = 1 FOR UPDATE;"
+  ],
+  "key_bug_features": [
+    "Inconsistent lock behavior for cop and point get queries"
+  ]
+}

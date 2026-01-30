@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=109683",
+  "title": "MySqlCommand.LastInsertedId is incorrect if multiple rows are inserted",
+  "description": "When multiple rows are inserted by a single MySqlCommand, the MySqlCommand.LastInsertedId property returns the ID of the first row that was inserted. The expected behaviour is to return the ID of the last row that was inserted, just as LAST_INSERT_ID() does.\r\n\r\nThis is a breaking change from v8.0.31.\nHow to repeat:\nusing var connection = new MySqlConnection(\"...\");\r\nconnection.Open();\r\n\r\nusing var command = new MySqlCommand(@\"drop table if exists test;\r\ncreate table test(rowid integer not null primary key auto_increment, text varchar(100) not null);\r\n\", connection);\r\ncommand.ExecuteNonQuery();\r\n\r\ncommand.CommandText = @\"\r\nINSERT INTO test (text) VALUES ('test1');\r\nINSERT INTO test (text) VALUES ('test2');\";\r\n\r\nConsole.WriteLine(command.ExecuteNonQuery()); // Prints 2\r\nConsole.WriteLine(command.LastInsertedId); // Prints 1\r\n\r\n// LAST_INSERT_ID() is correct but LastInsertedId is wrong\r\ncommand.CommandText = @\"\r\nINSERT INTO test (text) VALUES ('test3');\r\nINSERT INTO test (text) VALUES ('test4');\r\nSELECT LAST_INSERT_ID();\";\r\n\r\nusing var reader = command.ExecuteReader();\r\nreader.Read();\r\nConsole.WriteLine(reader.GetInt64(0)); // Prints 4\r\nConsole.WriteLine(command.LastInsertedId); // Prints 3\nSuggested fix:\nRevert this change:\nhttps://github.com/mysql/mysql-connector-net/commit/b65554971800996770d7453784ce425c9b7048...",
+  "date": "2023-01-18 14:28:00",
+  "vulnerable_version": "8.0.32",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS test;",
+    "CREATE TABLE test(rowid INTEGER NOT NULL PRIMARY KEY, text VARCHAR(100) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test (text) VALUES ('test1'), ('test2'), ('test3');",
+    "INSERT INTO test (text) VALUES ('test4'), ('test5');",
+    "SELECT MAX(rowid) FROM test;"
+  ],
+  "key_bug_features": [
+    "MySqlCommand.LastInsertedId returns first row ID on multiple inserts"
+  ]
+}

@@ -1,0 +1,14 @@
+CREATE TABLE test_dates (id INT PRIMARY KEY, start_date DATE, end_date DATE, value INT);
+INSERT INTO test_dates (id, start_date, end_date, value) VALUES (1, DATE '2021-12-31', DATE '2021-12-25', 100), (2, DATE '2021-12-11', DATE '2021-12-10', 200);
+SELECT id, sql_sub(start_date, end_date) << 1 AS shifted_seconds FROM test_dates WHERE sql_sub(start_date, end_date) IS NOT NULL;
+SELECT id, (sql_sub(start_date, end_date) + 100) << 2 AS adjusted_seconds FROM (SELECT id, start_date, end_date FROM test_dates WHERE start_date > DATE '2021-12-12') AS derived;
+CREATE TABLE other_dates (ref_id INT, reference_date DATE, PRIMARY KEY (ref_id, reference_date));
+INSERT INTO other_dates (ref_id, reference_date) VALUES (1, DATE '2021-12-09'), (1, DATE '2021-12-11');
+SELECT t.id, sql_sub(t.start_date, o.reference_date) << t.value AS seconds_diff FROM test_dates t JOIN other_dates o ON (t.id = o.ref_id) WHERE o.reference_date < DATE '2021-12-30';
+SELECT id, sql_sub(DATE '2022-01-01', start_date) << (value + 3) AS boundary_shifted_value FROM test_dates HAVING boundary_shifted_value > 0;
+CREATE TABLE complex_table (num INT, nullable_date DATE, value FLOAT);
+INSERT INTO complex_table (num, nullable_date, value) VALUES (1, NULL, 100.5), (2, DATE '2021-12-10', 200.5);
+SELECT ct.num, sql_sub(ct.nullable_date, DATE '2021-12-10') AS date_diff FROM complex_table ct WHERE ct.nullable_date IS NOT NULL;
+SELECT id, (sql_sub(DATE '2022-01-01', start_date) + 50) << 3 FROM test_dates WHERE end_date IS NOT NULL;
+SELECT t.id, AVG(sql_sub(start_date, end_date) << 1) OVER (PARTITION BY id) AS avg_shifted_seconds FROM test_dates t GROUP BY t.id;
+SELECT id, CASE WHEN sql_sub(start_date, end_date) IS NULL THEN 0 ELSE (sql_sub(start_date, end_date) << 3) END AS conditional_shifted_value FROM test_dates;

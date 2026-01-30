@@ -1,0 +1,17 @@
+CREATE TABLE test_strings (id Int32, haystack String, needles Array(String));
+INSERT INTO test_strings VALUES (1, 'ClickHouse is fast', ['C', 'H']);
+INSERT INTO test_strings VALUES (2, 'Nothing to see here', ['Z', 'Y']);
+INSERT INTO test_strings VALUES (3, 'Data processing', ['a', 'd', 'e']);
+SELECT id, multiSearchAny(haystack, needles) AS match FROM test_strings WHERE match = 1;
+SELECT * FROM test_strings WHERE id != ALL (SELECT id FROM test_strings WHERE multiSearchAny(haystack, needles) = 0);
+SELECT id, haystack, multiSearchAny(haystack, ['C', 'H', 'fast']) AS multi_match FROM test_strings GROUP BY id, haystack HAVING multi_match = 1;
+SELECT id FROM test_strings WHERE haystack != ALL (SELECT haystack FROM test_strings WHERE multiSearchAny(haystack, ['Nothing', 'this']) = 1);
+SELECT id, haystack FROM test_strings WHERE multiSearchAny(haystack, ['ClickHouse']) = 1 OR multiSearchAny(haystack, []) = 0;
+CREATE TABLE temp_data (key Int32, value String DEFAULT NULL);
+INSERT INTO temp_data VALUES (1, 'Row one'), (2, NULL), (3, 'Row three');
+SELECT key FROM temp_data WHERE value != ALL (SELECT value FROM temp_data WHERE value IS NULL);
+SELECT id, multiSearchAny(haystack, ['fast', 'slow']) AS match FROM test_strings WHERE multiSearchAny(haystack, ['ClickHouse']) = 1 AND id != ALL (SELECT id FROM test_strings WHERE haystack LIKE '%nothing%');
+DROP TABLE IF EXISTS test_strings;
+CREATE TABLE test_strings_v2 (id Int32, haystack String, needles Array(String), timestamp DateTime DEFAULT now());
+INSERT INTO test_strings_v2 VALUES (1, 'Quick test for edge cases', ['Quick', 'slow']), (2, 'Boundary cases in SQL', ['boundary']);
+SELECT id, haystack FROM test_strings_v2 WHERE multiSearchAny(haystack, needles) = 1 AND timestamp != ALL (SELECT timestamp FROM test_strings_v2 WHERE haystack = 'Boundary cases in SQL');

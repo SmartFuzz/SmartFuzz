@@ -1,0 +1,15 @@
+{
+    "function": "toIntervalMillisecond",
+    "operator": "SELECT a OR b",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt64, event_time DateTime, duration String, value Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table (id, event_time, duration, value) VALUES (1, '2024-01-01 00:00:00', '400', 1.234), (2, '2024-01-01 00:00:01', '500', NULL), (3, '2024-01-01 00:00:02', '300', 0.567);",
+        "SELECT id, event_time + toIntervalMillisecond(CAST(duration AS Int32)) AS new_time FROM test_table WHERE value IS NULL OR duration = '';",
+        "SELECT id, event_time, duration, value, toIntervalMillisecond(CASE WHEN value IS NOT NULL THEN 100 ELSE 200 END) AS interval FROM test_table WHERE id = (SELECT MAX(id) FROM test_table);",
+        "SELECT id, event_time, duration, toIntervalMillisecond(50) AS interval FROM test_table WHERE value > 0 OR event_time < (SELECT MAX(event_time) FROM test_table WHERE value IS NOT NULL);",
+        "SELECT id, event_time + toIntervalMillisecond(CAST(NULLIF(duration, '') AS Int32)) AS adjusted_time FROM test_table HAVING adjusted_time < NOW() OR adjusted_time IS NULL;",
+        "WITH (SELECT AVG(value) AS avg_value FROM test_table WHERE value IS NOT NULL) AS avg FROM test_table WHERE (value < avg) OR (duration LIKE '4%') OR (id IN (SELECT id FROM test_table WHERE duration NOT LIKE '%0%'));",
+        "SELECT DISTINCT id, value FROM test_table WHERE (duration = '300' AND value = 0.567) OR (event_time + toIntervalMillisecond(150) >= NOW());",
+        "SELECT id, event_time + toIntervalMillisecond((SELECT COUNT(*) FROM test_table WHERE value IS NOT NULL)) AS total_adjusted_time FROM test_table GROUP BY id HAVING total_adjusted_time <= NOW();"
+    ]
+}

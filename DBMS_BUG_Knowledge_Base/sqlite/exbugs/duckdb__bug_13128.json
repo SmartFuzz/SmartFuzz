@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/13128",
+  "title": "Scalar function without input parameters",
+  "description": "### What happens?\n\nWhen I register a scalar function without any parameters, the chunk that I get in the callback has size 1 no matter how many rows there are in the table.\n\n### To Reproduce\n\n```c\r\nint main()\r\n{\r\n\tduckdb_database db;\r\n\tduckdb_connection con;\r\n\tduckdb_state state;\r\n\tduckdb_result result;\r\n\tduckdb_prepared_statement preparedStatement;\r\n\r\n\tduckdb_open(NULL, &db);\r\n\tduckdb_connect(db, &con);\r\n\r\n\tstd::cout << duckdb_library_version();\r\n\tstate = duckdb_query(con, \"CREATE TABLE big_table_1 AS SELECT (greatest(random(), 0.1) * 1000)::BIGINT i FROM range(1000) t(i);\", &result);\r\n\r\n\tauto scalar_function = duckdb_create_scalar_function();\r\n\tduckdb_scalar_function_set_name(scalar_function, \"my_random\");\r\n\r\n\t//duckdb_scalar_function_add_parameter(scalar_function, duckdb_create_logical_type(DUCKDB_TYPE_BIGINT));\r\n\r\n\tduckdb_scalar_function_set_return_type(scalar_function, duckdb_create_logical_type(DUCKDB_TYPE_INTEGER));\r\n\tduckdb_scalar_function_set_function(scalar_function, my_random);\r\n\r\n\tstate = duckdb_register_scalar_function(con, scalar_function);\r\n\r\n\tstate = duckdb_query(con, \"select my_random() from big_table_1;\", &result);\r\n\t//state = duckdb_query(con, \"select my_random(i) from big_table_1;\", &result);\r\n\r\n\tduckdb_disconnect(&con);\r\n\tduckdb_close(&db);\r\n}\r\n\r\nvoid my_random(duckdb_function_info, duckdb_data_chunk input, duckdb_vector output) {\r\n\tauto size = duckdb_data_chunk_get_size(input);  --Size is 1 after this call\r\n}\r\n```\r\n\r\nIf you uncomment the commented lines, `size` will be 1000 in the `my_random` calllback\n\n### OS:\n\nWindows 11 x64\n\n### DuckDB Version:\n\n1.0.1-dev3196\n\n### DuckDB Client:\n\nC Api\n\n### Full Name:\n\nGiorgi Dalakishvili\n\n### Affiliation:\n\nSpace International\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a nightly build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nNot applicable - the reproduction does not require a data set\n\n### Did you include all code required to reproduce the issue?\n\n- [X] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [X] Yes, I have",
+  "date": "2024-07-23 09:57:10",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_table_1 (id INTEGER PRIMARY KEY, value TEXT NOT NULL);",
+    "INSERT INTO test_table_1 (id, value) VALUES (1, 'test1'), (2, 'test2'), (3, NULL);",
+    "CREATE TABLE test_table_2 AS SELECT id, COALESCE(value, 'default') AS value FROM test_table_1;",
+    "SELECT RANDOM() FROM test_table_2 WHERE id > 1;",
+    "SELECT RANDOM() FROM (SELECT id FROM test_table_1 WHERE value IS NOT NULL) AS subquery;"
+  ],
+  "key_bug_features": [
+    "Scalar function registered without input parameters returns incorrect chunk size"
+  ]
+}

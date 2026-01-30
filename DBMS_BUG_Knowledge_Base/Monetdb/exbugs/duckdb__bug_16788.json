@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/16788",
+  "title": "NORMALIZE_NAMES scope needs reviewing",
+  "description": "according to the documentation\n\"\"\"\nnormalize_names\tNormalize column names. This removes any non-alphanumeric characters from them. Column names that are reserved SQL keywords are prefixed with an underscore character (_).\n\"\"\"\n\n```\nexample: (I would have expected **_commit** and **_rollback** as they are (typically) seen as reserved keywords \nREFERENCE: https://en.wikipedia.org/wiki/List_of_SQL_reserved_words\n\ncreate table places as select * from read_csv(\"pop.csv\", normalize_names=True);\nselect * from places;\n┌───────────┬───────────────┬────────┬──────────┐\n│  _select  │     _join     │ commit │ rollback │\n│  varchar  │    varchar    │ int64  │ varchar  │\n├───────────┼───────────────┼────────┼──────────┤\n│ Amsterdam │ North Holland │ 905234 │ NULL     │\n│ Rotterdam │ South Holland │ 656050 │ NULL     │\n│ The Hague │ South Holland │ 552995 │ NULL     │\n│ Utrecht   │ Utrecht       │ 361924 │ NULL     │\n│ Eindhoven │ North Brabant │ 238478 │ NULL     │\n...\n```\n\nthoughts .... \n\nrgds",
+  "date": "2025-03-23 11:21:39",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT PRIMARY KEY, _select VARCHAR, _join VARCHAR, commit INT, rollback VARCHAR);",
+    "INSERT INTO test_table (id, _select, _join, commit, rollback) VALUES (1, 'Test', 'Join', 100, NULL);",
+    "INSERT INTO test_table (id, _select, _join, commit, rollback) VALUES (2, 'Example', 'Join', NULL, 'Rollback');",
+    "SELECT id, _select, _join, commit, rollback FROM test_table WHERE commit IS NOT NULL;",
+    "CREATE TABLE another_table AS SELECT id, _select, _join FROM test_table WHERE _select LIKE 'T%';"
+  ],
+  "key_bug_features": [
+    "Normalization of reserved SQL keywords in column names"
+  ]
+}

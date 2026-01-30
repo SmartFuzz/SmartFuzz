@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/88896",
+  "title": "Unexpected grants required for materialized view source table",
+  "description": "### Company or project name\nCloudflare\n### Describe what's wrong\nWhen defining select grants for a materialized view, I have to grant access to source table columns that do not exist. I think this is best illustrated with a small test, which I would expect to pass:\n```bash\n#!/usr/bin/env bash\nCURDIR=$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\n# shellcheck source=../shell_config.sh\n. \"$CURDIR\"/../shell_config.sh\n$CLICKHOUSE_CLIENT -n --query \"\nDROP TABLE IF EXISTS source_table;\nDROP TABLE IF EXISTS mv_table;\nCREATE TABLE source_table\n(\ndate Date\n)\nENGINE = Null;\nCREATE MATERIALIZED VIEW mv_table\n(\ndate Date,\nnumber UInt32\n)\nENGINE = MergeTree\nPARTITION BY date\nORDER BY (date, number)\nAS\nSELECT\ndate\nFROM source_table;\nCREATE USER user_${CLICKHOUSE_TEST_UNIQUE_NAME};\nGRANT SELECT(date) ON source_table TO user_${CLICKHOUSE_TEST_UNIQUE_NAME};\nGRANT SELECT ON mv_table TO user_${CLICKHOUSE_TEST_UNIQUE_NAME};\n\"\n$CLICKHOUSE_CLIENT --query \"SELECT * FROM mv_table;\"\n# fails with: Not enough privileges. To execute this query, it's necessary to have the grant SELECT(date, number) ON test_e0zwjr5a.source_table. (Missing permissions: SELECT(number) ON test_e0zwjr5a.source_table). (ACCESS_DENIED)\n$CLICKHOUSE_CLIENT --user=user_${CLICKHOUSE_TEST_UNIQUE_NAME} --query \"SELECT * FROM mv_table;\"\n$CLICKHOUSE_CLIENT -n --query \"\nDROP USER user_${CLICKHOUSE_TEST_UNIQUE_NAME};\nDROP TABLE mv_table;\nDROP TABLE source_table;\n\"\n```\nThe column `number` does not exist in `source_table` so why do I need to add it to the select grant?\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nRun the stateless test\n### Expected behavior\nThe test should pass\n### Error message and/or stacktrace",
+  "date": "2025-10-22T14:34:54Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS source_table;",
+    "CREATE TABLE source_table (date DATE, value INT);",
+    "CREATE MATERIALIZED VIEW mv_table AS SELECT date, value FROM source_table WHERE value IS NOT NULL;",
+    "CREATE USER user_test_fuzz;",
+    "GRANT SELECT(date) ON source_table TO user_test_fuzz;"
+  ],
+  "key_bug_features": [
+    "Granting access to non-existent source table columns"
+  ]
+}

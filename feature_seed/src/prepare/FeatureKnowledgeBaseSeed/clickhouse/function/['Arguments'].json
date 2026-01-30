@@ -1,0 +1,16 @@
+[
+    "CREATE TABLE my_hudi_table (id UInt32, name String, create_time DateTime) ENGINE = Hudi(url = 's3://mybucket/hudi_table', format = 'CSV', structure = 'id UInt32, name String, create_time DateTime');",
+    "SELECT * FROM my_hudi_table;",
+    "INSERT INTO my_hudi_table VALUES (1, 'test1', now()), (2, 'test2', now());",
+    "CREATE TABLE another_table (id UInt32, data String) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO another_table VALUES (1, 'sample1'), (2, 'sample2');",
+    "SELECT a.id, a.name, b.data FROM my_hudi_table AS a JOIN another_table AS b ON a.id = b.id WHERE a.create_time > now() - INTERVAL 1 DAY;",
+    "SELECT id, name FROM my_hudi_table WHERE id IN (SELECT id FROM another_table WHERE data LIKE 'sample%') ORDER BY create_time DESC;",
+    "CREATE TABLE compressed_hudi_table (id UInt32, info String) ENGINE = Hudi(url = 's3://mybucket/compressed_hudi_table', format = 'CSV', structure = 'id UInt32, info String', compression = 'gzip');",
+    "WITH (SELECT COUNT(*) FROM my_hudi_table) AS total_count SELECT total_count * 1.0 / COUNT(*) FROM another_table;",
+    "SELECT id, COUNT(*) OVER (PARTITION BY id) AS count_per_id FROM my_hudi_table ORDER BY count_per_id DESC;",
+    "CREATE TEMPORARY TABLE temp_table (id UInt32) ENGINE = Memory;",
+    "INSERT INTO temp_table VALUES (1), (2), (3);",
+    "SELECT mt.id, mt.name, tt.id AS temp_id FROM my_hudi_table mt JOIN temp_table tt ON mt.id = tt.id;",
+    "SELECT * FROM my_hudi_table WHERE id > (SELECT MAX(id) FROM another_table) ORDER BY create_time;"
+]

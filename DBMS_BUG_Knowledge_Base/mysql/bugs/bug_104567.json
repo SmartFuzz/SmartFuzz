@@ -1,0 +1,25 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=104567",
+  "title": "Inconsistent result defining binary column default values",
+  "vulnerable_database": "MySQL Server: Information schema",
+  "date": "2021-08-08 13:48:00",
+  "vulnerable_version": "5.7, 8.0, 5.7.35, 8.0.26",
+  "description": "No\nHow to repeat:\nReported as a problem by a user (\nhttps://forums.mysql.com/read.php?101,698061,698061#msg-698061\n)\r\n\r\n-- 5.7, X operator\r\ndrop table if exists binary_test;\r\nCREATE TABLE `binary_test` (\r\n`col` varbinary(100) DEFAULT X'aaaa00aaaaaaaaffffff'\r\n) ENGINE=InnoDB;\r\nshow columns from binary_test;\r\n+-------+----------------+------+-----+---------+-------+\r\n| Field | Type           | Null | Key | Default | Extra |\r\n+-------+----------------+------+-----+---------+-------+\r\n| col   | varbinary(100) | YES  |     |         |       |\r\n+-------+----------------+------+-----+---------+-------+\r\n\r\n-- 8.0, X operator\r\ndrop table if exists binary_test;\r\nCREATE TABLE `binary_test` (\r\n`col` varbinary(100) DEFAULT X'aaaa00aaaaaaaaffffff'\r\n) ENGINE=InnoDB;\r\nshow columns from binary_test;\r\n+-------+----------------+------+-----+---------+-------+\r\n| Field | Type           | Null | Key | Default | Extra |\r\n+-------+----------------+------+-----+---------+-------+\r\n| col   | varbinary(100) | YES  |     | 0xAAAA  |       |\r\n+-------+----------------+------+-----+---------+-------+\r\n\r\n-- 5.7, no X operator:\r\ndrop table binary_test;\r\nCREATE TABLE `binary_test` (\r\n`col` varbinary(100) DEFAULT 'ªª ªªªªÿÿÿ'\r\n) ENGINE=InnoDB;\r\nshow columns from binary_test;\r\n+-------+----------------+------+-----+---------------------+-------+\r\n| Field | Type           | Null | Key | Default             | Extra |\r\n+-------+----------------+------+-----+---------------------+-------+\r\n| col   | varbinary(100) | YES  |     | ªª ªªªªÿÿÿ          |       |\r\n+-------+----------------+------+-----+---------------------+-------+\r\n\r\n-- 8.0, no X operator:\r\ndrop table binary_test;\r\nCREATE TABLE `binary_test` (\r\n`col` varbinary(100) DEFAULT 'ªª ªªªªÿÿÿ'\r\n) ENGINE=InnoDB;\r\nshow columns from binary_test;\r\n+-------+----------------+------+-----+------------------------------------------+-------+\r\n| Field | Type           | Null | Key | Default                                  | Extra |\r\n+-------+----------------+------+-----+------------------------------------------+-------+\r\n| col   | varbinary(100) | YES  |     | 0xC2AAC2AA20C2AAC2AAC2AAC2AAC3BFC3BFC3BF |       |\r\n+-------+----------------+------+-----+------------------------------------------+-------+\nSuggested fix:\nDon't use the X hex operator to define default values. \r\n\r\nBut still, shouldn't these results be more consistent?",
+  "poc": [
+    "drop table if exists binary_test;",
+    "CREATE TABLE `binary_test` (\n`col` varbinary(100) DEFAULT X'aaaa00aaaaaaaaffffff'\n) ENGINE=InnoDB;",
+    "show columns from binary_test;",
+    "drop table binary_test;",
+    "CREATE TABLE `binary_test` (\n`col` varbinary(100) DEFAULT 'ªª ªªªªÿÿÿ'\n) ENGINE=InnoDB;"
+  ],
+  "key_bug_features": [
+    "Inconsistent default values for binary column definitions"
+  ],
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS binary_test;",
+    "CREATE TABLE binary_test (col VARBINARY(100) DEFAULT X'aaaa00aaaaaaaaffffff') ENGINE=InnoDB;",
+    "INSERT INTO binary_test (col) VALUES (NULL);",
+    "SELECT col FROM binary_test WHERE col IS NOT NULL;",
+    "DROP TABLE IF EXISTS binary_test;"
+  ]
+}

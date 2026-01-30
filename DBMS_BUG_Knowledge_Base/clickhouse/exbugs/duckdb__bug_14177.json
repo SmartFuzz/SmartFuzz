@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14177",
+  "title": "CSV reader will delete valid records when erroneous newlines are present",
+  "description": "### What happens?\r\n\r\nWhen using the CSV reader in version `1.1.1`, valid rows from the CSV will be deleted when there are erroneous newlines present in the CSV surrounding the valid records. This occurs when you use the `ignore_errors` parameter. If you set `ignore_errors` to `False` or use `store_rejects`, then no data loss occurs.\r\n\r\nI believe this is correlated to CSVs with a large amount of records. During my testing, as I've reduced the amount of records in my test CSV the amount of dataloss decreased as the amount of records decreased. I'll provide my sample data below.\r\n\r\nThis issue first began happening in version `1.1.0`, and this is not an issue in version `1.0.0`.\r\n\r\n### To Reproduce\r\n\r\nFirst, download the sample data here: [test_duckdb_data.csv.zip](https://github.com/user-attachments/files/17192226/test_duckdb_data.csv.zip)\r\n\r\nUsing this CSV, we'll create two views in DuckDB:\r\n\r\n```\r\nCREATE VIEW test_1 AS\r\nSELECT *\r\nFROM read_csv_auto('test_duckdb_data.csv',\r\n    header=True,\r\n    ignore_errors=True,\r\n    delim=',',\r\n    all_varchar=True\r\n    );\r\n```\r\n`test_1` is ignoring errors.\r\n\r\n```\r\nCREATE VIEW test_2 AS\r\nSELECT *\r\nFROM read_csv_auto('test_duckdb_data.csv',\r\n    header=True,\r\n    ignore_errors=True,\r\n    delim=',',\r\n    all_varchar=True,\r\n    store_rejects=True\r\n    );\r\n```\r\n\r\n`test_2` is storing rejects (or you can set `ignore_errors=False`).\r\n\r\nOnce these two views have been loaded from the same data, you can test the amount of records for both. You should see a discrepancy:\r\n\r\n```\r\nWITH view_counts AS (\r\n    SELECT\r\n        (SELECT COUNT(*) FROM test_1) AS test_1_count,\r\n        (SELECT COUNT(*) FROM test_2) AS test_2_count\r\n    )\r\nSELECT\r\n    test_1_count,\r\n    test_2_count,\r\n    ABS((test_2_count - test_1_count)) AS difference\r\nFROM\r\n    view_counts;\r\n```\r\n\r\nAnd you can looking at the records that exist in `test_2` but not in `test_1`:\r\n\r\n```\r\nSELECT *\r\nFROM test_2\r\nEXCEPT\r\nSELECT *\r\nFROM test_1;\r\n```\r\n\r\n\r\n### OS:\r\n\r\nmacOS 14.6.1, Apple M1 (AArch64)\r\n\r\n### DuckDB Version:\r\n\r\n1.1.1\r\n\r\n### DuckDB Client:\r\n\r\nPython\r\n\r\n### Hardware:\r\n\r\n_No response_\r\n\r\n### Full Name:\r\n\r\nPhillip Wright\r\n\r\n### Affiliation:\r\n\r\nShipt\r\n\r\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\r\n\r\nI have tested with a stable release\r\n\r\n### Did you include all relevant data sets for reproducing the issue?\r\n\r\nYes\r\n\r\n### Did you include all code required to reproduce the issue?\r\n\r\n- [X] Yes, I have\r\n\r\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\r\n\r\n- [X] Yes, I have",
+  "date": "2024-09-30 15:20:10",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_data (id Int32, name String, age Int32, created_at DateTime DEFAULT now());",
+    "INSERT INTO test_data SELECT * FROM file('test_duckdb_data.csv', format='CSVWithNames', skip_header=1);",
+    "CREATE VIEW valid_records AS SELECT * FROM test_data WHERE age IS NOT NULL;",
+    "CREATE VIEW rejected_records AS SELECT * FROM file('test_duckdb_data.csv', format='CSVWithNames', skip_header=1) WHERE name IS NULL;",
+    "SELECT COUNT(*) AS valid_count, (SELECT COUNT(*) FROM rejected_records) AS rejected_count FROM valid_records;"
+  ],
+  "key_bug_features": [
+    "CSV reader deletes valid records with erroneous newlines"
+  ]
+}

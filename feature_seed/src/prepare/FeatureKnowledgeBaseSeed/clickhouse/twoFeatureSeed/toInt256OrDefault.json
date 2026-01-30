@@ -1,0 +1,12 @@
+{
+    "function": "toInt256OrDefault",
+    "operator": "a IN ...",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, val String, val_float Float64) ENGINE = Memory;",
+        "INSERT INTO test_table VALUES (1, '123'), (2, 'abc'), (3, '3.14'), (4, 'NaN'), (5, 'Inf'), (6, '0xc0fe');",
+        "SELECT id, toInt256OrDefault(val, CAST(0, 'Int256')) IN (SELECT toInt256OrDefault(val_float, CAST(1, 'Int256')) FROM test_table WHERE val_float IS NOT NULL) AS result FROM test_table;",
+        "SELECT id, val, toInt256OrDefault(val, CAST(NULL, 'Int256')) IN (SELECT DISTINCT toInt256OrDefault(val_float, -1) FROM test_table) AS nested_result FROM test_table WHERE id > 1;",
+        "SELECT id, COUNT(*) AS count_vals FROM (SELECT id, toInt256OrDefault(val, CAST(-1, 'Int256')) AS converted_val FROM test_table GROUP BY id HAVING converted_val IN (SELECT toInt256OrDefault(val_float, CAST(0, 'Int256')) FROM test_table WHERE val_float IS NOT NULL)) GROUP BY id;",
+        "SELECT id, COUNT(*) AS invalid_val_count FROM (SELECT id, toInt256OrDefault(val, CAST(-1, 'Int256')) AS converted_val FROM test_table WHERE converted_val = -1) GROUP BY id HAVING invalid_val_count > 0;"
+    ]
+}

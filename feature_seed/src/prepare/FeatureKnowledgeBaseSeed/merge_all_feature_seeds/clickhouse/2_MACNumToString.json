@@ -1,0 +1,11 @@
+CREATE TABLE mac_addresses (id UInt64, mac_num UInt64, created_at DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO mac_addresses (id, mac_num, created_at) VALUES (1, 287500079540280, now()), (2, 1125899906842623, now()), (3, 0, now());
+SELECT MACNumToString(mac_num) AS mac_address FROM mac_addresses WHERE MACNumToString(mac_num) <= 'FF:FF:FF:FF:FF:FF';
+SELECT id, MACNumToString(mac_num) AS mac_address FROM mac_addresses WHERE mac_num <= (SELECT max(mac_num) FROM mac_addresses) AND created_at IS NOT NULL;
+SELECT COUNT(*) FROM (SELECT id, MACNumToString(mac_num) AS mac_address FROM mac_addresses WHERE mac_num <= 1125899906842624 GROUP BY mac_address HAVING mac_address IS NOT NULL);
+SELECT id, MACNumToString(mac_num) FROM mac_addresses WHERE mac_num IS NULL;
+CREATE TABLE joined_data (id UInt64, associated_num UInt64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO joined_data (id, associated_num) VALUES (1, 287500079540280), (2, 1125899906842623), (3, 0);
+SELECT a.id, a.mac_num, MACNumToString(a.mac_num) AS mac_address FROM mac_addresses a JOIN joined_data b ON a.id <= b.id WHERE b.associated_num = 1;
+SELECT id, MACNumToString(mac_num) FROM mac_addresses WHERE mac_num <= (SELECT AVG(associated_num) FROM joined_data WHERE associated_num IS NOT NULL);
+SELECT mac_num, (SELECT MAX(mac_num) FROM mac_addresses WHERE mac_num IS NOT NULL) AS max_mac_num FROM mac_addresses WHERE MACNumToString(mac_num) <= (SELECT MACNumToString(associated_num) FROM joined_data ORDER BY id LIMIT 1);

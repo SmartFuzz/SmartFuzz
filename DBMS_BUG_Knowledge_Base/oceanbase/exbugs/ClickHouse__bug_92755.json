@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/92755",
+  "title": "InReverseOrder not used when ORDER BY includes constant value (and under RLS)",
+  "description": "### Company or project name\n_No response_\n### Describe the situation\nWhen retrieving the most recent rows from a table sorted by (tenant, timestamp, …), the reverse-order read optimization is applied if the tenant constraint is written explicitly, but it is not applied when the ORDER BY includes the tenant key even though the tenant value is constant. The same optimization also isn’t triggered when the tenant constraint is enforced via row-level security rather than an explicit predicate, leading to unexpectedly slow “latest-N” queries.\n### Which ClickHouse versions are affected?\nlatest\n### How to reproduce\n```\nDROP DATABASE IF EXISTS repro;\nCREATE DATABASE repro;\nCREATE TABLE repro.events\n(\ntenant String,\nevent_time DateTime,\nid UInt64,\nmsg String\n)\nENGINE = MergeTree\nPARTITION BY toYYYYMMDD(event_time)\nORDER BY (tenant, event_time, id);\nINSERT INTO repro.events\nSELECT\ntoString(number % 100) AS tenant,\nnow() - (number % 200000) AS event_time,\nnumber AS id,\nconcat('m', toString(number)) AS msg\nFROM numbers(2000000);\n-- RLS setup\nDROP USER IF EXISTS rls_user;\nCREATE USER rls_user IDENTIFIED WITH sha256_password BY 'x' HOST ANY;\nGRANT SELECT ON repro.* TO rls_user;\nDROP ROW POLICY IF EXISTS tenant_rls ON repro.events;\nCREATE ROW POLICY tenant_rls\nON repro.events\nFOR SELECT\nUSING tenant = '42'\nTO rls_user;\n```\nWith RLS user:\n```\n-- ReadType: default (slow)\nEXPLAIN PLAN actions=1\nSELECT *\nFROM repro.events\nORDER BY event_time DESC\nLIMIT 5;\n-- ReadType: InReverseOrder (fast!)\nEXPLAIN PLAN actions=1\nSELECT *\nFROM repro.events",
+  "date": "2025-12-21T13:18:12Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "DROP DATABASE IF EXISTS repro;",
+    "CREATE DATABASE repro;",
+    "CREATE TABLE repro.events (tenant VARCHAR(255), event_time TIMESTAMP, id BIGINT, msg VARCHAR(255), value FLOAT) PARTITION BY EXTRACT(YEAR FROM event_time), EXTRACT(MONTH FROM event_time), EXTRACT(DAY FROM event_time);",
+    "INSERT INTO repro.events SELECT CAST(number % 100 AS VARCHAR(255)) AS tenant, NOW() - INTERVAL (number % 200000) SECOND AS event_time, number AS id, CONCAT('m', CAST(number AS VARCHAR(255))) AS msg, CAST(number % 1000 AS FLOAT) AS value FROM dual CONNECT BY LEVEL <= 2000000;",
+    "SELECT * FROM repro.events WHERE value IS NULL ORDER BY event_time DESC LIMIT 5;"
+  ],
+  "key_bug_features": [
+    "ORDER BY includes constant value with row-level security"
+  ]
+}

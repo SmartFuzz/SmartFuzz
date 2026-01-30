@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id INT, numbers LIST<INT>, text_column VARCHAR);
+INSERT INTO test_table VALUES (1, [1, 2, NULL], 'test'), (2, [3, NULL, 5], 'example'), (3, [], 'edgecase');
+SELECT id, array_indexof(numbers, 3 * 2) AS index_found FROM test_table WHERE array_indexof(numbers, NULL) IS NULL;
+SELECT id, (SELECT COUNT(*) FROM test_table WHERE array_indexof(numbers, text_column) IS NULL) AS null_count FROM test_table;
+SELECT id, array_indexof(numbers, 1) * array_indexof(numbers, NULL) AS null_multiplication, (1 * array_indexof(numbers, 2)) AS direct_multiplication FROM test_table HAVING null_multiplication IS NULL;
+SELECT id, array_indexof(numbers, 2) AS found_index, SUM(array_indexof(numbers, 5)) OVER () AS total_found FROM test_table GROUP BY id HAVING found_index IS NOT NULL OR (SELECT COUNT(*) FROM test_table WHERE numbers IS NOT NULL) = 0;
+WITH temp AS (SELECT id, array_indexof(numbers, '3') * array_indexof(numbers, 2) AS temp_index FROM test_table) SELECT * FROM temp WHERE temp_index IS NOT NULL;
+SELECT t1.id, (t1.id * t2.id) AS id_product FROM test_table AS t1 JOIN test_table AS t2 ON t1.id = t2.id WHERE array_indexof(t1.numbers, t2.id) IS NULL;
+CREATE TABLE another_table (id INT PRIMARY KEY, float_col FLOAT DEFAULT 0.0);
+INSERT INTO another_table SELECT id, NULL FROM test_table WHERE text_column = 'example';
+SELECT a.id, (array_indexof(numbers, 5) + array_indexof(numbers, 2 * 2)) AS computed_index FROM test_table AS a JOIN another_table AS b ON a.id = b.id HAVING computed_index IS NOT NULL;

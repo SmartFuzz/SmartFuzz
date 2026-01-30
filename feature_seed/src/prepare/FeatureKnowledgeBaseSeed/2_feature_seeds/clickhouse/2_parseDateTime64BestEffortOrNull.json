@@ -1,0 +1,13 @@
+CREATE TABLE test_dates (id UInt32, date_string String, created_at DateTime64(3));
+INSERT INTO test_dates VALUES (1, '2021-08-01 10:00:00.123'), (2, 'invalid-date'), (3, '2023-01-15 15:30:45.456'), (4, '');
+SELECT id, EXTRACT(YEAR FROM parseDateTime64BestEffortOrNull(date_string, 3)) AS year_extracted FROM test_dates;
+SELECT id, EXTRACT(MONTH FROM created_at) AS month, parseDateTime64BestEffortOrNull(date_string, 3) AS parsed_date FROM test_dates WHERE parsed_date IS NOT NULL;
+SELECT id, EXTRACT(DAY FROM created_at) AS day, parseDateTime64BestEffortOrNull(date_string, 3) AS parsed_date FROM test_dates HAVING day > 15;
+CREATE TABLE temp_dates (id UInt32, timestamp_column String);
+INSERT INTO temp_dates VALUES (1, '2022-07-01 05:15:20.789'), (2, '2022-06-29 08:00:01.1234');
+SELECT d.id, EXTRACT(HOUR FROM parseDateTime64BestEffortOrNull(d.timestamp_column, 4)) AS hour_extracted FROM temp_dates d JOIN test_dates t ON d.id = t.id WHERE EXTRACT(MONTH FROM t.created_at) = 7;
+SELECT t.id, parseDateTime64BestEffortOrNull(t.date_string, 3) AS parsed_date, EXTRACT(SECOND FROM parseDateTime64BestEffortOrNull(t.date_string, 3)) AS seconds_extracted FROM test_dates t ORDER BY seconds_extracted DESC;
+CREATE TABLE another_temp (value String) ENGINE = MergeTree ORDER BY value;
+INSERT INTO another_temp VALUES ('2023-02-20 00:00:00.999'), ('FuzzyDate'), ('2022-11-11 13:31:11.111');
+SELECT DISTINCT a.value, EXTRACT(YEAR FROM parseDateTime64BestEffortOrNull(a.value, 3)) AS year_extracted FROM another_temp a WHERE parseDateTime64BestEffortOrNull(a.value, 3) IS NULL OR EXTRACT(MONTH FROM parseDateTime64BestEffortOrNull(a.value, 3)) IN (1, 2) ORDER BY year_extracted;
+SELECT t1.id, t1.date_string, EXTRACT(DAY FROM parseDateTime64BestEffortOrNull(t1.date_string, 3)) AS parsed_day FROM test_dates t1 JOIN (SELECT id, date_string FROM test_dates WHERE date_string != '') t2 ON t1.id = t2.id;

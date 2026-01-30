@@ -1,0 +1,16 @@
+{
+    "function": "bitShiftRight(a, b)",
+    "operator": "a != b",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt64, value String, timestamp DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table VALUES (1, 'abc'), (2, 'def'), (3, 'ghi');",
+        "SELECT id, value, bitShiftRight(length(value), 1) AS shifted_len, shifted_len != 1 AS is_non_trivial FROM test_table;",
+        "SELECT id, value, bitShiftRight(toUInt64(id), 3) AS shifted_id FROM test_table WHERE value != 'def';",
+        "SELECT id, value, bitShiftRight(toFixedString(value, length(value)), 4) AS shifted_fixed, shifted_fixed != hexadecimal(value) AS mismatch FROM test_table HAVING mismatch;",
+        "WITH (SELECT count() AS cnt FROM test_table WHERE id != 2) AS subquery SELECT id, value, bitShiftRight(cnt, 1) AS adjusted_count FROM subquery JOIN test_table ON adjusted_count != id;",
+        "CREATE TEMPORARY TABLE temp_table AS SELECT id, bitShiftRight(id, 2) AS shifted_id FROM test_table;",
+        "SELECT a.id, b.value, a.shifted_id != bitShiftRight(a.id + 1, 2) AS shifted_difference FROM temp_table AS a JOIN test_table AS b ON a.shifted_id = b.id;",
+        "SELECT id, value, bitShiftRight(toUInt8(id), 8) AS max_shift, max_shift != 0 AS is_zero FROM test_table;",
+        "SELECT id, bitShiftRight(NULLIF(toUInt64(value), 0), 2) AS shifted_value FROM test_table WHERE value != 'ghi' AND bitShiftRight(id, 1) != 0;"
+    ]
+}

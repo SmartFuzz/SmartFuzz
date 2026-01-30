@@ -1,0 +1,11 @@
+CREATE TABLE test_bitmaps (id UInt64, bm1 AggregateFunction(bitmap, UInt64), bm2 AggregateFunction(bitmap, UInt64));
+INSERT INTO test_bitmaps VALUES (1, bitmapBuild([1, 2, 3]), bitmapBuild([2, 3, 4]), (1, 2, NULL)), (2, bitmapBuild([]), bitmapBuild([1, 2, 3]));
+SELECT id, bitmapAndnotCardinality(bm1, bm2) AS bm_result FROM test_bitmaps WHERE id IN (SELECT id FROM test_bitmaps WHERE bm1 IS NOT NULL);
+SELECT id, bitmapAndnotCardinality(bitmapBuild([1, 2, 3]), bitmapBuild([4, 5, NULL])) AS result FROM test_bitmaps WHERE id IN (SELECT id FROM test_bitmaps WHERE bm1 = bitmapBuild([1, 2, 3]));
+CREATE TABLE test_numbers (num UInt64, category String, bm AggregateFunction(bitmap, UInt64));
+INSERT INTO test_numbers VALUES (1, 'A', bitmapBuild([1, 2, 3])), (2, 'B', bitmapBuild([3, 4, 5])), (3, 'C', bitmapBuild([NULL]));
+SELECT category, COUNT(num) AS count, bitmapAndnotCardinality(bitmapBuild([1]), bm) AS new_bm FROM test_numbers WHERE num IN (1, 3) GROUP BY category HAVING count > 0;
+SELECT DISTINCT num FROM test_numbers WHERE num IN (SELECT DISTINCT num FROM test_numbers WHERE num IS NOT NULL) AND bm = bitmapBuild([3]);
+CREATE TEMPORARY TABLE temp AS SELECT id, bm1, bm2 FROM test_bitmaps WHERE bm2 IS NOT NULL;
+SELECT temp.id, bitmapAndnotCardinality(temp.bm1, bitmapBuild([])) AS empty_bm FROM temp WHERE temp.id IN (SELECT id FROM temp WHERE bm1 IS NOT NULL);
+SELECT id, bitmapAndnotCardinality(bm1, bm2) AS result FROM (SELECT id, bm1, bm2 FROM test_bitmaps WHERE id IN (SELECT DISTINCT id FROM test_bitmaps WHERE bm1 IS NOT NULL)) AS subquery WHERE result > 0;

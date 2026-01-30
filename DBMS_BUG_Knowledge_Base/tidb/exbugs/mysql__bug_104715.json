@@ -1,0 +1,21 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=104715",
+  "title": "Several calls of stored procedure return different values",
+  "description": "When called twice, the stored procedure returns an incorrect value as an out-parameter. If I recreate the stored procedure, it works correctly just once.\r\n\r\nThe code is below:\r\n\r\nDROP TABLE IF EXISTS vs_server;\r\nCREATE TABLE vs_server (nGroupId INT);\r\nINSERT INTO vs_server(nGroupId) VALUES (15), (21);\r\n\r\nDROP PROCEDURE IF EXISTS test_proc;\r\n\r\nCREATE PROCEDURE test_proc (OUT nVal INT)\r\nBEGIN\r\n\r\n\tDROP TEMPORARY TABLE IF EXISTS tmp_table;\r\n    CREATE TEMPORARY TABLE IF NOT EXISTS tmp_table (\r\n        group_id INT       \r\n    )ENGINE=MEMORY DEFAULT CHARACTER SET `ascii` COLLATE `ascii_general_ci`;\r\n\r\n    INSERT INTO tmp_table (group_id) VALUES (199);\r\n\t\r\n    SET nVal = 0 ;\r\n\r\n    IF (EXISTS (SELECT *  FROM vs_server \r\nINNER JOIN  tmp_table ON vs_server.nGroupId = tmp_table.group_id )) THEN\r\n        SET nVal = 1 ;\r\n    END IF;\r\n\r\nDROP TEMPORARY TABLE IF EXISTS tmp_table;\r\nEND;\nHow to repeat:\nDo the folowing:\r\n\r\nSET @arg = NULL;\r\nCALL test_proc(@arg);\r\nSELECT @arg ; -- @arg = 0\r\n\r\nSET @arg = NULL;\r\nCALL test_proc(@arg);\r\nSELECT @arg ; -- @arg == 1\r\n\r\nExpected: @arg = 0",
+  "date": "2021-08-25 06:22:00",
+  "vulnerable_version": "8.0.26, 8.0.22+",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS vs_server;",
+    "CREATE TABLE vs_server (nGroupId INT NOT NULL, nName VARCHAR(50));",
+    "INSERT INTO vs_server(nGroupId, nName) VALUES (15, 'Group A'), (21, 'Group B');",
+    "SET @arg = NULL;",
+    "CALL test_proc(@arg);",
+    "SELECT @arg;"
+  ],
+  "key_bug_features": [
+    "Stored procedure returns inconsistent out-parameter values"
+  ]
+}

@@ -1,0 +1,8 @@
+CREATE TABLE test_table (id UInt32, text_column String, num_column Int32);
+INSERT INTO test_table VALUES (1, 'CLICKHOUSE is great'), (2, 'Clickhouse offers excellent performance'), (3, ''), (4, NULL);
+CREATE TABLE another_table (key UInt32, foreign_key UInt32);
+INSERT INTO another_table VALUES (1, 1), (2, 2), (3, 1);
+SELECT ngramMinHashCaseInsensitiveUTF8(text_column, 3, 6) AS hashes FROM test_table WHERE id GLOBAL NOT IN (SELECT foreign_key FROM another_table WHERE key = 1);
+SELECT id, ngramMinHashCaseInsensitiveUTF8(text_column, 2, 4).1 AS min_hash FROM test_table GROUP BY id HAVING min_hash GLOBAL NOT IN (SELECT hashnum FROM another_table) ORDER BY min_hash;
+SELECT ngramMinHashCaseInsensitiveUTF8(NULLIF(text_column, ''), 3, 6) FROM test_table WHERE num_column GLOBAL NOT IN (SELECT key FROM another_table) AND text_column IS NOT NULL;
+SELECT id, ngramMinHashCaseInsensitiveUTF8(text_column, 5, 10) AS hashes FROM test_table WHERE id <= 3 AND text_column GLOBAL NOT IN (SELECT text_column from test_table WHERE LENGTH(text_column) < 10) ORDER BY hashes.2 DESC;

@@ -1,0 +1,13 @@
+{
+    "function": "truncate",
+    "operator": "a = ALL (subquery)",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, value Float32, description String);",
+        "INSERT INTO test_table VALUES (1, 123.499, 'example 1'), (2, NULL, 'example 2'), (3, 0.001, 'example 3'), (4, -1.999, 'boundary');",
+        "SELECT id, truncate(value, 2) AS truncated_value FROM test_table WHERE value = ALL (SELECT value FROM test_table WHERE value IS NOT NULL);",
+        "CREATE TABLE secondary_table (ref_id UInt32, ref_value Float32) ENGINE = Memory;",
+        "INSERT INTO secondary_table VALUES (1, 0.5), (2, 1.2), (3, -3.0);",
+        "SELECT st.ref_id, truncate(st.ref_value + t.value, 1) AS calculated_value FROM secondary_table st JOIN test_table t ON st.ref_id = t.id WHERE t.value IS NOT NULL GROUP BY st.ref_id, calculated_value HAVING calculated_value = ALL (SELECT DISTINCT truncate(value, 0) FROM test_table);",
+        "SELECT DISTINCT id, truncate(value + 5, 1) AS adjusted_value FROM test_table WHERE adjusted_value = ALL (SELECT truncate(value, 1) FROM test_table WHERE description LIKE 'example%') ORDER BY adjusted_value DESC;"
+    ]
+}

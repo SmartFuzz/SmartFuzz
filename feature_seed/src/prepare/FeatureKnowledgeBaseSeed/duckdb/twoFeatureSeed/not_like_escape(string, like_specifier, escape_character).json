@@ -1,0 +1,15 @@
+{
+    "function": "not_like_escape(string, like_specifier, escape_character)",
+    "operator": ">>",
+    "sql_array": [
+        "CREATE TABLE test_data (id INTEGER, text_column VARCHAR, value_column INTEGER, nullable_column VARCHAR);",
+        "INSERT INTO test_data (id, text_column, value_column, nullable_column) VALUES (1, 'pattern1', 8, 'escape1'), (2, 'nothing%', 32, NULL), (3, 'text', 16, 'escape%'), (4, 'example|text', NULL, 'not%'), (5, 'test', 4, '');",
+        "SELECT id, not_like_escape(text_column, 'escape%', '|') AS match_result, value_column >> 1 AS shifted_value FROM test_data WHERE (value_column IS NOT NULL) AND (not_like_escape(nullable_column, 'not%', '|') OR value_column >> 2 < 16) GROUP BY id, value_column HAVING match_result = false ORDER BY shifted_value ASC;",
+        "SELECT id FROM (SELECT id, value_column >> 2 AS shifted FROM test_data WHERE nullable_column IS NULL) AS subquery WHERE not_like_escape('text%', shifted, '|') = false;",
+        "SELECT id, AVG(value_column >> 1) AS avg_shifted_value FROM test_data GROUP BY id HAVING avg_shifted_value < 10;",
+        "CREATE TABLE additional_data (reference_id INTEGER, extra_text VARCHAR);",
+        "INSERT INTO additional_data (reference_id, extra_text) VALUES (1, 'random_text%'), (2, 'sample_escape|'), (3, NULL);",
+        "SELECT t.id, a.extra_text FROM test_data t JOIN additional_data a ON t.id = a.reference_id WHERE not_like_escape(a.extra_text, 'escape%', '|') AND t.value_column >> 1 IS NOT NULL;",
+        "SELECT id, not_like_escape(text_column, 'pattern1%', '|') AS result FROM test_data WHERE value_column IS NULL UNION ALL SELECT id, not_like_escape(text_column, 'nothing%', '|') FROM test_data WHERE value_column IS NOT NULL;"
+    ]
+}

@@ -1,0 +1,25 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=103458",
+  "title": "PREPARE type checking error",
+  "vulnerable_database": "MySQL Server: Prepared statements",
+  "date": "2021-04-23 15:22:00",
+  "vulnerable_version": "8.0",
+  "description": "PREPARE statement gives a type checking error while I use two strings with NULLIF().\r\n\r\nThe param contains empty string or datetime string representation as first NULLIF() operand.\r\n\r\nThe 2nd NULLIF() operand is always an empty string.\r\n\r\nThe same non-prepared INSERT request works fine.\nHow to repeat:\nCREATE TABLE tests (t_date DATETIME NULL);\r\n\r\nPREPARE i FROM 'INSERT INTO tests SET t_date = NULLIF(?, '''')';\r\n-- Gives one these :\r\n--   Error Code: 1292. Incorrect datetime value: '' for column '?' at row 1\r\n--   Error Code: 1525. Incorrect DATETIME value: ''\r\n-- OK with MySQL 8.0.20\r\n\r\n-- PREPARE i FROM 'INSERT INTO tests SET t_date = IF(? = '''', NULL, ?)';\r\n-- OK with IF() and MySQL 8.0.23\r\n\r\nSET @t_date = NOW();\r\nEXECUTE i USING @t_date;",
+  "poc": [
+    "CREATE TABLE tests (t_date DATETIME NULL);",
+    "PREPARE i FROM 'INSERT INTO tests SET t_date = NULLIF(?, '''')';",
+    "PREPARE i FROM 'INSERT INTO tests SET t_date = IF(? = '''', NULL, ?)';",
+    "SET @t_date = NOW();",
+    "EXECUTE i USING @t_date;"
+  ],
+  "key_bug_features": [
+    "PREPARE statement with NULLIF() and empty string"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE test_dates (id INT PRIMARY KEY AUTO_INCREMENT, t_date DATETIME NULL);",
+    "PREPARE stmt1 FROM 'INSERT INTO test_dates (t_date) VALUES (NULLIF(?, ''''))';",
+    "SET @empty_string = '';",
+    "EXECUTE stmt1 USING @empty_string;",
+    "PREPARE stmt2 FROM 'INSERT INTO test_dates (t_date) VALUES (NULLIF(?, ''''))';"
+  ]
+}

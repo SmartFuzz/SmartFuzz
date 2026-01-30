@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/61334",
+  "title": "INSERT with timestamp in DST non-existent range results in '0000-00-00' instead as adjusted to next valid time, as in MySQL",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\nDuring Daylight Saving Time, DST, the time '2025-03-30 02:00:00'~'2025-03-30 02:59:00' does not exist. When I insert such a invalid data into TiDB , the result is '0000-00-00' and different compared with MySQL 8.0.39, which adjusts it to the next valid time.\n\n### 1. Minimal reproduce step (Required)\n\n```\nSET time_zone = 'Europe/Stockholm';\nset sql_mode='';\nCREATE TABLE `t1` (\n   id int,\n  `created` timestamp NULL DEFAULT NULL\n);\ninsert into t1 values(1,'2025-03-30 01:59:00');\ninsert into t1 values(2,'2025-03-30 02:00:00');\ninsert into t1 values(3,'2025-03-30 02:59:00');\ninsert into t1 values(4,'2025-03-30 03:00:00');\nselect * from t1;\n```\n\n\n\n### 2. What did you expect to see? (Required)\n\n```\nmysql> select * from t1;\n+------+---------------------+\n| id   | created             |\n+------+---------------------+\n|    1 | 2025-03-30 01:59:00 |\n|    2 | 2025-03-30 03:00:00 |\n|    3 | 2025-03-30 03:00:00 |\n|    4 | 2025-03-30 03:00:00 |\n+------+---------------------+\n4 rows in set (0.01 sec)\n```\n\n### 3. What did you see instead (Required)\n```\nmysql> select * from t1;\n+------+---------------------+\n| id   | created             |\n+------+---------------------+\n|    1 | 2025-03-30 01:59:00 |\n|    2 | 0000-00-00 00:00:00 |\n|    3 | 0000-00-00 00:00:00 |\n|    4 | 2025-03-30 03:00:00 |\n+------+---------------------+\n4 rows in set (0.01 sec)\n```\n\n### 4. What is your TiDB version? (Required)\n\nv8.5.1",
+  "date": "2025-05-26T16:33:56Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (id INTEGER PRIMARY KEY, event_time TIMESTAMP NULL, description VARCHAR(255));",
+    "INSERT INTO t2 VALUES (1, '2025-03-30 01:59:00', 'Valid timestamp before DST gap');",
+    "INSERT INTO t2 VALUES (2, '2025-03-30 02:00:00', 'Invalid timestamp during DST gap');",
+    "INSERT INTO t2 VALUES (3, '2025-03-30 03:00:00', 'Valid timestamp after DST gap');",
+    "SELECT * FROM t2;"
+  ],
+  "key_bug_features": [
+    "INSERT with timestamp in non-existent DST range"
+  ]
+}

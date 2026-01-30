@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/45791",
+  "title": "exchange partition will fail when table has placement policy and then insert will fail forever",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```sql\r\nCREATE PLACEMENT POLICY rule1 FOLLOWERS=4;\r\nCREATE TABLE `t1` (\r\n  `date` date NOT NULL ,\r\n  `name` varchar(10)  NOT NULL,\r\n  UNIQUE KEY `uk_1` (`date`,`name`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin PLACEMENT POLICY=`rule1`;\r\n\r\n\r\nCREATE TABLE `t1_partition` (\r\n  `date` date NOT NULL ,\r\n  `name` varchar(10)  NOT NULL,\r\n  UNIQUE KEY `uk_1` (`date`,`name`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin  PLACEMENT POLICY=`rule1`\r\nPARTITION BY RANGE COLUMNS(`date`)\r\n(PARTITION `p202307` VALUES LESS THAN ('2023-08-01'),\r\n PARTITION `p202308` VALUES LESS THAN ('2023-09-01'),\r\n PARTITION `p202309` VALUES LESS THAN ('2023-10-01'),\r\n PARTITION `p202310` VALUES LESS THAN ('2023-11-01'),\r\n PARTITION `p202311` VALUES LESS THAN ('2023-12-01'),\r\n PARTITION `p202312` VALUES LESS THAN ('2024-01-01'),\r\n PARTITION `pfuture` VALUES LESS THAN (MAXVALUE));\r\n\r\nalter table t1_partition exchange partition p202307 with table t1; -- this query will fail\r\ninsert into t1(date, name) values (\"2023-08-06\",\"0000\"); -- then this insert will fail too\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nno error\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n```\r\nTiDB root@127.0.0.1:test> alter table t1_partition exchange partition p202307 with table t1;\r\n(1736, 'Tables have different definitions')\r\n\r\nTiDB root@127.0.0.1:test> insert into t1(date, name) values (\"2023-08-06\",\"0000\");\r\n(1748, 'Found a row not matching the given partition set')\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\nmaster, but I think it affects TiDB after v5.4.0\r\n\r\n",
+  "date": "2023-08-03T10:14:34Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2 ( id INTEGER NOT NULL, value DECIMAL(10,2) NOT NULL, PRIMARY KEY (id));",
+    "CREATE TABLE t2_partition ( id INTEGER NOT NULL, value DECIMAL(10,2) NOT NULL, PRIMARY KEY (id));",
+    "INSERT INTO t2_partition (id, value) VALUES (1, 10.50), (2, 20.75);",
+    "INSERT INTO t2 (id, value) VALUES (1, NULL);",
+    "SELECT * FROM t2_partition;"
+  ],
+  "key_bug_features": [
+    "exchange partition with table having different definitions"
+  ]
+}

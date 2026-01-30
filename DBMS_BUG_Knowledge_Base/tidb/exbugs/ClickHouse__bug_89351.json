@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/89351",
+  "title": "Problem restoring database from BACKUP/RESTORE with S3 Plain Rewritable Disk: UUID mismatch and empty tables",
+  "description": "### Company or project name\n_No response_\n### Describe the unexpected behaviour\nAfter restoring from a backup to S3 using s3_plain_rewritable, the database and tables are created with new UUIDs instead of the original ones. As a result, the tables appear empty because their data on S3 is linked to the old UUIDs.\nAttempts to manually specify the original UUID or use ATTACH DATABASE ... UUID ... result in a logical error about missing UUID mapping. This makes it impossible to restore data access after backup in this setup.\n### Which ClickHouse versions are affected?\nClickHouse 25.9.3\n### How to reproduce\nExternal disk configured as s3_plain_rewritable:\n```xml\n<storage_configuration>\n<disks>\n<s3_plain_rewritable>\n<type>object_storage</type>\n<object_storage_type>s3</object_storage_type>\n<metadata_type>plain_rewritable</metadata_type>\n<endpoint>http://minio:9000/clickhouse-data/</endpoint>\n<access_key_id>minioadmin</access_key_id>\n<secret_access_key>minioadmin</secret_access_key>\n<use_environment_credentials>0</use_environment_credentials>\n<region>us-east-1</region>\n</s3_plain_rewritable>\n</disks>\n<policies>\n<s3_policy>\n<volumes>\n<s3_plain_rewritable>\n<disk>s3_plain_rewritable</disk>\n</s3_plain_rewritable>\n</volumes>\n</s3_policy>\n</policies>\n</storage_configuration>\n<merge_tree>\n<storage_policy>s3_policy</storage_policy>\n</merge_tree>\n```\nDatabase created as:\n```sql\nCREATE DATABASE db1 ENGINE = Atomic SETTINGS disk = 's3_plain_rewritable';\nCREATE TABLE db1.test_table (\nid UInt32,\nname String,\ncreated_at DateTime\n) ENGINE = MergeTree()\nORDER BY (id, created_at)\nSETTINGS storage_policy = 's3_policy';\nINSERT INTO db1.test_table VALUES\n(1, 'test1', now()),\n(2, 'test2', now()),",
+  "date": "2025-11-01T09:50:12Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE db1.test_table_v2 (id INT UNSIGNED, name VARCHAR(255), created_at DATETIME DEFAULT CURRENT_TIMESTAMP, is_active TINYINT DEFAULT 1);",
+    "INSERT INTO db1.test_table_v2 (id, name, created_at, is_active) VALUES (3, 'test3', NOW(), 1), (4, 'test4', NOW(), NULL);",
+    "CREATE TABLE db1.test_table_v3 LIKE db1.test_table_v2;",
+    "INSERT INTO db1.test_table_v3 (id, name, created_at, is_active) SELECT id, name, created_at, is_active FROM db1.test_table_v2 WHERE is_active = 1;",
+    "SELECT id, name, created_at FROM db1.test_table_v3 WHERE created_at > NOW() - INTERVAL 1 DAY;"
+  ],
+  "key_bug_features": [
+    "Restoring database from S3 causes UUID mismatch"
+  ]
+}

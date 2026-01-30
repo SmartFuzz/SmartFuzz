@@ -1,0 +1,21 @@
+{
+    "function": "flattenTuple",
+    "operator": "x",
+    "sql_array": [
+        "CREATE TABLE t_nested_fuzz(t Tuple(nested Tuple(a UInt8, b Tuple(c String, d DateTime)), e Int32)) ENGINE = Memory;",
+        "INSERT INTO t_nested_fuzz VALUES ((1, (2, '2023-01-01')), 3);",
+        "SELECT flattenTuple(t) FROM t_nested_fuzz WHERE multiIf(e > 2, flattenTuple(t).1, flattenTuple(t).2) = '2023-01-01';",
+        "CREATE TABLE t_complex_fuzz(t1 Tuple(a UInt32, b UInt32), t2 Tuple(c String, d Nullable(UInt32))) ENGINE = Memory;",
+        "INSERT INTO t_complex_fuzz VALUES ((1, 2), ('test', NULL)), ((3, 4), ('example', 5));",
+        "SELECT flattenTuple(t1) AS flat1, flattenTuple(t2) AS flat2 FROM t_complex_fuzz WHERE multiIf(flat1 = 3, flat2.2, flat2.1 IS NULL);",
+        "CREATE TABLE t_nested_join_fuzz(t1 Tuple(a String, b Tuple(c Nullable(Int32), d Int64)), t2 Tuple(e String, f UInt32)) ENGINE = Memory;",
+        "INSERT INTO t_nested_join_fuzz VALUES (('row1', (NULL, 2)), ('row2', (3, 4));",
+        "SELECT flattenTuple(t1) AS flattened_t1, t2.e FROM t_nested_join_fuzz t1 JOIN t_nested_join_fuzz t2 ON multiIf(flattened_t1.2 IS NULL, flattenTuple(t2).f = 2, flattenTuple(t1).1 = 'row1');",
+        "CREATE TABLE t_boundary_fuzz(t Tuple(a Int32, b Float64, c String)) ENGINE = Memory;",
+        "INSERT INTO t_boundary_fuzz VALUES (0, 1.5, ''), (2147483647, -1.5, 'extremely_long_string_example_over_the_boundary_99999999999999999999999999999999999');",
+        "SELECT flattenTuple(t) FROM t_boundary_fuzz WHERE multiIf(c = '', flattenTuple(t).1 > 0, flattenTuple(t).2 < 2.0);",
+        "CREATE TABLE t_null_handling(t Tuple(a Nullable(Int32), b Array(UInt32))) ENGINE = Memory;",
+        "INSERT INTO t_null_handling VALUES (NULL, [1, 2, 3]), (5, [NULL]);",
+        "SELECT flattenTuple(t) FROM t_null_handling WHERE multiIf(flattenTuple(t).1 IS NULL, 1, flattenTuple(t).2[1]) = 2;"
+    ]
+}

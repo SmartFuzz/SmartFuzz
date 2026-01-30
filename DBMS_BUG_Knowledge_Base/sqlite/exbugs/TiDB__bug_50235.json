@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/50235",
+  "title": "incorrect tableDual plan caused by comparing year with big value",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n``` SQL\r\nCREATE TABLE `tlff7fd271` (\r\n  `col_45` bit(3) NOT NULL DEFAULT b'101',\r\n  `col_46` year(4) NOT NULL DEFAULT '2016',\r\n  `col_47` double NOT NULL DEFAULT '2508.393214016021',\r\n  `col_48` timestamp NOT NULL DEFAULT '2025-11-27 00:00:00',\r\n  KEY `idx_15` (`col_45`,`col_47`),\r\n  PRIMARY KEY (`col_46`,`col_45`,`col_48`) /*T![clustered_index] NONCLUSTERED */,\r\n  KEY `idx_17` (`col_45`,`col_46`,`col_47`),\r\n  UNIQUE KEY `idx_18` (`col_45`,`col_48`,`col_46`)\r\n);\r\ndesc SELECT `tlff7fd271`.`col_46` AS `r0` FROM `tlff7fd271` where `col_46` <= 16212511333665770580;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\nTableScan or IndexScan\r\n### 3. What did you see instead (Required)\r\n``` SQL\r\nmysql> desc SELECT `tlff7fd271`.`col_46` AS `r0` FROM `tlff7fd271` where `col_46` <= 16212511333665770580;\r\n+-------------+---------+------+---------------+---------------+\r\n| id          | estRows | task | access object | operator info |\r\n+-------------+---------+------+---------------+---------------+\r\n| TableDual_5 | 0.00    | root |               | rows:0        |\r\n+-------------+---------+------+---------------+---------------+\r\n1 row in set (0.00 sec)\r\n```\r\n### 4. What is your TiDB version? (Required)\r\n182efd8f69097d17fd69c81773382d8541a29ed3\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2024-01-09T15:55:01Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INTEGER PRIMARY KEY AUTOINCREMENT, year_col INTEGER NOT NULL, value_col REAL NOT NULL, UNIQUE(year_col));",
+    "INSERT INTO test_table (year_col, value_col) VALUES (2020, 100.5);",
+    "INSERT INTO test_table (year_col, value_col) VALUES (2021, 200.75);",
+    "SELECT * FROM test_table WHERE year_col <= 16212511333665770580;",
+    "SELECT COUNT(*) FROM test_table WHERE year_col IS NULL;"
+  ],
+  "key_bug_features": [
+    "comparing year column with excessively large value"
+  ]
+}

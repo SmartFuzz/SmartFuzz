@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=103039",
+  "title": "Query with group by not showing that it is using the index for the group by",
+  "description": "Using the basic example given in the MySql docs, we are not seeing the query plan showing that it is using the index for the group by. The docs say that it should be showing 'Using index for group-by' in the extra column from the explain, it only shows 'Using index'.\nhttps://dev.mysql.com/doc/refman/8.0/en/group-by-optimization.html#loose-index-scan\nHow to repeat:\nCREATE TABLE t1 (\r\n    id int PRIMARY KEY AUTO_INCREMENT,\r\n    c1 nvarchar(10),\r\n    c2 nvarchar(10),\r\n    c3 nvarchar(10),\r\n    c4 nvarchar(10),\r\n    INDEX idx(c1,c2,c3)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8;\r\n\r\nINSERT INTO t1 (c1, c2, c3, c4) VALUES ('1','1','0','1'),('2','3','1','2'),('10','4','10','10'),('0','4','100','0'),('3','4','100','3'),('5','5','9','5'),('8','7','3','8'),('7','7','4','7'),('30','8','15','30');\r\n\r\nEXPLAIN SELECT c1, c2 FROM t1 GROUP BY c1, c2;\r\n# id, select_type, table, partitions, type, possible_keys, key, key_len, ref, rows, filtered, Extra\r\n'1', 'SIMPLE', 't1', NULL, 'index', 'idx', 'idx', '99', NULL, '18', '100.00', 'Using index'\r\n\r\nEXPLAIN SELECT c1, c2 FROM t1 WHERE c1 < 5 GROUP BY c1, c2;\r\n# id, select_type, table, partitions, type, possible_keys, key, key_len, ref, rows, filtered, Extra\r\n'1', 'SIMPLE', 't1', NULL, 'index', 'idx', 'idx', '99', NULL, '18', '33.33', 'Using where; Using index'\n\nSELECT @@VERSION;\r\n# @@VERSION\r\n'8.0.23'",
+  "date": "2021-03-18 14:49:00",
+  "vulnerable_version": "8.0.23, 5.7.33",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (id INT PRIMARY KEY AUTO_INCREMENT, c1 VARCHAR(20) NOT NULL, c2 INT DEFAULT 0, c3 DATE, INDEX idx_c1_c2(c1, c2));",
+    "INSERT INTO t2 (c1, c2, c3) VALUES ('test1', 1, '2023-01-01'), ('test2', 2, '2023-01-02'), ('test3', 3, '2023-01-03'), ('test4', 4, '2023-01-04');",
+    "SELECT c1, COUNT(*) FROM t2 GROUP BY c1 HAVING COUNT(*) > 1;",
+    "SELECT c1, c2 FROM t2 WHERE c2 IS NULL GROUP BY c1, c2;",
+    "SELECT c1, c2 FROM t2 WHERE c1 LIKE 'test%' GROUP BY c1 ORDER BY c2 DESC;"
+  ],
+  "key_bug_features": [
+    "Group by query not using index for optimization"
+  ]
+}

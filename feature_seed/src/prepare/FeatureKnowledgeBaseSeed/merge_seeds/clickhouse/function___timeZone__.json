@@ -1,0 +1,11 @@
+CREATE TABLE session_times (id UInt32, timestamp DateTime DEFAULT now()) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO session_times VALUES (1, now()), (2, now() - INTERVAL 1 HOUR), (3, now() - INTERVAL 2 HOUR);
+SELECT timezone() AS current_timezone;
+SELECT id, timestamp, timezone() AS session_timezone FROM session_times;
+CREATE TABLE distributed_table AS session_times ENGINE = Distributed('cluster_name', 'default.session_times', rand());
+SELECT timezone() AS session_time_zone FROM distributed_table;
+SELECT id, timestamp FROM session_times WHERE timestamp >= now() - INTERVAL 1 DAY;
+SELECT timezone() AS time_zone_last_day;
+SELECT id, timestamp, timezone() FROM session_times WHERE timestamp < now() AND id IN (SELECT id FROM session_times WHERE timestamp > now() - INTERVAL 1 HOUR);
+SELECT timezone() AS session_time_zone FROM (SELECT timestamp FROM session_times WHERE timestamp >= now() - INTERVAL 2 HOUR) AS subquery;
+SELECT timezone() AS current_tz, (SELECT timezone() FROM session_times LIMIT 1) AS subquery_tz FROM session_times;

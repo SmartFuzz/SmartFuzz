@@ -1,0 +1,16 @@
+{
+    "function": "arrayDistinct",
+    "operator": "IS NULL",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, values Array(UInt32), nullable_value Nullable(UInt32));",
+        "INSERT INTO test_table VALUES (1, [1, 2, 2, 3, 1], NULL), (2, [4, 5, 5, 6], 3), (3, [], 5);",
+        "SELECT id, arrayDistinct(values) AS distinct_values FROM test_table WHERE nullable_value IS NULL;",
+        "SELECT id, arrayDistinct(arrayJoin(values)) AS flattened_distinct FROM test_table WHERE (nullable_value IS NULL OR id = 1);",
+        "SELECT id, arrayDistinct([1, 2, 2, IF(nullable_value IS NULL, 0, nullable_value)]) AS conditionally_distinct FROM test_table GROUP BY id HAVING COUNT(*) > 1;",
+        "SELECT id, (arrayDistinct(values) IS NULL) AS are_distinct_nulls FROM test_table JOIN (SELECT id FROM test_table WHERE values IS NOT NULL) AS subquery ON test_table.id = subquery.id;",
+        "SELECT id, arrayDistinct(values) AS distinct_values FROM test_table WHERE id IN (SELECT id FROM test_table WHERE nullable_value IS NULL) ORDER BY distinct_values;",
+        "SELECT id, (COUNT(*) > 1) AS is_duplicate, arrayDistinct(values) AS unique_values FROM (SELECT values FROM test_table WHERE id = 1) GROUP BY id HAVING is_duplicate = 1;",
+        "CREATE TABLE temp_table AS SELECT arrayJoin(values) AS value FROM test_table;",
+        "INSERT INTO temp_table SELECT arrayFlatten(arrayDistinct([1, 1, 2, NULL, 2])) FROM test_table WHERE values IS NOT NULL;"
+    ]
+}

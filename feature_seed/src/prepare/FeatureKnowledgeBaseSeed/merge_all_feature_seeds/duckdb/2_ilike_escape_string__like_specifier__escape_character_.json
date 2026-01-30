@@ -1,0 +1,12 @@
+CREATE TABLE test_data (id INTEGER, data_string TEXT, timestamp_value TIMESTAMP, value_numeric DOUBLE);
+INSERT INTO test_data VALUES (1, 'example%', TIMESTAMP '2023-01-01 10:00:00', 1.5), (2, 'sample%', TIMESTAMP '2023-01-02 11:00:00', 2.5);
+SELECT id, ilike_escape(data_string, 'exa%', '$') AS match_found, timestamp_value - INTERVAL 1 DAY AS adjusted_timestamp FROM test_data WHERE value_numeric > 1.0;
+SELECT id, COUNT(*) OVER (PARTITION BY value_numeric) AS num_occurrences FROM (SELECT ilike_escape(data_string, 'sam%', '$') AS match_string, value_numeric FROM test_data) AS subquery WHERE match_string;
+SELECT DISTINCT t1.id FROM test_data t1 JOIN test_data t2 ON t1.value_numeric - t2.value_numeric < 1 WHERE ilike_escape(t1.data_string, 'ex%', '$') OR ilike_escape(t2.data_string, 'sa%', '$');
+INSERT INTO test_data VALUES (3, NULL, TIMESTAMP '2023-01-03 12:00:00', 3.5), (4, '', TIMESTAMP NULL, NULL);
+SELECT id, value_numeric, timestamp_value, ilike_escape(COALESCE(data_string, 'default_value'), 'def%', '$') AS coalesced_match FROM test_data WHERE timestamp_value - INTERVAL 2 DAY IS NOT NULL;
+CREATE TABLE temp_data AS SELECT * FROM test_data WHERE value_numeric IS NOT NULL;
+SELECT t.id, t.data_string, t.timestamp_value, t.value_numeric, ilike_escape(data_string, '', '$') AS empty_pattern FROM temp_data t HAVING value_numeric < 5.0;
+ALTER TABLE test_data ADD COLUMN extra_info TEXT;
+UPDATE test_data SET extra_info = 'Updated' WHERE ilike_escape(data_string, 'exam%', '$') AND value_numeric IS NOT NULL;
+SELECT COUNT(*) FROM test_data WHERE value_numeric IS NULL OR timestamp_value IS NULL;

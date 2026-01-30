@@ -1,0 +1,17 @@
+{
+    "function": "repl_this_server",
+    "operator": "AND",
+    "sql_array": [
+        "CREATE TABLE servers (id INT PRIMARY KEY, name VARCHAR(100), status VARCHAR(50));",
+        "INSERT INTO servers VALUES (1, 'demo-srv', 'active'), (2, 'test-srv', 'inactive');",
+        "SELECT name, status FROM servers WHERE status = 'active' AND name = (SELECT repl_this_server());",
+        "SELECT id, name, status FROM servers WHERE (SELECT repl_this_server()) IS NOT NULL AND status = 'active';",
+        "SELECT COUNT(*) FROM servers WHERE status = 'inactive' AND (SELECT repl_this_server() IS NOT NULL);",
+        "SELECT repl_this_server() AS server_name, COUNT(*) FROM servers WHERE EXISTS (SELECT * FROM servers AS s WHERE s.status = 'active' AND s.name = servers.name) AND status = 'inactive' GROUP BY server_name;",
+        "CREATE TABLE logs (id INT PRIMARY KEY, server_id INT, message VARCHAR(255), timestamp TIMESTAMP, FOREIGN KEY (server_id) REFERENCES servers(id));",
+        "INSERT INTO logs VALUES (1, 1, 'Connection established', NOW()), (2, 2, 'Connection failed', NOW());",
+        "SELECT s.name, l.message FROM servers s JOIN logs l ON s.id = l.server_id WHERE (l.message LIKE '%Connection%') AND s.name = (SELECT repl_this_server());",
+        "SELECT repl_this_server() AS server_name, COUNT(*) FROM logs WHERE timestamp < CURRENT_TIMESTAMP AND server_id IN (SELECT id FROM servers WHERE status = 'active') GROUP BY server_name HAVING COUNT(*) > 0;",
+        "SELECT (SELECT COUNT(*) FROM servers) AS total_servers, (SELECT COUNT(*) FROM logs WHERE server_id IN (SELECT id FROM servers WHERE status = 'inactive')) AS inactive_logs WHERE total_servers > 0 AND inactive_logs IS NOT NULL;"
+    ]
+}

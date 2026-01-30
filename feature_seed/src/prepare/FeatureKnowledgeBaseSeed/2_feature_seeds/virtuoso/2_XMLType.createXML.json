@@ -1,0 +1,12 @@
+CREATE TABLE test_xml (id INT, xml_data XMLType);
+INSERT INTO test_xml VALUES (1, createXML('<root><child value="1" /></root>'));
+INSERT INTO test_xml VALUES (2, createXML('<root><child value="2" /></root>', 'http://www.example.com/schema.xsd'));
+SELECT id, xml_data.extract('root/child/@value') AS child_value FROM test_xml WHERE id = 1 OR id = 2;
+SELECT id, xml_data FROM test_xml WHERE xml_data.extract('root/child/@value') = '1' OR xml_data.extract('root/child/@value') IS NULL;
+SELECT id, xml_data, createXML('<root><result>' || id || '</result></root>') AS generated_xml FROM test_xml WHERE id = (SELECT MAX(id) FROM test_xml) OR id = (SELECT MIN(id) FROM test_xml);
+WITH xml_aggregate AS (SELECT id, createXML('<values><value>' || xml_data.extract('root/child/@value') || '</value></values>') AS agg_xml FROM test_xml GROUP BY id HAVING COUNT(*) OR NULL IS NULL) SELECT * FROM xml_aggregate;
+SELECT id, xml_data FROM test_xml WHERE xml_data IS NOT NULL OR xml_data.extract('root/child/@value') = '2' OR xml_data.getSchemaURL() IS NULL;
+CREATE TEMPORARY TABLE temp_data (col1 VARCHAR(255), col2 XMLType);
+INSERT INTO temp_data VALUES ('some text', createXML('<data><item>value1</item></data>'));
+SELECT col1, col2 FROM temp_data WHERE col1 = 'some text' OR (col2.extract('data/item') IS NOT NULL AND col2.getSchemaURL() = 'http://www.example.com/schema.xsd');
+SELECT (CASE WHEN id = 1 THEN 'first' ELSE 'other' END) AS identifier, createXML('<mark><status>' || id || '</status></mark>') FROM test_xml WHERE id = 1 OR id = 2;

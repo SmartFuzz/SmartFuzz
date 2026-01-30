@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS my_collection (log_type String, host String, command String);
+INSERT INTO my_collection VALUES ('event', '120.5.33.9', 'check-cpu-usage -w 75 -c 90');
+INSERT INTO my_collection VALUES ('event', '120.5.33.4', 'system-check');
+SELECT * FROM mongodb('127.0.0.1:27017', 'test', 'my_collection', 'test_user', 'password', 'log_type String, host String, command String', 'connectTimeoutMS=10000');
+SELECT host, COUNT(*) as event_count FROM mongodb('127.0.0.1:27017', 'test', 'my_collection', 'test_user', 'password', 'log_type String, host String, command String') GROUP BY host HAVING event_count > 1;
+SELECT host, command FROM (SELECT * FROM mongodb('127.0.0.1:27017', 'test', 'my_collection', 'test_user', 'password', 'log_type String, host String, command String')) WHERE log_type = 'event';
+SELECT DISTINCT host FROM mongodb('127.0.0.1:27017', 'test', 'my_collection', 'test_user', 'password', 'log_type String, host String, command String') WHERE command LIKE '%check%';
+SELECT m.host, m.command FROM mongodb('127.0.0.1:27017', 'test', 'my_collection', 'test_user', 'password', 'log_type String, host String, command String') AS m JOIN (SELECT host FROM mongodb('127.0.0.1:27017', 'test', 'my_collection', 'test_user', 'password', 'log_type String, host String, command String') GROUP BY host HAVING COUNT(*) > 1) AS filtered ON m.host = filtered.host;
+SELECT COUNT(*) FROM mongodb('127.0.0.1:27017', 'test', 'my_collection', 'test_user', 'password', 'log_type String, host String, command String') WHERE command IN (SELECT command FROM mongodb('127.0.0.1:27017', 'test', 'my_collection', 'test_user', 'password', 'log_type String, host String, command String') GROUP BY command HAVING COUNT(*) > 1);
+SELECT host, AVG(length(command)) as avg_command_length FROM mongodb('127.0.0.1:27017', 'test', 'my_collection', 'test_user', 'password', 'log_type String, host String, command String') GROUP BY host ORDER BY avg_command_length DESC;

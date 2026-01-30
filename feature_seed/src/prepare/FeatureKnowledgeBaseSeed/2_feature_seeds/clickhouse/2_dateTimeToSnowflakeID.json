@@ -1,0 +1,11 @@
+CREATE TABLE test_dates (id UInt64, dt DateTime, value UInt64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_dates VALUES (1, toDateTime('2021-08-15 18:57:56', 'Asia/Shanghai'), 100), (2, toDateTime('2022-01-01 12:00:00', 'UTC'), 200), (3, toDateTime('2015-01-01 00:00:00', 'UTC'), 300);
+SELECT id, dateTimeToSnowflakeID(dt, (SELECT max(dt) FROM test_dates)) AS snowflake_id FROM test_dates;
+SELECT (id, dateTimeToSnowflakeID(dt)) AS res FROM test_dates WHERE value = (SELECT min(value) FROM test_dates);
+SELECT value, (dateTimeToSnowflakeID(dt) + 1) AS incremented_id FROM test_dates HAVING incremented_id < 500;
+SELECT id, (SELECT dateTimeToSnowflakeID(dt) FROM test_dates WHERE id = t.id) AS snowflake_id FROM test_dates t JOIN (SELECT id FROM test_dates WHERE value > 50) AS sub ON t.id = sub.id;
+SELECT id, (SELECT count() FROM test_dates WHERE dateTimeToSnowflakeID(dt) < 200) AS count_less FROM test_dates GROUP BY id HAVING count_less > 0;
+WITH (SELECT dateTimeToSnowflakeID(dt) FROM test_dates) AS snowflake_ids SELECT id, arrayJoin(snowflake_ids) AS expanded_ids FROM test_dates;
+CREATE TABLE tmp_table AS SELECT id, dateTimeToSnowflakeID(dt) AS snowflake_id FROM test_dates WHERE value IS NULL;
+ALTER TABLE tmp_table ADD COLUMN new_column UInt64 DEFAULT 0;
+DROP TABLE IF EXISTS tmp_table;

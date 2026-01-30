@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=101530",
+  "title": "Partition pruning fails with explicit time_zone offset in datetime literal",
+  "description": "Partition pruning does not work with explicit time zone offsets in datetime literals when comparing to TIMESTAMPs.\nHow to repeat:\nDROP TABLE IF EXISTS tp;\r\nCREATE TABLE `tp` (\r\n  `id` int unsigned NOT NULL,\r\n  `ts` timestamp NOT NULL,\r\n  `v` float DEFAULT NULL,\r\n  PRIMARY KEY (`id`,`ts`)\r\n)\r\nPARTITION BY RANGE (unix_timestamp(`ts`))\r\n(\r\n PARTITION p202001 VALUES LESS THAN (1580515200),\r\n PARTITION p202002 VALUES LESS THAN (1583020800)\r\n);\r\n\r\nSET @@session.time_zone = '+00:00';\r\nSELECT @@SESSION.time_zone;\r\nINSERT INTO tp VALUES (1, '2020-01-01', 1);\r\nINSERT INTO tp VALUES (1, '2020-02-01', 2);\r\nSELECT * FROM tp;\r\nSELECT * FROM tp WHERE ts >= '2020-01-01 00:00:00' AND ts <= '2020-02-01 00:00:00';\r\nEXPLAIN SELECT * FROM tp WHERE ts >= '2020-01-01 00:00:00' AND ts <= '2020-02-01 00:00:00';\r\nSHOW WARNINGS;\r\nSELECT * FROM tp WHERE ts >= '2020-01-01 00:00:00+00:00' AND ts <= '2020-02-01 00:00:00+00:00';\r\nEXPLAIN SELECT * FROM tp WHERE ts >= '2020-01-01 00:00:00+00:00' AND ts <= '2020-02-01 00:00:00+00:00';\r\nSHOW WARNINGS;\r\nSET @@session.time_zone = '+01:00';\r\nSELECT @@SESSION.time_zone;\r\nSELECT * FROM tp;\r\n-- These should be the same as above 00:00:00 in UTC\r\nSELECT * FROM tp WHERE ts >= '2020-01-01 01:00:00' AND ts <= '2020-02-01 01:00:00';\r\nEXPLAIN SELECT * FROM tp WHERE ts >= '2020-01-01 01:00:00' AND ts <= '2020-02-01 01:00:00';\r\nSHOW WARNINGS;\r\n-- This only finds the first row\r\nSELECT * FROM tp WHERE ts >= '2020-01-01 00:00:00+00:00' AND ts <= '2020-02-01 00:00:00+00:00';\r\n-- Because the second partition is pruned\r\nEXPLAIN SELECT * FROM tp WHERE ts >= '2020-01-01 00:00:00+00:00' AND ts <= '2020-02-01 00:00:00+00:00';\r\nSHOW WARNINGS;\r\nALTER TABLE tp REMOVE PARTITIONING;\r\nSELECT * FROM tp WHERE ts >= '2020-01-01 00:00:00+00:00' AND ts <= '2020-02-01 00:00:00+00:00';\r\nEXPLAIN SELECT * FROM tp WHERE ts >= '2020-01-01 00:00:00+00:00' AND ts <= '2020-02-01 00:00:00+00:00';\r\nSHOW WARNINGS;\r\nDROP TABLE IF EXISTS tp;\nSuggested fix:\nFix so datetime literals with time_zone offset works consistently, including with partition pruning?",
+  "date": "2020-11-09 22:49:00",
+  "vulnerable_version": "8.0.22",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS tp;",
+    "CREATE TABLE tp (id INTEGER NOT NULL, ts TEXT NOT NULL, v REAL DEFAULT NULL, PRIMARY KEY (id, ts));",
+    "INSERT INTO tp VALUES (1, '2020-01-01 00:00:00', 1.5);",
+    "SELECT * FROM tp WHERE ts >= '2020-01-01 00:00:00' AND ts <= '2020-02-01 00:00:00';",
+    "SELECT * FROM tp WHERE ts >= '2020-01-01 01:00:00' AND ts <= '2020-02-01 01:00:00';"
+  ],
+  "key_bug_features": [
+    "Partition pruning fails with time zone offset in datetime literals"
+  ]
+}

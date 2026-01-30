@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/60087",
+  "title": "Incorrect Join Result After adding an additional true expression",
+  "description": "## Bug Report\n\n\n### 1. Minimal reproduce step (Required)\n\n```\nCREATE TABLE t0(c0 TEXT(234) );\nCREATE TABLE t1 LIKE t0;\n\nINSERT INTO t1(c0) VALUES ('P');\n\nINSERT INTO t0(c0) VALUES ('W');\n\nUPDATE t0 SET c0=714418897;\n\nselect * FROM t1\n                  INNER JOIN t0\n                             ON (((CAST(HEX(t0.c0) AS TIME))) is NULL);\n\nSELECT *\nFROM t1\n         INNER JOIN t0\n                    ON (((((CAST(HEX(t0.c0) AS TIME)) AND\n                           (((((t1.c0) ^ 1)))))) IS NULL));\n```\n\n### 2. What did you expect to see? (Required)\n```\nQ1:\nP,714418897\n\nQ2:\nP,714418897\n\n```\n\n### 3. What did you see instead (Required)\n\n```\nQ1:\nP,714418897\n\nQ2:\nempty result\n```\nFrom the Q1's result, we can conclude that TiDB evaluate `((CAST(HEX(t0.c0) AS TIME)))` as NULL in the join condition, but after we add `and (t1.c0 ^ 1)`, which is a true expression based on the value of t1.c0. The second query should produce the same result as the first one, but it doesn't.\n### 4. What is your TiDB version? (Required)\n```\n Release Version: v9.0.0-beta.1.pre-389-g21f9bb7b7a\nEdition: Community\nGit Commit Hash: 21f9bb7b7a7478d825c4dee4fbf2ce913e3e7cf1\nGit Branch: HEAD\nUTC Build Time: 2025-03-11 09:37:34\nGoVersion: go1.23.7\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv |\n```\n\n",
+  "date": "2025-03-14T08:43:12Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2(c0 INTEGER, c1 TEXT, c2 DATE);",
+    "INSERT INTO t2(c0, c1, c2) VALUES (1, 'Test', '2023-01-01');",
+    "CREATE TABLE t3(c0 REAL, c1 TEXT);",
+    "INSERT INTO t3(c0, c1) VALUES (NULL, 'Sample');",
+    "SELECT * FROM t2 INNER JOIN t3 ON (t2.c0 = CAST(t3.c0 AS INTEGER) OR t3.c1 IS NULL);"
+  ],
+  "key_bug_features": [
+    "Incorrect join result with additional true expression"
+  ]
+}

@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id INTEGER, value FLOAT, category VARCHAR(50));
+INSERT INTO test_data (id, value, category) VALUES (1, 10.5, 'A'), (2, 15.0, 'B'), (3, NULL, 'A'), (4, 5.5, 'C'), (5, 20.0, 'B');
+SELECT category, var_pop(value) / NULLIF(count(value), 0) AS population_variance_per_count FROM test_data GROUP BY category HAVING var_pop(value) > 2.0;
+SELECT DISTINCT t1.category, (var_pop(t1.value) + var_pop(t2.value)) / 2 AS combined_variance FROM test_data t1 JOIN test_data t2 ON t1.id != t2.id GROUP BY t1.category;
+SELECT category, var_pop(value) AS variance FROM (SELECT value * 1.0 AS value, category FROM test_data WHERE value IS NOT NULL UNION ALL SELECT CAST(NULL AS FLOAT) AS value, category FROM test_data) AS subquery GROUP BY category;
+WITH temp AS (SELECT id, value, category, var_pop(value) OVER (PARTITION BY category) AS variance FROM test_data) SELECT category, variance / COUNT(id) AS avg_variance FROM temp WHERE variance IS NOT NULL GROUP BY category HAVING avg_variance > 1.0;
+INSERT INTO test_data (id, value, category) SELECT 6, 25.0, 'A' WHERE (SELECT COUNT(*) FROM test_data) < 10;
+SELECT category, SUM(COALESCE(value, 0)) / NULLIF(count(value), 0) AS adjusted_mean FROM test_data GROUP BY category HAVING adjusted_mean < 15.0;
+DROP TABLE IF EXISTS temp_data;
+CREATE TABLE temp_data AS SELECT category, var_pop(value) AS variance FROM test_data GROUP BY category HAVING variance IS NOT NULL;

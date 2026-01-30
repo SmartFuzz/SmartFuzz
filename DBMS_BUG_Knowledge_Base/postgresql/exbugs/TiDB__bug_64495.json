@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/64495",
+  "title": "planner: wrong binding cache status causes long optimization time",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n\nThis issue is introduced coincidently by https://github.com/pingcap/tidb/pull/64289, so we can only reproduce this issue based on that PR.\n\nAfter https://github.com/pingcap/tidb/pull/64289, to tolerate time lag between different TiDB, we purposely read some duplicated bindings when loading bindings from storage into memory.\n\nWhen adding these duplicated bindings into the binding cache, we forget to check whether their digests are already stored in the cache, if yes, we should skip setting them. Since we forget this process, these duplicated bindings in binding cache could accumulate gradually over time, and finally cause long optimization time since the optimizer need more time to match binding.\n\n<img width=\"1207\" height=\"600\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/8c52c091-bb2a-4c12-b9f5-a60ebd364f8d\" />\n\n<img width=\"500\" height=\"268\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/b4f95e10-72f9-4f44-8e94-32d46c55423f\" />\n\nTo reproduce this problem, create some bindings with the same pattern but different database names, and then observe the below log:\n\n```\ncreate database d1;\nuse d1;\ncreate table t (a int, b int, c int);\ncreate global binding using select * from t;\n\ncreate database d2;\nuse d2;\ncreate table t (a int, b int, c int);\ncreate global binding using select * from t;\n\ncreate database d3;\nuse d3;\ncreate table t (a int, b int, c int);\ncreate global binding using select * from t;\n\ncreate database d4;\nuse d4;\ncreate table t (a int, b int, c int);\ncreate global binding using select * from t;\n\ncreate database d5;\nuse d5;\ncreate table t (a int, b int, c int);\ncreate global binding using select * from t;\n```\n\n<img width=\"1142\" height=\"778\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/f5405745-df9f-4b2b-9f4d-67ab57942688\" />\n\n\n### 2. What did you expect to see? (Required)\n\n### 3. What did you see instead (Required)\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\nv8.5.4 & Master\n",
+  "date": "2025-11-14T08:32:50Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE DATABASE d6;",
+    "CREATE TABLE t1 (id SERIAL PRIMARY KEY, name VARCHAR(50), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t1 (name) VALUES ('Sample Name');",
+    "CREATE TABLE t2 (id INT, value DECIMAL(10, 2) NOT NULL, FOREIGN KEY (id) REFERENCES t1(id));",
+    "SELECT * FROM t1;"
+  ],
+  "key_bug_features": [
+    "Duplicated bindings accumulate in binding cache over time"
+  ]
+}

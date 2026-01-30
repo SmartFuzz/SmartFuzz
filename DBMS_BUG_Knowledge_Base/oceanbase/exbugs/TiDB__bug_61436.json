@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/61436",
+  "title": "Inconsistent results for WHERE LENGTH(const) > CHAR_LENGTH(DOUBLE_COL) between TiKV and TiFlash",
+  "description": "## Bug Report\n\n### 1. Minimal reproduce step (Required)\n```\nDROP TABLE IF EXISTS t0 ;\nCREATE TABLE t0(c0 DOUBLE);\nALTER TABLE t0 SET TIFLASH REPLICA 1;\nINSERT INTO t0 VALUES (4.9E-324);\n\nSELECT /*+ read_from_storage(tikv[t0]) */ true FROM t0 WHERE ((LENGTH(1199426508))>(CHAR_LENGTH(t0.c0)));\nSELECT /*+ read_from_storage(tiflash[t0]) */ true FROM t0 WHERE ((LENGTH(1199426508))>(CHAR_LENGTH(t0.c0)));\n```\n\n### 2. What did you expect to see? (Required)\nThe same query returns the same results on both TiKV and TiFlash.\n### 3. What did you see instead (Required)\n```\nmysql> SELECT /*+ read_from_storage(tikv[t0]) */ true FROM t0 WHERE ((LENGTH(1199426508))>(CHAR_LENGTH(t0.c0)));\nEmpty set (0.00 sec)\n\nmysql> SELECT /*+ read_from_storage(tiflash[t0]) */ true FROM t0 WHERE ((LENGTH(1199426508))>(CHAR_LENGTH(t0.c0)));\n+------+\n| TRUE |\n+------+\n|    1 |\n+------+\n1 row in set (0.01 sec)\n```\n### 4. What is your TiDB version? (Required)\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| tidb_version()                                                                                                                                                                                                                               |\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| Release Version: v8.5.0\nEdition: Community\nGit Commit Hash: d13e52ed6e22cc5789bed7c64c861578cd2ed55b\nGit Branch: HEAD\nUTC Build Time: 2024-12-18 02:26:06\nGoVersion: go1.23.3\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv |\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+",
+  "date": "2025-05-30T14:41:41Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t1;",
+    "CREATE TABLE t1(c1 VARCHAR(255), c2 DOUBLE, c3 INT NOT NULL DEFAULT 0);",
+    "INSERT INTO t1 VALUES ('test', 4.9E-324, NULL), ('example', 1.5, 10);",
+    "SELECT true FROM t1 WHERE LENGTH(c1) > LENGTH(c2);",
+    "SELECT true FROM t1 WHERE LENGTH(c1) > LENGTH(c2);"
+  ],
+  "key_bug_features": [
+    "Inconsistent results for LENGTH and CHAR_LENGTH comparison"
+  ]
+}

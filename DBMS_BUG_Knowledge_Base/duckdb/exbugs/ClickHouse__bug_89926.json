@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/89926",
+  "title": "`CLONE AS` fails when source and target tables are located in different databases",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nAccording to the documentation, `CREATE TABLE ... CLONE AS` supports different databases (https://clickhouse.com/docs/sql-reference/statements/create/table#with-a-schema-and-data-cloned-from-another-table):\n```sql\nCREATE TABLE [IF NOT EXISTS] [db.]table_name CLONE AS [db2.]name2 [ENGINE = engine]\n```\nHowever, query `CREATE TABLE db2.a CLONE AS db1.a` fails with error:\n```\nReceived exception from server (version 25.11.1):\nCode: 60.\nDB::Exception: Received from localhost:9000.\nDB::Exception: Table default.a does not exist. Maybe you meant db1.a?. (UNKNOWN_TABLE)\n(query: CREATE TABLE db2.a CLONE AS db1.a;)\n```\nTo be more precise, only the 2nd step (`ATTACH PARTITION`) fails - table `db2.a` is created successfully.\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nFiddle - https://fiddle.clickhouse.com/fcba0bf2-712c-48c6-829c-ba385ad3e8cf\n```sql\nCREATE DATABASE db1;\nCREATE TABLE db1.a (id Int64) ENGINE=MergeTree ORDER BY tuple();\nINSERT INTO db1.a VALUES (1), (2), (3);\nSELECT count() FROM db1.a;\nCREATE DATABASE db2;\nCREATE TABLE db2.a CLONE AS db1.a;\n-- Received exception from server (version 25.11.1):\n-- Code: 60.\n-- DB::Exception: Received from localhost:9000.\n-- DB::Exception: Table default.a does not exist. Maybe you meant db1.a?. (UNKNOWN_TABLE)\n-- (query: CREATE TABLE db2.a CLONE AS db1.a;)\n```\n### Expected behavior\n_No response_\n### Error message and/or stacktrace\n_No response_\n### Additional context\n_No response_",
+  "date": "2025-11-12T13:58:47Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE DATABASE db1;",
+    "CREATE TABLE db1.a (id BIGINT, name VARCHAR, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP());",
+    "INSERT INTO db1.a VALUES (1, 'Alice', '2023-01-01 00:00:00'), (2, 'Bob', '2023-01-02 00:00:00'), (3, 'Charlie', '2023-01-03 00:00:00');",
+    "CREATE DATABASE db2;",
+    "CREATE TABLE db2.a AS SELECT * FROM db1.a;"
+  ],
+  "key_bug_features": [
+    "CLONE AS fails across different databases"
+  ]
+}

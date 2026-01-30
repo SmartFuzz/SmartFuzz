@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/51478",
+  "title": "The \"Default\" field in the result of \"show columns\" with `views'` is not processed ",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\nRelated issue：https://github.com/pingcap/tidb/issues/50936\r\n```\r\ncreate table t1 (c int, c1 varchar(32) default \"abc\");\r\ncreate view v1 as select c, c1 from t1;\r\nshow columns from test.v1 where field='c1';\r\n\r\ncreate table t2 (c int, c1 double default (rand(1)));\r\ncreate view v2 as select c, c1 from t2;\r\nshow columns from test.v2 where field='c1';\r\n```\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\n```\r\nmysql> show columns from test.v1 where field='c1';\r\n+-------+-------------+------+-----+---------+-------+\r\n| Field | Type        | Null | Key | Default | Extra |\r\n+-------+-------------+------+-----+---------+-------+\r\n| c1    | varchar(32) | YES  |     | abc     |       |\r\n+-------+-------------+------+-----+---------+-------+\r\n1 row in set (0.01 sec)\r\n\r\nmysql>  show columns from test.v2 where field='c1';\r\n+-------+--------+------+-----+---------+-------------------+\r\n| Field | Type   | Null | Key | Default | Extra             |\r\n+-------+--------+------+-----+---------+-------------------+\r\n| c1    | double | YES  |     | rand(1) | DEFAULT_GENERATED |\r\n+-------+--------+------+-----+---------+-------------------+\r\n1 row in set (0.00 sec)\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n```\r\ntidb> show columns from test.v1 where field='c1';\r\n+-------+-------------+------+------+---------+-------+\r\n| Field | Type        | Null | Key  | Default | Extra |\r\n+-------+-------------+------+------+---------+-------+\r\n| c1    | varchar(32) | YES  |      | NULL    |       |\r\n+-------+-------------+------+------+---------+-------+\r\n1 row in set (0.00 sec)\r\n\r\ntidb> show columns from test.v2 where field='c1';\r\n+-------+--------+------+------+---------+-------+\r\n| Field | Type   | Null | Key  | Default | Extra |\r\n+-------+--------+------+------+---------+-------+\r\n| c1    | double | YES  |      | NULL    |       |\r\n+-------+--------+------+------+---------+-------+\r\n1 row in set (0.00 sec)\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\nmaster\r\n\r\n",
+  "date": "2024-03-04T09:08:25Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t3 (c Int32, c1 String DEFAULT 'default_value', c2 DateTime DEFAULT now());",
+    "CREATE VIEW v3 AS SELECT c, c1, c2 FROM t3;",
+    "SELECT * FROM system.columns WHERE table = 'v3' AND name = 'c1';",
+    "CREATE TABLE t4 (c Int32, c1 Float64 DEFAULT (1.5 + 2.5), c2 UInt8 DEFAULT 1);",
+    "CREATE VIEW v4 AS SELECT c, c1, c2 FROM t4;",
+    "SELECT * FROM system.columns WHERE table = 'v4' AND name = 'c1';"
+  ],
+  "key_bug_features": [
+    "Default field not processed in show columns for views"
+  ]
+}

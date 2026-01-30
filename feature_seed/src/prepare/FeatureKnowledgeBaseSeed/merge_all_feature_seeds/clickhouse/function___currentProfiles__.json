@@ -1,0 +1,17 @@
+CREATE USER test_user IDENTIFIED WITH plaintext_password BY 'password';
+CREATE PROFILE test_profile SETTINGS max_memory_usage = 1000000000;
+SET PROFILE test_profile;
+SELECT currentProfiles();
+CREATE TABLE test_table (id UInt32, name String) ENGINE = Memory;
+INSERT INTO test_table VALUES (1, 'Alice'), (2, 'Bob');
+SELECT currentProfiles(), (SELECT COUNT(*) FROM test_table) AS user_count;
+CREATE USER second_user IDENTIFIED WITH plaintext_password BY 'password';
+GRANT ALL ON test_table TO second_user;
+SET PROFILE test_profile FOR second_user;
+SELECT currentProfiles() FROM (SELECT DISTINCT 'second_user' AS user) AS dummy;
+CREATE TABLE user_profiles (user String, profile String) ENGINE = MergeTree() ORDER BY user;
+INSERT INTO user_profiles VALUES ('test_user', 'test_profile'), ('second_user', 'test_profile');
+SELECT currentProfiles() WHERE user IN (SELECT DISTINCT user FROM user_profiles);
+SET PROFILE default;
+SELECT currentProfiles(), (SELECT COUNT(*) FROM user_profiles WHERE profile = 'test_profile') AS profile_users_count;
+SELECT currentProfiles(), (SELECT name FROM test_table WHERE id = 1) AS user_name;

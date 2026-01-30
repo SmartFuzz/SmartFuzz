@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id INTEGER PRIMARY KEY, text_column VARCHAR(255), bit_column BITSTRING);
+INSERT INTO test_data (id, text_column, bit_column) VALUES (1, 'testanexample', '1011'), (2, 'nottest', '0011'), (3, 'an', '1100'), (4, 'banana', '0001');
+SELECT id, text_column, regexp_matches(text_column, '(an)') AS match, (bit_column | '1111'::BITSTRING) AS modified_bits FROM test_data WHERE regexp_matches(text_column, '(an)') = true;
+SELECT id, text_column, (regexp_matches(text_column, '(an)')::INTEGER | 1) AS match_binary FROM test_data ORDER BY match_binary DESC;
+WITH recursive_cte AS ( SELECT id, text_column, bit_column FROM test_data WHERE text_column IS NOT NULL UNION ALL SELECT id, text_column, bit_column FROM recursive_cte WHERE id < 4 ) SELECT id, text_column, regexp_matches(text_column, '(an)') AS match FROM recursive_cte WHERE bit_column IS NOT NULL;
+CREATE TABLE additional_data (id INTEGER PRIMARY KEY, related_id INTEGER, FOREIGN KEY (related_id) REFERENCES test_data(id));
+INSERT INTO additional_data (id, related_id) VALUES (1, 1), (2, 2), (3, 3);
+SELECT ad.id, ad.related_id, td.text_column, (regexp_matches(td.text_column, '(an)')::INTEGER | td.bit_column) AS final_output FROM additional_data ad JOIN test_data td ON ad.related_id = td.id WHERE ad.related_id IS NOT NULL;
+SELECT id, COUNT(*) OVER (PARTITION BY regexp_matches(text_column, '(an)')) AS match_count FROM test_data GROUP BY id, text_column HAVING (bit_column | '0001'::BITSTRING) <> bit_column;
+SELECT id, regexp_matches(text_column, '(an|banana)') AS complex_match FROM test_data WHERE text_column IS NOT NULL ORDER BY (bit_column | '1000'::BITSTRING) DESC;

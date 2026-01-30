@@ -1,0 +1,14 @@
+CREATE TABLE test_strings (id UInt32, original String, encoded String, checkup UInt8);
+INSERT INTO test_strings VALUES (1, 'München', upperUTF8('München'), 1), (2, 'ß', upperUTF8('ß'), 0), (3, NULL, upperUTF8(NULL), 0);
+CREATE TABLE test_empty (empty_string String) ENGINE = Memory;
+INSERT INTO test_empty VALUES ('');
+SELECT id, original, encoded FROM test_strings WHERE upperUTF8(original) NOT LIKE 'München' AND original IS NOT NULL;
+SELECT id, original, encoded FROM test_strings WHERE upperUTF8(original) NOT LIKE '%' || upperUTF8('ü') || '%' AND original IS NOT NULL;
+SELECT id, original, encoded, NOT (encoded NOT LIKE original) AS case_check FROM test_strings WHERE case_check = 0;
+SELECT COUNT(*) FROM test_strings GROUP BY original HAVING COUNT(original) > 1;
+SELECT original FROM test_strings WHERE original NOT LIKE upperUTF8('M') OR original LIKE upperUTF8('München');
+SELECT original, upperUTF8(original) AS upper_value FROM test_strings WHERE upper_value NOT LIKE 'MÜNCHEN' AND original NOT LIKE upperUTF8(encoded);
+SELECT MAX(length(upper_value)) FROM (SELECT upperUTF8(original) AS upper_value FROM test_strings) AS upper_values;
+SELECT id, original, upperUTF8(original) AS upper_case FROM test_strings WHERE original IS NOT NULL AND original NOT LIKE upperUTF8('München');
+SELECT ENCODED_FIELD FROM (SELECT id, original, upperUTF8(original) AS ENCODED_FIELD FROM test_strings) WHERE ENCODED_FIELD NOT LIKE '';
+SELECT COUNT(*) FROM (SELECT original, upperUTF8(original) AS upper_value FROM test_strings WHERE original IS NOT NULL AND original NOT LIKE '%ß%') AS filtered WHERE upper_value IS NOT NULL;

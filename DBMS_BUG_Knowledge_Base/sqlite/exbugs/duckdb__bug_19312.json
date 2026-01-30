@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/19312",
+  "title": "nth_value must > 0 in PG while Duckdb accept nth_value = 0",
+  "description": "### What happens?\n\nnth_value must > 0 in PG while Duckdb accept nth_value = 0, showed a different behavior other than PG\n\n### To Reproduce\n\nRepro : \n\n```\nCREATE TABLE products (\n    product_id INT PRIMARY KEY,\n    product_name VARCHAR(255),\n    price DECIMAL(10, 2)\n);\n\n\nINSERT INTO products VALUES\n(1, 'Laptop', 1200.00),\n(2, 'Keyboard', 75.00),\n(3, 'Monitor', 300.00),\n(4, 'Mouse', 25.00),\n(5, 'Webcam', 50.00);\n\n\nSELECT\n    product_name,\n    price,\n    NTH_VALUE(product_name, 0) OVER (ORDER BY price DESC) AS second_most_expensive_product\nFROM\n    products;\n```\n\n in PG : \n\n```\nERROR:  argument of nth_value must be greater than zero\n```\n\nin Duckdb : \n\n```\n product_name |  price  | second_most_expensive_product \n--------------+---------+-------------------------------\n Laptop       | 1200.00 | \n Monitor      |  300.00 | \n Keyboard     |   75.00 | \n Webcam       |   50.00 | \n Mouse        |   25.00 | \n(5 rows)\n```\n\n### OS:\n\nMac OS\n\n### DuckDB Version:\n\n1.4.0\n\n### DuckDB Client:\n\nCli\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nZhibai Song\n\n### Affiliation:\n\nAWS\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a stable release\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "date": "2025-10-08 18:57:26",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE orders (order_id INTEGER PRIMARY KEY, product_id INTEGER, quantity INTEGER, order_date TEXT);",
+    "INSERT INTO orders VALUES (1, 1, 2, '2023-10-01'), (2, 2, 5, '2023-10-02'), (3, 3, 1, '2023-10-03');",
+    "SELECT product_name, price, (SELECT price FROM products ORDER BY price ASC LIMIT 1 OFFSET 0) AS cheapest_product FROM products;",
+    "SELECT o.order_id, p.product_name, (SELECT o2.quantity FROM orders o2 WHERE o2.product_id = o.product_id ORDER BY o2.order_date DESC LIMIT 1) AS latest_quantity FROM orders o JOIN products p ON o.product_id = p.product_id;",
+    "SELECT product_name, price, (SELECT product_name FROM products ORDER BY price DESC LIMIT 1 OFFSET 0) AS most_expensive_product FROM products;"
+  ],
+  "key_bug_features": [
+    "NTH_VALUE function accepts zero in DuckDB but not in PG"
+  ]
+}

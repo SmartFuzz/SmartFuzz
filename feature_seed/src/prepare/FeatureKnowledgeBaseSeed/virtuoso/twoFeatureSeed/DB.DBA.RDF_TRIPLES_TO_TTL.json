@@ -1,0 +1,17 @@
+{
+    "function": "DB.DBA.RDF_TRIPLES_TO_TTL",
+    "operator": "bif:st_within",
+    "sql_array": [
+        "CREATE TABLE rdf_data (id INT PRIMARY KEY, subject VARCHAR(255), predicate VARCHAR(255), object VARCHAR(255));",
+        "INSERT INTO rdf_data (id, subject, predicate, object) VALUES (1, 'http://example.org/subject1', 'http://example.org/predicate', 'http://example.org/object1');",
+        "INSERT INTO rdf_data (id, subject, predicate, object) VALUES (2, NULL, 'http://example.org/predicate', 'http://example.org/object2');",
+        "INSERT INTO rdf_data (id, subject, predicate, object) VALUES (3, 'http://example.org/subject3', 'http://example.org/predicate', NULL);",
+        "INSERT INTO rdf_data (id, subject, predicate, object) VALUES (4, 'http://example.org/subject4', 'http://example.org/predicate', '  ');",
+        "CREATE PROCEDURE RDF_WITH_SPATIAL(in rdf_input VARCHAR) { DECLARE triples, ses any; DECLARE results varchar; result_names(results); DB.DBA.RDF_LOAD_RDFXML_MT(rdf_input, 'http://example.org/base/', 'http://example.org/graph/'); DELETE FROM rdf_data; SELECT id, DB.DBA.RDF_TRIPLES_TO_TTL(vector(vector(subject, predicate, object)), ses) INTO triples FROM rdf_data WHERE bif:st_within(subject, 'POLYGON((...))'); }",
+        "CALL RDF_WITH_SPATIAL('<?xml version=\"1.0\" encoding=\"UTF-8\"?><rdf:RDF><rdf:Description rdf:about=\"http://example.org/subject1\"><dc:title>Example Title</dc:title></rdf:Description></rdf:RDF>');",
+        "SELECT subject, COUNT(*) FROM rdf_data GROUP BY subject HAVING COUNT(*) > 1;",
+        "SELECT subject, COALESCE(NULLIF(predicate, ''), 'default_predicate') AS clean_predicate FROM rdf_data WHERE object IS NOT NULL;",
+        "SELECT subject, MAX(object) FROM rdf_data WHERE object IS NOT NULL AND subject IS NOT NULL GROUP BY subject HAVING MAX(LENGTH(object)) > 10;",
+        "SELECT DISTINCT subject FROM rdf_data WHERE bif:st_within(subject, 'POLYGON((-10 -10, 10 -10, 10 10, -10 10, -10 -10))') ORDER BY subject ASC;"
+    ]
+}

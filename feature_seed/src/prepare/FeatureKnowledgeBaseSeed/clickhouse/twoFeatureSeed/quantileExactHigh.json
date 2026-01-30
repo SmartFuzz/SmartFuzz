@@ -1,0 +1,16 @@
+{
+    "function": "quantileExactHigh",
+    "operator": "a.N",
+    "sql_array": [
+        "CREATE TABLE test_data (id UInt32, value Float64, created DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_data VALUES (1, 10.5, '2023-01-01 00:00:00'), (2, NULL, '2023-01-02 00:00:00'), (3, 20.0, '2023-01-03 00:00:00'), (4, 5.5, '2023-01-04 00:00:00'), (5, 15.3, '2023-01-05 00:00:00');",
+        "SELECT quantileExactHigh(0.5)(value) AS median_value, tupleElement((SELECT groupArray(value) FROM test_data WHERE value IS NOT NULL), 1) AS first_value FROM test_data;",
+        "SELECT id, quantileExactHigh(0.25)(value) AS lower_quartile, quantileExactHigh(0.75)(value) AS upper_quartile FROM test_data GROUP BY id HAVING lower_quartile IS NOT NULL;",
+        "SELECT quantileExactHigh(0.99)(value), tupleElement(groupArray(value), 2) FROM test_data GROUP BY created ORDER BY created;",
+        "SELECT value, CASE WHEN value IS NULL THEN quantileExactHigh(0.5)(value) ELSE value END AS computed_value FROM test_data;",
+        "SELECT quantileExactHigh(0.01)(CAST(value AS String)) FROM test_data WHERE value > CAST('10' AS Float64);",
+        "CREATE TABLE temp_data AS SELECT id, quantileExactHigh(0.5)(value) AS median_value FROM test_data GROUP BY id;",
+        "SELECT a.id, quantileExactHigh(0.75)(a.value) AS quantified FROM temp_data a JOIN test_data b ON a.median_value = b.value WHERE b.created > '2023-01-01 00:00:00' ORDER BY a.id;",
+        "SELECT tupleElement((SELECT groupArray(value) FROM test_data WHERE created < '2023-01-03 00:00:00'), quantileExactHigh(0.5)(value)) AS estimated_value FROM test_data HAVING estimated_value IS NOT NULL;"
+    ]
+}

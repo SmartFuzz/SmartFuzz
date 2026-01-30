@@ -1,0 +1,17 @@
+{
+    "function": "VHOST_DEFINE",
+    "operator": "SPARQL Logical &&",
+    "sql_array": [
+        "CREATE TABLE HTTP_PATH (id INT PRIMARY KEY, vhost VARCHAR(255), lhost VARCHAR(255), lpath VARCHAR(255), ppath VARCHAR(255), is_brws INT, sec VARCHAR(10), vsp_user VARCHAR(50), ses_vars INT);",
+        "INSERT INTO HTTP_PATH (id, vhost, lhost, lpath, ppath, is_brws, sec, vsp_user, ses_vars) VALUES (1, 'www.example.com:8080', 'host.example.com:8080', '/path1', '/samples/path1/', 1, 'SSL', 'user1', 1);",
+        "INSERT INTO HTTP_PATH (id, vhost, lhost, lpath, ppath, is_brws, sec, vsp_user, ses_vars) VALUES (2, 'www.example.com:443', 'host.example.com:443', '/path2', '/samples/path2/', 0, 'SSL', 'user2', 0);",
+        "INSERT INTO HTTP_PATH (id, vhost, lhost, lpath, ppath, is_brws, sec, vsp_user, ses_vars) VALUES (3, 'www.example.com', 'host.example.com', '/path3', '/samples/path3/', 1, NULL, 'user3', 1);",
+        "SELECT * FROM HTTP_PATH WHERE (vhost IS NOT NULL && is_brws=1) OR (sec IS NULL && ses_vars=0);",
+        "SELECT vhost, lpath FROM HTTP_PATH WHERE is_brws = 1 AND vhost LIKE 'www.%' && (lpath || ppath) LIKE '/samples/%';",
+        "SELECT vhost, COUNT(*) OVER (PARTITION BY vsp_user) AS vsp_count FROM HTTP_PATH GROUP BY vsp_user HAVING COUNT(*) > 1 AND EXISTS (SELECT 1 FROM HTTP_PATH WHERE sec = 'SSL');",
+        "SELECT DISTINCT vhost FROM HTTP_PATH WHERE (lhost = 'host.example.com:8080' && is_brws = 1) OR (lpath IS NULL || ppath IS NULL);",
+        "CREATE TEMPORARY TABLE TEMP_HTTP (temp_id INT, vhost VARCHAR(255));",
+        "INSERT INTO TEMP_HTTP (temp_id, vhost) SELECT id, vhost FROM HTTP_PATH WHERE is_brws = 1 && (vhost IS NOT NULL || lhost IS NOT NULL);",
+        "INSERT INTO HTTP_PATH (vhost, lhost, lpath, ppath, is_brws, sec, vsp_user, ses_vars) SELECT CONCAT('www.test', temp_id), lhost, lpath, ppath, 1, 'SSL', 'user_test', ses_vars FROM TEMP_HTTP INNER JOIN HTTP_PATH ON TEMP_HTTP.vhost = HTTP_PATH.vhost WHERE is_brws = 1 AND lhost IS NOT NULL;"
+    ]
+}

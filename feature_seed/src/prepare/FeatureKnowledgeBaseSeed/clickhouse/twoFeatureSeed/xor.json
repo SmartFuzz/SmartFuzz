@@ -1,0 +1,16 @@
+{
+    "function": "xor",
+    "operator": "a NOT IN ...",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, flag Nullable(UInt8), value Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table VALUES (1, 1, 0.5), (2, NULL, 1.5), (3, 0, 2.5), (4, 1, NULL), (5, 0, 3.5);",
+        "SELECT id, xor(flag, value > 2) AS xor_result FROM test_table WHERE id NOT IN (SELECT id FROM test_table WHERE value IS NULL);",
+        "SELECT id, value, xor(flag, value) AS xor_flag_value FROM test_table GROUP BY id, value HAVING xor(flag, value) IS NOT NULL;",
+        "SELECT DISTINCT id FROM test_table WHERE xor(flag, value < 1 AND value IN (SELECT DISTINCT value FROM test_table WHERE value > 0)) NOT IN (SELECT DISTINCT id FROM test_table WHERE flag IS NULL);",
+        "SELECT id, xor(flag, COUNT(value) > 0) AS complex_xor FROM test_table GROUP BY id HAVING complex_xor NOT IN (0, 1);",
+        "CREATE TABLE secondary_table (sec_id UInt32, sec_value Float64) ENGINE = MergeTree() ORDER BY sec_id;",
+        "INSERT INTO secondary_table VALUES (1, 1.5), (2, 2.5), (3, 3.5);",
+        "SELECT t.id, xor(t.flag, s.sec_value > 2) FROM test_table t JOIN secondary_table s ON t.id = s.sec_id WHERE t.value IS NOT NULL AND s.sec_value NOT IN (SELECT sec_value FROM secondary_table WHERE sec_value < 2);",
+        "SELECT t.id FROM test_table t WHERE NOT EXISTS (SELECT 1 FROM secondary_table s WHERE xor(t.flag, s.sec_value IN (1, 2, 3)) = 1) HAVING t.flag IS NOT NULL OR t.value > 1;"
+    ]
+}

@@ -1,0 +1,15 @@
+CREATE TABLE h3_test (id UInt32, hex_index UInt64, geo_value String, nullable_geo_value Nullable(String));
+INSERT INTO h3_test VALUES (1, 617420388352917503, 'A1'), (2, 617420388352917504, null), (3, 617420388352917505, 'B1'), (4, 617420388352917506, 'C1');
+SELECT h3IsResClassIII(hex_index) AS res, geo_value FROM h3_test WHERE geo_value NOT LIKE 'B%';
+SELECT id, h3IsResClassIII(hex_index) AS res, geo_value FROM h3_test WHERE NOT (geo_value LIKE 'A%') GROUP BY id, res HAVING res = 1;
+SELECT id, h3IsResClassIII(CAST(hex_index AS UInt64)) AS res FROM (SELECT hex_index FROM h3_test WHERE geo_value IS NOT NULL) WHERE res NOT LIKE 0;
+SELECT id, nullable_geo_value, h3IsResClassIII(hex_index) FROM h3_test WHERE (nullable_geo_value IS NULL NOT LIKE 'C%') AND hex_index NOT LIKE CAST(617420388352917505 AS String);
+SELECT h3IsResClassIII(COALESCE(hex_index, 0)) AS res FROM h3_test WHERE geo_value NOT LIKE '';
+SELECT id, COUNT(*) FROM h3_test GROUP BY h3IsResClassIII(hex_index) HAVING h3IsResClassIII(hex_index) NOT LIKE 0;
+WITH (SELECT MAX(hex_index) FROM h3_test) AS max_index SELECT h3IsResClassIII(max_index) AS max_res WHERE max_index NOT LIKE '617420388352917%';
+ALTER TABLE h3_test ADD COLUMN new_geo_value Nullable(String);
+INSERT INTO h3_test (id, hex_index, geo_value, new_geo_value) VALUES (5, 617420388352917507, 'D1', NULL);
+CREATE TEMPORARY TABLE temp_h3 AS SELECT hex_index, geo_value FROM h3_test WHERE geo_value NOT LIKE 'D%';
+SELECT h3IsResClassIII(hex_index) AS res, COUNT(*) FROM temp_h3 GROUP BY res HAVING res = 1;
+SELECT h3IsResClassIII(CAST(NULL AS UInt64)) AS res;
+SELECT h3IsResClassIII(hex_index) AS res FROM (SELECT hex_index, geo_value FROM h3_test UNION ALL SELECT 617420388352917508, NULL) WHERE res NOT LIKE 0;

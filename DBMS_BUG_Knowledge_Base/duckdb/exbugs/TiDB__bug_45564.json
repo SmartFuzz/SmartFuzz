@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/45564",
+  "title": "Join reorder might put the filters to the wrong place",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```\r\ncreate table t(a int);\r\ncreate table t1(a int, b int);\r\ncreate table t2(a int, b int, c int);\r\ncreate table t3(a int, b int);\r\ncreate table t4(a int, b int);\r\nexplain format='brief' select * from t left join t1 on t.a=t1.a inner join t2 on t.a=t2.a and t2.c = 100 left join t3 on t2.a=t3.a and t3.b > 1 left join t4 on t2.a = t4.a where (t2.b > 100 or t.a > 10 or t1.b < 10);\r\n```\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nThe filter `(t2.b > 100 or t.a > 10 or t1.b < 10)` should be attached either as an independent selection or to an inner join plan.\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nThe filter is attached to the outer join node.\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\nmaster\r\n\r\n",
+  "date": "2023-07-25T11:43:29Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t5(a INT, b VARCHAR(10), c FLOAT, d DATE);",
+    "INSERT INTO t5 VALUES (1, 'test', 1.5, DATE '2023-01-01');",
+    "CREATE TABLE t6(a INT, b INT, c INT DEFAULT 0 CHECK (c >= 0));",
+    "INSERT INTO t6 VALUES (1, 2, NULL), (2, 3, 5);",
+    "EXPLAIN SELECT * FROM t5 LEFT JOIN t6 ON t5.a = t6.a WHERE (t5.b = 'test' OR t6.c IS NULL);"
+  ],
+  "key_bug_features": [
+    "Join reorder misplaces filter conditions in query execution"
+  ]
+}

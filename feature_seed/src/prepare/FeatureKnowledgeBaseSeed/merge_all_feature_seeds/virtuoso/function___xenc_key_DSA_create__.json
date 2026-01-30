@@ -1,0 +1,10 @@
+CREATE TABLE key_storage (key_id INT PRIMARY KEY, public_key VARCHAR(512), private_key VARCHAR(512));
+CREATE TABLE user_keys (user_id INT, key_id INT, FOREIGN KEY (key_id) REFERENCES key_storage(key_id));
+INSERT INTO key_storage (key_id, public_key, private_key) VALUES (1, xenc_key_DSA_create('key_for_user_1').public_key, xenc_key_DSA_create('key_for_user_1').private_key);
+INSERT INTO user_keys (user_id, key_id) VALUES (101, 1);
+SELECT public_key FROM key_storage WHERE key_id IN (SELECT key_id FROM user_keys WHERE user_id = 101);
+SELECT COUNT(*) FROM key_storage WHERE public_key LIKE 'myDSAkey%';
+SELECT a.user_id, b.public_key FROM user_keys a JOIN key_storage b ON a.key_id = b.key_id WHERE a.user_id IN (SELECT user_id FROM user_keys WHERE key_id = 1);
+INSERT INTO key_storage (key_id, public_key, private_key) VALUES (2, xenc_key_DSA_create('key_for_user_2').public_key, xenc_key_DSA_create('key_for_user_2').private_key) ON CONFLICT (key_id) DO UPDATE SET public_key = EXCLUDED.public_key;
+SELECT public_key FROM key_storage WHERE key_id = (SELECT MAX(key_id) FROM key_storage);
+DELETE FROM key_storage WHERE key_id NOT IN (SELECT key_id FROM user_keys);

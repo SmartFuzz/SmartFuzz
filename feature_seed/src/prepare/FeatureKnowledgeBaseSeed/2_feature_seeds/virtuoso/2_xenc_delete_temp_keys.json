@@ -1,0 +1,16 @@
+CREATE TABLE temp_keys (id INT PRIMARY KEY, user_key VARCHAR(255));
+INSERT INTO temp_keys (id, user_key) VALUES (1, 'key1'), (2, 'key2'), (3, NULL), (4, 'key3');
+SELECT xenc_delete_temp_keys() / (SELECT COUNT(*) FROM temp_keys WHERE user_key IS NOT NULL) AS result;
+SELECT (SELECT xenc_delete_temp_keys() AS temp_result) / (10 / 2) AS combined_result;
+SELECT id, user_key FROM temp_keys WHERE user_key IS NULL OR (user_key = 'key1' / (SELECT NULLIF(COUNT(*), 0) FROM temp_keys));
+SELECT AVG(CASE WHEN user_key IS NOT NULL THEN LENGTH(user_key) END) AS avg_length FROM temp_keys GROUP BY id HAVING avg_length > 0;
+SELECT xenc_delete_temp_keys() / (SELECT COUNT(*) FROM temp_keys) AS division_result, id FROM temp_keys ORDER BY division_result;
+SELECT xenc_delete_temp_keys() / (SELECT SUM(CASE WHEN user_key IS NOT NULL THEN 1 ELSE 0 END) FROM temp_keys) AS division_with_nulls;
+CREATE TABLE key_stats (user_id INT, key_length INT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO key_stats (user_id, key_length) SELECT id, LENGTH(user_key) FROM temp_keys WHERE user_key IS NOT NULL;
+SELECT xenc_delete_temp_keys() / COALESCE(SUM(key_length), 1) FROM key_stats;
+SELECT xenc_delete_temp_keys() / (SELECT COUNT(*) FROM temp_keys WHERE user_key <> '') AS non_empty_keys_count;
+SELECT user_key, xenc_delete_temp_keys() / NULLIF(LENGTH(user_key), 0) AS undefined_division FROM temp_keys;
+SELECT t.id, xenc_delete_temp_keys() / (SELECT COUNT(*) FROM temp_keys WHERE id <> t.id) FROM temp_keys t;
+SELECT user_key, xenc_delete_temp_keys() / (SELECT COALESCE(SUM(key_length), 1) FROM key_stats) AS safe_division FROM temp_keys;
+SELECT (SELECT xenc_delete_temp_keys()) / (SELECT COUNT(*) FROM temp_keys WHERE LENGTH(user_key) > 3) AS small_length_division;

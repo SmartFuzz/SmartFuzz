@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/132994c8b1",
+  "title": "RETURNING old.* seg-faults",
+  "description": "larrybr added on 2021-03-29 22:57:42:\nThis SQL, applied to :memory: DB,\n  CREATE TABLE a (id INTEGER NOT NULL PRIMARY KEY);\n  UPDATE a SET id = a.id + 1 FROM (SELECT * FROM a) AS old RETURNING old.*;\n\nproduces a seg-fault at line 99948 of sqlite3.c . \nReported in forum post: https://sqlite.org/forum/forumpost/cdc28fec1a\nlarrybr added on 2021-03-29 23:40:47:\nSlightly simpler test case (from Keith at the forum):\n create table x(a,b);\n create table y(c,d);\n update x set a=c from y where b=d returning *;\nlarrybr added on 2021-03-29 23:55:58:\nStrike that final repro update. Both of these seg-fault:\n  update x set a=c from y where b=d returning x.*;\n  update x set a=c from y where b=d returning y.*;\n. And, interestingly, this does not:\n  update x set a=c from y where b=d returning x.a, y.d;\n, instead producing: \"Error: no such column: y.d\".\n(All lifted from Keith's post.)\ndrh added on 2021-03-30 00:47:59:\nThe FROM clause is not required.  Any RETURNING that contains the form\n\"table.*\" seems to cause the problem.  Example:\n\nCREATE TABLE t1(x);\nINSERT INTO t1 VALUE(1) RETURNING t1.*;",
+  "date": "2021-03-29 22:57:424.37 years ago",
+  "vulnerable_version": "3.35.3",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE users(id SERIAL PRIMARY KEY, name TEXT NOT NULL, age INTEGER);",
+    "INSERT INTO users(name, age) VALUES('Alice', 30);",
+    "UPDATE users SET age = age + 1 WHERE name = 'Alice' RETURNING id, name, age;",
+    "CREATE TABLE orders(order_id SERIAL PRIMARY KEY, user_id INTEGER, amount REAL);",
+    "INSERT INTO orders(user_id, amount) VALUES(1, 99.99) RETURNING order_id, user_id, amount;"
+  ],
+  "key_bug_features": [
+    "RETURNING with table.* causes segmentation fault"
+  ]
+}

@@ -1,0 +1,15 @@
+CREATE TABLE TestData (id INT PRIMARY KEY, text_data VARCHAR(1024), number_data INT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO TestData (id, text_data, number_data) VALUES (1, '<p>Test line 1</p>', 42), (2, NULL, 7), (3, '<p>Test line 3</p>', NULL), (4, '', 0);
+SELECT id, length(text_data) AS text_length, ses_read_line(NULL) AS line FROM TestData WHERE number_data IS NULL OR number_data > 0;
+SELECT id, text_data FROM TestData WHERE text_data IS NOT NULL AND ses_read_line(NULL) = '<p>Test line 2</p>' AND number_data < (SELECT AVG(number_data) FROM TestData);
+WITH RankedData AS (SELECT id, text_data, ROW_NUMBER() OVER (ORDER BY created_at) AS rn FROM TestData) SELECT * FROM RankedData WHERE rn = 1;
+SELECT * WHERE { ?s a <TestData> } UNION SELECT * FROM (SELECT ses_read_line(NULL) AS mixed_line FROM TestData WHERE text_data IS NOT NULL) AS TempData;
+SELECT a.id, COUNT(b.id) FROM TestData a LEFT JOIN TestData b ON a.number_data = b.number_data GROUP BY a.id HAVING COUNT(b.id) > 0;
+CREATE TABLE Metrics (metric_id INT PRIMARY KEY, value FLOAT, description VARCHAR(255));
+INSERT INTO Metrics (metric_id, value, description) VALUES (1, 3.14, 'Pi value'), (2, NULL, 'No value'), (3, (SELECT MAX(number_data) FROM TestData), 'Max number from TestData');
+SELECT metric_id, value, ses_read_line(NULL) AS read_line FROM Metrics WHERE value IS NOT NULL OR description LIKE 'Pi%';
+SELECT id, text_data FROM TestData WHERE text_data LIKE '%<p>%';
+SELECT a.id FROM TestData a JOIN Metrics b ON a.id = b.metric_id WHERE ses_read_line(NULL) = a.text_data ORDER BY ses_read_line(NULL);
+DROP TABLE IF EXISTS TempData;
+CREATE TEMPORARY TABLE TempData AS SELECT id, text_data FROM TestData;
+SELECT COUNT(*) FROM TempData WHERE EXISTS (SELECT 1 FROM Metrics WHERE Metrics.metric_id = TempData.id);

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/62672",
+  "title": "only full group by check should be case-sensitive",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n```\nCREATE TABLE `t_a` (\n  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT 'id',\n  `a` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT 'merchant id',\n  `b` decimal(64,8) NOT NULL DEFAULT '0.00000000' COMMENT 'total amount',\n  `c` decimal(64,8) NOT NULL DEFAULT '0.00000000' COMMENT 'settlement amount',\n  `d` decimal(64,8) NOT NULL DEFAULT '0.00000000' COMMENT 'total fee',\n  `e` int(11) unsigned NOT NULL DEFAULT '0' COMMENT 'settle time',\n  `f` int(11) unsigned NOT NULL DEFAULT '0' COMMENT 'create time',\n  `g` tinyint(1) NOT NULL DEFAULT '0' COMMENT 'is deleted',\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='settlement table';\n\nSELECT\n  MAX(id) AS id,\n  LEFT(FROM_UNIXTIME(e), 10) AS settle_time,\n  a,\n  SUM(b) AS total_amount,\n  SUM(c) AS settlement_amount,\n  SUM(d) AS total_fee\nFROM `t_a`\nWHERE `f` >= 1753632000 \n  AND `f` <= 1753718399 \n  AND `g` = 0\nGROUP BY `a`, left(FROM_UNIXTIME(e), 10);\n```\n\n\n### 2. What did you expect to see? (Required)\nsuccess\n\n### 3. What did you see instead (Required)\nonly full group by check error\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\nmaster\n\n",
+  "date": "2025-07-29T04:22:28Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE `t_b` ( `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT, `name` varchar(255) NOT NULL, `value` decimal(10,2) NOT NULL, PRIMARY KEY (`id`) ) ENGINE=InnoDB DEFAULT CHARSET=utf8;",
+    "INSERT INTO `t_b` (`name`, `value`) VALUES ('Test1', 100.00), ('test1', 200.00), ('TEST1', 150.00);",
+    "SELECT MAX(`id`) AS max_id, `name`, SUM(`value`) AS total_value FROM `t_b` GROUP BY `name` COLLATE utf8_bin;",
+    "CREATE TABLE `t_c` ( `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT, `category` varchar(100) NOT NULL, `amount` decimal(12,4) NOT NULL, PRIMARY KEY (`id`) ) ENGINE=InnoDB DEFAULT CHARSET=utf8;",
+    "INSERT INTO `t_c` (`category`, `amount`) VALUES ('A', 500.50), ('a', 300.25), ('B', 400.75);"
+  ],
+  "key_bug_features": [
+    "only full group by check should be case-sensitive"
+  ]
+}

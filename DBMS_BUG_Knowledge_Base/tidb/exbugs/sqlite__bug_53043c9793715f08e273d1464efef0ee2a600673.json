@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/53043c9793",
+  "title": "deserialized DB has a sqlite3_db_filename() contrary to docs",
+  "description": "larrybr added on 2021-04-15 09:29:54:\nPost #1 in this thread, https://sqlite.org/forum/forumpost/e28b13c50e , details how to demonstrate this misbehavior. (I have not replicated because I can see by reading the code that it behaves just as described.)\nBecause the incorrect \"filename\", \"x\", cannot be an absolute pathname, this might be considered a doc bug, if documented. However, that would be messier than altering the code to conform to the docs. So it's a code bug for now.\ndrh added on 2022-11-18 21:23:19:\nI think the following CLI script demonstrates the problem:\n\n.open --hexdb\n| size 4096 pagesize 4096 filename x1.db\n| page 1 offset 0\n|      0: 53 51 4c 69 74 65 20 66 6f 72 6d 61 74 20 33 00   SQLite format 3.\n|     16: 10 00 01 01 00 40 20 20 00 00 00 03 00 00 00 01   .....@  ........\n|     32: 00 00 00 00 00 00 00 00 00 00 00 03 00 00 00 00   ................\n|     48: 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00   ................\n|     80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 03   ................\n|     96: 00 2e 66 e8 0d 00 00 00 00 10 00 00 00 00 00 00   ..f.............\n| end x1.db\n.mode qbox\nPRAGMA database_list;\n\nThe \".open --hexdb\" makes use of sqlite3_deserialize().  Then the\n\"PRAGMA database_list;\" uses sqlite3_db_filename() (or an internal\nequivalent) to determine the filename, which you can see comes out\nas \"x\".\n\n┌─────┬────────┬──────┐\n│ seq │  name  │ file │\n├─────┼────────┼──────┤\n│ 0   │ 'main' │ 'x'  │\n└─────┴────────┴──────┘",
+  "date": "2021-04-15 09:29:544.32 years ago",
+  "vulnerable_version": "3.36",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR(255) NOT NULL, value DECIMAL(10, 2) DEFAULT 0.0);",
+    "INSERT INTO test_table (name, value) VALUES ('test1', 1.5);",
+    "INSERT INTO test_table (name, value) VALUES ('test2', NULL);",
+    "SELECT id, name, value FROM test_table WHERE value IS NOT NULL;",
+    "SHOW TABLES;"
+  ],
+  "key_bug_features": [
+    "sqlite3_db_filename() returns incorrect filename after deserialization"
+  ]
+}

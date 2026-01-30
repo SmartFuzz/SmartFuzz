@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/64411",
+  "title": "Inconsistent result for WEEKOFYEAR()",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\nIs this the same bug as the #64386 and #64382？\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\nCREATE TABLE t1307 ( c2 TEXT);\nINSERT t1307 () VALUES ('4e0ZqL');\nSELECT CONVERT(t1307.c2, DECIMAL(1, 1)) FROM t1307;\n-- 0.9\nSELECT WEEKOFYEAR(0.9) IS NULL;\n-- 1\nSELECT * FROM t1307 WHERE (((WEEKOFYEAR((CONVERT(t1307.c2, DECIMAL(1, 1))))) IS NULL));\n-- empty set expected 1 rows\n### 2. What did you expect to see? (Required)\nmysql> SELECT * FROM t1307 WHERE (((WEEKOFYEAR(0.9)) IS NULL));                               \n+--------+\n| c2     |\n+--------+\n| 4e0ZqL |\n+--------+\n1 row in set, 1 warning (0.00 sec)\n### 3. What did you see instead (Required)\nmysql> SELECT * FROM t1307 WHERE (((WEEKOFYEAR((CONVERT(t1307.c2, DECIMAL(1, 1))))) IS NULL));\nEmpty set, 2 warnings (0.00 sec)\n\nmysql> show warnings;\n+---------+------+-------------------------------------------+\n| Level   | Code | Message                                   |\n+---------+------+-------------------------------------------+\n| Warning | 1105 | Data truncated for column '%s' at row %d  |\n| Warning | 1690 | DECIMAL value is out of range in '(1, 1)' |\n+---------+------+-------------------------------------------+\n2 rows in set (0.00 sec)\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\nRelease Version: v8.5.0-20251010-ec6b882\nEdition: Community\nGit Commit Hash: https://github.com/pingcap/tidb/commit/ec6b882d188f77c199907ba26843a872b8c5fd6d\nGit Branch: heads/refs/tags/v8.5.0-20251010-ec6b882\nUTC Build Time: 2025-10-10 10:21:51\nGoVersion: go1.23.3\nRace Enabled: false\nCheck Table Before Drop: false\nStore: unistore\n",
+  "date": "2025-11-11T03:27:08Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1308 ( c1 INTEGER, c2 REAL, c3 TEXT NOT NULL );",
+    "INSERT INTO t1308 (c1, c2, c3) VALUES (1, 0.99, 'test1'), (2, 1.01, 'test2');",
+    "SELECT strftime('%W', CAST(c2 AS REAL)) FROM t1308 WHERE c1 = 1;",
+    "SELECT * FROM t1308 WHERE strftime('%W', CAST(c3 AS REAL)) IS NULL;",
+    "SELECT COUNT(*) FROM t1308 WHERE strftime('%W', CAST(c2 AS REAL)) IS NULL;"
+  ],
+  "key_bug_features": [
+    "WEEKOFYEAR() returns inconsistent results with DECIMAL conversion"
+  ]
+}

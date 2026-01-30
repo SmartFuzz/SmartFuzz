@@ -1,0 +1,11 @@
+CREATE TABLE test_data (id INTEGER PRIMARY KEY, text_column VARCHAR, number_column INTEGER);
+INSERT INTO test_data (id, text_column, number_column) VALUES (1, 'hello_world_hello', 5), (2, 'regex_test_string', NULL), (3, '', 0);
+SELECT id, regexp_extract_all(text_column, '([a-z_]+)', 1) + number_column AS combined_value FROM test_data WHERE number_column IS NOT NULL;
+SELECT id, text_column, number_column, (REGEXP_EXTRACT_ALL(text_column, '([a-z_]+)', 1) + 10) AS adjusted_value FROM test_data;
+SELECT id, (SELECT COUNT(*) FROM test_data WHERE number_column IS NOT NULL) + (SELECT COUNT(*) FROM test_data WHERE text_column = '') AS combined_count FROM test_data;
+CREATE TABLE additional_data (id INTEGER, value VARCHAR, id_fk INTEGER REFERENCES test_data(id));
+INSERT INTO additional_data (id, value, id_fk) VALUES (1, 'a_value', 1), (2, 'another_test', 2), (3, NULL, 3);
+SELECT t.id, (regexp_extract_all(t.text_column, '([a-z_]+)', 1) + (SELECT COUNT(*) FROM additional_data WHERE id_fk = t.id)) AS enriched_value FROM test_data t ORDER BY enriched_value ASC;
+SELECT t.id, regexp_extract_all(t.text_column, '([a-z_]+)', 1) + COALESCE(t.number_column, 0) + 10 AS extended_value FROM test_data t HAVING extended_value > 10;
+WITH recursive value_cte AS (SELECT id, regexp_extract_all(text_column, '([a-z_]+)', 1) AS extracted_value FROM test_data WHERE text_column IS NOT NULL) SELECT id, extracted_value, extracted_value + 5 AS combined_value FROM value_cte;
+SELECT t.id, (SELECT COUNT(*) FROM additional_data a WHERE a.id_fk = t.id AND a.value IS NOT NULL) + (regexp_extract_all(t.text_column, '([a-z_]+)', 1) + IFNULL(number_column, 0)) AS total FROM test_data t GROUP BY t.id HAVING total > 10;

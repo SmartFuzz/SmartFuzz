@@ -1,0 +1,22 @@
+{
+    "function": "quantileExactLow",
+    "operator": "EXTRACT",
+    "sql_array": [
+        "CREATE TABLE test_dates (id Int32, event_date DateTime, value Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_dates (id, event_date, value) VALUES (1, '2023-01-01 00:00:00', 10.5), (2, '2023-01-01 01:00:00', 20.0), (3, '2023-01-01 02:00:00', 30.0), (4, '2023-01-01 03:00:00', 40.0), (5, '2023-01-01 04:00:00', NULL);",
+        "SELECT quantileExactLow(0.1)(value) AS low_quantile FROM test_dates WHERE value IS NOT NULL;",
+        "SELECT EXTRACT(MONTH FROM event_date) AS event_month, quantileExactLow(0.5)(value) AS median_value FROM test_dates GROUP BY event_month;",
+        "SELECT id, quantileExactLow(0.7)(value) OVER (PARTITION BY EXTRACT(DAY FROM event_date)) AS day_70_quantile FROM test_dates;",
+        "SELECT EXTRACT(YEAR FROM toDate(event_date)) AS event_year, quantileExactLow(EXTRACT(MONTH FROM event_date) / 12.0)(value) AS monthly_quantile FROM test_dates WHERE value IS NOT NULL GROUP BY event_year;",
+        "CREATE TABLE test_numbers (num Int32) ENGINE = MergeTree() ORDER BY num;",
+        "INSERT INTO test_numbers (num) VALUES (1), (2), (3), (4), (5), (NULL);",
+        "SELECT quantileExactLow(0.5)(num) AS median_value FROM test_numbers WHERE num IS NOT NULL;",
+        "SELECT EXTRACT(SECOND FROM now()) AS current_second, quantileExactLow(0.25)(num) + 1.5 AS adjusted_value FROM test_numbers;",
+        "SELECT id, event_date, quantileExactLow(0.1)(value) FROM test_dates WHERE EXTRACT(HOUR FROM event_date) = 0;",
+        "SELECT quantileExactLow(0.9)(IF(value IS NULL, 0, value)) AS high_quantile_non_null FROM test_dates;",
+        "SELECT id, quantileExactLow(EXTRACT(MONTH FROM event_date) / 12.0)(value) AS monthly_quantile FROM test_dates WHERE value IS NOT NULL ORDER BY id;",
+        "SELECT COUNT(*) AS total_entries, quantileExactLow(0.5)(value) FROM test_dates WHERE event_date < now() GROUP BY EXTRACT(DAY FROM event_date);",
+        "SELECT quantileExactLow(0.01)(value) OVER (ORDER BY value) AS low_quantile_ordered FROM test_dates;",
+        "SELECT id, event_date, quantileExactLow(EXTRACT(MONTH FROM event_date) / 12.0)(value) AS adjusted_monthly_quantile FROM test_dates HAVING adjusted_monthly_quantile IS NOT NULL;"
+    ]
+}

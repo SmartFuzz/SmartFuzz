@@ -1,0 +1,17 @@
+SET allow_introspection_functions=1;
+CREATE TABLE binary_trace (address UInt64, info String) ENGINE = Memory;
+INSERT INTO binary_trace VALUES (531055181, 'example_binary');
+SELECT addressToLineWithInlines(531055181::UInt64);
+SELECT addressToLineWithInlines(arrayJoin(trace) AS ta) FROM system.trace_log WHERE query_id = '5e173544-2020-45de-b645-5deebe2aae54';
+SELECT addressToLineWithInlines(MIN(address)) FROM binary_trace;
+SELECT addressToLineWithInlines(MAX(address)) FROM binary_trace;
+WITH (SELECT address FROM binary_trace WHERE address > 0) AS valid_addrs SELECT addressToLineWithInlines(valid_addrs) FROM valid_addrs;
+CREATE TABLE inline_functions (id UInt64, func_name String) ENGINE = Memory;
+INSERT INTO inline_functions VALUES (1, 'functionA'), (2, 'functionB');
+SELECT addressToLineWithInlines(t.address) FROM binary_trace t JOIN inline_functions i ON t.address = i.id;
+SELECT addressToLineWithInlines(0) AS invalid_address;
+SELECT addressToLineWithInlines(99999999999999999999) AS out_of_range;
+SELECT addressToLineWithInlines(NULL) AS null_address;
+WITH (SELECT address FROM binary_trace LIMIT 1) AS single_addr SELECT addressToLineWithInlines(single_addr) FROM single_addr;
+SELECT arrayJoin(addressToLineWithInlines(address)) AS details FROM binary_trace WHERE address IN (SELECT address FROM binary_trace WHERE address < 1000000000);
+SELECT addressToLineWithInlines(SELECT MAX(address) FROM binary_trace);

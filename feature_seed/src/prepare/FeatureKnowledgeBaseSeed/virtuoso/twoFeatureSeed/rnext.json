@@ -1,0 +1,16 @@
+{
+    "function": "rnext",
+    "operator": "IS NOT NULL",
+    "sql_array": [
+        "CREATE TABLE test_data (id INT, val VARCHAR(255), remote_id INT);",
+        "INSERT INTO test_data (id, val, remote_id) VALUES (1, 'data1', 10), (2, NULL, 20), (3, 'data3', NULL);",
+        "CREATE TABLE remote_data (remote_id INT, value INT);",
+        "INSERT INTO remote_data (remote_id, value) VALUES (10, 100), (20, NULL);",
+        "SELECT * FROM (SELECT rnext(remote_id) AS next_id FROM remote_data WHERE remote_id IS NOT NULL) AS results WHERE results.next_id IS NOT NULL;",
+        "SELECT d.val, (SELECT rnext(remote_id) FROM remote_data WHERE remote_id IS NOT NULL) AS next_remote FROM test_data d WHERE d.val IS NOT NULL AND d.remote_id = (SELECT remote_id FROM remote_data WHERE value IS NOT NULL) LIMIT 1;",
+        "SELECT COUNT(*) FROM test_data WHERE val IS NOT NULL AND remote_id IN (SELECT rnext(remote_id) FROM remote_data WHERE value IS NOT NULL);",
+        "SELECT d.val, r.value, (CASE WHEN r.value IS NOT NULL THEN r.value ELSE 0 END) AS processed_value FROM test_data d JOIN remote_data r ON d.remote_id = r.remote_id WHERE d.val IS NOT NULL;",
+        "SELECT d.val, COUNT(*) FROM test_data d LEFT JOIN remote_data r ON d.remote_id = r.remote_id WHERE r.value IS NOT NULL GROUP BY d.val HAVING COUNT(d.id) IS NOT NULL;",
+        "SELECT d.val FROM test_data d WHERE d.val IS NOT NULL AND EXISTS (SELECT 1 FROM remote_data r WHERE r.remote_id = rnext(d.remote_id));"
+    ]
+}

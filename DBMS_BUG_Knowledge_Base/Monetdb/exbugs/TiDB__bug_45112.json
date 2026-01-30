@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/45112",
+  "title": "Got index out of range error for subquery",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n```\r\ndrop table if exists t1, t2, t3;\r\ncreate table t1(a varchar(20), b varchar(20), c varchar(20), primary key(a, b, c));\r\ncreate table t2(a varchar(20), b varchar(20), c varchar(20), primary key(a));\r\ncreate table t3(aa varchar (20), bb varchar (20), cc varchar(20), primary key(aa, bb));\r\ninsert into t1 values('1','1','1');\r\ninsert into t2 values('1','1','1');\r\ninsert into t3 values('1','1','1');\r\nselect (select max(b) from t2 where t2.a = t1.a), (select cc from t3 where t3.bb = t1.b and t3.aa = '1'), a from t1 where t1.a = '1' group by t1.a,  t1.b;\r\n```\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\n```\r\n+-------------------------------------------+--------------------------------------------------------+---+\r\n| (select max(b) from t2 where t2.a = t1.a) | (select cc from t3 where t3.bb = t1.b and t3.aa = '1') | a |\r\n+-------------------------------------------+--------------------------------------------------------+---+\r\n| 1                                         | 1                                                      | 1 |\r\n+-------------------------------------------+--------------------------------------------------------+---+\r\n1 row in set (0.001 sec)\r\n```\r\n### 3. What did you see instead (Required)\r\nERROR 1105 (HY000): runtime error: index out of range [0] with length 0\r\n### 4. What is your TiDB version? (Required)\r\n```\r\n+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| tidb_version()                                                                                                                                                                                                                                                          |\r\n+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| Release Version: v7.3.0-alpha-94-gc44ba1c1a8\r\nEdition: Community\r\nGit Commit Hash: c44ba1c1a868220764d9f11274b683d1aaecacb6\r\nGit Branch: master\r\nUTC Build Time: 2023-07-02 08:50:32\r\nGoVersion: go1.20.1\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: unistore |\r\n+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n1 row in set (0.009 sec)\r\n```\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2023-07-02T09:20:34Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t4, t5;",
+    "CREATE TABLE t4(id INT PRIMARY KEY, name VARCHAR(50), age INT);",
+    "CREATE TABLE t5(id INT PRIMARY KEY, t4_id INT, FOREIGN KEY(t4_id) REFERENCES t4(id));",
+    "INSERT INTO t4 VALUES(1, 'Alice', 30), (2, 'Bob', NULL);",
+    "SELECT (SELECT COUNT(*) FROM t5 WHERE t5.t4_id = t4.id) AS count, name FROM t4 WHERE age IS NULL OR age > 25;"
+  ],
+  "key_bug_features": [
+    "Subquery causing index out of range error"
+  ]
+}

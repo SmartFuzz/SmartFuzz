@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id INTEGER, value FLOAT, description VARCHAR(50), created_at TIMESTAMP);
+INSERT INTO test_table (id, value, description, created_at) VALUES (1, 10.5, 'Data 1', '2023-01-01 10:00:00'), (2, 15.5, 'Data 2', '2023-01-02 10:00:00'), (3, NULL, 'Data 3', '2023-01-03 10:00:00'), (4, 5.5, 'Data 4', NULL), (5, 0.0, 'Data 5', '2023-01-05 10:00:00');
+SELECT MIN(value, 2) FROM (SELECT value - 1.0 AS value FROM test_table WHERE value IS NOT NULL) AS subquery;
+SELECT id, MIN(value + 2) OVER (PARTITION BY description) AS min_adjusted_value FROM test_table GROUP BY id, description HAVING MIN(value) > 5;
+SELECT MIN(value, 3) AS bottom_values FROM (SELECT id, value - (SELECT MIN(value) FROM test_table WHERE value IS NOT NULL) AS adjusted_value FROM test_table) AS derived_table GROUP BY adjusted_value ORDER BY adjusted_value;
+CREATE TABLE another_table (ref_id INTEGER, adjust FLOAT);
+INSERT INTO another_table (ref_id, adjust) VALUES (1, 10.0), (2, 30.0), (3, 20.0);
+SELECT A.id, A.value - B.adjust AS value_diff FROM test_table A JOIN another_table B ON A.id = B.ref_id WHERE A.value IS NOT NULL ORDER BY value_diff;
+SELECT MIN(A.value - COALESCE(NULLIF(B.adjust, 0), 1)) FROM test_table A LEFT JOIN another_table B ON A.id = B.ref_id WHERE A.value IS NOT NULL GROUP BY A.id HAVING MIN(A.value) < 10;
+SELECT MIN(CAST(value AS VARCHAR) || ' adjusted') FROM (SELECT value - 2 FROM test_table WHERE value IS NOT NULL) AS adjusted_values;

@@ -1,0 +1,10 @@
+CREATE TABLE time_data (id INT, start_time TIME, end_time TIME, status BITSTRING);
+INSERT INTO time_data VALUES (1, TIME '01:02:03', TIME '06:01:03', '10101'::BITSTRING), (2, TIME '00:00:00', TIME '23:59:59', '10000'::BITSTRING);
+SELECT id, date_sub('hour', start_time, end_time) AS hours_diff, ('10101'::BITSTRING & '10001'::BITSTRING) AS bitwise_result FROM time_data WHERE date_sub('hour', start_time, end_time) > 0;
+SELECT id, start_time, end_time, date_sub('hour', start_time, end_time) * 60 AS total_minutes FROM time_data WHERE id IN (SELECT id FROM time_data WHERE status IS NOT NULL);
+SELECT A.id, COUNT(B.id) AS related_count, (SELECT date_sub('hour', MAX(B.start_time), MIN(B.end_time)) FROM time_data B WHERE A.start_time < B.start_time) AS hour_diff FROM time_data A JOIN time_data B ON (A.status & B.status) IS NOT NULL GROUP BY A.id HAVING hour_diff IS NOT NULL;
+CREATE TABLE bit_data (id INT, data BITSTRING);
+INSERT INTO bit_data VALUES (1, '11111'::BITSTRING), (2, '00000'::BITSTRING), (3, NULL);
+SELECT id, (SELECT date_sub('hour', TIME '01:02:03', TIME '06:01:03') + NULL) AS hour_diff FROM bit_data WHERE data IS NOT NULL AND (data & '11111'::BITSTRING) IS NOT NULL;
+SELECT id, date_sub('hour', TIME '12:00:00', TIME '18:00:00') AS hour_diff, ('10101'::BITSTRING & ('11000'::BITSTRING)) AS bitwise_result FROM time_data WHERE hour_diff > 0 OR (data IS NULL);
+SELECT A.id, A.start_time, (date_sub('hour', A.start_time, A.end_time) & '11000'::BITSTRING) AS combined_result FROM time_data A WHERE (A.start_time IS NULL) AND (date_sub('hour', TIME '01:00:00', TIME '02:00:00') IS NOT NULL);

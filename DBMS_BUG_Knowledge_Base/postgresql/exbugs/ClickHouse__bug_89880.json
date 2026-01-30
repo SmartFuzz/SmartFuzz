@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/89880",
+  "title": "\"PREWHERE\" for queries with FINAL",
+  "description": "### Company or project name\nhttps://www.innervate.com/\n### Use case\nQueries with FINAL maybe improved, they can filter granules before applying FINAL.\n@shiyer7474\nHere is an example:\n```\ncreate table T (K Int64, C0 String, C1 String, C2 String) Engine=ReplacingMergeTree order by K;\ninsert into T select number, arrayMap ( i-> cityHash64(i*number), range(10)), number, '' from numbers(5e7);\ninsert into T select 42, '', '', '';\nset do_not_merge_across_partitions_select_final=1, use_query_condition_cache=0;\n```\n### Current state of art: Elapsed: 2.379 sec.\n```\nset do_not_merge_across_partitions_select_final=1, use_query_condition_cache=0;\nselect * from T final where C1 = '42';\nOk.\n0 rows in set. Elapsed: 2.379 sec. Processed 50.01 million rows, 11.82 GB (21.02 million rows/s., 4.97 GB/s.)\nPeak memory usage: 20.51 MiB.\n```\n### Manual optimization: Elapsed: 0.179 sec.\n```\nset do_not_merge_across_partitions_select_final=1, use_query_condition_cache=0;\nselect * from T final  where K in (select K from T where  C1 = '42') and C1 = '42';\nOk.\n0 rows in set. Elapsed: 0.179 sec. Processed 50.02 million rows, 792.70 MB (278.93 million rows/s., 4.42 GB/s.)\nPeak memory usage: 8.27 MiB.\n```\n### optimize_move_to_prewhere_if_final -> incorrect result (expected by design)\n```\nselect * from T final where C1 = '42' settings optimize_move_to_prewhere_if_final=1;\n┌──K─┬─C0──────────────────────────────────────────────────────────────────────────────────────────────────\n1. │ 42 │ [4761183170873013810,11490350930367293593,15220094066153222822,7453518272804512073,17127718678445484\n└────┴─────────────────────────────────────────────────────────────────────────────────────────────────────\n1 row in set. Elapsed: 0.195 sec. Processed 50.00 million rows, 788.90 MB (256.45 million rows/s., 4.05 GB/s.)\nPeak memory usage: 14.80 KiB.\n```\n### Describe the solution you'd like\nabove\n### Describe alternatives you've considered\n_No response_\n### Additional context\n_No response_",
+  "date": "2025-11-11T20:10:35Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE T1 (K BIGINT, C0 TEXT, C1 TEXT, C2 DOUBLE PRECISION);",
+    "INSERT INTO T1 SELECT number, ARRAY(SELECT (i * number) FROM generate_series(0, 9) AS i), CASE WHEN number % 2 = 0 THEN 'even' ELSE NULL END, number * 1.5 FROM generate_series(1, 100) AS number;",
+    "CREATE TABLE T2 (K BIGINT, C0 TEXT, C1 INT);",
+    "INSERT INTO T2 SELECT K, C0, CAST(K AS INT) FROM T1 WHERE C1 IS NOT NULL;",
+    "SELECT * FROM T1 WHERE C1 = 'even';"
+  ],
+  "key_bug_features": [
+    "Incorrect results with FINAL and optimize_move_to_prewhere_if_final"
+  ]
+}

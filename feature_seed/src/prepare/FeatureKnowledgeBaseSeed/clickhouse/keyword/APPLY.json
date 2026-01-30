@@ -1,0 +1,12 @@
+[
+    "CREATE TABLE outer_table (id UInt32, value String) ENGINE = MergeTree() ORDER BY id;",
+    "CREATE TABLE inner_table (id UInt32, outer_id UInt32, inner_value String) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO outer_table VALUES (1, 'A'), (2, 'B'), (3, 'C');",
+    "INSERT INTO inner_table VALUES (1, 1, 'Inner A1'), (2, 1, 'Inner A2'), (3, 2, 'Inner B1');",
+    "SELECT id, value, inner_value FROM outer_table APPLY (SELECT inner_value FROM inner_table WHERE outer_id = outer_table.id);",
+    "SELECT id, value FROM outer_table APPLY (SELECT count(*) FROM inner_table WHERE outer_id = outer_table.id) AS inner_count;",
+    "SELECT id, value, (SELECT count(*) FROM inner_table WHERE outer_id = outer_table.id) AS inner_count FROM outer_table;",
+    "SELECT outer_id, groupArray(inner_value) FROM inner_table APPLY (SELECT outer_id FROM outer_table WHERE id = inner_table.outer_id) GROUP BY outer_id;",
+    "SELECT outer.id, outer.value, inner.inner_value FROM outer_table AS outer LEFT JOIN inner_table AS inner ON outer.id = inner.outer_id APPLY (SELECT inner_value FROM inner_table WHERE outer_id = outer.id);",
+    "SELECT outer.id, outer.value, inner_count FROM outer_table AS outer APPLY (SELECT count(*) FROM inner_table WHERE outer_id = outer.id) AS inner_count WHERE inner_count > 0;"
+]

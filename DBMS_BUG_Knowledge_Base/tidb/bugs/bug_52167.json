@@ -1,0 +1,29 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/52167",
+  "title": "Cast string to double on join column with index return incompatible result with MySQL",
+  "vulnerable_database": "tidb",
+  "date": "2024-03-27T14:16:11Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```\r\ncreate table t(a bigint, b varchar(50), key idx(a));\r\ncreate table t1(b varchar(50));\r\ninsert into t values(13790462480960267,'13790462480960267');\r\ninsert into t values(13790462480960268,'13790462480960267');\r\ninsert into t values(13790462480960269,'13790462480960267');\r\ninsert into t1 values ('13790462480960267');\r\nselect t.a from t, t1 where t.a=t1.b;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nMySQL 5.7.34, 8.0.36\r\n```\r\nmysql> select t.a from t, t1 where t.a=t1.b;\r\n+-------------------+\r\n| a                 |\r\n+-------------------+\r\n| 13790462480960267 |\r\n+-------------------+\r\n1 row in set (0.00 sec)\r\n```\r\n\r\nHowever, after dropping the `idx` index, MySQL returns inconsistent result that's the same as TiDB. This looks like a bug or a special case for MySQL.\r\n```\r\nmysql> alter table t drop index idx;\r\n\r\nmysql> select t.a from t, t1 where t.a=t1.b;\r\n+-------------------+\r\n| a                 |\r\n+-------------------+\r\n| 13790462480960267 |\r\n| 13790462480960268 |\r\n| 13790462480960269 |\r\n+-------------------+\r\n3 rows in set (0.00 sec)\r\n```\r\n\r\n\r\n### 3. What did you see instead (Required)\r\nTiDB\r\n```\r\nmysql> select t.a from t, t1 where t.a=t1.b;\r\n+-------------------+\r\n| a                 |\r\n+-------------------+\r\n| 13790462480960267 |\r\n| 13790462480960268 |\r\n| 13790462480960269 |\r\n+-------------------+\r\n3 rows in set (0.00 sec)\r\n\r\nmysql> alter table t drop index idx;\r\n\r\nmysql> select t.a from t, t1 where t.a=t1.b;\r\n+-------------------+\r\n| a                 |\r\n+-------------------+\r\n| 13790462480960267 |\r\n| 13790462480960268 |\r\n| 13790462480960269 |\r\n+-------------------+\r\n3 rows in set (0.01 sec)\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\nv7.6.0\r\n\r\n",
+  "poc": [
+    "create table t(a bigint, b varchar(50), key idx(a));",
+    "create table t1(b varchar(50));",
+    "insert into t values(13790462480960267,'13790462480960267');",
+    "insert into t values(13790462480960268,'13790462480960267');",
+    "insert into t values(13790462480960269,'13790462480960267');",
+    "insert into t1 values ('13790462480960267');",
+    "select t.a from t, t1 where t.a=t1.b;"
+  ],
+  "poc_type": "sql_text",
+  "state": "closed",
+  "key_bug_features": [
+    "Join on bigint and varchar columns with index"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t2(c bigint, d varchar(50), key idx(c));",
+    "INSERT INTO t2 VALUES(12345678901234567, '12345678901234567');",
+    "INSERT INTO t2 VALUES(12345678901234568, '12345678901234567');",
+    "INSERT INTO t2 VALUES(12345678901234569, '12345678901234567');",
+    "SELECT t2.c FROM t2, t1 WHERE t2.c = CAST(t1.b AS SIGNED);"
+  ]
+}

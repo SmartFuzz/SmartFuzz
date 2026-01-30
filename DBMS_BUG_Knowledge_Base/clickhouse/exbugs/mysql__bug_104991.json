@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=104991",
+  "title": "MySQL Connector/Python conversion issue after 8.0.24",
+  "description": "Recently I have just upgraded MySQL Connector/Python to latest 8.0.26, but I found a bug for JSON column conversion issue produced after 8.0.24. \r\n\r\nMy client platform is MacOS 11.5.2 with brew installed Python 3.9.5, and the server MySQL is Percona Server Ver 5.7.30-33. \r\n\r\nWhen I try to fetch one row with JSON type, the error occurred: \r\n... \r\n.../lib/python3.9/site-packages/mysql/connector/conversion.py\", line 589, in _STRING_to_python \r\nreturn value.decode(self.charset) \r\nAttributeError: 'str' object has no attribute 'decode' \r\n\r\nAfter I downgraded to 8.0.23, everything just works. So I found something related conversion change from 8.0.24 to address \"BUG#30416704: Binary columns returned as strings\". I think these changes may cause this situation. \r\n\r\nAnd with discovering the change in 8.0.24, I found the column protocol retuned tuple also changed, but in connection_cext.py the `_columns` info is not updated with adding the 8th tuple item. \r\n\r\nCurrently I resolved this issue with rewriting ConvertClass, is there any idea about this situation? \r\n\r\nThanks.\nHow to repeat:\n1. The table schema is as simple as possible: \r\nCREATE TABLE `user` ( \r\n`id` bigint(20) unsigned NOT NULL AUTO_INCREMENT, \r\n`data` json NOT NULL \r\n) ENGINE=InnoDB AUTO_INCREMENT=69799 DEFAULT CHARSET=utf8mb4 ROW_FORMAT=COMPRESSED KEY_BLOCK_SIZE=4; \r\n\r\n2. Init db connection with Python Connector, then\r\ncursor.execute('select id, data from user')\r\ncursor.fetchall()\r\n\r\n3. Exception occurred",
+  "date": "2021-09-21 05:07:00",
+  "vulnerable_version": "8.0.24 and Later",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE user (id UInt64 NOT NULL, data String NOT NULL, created_at DateTime DEFAULT now(), PRIMARY KEY (id));",
+    "INSERT INTO user (data) VALUES ('{\"name\": \"John\", \"age\": 30}');",
+    "INSERT INTO user (data) VALUES (NULL);",
+    "SELECT id, data FROM user WHERE JSONExtractString(data, 'name') = 'John';",
+    "UPDATE user SET data = JSONReplace(data, 'age', 31) WHERE id = 1;"
+  ],
+  "key_bug_features": [
+    "JSON column conversion issue after upgrading Connector/Python"
+  ]
+}

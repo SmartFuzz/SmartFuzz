@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/46907",
+  "title": "ddl: drop multiple partitions for a table with global index causes ddl panic",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n```sql\r\nuse test;\r\ndrop table if exists test_global;\r\ncreate table test_global ( a int, b int, c int)\r\n\tpartition by range( a ) (\r\n\t\tpartition p1 values less than (10),\r\n\t\tpartition p2 values less than (20),\r\n\t\tpartition p3 values less than (30)\r\n\t);\r\nAlter Table test_global Add Unique Index idx_b (b);\r\nINSERT INTO test_global VALUES (1, 1, 1), (2, 2, 2), (11, 3, 3), (12, 4, 4), (21, 21, 21), (29, 29, 29);\r\nalter table test_global drop partition p1, p2;  -- ddl panic here\r\n```\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\nexecute success\r\n### 3. What did you see instead (Required)\r\nddl panic\r\n![image](https://github.com/pingcap/tidb/assets/20724552/fca44fdb-99d7-49b7-8a32-efa9086c8bec)\r\n\r\n### 4. What is your TiDB version? (Required)\r\nmaster\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2023-09-12T09:46:02Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS test_complex;",
+    "CREATE TABLE test_complex (id Int32, name String, created_at DateTime) ENGINE = MergeTree() ORDER BY id PARTITION BY intDiv(id, 100);",
+    "ALTER TABLE test_complex ADD INDEX idx_name (name) TYPE minmax;",
+    "INSERT INTO test_complex VALUES (1, 'Alice', now()), (2, 'Bob', now()), (150, 'Charlie', now());",
+    "ALTER TABLE test_complex DROP PARTITION 0, 1;"
+  ],
+  "key_bug_features": [
+    "drop multiple partitions with global index"
+  ]
+}

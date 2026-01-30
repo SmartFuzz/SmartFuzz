@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id INT, value INT, description VARCHAR(255), created_at TIMESTAMP);
+INSERT INTO test_table VALUES (1, 7, 'Normal value'), (2, NULL, 'NULL value'), (3, -3, 'Negative value'), (4, 15, 'Boundary value'), (5, 0, 'Zero value'), (6, 8, 'Edge case'), (7, 2147483647, 'Max int');
+SELECT id, bit_xor(value) AS xor_result FROM test_table WHERE value IS NOT NULL GROUP BY id HAVING xor_result > 0;
+SELECT id, (value ^ (SELECT MAX(value) FROM test_table WHERE id != t.id)) AS shifted_value FROM test_table t;
+SELECT id, bit_xor(value) AS result FROM (SELECT id, (CASE WHEN value IS NULL THEN 0 ELSE value END) AS value FROM test_table) sub GROUP BY id HAVING result < 10;
+SELECT id, (SELECT bit_xor(value) FROM test_table t2 WHERE t2.created_at < t1.created_at) AS prior_xor FROM test_table t1 WHERE value = 7;
+CREATE TABLE subquery_test AS SELECT id, value, bit_xor(value) OVER (PARTITION BY description) AS bitwise_xor FROM test_table;
+SELECT id, (bit_xor(value) ^ (3 ^ 4)) AS complex_xor FROM test_table GROUP BY id HAVING complex_xor IS NOT NULL;
+SELECT t1.id, (SELECT bit_xor(value) FROM test_table t2 WHERE t2.value > t1.value) AS vuln_xor FROM test_table t1;
+SELECT DISTINCT id, bit_xor(0 ^ value) AS zero_xor FROM test_table WHERE value BETWEEN -3 AND 15 GROUP BY id;

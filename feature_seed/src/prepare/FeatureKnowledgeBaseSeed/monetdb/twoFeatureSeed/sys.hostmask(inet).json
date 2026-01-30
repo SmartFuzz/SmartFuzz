@@ -1,0 +1,22 @@
+{
+    "function": "sys.hostmask(inet)",
+    "operator": "R'any string'",
+    "sql_array": [
+        "CREATE TABLE test_networks (id SERIAL PRIMARY KEY, ip_mask INET, description TEXT);",
+        "INSERT INTO test_networks (ip_mask, description) VALUES (sys.hostmask(inet '192.168.1.10/24'), r'A\\fB\\tC\\n\\Z');",
+        "INSERT INTO test_networks (ip_mask, description) VALUES (sys.hostmask(inet '10.0.0.5/8'), r'Boundary\\0Test');",
+        "INSERT INTO test_networks (ip_mask, description) VALUES (sys.hostmask(inet '172.16.0.1/16'), r'EdgeValue\\nSuccess');",
+        "CREATE TABLE test_data (data_value VARCHAR(50), related_id INT REFERENCES test_networks(id));",
+        "INSERT INTO test_data (data_value, related_id) VALUES (r'NormalString', 1);",
+        "INSERT INTO test_data (data_value, related_id) VALUES (r'A\\fB\\tC\\Z', 2);",
+        "SELECT DENSE_RANK() OVER (ORDER BY related_id) AS rank_value, sys.hostmask(inet CONCAT(ip_mask, '/24')) AS masked_ip FROM test_networks;",
+        "SELECT COUNT(*) FROM test_data WHERE LENGTH(data_value) > 0 AND data_value LIKE r'A\\fB\\tC\\n\\Z';",
+        "SELECT * FROM test_data WHERE related_id IN (SELECT id FROM test_networks WHERE ip_mask IS NOT NULL AND sys.hostmask(ip_mask) = sys.hostmask(inet '192.168.1.10/24'));",
+        "SELECT DISTINCT(sys.hostmask(inet '10.10.10.10/8')) FROM test_networks JOIN test_data ON test_networks.id = test_data.related_id GROUP BY sys.hostmask(inet '10.10.10.10/8') HAVING COUNT(data_value) > 0;",
+        "ALTER TABLE test_data ADD COLUMN nullable_value VARCHAR(50);",
+        "UPDATE test_data SET nullable_value = NULL WHERE related_id = 1;",
+        "SELECT *, NULLIF(data_value, '') AS non_empty_value FROM test_data WHERE related_id IS NOT NULL ORDER BY related_id;",
+        "DROP TABLE IF EXISTS test_networks;",
+        "DROP TABLE IF EXISTS test_data;"
+    ]
+}

@@ -1,0 +1,16 @@
+CREATE TABLE test_table (id UInt32, value Float64, created_at DateTime, status Nullable(String));
+INSERT INTO test_table VALUES (1, 1.5, now(), 'active');
+INSERT INTO test_table VALUES (2, -1.0, now() - INTERVAL 1 DAY, NULL);
+INSERT INTO test_table VALUES (3, NaN(), now(), 'inactive');
+INSERT INTO test_table VALUES (4, Inf(), now() + INTERVAL 1 HOUR, 'active');
+SELECT id, value, created_at, isFinite(value) AS is_value_finite FROM test_table WHERE created_at > now() - INTERVAL 2 DAY;
+SELECT id, value, created_at + INTERVAL (value * 2) HOUR AS adjusted_time FROM test_table WHERE isFinite(value) = 1;
+SELECT AVG(value) AS avg_value, COUNT(*) AS total_count FROM test_table GROUP BY status HAVING isFinite(avg_value) = 1;
+SELECT id, value, created_at, (value + INTERVAL 1 DAY) AS modified_value FROM (SELECT id, value, created_at FROM test_table) AS subquery WHERE created_at < now() - INTERVAL 10 HOUR;
+SELECT t1.id, t1.value, t2.status FROM test_table t1 JOIN (SELECT id, status FROM test_table WHERE status IS NOT NULL) t2 ON t1.id = t2.id WHERE isFinite(t1.value) = 1;
+SELECT id, value, COUNT(*) OVER (PARTITION BY status) AS status_count FROM test_table WHERE isFinite(value + CAST(NULL AS Float64));
+SELECT id, value, IF(isFinite(value), value + INTERVAL 1 DAY, 'Not Finite') AS adjusted_value FROM test_table WHERE id < 4;
+SELECT * FROM test_table WHERE NOT (isFinite(value) AND status IS NOT NULL) ORDER BY created_at DESC;
+ALTER TABLE test_table ADD COLUMN extra_value Float32;
+INSERT INTO test_table (id, value, created_at, status, extra_value) VALUES (5, 2.7, now(), 'active', 2.7);
+SELECT id, value, isFinite(extra_value + INTERVAL (0.5 * 60) MINUTE) AS extra_finite FROM test_table WHERE extra_value IS NOT NULL;

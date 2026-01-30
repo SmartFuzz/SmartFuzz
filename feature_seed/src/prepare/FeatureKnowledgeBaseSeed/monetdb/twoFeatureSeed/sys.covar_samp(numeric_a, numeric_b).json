@@ -1,0 +1,16 @@
+{
+    "function": "sys.covar_samp(numeric_a, numeric_b)",
+    "operator": "inet 'valid inet address string'",
+    "sql_array": [
+        "CREATE TABLE test_data (id SERIAL PRIMARY KEY, value_a DOUBLE PRECISION, value_b DOUBLE PRECISION, address VARCHAR(50));",
+        "INSERT INTO test_data (value_a, value_b, address) VALUES (NULL, 10.5, 'inet 192.168.1.10/24'), (3.5, 7.0, 'inet 192.168.1.20/24'), (NULL, NULL, 'inet 192.168.1.30/24'), (5.0, 15.0, 'inet 192.168.1.40/24');",
+        "SELECT sys.covar_samp(value_a, value_b) AS covariance, inet address FROM test_data GROUP BY address HAVING sys.covar_samp(value_a, value_b) IS NOT NULL;",
+        "SELECT address, sys.covar_samp(COALESCE(value_a, 0), value_b) AS adjusted_covariance FROM test_data GROUP BY address ORDER BY adjusted_covariance DESC;",
+        "SELECT address, sys.covar_samp(value_a, INET '192.168.1.5/24'::double precision) AS covariance FROM test_data GROUP BY address HAVING covariance > 0;",
+        "CREATE TABLE extra_data (id SERIAL PRIMARY KEY, address VARBINARY(16), numeric_value VARCHAR(20));",
+        "INSERT INTO extra_data (address, numeric_value) VALUES (inet '192.168.1.50/24', '5.5'), (inet '192.168.1.60/24', 'INVALID'), (inet '192.168.1.70/24', NULL);",
+        "SELECT e.address, sys.covar_samp(CAST(e.numeric_value AS DOUBLE PRECISION), t.value_b) AS cov_sample FROM extra_data e LEFT JOIN test_data t ON e.address = inet '192.168.1.50/24' GROUP BY e.address;",
+        "SELECT e.address, value_a, CONCAT('Covariance: ', sys.covar_samp(value_a, value_b)) AS description FROM test_data t JOIN extra_data e ON e.address IS NOT NULL ORDER BY e.address;",
+        "SELECT a.address, sys.covar_samp(NULLIF(a.value_a, 0), NULLIF(b.value_b, 0)) AS filtered_covariance FROM test_data a JOIN test_data b ON a.id < b.id GROUP BY a.address;"
+    ]
+}

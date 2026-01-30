@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/978",
+  "title": "Incorrect \"TOP 1\" optimization",
+  "description": "While working on a study comparing different approaches to query the neXtProt dataset, I have observed that Virtuoso returns wrong results in some cases.\nIf I create the tables —\ncreate table nextprot.isoform_cellular_components\n(\n    isoform     varchar not null,\n    annotation  varchar not null,\n    primary key(isoform, annotation)\n);\n\ncreate table nextprot.annotation_negative_evidences\n(\n    annotation  varchar not null,\n    evidence    varchar not null,\n    primary key(annotation, evidence)\n);\n\ninsert into nextprot.isoform_cellular_components values ('NX_P09958-1', 'NX_P09958-1-AN_P09958_0504');\n\ninsert into nextprot.annotation_negative_evidences values ('NX_O00429-2-AN_O00429_001737', '119669768');\ninsert into nextprot.annotation_negative_evidences values ('NX_P09958-1-AN_P09958_0504', '91773408');\n\n— and define the mapping —\nxml_set_ns_decl('', 'http://nextprot.org/rdf#', 2);\nxml_set_ns_decl('iri', 'http://bioinfo.iocb.cz/rdf/quad-storage/linked-data-view/iri-class/nextprot#', 2);\n\nsparql create iri class iri:isoform \"http://nextprot.org/rdf/isoform/%U\"(in id varchar not null) option (bijection).;\nsparql create iri class iri:annotation \"http://nextprot.org/rdf/annotation/%U\"(in id varchar not null) option (bijection).;\nsparql create iri class iri:evidence \"http://nextprot.org/rdf/evidence/%U\"(in id varchar not null) option (bijection).;\n\nsparql create quad storage virtrdf:NeXtProtQuadStorage\n    from DB.nextprot.isoform_cellular_components as isoform_cellular_components\n    from DB.nextprot.annotation_negative_evidences as annotation_negative_evidences\n{\n  create virtrdf:nextprot as graph iri (\"http://nextprot.org/rdf\")\n  {\n    iri:isoform(isoform_cellular_components.isoform)\n      :cellularComponent iri:annotation(isoform_cellular_components.annotation).\n\n    iri:annotation(annotation_negative_evidences.annotation)\n      :negativeEvidence iri:evidence(annotation_negative_evidences.evidence).\n  }\n};\n\n— then the query —\nsparql\ndefine input:storage virtrdf:NeXtProtQuadStorage\nselect ?iso where {\n  ?iso :cellularComponent ?loc .\n  minus {?loc :negativeEvidence ?negev}\n};\n\n— returns the result —\niso",
+  "date": "2021-07-27 12:03:27",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE nextprot.isoform_cellular_components (isoform VARCHAR NOT NULL, annotation VARCHAR NOT NULL, PRIMARY KEY(isoform, annotation));",
+    "CREATE TABLE nextprot.annotation_negative_evidences (annotation VARCHAR NOT NULL, evidence VARCHAR NOT NULL, PRIMARY KEY(annotation, evidence));",
+    "INSERT INTO nextprot.isoform_cellular_components VALUES ('NX_P09958-2', 'NX_P09958-2-AN_P09958_0505');",
+    "INSERT INTO nextprot.annotation_negative_evidences VALUES ('NX_P09958-2-AN_P09958_0505', '91773409');",
+    "SELECT isoform, annotation FROM nextprot.isoform_cellular_components WHERE isoform = 'NX_P09958-2' AND annotation IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Incorrect handling of TOP 1 in query optimization"
+  ]
+}

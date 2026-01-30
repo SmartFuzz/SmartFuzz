@@ -1,0 +1,26 @@
+{
+    "function": "bookmark",
+    "operator": "SPARQL Operator: isLiteral",
+    "sql_array": [
+        "CREATE TABLE test_table (id INT PRIMARY KEY, value VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO test_table (id, value) VALUES (1, 'test'), (2, NULL), (3, ' '), (4, 'literal example');",
+        "CREATE TABLE cursor_table (cursor_id INT, ref_id INT, description VARCHAR(100));",
+        "INSERT INTO cursor_table (cursor_id, ref_id, description) VALUES (1, 1, 'first cursor'), (2, 2, 'second cursor');",
+        "CREATE CURSOR test_cursor FOR SELECT bookmark(CURSOR(test_table)) FROM test_table WHERE value IS NOT NULL;",
+        "SELECT bookmark(test_cursor) FROM cursor_table WHERE ref_id IN (SELECT id FROM test_table WHERE value IS NOT NULL);",
+        "SELECT (SELECT COUNT(*) FROM test_table) AS value_count, bookmark(test_cursor) AS current_bookmark FROM test_table WHERE SPARQL(isLiteral(value));",
+        "SELECT bookmark(test_cursor) AS bmk, value FROM test_table WHERE value IS NOT NULL AND (value = 'test' OR SPARQL(isLiteral(value)));",
+        "SELECT bmk FROM (SELECT bookmark(test_cursor) AS bmk, value FROM test_table WHERE value IS NOT NULL) sub WHERE SPARQL(isLiteral(value));",
+        "SELECT value, bookmark(test_cursor) AS bmk FROM test_table WHERE value IS NULL OR value = '';",
+        "SELECT COUNT(*) FROM (SELECT bookmark(test_cursor) FROM cursor_table GROUP BY cursor_id HAVING COUNT(ref_id) > 0) AS cgroup;",
+        "CREATE TABLE overflow_table (id INT, val DECIMAL(10, 5));",
+        "INSERT INTO overflow_table (id, val) VALUES (1, 12345.67890), (2, 0.00001), (3, 99999.99999);",
+        "SELECT bookmark(test_cursor), GROUP_CONCAT(value) FROM test_table WHERE value IS NOT NULL GROUP BY value HAVING COUNT(value) > 1;",
+        "SELECT value, bookmark(test_cursor) FROM test_table WHERE value IS NOT NULL OR value IS DISTINCT FROM 'literal example';",
+        "SELECT bookmark(test_cursor) AS bmk, AVG(COALESCE(NULLIF(val, 0), 1)) AS avg_value FROM overflow_table;",
+        "CREATE TABLE complex_table (id INT, data JSON);",
+        "INSERT INTO complex_table (id, data) VALUES (1, '{\"key\": \"value\"}'), (2, '{\"key\": null}');",
+        "SELECT bookmark(test_cursor), data->>'key' AS key_value FROM complex_table WHERE SPARQL(isLiteral(data->>'key'));",
+        "SELECT MIN(val), bookmark(test_cursor) FROM overflow_table WHERE val IS NOT NULL GROUP BY id HAVING MIN(val) > 10;"
+    ]
+}

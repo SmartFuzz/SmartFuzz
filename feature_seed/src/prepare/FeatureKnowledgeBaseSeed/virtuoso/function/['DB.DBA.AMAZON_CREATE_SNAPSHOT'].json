@@ -1,0 +1,14 @@
+[
+    "CREATE TABLE EBS_Volumes (id varchar PRIMARY KEY, volume_id varchar, status varchar, created_at timestamp);",
+    "INSERT INTO EBS_Volumes (id, volume_id, status, created_at) VALUES ('1', 'vol-1a2b3c4d', 'available', NOW());",
+    "CREATE TABLE Snapshots (id varchar PRIMARY KEY, volume_id varchar, snapshot_id varchar, created_at timestamp);",
+    "INSERT INTO Snapshots (id, volume_id, snapshot_id, created_at) VALUES ('1', 'vol-1a2b3c4d', 'snap-1a2b3c4d', NOW());",
+    "CREATE PROCEDURE test_create_snapshot() BEGIN DECLARE access_key varchar; DECLARE sec_token varchar; DECLARE vol_id varchar; SET access_key = 'AKIAJI7ZL427TI5EDF5A'; SET sec_token = 'CGI/UMaXf2LRUctaj/HGJ57UNy/t7fNCshh8wpJg'; SET vol_id = (SELECT volume_id FROM EBS_Volumes WHERE status = 'available' LIMIT 1); IF vol_id IS NOT NULL THEN DB.DBA.AMAZON_CREATE_SNAPSHOT(access_key, vol_id, sec_token); END IF; END;",
+    "CALL test_create_snapshot();",
+    "SELECT volume_id, (SELECT COUNT(*) FROM Snapshots WHERE volume_id = EBS_Volumes.volume_id) AS snapshot_count FROM EBS_Volumes WHERE created_at > NOW() - INTERVAL '1' DAY;",
+    "CREATE TABLE Users (user_id varchar PRIMARY KEY, access_key varchar, sec_token varchar);",
+    "INSERT INTO Users (user_id, access_key, sec_token) VALUES ('user1', 'AKIAJI7ZL427TI5EDF5A', 'CGI/UMaXf2LRUctaj/HGJ57UNy/t7fNCshh8wpJg');",
+    "SELECT U.access_key, U.sec_token, E.volume_id FROM Users U JOIN EBS_Volumes E ON U.user_id = 'user1' LIMIT 1;",
+    "CREATE PROCEDURE test_multi_snapshot() BEGIN DECLARE access_key varchar; DECLARE sec_token varchar; DECLARE vol_id varchar; SET access_key = (SELECT access_key FROM Users WHERE user_id = 'user1'); SET sec_token = (SELECT sec_token FROM Users WHERE user_id = 'user1'); DECLARE done INT DEFAULT FALSE; DECLARE snapshot_cursor CURSOR FOR SELECT volume_id FROM EBS_Volumes WHERE status = 'available'; DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE; OPEN snapshot_cursor; read_loop: LOOP FETCH snapshot_cursor INTO vol_id; IF done THEN LEAVE read_loop; END IF; DB.DBA.AMAZON_CREATE_SNAPSHOT(access_key, vol_id, sec_token); END LOOP; CLOSE snapshot_cursor; END;",
+    "CALL test_multi_snapshot();"
+]

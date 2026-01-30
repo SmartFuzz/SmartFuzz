@@ -1,0 +1,32 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/58351",
+  "title": "unexpected 'other error' reported by TiKV",
+  "vulnerable_database": "tidb",
+  "date": "2024-12-17T09:35:09Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n``` SQL\nCREATE TABLE `t9cf3a3f1` (\n  `colfdf7` date DEFAULT '8201-08-06',\n  `col8f00` tinyint(1) NOT NULL DEFAULT '0',\n  `col3488` timestamp NOT NULL DEFAULT '2009-02-11 11:59:58',\n  `colb27b` datetime DEFAULT '9629-04-29 09:04:07',\n  PRIMARY KEY (`col8f00`,`col3488`) /*T![clustered_index] CLUSTERED */,\n  KEY `d8a7aa05` (`colfdf7`),\n  KEY `864943c8` (`colfdf7`)\n);\nupdate `t9cf3a3f1` set `t9cf3a3f1`.`colfdf7` = '1991-07-08' where `t9cf3a3f1`.`colb27b` >= '2030-01-29' and `t9cf3a3f1`.`col3488` between '8201-08-06' and '8201-08-06'  limit 93747907;\n```\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\nNo error\n### 3. What did you see instead (Required)\n``` \nmysql> update `t9cf3a3f1` set `t9cf3a3f1`.`colfdf7` = '1991-07-08' where `t9cf3a3f1`.`colb27b` >= '2030-01-29' and `t9cf3a3f1`.`col3488` between '8201-08-06' and '8201-08-06'  limit 93747907;\nERROR 1105 (HY000): other error: [components/tidb_query_expr/src/types/expr_builder.rs:460]: Unable to decode date time from the request\n```\n### 4. What is your TiDB version? (Required)\nmaster\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "poc": [
+    "CREATE TABLE `t9cf3a3f1` (",
+    "  `colfdf7` date DEFAULT '8201-08-06',",
+    "  `col8f00` tinyint(1) NOT NULL DEFAULT '0',",
+    "  `col3488` timestamp NOT NULL DEFAULT '2009-02-11 11:59:58',",
+    "  `colb27b` datetime DEFAULT '9629-04-29 09:04:07',",
+    "  PRIMARY KEY (`col8f00`,`col3488`) /*T![clustered_index] CLUSTERED */,",
+    "  KEY `d8a7aa05` (`colfdf7`),",
+    "  KEY `864943c8` (`colfdf7`)",
+    ");",
+    "update `t9cf3a3f1` set `t9cf3a3f1`.`colfdf7` = '1991-07-08' where `t9cf3a3f1`.`colb27b` >= '2030-01-29' and `t9cf3a3f1`.`col3488` between '8201-08-06' and '8201-08-06'  limit 93747907;"
+  ],
+  "poc_type": "sql_text",
+  "state": "open",
+  "key_bug_features": [
+    "Update with invalid date range condition"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE `test_table` ( `id` INT PRIMARY KEY, `date_col` DATE, `timestamp_col` TIMESTAMP DEFAULT CURRENT_TIMESTAMP, `nullable_col` VARCHAR(255) DEFAULT NULL );",
+    "INSERT INTO `test_table` (`id`, `date_col`, `nullable_col`) VALUES (1, '2023-01-01', 'test1'), (2, '2023-01-02', NULL), (3, '2023-01-03', 'test3');",
+    "UPDATE `test_table` SET `date_col` = '2023-01-04' WHERE `nullable_col` IS NULL AND `timestamp_col` < '2023-01-02 00:00:00';",
+    "SELECT * FROM `test_table` WHERE `date_col` BETWEEN '2023-01-01' AND '2023-01-03';",
+    "UPDATE `test_table` SET `date_col` = '9999-12-31' WHERE `id` = 1 AND `date_col` >= '2023-01-01' LIMIT 1;"
+  ]
+}

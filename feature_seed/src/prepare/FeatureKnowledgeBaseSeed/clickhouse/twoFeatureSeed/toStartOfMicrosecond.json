@@ -1,0 +1,18 @@
+{
+    "function": "toStartOfMicrosecond",
+    "operator": "a % b",
+    "sql_array": [
+        "CREATE TABLE test_dates (event_time DateTime64(9), id UInt32) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_dates VALUES (toDateTime64('2023-10-06 12:05:00.999999999', 9), 1), (toDateTime64('2023-10-06 12:05:01.500000000', 9), 2), (toDateTime64('2023-10-06 12:05:02.000000000', 9), 3), (toDateTime64('2023-10-06 12:05:02.999999999', 9), 4);",
+        "SELECT toStartOfMicrosecond(event_time) AS rounded_time, (toStartOfMicrosecond(event_time) % 2) AS mod_result FROM test_dates ORDER BY mod_result;",
+        "WITH (SELECT COUNT(*) FROM test_dates WHERE id % 2 = 0) AS even_count SELECT toStartOfMicrosecond(event_time) AS rounded_time, EVEN(count()) AS average_even_count FROM test_dates GROUP BY rounded_time HAVING average_even_count > 1;",
+        "CREATE TABLE test_numbers (num Float64) ENGINE = MergeTree() ORDER BY num;",
+        "INSERT INTO test_numbers VALUES (1.000000001), (2.000000002), (3.000000003), (4.000000004);",
+        "SELECT toStartOfMicrosecond(toDateTime64(CAST(num AS String), 9)) AS microsecond_start, (toStartOfMicrosecond(toDateTime64(CAST(num AS String), 9)) % 3) AS num_mod FROM test_numbers;",
+        "WITH (SELECT MIN(num) FROM test_numbers) AS min_num SELECT toStartOfMicrosecond(DATE_ADD('2023-10-06 12:05:00', INTERVAL min_num SECOND)) AS calculated_time, (calculated_time % 5) AS mod_value FROM (SELECT toStartOfMicrosecond(DATE_ADD('2023-10-06 12:05:00', INTERVAL num SECOND)) AS calculated_time FROM test_numbers);",
+        "CREATE TABLE test_complex (create_time DateTime64(3), num_id UInt32) ENGINE = MergeTree() ORDER BY num_id;",
+        "INSERT INTO test_complex VALUES (toDateTime64('2023-10-01 10:10:10.123456789', 3), 1), (toDateTime64('2023-10-01 10:10:20.987654321', 3), 2);",
+        "SELECT toStartOfMicrosecond(create_time) AS rounded_time, (toStartOfMicrosecond(create_time) % 10) AS mod_result FROM test_complex WHERE mod_result IS NOT NULL;",
+        "SELECT id, (toStartOfMicrosecond(event_time) % (SELECT COUNT(*) FROM test_dates)) AS mod_count FROM test_dates WHERE event_time IS NOT NULL ORDER BY mod_count;"
+    ]
+}

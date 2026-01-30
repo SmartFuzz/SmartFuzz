@@ -1,0 +1,21 @@
+{
+  "url": "https://www.postgresql.org/message-id/19045-eef31bf1c807b524%40postgresql.org",
+  "title": "BUG #19045: Applying custom collation rules appears to erase existing rules",
+  "description": "The following bug has been logged on the website:\nBug reference:      19045\nLogged by:          Todd Lang\nEmail address:      todd(dot)lang(at)d2l(dot)com\nPostgreSQL version: 17.6\nOperating system:   Windows 10 64 bit\nDescription:\nSetting up a collation on a table with the following:\nDROP TABLE IF EXISTS test_table;\nDROP COLLATION IF EXISTS CI_AS;\nCREATE COLLATION CI_AS (PROVIDER=icu, LOCALE='en-US-u-ks-level2',\nDETERMINISTIC=false);\nCREATE TABLE test_table (field1 varchar(256) COLLATE CI_AS);\nINSERT INTO test_table VALUES (U&'this is a string.');\nINSERT INTO test_table VALUES (U&'THIS IS A STRING.');\nThen issue the query:\nSELECT * FROM test_table WHERE field1 = 'This is a string.';\nThis should provide:\n\"this is a string.\"\n\"THIS IS A STRING.\"\nNow alter the collation slightly to include rules. (Note the CREATE\nCOLLATION line)\nDROP TABLE IF EXISTS test_table;\nDROP COLLATION IF EXISTS CI_AS;\nCREATE COLLATION CI_AS (PROVIDER=icu, LOCALE='en-US-u-ks-level2',\nDETERMINISTIC=false, rules='');\nCREATE TABLE test_table (field1 varchar(256) COLLATE CI_AS);\nINSERT INTO test_table VALUES (U&'this is a string.');\nINSERT INTO test_table VALUES (U&'THIS IS A STRING.');\nNow issue:\nSELECT * FROM test_table WHERE field1 = 'This is a string.';\nThere are no results.\nFrom the documentation it seems that any text supplied should be additional\nrules to the standard rules.\nIn `pg_locale_icu.c` in the `make_icu_collator` method at line 455, it seems\nthat it does a simple:\nu_strcpy(all_rules, std_rules);\nu_strcat(all_rules, my_rules);\nwhich seems like, with the above change, should just append nothing to the\nstandard rules, causing no change.  This, however, is not the case.\nI have tried it with various permutations of the `rules`, and while any\nrules supplied during the CREATE COLLATION call appear to function, it seems\nthat all standard rules are forgotten when this option is utilized.",
+  "date": "2025-09-09 15:13:41",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS test_table;",
+    "DROP COLLATION IF EXISTS CI_AS;",
+    "CREATE COLLATION CI_AS (PROVIDER=icu, LOCALE='en-US-u-ks-level2', DETERMINISTIC=false);",
+    "CREATE TABLE test_table (field1 varchar(256) COLLATE CI_AS, field2 int NOT NULL CHECK (field2 > 0));",
+    "INSERT INTO test_table (field1, field2) VALUES ('this is a string.', 1), ('THIS IS A STRING.', 2);",
+    "SELECT * FROM test_table WHERE field1 = 'This is a string.';"
+  ],
+  "key_bug_features": [
+    "Altering collation rules erases existing standard rules"
+  ]
+}

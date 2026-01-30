@@ -1,0 +1,28 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/43761",
+  "title": "Incompatible errors between tidb and mysql about `GROUP_CONCAT`",
+  "vulnerable_database": "tidb",
+  "date": "2023-05-12T08:20:54Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```sql\r\nCREATE TABLE t(a INTEGER);\r\nINSERT INTO t VALUES (1),(2);\r\nSELECT (SELECT 1\r\n\tFROM t\r\n\tWHERE CONVERT(1 USING gbk) <> GROUP_CONCAT(x'a3')\r\n);\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nIn MySQL 8, the result is \r\n\r\n```\r\nmysql> SELECT (SELECT 1\r\n    -> FROM t\r\n    -> WHERE CONVERT(1 USING gbk) <> GROUP_CONCAT(x'a3')\r\n    -> );\r\nERROR 3854 (HY000): Cannot convert string '\\xA3' from binary to gbk\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nIn TiDB, the result is \r\n\r\n```\r\ntidb> SELECT (SELECT 1\r\n    -> FROM t\r\n    -> WHERE CONVERT(1 USING gbk) <> GROUP_CONCAT(x'a3')\r\n    -> );\r\nERROR 1111 (HY000): Invalid use of group function\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\nmaster\r\n",
+  "poc": [
+    "CREATE TABLE t(a INTEGER);",
+    "INSERT INTO t VALUES (1),(2);",
+    "SELECT (SELECT 1",
+    " FROM t",
+    " WHERE CONVERT(1 USING gbk) <> GROUP_CONCAT(x'a3')",
+    ");"
+  ],
+  "poc_type": "sql_text",
+  "state": "closed",
+  "key_bug_features": [
+    "GROUP_CONCAT with character set conversion in SQL query"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE test_table(id INT, name VARCHAR(255) CHARACTER SET utf8mb4);",
+    "INSERT INTO test_table VALUES (1, 'Alice'), (2, 'Bob'), (3, NULL);",
+    "SELECT (SELECT COUNT(*) FROM test_table WHERE CONVERT(name USING gbk) IS NULL);",
+    "SELECT (SELECT 1 FROM test_table WHERE CONVERT(name USING gbk) <> GROUP_CONCAT(CONVERT(name USING utf8mb4)));",
+    "SELECT (SELECT 1 FROM test_table WHERE id > 0 AND CONVERT(1 USING gbk) <> GROUP_CONCAT(x'c2a3'));"
+  ]
+}

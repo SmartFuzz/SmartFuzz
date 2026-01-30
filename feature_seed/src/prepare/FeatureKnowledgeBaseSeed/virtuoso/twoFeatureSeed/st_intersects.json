@@ -1,0 +1,20 @@
+{
+    "function": "st_intersects",
+    "operator": "REGEXP",
+    "sql_array": [
+        "CREATE TABLE geometries (id INT, geom GEOMETRY, category VARCHAR(100));",
+        "INSERT INTO geometries VALUES (1, st_point(0, 51), 'PointA'), (2, st_point(0, 52), 'PointB'), (3, st_point(10, 10), 'PointC');",
+        "CREATE TABLE shapes (id INT, shape GEOMETRY, description TEXT);",
+        "INSERT INTO shapes VALUES (1, st_point(0, 52), 'ShapeA'), (2, st_point(1, 1), 'ShapeB');",
+        "SELECT g.id, g.category, st_intersects(g.geom, (SELECT s.shape FROM shapes s WHERE s.id=1), 0) as intersects FROM geometries g WHERE g.id = (SELECT max(id) FROM geometries);",
+        "SELECT g.id, g.category FROM geometries g JOIN shapes s ON st_intersects(g.geom, s.shape, 10) WHERE g.category REGEXP 'Point.*';",
+        "SELECT g.id, COUNT(*) as shape_count FROM geometries g LEFT JOIN shapes s ON st_intersects(g.geom, s.shape, 100) GROUP BY g.id HAVING shape_count > 0;",
+        "CREATE TABLE mixed_data (id INT, value VARCHAR(255), geom GEOMETRY);",
+        "INSERT INTO mixed_data VALUES (1, 'boundary_example', st_point(2.0, 2.0)), (2, NULL, st_point(5.0, 5.0)), (3, 'test', NULL);",
+        "SELECT m.id, m.value, st_intersects(m.geom, st_point(CAST('5.0' AS DECIMAL), CAST('5.0' AS DECIMAL)), 3) FROM mixed_data m WHERE m.geom IS NOT NULL OR m.value REGEXP '^test.*';",
+        "SELECT COUNT(*) as intersect_count FROM (SELECT g.id FROM geometries g WHERE st_intersects(g.geom, st_point(5, 5), 1) OR (g.category REGEXP 'Point[AB]')) AS results;",
+        "CREATE TABLE complex_join_data (id INT, latitude FLOAT, longitude FLOAT);",
+        "INSERT INTO complex_join_data VALUES (1, 0.0, 0.0), (2, 1.0, 1.0), (3, NULL, 2.0);",
+        "SELECT gj.id, gj.latitude, gj.longitude, st_intersects(st_point(gj.latitude, gj.longitude), (SELECT st_point(0, 51) FROM geometries WHERE id = 1), 50) as intersects FROM complex_join_data gj WHERE gj.longitude REGEXP '^[0-9]+\\.[0-9]+$' AND gj.latitude IS NOT NULL;"
+    ]
+}

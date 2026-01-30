@@ -1,0 +1,17 @@
+{
+    "function": "datepart(part, timestamp)",
+    "operator": "<->",
+    "sql_array": [
+        "CREATE TABLE test_table (id INT, ts TIMESTAMP, description VARCHAR);",
+        "INSERT INTO test_table (id, ts, description) VALUES (1, TIMESTAMP '2023-01-01 00:00:00', 'first entry'), (2, TIMESTAMP '2023-01-02 00:00:00', NULL), (3, TIMESTAMP '1999-01-01 00:00:00', 'third entry');",
+        "SELECT id, datepart('minute', ts) AS minute_part FROM test_table WHERE datepart('minute', ts) IS NOT NULL;",
+        "SELECT a.id, a.ts, (SELECT datepart('minute', b.ts) FROM test_table b WHERE a.id = b.id) AS minute_diff FROM test_table a WHERE a.ts IS NOT NULL;",
+        "SELECT a.id, a.ts, (datepart('minute', a.ts) <-> datepart('minute', MAX(b.ts)) OVER ()) AS distance FROM test_table a JOIN test_table b ON a.id <> b.id GROUP BY a.id, a.ts HAVING distance > 0;",
+        "SELECT id, description, (SELECT COUNT(*) FROM test_table WHERE id <-> (SELECT id FROM test_table WHERE description IS NULL)) AS null_distance FROM test_table;",
+        "CREATE TABLE edge_cases (col1 VARCHAR, col2 INT);",
+        "INSERT INTO edge_cases (col1, col2) VALUES ('', 1), (NULL, NULL), ('string', 1000);",
+        "SELECT col1, datepart('minute', TIMESTAMP '2000-01-01 12:00:00') <-> col2 AS test_distance FROM edge_cases HAVING test_distance IS NOT NULL;",
+        "SELECT datepart('minute', ts) AS minute_part, MIN(datepart('minute', ts)) OVER () AS min_minute FROM test_table;",
+        "SELECT id, (SELECT MIN(ts) FROM test_table) AS min_ts, datepart('minute', MIN(ts)) OVER (PARTITION BY id) AS min_minute_diff FROM test_table GROUP BY id HAVING datepart('minute', MIN(ts)) <-> 0;"
+    ]
+}

@@ -1,0 +1,13 @@
+{
+    "function": "last_value",
+    "operator": "a % b",
+    "sql_array": [
+        "DROP TABLE IF EXISTS player_stats; CREATE TABLE player_stats (team String, player String, salary UInt32, position String, stats_score Float64) ENGINE = Memory; INSERT INTO player_stats VALUES ('Team A', 'Alice', 150000, 'F', 95.5), ('Team A', 'Bob', 120000, 'D', 60.0), ('Team B', 'Charlie', 130000, 'M', 80.0), ('Team B', 'David', NULL, 'F', 70.0), ('Team C', 'Eve', 170000, 'D', 85.0);",
+        "SELECT player, last_value(salary) OVER (PARTITION BY position ORDER BY stats_score DESC RESPECT NULLS) AS last_salary, (salary % 10000) AS salary_mod FROM player_stats WHERE (salary IS NOT NULL) AND (salary_mod = 0) ORDER BY last_salary DESC;",
+        "SELECT team, AVG(stats_score) AS team_avg_score, last_value(team_avg_score) OVER (ORDER BY team_avg_score DESC RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS overall_performance FROM (SELECT team, AVG(salary % 20000) AS team_avg_salary FROM player_stats GROUP BY team) AS team_salaries GROUP BY team ORDER BY overall_performance DESC;",
+        "SELECT A.player, A.salary, (last_value(A.salary % 5000) OVER (PARTITION BY A.team ORDER BY A.player)) AS last_salary_mod, (SELECT AVG(B.salary) FROM player_stats B WHERE A.team = B.team AND B.salary IS NOT NULL) AS avg_team_salary FROM player_stats A WHERE A.salary IS NOT NULL ORDER BY last_salary_mod;",
+        "CREATE TABLE IF NOT EXISTS temp_players (team String, player String, salary Nullable(UInt32), position String, play_time Float64) ENGINE = Memory; INSERT INTO temp_players VALUES ('Temp Team', 'Gabriel', NULL, 'G', 2.5), ('Temp Team', 'Hannah', 100000, 'D', NULL);",
+        "SELECT team, SUM(CASE WHEN salary IS NULL THEN 0 ELSE salary % 10000 END) AS total_salary_mod, last_value(total_salary_mod) OVER (PARTITION BY team ORDER BY total_salary_mod DESC RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) FROM temp_players GROUP BY team;",
+        "SELECT team, player, last_value(player) OVER (PARTITION BY team ORDER BY player ASC) AS last_player, (salary % 100000) / NULLIF(salary, 0) AS salary_ratio FROM player_stats ORDER BY salary_ratio DESC;"
+    ]
+}

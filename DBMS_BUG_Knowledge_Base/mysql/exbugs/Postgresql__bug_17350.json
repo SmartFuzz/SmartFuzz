@@ -1,0 +1,19 @@
+{
+  "url": "https://www.postgresql.org/message-id/17350-b5bdcf476e5badbb%40postgresql.org",
+  "title": "BUG #17350: GIST TRGM Index is broken when combining with combining INCLUDE with a string function (e.g. lower).",
+  "description": "The following bug has been logged on the website:\nBug reference:      17350\nLogged by:          louis jachiet\nEmail address:      louis(dot)jachiet(at)telecom-paris(dot)fr\nPostgreSQL version: 13.4\nOperating system:   Archlinux\nDescription:\nHello everyone,\nI hope this is not a duplicate of a similar bug (I tried to check…). GIST\nTRGM Index seems to return\nwrong values when populated with a string function (such as lower)  and an\ninclude. If I issue the\nfollowing lines, instead of returning 'foo' and 'bar', postgresql will\nreturn  two empty lines:\nCREATE EXTENSION IF NOT EXISTS pg_trgm ;\nCREATE TABLE t (a VARCHAR(50));\nINSERT INTO t VALUES ('foo') ;\nINSERT INTO t VALUES ('BAR') ;\nCREATE INDEX test_idx ON t USING gist(lower(a) gist_trgm_ops) INCLUDE\n(a) ;\nset enable_seqscan=off ;\nSELECT lower(a) FROM t ;\nObviously for this last SELECT, the index is only useful because of the\nseqscan=off\nbut if you have a large database and issue a command like:\nSELECT 1 FROM t WHERE lower(a) LIKE '%o%' ;\nthen the output will be also empty because the index will return empty lines\nand the recheck condition will fail.\nIf I use a function different than lower (e.g. upper) the problem persists\nbut if remove the function or if remove the\ninclude then everything works just fine. It really seems that it is the\ncombination of include + string function + gist trgm\nthat makes the SELECT return empty lines.\nThank you for your time!\nRegards",
+  "date": "2021-12-30 15:47:06",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(50) NOT NULL, description TEXT);",
+    "INSERT INTO test_table (name, description) VALUES ('foo', 'A test entry'), ('BAR', 'Another test entry');",
+    "CREATE INDEX test_idx ON test_table (LOWER(name), description);",
+    "SELECT LOWER(name) FROM test_table WHERE LOWER(name) LIKE '%o%';"
+  ],
+  "key_bug_features": [
+    "combination of include + string function + gist trgm"
+  ]
+}

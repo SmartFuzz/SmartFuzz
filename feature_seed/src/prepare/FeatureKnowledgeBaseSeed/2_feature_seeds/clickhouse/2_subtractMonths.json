@@ -1,0 +1,10 @@
+CREATE TABLE test_dates (id UInt32, event_date Date, event_time DateTime);
+INSERT INTO test_dates (id, event_date, event_time) VALUES (1, '2024-01-01', '2024-01-01 12:00:00'), (2, '2024-06-15', '2024-06-15 12:30:00'), (3, NULL, '2024-07-01 14:00:00');
+SELECT id, subtractMonths(event_date, multiIf(event_date IS NULL, 12, event_date < '2024-06-01', 3, true, 1)) AS adjusted_date FROM test_dates HAVING adjusted_date IS NOT NULL;
+SELECT id, subtractMonths(event_time, toUInt32(NULL)) AS adjusted_time FROM test_dates WHERE adjusted_time IS NOT NULL;
+WITH (SELECT id, subtractMonths(event_date, 1) AS modified_date FROM test_dates WHERE event_date IS NOT NULL) AS subquery SELECT id, modified_date FROM subquery WHERE modified_date >= '2024-01-01' ORDER BY modified_date;
+CREATE TABLE test_events (event_id UInt32, event_date String, event_time String, event_type String);
+INSERT INTO test_events (event_id, event_date, event_time, event_type) VALUES (1, '2024-01-01', '2024-01-01 12:00:00', 'A'), (2, '2024-06-15', '2024-06-15 12:30:00', 'B'), (3, NULL, '2024-07-01 14:00:00', 'C');
+SELECT event_id, subtractMonths(toDate(event_date), 1) AS new_date FROM test_events WHERE transform(event_type, ['A', 'B'], [1, 2], 'C') = 1;
+WITH (SELECT event_id, subtractMonths(toDate(event_time), toUInt8(5)) AS modified_time FROM test_events WHERE toDate(event_time) IS NOT NULL) AS times SELECT event_id, modified_time FROM times WHERE modified_time IS NOT NULL;
+WITH (SELECT id, subtractMonths(event_date, transform(event_id, [1, 2, 3], [1, 2, 3], 0)) AS adjusted_event_date FROM test_dates) AS adjusted_dates SELECT id, adjusted_event_date FROM adjusted_dates WHERE adjusted_event_date <= '2023-12-31';

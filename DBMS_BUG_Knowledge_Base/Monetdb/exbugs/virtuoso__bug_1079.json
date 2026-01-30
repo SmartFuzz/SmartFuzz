@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/1079",
+  "title": "`datatype(?o)` is empty",
+  "description": "I initially posted this question on stackoverflow and was advised to open a ticket here since it might be caused by \"a relatively recently introduced bug\".\nI noticed that running the following query on dbpedia:\nSELECT ?s, datatype(?s), ?p, datatype(?p), ?o, datatype(?o)\nWHERE {\n   ?s ?p ?o .\n}\nLIMIT 100\n\nreturns a response in which the column for datatype(?o) is blank. The first row returned by this query looks like this:\n?s           http://dbpedia.org/ontology/deathDate\ndatatype(?s) http://www.w3.org/2001/XMLSchema#anyURI\n?p           http://www.w3.org/1999/02/22-rdf-syntax-ns#type\ndatatype(?p) http://www.w3.org/2001/XMLSchema#anyURI\n?o           http://www.w3.org/2002/07/owl#FunctionalProperty\ndatatype(?o)\n\nRunning this same query on a local installation running Virtuoso version 7.2.6.3233 returns:\nhttp://www.openlinksw.com/virtrdf-data-formats#default-iid\nhttp://www.w3.org/2001/XMLSchema#anyURI\nhttp://www.w3.org/1999/02/22-rdf-syntax-ns#type\n http://www.w3.org/2001/XMLSchema#anyURI\nhttp://www.openlinksw.com/schemas/virtrdf#QuadMapFormat\nNULL\n\nwhere the value returned for datatype(?o) is NULL.\n(I suspect that this behavior goes back to at least 2016: this question on stackoverflow asks why a query with a filter clause FILTER(datatype(?o) = xsd:integer) times out before returning any results across all of dbpedia, which I suspect is caused by the behavior describe above.)\nIs this a bug or intended behavior?",
+  "date": "2022-10-24 15:33:24",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE test_datatypes (id INT PRIMARY KEY, value VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_datatypes (id, value) VALUES (1, 'http://www.openlinksw.com/schemas/virtrdf#QuadMapFormat');",
+    "INSERT INTO test_datatypes (id, value) VALUES (2, NULL);",
+    "SELECT id, value, CASE WHEN value IS NOT NULL THEN 'http://www.w3.org/2001/XMLSchema#anyURI' ELSE NULL END AS datatype_value FROM test_datatypes WHERE value IS NOT NULL;",
+    "SELECT id, CASE WHEN value IS NULL THEN NULL ELSE 'http://www.w3.org/2001/XMLSchema#anyURI' END AS datatype_value FROM test_datatypes WHERE value IS NULL OR value IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "datatype(?o) column returns empty in query results"
+  ]
+}

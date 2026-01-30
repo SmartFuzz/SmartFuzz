@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/57851",
+  "title": "TiFlash may treats float32 constant value as 0 when type mismatches",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\nprepare data\n```sql\ndrop table if exists t0;\nCREATE TABLE t0(c0 NUMERIC , c1 NUMERIC , c2 TEXT );\n\nINSERT INTO t0 VALUES (1, 1, '1');\nALTER TABLE t0 SET TIFLASH REPLICA 1;\n```\nexecute query\n```sql\nSELECT /*+ read_from_storage(tikv[t0]) */  t0.c2, t0.c0\nFROM t0\nWHERE (CASE\n    (((CASE 'c2'\n        WHEN t0.c0 THEN t0.c0\n        ELSE -1\n    END ))&(((2)NOT LIKE(t0.c1))))\n    WHEN true\n    THEN CAST((~ ('1111111111')) AS float )\n    ELSE false\nEND );\n\nSELECT /*+ read_from_storage(tiflash[t0]) */  t0.c2, t0.c0\nFROM t0\nWHERE (CASE\n    (((CASE 'c2'\n        WHEN t0.c0 THEN t0.c0\n        ELSE -1\n    END ))&(((2)NOT LIKE(t0.c1))))\n    WHEN true\n    THEN CAST((~ ('1111111111')) AS float )\n    ELSE false\nEND );\n```\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\nThe results of the two queries are equal.\n\n### 3. What did you see instead (Required)\nQuery1: \n![Image](https://github.com/user-attachments/assets/e983e1b8-8456-4486-ad08-935670d02f6e)\nQuery2: empty\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\nRelease Version: v8.4.0\nEdition: Community\nGit Commit Hash: 1a9f0fa25580907d3266dc3edf000ba24379a600\nGit Branch: HEAD\nUTC Build Time: 2024-11-07 15:18:43\nGoVersion: go1.23.2\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv\n",
+  "date": "2024-12-01T12:03:12Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t1;",
+    "CREATE TABLE t1(a FLOAT, b INT, c VARCHAR(10));",
+    "INSERT INTO t1 VALUES (1.5, 2, 'test');",
+    "SELECT c, a FROM t1 WHERE (CASE WHEN a = 1.5 THEN b ELSE NULL END) IS NOT NULL;",
+    "SELECT c, a FROM t1 WHERE (CASE WHEN a = 1.5 THEN b ELSE NULL END) IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "float32 constant value treated as 0 on type mismatch"
+  ]
+}

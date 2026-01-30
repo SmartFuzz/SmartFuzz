@@ -1,0 +1,21 @@
+{
+    "function": "DAV_EXP",
+    "operator": "SPARQL: sameTerm",
+    "sql_array": [
+        "CREATE TABLE web_content (id INT PRIMARY KEY, url VARCHAR(255), content TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO web_content (id, url, content) VALUES (1, 'www.foo.com/help/', '<html>Help Page</html>');",
+        "INSERT INTO web_content (id, url, content) VALUES (2, 'www.foo.com', '<html>Main Page</html>');",
+        "CREATE TABLE export_logs (log_id INT PRIMARY KEY AUTO_INCREMENT, source_url VARCHAR(255), destination_url VARCHAR(255), export_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO export_logs (source_url, destination_url) VALUES ('www.foo.com/help/', 'http://www.mydrive.com:8990/DAV/sites/');",
+        "SELECT url, DAV_EXP(url, '/help/', 'sites/www_foo_com', 'http://www.mydrive.com:8990/DAV/sites/') AS exported FROM web_content WHERE sameTerm(url, 'www.foo.com/help/');",
+        "WITH RECURSIVE export_failed AS (SELECT log_id, source_url, destination_url FROM export_logs WHERE source_url IS NULL) SELECT ef.log_id, ef.source_url, COALESCE(DAV_EXP(ef.source_url, '/help/', 'sites/www_foo_com', 'http://www.mydrive.com:8990/DAV/sites/'), 'Export Failed') AS result FROM export_failed ef;",
+        "SELECT DISTINCT ec.url FROM (SELECT url, count(*) OVER () AS total FROM web_content GROUP BY url HAVING total > 1) ec WHERE sameTerm(ec.url, 'www.foo.com/help/');",
+        "CREATE TABLE temp_export (temp_id INT, html_content BLOB);",
+        "INSERT INTO temp_export (temp_id, html_content) SELECT 1, DAV_EXP(url, '/help/', 'temp_sites-www_foo_com', 'http://www.mydrive.com:8990/DAV/temp/1') FROM web_content WHERE content IS NOT NULL;",
+        "SELECT CONCAT('Exported: ', content, ', Status: ', DAV_EXP(url, '/help/', 'temp_sites-www_foo_com', 'http://www.mydrive.com:8990/DAV/temp/1')) AS final_status FROM web_content WHERE sameTerm(url, 'www.foo.com');",
+        "ALTER TABLE web_content ADD COLUMN status VARCHAR(50) DEFAULT NULL;",
+        "UPDATE web_content SET status = 'exported' WHERE status IS NULL AND sameTerm(url, 'www.foo.com/help/') AND DAV_EXP(url, '/help/', 'sites/www_foo_com', 'http://www.mydrive.com:8990/DAV/sites/') IS NOT NULL;",
+        "SELECT COUNT(*) AS failed_exports FROM export_logs WHERE sameTerm(destination_url, 'http://www.mydrive.com:8990/DAV/sites/') AND export_time IS NULL;",
+        "DROP TABLE IF EXISTS temp_export;"
+    ]
+}

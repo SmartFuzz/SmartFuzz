@@ -1,0 +1,33 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/199df4168c",
+  "title": "Different answer with and without index on IN operator with type mismatch",
+  "vulnerable_version": "3.14.1",
+  "date": "2016-09-03 14:19:598.94 years ago",
+  "path": "/home/crawl_bugs/sqlite/ticket_output/ticket_info_199df4168c.json",
+  "poc": [
+    "SELECT statement occurs twice, once before and once \nafter the index is created.  The two SELECTs give different answers.\nThis should never be.\nAn index will hopefully make the answer appear more quickly,\nbut it should never change the answer.\nCREATE TABLE b1(a TEXT);",
+    "INSERT INTO b1 VALUES(1);",
+    "CREATE TABLE b2(x BLOB);",
+    "INSERT INTO b2 VALUES(1);",
+    "SELECT count(*) FROM b1 WHERE a IN (SELECT x FROM b2);",
+    "CREATE UNIQUE INDEX b1a ON b1(a);",
+    "SELECT count(*) FROM b1 WHERE a IN (SELECT x FROM b2);",
+    "with joins instead of IN operators.  Consider:\nCREATE TABLE b1(a TEXT); INSERT INTO b1 VALUES(1);\nCREATE TABLE b2(x BLOB); INSERT INTO b2 VALUES(1);\nSELECT count(*) FROM b1 WHERE a IN (SELECT x FROM b2);",
+    "SELECT count(*) FROM b1, b2 WHERE a=x;",
+    "CREATE UNIQUE INDEX b1a ON b1(a);",
+    "SELECT count(*) FROM b1 WHERE a IN (SELECT x FROM b2);",
+    "SELECT count(*) FROM b1, b2 WHERE a=x;"
+  ],
+  "vulnerable_database": "sqlite",
+  "description": "drh added on 2016-09-03 14:19:59:\nIn the following SQL, the SELECT statement occurs twice, once before and once \nafter the index is created.  The two SELECTs give different answers.\nThis should never be.\nAn index will hopefully make the answer appear more quickly,\nbut it should never change the answer.\nCREATE TABLE b1(a TEXT); INSERT INTO b1 VALUES(1);\nCREATE TABLE b2(x BLOB); INSERT INTO b2 VALUES(1);\nSELECT count(*) FROM b1 WHERE a IN (SELECT x FROM b2);\nCREATE UNIQUE INDEX b1a ON b1(a);\nSELECT count(*) FROM b1 WHERE a IN (SELECT x FROM b2);\nThis problem has been in the code since before version 3.3.7 (2006-08-12), and\nand hence gone unnoticed for over ten years.  For that reason, it is given a\nlow severity.\nThis problem was discovered during internal code reviews of\nthe row-value feature\nplanned for the 3.15 release.  There have been no reports of this problem in\nthe wild.\ndrh added on 2016-09-03 15:24:12:\nThis is related to [93fb9f89d6a69dc3d8], though that prior ticket dealt\nwith joins instead of IN operators.  Consider:\nCREATE TABLE b1(a TEXT); INSERT INTO b1 VALUES(1);\nCREATE TABLE b2(x BLOB); INSERT INTO b2 VALUES(1);\nSELECT count(*) FROM b1 WHERE a IN (SELECT x FROM b2);\nSELECT count(*) FROM b1, b2 WHERE a=x;\nCREATE UNIQUE INDEX b1a ON b1(a);\nSELECT count(*) FROM b1 WHERE a IN (SELECT x FROM b2);\nSELECT count(*) FROM b1, b2 WHERE a=x;\nThe code above used to return \"0 0 1 1\" prior to check-in [e72186f2d6]\nwhich was the fix for ticket [93fb9f89d6a69dc3d8].  After that check-in\n(circa 2009-08-13) the answer returned was \"0 0 1 0\".  The correct answer\nshould be \"0 0 0 0\".",
+  "key_bug_features": [
+    "Different answers with and without index on IN operator"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE b1(a TEXT NOT NULL);",
+    "INSERT INTO b1 VALUES('1');",
+    "CREATE TABLE b2(x BLOB);",
+    "INSERT INTO b2 VALUES(NULL);",
+    "SELECT count(*) FROM b1 WHERE a IN (SELECT x FROM b2);"
+  ]
+}

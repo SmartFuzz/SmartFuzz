@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/19190",
+  "title": "Missing results for index lookup",
+  "description": "### What happens?\n\nDuckDB exhibits non-deterministic behavior when using an index for lookups. Originally reported by @marci543.\n\n### To Reproduce\n\n[comment.parquet.zip](https://github.com/user-attachments/files/22605655/comment.parquet.zip)\n\n```sql\nCREATE TABLE comment AS SELECT id, replyOf FROM 'comment.parquet';\nCREATE INDEX idx_comment_replyOf ON comment(replyOf);\nSELECT id FROM comment WHERE replyOf = 687195512455;\n```\n\nRunning this multiple times changes between the following. Usually only a few executions are required to see both.\n```\n┌──────────────┐\n│      id      │\n│    uint64    │\n├──────────────┤\n│ 687195512457 │\n│ 687195512463 │\n└──────────────┘\n```\n```\n┌────────┐\n│   id   │\n│ uint64 │\n├────────┤\n│ 0 rows │\n└────────┘\n```\n\nThis is a multi-threading issue as `SET threads = 1;` makes the result correct (same as without an index):\n\n```\n┌──────────────┐\n│      id      │\n│    uint64    │\n├──────────────┤\n│ 687195512457 │\n│ 687195512463 │\n│ 687195512456 │\n│ 687195512462 │\n└──────────────┘\n```\n\n### OS:\n\nLinux/macOS\n\n### DuckDB Version:\n\n1.3.2, 1.4.0, nightly\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nGabor Szarnyas\n\n### Affiliation:\n\nDuckDB Labs\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have not tested with any build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "date": "2025-09-29 20:18:47",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE user_data (user_id INTEGER PRIMARY KEY, user_name TEXT, user_age INTEGER, user_email TEXT);",
+    "INSERT INTO user_data VALUES (1, 'Alice', 30, 'alice@example.com');",
+    "INSERT INTO user_data VALUES (2, 'Bob', 25, NULL);",
+    "CREATE INDEX idx_user_email ON user_data(user_email);",
+    "SELECT user_id FROM user_data WHERE user_email IS NULL OR user_age > 20;"
+  ],
+  "key_bug_features": [
+    "Non-deterministic index lookup behavior in multi-threading"
+  ]
+}

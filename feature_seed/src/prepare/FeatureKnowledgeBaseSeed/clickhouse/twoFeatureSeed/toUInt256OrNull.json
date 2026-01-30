@@ -1,0 +1,23 @@
+{
+    "function": "toUInt256OrNull",
+    "operator": "a < b",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, value String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table (id, value) VALUES (1, '256'), (2, 'abc'), (3, '0'), (4, '123456789123456789123456789'), (5, '3.14'), (6, 'NaN');",
+        "SELECT id, toUInt256OrNull(value) AS converted_value FROM test_table WHERE toUInt256OrNull(value) < 500000000000000000000000000;",
+        "SELECT id, toUInt256OrNull(value) AS converted_value FROM test_table WHERE id < (SELECT COUNT(*) FROM test_table WHERE toUInt256OrNull(value) IS NOT NULL);",
+        "SELECT id, COUNT(*) AS valid_count FROM (SELECT id, toUInt256OrNull(value) AS converted_value FROM test_table GROUP BY id HAVING converted_value < 100) GROUP BY id;",
+        "SELECT id, value FROM test_table WHERE id IN (SELECT id FROM test_table WHERE toUInt256OrNull(value) IS NULL) AND toUInt256OrNull(value) < 10;",
+        "CREATE TABLE temp_table AS SELECT id, toUInt256OrNull(value) AS converted_value FROM test_table WHERE toUInt256OrNull(value) IS NOT NULL;",
+        "SELECT converted_value FROM temp_table WHERE converted_value < (SELECT MAX(toUInt256OrNull(value)) FROM test_table WHERE value ILIKE '0%') ORDER BY converted_value DESC;",
+        "SELECT id, value, toUInt256OrNull(value) AS converted_value FROM test_table WHERE toUInt256OrNull(value) IS NOT NULL OR value = '0' ORDER BY converted_value;",
+        "SELECT id FROM (SELECT id, toUInt256OrNull(value) AS converted_value FROM test_table) AS subquery WHERE converted_value < 500;",
+        "CREATE TABLE another_table (id UInt32, amount String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO another_table (id, amount) VALUES (1, '0x10'), (2, '5.0'), (3, 'Inf'), (4, 'NaN');",
+        "SELECT a.id, a.amount, toUInt256OrNull(a.amount) AS converted_amount FROM another_table a JOIN test_table b ON toUInt256OrNull(a.amount) < b.id;",
+        "SELECT id, toUInt256OrNull(value) AS converted_value FROM test_table WHERE id = (SELECT MIN(id) FROM test_table WHERE toUInt256OrNull(value) IS NOT NULL) HAVING converted_value < 100;",
+        "CREATE TABLE mixed_table (num UInt32, text String) ENGINE = MergeTree() ORDER BY num;",
+        "INSERT INTO mixed_table (num, text) VALUES (1, '1000'), (2, 'not_a_number'), (3, '1.5'), (4, '999999999999999999999999999999999999999999999999999');",
+        "SELECT text, toUInt256OrNull(text) AS as_uint256 FROM mixed_table WHERE toUInt256OrNull(text) < 1000;"
+    ]
+}

@@ -1,0 +1,24 @@
+{
+    "function": "generate_series(first, limit, interval stepsize)",
+    "operator": ">",
+    "sql_array": [
+        "CREATE TABLE test_series (id INT PRIMARY KEY, event_time TIMESTAMP, event_value INT);",
+        "INSERT INTO test_series (id, event_time, event_value) VALUES (1, '2023-10-01 00:00:00', 10);",
+        "INSERT INTO test_series (id, event_time, event_value) VALUES (2, '2023-10-02 00:00:00', 20);",
+        "INSERT INTO test_series (id, event_time, event_value) VALUES (3, '2023-10-03 00:00:00', 30);",
+        "SELECT id, event_time FROM test_series WHERE event_time > (SELECT generate_series('2023-10-01 00:00:00', '2023-10-31 00:00:00', interval '1 day') ORDER BY 1 LIMIT 1);",
+        "SELECT id, COUNT(*) FROM test_series GROUP BY id HAVING COUNT(*) > (SELECT COUNT(*) FROM test_series WHERE event_value > 15);",
+        "SELECT id, SUM(event_value) AS total_value FROM test_series WHERE event_value > generate_series(5, 25, interval '5') GROUP BY id ORDER BY total_value DESC;",
+        "SELECT id FROM test_series WHERE event_time IS NULL OR (event_time > (generate_series('2023-09-30 00:00:00', '2023-10-15 00:00:00', interval '1 day'::interval) AND NULL));",
+        "CREATE TABLE test_inet (id INT PRIMARY KEY, ip_address INET);",
+        "INSERT INTO test_inet (id, ip_address) VALUES (1, inet '192.168.1.5');",
+        "INSERT INTO test_inet (id, ip_address) VALUES (2, inet '192.168.1.4');",
+        "SELECT id FROM test_inet WHERE ip_address > inet (SUBSTRING('192.168.1.6' FROM 1 FOR 11));",
+        "CREATE TABLE mixed_types (id INT PRIMARY KEY, str_value TEXT, num_value FLOAT, timestamp_value TIMESTAMP);",
+        "INSERT INTO mixed_types (id, str_value, num_value, timestamp_value) VALUES (1, 'Test', 123.456, '2023-10-05 10:00:00');",
+        "SELECT id FROM mixed_types WHERE generate_series(timestamp_value, timestamp_value + interval '1 hour', interval '30 minutes') IS NOT NULL AND num_value > 100.0;",
+        "SELECT m.id FROM mixed_types m JOIN test_series s ON m.timestamp_value > generate_series(s.event_time, s.event_time + interval '1 day', interval '1 hour') WHERE m.str_value IS NOT NULL;",
+        "ALTER TABLE test_series ADD CONSTRAINT check_event_value CHECK (event_value >= 0);",
+        "SELECT COUNT(*) FROM test_series WHERE (event_value IS NULL OR event_time > (SELECT generate_series('2023-10-01 00:00:00', now(), interval '1 day')));"
+    ]
+}

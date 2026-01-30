@@ -1,0 +1,21 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=108374",
+  "title": "simple float type sum calculations produce unexpected results",
+  "description": "Taking sum from float type produces unexptected answers.\nHow to repeat:\nmysql> create table bla(mycol float);\r\nmysql> desc bla;\r\n+-------+-------+------+-----+---------+-------+\r\n| Field | Type  | Null | Key | Default | Extra |\r\n+-------+-------+------+-----+---------+-------+\r\n| mycol | float | YES  |     | NULL    |       |\r\n+-------+-------+------+-----+---------+-------+\r\n\r\nInsert two numbers into this table and select sum from them. Combination of '0' and '0' produces '0', '0' and '1' produces '1', '0' and '1.0' produces '1' as expected.\r\n\r\nNow it goes weird.\r\n\r\nmysql> insert into  bla values ('1.01');\r\nmysql> insert into  bla values ('1');\r\n\r\nmysql> select * from bla;\r\n+-------+\r\n| mycol |\r\n+-------+\r\n|  1.01 |\r\n|     1 |\r\n+-------+\r\nmysql> select sum(mycol) from bla ;\r\n+-------------------+\r\n| sum(mycol)        |\r\n+-------------------+\r\n| 2.009999990463257 |\r\n+-------------------+\r\n\r\nI would expect it to return \"2.01\" as an answer.",
+  "date": "2022-09-03 06:38:00",
+  "vulnerable_version": "8.0.26",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_floats (value1 FLOAT, value2 FLOAT, value3 FLOAT DEFAULT NULL);",
+    "INSERT INTO test_floats (value1, value2) VALUES (1.5, 2.5);",
+    "INSERT INTO test_floats (value1, value2) VALUES (NULL, 3.0);",
+    "SELECT SUM(value1) FROM test_floats WHERE value2 IS NOT NULL;",
+    "SELECT SUM(value1 + value2 + COALESCE(value3, 0)) FROM test_floats;",
+    "SELECT ROUND(SUM(value1), 2) AS rounded_sum FROM test_floats;"
+  ],
+  "key_bug_features": [
+    "float type sum calculations yield inaccurate results"
+  ]
+}

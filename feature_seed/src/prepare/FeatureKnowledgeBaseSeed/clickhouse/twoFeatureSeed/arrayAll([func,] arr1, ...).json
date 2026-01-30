@@ -1,0 +1,16 @@
+{
+    "function": "arrayAll([func,] arr1, ...)",
+    "operator": "a != b",
+    "sql_array": [
+        "CREATE TABLE test_arrays (id UInt32, values Array(Int32), nullable_col Nullable(Int32));",
+        "INSERT INTO test_arrays (id, values, nullable_col) VALUES (1, [1, 2, 3], 10), (2, [0, 5, 6], NULL), (3, [], 15);",
+        "SELECT id, arrayAll(x -> x != 0, values) AS all_non_zero FROM test_arrays WHERE nullable_col IS NOT NULL;",
+        "SELECT id, arrayAll(x -> x != (SELECT AVG(x_val) FROM (SELECT values[1] AS x_val FROM test_arrays)) , values) AS not_equal_avg FROM test_arrays;",
+        "SELECT id, arrayAll(x -> x != 0, values) AS all_non_zero FROM test_arrays GROUP BY id HAVING all_non_zero = 1;",
+        "SELECT id, arrayAll(x -> x != NULLIF(nullable_col, 0), values) AS nullif_not_zero FROM test_arrays WHERE arrayAll(y -> y != 0 AND y > 0, values);",
+        "CREATE TEMPORARY TABLE temp_table AS SELECT id, arrayAll(x -> x != -1, values) AS non_negatives FROM test_arrays;",
+        "SELECT t1.id, arrayAll(x -> x != (SELECT MAX(values[1]) FROM test_arrays), values) AS max_not_equal, t2.nullable_col FROM temp_table t1 JOIN test_arrays t2 ON t1.id = t2.id WHERE t1.non_negatives = 1;",
+        "SELECT id, arrayAll(x -> x != 0, values) AS all_non_zero, CASE WHEN nullable_col IS NOT NULL THEN 'Has value' ELSE 'No value' END AS null_status FROM test_arrays GROUP BY id;",
+        "INSERT INTO test_arrays (id, values, nullable_col) VALUES (4, [200, 300, NULL], 0);"
+    ]
+}

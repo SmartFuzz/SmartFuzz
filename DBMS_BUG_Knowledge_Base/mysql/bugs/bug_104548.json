@@ -1,0 +1,24 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=104548",
+  "title": "Left joined not null column appears as null with window function + order by",
+  "vulnerable_database": "MySQL Server: Optimizer",
+  "date": "2021-08-05 14:18:00",
+  "vulnerable_version": "8.0.26-cloud",
+  "description": "A have a few queries which broke with the recent upgrade to MySQL. The problem occurs specifically with not null columns which are left joined and selected along with a window function AND an order by clause below. Please see below on how to replicate:\nHow to repeat:\n-- create table with not null columns, and nullable columns just for testing\r\ncreate table test (\r\n    id1 int unsigned not null primary key,\r\n    id2 int unsigned not null,\r\n    id3 int unsigned,\r\n    name varchar(30),\r\n    name2 varchar(30) not null\r\n);\r\n\r\n-- insert data\r\ninsert into test(id1, id2, id3, name, name2) values(1, 2, 3, 'test1', 'test1');\r\ninsert into test(id1, id2, id3, name, name2) values(4, 5, 6, 'test2', 'test2');\r\n    \r\n-- query with window function and order by\r\nselect count(1) over(),\r\nq.*\r\nfrom (select 1) d\r\nleft join (\r\n    select * from test\r\n) q on 1=1\r\norder by name;\r\n\r\n-- above query returns\r\n|2|null|null|3|test1|null|\r\n|2|null|null|6|test2|null|\r\n\r\n-- returned when removing the order by clause\r\n|2|1|2|3|test1|test1|\r\n|2|4|5|6|test2|test2|\nSuggested fix:\nReturn MySQL to previous functionality, where window functions in conjunction with order by clauses do not cause columns to become null.\r\n\r\nThank you for your assistance,\r\n\r\nJoe",
+  "poc": [
+    "create table test (\nid1 int unsigned not null primary key,\nid2 int unsigned not null,\nid3 int unsigned,\nname varchar(30),\nname2 varchar(30) not null\n);",
+    "insert data\ninsert into test(id1, id2, id3, name, name2) values(1, 2, 3, 'test1', 'test1');",
+    "insert into test(id1, id2, id3, name, name2) values(4, 5, 6, 'test2', 'test2');",
+    "select count(1) over(),\nq.*\nfrom (select 1) d\nleft join (\nselect * from test\n) q on 1=1\norder by name;"
+  ],
+  "key_bug_features": [
+    "Left join with window function and order by clause"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE test2 (id1 int unsigned not null primary key, id2 int unsigned not null, id3 int unsigned, name varchar(30), name2 varchar(30) not null, created_at timestamp not null default current_timestamp);",
+    "INSERT INTO test2(id1, id2, id3, name, name2) VALUES(1, 2, NULL, 'example1', 'example1');",
+    "INSERT INTO test2(id1, id2, id3, name, name2) VALUES(3, 4, 5, 'example2', 'example2');",
+    "SELECT count(1) OVER(), q.* FROM (SELECT 1) d LEFT JOIN (SELECT * FROM test2) q ON d.1 = 1 ORDER BY name;",
+    "SELECT count(1) OVER(), q.* FROM (SELECT 1) d LEFT JOIN (SELECT * FROM test2 WHERE id3 IS NOT NULL) q ON d.1 = 1 ORDER BY name2;"
+  ]
+}

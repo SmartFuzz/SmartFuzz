@@ -1,0 +1,12 @@
+CREATE TABLE test_table (id UInt32, str_col String, num_col Int32, fixed_str_fixed FixedString(10));
+INSERT INTO test_table VALUES (1, 'example', 100), (2, NULL, -50), (3, 'test', 150), (4, 'longer than fixed', 200);
+SELECT id, toFixedString(str_col, 10) AS fixed_str FROM test_table WHERE str_col NOT LIKE 'test';
+SELECT id, toFixedString(str_col, 5) AS fixed_str FROM test_table WHERE toFixedString(str_col, 10) NOT LIKE '%e%';
+SELECT id, COUNT(*) OVER (PARTITION BY toFixedString(str_col, 10) NOT LIKE 'ex') AS count_not_ex FROM test_table;
+SELECT id, str_col, CASE WHEN str_col NOT LIKE 'longer%' THEN 'short' ELSE 'long' END AS length_type, toFixedString(str_col, 15) AS padded_str FROM test_table WHERE num_col > 0;
+SELECT DISTINCT id FROM (SELECT toFixedString(str_col, 10) AS padded, num_col FROM test_table WHERE str_col NOT LIKE '') AS subq WHERE padded NOT LIKE 'test%';
+SELECT id, toFixedString(COALESCE(str_col, 'NULL'), 7) AS fixed_with_null FROM test_table WHERE str_col NOT LIKE 's%';
+SELECT str_col, SUM(num_col) OVER (PARTITION BY toFixedString(str_col, 10) NOT LIKE 'ex') AS sum_num FROM test_table GROUP BY str_col HAVING fixed_str_fixed IS NOT NULL;
+ALTER TABLE test_table ADD COLUMN new_col Float64;
+UPDATE test_table SET new_col = 1.2345 WHERE str_col NOT LIKE 'example';
+DROP TABLE IF EXISTS test_table;

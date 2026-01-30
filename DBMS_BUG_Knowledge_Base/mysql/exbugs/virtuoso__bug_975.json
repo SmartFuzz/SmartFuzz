@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/975",
+  "title": "Variable in T_IN list and corresponding variable in T_OUT get values from columns that are too different",
+  "description": "While working on a study comparing different approaches to query the neXtProt dataset, I have observed that Virtuoso returns wrong results in some cases.\nIf I create the tables —\ncreate table nextprot.isoform_bases\n(\n    id                          varchar not null,\n    entry                       varchar not null,\n    primary key(id)\n);\n\ncreate table nextprot.isoform_cellular_components\n(\n    isoform     varchar not null,\n    annotation  varchar not null,\n    primary key(isoform, annotation)\n);\n\n— and define the mapping —\nxml_set_ns_decl('', 'http://nextprot.org/rdf#', 2);\nxml_set_ns_decl('iri', 'http://bioinfo.iocb.cz/rdf/quad-storage/linked-data-view/iri-class/nextprot#', 2);\n\nsparql create iri class iri:entry \"http://nextprot.org/rdf/entry/%U\"(in id varchar not null) option (bijection).;\nsparql create iri class iri:isoform \"http://nextprot.org/rdf/isoform/%U\"(in id varchar not null) option (bijection).;\nsparql create iri class iri:annotation \"http://nextprot.org/rdf/annotation/%U\"(in id varchar not null) option (bijection).;\n\nsparql create quad storage virtrdf:NeXtProtQuadStorage\n    from DB.nextprot.isoform_bases as isoform_bases\n    from DB.nextprot.isoform_cellular_components as isoform_cellular_components\n{\n  create virtrdf:nextprot as graph iri (\"http://nextprot.org/rdf\")\n  {\n    iri:entry(isoform_bases.entry)\n      :isoform iri:isoform(isoform_bases.id).\n\n    iri:isoform(isoform_cellular_components.isoform)\n      :cellularComponent iri:annotation(isoform_cellular_components.annotation).\n  }\n};\n\n— then the SPARQL query —\nsparql\ndefine input:storage virtrdf:NeXtProtQuadStorage\nselect * where {\n  ?interactant :isoform? / :cellularComponent ?loc .\n};\n\n\n— returns the error —\nSQ074: Line 5: SP031: SPARQL compiler: Variable ?_::trans_subj_4_1 in T_IN list and corresponding variable ?_::trans_obj_4_2 in T_OUT get values from columns that are too different",
+  "date": "2021-07-27 11:50:17",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE nextprot.isoform_bases (id VARCHAR(255) NOT NULL, entry VARCHAR(255) NOT NULL, PRIMARY KEY(id));",
+    "CREATE TABLE nextprot.isoform_cellular_components (isoform VARCHAR(255) NOT NULL, annotation VARCHAR(255), PRIMARY KEY(isoform, annotation));",
+    "INSERT INTO nextprot.isoform_bases (id, entry) VALUES ('isoform1', 'entry1'), ('isoform2', 'entry2');",
+    "INSERT INTO nextprot.isoform_cellular_components (isoform, annotation) VALUES ('isoform1', 'annotation1'), ('isoform2', NULL);",
+    "SELECT * FROM nextprot.isoform_bases b JOIN nextprot.isoform_cellular_components c ON b.id = c.isoform WHERE c.annotation IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Variable values from T_IN and T_OUT are too different"
+  ]
+}

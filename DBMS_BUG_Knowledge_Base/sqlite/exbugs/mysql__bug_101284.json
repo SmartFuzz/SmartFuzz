@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=101284",
+  "title": "Problem with prepared statements",
+  "description": "After upgrading to MySQL 8.0.22 we are getting errors when using certain prepared statements (that worked just fine with 8.0.21 and older versions).\nHow to repeat:\ncreate database d1;\r\nuse d1;\r\ncreate table t1(\r\n  c1 json\r\n);\r\ninsert into t1 values ('[\"a\", \"b\"]'), ('[\"b\", \"c\"]'), ('[\"c\", \"a\"]');\r\nselect * from t1 where 'a' member of (c1 -> '$');\r\nprepare s1 from \"select * from t1 where ? member of (c1 -> '$')\";\r\nset @x = 'a';\r\nexecute s1 using @x;\r\n\r\nOn MySQL 8.0.21 and earlier, we get the following:\r\n\r\nmysql> execute s1 using @x;\r\n+------------+\r\n| c1         |\r\n+------------+\r\n| [\"a\", \"b\"] |\r\n| [\"c\", \"a\"] |\r\n+------------+\r\n2 rows in set (0.00 sec)\r\n\r\nWhereas on 8.0.22:\r\n\r\nmysql> execute s1 using @x;\r\nERROR 3141 (22032): Invalid JSON text in argument 1 to function cast_as_json: \"Invalid value.\" at position 0.\r\n\r\nMany thanks,\r\ndamjan",
+  "date": "2020-10-23 10:48:00",
+  "vulnerable_version": "8.0.22",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t2(c1 TEXT, c2 INTEGER NOT NULL, c3 TEXT);",
+    "INSERT INTO t2 VALUES ('[\"x\", \"y\"]', 1, 'test1');",
+    "INSERT INTO t2 VALUES ('[\"y\", \"z\"]', 2, 'test2');",
+    "INSERT INTO t2 VALUES ('[\"z\", \"x\"]', 3, 'test3');",
+    "SELECT * FROM t2 WHERE 'x' IN (SELECT json_each.value FROM json_each(t2.c1));"
+  ],
+  "key_bug_features": [
+    "Errors with prepared statements after MySQL 8.0.22 upgrade"
+  ]
+}

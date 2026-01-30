@@ -1,0 +1,14 @@
+{
+    "function": "toIntervalSecond",
+    "operator": "a != ALL (subquery)",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, value String, created_at DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table (id, value, created_at) VALUES (1, '2024-06-15', now()), (2, '2024-01-01', now() - toIntervalSecond(86400));",
+        "SELECT id, value, created_at + toIntervalSecond(300) AS updated_time FROM test_table WHERE created_at != ALL (SELECT created_at FROM test_table WHERE value = '2024-01-01');",
+        "SELECT id, value, COUNT(*) OVER (PARTITION BY value) AS value_count FROM test_table GROUP BY id, value HAVING value_count != ALL (SELECT DISTINCT id FROM test_table WHERE id > 1);",
+        "SELECT value, toIntervalSecond(60) + toIntervalSecond(30) AS total_interval FROM test_table WHERE value != ALL (SELECT value FROM test_table WHERE id = 1 AND created_at < now() - toIntervalSecond(86400));",
+        "CREATE TABLE subquery_test (id UInt32, parent_id UInt32, description String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO subquery_test (id, parent_id, description) VALUES (1, NULL, 'Parent'), (2, 1, 'Child 1'), (3, 1, 'Child 2');",
+        "SELECT parent_id, COUNT(*) AS child_count FROM subquery_test WHERE id != ALL (SELECT id FROM subquery_test WHERE description = 'Parent') GROUP BY parent_id HAVING child_count > 0 + toIntervalSecond(0);"
+    ]
+}

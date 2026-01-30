@@ -1,0 +1,22 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/401",
+  "title": "Substract duration from datetime",
+  "vulnerable_database": "Virtuoso",
+  "date": "2015-05-08 11:50:27",
+  "vulnerable_version": "",
+  "description": "I want to get the date of yesterday (actually for filtering) and identified a way to compute the date of yesterday in Virtuoso by subtracting an integer of seconds from the current timestamp:\nSELECT DISTINCT (xsd:date(NOW()) AS ?today) (xsd:date(NOW()-(3600*24)) AS ?yesterday)\nWHERE {?s a ?o.}\n\nApache Jena does not support subtracting integers from xsd:date/xsd:datetime, it demands a time period as xsd:duration, which is much more intuitive, e.g.\nSELECT DISTINCT (xsd:date(NOW()) AS ?today) (xsd:date(NOW()-\"P1D\"^^xsd:duration) AS ?yesterday)\nWHERE {?s a ?o.}\n\nThat again is not supported by Virtuoso. Would be great to have compatible queries for this.",
+  "poc": [
+    "SELECT DISTINCT (xsd:date(NOW()) AS ?today) (xsd:date(NOW()-(3600*24)) AS ?yesterday)\nWHERE {?s a ?o.}",
+    "SELECT DISTINCT (xsd:date(NOW()) AS ?today) (xsd:date(NOW()-\"P1D\"^^xsd:duration) AS ?yesterday)\nWHERE {?s a ?o.}"
+  ],
+  "key_bug_features": [
+    "Subtracting integers from xsd:date/xsd:datetime"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE test_dates (id INT PRIMARY KEY, event_date xsd:date NOT NULL);",
+    "INSERT INTO test_dates (id, event_date) VALUES (1, xsd:date(NOW())), (2, xsd:date(NOW() - (3600 * 24))), (3, xsd:date(NOW() - (3600 * 48)));",
+    "SELECT id, event_date, xsd:date(NOW() - (3600 * 24)) AS yesterday FROM test_dates WHERE event_date < xsd:date(NOW());",
+    "SELECT id, event_date FROM test_dates WHERE event_date = xsd:date(NOW() - (3600 * 24)) OR event_date IS NULL;",
+    "SELECT DISTINCT (xsd:date(NOW()) AS ?today), (xsd:date(NOW() - (3600 * 24)) AS ?yesterday) WHERE { ?s a ?o . };"
+  ]
+}

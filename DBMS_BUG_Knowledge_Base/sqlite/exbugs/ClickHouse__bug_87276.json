@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/87276",
+  "title": "Logical error: 'Storage type 'DeltaLakeLocal' is not supported by distributed DDL'",
+  "description": "### Describe the bug\nEasy to reproduce.\n### How to reproduce\nWith this config:\n```xml\n<remote_servers>\n<cluster0>\n<shard>\n<replica>\n<host>localhost</host>\n<port>9000</port>\n</replica>\n</shard>\n</cluster0>\n</remote_servers>\n```\nRun:\n```sql\nCREATE TABLE t0 ON CLUSTER 'cluster0' (c0 Int) ENGINE = DeltaLakeLocal(local, format = 'Parquet', path = '/var/lib/clickhouse/user_files/spark_catalog/test/t0');\nALTER TABLE t0 ON CLUSTER 'cluster0' MATERIALIZE COLUMN c0;\n```\n### Error message and/or stacktrace\nStack trace:\n```\n<Fatal> : Logical error: 'Storage type 'DeltaLakeLocal' is not supported by distributed DDL'.\n<Fatal> : Stack trace (when copying this message, always include the lines below):\n0. contrib/llvm-project/libcxx/include/__exception/exception.h:113: Poco::Exception::Exception(String const&, int) @ 0x00000000275fa632\n1. src/Common/Exception.cpp:128: DB::Exception::Exception(DB::Exception::MessageMasked&&, int, bool) @ 0x0000000014708fe9\n2. src/Common/Exception.h:123: DB::Exception::Exception(String&&, int, String, bool) @ 0x000000000d22118e\n3. src/Common/Exception.h:58: DB::Exception::Exception(PreformattedMessage&&, int) @ 0x000000000d220b91\n4. src/Common/Exception.h:141: DB::Exception::Exception<String>(int, FormatStringHelperImpl<std::type_identity<String>::type>, String&&) @ 0x000000000d220776\n5. src/Interpreters/DDLWorker.cpp:777: DB::DDLWorker::tryExecuteQueryOnLeaderReplica(DB::DDLTaskBase&, std::shared_ptr<DB::IStorage>, String const&, std::shared_ptr<zkutil::ZooKeeper> const&, std::unique_ptr<zkutil::ZooKeeperLock, std::default_delete<zkutil::ZooKeeperLock>>&) @ 0x000000001b680e5e\n6. src/Interpreters/DDLWorker.cpp:679: DB::DDLWorker::processTask(DB::DDLTaskBase&, std::shared_ptr<zkutil::ZooKeeper> const&, bool) @ 0x000000001b6785c4\n7. src/Interpreters/DDLWorker.cpp:459: DB::DDLWorker::scheduleTasks(bool) @ 0x000000001b6755b2\n8. src/Interpreters/DDLWorker.cpp:1226: DB::DDLWorker::runMainThread() @ 0x000000001b66e43f\n9. contrib/llvm-project/libcxx/include/__type_traits/invoke.h:117: ThreadFromGlobalPoolImpl<true, true>::ThreadFromGlobalPoolImpl<void (DB::DDLWorker::*)(), DB::DDLWorker*>(void (DB::DDLWorker::*&&)(), DB::DDLWorker*&&)::'lambda'()::operator()() @ 0x000000001b68ca26\n10. contrib/llvm-project/libcxx/include/__functional/function.h:716: ? @ 0x000000001484d026\n11. contrib/llvm-project/libcxx/include/__type_traits/invoke.h:117: void* std::__thread_proxy[abi:se190107]<std::tuple<std::unique_ptr<std::__thread_struct, std::default_delete<std::__thread_struct>>, void (ThreadPoolImpl<std::thread>::ThreadFromThreadPool::*)(), ThreadPoolImpl<std::thread>::ThreadFromThreadPool*>>(void*) @ 0x0000000014853a40\n12. start_thread @ 0x00000000000a27f1\n13. __clone3 @ 0x0000000000133c9c\n```",
+  "date": "2025-09-18T11:48:07Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (id INTEGER, name TEXT, created_at DATETIME);",
+    "CREATE TABLE t2 (user_id INTEGER, score REAL, status TEXT);",
+    "INSERT INTO t1 VALUES (1, 'Alice', CURRENT_TIMESTAMP), (2, 'Bob', CURRENT_TIMESTAMP);",
+    "INSERT INTO t2 VALUES (1, 95.5, 'active'), (2, 88.0, NULL);",
+    "SELECT t1.name, t2.score FROM t1 JOIN t2 ON t1.id = t2.user_id WHERE t2.status IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "DeltaLakeLocal storage type not supported by distributed DDL"
+  ]
+}

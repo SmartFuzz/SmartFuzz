@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/13824",
+  "title": "min() and max() do not respect default collation",
+  "description": "### What happens?\n\nThe `min()` and `max()` aggregate functions in DuckDB do not respect the default collation set using the `set default_collation = 'EN_US'`; statement. This causes the results to be different from what one would expect based on the sort order.\r\n\r\n\n\n### To Reproduce\n\n1. Create a table with some sample data:\r\n\r\n```sql\r\ncreate table test(id int, name text);\r\ninsert into test values (1, 'a'), (2, 'b'), (3, 'c'), (4, 'A'), (5, 'G'), (6, 'd');\r\n```\r\n2. Observe the default sort order\r\n```sql\r\nselect * from test order by name;\r\n```\r\n3. This returns the expected sorting:\r\n```sql\r\n┌───────┬─────────┐\r\n│  id   │  name   │\r\n│ int32 │ varchar │\r\n├───────┼─────────┤\r\n│     4 │ A       │\r\n│     5 │ G       │\r\n│     1 │ a       │\r\n│     2 │ b       │\r\n│     3 │ c       │\r\n│     6 │ d       │\r\n└───────┴─────────┘\r\n```\r\n3. Check the min() and max() functions:\r\n```sql\r\nselect min(name) from test;\r\nselect max(name) from test;\r\n```\r\nThis also returns the expected results:\r\n\r\n```sql\r\n┌─────────────┐\r\n│ min(\"name\") │\r\n│   varchar   │\r\n├─────────────┤\r\n│ A           │\r\n└─────────────┘\r\n\r\n┌─────────────┐\r\n│ max(\"name\") │\r\n│   varchar   │\r\n├─────────────┤\r\n│ d           │\r\n└─────────────┘\r\n```\r\n4. Set the default collation to 'EN_US':\r\n\r\n```sql\r\nset default_collation = 'EN_US';\r\n\r\n```\r\n5. Observe the new sort order:\r\n\r\n```sql\r\nselect * from test order by name;\r\n\r\n```\r\nThis now returns a different sort order (which is expected):\r\n```sql\r\n┌───────┬─────────┐\r\n│  id   │  name   │\r\n│ int32 │ varchar │\r\n├───────┼─────────┤\r\n│     1 │ a       │\r\n│     4 │ A       │\r\n│     2 │ b       │\r\n│     3 │ c       │\r\n│     6 │ d       │\r\n│     5 │ G       │\r\n└───────┴─────────┘\r\n```\r\n6. Check the min() and max() functions again:\r\n```sql\r\nselect min(name) from test;\r\nselect max(name) from test;\r\n```\r\nThe results are not what one would expect based on the new sort order:\r\n```sql\r\n┌─────────────┐\r\n│ min(\"name\") │\r\n│   varchar   │\r\n├─────────────┤\r\n│ A           │\r\n└─────────────┘\r\n\r\n┌─────────────┐\r\n│ max(\"name\") │\r\n│   varchar   │\r\n├─────────────┤\r\n│ d           │\r\n└─────────────┘\r\n```\r\nThe `min()` should return 'a' and the `max()` should return 'G', but they are returning 'A' and 'd' respectively.\r\n\n\n### OS:\n\nUbuntu 20.04.5 LTS\n\n### DuckDB Version:\n\n1.1\n\n### DuckDB Client:\n\npython\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nArif Aslam\n\n### Affiliation:\n\nMammoth Analytics Inc.\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a stable release\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [X] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [X] Yes, I have",
+  "date": "2024-09-09 13:12:05",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test2(id int, name text, age int);",
+    "INSERT INTO test2 VALUES (1, 'a'), (2, 'b'), (3, 'c'), (4, 'A'), (5, 'G'), (6, 'd'), (7, NULL);",
+    "SET SESSION lc_collate = 'en_US.UTF-8';",
+    "SELECT MIN(name) FROM test2;",
+    "SELECT MAX(name) FROM test2;",
+    "SELECT * FROM test2 ORDER BY name;"
+  ],
+  "key_bug_features": [
+    "min() and max() ignore default collation settings"
+  ]
+}

@@ -1,0 +1,15 @@
+CREATE TABLE test_strings (text String);
+INSERT INTO test_strings VALUES ('ClickHouse'), ('clickhouse'), ('CLICKHOUSE'), ('Cl1ckH0us3'), ('ClickHouse!'), ('nested query'), ('test ngramMinHash');
+SELECT ngramMinHash(text, 3, 6) FROM test_strings;
+SELECT ngramMinHash(text) FROM (SELECT text FROM test_strings WHERE text LIKE 'Click%') AS subquery;
+SELECT a.text, ngramMinHash(a.text, 4, 8) AS hashes FROM test_strings AS a JOIN test_strings AS b ON a.text != b.text WHERE a.text <> b.text;
+SELECT ngramMinHash(text, 5, 10) FROM (SELECT text FROM test_strings) AS inner_query WHERE text IN ('ClickHouse', 'clickhouse');
+CREATE TABLE temp_hashes (min_hash UInt64, max_hash UInt64);
+INSERT INTO temp_hashes SELECT min(hash) AS min_hash, max(hash) AS max_hash FROM (SELECT ngramMinHash(text) FROM test_strings) GROUP BY text;
+SELECT * FROM temp_hashes AS th WHERE th.min_hash > 0;
+CREATE TABLE hashed_strings (original String, min_hash UInt64, max_hash UInt64) ENGINE = MergeTree() ORDER BY min_hash;
+INSERT INTO hashed_strings SELECT text, min_hash, max_hash FROM (SELECT text, ngramMinHash(text) AS (min_hash, max_hash) FROM test_strings);
+SELECT * FROM hashed_strings WHERE max_hash = (SELECT max(max_hash) FROM hashed_strings);
+SELECT ngramMinHash('aaaaaa', 2, 5) AS result;
+SELECT ngramMinHash('abcd', 1, 1) AS result;
+SELECT ngramMinHash('a', 1, 1) AS result;

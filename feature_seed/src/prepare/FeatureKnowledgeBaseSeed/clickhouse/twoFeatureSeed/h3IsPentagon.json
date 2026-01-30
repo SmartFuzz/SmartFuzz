@@ -1,0 +1,18 @@
+{
+    "function": "h3IsPentagon",
+    "operator": "a - b",
+    "sql_array": [
+        "CREATE TABLE geo_points (id UInt64, h3_index UInt64, value String);",
+        "INSERT INTO geo_points VALUES (1, 644721767722457330, 'test1'), (2, 644721767722457331, 'test2');",
+        "SELECT id, h3IsPentagon(h3_index) AS is_pentagon, h3_index - 644721767722457330 AS difference FROM geo_points WHERE h3_index - 644721767722457331 > 0;",
+        "SELECT id, h3IsPentagon(h3_index + CAST('-1' AS UInt64)) AS is_pentagon_adjusted, h3_index FROM geo_points HAVING is_pentagon_adjusted = 0;",
+        "SELECT id, h3IsPentagon((SELECT MAX(h3_index) FROM geo_points WHERE h3_index < 644721767722457332)) AS pentagon_check FROM geo_points;",
+        "CREATE TABLE geo_analysis (geo_id UInt32, centroid UInt64, area Float64, cluster UInt32);",
+        "INSERT INTO geo_analysis VALUES (1, 644721767722457330, 12.5, 1), (2, 655361882191559168, 8.0, 2);",
+        "SELECT ga.geo_id, ga.area - (SELECT AVG(area) FROM geo_analysis) AS area_difference, h3IsPentagon(ga.centroid) FROM geo_analysis ga GROUP BY ga.geo_id HAVING area_difference > 0;",
+        "WITH (SELECT MIN(ga.area) FROM geo_analysis ga) AS min_area SELECT ga.geo_id, ga.centroid, h3IsPentagon(ga.centroid) AS is_pentagon FROM geo_analysis ga WHERE ga.area - min_area < 0;",
+        "CREATE TABLE temp_h3_indexes (temp_id UInt32, h3_value UInt64) ENGINE = Memory;",
+        "INSERT INTO temp_h3_indexes VALUES (1, 644721767722457330), (2, NULL);",
+        "SELECT CASE WHEN h3IsPentagon(TEMP.h3_value) THEN 'Pentagon' ELSE 'Non-Pentagon' END AS cell_type, temp_id FROM temp_h3_indexes TEMP WHERE temp_id - 1 = 0 OR TEMP.h3_value IS NULL;"
+    ]
+}

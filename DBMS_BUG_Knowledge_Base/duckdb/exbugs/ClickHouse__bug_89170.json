@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/89170",
+  "title": "is max_bytes_in_distinct working correctly?",
+  "description": "### Company or project name\n_No response_\n### Question\nversion 25.9.4.58\n**is max_bytes_in_distinct working correctly?**\ndescription of parameters\nhttps://clickhouse.com/docs/operations/settings/settings#max_bytes_in_distinct\nhttps://clickhouse.com/docs/operations/settings/settings#distinct_overflow_mode\n**Example**\nmax_memory_usage = 12_000_000_000\n**Creating a test table**\nCREATE TABLE test_distinct_oom ( id UInt64, value String ) ENGINE = MergeTree ORDER BY id;\n**inserting the data**\nINSERT INTO test_distinct_oom SELECT number, toString(number) FROM numbers(100000000);\n**selecting the data**\nSELECT DISTINCT value\nFROM test_distinct_oom\nSETTINGS max_bytes_in_distinct = 4_000_000_000, distinct_overflow_mode='break';\n**execution result**\nShowed 1000 out of 66616201 rows.\n66616201 rows in set. Elapsed: 14.032 sec. Processed 66.92 million rows, 1.09 GB (4.77 million rows/s., 77.65 MB/s.)\nPeak memory usage: 10.89 GiB.\nReceived exception from server (version 25.9.4):\nCode: 241. DB::Exception: Received from localhost:9000. DB::Exception: Query memory limit exceeded: would use 11.64 GiB (attempt to allocate chunk of 770.43 MiB), maximum: 11.18 GiB.. (MEMORY_LIMIT_EXCEEDED)\n**from the log file**\n2025.10.29 14:50:11.655378 [ 47668 ] {d397c079-0208-4811-978f-c09268635134} <Error> executeQuery: Code: 241. DB::Exception: Query memory limit exceeded: would use 11.64 GiB (attempt to allocate chunk of 770.43 MiB), maximum: 11.18 GiB. (MEMORY_LIMIT_EXCEEDED) (version 25.9.4.58 (official build)) (from 127.0.0.1:57658) (query 1, line 1) (in query: SELECT DISTINCT value FROM test_distinct_oom1 SETTINGS max_bytes_in_distinct = 4_000_000_000, distinct_overflow_mode='break';)\nIt's not clear to me why the out-of-memory error occurs. If the parameter is set to 3 times less than the maximum memory...\nMaybe you need to tweak something else?",
+  "date": "2025-10-29T11:55:48Z",
+  "vulnerable_version": "25.9.4.58",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test_distinct_oom_v2 ( id BIGINT, value VARCHAR, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP );",
+    "INSERT INTO test_distinct_oom_v2 SELECT number, CASE WHEN number % 2 = 0 THEN CAST(number AS VARCHAR) ELSE NULL END FROM range(100000000);",
+    "SELECT DISTINCT value FROM test_distinct_oom_v2;",
+    "CREATE TABLE test_distinct_oom_v3 ( id INTEGER, value DOUBLE, category VARCHAR DEFAULT 'unknown' );",
+    "INSERT INTO test_distinct_oom_v3 SELECT number, number / 3.14, CAST(number % 10 AS VARCHAR) FROM range(1000000);"
+  ],
+  "key_bug_features": [
+    "max_bytes_in_distinct setting causing memory limit exceeded error"
+  ]
+}

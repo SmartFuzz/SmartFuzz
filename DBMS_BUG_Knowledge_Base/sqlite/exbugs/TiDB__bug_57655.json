@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/57655",
+  "title": "Floating Point Arithmetic Behavior Differences Between Unistore and TiKV",
+  "description": "### 1. Minimal reproduce step (Required)\r\n```sql\r\ncreate table t1 (c1 double);\r\ninsert into t1 (c1) values (24.5), (25), (18);\r\n\r\nSELECT\r\n  c1,\r\n  (c1 - 129) & 55 as w1\r\nFROM t1 ORDER BY w1 asc\r\nlimit 2\r\n;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\nwith unistore:\r\n```\r\nmysql> SELECT\r\n    ->   c1,\r\n    ->   (c1 - 129) & 55 as w1\r\n    -> FROM t1 ORDER BY w1 asc\r\n    -> limit 2\r\n    -> ;\r\n+------+------+\r\n| c1   | w1   |\r\n+------+------+\r\n| 24.5 |   16 |\r\n|   25 |   16 |\r\n+------+------+\r\n2 rows in set (0.01 sec)\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\nwith tikv\r\n```\r\nmysql> SELECT\r\n    ->   c1,\r\n    ->   (c1 - 129) & 55 as w1\r\n    -> FROM t1 ORDER BY w1 asc\r\n    -> limit 2\r\n    -> ;\r\n+------+------+\r\n| c1   | w1   |\r\n+------+------+\r\n|   25 |   16 |\r\n|   18 |   17 |\r\n+------+------+\r\n2 rows in set (0.01 sec)\r\n```\r\nActually, if execute it without LIMIT, it is correct:\r\n```\r\nmysql> SELECT\r\n    ->   c1,\r\n    ->   (c1 - 129) & 55 as w1\r\n    -> FROM t1 ORDER BY w1 asc;\r\n+------+------+\r\n| c1   | w1   |\r\n+------+------+\r\n| 24.5 |   16 |\r\n|   25 |   16 |\r\n|   18 |   17 |\r\n+------+------+\r\n3 rows in set (0.01 sec)\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n```\r\nRelease Version: v8.5.0-alpha-184-g1c059a1216\r\nEdition: Community\r\nGit Commit Hash: 1c059a1216db711e2cb56ea9f3d1ad8c23db6327\r\nGit Branch: HEAD\r\nUTC Build Time: 2024-11-21 04:56:22\r\nGoVersion: go1.23.3\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv\r\n```\r\n\r\ntopology:\r\ndistributed.yaml:\r\n```\r\nglobal:\r\n  user: \"tidb\"\r\n  ssh_port: 22\r\n  deploy_dir: \"/tidb-deploy\"\r\n  data_dir: \"/tidb-data\"\r\n\r\ntidb_servers:\r\n  - host: 10.0.2.81\r\n\r\npd_servers:\r\n  - host: 10.0.2.82\r\n\r\ntikv_servers:\r\n  - host: 10.0.2.83\r\n```\r\n\r\n\r\n### about us\r\nWe are the BASS team from the School of Cyber Science and Technology at Beihang University. Our main focus is on system software security, operating systems, and program analysis research, as well as the development of automated program testing frameworks for detecting software defects. Using our self-developed database vulnerability testing tool, we have identified the above-mentioned vulnerabilities in TiDB that may lead to database logic error.\r\n",
+  "date": "2024-11-23T15:27:42Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (c1 REAL, c2 INTEGER NOT NULL DEFAULT 0);",
+    "INSERT INTO t2 (c1, c2) VALUES (24.5, 1), (25.0, 2), (18.0, 3);",
+    "CREATE TABLE t3 (c1 REAL, c2 TEXT);",
+    "INSERT INTO t3 (c1, c2) VALUES (NULL, 'test1'), (30.5, 'test2'), (NULL, 'test3');",
+    "SELECT c1, (c1 - 129) & 55 AS w1 FROM t2 ORDER BY w1 ASC LIMIT 2;"
+  ],
+  "key_bug_features": [
+    "SELECT with LIMIT on floating point arithmetic results"
+  ]
+}

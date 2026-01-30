@@ -1,0 +1,10 @@
+CREATE TABLE test_dates (id SERIAL PRIMARY KEY, event_date DATE NOT NULL, ip_address INET);
+INSERT INTO test_dates (event_date, ip_address) VALUES (DATE '2020-01-01', inet '192.168.1.5'), (DATE '2020-03-22', inet '192.168.1.10'), (DATE '2020-12-31', inet '192.168.1.20');
+SELECT id, dayofyear(event_date), ip_address >> inet '192.168.1.5' AS contains_ip FROM test_dates WHERE dayofyear(event_date) > 100 AND ip_address >> inet '192.168.1.0/24';
+SELECT d.id, dayofyear(d.event_date) AS year_day FROM test_dates d JOIN (SELECT dayofyear(event_date) AS sub_year_day FROM test_dates WHERE ip_address IS NOT NULL) sub ON sub.sub_year_day = dayofyear(d.event_date);
+SELECT id, dayofyear(event_date) AS year_day, COUNT(*) OVER (PARTITION BY dayofyear(event_date)) AS cnt FROM test_dates WHERE (ip_address IS NULL OR ip_address >> inet '192.168.1.10');
+SELECT id, COUNT(*) FROM test_dates GROUP BY dayofyear(event_date) HAVING COUNT(*) > 1 AND dayofyear(event_date) < 365;
+INSERT INTO test_dates (event_date, ip_address) VALUES (NULL, inet '192.168.1.30'), (DATE '2020-02-29', inet '192.168.1.40');
+SELECT id, dayofyear(event_date) AS year_day, ip_address >> inet '192.168.1.40' AS contains_test FROM test_dates WHERE event_date <= (SELECT MAX(event_date) FROM test_dates);
+SELECT d.id, dayofyear(d.event_date) AS year_day FROM test_dates d WHERE d.ip_address IS NOT NULL AND EXISTS (SELECT 1 FROM test_dates WHERE dayofyear(event_date) = d.year_day);
+CREATE TEMPORARY TABLE temp_dates AS SELECT * FROM test_dates WHERE event_date IS NOT NULL;

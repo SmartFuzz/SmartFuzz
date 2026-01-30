@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/61489",
+  "title": "cannot simplify predicate in the LogicalSelection's Cond",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n```\nCREATE TABLE `t1` ( `a` char(3) NOT NULL default '', `b` char(3) NOT NULL default '', `c` char(3) NOT NULL default '', PRIMARY KEY  (`a`,`b`,`c`)) ENGINE=InnoDB;\nCREATE TABLE t2 LIKE t1;\nINSERT INTO t1 VALUES (1,1,1);\nINSERT INTO t2 VALUES (1,1,1);\nSELECT t1.b, count(*) FROM t1 group by t1.b having\ncount(*) > ALL (SELECT COUNT(*) FROM t2 WHERE t2.a=1 GROUP By t2.b)\n```\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\n\n```\n|   ├─Selection_50(Build)          | 0.80     | root      |               | or(if(ne(Column#13, 0), NULL, 1), eq(Column#14, 0))\n```\n### 3. What did you see instead (Required)\n\n```\n|   ├─Selection_50(Build)          | 0.80     | root      |               | or(if(ne(Column#13, 0), NULL, 1), or(eq(Column#14, 0), 0))\n```\n\n```or(eq(Column#14, 0), 0))``` => \"eq(Column#14, 0)\"\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n2bd14176d4aa185f2b6f88cb506b4b8cc754a18d",
+  "date": "2025-06-04T07:16:50Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t3 ( x INTEGER NOT NULL, y TEXT DEFAULT NULL, z DATE NOT NULL, PRIMARY KEY (x, y));",
+    "CREATE TABLE t4 ( m REAL NOT NULL, n TEXT NOT NULL, o DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (m));",
+    "INSERT INTO t3 VALUES (1, 'abc', '2023-01-01');",
+    "INSERT INTO t4 VALUES (1.5, 'sample text');",
+    "SELECT t3.y, COUNT(*) FROM t3 WHERE t3.x > 0 GROUP BY t3.y HAVING COUNT(*) > (SELECT MAX(COUNT(*)) FROM t4 WHERE t4.m < 2 GROUP BY t4.n);"
+  ],
+  "key_bug_features": [
+    "cannot simplify predicate in LogicalSelection's Cond"
+  ]
+}

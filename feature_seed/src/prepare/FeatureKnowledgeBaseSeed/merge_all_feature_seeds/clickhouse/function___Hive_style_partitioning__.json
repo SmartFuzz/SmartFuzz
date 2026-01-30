@@ -1,0 +1,12 @@
+SET use_hive_partitioning = 1;
+CREATE TABLE events (_date Date, _country String, _code Int32) ENGINE = MergeTree() PARTITION BY _date ORDER BY _date;
+INSERT INTO events (_date, _country, _code) VALUES ('2020-01-02', 'Netherlands', 42);
+INSERT INTO events (_date, _country, _code) VALUES ('2021-01-03', 'Germany', 10);
+INSERT INTO events (_date, _country, _code) VALUES ('2021-05-05', 'Netherlands', 42);
+SELECT * FROM url('http://data/path/date=*/country=*/code=*/*.parquet') WHERE _date > '2020-01-01' AND _country = 'Netherlands' AND _code = 42;
+SELECT COUNT(*) FROM url('http://data/path/date=*/country=*/code=*/*.parquet') WHERE _country = 'Germany';
+SELECT DISTINCT _code FROM url('http://data/path/date=*/country=*/code=*/*.parquet') WHERE _date = '2021-05-05' AND _country = 'Netherlands';
+SELECT AVG(_code) FROM url('http://data/path/date=*/country=*/code=*/*.parquet') WHERE _date >= '2020-01-01';
+SELECT _country, COUNT(*) FROM url('http://data/path/date=*/country=*/code=*/*.parquet') WHERE _date BETWEEN '2020-01-01' AND '2021-01-01' GROUP BY _country;
+SELECT e1._country, e1._code FROM url('http://data/path/date=*/country=*/code=*/*.parquet') AS e1 JOIN url('http://data/path/date=*/country=*/code=*/*.parquet') AS e2 ON e1._country = e2._country WHERE e1._code != e2._code;
+WITH (SELECT AVG(_code) AS avg_code FROM url('http://data/path/date=*/country=*/code=*/*.parquet') WHERE _date < '2021-01-01') AS subquery SELECT _country FROM url('http://data/path/date=*/country=*/code=*/*.parquet') WHERE _code > subquery.avg_code;

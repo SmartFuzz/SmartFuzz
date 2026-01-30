@@ -1,0 +1,18 @@
+CREATE TABLE demo_srv (id INT PRIMARY KEY, name VARCHAR(100));
+CREATE TABLE demo_publication (id INT PRIMARY KEY, details VARCHAR(255));
+CREATE USER repl_user IDENTIFIED BY 'repl_passwd';
+GRANT SELECT, INSERT ON demo_srv TO repl_user;
+GRANT SELECT, INSERT ON demo_publication TO repl_user;
+INSERT INTO demo_srv VALUES (1, 'Server A');
+INSERT INTO demo_publication VALUES (1, 'Publication A');
+SELECT * FROM demo_srv WHERE id = (SELECT MIN(id) FROM demo_srv);
+SELECT * FROM demo_publication WHERE id IN (SELECT id FROM demo_publication WHERE details LIKE 'Publication%');
+WITH synced_data AS (SELECT s.id, s.name FROM demo_srv s JOIN demo_publication p ON s.id = p.id) SELECT * FROM synced_data;
+SELECT COUNT(*) FROM demo_srv WHERE EXISTS (SELECT 1 FROM demo_publication p WHERE p.id = demo_srv.id);
+CREATE VIEW active_sync AS SELECT id, name FROM demo_srv WHERE id IN (SELECT id FROM demo_publication);
+SELECT * FROM active_sync;
+DELETE FROM demo_publication WHERE id NOT IN (SELECT id FROM demo_srv);
+EXEC repl_sync('demo-srv', 'demo-publication', 'repl_user', 'repl_passwd');
+EXEC repl_sync('demo-srv', 'demo-publication', 'wrong_user', 'wrong_pass');
+EXEC repl_sync('demo-srv', 'wrong-publication', 'repl_user', 'repl_passwd');
+EXEC repl_sync('demo-srv', 'demo-publication', 'repl_user', NULL);

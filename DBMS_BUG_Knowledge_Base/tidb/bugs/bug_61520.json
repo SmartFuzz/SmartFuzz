@@ -1,0 +1,33 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/61520",
+  "title": "WITH ROLLUP:  Can't find a proper physical plan for this query",
+  "vulnerable_database": "tidb",
+  "date": "2025-06-05T07:48:58Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n```\ndrop table t1_test;\nCREATE TABLE t1_test (\n    id INT AUTO_INCREMENT,\n    c2 INT DEFAULT 100,\n    c3 VARCHAR(5) NOT NULL,\n    PRIMARY KEY(id)\n);\nSELECT SUM(c2), COUNT(DISTINCT c3), COUNT(*)\nFROM t1_test\nGROUP BY c2, c3\nWITH ROLLUP;\n```\n\n### 2. What did you expect to see? (Required)\nresults from mysql\n```\nMySQL [fuzztest]> CREATE TABLE t1_test (\n    ->     id INT AUTO_INCREMENT,\n    ->     c2 INT DEFAULT 100,\n    ->     c3 VARCHAR(5) NOT NULL,\n    ->     PRIMARY KEY(id)\n    -> );\nQuery OK, 0 rows affected (0.00 sec)\n\nMySQL [fuzztest]> SELECT SUM(c2), COUNT(DISTINCT c3), COUNT(*)\n    -> FROM t1_test\n    -> GROUP BY c2, c3\n    -> WITH ROLLUP;\nEmpty set (0.00 sec)\n\n```\n\n### 3. What did you see instead (Required)\nresult from tidb\n```\nMySQL [test1]> SELECT SUM(c2), COUNT(DISTINCT c3), COUNT(*)\n    -> FROM t1_test\n    -> GROUP BY c2, c3\n    -> WITH ROLLUP;\nERROR 1815 (HY000): Internal : Can't find a proper physical plan for this query\n\n```\n\n### 4. What is your TiDB version? (Required)\n\n```\nMySQL [test1]> select tidb_version();\n+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| tidb_version()                                                                                                                                                                                                                                |\n+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| Release Version: v7.5.6\nEdition: Community\nGit Commit Hash: 1ad553d6de2cb0c9b2f3cfdb760aaae109b2c466\nGit Branch: HEAD\nUTC Build Time: 2025-03-12 10:49:51\nGoVersion: go1.21.13\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv |\n+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n1 row in set (0.00 sec)\n\n```\n\n",
+  "poc": [
+    "drop table t1_test;",
+    "CREATE TABLE t1_test (",
+    "    id INT AUTO_INCREMENT,",
+    "    c2 INT DEFAULT 100,",
+    "    c3 VARCHAR(5) NOT NULL,",
+    "    PRIMARY KEY(id)",
+    ");",
+    "SELECT SUM(c2), COUNT(DISTINCT c3), COUNT(*)",
+    "FROM t1_test",
+    "GROUP BY c2, c3",
+    "WITH ROLLUP;"
+  ],
+  "poc_type": "sql_text",
+  "state": "closed",
+  "key_bug_features": [
+    "GROUP BY with ROLLUP on empty table"
+  ],
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t2_test;",
+    "CREATE TABLE t2_test (id INT AUTO_INCREMENT, c2 INT DEFAULT 100, c3 VARCHAR(10) NOT NULL, c4 DATE, PRIMARY KEY(id));",
+    "INSERT INTO t2_test (c2, c3, c4) VALUES (NULL, 'A', '2023-01-01'), (NULL, 'B', NULL);",
+    "SELECT SUM(c2), COUNT(DISTINCT c3), COUNT(*) FROM t2_test GROUP BY c2, c3 WITH ROLLUP;",
+    "SELECT SUM(c2), COUNT(DISTINCT c3), COUNT(*) FROM t2_test WHERE c4 IS NULL GROUP BY c2 WITH ROLLUP;"
+  ]
+}

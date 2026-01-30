@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/212",
+  "title": "Union with multiple binds fails in SPARQL compiler",
+  "description": "PREFIX rdfs:<http://www.w3.org/2000/01/rdf-schema#>\nPREFIX taxon:<http://purl.uniprot.org/taxonomy/>\nSELECT ?input ?isPlant ?isMamal ?isVirus\nFROM <http://purl.uniprot.org/taxonomy/>\nWHERE\n{\n  VALUES (?input) {(taxon:9606) (taxon:8333)} #etc...\n  {\n    ?input rdfs:subClassOf+ taxon:33090 . #viridiplanae\n    BIND(true AS ?isPlant)\n  } UNION {\n    ?input rdfs:subClassOf+ taxon:40674 . #mamalia\n    BIND(true AS ?isMamal)\n  } UNION {\n    ?input rdfs:subClassOf+ taxon:10239 . #viruses\n    BIND(true AS ?isVirus)\n  }\n}\n\nSQ074: Line 19: SP031: SPARQL compiler: Internal error: sparp_gp_attach_filter_cbk(): attempt to attach a filter with used variable\nThe query without the unions is ok\nPREFIX rdfs:<http://www.w3.org/2000/01/rdf-schema#>\nPREFIX taxon:<http://purl.uniprot.org/taxonomy/>\nSELECT ?input ?isPlant ?isMamal ?isVirus\nFROM <http://purl.uniprot.org/taxonomy/>\nWHERE\n{\n  VALUES (?input) {(taxon:9606) (taxon:8333)} #etc...\n  {\n    ?input rdfs:subClassOf+ taxon:33090 . #viridiplanae\n    BIND(true AS ?isPlant)\n  }\n}\n\nError can be reproduced on the LOD instance.",
+  "date": "2014-07-04 08:15:48",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE taxon_data (id INTEGER PRIMARY KEY, name TEXT, classification TEXT, is_plant INTEGER, is_mamal INTEGER, is_virus INTEGER);",
+    "INSERT INTO taxon_data (id, name, classification, is_plant, is_mamal, is_virus) VALUES (9606, 'Homo sapiens', 'taxon:33090', NULL, NULL, NULL);",
+    "INSERT INTO taxon_data (id, name, classification, is_plant, is_mamal, is_virus) VALUES (8333, 'Saccharomyces cerevisiae', 'taxon:40674', NULL, NULL, NULL);",
+    "UPDATE taxon_data SET is_plant = 1 WHERE classification = 'taxon:33090';",
+    "SELECT id, name, is_plant, is_mamal, is_virus FROM taxon_data WHERE is_plant IS NOT NULL OR is_mamal IS NOT NULL OR is_virus IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Union with multiple binds in SPARQL query"
+  ]
+}

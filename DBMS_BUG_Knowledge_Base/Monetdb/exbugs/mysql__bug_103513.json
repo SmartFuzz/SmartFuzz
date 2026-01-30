@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=103513",
+  "title": "Generated columns inconsistency",
+  "description": "After update from 8.0.23 to 8.0.24 got inconsistent behavior on my queries to a production DB. The same query have returned different results between calls and sometimes only between different db connections.\r\n\r\nBelow is the short reproducible test case. On 8.0.23 everything is Ok. On 8.0.24 can be race conditions, but in my test case it's always the same.\r\n\r\nThe insert() version of generated column fails on 8.0.24. The concat() version does as it should. Of course on my production DB I used the insert() version.\r\n\r\nI could not reproduce this case until have inserted NULL in MACint column.\nHow to repeat:\nCREATE SCHEMA `new_schema` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;\r\n\r\nuse `new_schema`;\r\n\r\nCREATE TABLE `test` (\r\n  `testID` int NOT NULL AUTO_INCREMENT,\r\n  `MACint` bigint unsigned DEFAULT NULL,\r\n  `MACstr` char(12) GENERATED ALWAYS AS (lpad(convert(hex(`MACint`) using utf8mb4),12,_utf8mb4'0')) VIRTUAL,\r\n  `MACcolon` char(17) GENERATED ALWAYS AS (insert(insert(insert(insert(insert(`MACstr`,11,0,_utf8mb4':'),9,0,_utf8mb4':'),7,0,_utf8mb4':'),5,0,_utf8mb4':'),3,0,_utf8mb4':')) VIRTUAL,\r\n  `MACcolon1` char(17) GENERATED ALWAYS AS (concat(substr(`MACstr`,1,2),_utf8mb4':',substr(`MACstr`,3,2),_utf8mb4':',substr(`MACstr`,5,2),_utf8mb4':',substr(`MACstr`,7,2),_utf8mb4':',substr(`MACstr`,9,2),_utf8mb4':',substr(`MACstr`,11,2))) VIRTUAL,\r\n  PRIMARY KEY (`testID`)\r\n) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\r\n\r\nINSERT INTO test (`MACint`) VALUES (10), (15), (564685488), (684756486), (688686985), (NULL), (34);\r\n\r\nselect * from test where MACcolon = '00:00:29:0C:87:89'; #NULLS\r\n\r\nselect * from test where MACcolon1 = '00:00:29:0C:87:89'; #ROW with MACcolon NULL\r\n\r\nselect * from test; #MACcolon nulls, sometimes not in all rows",
+  "date": "2021-04-28 06:51:00",
+  "vulnerable_version": "8.0.24",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test2 (id INT NOT NULL, value VARCHAR(255) DEFAULT NULL, generated_value VARCHAR(255) AS (concat('Value: ', value)), PRIMARY KEY (id));",
+    "INSERT INTO test2 (value) VALUES (NULL), ('test1'), ('test2');",
+    "SELECT * FROM test2 WHERE generated_value IS NULL;",
+    "CREATE TABLE test3 (id INT NOT NULL, num INT DEFAULT NULL, double_value DOUBLE AS (num * 2), PRIMARY KEY (id));",
+    "INSERT INTO test3 (num) VALUES (NULL), (10), (20);"
+  ],
+  "key_bug_features": [
+    "Inconsistent results with generated columns after version update"
+  ]
+}

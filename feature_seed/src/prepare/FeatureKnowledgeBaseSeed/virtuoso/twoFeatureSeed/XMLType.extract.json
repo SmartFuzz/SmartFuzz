@@ -1,0 +1,18 @@
+{
+    "function": "XMLType.extract",
+    "operator": "XPath Operator: xpath_string",
+    "sql_array": [
+        "CREATE TABLE TEST_XMLS (I INTEGER PRIMARY KEY, XMLVAL XMLType, DESCRIPTION VARCHAR(255));",
+        "INSERT INTO TEST_XMLS VALUES (1, XMLType('<emp><empno>221</empno><ename>John</ename></emp>'), 'Employee record');",
+        "INSERT INTO TEST_XMLS VALUES (2, XMLType('<po><pono>331</pono><poname>PO_1</poname></po>'), 'Purchase Order');",
+        "INSERT INTO TEST_XMLS VALUES (3, XMLType('<oil-rig xml:id=\"14a_01\" water=\"0.413\"/><oil-rig xml:id=\"14b_01\" water=\"0.402\"/>'), 'Oil Rig Record');",
+        "SELECT e.I, e.DESCRIPTION, XMLType.extract(e.XMLVAL, '//ename').getClobVal() AS ENAME, xpath_string('/po/poname', e.XMLVAL) AS PONAME FROM TEST_XMLS e WHERE e.XMLVAL.existsNode('/emp/empno') AND xpath_string('/po/pono', e.XMLVAL) IS NOT NULL;",
+        "SELECT e.I, e.DESCRIPTION, COUNT(*) OVER (PARTITION BY XMLType.extract(e.XMLVAL, '//ename').getClobVal()) AS NAME_COUNT FROM TEST_XMLS e GROUP BY e.I, e.DESCRIPTION, XMLType.extract(e.XMLVAL, '//ename').getClobVal();",
+        "CREATE TABLE TEST_NULLS (ID INT PRIMARY KEY, XMLVALUE XMLType);",
+        "INSERT INTO TEST_NULLS VALUES (1, NULL), (2, XMLType('<no_value/>'));",
+        "SELECT ID, XMLType.extract(XMLVALUE, '//no_value').getClobVal() AS VALUE_EXISTS FROM TEST_NULLS WHERE XMLVALUE IS NULL OR xpath_string('//no_value', XMLVALUE) IS NULL;",
+        "SELECT COUNT(*) AS NULL_COUNT FROM TEST_NULLS WHERE XMLVALUE IS NULL GROUP BY ID HAVING COUNT(*) > 0;",
+        "SELECT e.I, e.DESCRIPTION, XMLType.extract(e.XMLVAL, '//empno') AS EMPNO FROM TEST_XMLS e JOIN TEST_NULLS n ON e.I = n.ID WHERE n.XMLVALUE IS NULL;",
+        "SELECT e.I, e.DESCRIPTION, XMLType.extract(e.XMLVAL, '//empno') AS EMPNO FROM TEST_XMLS e LEFT JOIN TEST_NULLS n ON e.I = n.ID WHERE XMLType.extract(e.XMLVAL, '//ename') IS NOT NULL AND (n.XMLVALUE IS NULL OR n.XMLVALUE = XMLType('<no_value/>'));"
+    ]
+}

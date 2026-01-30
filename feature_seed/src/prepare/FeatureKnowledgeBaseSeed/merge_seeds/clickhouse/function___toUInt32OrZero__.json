@@ -1,0 +1,13 @@
+CREATE TABLE test_values (value String);
+INSERT INTO test_values VALUES ('32'), ('abc'), ('-1'), ('4294967296'), ('3.14'), ('-3.14'), ('0xc0fe'), ('18446744073709551616'), ('NaN'), ('Inf');
+SELECT toUInt32OrZero(value) FROM test_values;
+SELECT COUNT(*) AS zero_count FROM (SELECT toUInt32OrZero(value) AS converted_value FROM test_values) WHERE converted_value = 0;
+SELECT value, toUInt32OrZero(value) AS converted_value FROM test_values WHERE value NOT LIKE '%[^0-9]%' ORDER BY converted_value ASC;
+WITH (SELECT toUInt32OrZero(value) AS converted_value FROM test_values) AS conversion_results SELECT AVG(converted_value) FROM conversion_results;
+SELECT a.value AS original, b.converted_value FROM test_values AS a JOIN (SELECT value, toUInt32OrZero(value) AS converted_value FROM test_values) AS b ON a.value = b.value;
+SELECT toUInt32OrZero(toString(x)) FROM (SELECT number AS x FROM system.numbers LIMIT 10);
+WITH '5', '0c' AS mixed_values SELECT toUInt32OrZero(mixed_values) FROM (SELECT '5' AS value UNION ALL SELECT '0c') AS sub_query;
+SELECT toUInt32OrZero('123') AS valid_num, toUInt32OrZero('abc') AS invalid_num, toUInt32OrZero('-50') AS negative_num, toUInt32OrZero('3.14') AS float_string;
+CREATE TABLE complexity_test (id UInt32, input String);
+INSERT INTO complexity_test VALUES (1, '12'), (2, 'abc'), (3, '4294967295'), (4, '256'), (5, `-256`);
+SELECT input, toUInt32OrZero(input) FROM complexity_test WHERE id <= 3;

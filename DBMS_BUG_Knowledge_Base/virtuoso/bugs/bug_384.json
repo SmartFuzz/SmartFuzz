@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/384",
+  "title": "SPARQL temporal functions break on non-temporal args",
+  "vulnerable_database": "Virtuoso",
+  "date": "2015-04-28 09:19:13",
+  "vulnerable_version": "",
+  "description": "The following query fails with Virtuoso 22007 Error DT001: Function year needs a datetime, date or time as argument 1, not an arg of type IRI_ID (243) on the http://dbpedia.org/sparql endpoint (Virtuoso 7.20).\nprefix dbo: <http://dbpedia.org/ontology/>\nprefix dbp: <http://dbpedia.org/property/>\n\nselect ?p ?d (year(?d) as ?y){\n\n   ?ap a dbo:Person; dbp:birthDate ?d\n\n} limit 100\n\nThe dbp:birthDate predicate contains both xsd:date values and IRI references and guarding against non-temporal values is neither straightforward nor efficient.\nSame behaviour for all temporal functions (SPARQL 1.1 Query Language § 17.4.5), which would be expected to raise an error, i.e. to return an unbound value, if the argument is not a temporal value.",
+  "poc": [
+    "prefix dbo: <http://dbpedia.org/ontology/>\nprefix dbp: <http://dbpedia.org/property/>\n\nselect ?p ?d (year(?d) as ?y){\n\n   ?ap a dbo:Person; dbp:birthDate ?d\n\n} limit 100"
+  ],
+  "key_bug_features": [
+    "SPARQL functions fail with non-temporal argument types"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE dbo_Person (id INT PRIMARY KEY, name VARCHAR(100), birthDate DATETIME, birthPlace IRI_ID);",
+    "INSERT INTO dbo_Person (id, name, birthDate, birthPlace) VALUES (1, 'Alice', '1980-01-01', <http://dbpedia.org/resource/Place1>);",
+    "INSERT INTO dbo_Person (id, name, birthDate, birthPlace) VALUES (2, 'Bob', NULL, <http://dbpedia.org/resource/Place2>);",
+    "SELECT name, birthDate, (year(birthDate) AS birthYear) FROM dbo_Person WHERE birthDate IS NOT NULL;",
+    "SELECT name, birthPlace FROM dbo_Person WHERE birthPlace = <http://dbpedia.org/resource/Place1> OR birthDate IS NULL;"
+  ]
+}

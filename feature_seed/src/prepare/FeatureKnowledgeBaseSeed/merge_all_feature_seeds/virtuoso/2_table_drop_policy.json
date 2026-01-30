@@ -1,0 +1,13 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, value VARCHAR(255), policy_function VARCHAR(255));
+INSERT INTO test_table (id, value, policy_function) VALUES (1, 'test_value', 'sample_policy');
+SELECT table_drop_policy(bif:crc64(CONCAT(value, 'extra_string')), id) FROM test_table WHERE id < 10 AND value IS NOT NULL;
+SELECT DISTINCT id, table_drop_policy(bif:crc64(value), id) FROM test_table WHERE value LIKE '%test%' GROUP BY value HAVING COUNT(*) > 1;
+SELECT id, bif:crc64(value) AS hash_value FROM test_table WHERE id IN (SELECT id FROM test_table WHERE value IS NOT NULL) ORDER BY hash_value DESC;
+SELECT table_drop_policy(bif:crc64(NULLIF(value, '')), id) FROM test_table WHERE value IS NOT NULL OR id = 1;
+INSERT INTO test_table (id, value, policy_function) VALUES (2, '', 'another_policy');
+CREATE TABLE test_table2 (ref_id INT REFERENCES test_table(id), ref_value DECIMAL(10, 2));
+INSERT INTO test_table2 (ref_id, ref_value) VALUES (1, 999.99), (1, NULL);
+SELECT id, table_drop_policy(bif:crc64(COALESCE(value, 'default')), id) AS pol_value FROM test_table JOIN test_table2 ON test_table.id = test_table2.ref_id WHERE ref_value IS NULL;
+UPDATE test_table2 SET ref_value = NULL WHERE ref_id = (SELECT id FROM test_table ORDER BY id LIMIT 1);
+SELECT bif:crc64(CAST(value AS VARCHAR(10))) AS type_casted_hash FROM test_table WHERE value IS NOT NULL;
+SELECT table_drop_policy(bif:crc64(value || 'plus'), id) FROM test_table WHERE LENGTH(value) < 5 OR id = (SELECT MAX(id) FROM test_table);

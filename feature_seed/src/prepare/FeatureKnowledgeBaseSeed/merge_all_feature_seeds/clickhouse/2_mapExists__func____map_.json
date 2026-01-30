@@ -1,0 +1,12 @@
+CREATE TABLE test_map_exists (id UInt32, data Map(String, Int32));
+INSERT INTO test_map_exists VALUES (1, map('k1', 1, 'k2', 2)), (2, map('k3', 0, 'k4', null)), (3, map('k5', 1, 'k6', 3));
+SELECT EXISTS(SELECT * FROM test_map_exists WHERE mapExists((k, v) -> (v > 0), data)) AS exists_positive;
+SELECT count(*) FROM test_map_exists WHERE EXISTS(SELECT 1 FROM test_map_exists t2 WHERE t2.id = test_map_exists.id AND mapExists((k, v) -> (v IS NOT NULL), t2.data));
+SELECT id, data, mapExists((k, v) -> (v = 2), data) AS contains_two FROM test_map_exists GROUP BY id, data HAVING contains_two = 1;
+SELECT id FROM test_map_exists WHERE data = map('k1', 0, 'k2', 2) OR EXISTS(SELECT * FROM test_map_exists WHERE mapExists((k, v) -> (v IS NULL OR k = 'k3'), data));
+CREATE TABLE test_join (join_id UInt32, join_data Map(String, Int32));
+INSERT INTO test_join VALUES (1, map('k1', 1, 'k2', 2)), (2, map('k3', 1, 'k4', 1));
+SELECT t1.id, t1.data FROM test_map_exists t1 JOIN test_join t2 ON mapExists((k, v) -> (v = 1), t1.data) AND mapExists((k, v) -> (v = 1), t2.join_data) WHERE EXISTS(SELECT 1 FROM numbers(10) WHERE number < 5);
+SELECT EXISTS(SELECT * FROM (SELECT mapExists((k, v) -> (v >= 0), data) AS map_check FROM test_map_exists) WHERE map_check = 1);
+DROP TABLE test_map_exists;
+DROP TABLE test_join;

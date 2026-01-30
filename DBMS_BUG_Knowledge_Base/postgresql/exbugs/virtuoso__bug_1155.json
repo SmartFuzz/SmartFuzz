@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/1155",
+  "title": "Federated SELECT with nesting leads to write permission error",
+  "description": "This query gives an error, where no writing should occur:\nPREFIX rdfs:   <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\nPREFIX dcat:   <http://www.w3.org/ns/dcat#>\nPREFIX dct:    <http://purl.org/dc/terms/>\nPREFIX dcv: <https://dataid.dbpedia.org/databus-cv#>\nPREFIX databus: <https://dataid.dbpedia.org/databus#>\nSELECT DISTINCT * WHERE\n{\n    SERVICE <https://databus.dbpedia.org/sparql>\n    {\n        ?distribution databus:file ?file .\n        {\n            SELECT ?version {\n                ?ds databus:group <https://databus.dbpedia.org/dbpedia/mappings> .\n                ?ds dct:hasVersion ?version .\n            }\n        }\n    }\n}\n\nError:\nVirtuoso RDF02 Error SR619: SPARUL LOAD SERVICE DATA access denied: database user 107 (SPARQL) has no write permission on graph https://databus.dbpedia.org/sparql\nHowever, omitting the ?distribution databus:file ?file . in the above query makes it work.\nI am using the docker image pkleef/virtuoso-opensource-7:latest which includes the fix for #571",
+  "date": "2023-08-16 12:02:38",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id SERIAL PRIMARY KEY, name VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table (id, name) VALUES (1, 'Test Name');",
+    "SELECT * FROM test_table WHERE id = (SELECT MAX(id) FROM test_table);",
+    "UPDATE test_table SET name = NULL WHERE id = 1;",
+    "SELECT COUNT(*) FROM test_table WHERE name IS NULL;"
+  ],
+  "key_bug_features": [
+    "Nesting in federated SELECT causes write permission error"
+  ]
+}

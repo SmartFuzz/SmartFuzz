@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/247",
+  "title": "Possible bug with the SPARQL 1.1 Update implementation in VOS 7.1",
+  "description": "Hi,\nI think I found a bug with the SPARQL 1.1 Update implementation in VOS 7.1.\nThe problem appears to be that if an object has a datatype xsd:int then it doesn't get deleted by a WITH... DELETE query.\nHere are the sparql queries you can use in iSQL that will replicate the issue:\nsparql clear graph <http://test.com/tests/>;\n\nsparql\ninsert data\n{\n  graph <http://test.com/tests/> {\n    <http://foo.com/datasets/tests/foo> <http://purl.org/ontology/wsf#product_in_inventory> \"9\"^^<http://www.w3.org/2001/XMLSchema#int> .\n  }\n};\n\nsparql\nselect *\nfrom <http://test.com/tests/>\nwhere\n{\n  ?s ?p ?o .\n};\n\nsparql\nwith <http://test.com/tests/>\ndelete\n{\n  <http://foo.com/datasets/tests/foo> <http://purl.org/ontology/wsf#product_in_inventory> ?o .\n}\nwhere\n{\n  <http://foo.com/datasets/tests/foo> <http://purl.org/ontology/wsf#product_in_inventory> ?o .\n};\n\nsparql\nselect *\nfrom <http://test.com/tests/>\nwhere\n{\n  ?s ?p ?o .\n};\n\nAs you can see, the triple is still there when we run the last SPARQL query. If we don't mention any datatype (or if you mention xsd:string, or xsd:dateTime, or whatever) it gets deleted:\nsparql clear graph <http://test.com/tests/>;\n\nsparql\ninsert data\n{\n  graph <http://test.com/tests/> {\n    <http://foo.com/datasets/tests/foo> <http://purl.org/ontology/wsf#product_in_inventory> \"9\" .\n  }\n};\n\nsparql\nselect *\nfrom <http://test.com/tests/>\nwhere\n{\n  ?s ?p ?o .\n};\n\nsparql\nwith <http://test.com/tests/>\ndelete\n{\n  <http://foo.com/datasets/tests/foo> <http://purl.org/ontology/wsf#product_in_inventory> ?o .\n}\nwhere\n{\n  <http://foo.com/datasets/tests/foo> <http://purl.org/ontology/wsf#product_in_inventory> ?o .\n};\n\nsparql\nselect *\nfrom <http://test.com/tests/>\nwhere\n{\n  ?s ?p ?o .\n};\n\nQuestion one: if there a work around that would work the same way but with another syntax that doesn't trigger the bug?\nAlso note that the same query (but using delete from) SPARQL query was working as expected with VOS 6.x.\nThanks\nFred",
+  "date": "2014-10-15 17:34:32",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INTEGER PRIMARY KEY, value INTEGER NOT NULL);",
+    "INSERT INTO test_table (id, value) VALUES (1, 9);",
+    "DELETE FROM test_table WHERE value = 9;",
+    "SELECT * FROM test_table WHERE value IS NOT NULL;",
+    "INSERT INTO test_table (id, value) VALUES (2, NULL);"
+  ],
+  "key_bug_features": [
+    "Deletion fails for xsd:int in WITH... DELETE queries"
+  ]
+}

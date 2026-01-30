@@ -1,0 +1,16 @@
+CREATE TABLE env_vars (var_name VARCHAR, var_value VARCHAR);
+INSERT INTO env_vars VALUES ('HOME', getenv('HOME'));
+INSERT INTO env_vars VALUES ('PATH', getenv('PATH'));
+INSERT INTO env_vars VALUES ('USER', getenv('USER'));
+SELECT var_value FROM env_vars WHERE var_name = 'HOME';
+SELECT var_value FROM env_vars WHERE var_name IN (SELECT var_name FROM env_vars WHERE var_value IS NOT NULL);
+CREATE TABLE env_check (var_name VARCHAR, var_value VARCHAR);
+INSERT INTO env_check SELECT var_name, getenv(var_name) FROM env_vars;
+SELECT ec.var_name, ec.var_value FROM env_check ec JOIN env_vars ev ON ec.var_name = ev.var_name WHERE ec.var_value IS NOT NULL;
+WITH env AS (SELECT var_name, getenv(var_name) AS value FROM env_vars) SELECT * FROM env WHERE value IS NOT NULL;
+DROP TABLE IF EXISTS temp_vars;
+CREATE TABLE temp_vars AS SELECT var_name, getenv(var_name) AS value FROM env_vars;
+SELECT COUNT(*) FROM temp_vars WHERE value IS NULL;
+SELECT ev.var_name, ev.var_value FROM env_vars ev LEFT JOIN temp_vars tv ON ev.var_name = tv.var_name WHERE tv.var_name IS NULL;
+CREATE TABLE combined AS SELECT ev.var_name, ev.var_value FROM env_vars ev UNION SELECT ec.var_name, ec.var_value FROM env_check ec;
+SELECT var_name, COUNT(*) FROM combined GROUP BY var_name HAVING COUNT(*) > 1;

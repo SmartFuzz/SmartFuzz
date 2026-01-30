@@ -1,0 +1,27 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/50393",
+  "title": "Join between blob type with matching returns incorrect result.",
+  "vulnerable_database": "tidb",
+  "date": "2024-01-12T14:59:52Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```sql\r\ncreate table t2(a blob);\r\ncreate table t3(a blob);\r\ninsert into t2 values(0xC2A0);\r\ninsert into t3 values(0xC2);\r\nselect * from t2,t3 where t2.a like concat(\"%\",t3.a,\"%\");\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nReturns one row, as MySQL(8.0.33) does.\r\n\r\n```sql\r\nmysql> select * from t2,t3 where t2.a like concat(\"%\",t3.a,\"%\");\r\n+------------+------------+\r\n| a          | a          |\r\n+------------+------------+\r\n| 0xC2A0     | 0xC2       |\r\n+------------+------------+\r\n1 row in set (0.01 sec)\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nReturns empty set.\r\n\r\n```sql\r\n> select * from t2,t3 where t2.a like concat(\"%\",t3.a,\"%\");\r\nEmpty set (0.00 sec)\r\n```\r\n\r\nIt looks weird since in the case below, TiDB works well.\r\n```sql\r\ncreate table t2(a blob);\r\ncreate table t3(a blob);\r\ninsert into t2 values(0xC2A020);\r\ninsert into t3 values(0xC2A0);\r\nselect * from t2,t3 where t2.a like concat(\"%\",t3.a,\"%\");\r\n```\r\n\r\nIn this case, TiDB returns one row:\r\n```sql\r\n> select * from t2,t3 where t2.a like concat(\"%\",t3.a,\"%\");\r\n+------+------+\r\n| a    | a    |\r\n+------+------+\r\n|      |      |\r\n+------+------+\r\n1 row in set (0.00 sec)\r\n```\r\n\r\nwhich is similar with MySQL.(The difference in display is reported in #50392).\r\n\r\n```sql\r\nmysql> select * from t2,t3 where t2.a like concat(\"%\",t3.a,\"%\");\r\n+------------+------------+\r\n| a          | a          |\r\n+------------+------------+\r\n| 0xC2A020   | 0xC2A0     |\r\n+------------+------------+\r\n1 row in set (0.02 sec)\r\n```\r\n\r\nThe charsets of TiDB and MySQL are the same(utf8mb4).\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n```sql\r\n>  SELECT tidb_version();\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| tidb_version()\r\n\r\n       |\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| Release Version: v7.4.0\r\nEdition: Community\r\nGit Commit Hash: 38cb4f3312be9199a983c0ef282d2ea2e28a7824\r\nGit Branch: heads/refs/tags/v7.4.0\r\nUTC Build Time: 2023-10-10 14:18:50\r\nGoVersion: go1.21.1\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv |\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n1 row in set (0.00 sec)\r\n```\r\n",
+  "poc": [
+    "create table t2(a blob);",
+    "create table t3(a blob);",
+    "insert into t2 values(0xC2A0);",
+    "insert into t3 values(0xC2);",
+    "select * from t2,t3 where t2.a like concat(\"%\",t3.a,\"%\");"
+  ],
+  "poc_type": "sql_text",
+  "state": "closed",
+  "key_bug_features": [
+    "Join between blob types using LIKE operator"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t4(a BLOB NOT NULL, b INT);",
+    "CREATE TABLE t5(a BLOB, c VARCHAR(255));",
+    "INSERT INTO t4 VALUES(0xC2A0, 1);",
+    "INSERT INTO t5 VALUES(0xC2, 'test');",
+    "SELECT * FROM t4, t5 WHERE t4.a LIKE CONCAT('%', t5.a, '%');"
+  ]
+}

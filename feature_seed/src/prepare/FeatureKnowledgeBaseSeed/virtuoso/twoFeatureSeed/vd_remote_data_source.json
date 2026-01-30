@@ -1,0 +1,17 @@
+{
+    "function": "vd_remote_data_source",
+    "operator": "bif:st_overlaps",
+    "sql_array": [
+        "CREATE TABLE remote_test (id INT PRIMARY KEY, data GEOMETRY, user VARCHAR(255), created_at TIMESTAMP);",
+        "INSERT INTO remote_test (id, data, user, created_at) VALUES (1, ST_GeomFromText('POINT(1 1)'), 'user1', NOW()), (2, ST_GeomFromText('POINT(2 2)'), 'user2', NOW()), (3, NULL, 'user3', NOW());",
+        "SELECT id FROM remote_test WHERE user = (SELECT user FROM remote_test WHERE ST_Overlaps(data, ST_GeomFromText('POLYGON((0 0, 3 0, 3 3, 0 3, 0 0))')) LIMIT 1);",
+        "SELECT id, user, ST_Overlaps(data, ST_GeomFromText('POLYGON((0 0, 5 0, 5 5, 0 5, 0 0))')) AS overlaps FROM remote_test WHERE created_at IS NOT NULL AND user IS NOT NULL ORDER BY overlaps DESC;",
+        "CREATE TABLE remote_data_sources (dsn VARCHAR(255) PRIMARY KEY, connstr TEXT, user VARCHAR(255), password VARCHAR(255));",
+        "INSERT INTO remote_data_sources (dsn, connstr, user, password) VALUES ('DSN1', '', 'remote_user1', 'pass1'), ('DSN2', '', 'remote_user2', 'pass2');",
+        "SELECT rds.dsn FROM remote_data_sources rds WHERE EXISTS (SELECT 1 FROM remote_test rt WHERE rt.user = rds.user AND ST_Overlaps(rt.data, ST_GeomFromText('POINT(1 1)')));",
+        "SELECT vd_remote_data_source(dsn, '', user, password) AS remote_info FROM remote_data_sources WHERE dsn IS NOT NULL AND dsn <> '' ORDER BY user;",
+        "CREATE TEMPORARY TABLE temp_remote_data AS SELECT rds.*, remote_info FROM remote_data_sources rds JOIN (SELECT vd_remote_data_source(dsn, '', user, password) AS remote_info FROM remote_data_sources) AS sub ON rds.user = sub.user;",
+        "SELECT data FROM remote_test rt WHERE id IN (SELECT id FROM temp_remote_data tr WHERE ST_Overlaps(rt.data, ST_GeomFromText('LINESTRING(0 0, 2 2)')));",
+        "SELECT COUNT(*) AS overlap_count FROM remote_test WHERE ST_Overlaps(data, ST_GeomFromText('POINT(2 3)')) AND created_at >= NOW() - INTERVAL '1 day';"
+    ]
+}

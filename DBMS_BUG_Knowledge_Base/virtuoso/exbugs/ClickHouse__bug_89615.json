@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/89615",
+  "title": "Index `set` acts on `rand` function",
+  "description": "### Company or project name\nN/A\n### Describe what's wrong\n```sql\nCREATE TABLE set_idx_rand\n(\ns String,\nINDEX s s TYPE set(0) GRANULARITY 1\n)\nENGINE=MergeTree\nORDER BY tuple();\nINSERT INTO set_idx_rand SELECT * FROM generateRandom('s String') LIMIT 10;\nexplain indexes=1 WITH rand()%1000==1 AS sampled SELECT * FROM set_idx_rand WHERE sampled SETTINGS use_skip_indexes=1;\nexplain indexes=1 WITH rand()%1000==1 AS sampled SELECT * FROM set_idx_rand WHERE sampled SETTINGS use_skip_indexes=0;\n```\nhttps://fiddle.clickhouse.com/da159abf-83a6-4ee9-a85b-dfa97b4c1793\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nRepro ^\n### Expected behavior\nIndex `set` should not be used when condition atom contains `rand` function\n### Error message and/or stacktrace\n_No response_\n### Additional context\n_No response_",
+  "date": "2025-11-06T07:57:17Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE set_idx_rand_v2 (id INTEGER, s VARCHAR(255), d TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO set_idx_rand_v2 SELECT number, CAST(number % 10 AS VARCHAR(255)) FROM (SELECT ROW_NUMBER() OVER () AS number FROM (VALUES (1),(2),(3),(4),(5),(6),(7),(8),(9),(10),(11),(12),(13),(14),(15),(16),(17),(18),(19),(20),(21),(22),(23),(24),(25),(26),(27),(28),(29),(30),(31),(32),(33),(34),(35),(36),(37),(38),(39),(40),(41),(42),(43),(44),(45),(46),(47),(48),(49),(50),(51),(52),(53),(54),(55),(56),(57),(58),(59),(60),(61),(62),(63),(64),(65),(66),(67),(68),(69),(70),(71),(72),(73),(74),(75),(76),(77),(78),(79),(80),(81),(82),(83),(84),(85),(86),(87),(88),(89),(90),(91),(92),(93),(94),(95),(96),(97),(98),(99),(100)) AS t(number));",
+    "SELECT * FROM set_idx_rand_v2 WHERE (RAND() % 1000) = 1;",
+    "SELECT * FROM set_idx_rand_v2 WHERE d IS NULL OR d > CURRENT_TIMESTAMP - INTERVAL '1 DAY';",
+    "SELECT COUNT(*) FROM set_idx_rand_v2 WHERE s IN (SELECT s FROM set_idx_rand_v2 WHERE id < 50) AND (RAND() % 1000) = 1;"
+  ],
+  "key_bug_features": [
+    "Index `set` used with `rand` function condition"
+  ]
+}

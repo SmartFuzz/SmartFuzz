@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/44984",
+  "title": "execute select for update SQL with partition table panic",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```\r\ncreate table t(a int, b int, index k(b)) PARTITION BY HASH(a) partitions 4;\r\ninsert into t(a, b) values (1,1),(2,2),(3,3),(4,4),(5,5),(6,6),(7,7),(8,8);\r\nanalyze table t;\r\nselect b from t use index(k) where b > 2 order by b limit 10 for update;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nnot panic, return result\r\n\r\n### 3. What did you see instead (Required)\r\n```\r\nmysql> select b from t use index(k) where b > 2 order by b limit 10 for update;\r\nERROR 1105 (HY000): runtime error: index out of range [2] with length 2\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n```\r\nmysql> select tidb_version();\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| tidb_version()                                                                                                                                                                                                                                                             |\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| Release Version: v7.3.0-alpha\r\nEdition: Community\r\nGit Commit Hash: 90c05ae4c648e55a150123e99b1f4164e3472047\r\nGit Branch: heads/refs/tags/v7.3.0-alpha\r\nUTC Build Time: 2023-06-26 14:26:39\r\nGoVersion: go1.20.5\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv |\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n1 row in set (0.00 sec)\r\n```\r\n",
+  "date": "2023-06-27T08:28:14Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1(a INT, b VARCHAR(10), c DATE);",
+    "INSERT INTO t1(a, b, c) VALUES (1, 'one', '2023-01-01'), (2, 'two', '2023-01-02'), (3, 'three', '2023-01-03'), (4, 'four', '2023-01-04');",
+    "CREATE TABLE t2(d INT, e FLOAT, f INT);",
+    "INSERT INTO t2(d, e, f) VALUES (1, 1.1, 1), (2, 2.2, 2), (3, 3.3, 3);",
+    "SELECT e FROM t2 JOIN t1 ON t2.f = t1.a WHERE t1.b IS NOT NULL ORDER BY e LIMIT 5;"
+  ],
+  "key_bug_features": [
+    "select for update on partitioned table with index"
+  ]
+}

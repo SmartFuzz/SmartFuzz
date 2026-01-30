@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14144",
+  "title": "quantile_disc behaviour not matching the docs",
+  "description": "### What happens?\n\nFor a simple dataset of 6 numbers (1000, 2000, ..., 6000) of type int32, duckdb v1.1.1 reports the 0.7 quantile to be 5000, whereas the docs say it should be `the floor(pos * (n_nonnull_values - 1))th (zero-indexed) element`, in this case it's `floor(0.7 * (6 - 1))`, which is 3, so it should return 3rd 0-indexed element, which is 4000. The same goes for 0.9 quantile (reported 6000 instead of 5000), so my guess is that it incorrectly rounds the position (using `round` instead of `floor`).\n\n### To Reproduce\n\n```\r\ncreate table kek(sales integer);\r\ninsert into kek (sales) values (1000), (2000), (3000), (4000), (5000), (6000);\r\nselect quantile_disc(sales, 0.7) from kek;\r\nselect quantile_disc(sales, 0.9) from kek;\r\n```\n\n### OS:\n\nmacOS aarch64\n\n### DuckDB Version:\n\nv1.1.1\n\n### DuckDB Client:\n\ncli\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nRoman Nikitin\n\n### Affiliation:\n\nPinely\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a stable release\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [X] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [X] Yes, I have",
+  "date": "2024-09-27 07:48:49",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE sales_data(sales INT, category VARCHAR(20), date DATE);",
+    "INSERT INTO sales_data (sales, category, date) VALUES (1000, 'A', '2023-01-01'), (2000, 'B', '2023-01-02'), (3000, 'A', '2023-01-03'), (4000, 'C', '2023-01-04'), (5000, 'B', '2023-01-05'), (6000, 'C', '2023-01-06');",
+    "SELECT sales FROM sales_data ORDER BY sales LIMIT 1 OFFSET FLOOR(0.5 * (SELECT COUNT(*) FROM sales_data) - 1);",
+    "SELECT sales FROM sales_data ORDER BY sales LIMIT 1 OFFSET FLOOR(0.75 * (SELECT COUNT(*) FROM sales_data) - 1);",
+    "SELECT sales FROM sales_data WHERE category = 'A' ORDER BY sales LIMIT 1 OFFSET FLOOR(0.1 * (SELECT COUNT(*) FROM sales_data WHERE category = 'A') - 1);"
+  ],
+  "key_bug_features": [
+    "quantile_disc incorrectly rounds position using round instead of floor"
+  ]
+}

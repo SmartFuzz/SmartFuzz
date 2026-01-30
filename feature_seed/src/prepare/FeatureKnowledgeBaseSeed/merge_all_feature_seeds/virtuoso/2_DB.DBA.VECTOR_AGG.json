@@ -1,0 +1,9 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, value VARCHAR(255), number DECIMAL(10, 2), created_at TIMESTAMP, nullable_col VARCHAR(255));
+INSERT INTO test_table (id, value, number, created_at, nullable_col) VALUES (1, 'alpha', 10.50, '2023-01-01 12:00:00', NULL), (2, 'bravo', 23.75, '2023-01-02 14:00:00', 'test'), (3, NULL, 99.99, '2023-01-03 15:30:00', 'data'), (4, 'charlie', NULL, NULL, NULL);
+SELECT DB.DBA.VECTOR_AGG(subquery.value), bif:md5(subquery.value) FROM (SELECT value FROM test_table ORDER BY value) as subquery GROUP BY subquery.value HAVING COUNT(*) > 1;
+SELECT DB.DBA.VECTOR_AGG(bif:md5(CONCAT(NVL(subquery.value, 'default'), '_', CAST(subquery.number AS VARCHAR))) ) FROM (SELECT value, number FROM test_table WHERE number IS NOT NULL ORDER BY number) as subquery;
+SELECT DB.DBA.VECTOR_AGG(bif:md5(subquery.value)) FROM (SELECT value FROM test_table WHERE id IN (SELECT id FROM test_table WHERE created_at < '2023-01-03') ORDER BY created_at) as subquery GROUP BY subquery.value CROSS JOIN (SELECT MAX(number) AS max_number FROM test_table WHERE number IS NOT NULL) AS max_sub;
+SELECT DB.DBA.VECTOR_AGG(subquery.value) FROM (SELECT DISTINCT COALESCE(value, 'N/A') AS value FROM test_table WHERE number IS NULL ORDER BY created_at) as subquery;
+CREATE TEMPORARY TABLE temp_table AS SELECT id, CASE WHEN number IS NOT NULL THEN number * 2 ELSE NULL END AS doubled_number FROM test_table WHERE value IS NOT NULL;
+SELECT DB.DBA.VECTOR_AGG(bif:md5(CAST(subquery.doubled_number AS VARCHAR))) FROM (SELECT doubled_number FROM temp_table ORDER BY doubled_number) as subquery GROUP BY subquery.doubled_number HAVING COUNT(*) < 3;
+SELECT DB.DBA.VECTOR_AGG(bif:md5(subquery.value)) FROM (SELECT value, COALESCE(number, 0) AS number FROM test_table) as subquery GROUP BY subquery.number ORDER BY subquery.number DESC;

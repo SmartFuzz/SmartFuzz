@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id SERIAL PRIMARY KEY, event_time TIMESTAMP, event_uuid UUID, description TEXT);
+INSERT INTO test_table (event_time, event_uuid, description) VALUES (timestamp '2021-01-01 00:00:00', uuid 'f47ac10b-58cc-4372-a567-0e02b2c3d479', 'First event');
+INSERT INTO test_table (event_time, event_uuid, description) VALUES (timestamp '2021-01-01 01:00:00', uuid 'e68c3340-c1f4-4eae-b408-bc4531825a47', 'Second event');
+INSERT INTO test_table (event_time, event_uuid, description) VALUES (timestamp '2021-01-01 02:00:00', uuid '9b7b4e91-c5d5-4440-bf4e-d69b4cab78cd', 'Third event');
+SELECT event_uuid, timestampdiff_sec(event_time, (SELECT MAX(event_time) FROM test_table WHERE event_uuid = uuid 'f47ac10b-58cc-4372-a567-0e02b2c3d479')) AS time_diff FROM test_table WHERE event_uuid IS NOT NULL;
+SELECT COUNT(*), timestampdiff_sec(timestamp '2021-01-01 00:00:00', event_time) AS time_diff FROM test_table GROUP BY event_uuid HAVING time_diff > 0;
+SELECT *, timestampdiff_sec(timestamp '2021-01-01 02:00:00', (SELECT MIN(event_time) FROM test_table WHERE event_uuid = uuid 'e68c3340-c1f4-4eae-b408-bc4531825a47')) AS sec_diff FROM test_table WHERE event_uuid = uuid 'e68c3340-c1f4-4eae-b408-bc4531825a47' ORDER BY sec_diff;
+WITH temp AS (SELECT event_time, event_uuid FROM test_table WHERE event_time IS NOT NULL) SELECT event_uuid, timestampdiff_sec((SELECT MIN(event_time) FROM temp), event_time) AS sec_diff FROM temp HAVING sec_diff < 3600;
+CREATE TABLE edge_case_table (id SERIAL PRIMARY KEY, time_col TIMESTAMP NULL, uuid_col UUID);
+INSERT INTO edge_case_table (time_col, uuid_col) VALUES (NULL, uuid '3b814ca5-786a-4655-b2dc-6e1db59c8db9'), (timestamp '2020-02-29 12:00:00', uuid 'f35fa344-9dcd-4617-83f7-cd886aa5e6c3');
+SELECT timestampdiff_sec(time_col, timestamp '2020-03-01 12:00:00') AS leap_year_diff FROM edge_case_table WHERE uuid_col IS NULL;

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/184",
+  "title": "Virtuoso 7.1 regression for SPARQL VALUES",
+  "description": "Virtuoso 7.1 has a regression bug for SPARQL VALUES, because doesn't correctly bind more than 1 variable, when more than 1 row of VALUES is given. The following 2 queries work fine:\nSELECT ?a\nWHERE {\n  VALUES ?a {\n         \"a\"\n         \"b\"\n  }\n}\n\nSELECT ?a ?b\nWHERE {\n  VALUES (?a ?b) {\n         (\"a\" \"ABC\")\n  }\n}\n\nHowever, when more than 1 variable and more than 1 row is given in the VALUES clause, Virtuoso produces empty bindings for the second (and further) variable(s):\nSELECT ?a ?b\nWHERE {\n  VALUES (?a ?b) {\n         (\"a\" \"ABC\")\n         (\"b\" \"DEF\")\n  }\n}\n\nWhat's unexpected is that Virtuoso reports the second (and further) variable(s) as bound:\nSELECT ?a (BOUND(?b) AS ?bound) # ?bound is projected as true\nWHERE {\n  VALUES (?a ?b) {\n         (\"a\" \"ABC\")\n         (\"b\" \"DEF\")\n  }\n}\n\nNevertheless, the query doesn't project the values of the (allegedly) bound variables into the query results.\nThe previous version of Virtuoso (7.0) didn't have this issue, so I presume this is an regression bug, which could be avoided if test suite like the one for SPARQL 1.1 was employed.\nNote: tested with Virtuoso version 07.10.3207 on Linux (x86_64-pc-linux-gnu), Single Server Edition. Virtuoso that runs on DBpedia also suffers from the same regression.",
+  "date": "2014-05-28 21:16:39",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE test_values (id INT PRIMARY KEY, name VARCHAR(50), value VARCHAR(50));",
+    "INSERT INTO test_values (id, name, value) VALUES (1, 'a', 'ABC'), (2, 'b', 'DEF');",
+    "SELECT name, value FROM test_values WHERE id IN (SELECT id FROM test_values WHERE name = 'a');",
+    "SELECT name, COALESCE(value, 'NULL') AS value_status FROM test_values;",
+    "SELECT name, (CASE WHEN value IS NOT NULL THEN TRUE ELSE FALSE END) AS bound FROM test_values WHERE id = 2;"
+  ],
+  "key_bug_features": [
+    "Incorrect binding of multiple variables in SPARQL VALUES"
+  ]
+}

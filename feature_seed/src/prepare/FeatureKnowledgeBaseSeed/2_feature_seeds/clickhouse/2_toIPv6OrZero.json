@@ -1,0 +1,12 @@
+CREATE TABLE ip_test (id UInt32, ip_string String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO ip_test VALUES (1, '2001:0db8:85a3:0000:0000:8a2e:0370:7334'), (2, '127.0.0.1.6'), (3, '::1'), (4, 'invalid_IP'), (5, '::'), (6, '2001:db8::ff00:42:8329');
+SELECT id, toIPv6OrZero(ip_string) AS ipv6_address, ip_string / 2 AS divided_value FROM ip_test WHERE toIPv6OrZero(ip_string) != '::';
+SELECT id, COUNT(*) AS count_valid_ips FROM (SELECT id, toIPv6OrZero(ip_string) AS ipv6_address FROM ip_test GROUP BY id HAVING ipv6_address != '::') AS valid_ips;
+WITH (SELECT AVG(toIPv6OrZero(ip_string) / 1.0) AS avg_ip FROM ip_test WHERE toIPv6OrZero(ip_string) != '::') AS avg_comp SELECT id, ip_string, toIPv6OrZero(ip_string) / avg_ip AS normalized_value FROM ip_test;
+SELECT DISTINCT a.id, toIPv6OrZero(a.ip_string) AS ipv6_address_a, b.ip_string AS ipv4_string_b FROM ip_test AS a JOIN ip_test AS b ON a.id <> b.id WHERE a.ip_string != b.ip_string;
+SELECT id, toIPv6OrZero(ip_string) AS ipv6_address FROM ip_test WHERE toIPv6OrZero(ip_string) IS NOT NULL HAVING ipv6_address != '::' AND ipv6_address / 1.0 < 4000;
+WITH (SELECT COUNT(*) AS invalid_count FROM ip_test WHERE toIPv6OrZero(ip_string) = '::') AS invalid_ips SELECT id, ip_string, toIPv6OrZero(ip_string) AS ipv6_address, (invalid_count / (SELECT COUNT(*) FROM ip_test)) AS invalid_ratio FROM ip_test;
+CREATE TABLE ip_summary AS SELECT COUNT(*), toIPv6OrZero(ip_string) AS ipv6_address, ip_string / 2 AS divided_value FROM ip_test GROUP BY ipv6_address;
+ALTER TABLE ip_test ADD COLUMN is_valid UInt8 DEFAULT 0;
+UPDATE ip_test SET is_valid = CASE WHEN toIPv6OrZero(ip_string) != '::' THEN 1 ELSE 0 END;
+SELECT id, ip_string, CASE WHEN toIPv6OrZero(ip_string) != '::' THEN 'Valid' ELSE 'Invalid' END AS ip_status FROM ip_test WHERE ip_string != '';

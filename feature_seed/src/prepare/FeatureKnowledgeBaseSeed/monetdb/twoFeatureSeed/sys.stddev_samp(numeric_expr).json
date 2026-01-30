@@ -1,0 +1,16 @@
+{
+    "function": "sys.stddev_samp(numeric_expr)",
+    "operator": "E'string with backslash escapes'",
+    "sql_array": [
+        "CREATE TABLE test_table (id INT PRIMARY KEY, val NUMERIC(10,5), str_text TEXT);",
+        "INSERT INTO test_table (id, val, str_text) VALUES (1, 5.0, e'Hello\\tWorld'), (2, 10.5, e'Sample\\nText'), (3, NULL, e'Data\\bWith\\fEscapes');",
+        "SELECT id, sys.stddev_samp(val) as stddev_value FROM test_table WHERE str_text LIKE e'%World%' GROUP BY id HAVING sys.stddev_samp(val) > 0;",
+        "SELECT id, sys.stddev_samp(CASE WHEN val IS NOT NULL THEN val ELSE 0 END) as stddev_value FROM test_table GROUP BY id HAVING stddev_value < 7;",
+        "SELECT id, (SELECT sys.stddev_samp(val) FROM test_table AS sub WHERE sub.id = main.id) as sub_stddev FROM test_table AS main WHERE str_text IS NOT NULL;",
+        "CREATE TABLE another_table (ref_id INT, additional_val NUMERIC(10,5), constraint fk_ref FOREIGN KEY(ref_id) REFERENCES test_table(id));",
+        "INSERT INTO another_table (ref_id, additional_val) VALUES (1, 3.5), (2, NULL);",
+        "SELECT a.ref_id, sys.stddev_samp(a.additional_val) as stddev_additional FROM another_table a JOIN test_table t ON a.ref_id = t.id GROUP BY a.ref_id HAVING stddev_additional IS NOT NULL;",
+        "SELECT id, (SELECT COUNT(*) FROM another_table a WHERE a.ref_id = t.id AND a.additional_val IS NOT NULL) as count_not_null FROM test_table t WHERE count_not_null > 0;",
+        "SELECT e'Example\\nData', sys.stddev_samp(CAST(val AS DOUBLE PRECISION)) as stddev_value FROM test_table WHERE str_text LIKE e'%Data%' GROUP BY str_text HAVING count(str_text) > 1;"
+    ]
+}

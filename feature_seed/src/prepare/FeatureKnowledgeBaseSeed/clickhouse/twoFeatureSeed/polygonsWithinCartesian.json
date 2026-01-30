@@ -1,0 +1,19 @@
+{
+    "function": "polygonsWithinCartesian",
+    "operator": "EXTRACT",
+    "sql_array": [
+        "CREATE TABLE test_polygons (id UInt32, shape Polygon, created_at DateTime DEFAULT now());",
+        "INSERT INTO test_polygons VALUES (1, [[[(0, 0), (0, 5), (5, 5), (5, 0), (0, 0)]]], toDateTime('2023-10-10 12:00:00'));",
+        "INSERT INTO test_polygons VALUES (2, [[[(1, 1), (1, 3), (3, 3), (3, 1), (1, 1)]]], toDateTime('2023-10-11 12:00:00'));",
+        "SELECT id, polygonsWithinCartesian(shape, [[[(2, 2), (2, 3), (3, 3), (3, 2)]]]) AS is_contained FROM test_polygons WHERE is_contained;",
+        "SELECT id, EXTRACT(YEAR FROM created_at) AS year_created FROM test_polygons WHERE EXTRACT(DAY FROM created_at) = 10;",
+        "SELECT id, shape, polygonsWithinCartesian(shape, [[[(0, 0), (0, 6), (6, 6), (6, 0), (0, 0)]]]) AS is_within FROM test_polygons HAVING is_within = 1;",
+        "SELECT MAX(EXTRACT(MONTH FROM created_at)) AS max_month FROM test_polygons;",
+        "CREATE TABLE test_dates (id UInt32, event_date Date);",
+        "INSERT INTO test_dates VALUES (1, toDate('2023-01-01'));",
+        "INSERT INTO test_dates VALUES (2, toDate('2023-10-01'));",
+        "SELECT d.id, extract(MONTH FROM d.event_date) AS event_month, EXTRACT(YEAR FROM d.event_date) AS event_year FROM test_dates d JOIN test_polygons p ON polygonsWithinCartesian(p.shape, [[[(0, 0), (0, 6), (6, 6), (6, 0), (0, 0)]]]) WHERE event_month = 10;",
+        "SELECT d.id, EXTRACT(DAY FROM p.created_at) AS day_created FROM test_polygons p LEFT JOIN test_dates d ON d.id = p.id WHERE d.event_date IS NOT NULL;",
+        "SELECT d.id, COUNT(*) AS contained_shapes FROM test_dates d LEFT JOIN test_polygons p ON polygonsWithinCartesian(p.shape, [[[(0, 0), (0, 10), (10, 10), (10, 0), (0, 0)]]]) GROUP BY d.id HAVING contained_shapes > 0;"
+    ]
+}

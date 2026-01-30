@@ -1,0 +1,5 @@
+DROP TABLE IF EXISTS agg_test;
+CREATE TABLE agg_test (id UInt32, accepted_at DateTime64(3), delivery_report_at AggregateFunction(argMax, String, DateTime64(3))) ENGINE = AggregatingMergeTree() ORDER BY id;
+INSERT INTO agg_test SELECT number AS id, toDateTime64('2025-09-24 00:00:00', 3) + number AS accepted_at, argMaxState(toString(number), toDateTime64('2025-09-24 00:00:00', 3) + number) AS delivery_report_at FROM numbers(100) GROUP BY id, accepted_at;
+SELECT id, finalizeAggregation(delivery_report_at) AS delivered_at FROM agg_test ORDER BY accepted_at ASC LIMIT 5;
+SELECT id, finalizeAggregation(delivery_report_at) AS delivered_at FROM agg_test ORDER BY accepted_at DESC LIMIT 10 OFFSET 5;

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/19552",
+  "title": "FILE_SIZE_BYTES for Parquet doesn't work properly in parallel",
+  "description": "### What happens?\n\nWhen running a command like `COPY 'big_parquet.parquet' TO 'output.parquet' (FILE_SIZE_BYTES '16MB')` duckdb doesn't properly split the output into the target size, instead the output will look like the following:\n\n```\n-rw-rw-r-- 1 user user  37M Oct 30 10:46 data_1.parquet\n-rw-rw-r-- 1 user user 813M Oct 30 10:46 data_0.parquet\n-rw-rw-r-- 1 user user  347 Oct 30 10:46 data_3.parquet\n-rw-rw-r-- 1 user user  26M Oct 30 10:46 data_2.parquet\n```\n\nNote that there is one 813MB file (data_0) way over the limit size And another file which contains no actual content (data_3)\n\nI've narrowed this issue's cause to between 1.2.2 and 1.3.0 I think it is likely related to these changes: https://github.com/duckdb/duckdb/pull/16928\n\nThis causes annoying metadata overhead, particularly annoying when the data is remote with the 0 row file, but at the same time it doesn't actually split the files, which prevents other optimizations\n\nHighly related to: https://github.com/duckdb/ducklake/issues/525\n\n### To Reproduce\n\n1. Dataset generation:\n```sql\nCOPY (\n      WITH n AS (\n          SELECT 4230875 AS nrows\n      )\n      SELECT\n          abs(random() * 1000000000000)::UBIGINT AS col1,\n          TIMESTAMP '2020-01-01' + INTERVAL (random() * 3650) DAY AS col2,\n          (random() * 100000)::UINTEGER AS col3,\n          TIMESTAMP '2020-01-01' + INTERVAL (random() * 3650) DAY AS col4,\n          md5(random()::VARCHAR) AS col5,\n          md5(random()::VARCHAR) AS col6,\n          random() AS col7,\n          random() AS col8,\n          random() AS col9,\n          random() AS col10,\n          random() AS col11,\n          random() AS col12,\n          random() AS col13,\n          random() AS col14,\n          random() AS col15,\n          random() AS col16,\n          random() AS col17,\n          random() AS col18,\n          random() AS col19,\n          md5(random()::VARCHAR) AS col20\n      FROM range((SELECT nrows FROM n))\n  )\n  TO 'combined_synthetic.parquet' (FORMAT PARQUET);\n```\nNote that this issue only occurs when copying from a parquet file, if we were to put the file size bytes restriction on generating 'combined_synthetic.parquet' it properly splits, there is a relationship with parallism, explicitly setting the number of threads to 1 eliminates the issue, and leads to much more uniform file sizes and no empty files\n\n2. Copy the data\n```sql\nCOPY 'combined_synthetic.parquet' TO 'output.parquet' (FILE_SIZE_BYTES '16MB');\n```\n3. Inspect the output directory\n\n### OS:\n\nLinux x86_64\n\n### DuckDB Version:\n\n1.3.0 through 1.5.0\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nJulian Meyers\n\n### Affiliation:\n\nIndependent\n\n### Did you include all relevant configuration (e.g., CPU architecture, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes",
+  "date": "2025-10-30 06:48:57",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_data (id INTEGER PRIMARY KEY, value VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_data (id, value) VALUES (1, 'test1'), (2, 'test2'), (3, NULL), (4, 'test4');",
+    "CREATE TABLE more_data AS SELECT id, value, created_at FROM test_data WHERE value IS NOT NULL;",
+    "INSERT INTO more_data SELECT * FROM test_data WHERE value IS NOT NULL;",
+    "SELECT COUNT(*) FROM more_data WHERE created_at < '2021-01-01 00:00:00';"
+  ],
+  "key_bug_features": [
+    "FILE_SIZE_BYTES not splitting output files in parallel"
+  ]
+}

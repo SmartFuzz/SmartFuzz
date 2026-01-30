@@ -1,0 +1,13 @@
+CREATE TABLE test_table (id SERIAL PRIMARY KEY, name VARCHAR(50), score INT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO test_table (name, score) VALUES ('  test1 ', 5), ('  test2 ', NULL), ('  test3 ', 10);
+INSERT INTO test_table (name, score) VALUES ('   edge    ', 15), ('   blank  ', 20);
+SELECT id, ltrim(name) AS trimmed_name, score FROM test_table WHERE ltrim(name) >= 'test1';
+SELECT id, score, created_at FROM test_table WHERE score >= (SELECT AVG(score) FROM test_table WHERE ltrim(name) >= 'test');
+SELECT COUNT(*) FROM test_table WHERE ltrim(name) IS NOT NULL AND score >= 10;
+SELECT ltrim(name), AVG(score) FROM test_table GROUP BY ltrim(name) HAVING AVG(score) >= 15;
+SELECT id, ltrim(name) AS trimmed_name FROM test_table WHERE EXISTS (SELECT 1 FROM test_table AS t2 WHERE t2.score >= (SELECT MAX(score) FROM test_table) - 5 AND t2.id = test_table.id);
+SELECT id, name FROM test_table WHERE score IS NULL OR ltrim(name) >= '   edge    ';
+CREATE TABLE another_table (ref_id INT REFERENCES test_table(id), description TEXT);
+INSERT INTO another_table (ref_id, description) VALUES (1, 'A test description'), (2, NULL), (3, 'Another description that is significantly longer than expected.');
+SELECT t.id, t.name, a.description FROM test_table t JOIN another_table a ON ltrim(a.description) >= 'A' AND t.id = a.ref_id WHERE t.score IS NOT NULL ORDER BY ltrim(t.name) ASC;
+SELECT COUNT(*) FROM (SELECT ltrim(name) AS trimmed_name FROM test_table GROUP BY ltrim(name) HAVING COUNT(*) > 1) AS duplicate_names;

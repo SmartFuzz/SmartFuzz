@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/17398-8fb0c02a60e2e565%40postgresql.org",
+  "title": "BUG #17398: Casts from BYTEA to TEXT and FLOAT4/8 to TEXT should not be immutable",
+  "description": "The following bug has been logged on the website:\nBug reference:      17398\nLogged by:          Marcus Gartner\nEmail address:      marcus(at)cockroachlabs(dot)com\nPostgreSQL version: 14.0\nOperating system:   macOS Monterey 12.2\nDescription:\nCasts from BYTEA to TEXT should not be immutable because the result is\ndependent on the bytea_output parameter. Casts from FLOAT4 and FLOAT8 to\nTEXT should not be immutable because the result is dependent on the\nextra_float_digits parameter. Incorrect results are possible because of\nthese incorrectly labeled cast volatilities. This bug is similar to BUG\n#17371.\nExample 1: BYTEA::TEXT\nSET bytea_output = hex;\nCREATE TABLE t (b BYTEA);\nINSERT INTO t SELECT 'a' FROM generate_series(1, 10000) s(i);\nINSERT INTO t VALUES ('b');\nCREATE INDEX i ON t((b::TEXT), b);\nSET bytea_output = escape;\n-- Returns false.\nSELECT b::TEXT = '\\x62' FROM t WHERE b::TEXT = '\\x62';\nANALYZE t;\n-- Same query as above, now performing an index-only scan, returns true.\nSELECT b::TEXT = '\\x62' FROM t WHERE b::TEXT = '\\x62';\nDROP INDEX i;\n-- Same query as above returns zero rows.\nSELECT b::TEXT = '\\x62' FROM t WHERE b::TEXT = '\\x62';\nExample 2: FLOAT::TEXT\nSET extra_float_digits = 0;\nCREATE TABLE t (f FLOAT);\nINSERT INTO t SELECT 1 FROM generate_series(1, 10000) s(i);\nINSERT INTO t VALUES (123.4567890123456789);\nCREATE INDEX i ON t((f::TEXT), f);\nSET extra_float_digits = 3;\n-- Returns false.\nSELECT f::TEXT = '123.456789012346' FROM t WHERE f::TEXT =\n'123.456789012346';\nANALYZE t;\n-- Same query as above, now performing an index-only scan, returns true.\nSELECT f::TEXT = '123.456789012346' FROM t WHERE f::TEXT =\n'123.456789012346';\nDROP INDEX i;\n-- Same query as above returns zero rows.\nSELECT f::TEXT = '123.456789012346' FROM t WHERE f::TEXT =\n'123.456789012346';",
+  "date": "2022-02-07 20:40:15",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE test_bytea (data BLOB NOT NULL);",
+    "INSERT INTO test_bytea VALUES (CAST('616263' AS BLOB));",
+    "CREATE INDEX idx_bytea ON test_bytea(STR(data));",
+    "SELECT STR(data) FROM test_bytea WHERE STR(data) IS NOT NULL;",
+    "DROP INDEX idx_bytea;"
+  ],
+  "key_bug_features": [
+    "Casts from BYTEA and FLOAT to TEXT are incorrectly immutable"
+  ]
+}

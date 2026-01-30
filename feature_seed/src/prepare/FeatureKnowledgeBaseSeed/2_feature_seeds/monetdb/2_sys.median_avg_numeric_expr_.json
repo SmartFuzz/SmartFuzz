@@ -1,0 +1,12 @@
+CREATE TABLE test_data (id INT, value NUMERIC, category VARCHAR(50), created_at TIMESTAMP);
+INSERT INTO test_data (id, value, category, created_at) VALUES (1, NULL, 'A', '2023-01-01 10:00:00'), (2, 5.0, 'A', '2023-01-02 10:00:00'), (3, 15.0, 'B', '2023-01-03 10:00:00'), (4, 20.0, 'B', '2023-01-04 10:00:00'), (5, NULL, 'A', '2023-01-05 10:00:00');
+SELECT category, sys.median_avg(value) AS median_value FROM test_data GROUP BY category HAVING sys.median_avg(value) > (SELECT AVG(value) FROM test_data WHERE value IS NOT NULL);
+SELECT t1.category, sys.median_avg(t1.value) AS median_value FROM (SELECT category, value FROM test_data WHERE value > 10) AS t1 GROUP BY t1.category HAVING median_value > (SELECT AVG(value) FROM test_data WHERE category = 'B');
+WITH value_summary AS (SELECT category, sys.median_avg(value) AS median_val FROM test_data GROUP BY category) SELECT category FROM value_summary WHERE median_val > (SELECT sys.median_avg(value) FROM test_data WHERE created_at < '2023-01-03 10:00:00');
+CREATE TABLE more_data (ref_id INT, num_value DOUBLE, state VARCHAR(20), created_date DATE);
+INSERT INTO more_data (ref_id, num_value, state, created_date) VALUES (1, 10.5, 'active', '2023-01-01'), (2, NULL, 'inactive', '2023-01-02'), (3, 25.75, 'active', '2023-01-03'), (4, 30.0, 'inactive', '2023-01-04'), (5, 5.0, 'active', '2023-01-05');
+SELECT a.state, sys.median_avg(a.num_value) AS median_num FROM more_data a JOIN test_data b ON a.ref_id = b.id GROUP BY a.state HAVING sys.median_avg(a.num_value) > (SELECT MIN(value) FROM test_data WHERE value IS NOT NULL);
+SELECT state, sys.median_avg(num_value) FROM more_data WHERE num_value > 0 ORDER BY sys.median_avg(num_value) DESC LIMIT 2;
+SELECT state, sys.median_avg(NULLIF(num_value, 0)) FROM more_data GROUP BY state HAVING sys.median_avg(NULLIF(num_value, 0)) IS NOT NULL;
+CREATE TEMPORARY TABLE temp_summary AS SELECT category, sys.median_avg(value) AS mid_val FROM test_data GROUP BY category;
+SELECT mid_val FROM temp_summary WHERE mid_val < (SELECT MAX(value) FROM test_data);

@@ -1,0 +1,24 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/89940",
+  "title": "NOT_AN_AGGREGATE: GROUP BY with positional arguments in view on remote node",
+  "vulnerable_database": "ClickHouse",
+  "date": "2025-11-12T16:07:12Z",
+  "vulnerable_version": "",
+  "description": "### Describe what's wrong\nQuery returns error `is not under aggregate function and not in GROUP BY keys` when querying view containing GROUP BY with positional arguments on remote node\nWorkaround: change GROUP BY positional arguments to explicit columns\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\n```sql\nDROP TABLE IF EXISTS narrative;\nDROP TABLE IF EXISTS experiment_by_platform;\nCREATE TABLE narratives\n(\n`sector` String,\n)\nENGINE = MergeTree\nORDER BY sector;\nCREATE VIEW experiment_by_platform\n(\n`sector` String,\n)\nAS SELECT\nsector\nFROM narratives\nGROUP BY 1; -- replace it with `sector` to avoid the issue\nSELECT *\nFROM remote('127.0.0.{1,2,3}', currentDatabase(), experiment_by_platform);\n```\nhttps://fiddle.clickhouse.com/64c3a1f4-4a83-4c08-bb20-6712b35f574e\n### Expected behavior\n_No response_\n### Error message and/or stacktrace\nhttps://pastila.nl/?000a94ae/4382a2120e20b27d22f7653d0ed9678a#zN9sJa4ER7KEeKc1OtB0LA==\n### Additional context\n_No response_",
+  "poc": [
+    "DROP TABLE IF EXISTS narrative;",
+    "DROP TABLE IF EXISTS experiment_by_platform;",
+    "CREATE TABLE narratives\n(\n    `sector` String,\n)\nENGINE = MergeTree\nORDER BY sector;",
+    "CREATE VIEW experiment_by_platform\n(\n    `sector` String,\n)\nAS SELECT\n    sector\nFROM narratives\nGROUP BY 1;"
+  ],
+  "key_bug_features": [
+    "GROUP BY with positional arguments in view on remote node"
+  ],
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS test_narratives;",
+    "CREATE TABLE test_narratives (id UInt32, sector String) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO test_narratives VALUES (1, 'Technology'), (2, 'Health'), (3, 'Finance');",
+    "CREATE VIEW test_experiment AS SELECT sector FROM test_narratives GROUP BY 1;",
+    "SELECT * FROM remote('127.0.0.{1,2,3}', currentDatabase(), test_experiment);"
+  ]
+}

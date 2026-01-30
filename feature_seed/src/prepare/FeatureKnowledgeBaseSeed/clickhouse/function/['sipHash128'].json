@@ -1,0 +1,19 @@
+[
+    "CREATE TABLE test_hash (key String, value String);",
+    "INSERT INTO test_hash VALUES ('foo', '\\x01');",
+    "INSERT INTO test_hash VALUES ('bar', '\\x02');",
+    "INSERT INTO test_hash VALUES ('baz', '\\x03');",
+    "SELECT hex(sipHash128(key, value)) FROM test_hash;",
+    "SELECT hex(sipHash128(key, value)) FROM test_hash WHERE key = 'foo';",
+    "SELECT hex(sipHash128(key, '\\x01', 3)) AS hash FROM test_hash WHERE key IN (SELECT key FROM test_hash WHERE value = '\\x01');",
+    "SELECT hex(sipHash128(key, value, 1)) AS hash FROM test_hash GROUP BY key;",
+    "SELECT hex(sipHash128(key, value)) AS hash FROM (SELECT key, value FROM test_hash WHERE value LIKE '\\x%') AS subquery;",
+    "CREATE TABLE test_hash2 AS SELECT hex(sipHash128(key, value)) AS hash FROM test_hash;",
+    "SELECT hash FROM test_hash2 WHERE hash = (SELECT hex(sipHash128('foo', '\\x01')));",
+    "SELECT key FROM test_hash WHERE EXISTS (SELECT 1 FROM test_hash2 WHERE hash = hex(sipHash128(key, value)));",
+    "SELECT hex(sipHash128(CONCAT(key, '\\x01'))) AS combined_hash FROM test_hash;",
+    "CREATE TABLE test_nested (key String, value String) ENGINE = MergeTree() ORDER BY key;",
+    "INSERT INTO test_nested SELECT key, value FROM test_hash;",
+    "SELECT hex(sipHash128(n.key, n.value, 3)) FROM test_nested AS n JOIN test_hash AS t ON n.key = t.key WHERE n.value <> t.value;",
+    "SELECT count(*) FROM test_hash WHERE hex(sipHash128(key)) IS NOT NULL;"
+]

@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/17891-8d38a1fb993f6d57%40postgresql.org",
+  "title": "BUG #17891: MAIF - Strange behavior on Grants with Groups",
+  "description": "The following bug has been logged on the website:\nBug reference:      17891\nLogged by:          smartkeyerror\nEmail address:      smartkeyerror(at)gmail(dot)com\nPostgreSQL version: 15.0\nOperating system:   Ubuntu 20.04\nDescription:\nSchemas, table and view:\nI created 2 schemas:\n1 table in the 1st schema and a view in the 2nd schema (the view is a simple\nselect on the table)\nGroups:\nI created 4 groups:\nfor each schema, there is a group for owners (name started by go_) and a\ngroup for readers (name started by gr_)\nthe table in the 1st schema is owned by a group owner (dedicated for the\nschema)\nthe view in the 2nd schema is owned by the other group owner\nUser and Grants:\nI created a user sas_lect in the 2 groups for readers (gr_*)\nI gave SELECT grant on the groups for readers\nWith the user sas_lect, when I try to select the table, it works\nWhen I try to select the view, it fails: permission denied on the table\nIf I remove the group owner from the table and the view, (put back gpadmin\nas owner):\nWith the user sas_lect, when I try to select the table, it works\nWhen I try to select the view, it works\n```\ncreate user sas_lect password '123';\ncreate user sas_owner password '123';\ncreate role gr_za_ifs_data;\ncreate role go_za_ifs_data;\ncreate role gr_zp_ifs_views;\ncreate role go_zp_ifs_views;\ngrant gr_za_ifs_data to sas_lect;\ngrant gr_zp_ifs_views to sas_lect;\ngrant go_za_ifs_data to sas_owner;\ngrant go_zp_ifs_views to sas_owner;\n-- Create 2 schemas\ndrop schema if exists za_ifs_data cascade;\ncreate schema za_ifs_data;\ndrop schema if exists zp_ifs_views cascade;\ncreate schema zp_ifs_views;\nalter schema za_ifs_data owner to go_za_ifs_data;\nalter schema zp_ifs_views owner to go_zp_ifs_views;\ngrant usage on schema za_ifs_data to gr_za_ifs_data;\ngrant usage on schema zp_ifs_views to gr_zp_ifs_views;\n-- Create 1 table in the 1st schema and 1 view on the previous table in the\n2nd schema\ndrop table if exists za_ifs_data.t1 cascade;\ncreate table za_ifs_data.t1 (a int);\ninsert into za_ifs_data.t1 select generate_series(1,3);\nalter table za_ifs_data.t1 owner to go_za_ifs_data;\ndrop view if exists zp_ifs_views.t1_view;\ncreate view zp_ifs_views.t1_view as select * from  za_ifs_data.t1;\nalter view zp_ifs_views.t1_view owner to go_zp_ifs_views;\n-- Give SELECT grant on the table and the view\ngrant select on table za_ifs_data.t1 to gr_za_ifs_data;\ngrant select on table zp_ifs_views.t1_view to gr_zp_ifs_views;\n-- Check the SELECT  grants\nselect *\nfrom information_schema.table_privileges priv\nwhere priv.privilege_type = 'SELECT'\nand table_schema in ('za_ifs_data','zp_ifs_views');\n\\du+ sas_lect\n\\dp+ za_ifs_data.t1;\n\\dp+ zp_ifs_views.t1_view;\n-- Check SELECT on the table and the view for the user sas_lect\nselect * from za_ifs_data.t1;\nselect * from zp_ifs_views.t1_view;\n-- Change owners of the table and the view\nalter table za_ifs_data.t1 owner to gpadmin;\nalter view zp_ifs_views.t1_view owner to gpadmin;\n-- Check SELECT on the table and the view for the user sas_lect\nselect * from za_ifs_data.t1;\nselect * from zp_ifs_views.t1_view;\n```",
+  "date": "2023-04-12 00:23:52",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE za_ifs_data.t2 (b String NOT NULL, c Date DEFAULT today());",
+    "INSERT INTO za_ifs_data.t2 (b) VALUES ('test'), (NULL), (''), (replace(repeat('a', 256), 'a', 'b'));",
+    "CREATE VIEW zp_ifs_views.t2_view AS SELECT b, c FROM za_ifs_data.t2 WHERE c IS NOT NULL;",
+    "GRANT SELECT ON zp_ifs_views.t2_view TO gr_zp_ifs_views;",
+    "SELECT * FROM zp_ifs_views.t2_view WHERE b IS NOT NULL OR b = '';"
+  ],
+  "key_bug_features": [
+    "Permission denied on view selection for user sas_lect"
+  ]
+}

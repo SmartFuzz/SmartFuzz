@@ -1,0 +1,22 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/1299",
+  "title": " How to use Sponge of Virtuoso actually? Could anybody show me a vivid example?",
+  "vulnerable_database": "Virtuoso",
+  "date": "2024-06-13 15:19:11",
+  "vulnerable_version": "",
+  "description": "In my local Virtuoso, given a graph http://localhost:8890/DAV/onlyOneTriple — for a simplest example, with only one triple and one assertion of namespace, there is the content:\n@prefix wikidata:\t<http://www.wikidata.org/entity/> .\n<https://cantusdatabase.org/chant/467250> wikidata:P136 wikidata:Q582093 .\nThen, my query codes in ISQL are:\nSPARQL\nDEFINE input:grab-all \"yes\"\nDEFINE input:grab-depth 2\nDEFINE input:grab-limit 200\n\nSELECT *\nFROM NAMED <http://localhost:8890/DAV/onlyOneTriple>\nWHERE {\n  GRAPH ?g {\n    ?s ?p ?o .\n    FILTER(STRSTARTS(STR(?o), \"http://www.wikidata.org/entity/\")) # Ensure the object is a Wikidata entity\n  }\n  SERVICE <https://query.wikidata.org/sparql> {\n    ?o ?wikidataProperty ?wikidataValue .\n  }\n};\n\n— These codes are modified with the help of GPT4 in order to grab related data from Wikidata.\nHereby, while according to the significance of sponge I understood, it can grab the external data, for example, from Wikidata; as long as there are Wikidata resources which have the same URI with the entities from http://localhost:8890/DAV/Jun (as shown in the example codes above), there must be data retrieved upon execution. However, as I executed as above, there was no data feeding back. Is there something wrong, or could somebody please illustrate with some other example codes which generates outcome?",
+  "poc": [
+    "SPARQL\nDEFINE input:grab-all \"yes\"\nDEFINE input:grab-depth 2\nDEFINE input:grab-limit 200\n\nSELECT *\nFROM NAMED <http://localhost:8890/DAV/onlyOneTriple>\nWHERE {\n  GRAPH ?g {\n    ?s ?p ?o .\n    FILTER(STRSTARTS(STR(?o), \"http://www.wikidata.org/entity/\")) # Ensure the object is a Wikidata entity\n  }\n  SERVICE <https://query.wikidata.org/sparql> {\n    ?o ?wikidataProperty ?wikidataValue .\n  }\n};",
+    "SELECT ?property ?object\nWHERE {\n  SERVICE <https://query.wikidata.org/sparql> {\n    <http://www.wikidata.org/entity/Q582093> ?property ?object .\n    # Add additional patterns or filters here if needed\n  }\n}\nLIMIT 100"
+  ],
+  "key_bug_features": [
+    "No data retrieved from Wikidata using SPARQL query"
+  ],
+  "bug_features_seed": [
+    "CREATE GRAPH <http://localhost:8890/DAV/testGraph>;",
+    "INSERT DATA { GRAPH <http://localhost:8890/DAV/testGraph> { <http://example.org/item1> <http://www.wikidata.org/prop/P136> <http://www.wikidata.org/entity/Q582093> . } };",
+    "SELECT ?s ?p ?o WHERE { GRAPH <http://localhost:8890/DAV/testGraph> { ?s ?p ?o . FILTER(STRSTARTS(STR(?o), 'http://www.wikidata.org/entity/')) } };",
+    "SELECT ?property ?object WHERE { SERVICE <https://query.wikidata.org/sparql> { <http://www.wikidata.org/entity/Q582093> ?property ?object . } } LIMIT 100;",
+    "DELETE { GRAPH <http://localhost:8890/DAV/testGraph> { <http://example.org/item1> ?p ?o . } } WHERE { GRAPH <http://localhost:8890/DAV/testGraph> { <http://example.org/item1> ?p ?o . } };"
+  ]
+}

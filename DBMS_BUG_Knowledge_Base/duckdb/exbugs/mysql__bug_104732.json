@@ -1,0 +1,19 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=104732",
+  "title": "In the case of using the role, there is a problem with the acl check of the view",
+  "description": "There is a role which have SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, FILE, REFERENCES, INDEX, ALTER, SHOW DATABASES, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, CREATE USER, EVENT, TRIGGER, CREATE TABLESPACE, CREATE ROLE, DROP ROLE, ROLE_ADMIN ON *.*, I grant this tole to a user, but the user don't have privileges to access normal view.\nHow to repeat:\n-- login with 'root'@'localhost'\r\nmysql> SET global activate_all_roles_on_login=ON;\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nmysql> create user 'user1'@'localhost' IDENTIFIED with mysql_native_password;\r\nQuery OK, 0 rows affected (0.03 sec)\r\n\r\nmysql> create role user;\r\nQuery OK, 0 rows affected (0.02 sec)\r\n\r\nmysql> GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, FILE, REFERENCES, INDEX, ALTER, SHOW DATABASES, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, CREATE USER, EVENT, TRIGGER, CREATE TABLESPACE, CREATE ROLE, DROP ROLE, ROLE_ADMIN ON *.* TO user;\r\nQuery OK, 0 rows affected (0.01 sec)\r\n\r\nmysql> grant user to 'user1'@'localhost';\r\nQuery OK, 0 rows affected (0.01 sec)\r\n\r\nmysql> flush privileges;\r\nQuery OK, 0 rows affected (0.04 sec)\r\n\r\nmysql> \\q\r\nBye\n\n-- login 'user1'@'localhost'\r\nmysql> create database db;\r\nQuery OK, 1 row affected (0.01 sec)\r\n\r\nmysql> use db;\r\nDatabase changed\r\nmysql> create table tt(id int unsigned auto_increment primary key, aa varchar(10));\r\nQuery OK, 0 rows affected (0.05 sec)\r\n\r\nmysql> create view t11 as select tt.id as id, tt.aa as aa from tt;\r\nQuery OK, 0 rows affected (0.02 sec)\r\n\r\nmysql> select * from t11;\r\nERROR 1356 (HY000): View 'db.t11' references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them",
+  "date": "2021-08-26 07:20:00",
+  "vulnerable_version": "8.0.25, 8.0.26, 8.0.28",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE DATABASE test_db;",
+    "CREATE TABLE users (id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, username VARCHAR(50) NOT NULL, email VARCHAR(100) UNIQUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "CREATE VIEW active_users AS SELECT id, username FROM users WHERE created_at > CURRENT_TIMESTAMP - INTERVAL '30 days';",
+    "SELECT * FROM active_users;"
+  ],
+  "key_bug_features": [
+    "User lacks privileges to access created view"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14601",
+  "title": "import + pivot + export creates un-importable dump ",
+  "description": "### What happens?\r\n\r\nIf you create a table from a pivot command, export the db, import it again elsewhere, do another pivot, then export again, the exported database will not be importable because of a bug in the schema.sql wherein there are multiple lines that start with `CREATE TYPE __pivot_enum_0_0 AS ENUM`\r\n\r\n### To Reproduce\r\n\r\n```py\r\n# demonstrate bug\r\nimport numpy as np\r\nimport pandas as pd\r\nimport duckdb\r\nfrom pathlib import Path\r\n\r\nTEMP_PATH0 = \"/tmp/duckdemo0\"\r\nTEMP_PATH1 = \"/tmp/duckdemo1\"\r\nN = 1000\r\ndf = pd.DataFrame({\"a\":np.random.choice([\"u\", \"v\", \"w\"], N, True),\r\n                   \"b\":np.random.choice([\"x\", \"y\", \"z\"], N, True),\r\n                   \"c\":np.random.randn(N),})\r\nconn0 = duckdb.connect(\":memory:0\")\r\n\r\nddf = conn0.from_df(df)\r\nddf.create(\"input_data\")\r\n\r\nxx = conn0.query(\"pivot input_data on a using max(c) group by b;\")\r\nxx.create(\"xx\")\r\nconn0.execute(f\"EXPORT DATABASE '{TEMP_PATH0}'  (FORMAT PARQUET);\")\r\nconn1 = duckdb.connect(\":memory:1\")\r\nconn1.execute(f\"IMPORT DATABASE '{TEMP_PATH0}';\")\r\nyy = conn1.query(\"pivot input_data on b using max(c) group by a;\")\r\nyy.create(\"yy\")\r\nconn1.execute(f\"EXPORT DATABASE '{TEMP_PATH1}'  (FORMAT PARQUET);\")\r\nwith (Path(TEMP_PATH1) / \"schema.sql\").open(\"r\") as f:\r\n    print(f.read())\r\n\r\n# CREATE TYPE __pivot_enum_0_0 AS ENUM ( 'x', 'y', 'z' );\r\n# CREATE TYPE __pivot_enum_0_0 AS ENUM ( 'u', 'v', 'w' );\r\n\r\n# CREATE TABLE input_data(a VARCHAR, b VARCHAR, c DOUBLE);\r\n# CREATE TABLE xx(b VARCHAR, u DOUBLE, v DOUBLE, w DOUBLE);\r\n# CREATE TABLE yy(a VARCHAR, x DOUBLE, y DOUBLE, z DOUBLE);\r\n\r\n# Renames the pivot type. Breaks importing even though it's never used.\r\n\r\nconn2 = duckdb.connect(\":memory:2\")\r\nconn2.execute(f\"IMPORT DATABASE '{TEMP_PATH1}';\")\r\n# Fails with message:\r\n# CatalogException: Catalog Error: Type with name \"__pivot_enum_0_0\" already exists!\r\n```\r\n\r\n### OS:\r\n\r\nUbuntu 22.04.5 LTS x86_64\r\n\r\n### DuckDB Version:\r\n\r\n1.1.1\r\n\r\n### DuckDB Client:\r\n\r\npython\r\n\r\n### Hardware:\r\n\r\n_No response_\r\n\r\n### Full Name:\r\n\r\nMichael Hankin\r\n\r\n### Affiliation:\r\n\r\nMothball Labs\r\n\r\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\r\n\r\nI have not tested with any build\r\n\r\n### Did you include all relevant data sets for reproducing the issue?\r\n\r\nYes\r\n\r\n### Did you include all code required to reproduce the issue?\r\n\r\n- [X] Yes, I have\r\n\r\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\r\n\r\n- [X] Yes, I have",
+  "date": "2024-10-28 21:29:42",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE input_data(a TEXT, b TEXT, c REAL, d INTEGER NOT NULL DEFAULT 0);",
+    "INSERT INTO input_data(a, b, c, d) VALUES ('u', 'x', 1.5, 0), ('v', 'y', 2.5, 1), ('w', 'z', NULL, 2);",
+    "CREATE TABLE xx(b TEXT, u REAL, v REAL, w REAL, e BOOLEAN DEFAULT 1);",
+    "INSERT INTO xx(b, u, v, w) SELECT b, MAX(c) AS u, MIN(c) AS v, AVG(c) AS w FROM input_data GROUP BY b;",
+    "CREATE TABLE yy(a TEXT, x REAL, y REAL, z REAL, f DATETIME DEFAULT CURRENT_TIMESTAMP);"
+  ],
+  "key_bug_features": [
+    "Multiple CREATE TYPE statements during pivot and export operations"
+  ]
+}

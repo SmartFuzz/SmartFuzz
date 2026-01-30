@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/53900",
+  "title": "Query produces different results after disabling some optimization rules",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n```sql\r\n\r\nCREATE TABLE t1(c0 SMALLINT );\r\nCREATE TABLE t4(c0 BIGINT DEFAULT 1383675574 , c2 BLOB(55) ) ;\r\n\r\nINSERT IGNORE  INTO t4 VALUES (NULL, '') ON DUPLICATE KEY UPDATE c0=t4.c2;\r\n\r\nINSERT IGNORE  INTO t4(c2) VALUES ('MZ');\r\n\r\ndelete from mysql.opt_rule_blacklist;\r\n admin reload opt_rule_blacklist;\r\nSELECT t4.c2, t4.c0 FROM  t1 NATURAL RIGHT JOIN t4 WHERE t4.c0;\r\nINSERT INTO mysql.opt_rule_blacklist VALUES(\"predicate_push_down\"),(\"column_prune\"),(\"projection_eliminate\");\r\nADMIN reload opt_rule_blacklist;\r\nSELECT t4.c2, t4.c0 FROM  t1 NATURAL RIGHT JOIN t4 WHERE t4.c0;\r\n\r\n```\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\nTwo queries produce same results.\r\n\r\n### 3. What did you see instead (Required)\r\n```sql\r\nMySQL [d0]> delete from mysql.opt_rule_blacklist;\r\nQuery OK, 0 rows affected (0.03 sec)\r\n\r\nMySQL [d0]>  admin reload opt_rule_blacklist;\r\nQuery OK, 0 rows affected (0.03 sec)\r\n\r\nMySQL [d0]> SELECT t4.c2, t4.c0 FROM  t1 NATURAL RIGHT JOIN t4 WHERE t4.c0;\r\n+------+------------+\r\n| c2   | c0         |\r\n+------+------------+\r\n| MZ   | 1383675574 |\r\n+------+------------+\r\n1 row in set (0.01 sec)\r\n\r\nMySQL [d0]> INSERT INTO mysql.opt_rule_blacklist VALUES(\"predicate_push_down\"),(\"column_prune\"),(\"projection_eliminate\");\r\nQuery OK, 3 rows affected (0.02 sec)\r\nRecords: 3  Duplicates: 0  Warnings: 0\r\n\r\nMySQL [d0]> ADMIN reload opt_rule_blacklist;\r\nQuery OK, 0 rows affected (0.04 sec)\r\n\r\nMySQL [d0]> SELECT t4.c2, t4.c0 FROM  t1 NATURAL RIGHT JOIN t4 WHERE t4.c0;\r\nEmpty set (0.00 sec)\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\nrelease version 8.0.0\r\n",
+  "date": "2024-06-09T18:23:59Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2(c1 INTEGER NOT NULL, c3 TEXT DEFAULT 'default');",
+    "CREATE TABLE t3(c4 REAL, c5 TEXT NOT NULL);",
+    "INSERT INTO t2(c1) VALUES (1), (2), (3);",
+    "INSERT INTO t3(c4, c5) VALUES (1.5, '2023-01-01'), (NULL, '2023-01-02');",
+    "SELECT t2.c1, t3.c4 FROM t2 LEFT JOIN t3 ON t2.c1 = CAST(t3.c4 AS INTEGER) WHERE t3.c5 IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Disabling optimization rules affects query results"
+  ]
+}

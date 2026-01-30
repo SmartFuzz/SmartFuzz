@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/33aa4c0de8",
+  "title": "Heap buffer overflow on SQL input",
+  "description": "drh added on 2023-03-16 20:23:50:\nThis is test3.sql from forum post d24ec63447:\n\nCREATE  TABLE  IF  NOT  EXISTS dbstat(pagetypeREAL);\nCREATE  TEMPORARY  TABLE  IF  NOT  EXISTS dbstat AS  SELECT  ALL dbstat.*, *, *, *, *, *, dbstat.*, *, *, *, *, *, *, *, *, *, *, *, *, *, '%Y-%m-%d', *, *, *, *, * FROM (dbstat AS dbstat NOT  INDEXED , sqlite_schema AS dbstat NOT  INDEXED ) GROUP  BY  FALSE  HAVING  FALSE  ORDER  BY 5e200 NULLS  FIRST;\nALTER  TABLE dbstat ADD  COLUMN pagetype CONSTRAINT constr1 GENERATED  ALWAYS  AS ( RAISE ( IGNORE )->> FALSE  OR  FALSE );\nSELECT * FROM dbstat;\ndrh added on 2023-03-17 00:44:22:\nUnable to recreate the problem using ASAN or Valgrind.  Possible an\ninstrumentation error on the part of the original reporter.  The\nreported instrumentation puts the problem in the CLI, not the core SQLite\nlibrary, on the main input buffer.  A few extra bytes of space are now\nadded on the end of that buffer as a safety margin.\ndrh added on 2023-03-19 23:38:49:\nReopened\nThe problem is that the sqlite3_error_offset() routine is returning a valid\nthat is out-of-range for its input.  Two errors:  First, the\nsqlite3_error_offset() is returning an out-of-range value.  Second, the\nCLI code that uses sqlite3_error_offset() is failing to properly deal with the\nout-of-range return value.\nReproducible test case (run under valgrind):\n\nCREATE TABLE t1 AS SELECT *,*,*,*,*,*,* FROM sqlite_schema;\nALTER TABLE t1 ADD path GENERATED ALWAYS AS (no_such_function(1));\nSELECT * FROM t1;",
+  "date": "2023-03-16 20:23:502.40 years ago",
+  "vulnerable_version": "3.41.1",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE test1 (id UInt32, value String, created_at DateTime DEFAULT now());",
+    "INSERT INTO test1 (value) VALUES ('test1'), ('test2'), (NULL), ('test4');",
+    "CREATE TABLE test2 (ref_id UInt32, amount Float64, FOREIGN KEY(ref_id) REFERENCES test1(id));",
+    "INSERT INTO test2 (ref_id, amount) VALUES (1, 100.0), (2, NULL), (3, 200.5);",
+    "SELECT t1.id, t1.value, t2.amount FROM test1 t1 LEFT JOIN test2 t2 ON t1.id = t2.ref_id WHERE t2.amount IS NOT NULL ORDER BY t1.created_at DESC;"
+  ],
+  "key_bug_features": [
+    "sqlite3_error_offset() returning out-of-range value"
+  ]
+}

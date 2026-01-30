@@ -1,0 +1,15 @@
+{
+    "function": "DB.DBA.SPARQL_REXEC_WITH_META",
+    "operator": "bif:st_overlaps",
+    "sql_array": [
+        "CREATE TABLE spatial_data (id INT PRIMARY KEY, location GEOMETRY, data_value VARCHAR(255), exec_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO spatial_data (id, location, data_value) VALUES (1, ST_MakePoint(1, 1), 'Point A'), (2, ST_MakePoint(2, 2), 'Point B'), (3, ST_MakePoint(3, 3), 'Point C');",
+        "SELECT DB.DBA.SPARQL_REXEC_WITH_META('SELECT ?s WHERE { ?s bif:st_overlaps ?o }', @metadata) FROM spatial_data WHERE bif:st_overlaps(location, ST_MakePoint(NULL, NULL)) IS TRUE;",
+        "SELECT id, location FROM spatial_data WHERE EXISTS (SELECT 1 FROM spatial_data AS inner_sd WHERE inner_sd.data_value = 'Point A' AND bif:st_overlaps(inner_sd.location, spatial_data.location) IS TRUE);",
+        "SELECT id, data_value, COUNT(*) OVER (PARTITION BY data_value) as value_count FROM spatial_data GROUP BY id, data_value HAVING COUNT(*) > 1;",
+        "SELECT DB.DBA.SPARQL_REXEC_WITH_META('SELECT ?s WHERE { ?s bif:st_overlaps (ST_MakePoint(\"foo\", 5e-324)) }', @exec_metadata) FROM spatial_data WHERE location IS NOT NULL;",
+        "CREATE TABLE temp_table AS SELECT id, location FROM spatial_data WHERE bif:st_overlaps(location, ST_MakePoint(1, 1));",
+        "SELECT COUNT(*) FROM temp_table WHERE location IS NOT NULL AND bif:st_overlaps(location, ST_MakePoint(2, 2));",
+        "DROP TABLE IF EXISTS temp_table;"
+    ]
+}

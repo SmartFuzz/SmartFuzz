@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/42963",
+  "title": "Unexpected result on two `JOIN`",
+  "description": "## Bug Report\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\nConsider the following program:\r\n\r\n```\r\nUSE test;\r\nDROP DATABASE IF EXISTS database10;\r\nCREATE DATABASE database10;\r\nUSE database10;\r\nCREATE TABLE t0(c0 INTEGER);\r\nINSERT INTO t0 VALUES (1);\r\nCREATE VIEW v0(c0) AS SELECT t0.c0 FROM t0;\r\n\r\nSELECT v0.c0 AS c0 FROM  v0 NATURAL RIGHT JOIN t0;  -- 1\r\n\r\nSELECT v0.c0 AS c0, t0.c0 AS c1 FROM  t0 LEFT  OUTER JOIN v0 ON ((NULL) IS NOT NULL) WHERE ((t0.c0)<=(1));  -- NULL | 1\r\n\r\nSELECT v0.c0 AS c0, t0.c0 AS c1 FROM  t0 LEFT  OUTER JOIN v0 ON ((NULL) IS NOT NULL) WHERE ((t0.c0)<=(SELECT v0.c0 AS c0 FROM  v0 NATURAL RIGHT JOIN t0));  -- empty\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\nThe second `SELECT` is equivalent to the third `SELECT` query, but the third `SELECT` query should have non-empty result.  I run this query with MySQL, it generates non-empty results. https://www.db-fiddle.com/f/ghC6nTdVaf5tBnCa9vFYC4/0\r\nIf I remove one of the `JOIN` in the third `SELECT` query, it will have correct results.\r\n\r\n### 3. What did you see instead (Required)\r\nThe third `SELECT` query generate empty results. \r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n```\r\n| Release Version: v7.1.0-alpha-162-gc233969b2\r\nEdition: Community\r\nGit Commit Hash: c233969b2c385b4292a7caaf16517dd8b152d7f1\r\nGit Branch: master\r\nUTC Build Time: 2023-04-11 03:01:14\r\nGoVersion: go1.20.3\r\nRace Enabled: false\r\nTiKV Min Version: 6.2.0-alpha\r\nCheck Table Before Drop: false\r\nStore: unistore |\r\n```\r\n\r\n",
+  "date": "2023-04-12T02:54:03Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1(c1 VARCHAR(10), c2 INTEGER NOT NULL);",
+    "INSERT INTO t1 VALUES ('test', 1), ('example', 2);",
+    "CREATE TABLE t2(c3 INTEGER, c4 FLOAT DEFAULT 0.0);",
+    "INSERT INTO t2 VALUES (1, NULL), (2, 3.5);",
+    "SELECT t1.c1, t2.c4 FROM t1 LEFT JOIN t2 ON t1.c2 = t2.c3 WHERE t2.c4 IS NULL OR t1.c2 < (SELECT MAX(c2) FROM t1);",
+    "SELECT t1.c1, t2.c4 FROM t1 LEFT JOIN t2 ON t1.c2 = t2.c3 WHERE t2.c4 IS NULL OR t1.c2 < (SELECT MAX(c2) FROM t1);"
+  ],
+  "key_bug_features": [
+    "Incorrect results with multiple JOINs in SELECT queries"
+  ]
+}

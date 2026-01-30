@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/56377",
+  "title": "`information_schema.tables` return wrong result",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```sql\r\nuse test;\r\ndrop table if exists caseSensitive;\r\ndrop table if exists unrelatedTable;\r\n\r\ncreate table caseSensitive (a int);\r\ncreate table unrelatedTable (a int);\r\nselect table_schema, table_name from information_schema.tables where table_schema = 'test' and table_name like '%aseSensitive';\r\nselect table_schema, table_name, tidb_pk_type from information_schema.tables where table_schema = 'test' and table_name like '%aseSensitive';\r\n```\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\n```sql\r\nmysql> select table_schema, table_name from information_schema.tables where table_schema = 'test' and table_name like '%aseSensitive';\r\n+--------------+---------------+\r\n| table_schema | table_name    |\r\n+--------------+---------------+\r\n| test         | caseSensitive |\r\n+--------------+---------------+\r\n1 row in set (0.00 sec)\r\n\r\nmysql> select table_schema, table_name, tidb_pk_type from information_schema.tables where table_schema = 'test' and table_name like '%aseSensitive';\r\n+--------------+---------------+--------------+\r\n| table_schema | table_name    | tidb_pk_type |\r\n+--------------+---------------+--------------+\r\n| test         | caseSensitive | NONCLUSTERED |\r\n+--------------+---------------+--------------+\r\n1 row in set (0.00 sec)\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n```sql\r\nmysql> select table_schema, table_name from information_schema.tables where table_schema = 'test' and table_name like '%aseSensitive';\r\n+--------------+----------------+\r\n| table_schema | table_name     |\r\n+--------------+----------------+\r\n| test         | unrelatedTable |\r\n| test         | caseSensitive  |\r\n+--------------+----------------+\r\n2 rows in set (0.00 sec)\r\n\r\nmysql> select table_schema, table_name, tidb_pk_type from information_schema.tables where table_schema = 'test' and table_name like '%aseSensitive';\r\nEmpty set (0.00 sec)\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\nb520f61d9f\r\n",
+  "date": "2024-09-27T09:08:04Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE caseSensitiveTable (id Int32, name String);",
+    "CREATE TABLE unrelatedTable (id Int32, description String);",
+    "INSERT INTO caseSensitiveTable (id, name) VALUES (1, 'TestName');",
+    "INSERT INTO unrelatedTable (id, description) VALUES (1, 'Some description');",
+    "SELECT database AS table_schema, name AS table_name FROM system.tables WHERE database = 'test' AND name LIKE '%Table';"
+  ],
+  "key_bug_features": [
+    "Incorrect results from information_schema.tables with LIKE query"
+  ]
+}

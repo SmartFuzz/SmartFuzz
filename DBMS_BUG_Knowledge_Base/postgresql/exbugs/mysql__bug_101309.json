@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=101309",
+  "title": "the partition table add AUTO_INCREMENT column can‘t incremant",
+  "description": "my mysql database Server version is  5.7.25-log MySQL Community Server (GPL).\r\nwhen I add a partition table's   AUTO_INCREMENT  column then found the column can't auto incremt.\nHow to repeat:\nsuch as :\r\n\r\ntable_schema :\r\n\r\nSQL>CREATE TABLE `test_add_auto_intable` (\r\n  `t_date` char(8) DEFAULT NULL,\r\n  `o_no` varchar(32) NOT NULL ,\r\n  `c_code` varchar(32) DEFAULT NULL\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8\r\n/*!50500 PARTITION BY RANGE  COLUMNS(t_date)\r\n(\r\n PARTITION p_20181219 VALUES LESS THAN ('20181219') ENGINE = InnoDB,       \r\n PARTITION p_20181220 VALUES LESS THAN ('20181220') ENGINE = InnoDB,       \r\n PARTITION p_20181221 VALUES LESS THAN ('20181221') ENGINE = InnoDB,       \r\n PARTITION p_20181222 VALUES LESS THAN ('20181222') ENGINE = InnoDB\r\n ...);     \r\n\r\nthen I add a parimay key with auto_incermant:\r\n\r\nSQL> ALTER TABLE test_add_auto_intable ADD id INT UNSIGNED NOT NULL AUTO_INCREMENT,ADD PRIMARY KEY (id,t_date);\r\n\r\nthen I found table max(id) is not accord with count（*）maximum,such as:\r\nSQL> select min(id),max(id) from test_add_auto_intable;\r\n+---------+---------+\r\n| min(id) | max(id) |\r\n+---------+---------+\r\n|       1 |     814 |\r\n+---------+---------+\r\n\r\nSQL> select count(*) from test_add_auto_intable;\r\n+----------+\r\n| count(*) |\r\n+----------+\r\n|    12214 |\r\n+----------+\n\nIn the finaly, I also test in the mysql server version 5.7.30 and 5.6.16 ，neither version has this problem !\nSuggested fix:\n1、upgrade the version \r\n2、After adding self adding columns, copy and import the data into the new table, and then rename it，such as\r\nSQL> insert into xxx_new(...) values(...)",
+  "date": "2020-10-26 03:47:00",
+  "vulnerable_version": "5.7.25-log MySQL Community Server (GPL)",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_partitioned_table (t_date CHAR(8) DEFAULT NULL, o_no VARCHAR(32) NOT NULL, c_code VARCHAR(32) DEFAULT NULL, id SERIAL PRIMARY KEY, t_date_partition DATE NOT NULL) PARTITION BY RANGE (t_date_partition);",
+    "INSERT INTO test_partitioned_table (t_date, o_no, c_code, t_date_partition) VALUES ('20181219', 'order1', 'code1', '2018-12-19');",
+    "INSERT INTO test_partitioned_table (t_date, o_no, c_code, t_date_partition) VALUES ('20181220', 'order2', 'code2', '2018-12-20');",
+    "SELECT COUNT(*) AS total_rows, MIN(id) AS min_id, MAX(id) AS max_id FROM test_partitioned_table;",
+    "ALTER TABLE test_partitioned_table ADD COLUMN new_col VARCHAR(50) DEFAULT NULL;"
+  ],
+  "key_bug_features": [
+    "AUTO_INCREMENT column in partition table not incrementing"
+  ]
+}

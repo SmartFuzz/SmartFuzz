@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=114589",
+  "title": "Incorrect results when using distinct and order by and derived table",
+  "description": "The query returns incorrect results when using distinct and order by and derived.\nHow to repeat:\nCREATE TABLE `tt` (\r\n  `id` bigint unsigned NOT NULL,\r\n  `name` varchar(20) DEFAULT NULL,\r\n  `time` varchar(20) DEFAULT NULL,\r\n  PRIMARY KEY (`id`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\r\n\r\ninsert into tt values (0, 'kk', '20230312');\r\ninsert into tt values (1, 'kk', '20230309');\r\ninsert into tt values (2, 'kk', '20230314');\r\ninsert into tt values (3, 'kk', '20230320');\r\ninsert into tt values (4, 'ss', '20230305');\r\ninsert into tt values (5, 'ss', '20230304');\r\ninsert into tt values (6, 'ss', '20230320');\r\n\r\nselect distinct t0.name, str_to_date(t0.time,'%Y%m%d') from (select * from tt)t0 order by t0.name asc, str_to_date(t0.time,'%Y%m%d') asc;\r\n+------+-------------------------------+\r\n| name | str_to_date(t0.time,'%Y%m%d') |\r\n+------+-------------------------------+\r\n| kk   | 2023-03-12                    |\r\n| ss   | 2023-03-05                    |\r\n+------+-------------------------------+\r\n\r\nif you use alias, the result is correct:\r\n\r\nselect distinct t0.name, str_to_date(t0.time,'%Y%m%d') as f1 from (select * from tt)t0 order by t0.name asc, f1 asc;\r\n+------+------------+\r\n| name | f1         |\r\n+------+------------+\r\n| kk   | 2023-03-09 |\r\n| kk   | 2023-03-12 |\r\n| kk   | 2023-03-14 |\r\n| kk   | 2023-03-20 |\r\n| ss   | 2023-03-04 |\r\n| ss   | 2023-03-05 |\r\n| ss   | 2023-03-20 |\r\n+------+------------+\r\n\r\nwithout using derived table, the result is correct too:\r\n\r\nselect distinct name, str_to_date(time,'%Y%m%d') from tt order by name asc, str_to_date(time,'%Y%m%d') asc;\r\n+------+----------------------------+\r\n| name | str_to_date(time,'%Y%m%d') |\r\n+------+----------------------------+\r\n| kk   | 2023-03-09                 |\r\n| kk   | 2023-03-12                 |\r\n| kk   | 2023-03-14                 |\r\n| kk   | 2023-03-20                 |\r\n| ss   | 2023-03-04                 |\r\n| ss   | 2023-03-05                 |\r\n| ss   | 2023-03-20                 |\r\n+------+----------------------------+\nSuggested fix:\nI'm not familiar with the relevant code, but I think using distinct and order by and derived table at the same time should return the correct results. If this usage is not allowed, an error should be prompted.",
+  "date": "2024-04-09 03:32:00",
+  "vulnerable_version": "8.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE tt2 (id INTEGER NOT NULL, name VARCHAR(30) NOT NULL, time TIMESTAMP DEFAULT NULL, PRIMARY KEY (id));",
+    "INSERT INTO tt2 (name, time) VALUES ('aa', TIMESTAMP('2023-03-01 00:00:00')), ('bb', TIMESTAMP('2023-03-02 00:00:00')), ('cc', NULL), ('aa', TIMESTAMP('2023-03-03 00:00:00')), ('bb', TIMESTAMP('2023-03-04 00:00:00'));",
+    "SELECT DISTINCT t1.name, STR_TO_DATE(t1.time, '%Y-%m-%d') FROM (SELECT * FROM tt2) t1 WHERE t1.time IS NOT NULL ORDER BY t1.name ASC, STR_TO_DATE(t1.time, '%Y-%m-%d') ASC;",
+    "SELECT DISTINCT t1.name, STR_TO_DATE(t1.time, '%Y-%m-%d') AS formatted_time FROM (SELECT * FROM tt2) t1 ORDER BY t1.name ASC, formatted_time ASC;",
+    "SELECT DISTINCT name, STR_TO_DATE(time, '%Y-%m-%d') FROM tt2 WHERE time IS NOT NULL ORDER BY name ASC, STR_TO_DATE(time, '%Y-%m-%d') ASC;"
+  ],
+  "key_bug_features": [
+    "Using distinct with order by and derived table"
+  ]
+}

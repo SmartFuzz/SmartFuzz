@@ -1,0 +1,18 @@
+{
+    "function": "mapExtractKeyLike",
+    "operator": "a - b",
+    "sql_array": [
+        "CREATE TABLE test_maps (id UInt32, attributes Map(String, String)) ENGINE = Memory;",
+        "INSERT INTO test_maps VALUES (1, {'key1':'value1','match_this_key':'value2'}), (2, {'another_key':'value3','match_this_key_too':'value4'});",
+        "SELECT mapExtractKeyLike(attributes, 'match%') - mapExtractKeyLike(attributes, 'nonexistent%') AS result FROM test_maps;",
+        "SELECT id, mapExtractKeyLike(attributes, concat('key', CAST(id AS String))) AS matched_keys FROM test_maps WHERE id - (SELECT count() FROM test_maps WHERE id <= 2) > 0;",
+        "CREATE TABLE test_join (id UInt32, info String) ENGINE = Memory;",
+        "INSERT INTO test_join VALUES (1, 'info1'), (2, 'info2'), (3, 'info3');",
+        "SELECT a.id, mapExtractKeyLike(a.attributes, 'key%') AS matched_keys, (a.id - b.id) AS difference FROM test_maps AS a JOIN test_join AS b ON a.id = b.id WHERE difference > 0;",
+        "CREATE TABLE test_nulls (x Nullable(Int32), y Nullable(Map(String, String))) ENGINE = Memory;",
+        "INSERT INTO test_nulls VALUES (1, {'key1':'value1'}), (NULL, {'key2':'value2'}), (2, NULL);",
+        "SELECT x, mapExtractKeyLike(ifNull(y, {}), 'key%') - ifNull(mapExtractKeyLike(y, 'nonexistent%'), {}) AS result FROM test_nulls;",
+        "SELECT id, mapExtractKeyLike(attributes, 'match%') AS matched FROM test_maps GROUP BY id, matched HAVING matched IS NOT NULL;",
+        "SELECT a.id, mapExtractKeyLike(a.attributes, 'key%') - NULL AS result FROM test_maps AS a WHERE a.id < (SELECT MAX(id) FROM test_maps) ORDER BY result;"
+    ]
+}

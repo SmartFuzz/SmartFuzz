@@ -1,0 +1,8 @@
+CREATE TABLE test_data (id INTEGER, amounts INTEGER[], created_at TIMESTAMP);
+INSERT INTO test_data (id, amounts, created_at) VALUES (1, [1, 2, 3], '2023-01-01 00:00:00'), (2, [3, 4, 5], NULL), (3, [NULL], '2023-01-03 00:00:00');
+SELECT id, to_weeks(SUM(amounts[1])) AS week_interval FROM test_data GROUP BY id HAVING to_weeks(SUM(amounts[1])) && [to_weeks(1), to_weeks(2)] IS TRUE;
+SELECT id, to_weeks(COALESCE(amounts[1], 0)) AS week_interval FROM test_data WHERE amounts[1] IS NOT NULL OR created_at IS NULL ORDER BY week_interval DESC;
+SELECT id, COUNT(*) FROM test_data WHERE NULL && amounts IS TRUE GROUP BY id HAVING COUNT(*) > 1;
+SELECT id FROM test_data WHERE to_weeks((SELECT MAX(amounts[1]) FROM test_data) + 5) && [to_weeks(2), to_weeks(NULL)] IS TRUE;
+CREATE TEMPORARY TABLE temp_data AS SELECT id, to_weeks(amounts[1] + 1) AS week_interval FROM test_data WHERE amounts[1] IS NOT NULL;
+SELECT t1.id FROM test_data t1 JOIN temp_data t2 ON t1.id = t2.id WHERE t2.week_interval && [to_weeks(3), to_weeks(4)] AND t1.created_at IS NOT NULL;

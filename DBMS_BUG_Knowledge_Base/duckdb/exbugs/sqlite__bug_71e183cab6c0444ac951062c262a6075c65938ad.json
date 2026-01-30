@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/71e183cab6",
+  "title": "MIN() malfunctions for a query with ISNULL condition",
+  "description": "mrigger added on 2019-08-02 22:32:15:\nIn the test case below, the result seems to be incorrect:\nCREATE TABLE t0 (c0, c1);\nCREATE INDEX i0 ON t0(c1, c1 + 1 DESC);\nINSERT INTO t0(c0) VALUES (1);\nSELECT MIN(t0.c1), t0.c0 FROM t0 WHERE t0.c1 ISNULL; -- expected: NULL | 1, actual: NULL | NULL\nWhen omitting the index or the WHERE clause, the query works as expected.\nThis bug report is similar to [41866dc373], which has already been addressed by a fix.\ndan added on 2019-08-03 13:44:23:\nA bit simpler:\nCREATE TABLE t1 (a, b);\n  INSERT INTO t1 VALUES(123, NULL);\n  CREATE INDEX i1 ON t1(a, b DESC);\n  SELECT MIN(a) FROM t1 WHERE a=123;\nShould return integer value 123, but currently returns NULL.\ndrh added on 2019-08-03 14:30:38:\nThis problem is apparently over 11 years old.\nBisecting shows that this problem was introduced on 2008-07-08 by\ncheck-in [fa07c360b708324c] and first appeared in release 3.6.0.\nThe second script above (Dan's reduction) causes an assertion fault\nstarting with the 2008-07-08 check-in if SQLite is compiled with -DSQLITE_DEBUG,\nbut it give the incorrect NULL result if asserts are disabled.  The\nassertion fault went away with check-in [778e91ddb834f608] on\n2008-12-21 but the incorrect NULL result has persisted ever since then.\ndan added on 2019-08-03 16:51:24:\nFixed by [d465c3ee].",
+  "date": "2019-08-02 22:32:156.02 years ago",
+  "vulnerable_version": "3.29.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (id INTEGER, value VARCHAR);",
+    "INSERT INTO t2 (value) VALUES (NULL);",
+    "CREATE INDEX i2 ON t2(value);",
+    "SELECT MIN(value) FROM t2 WHERE value IS NULL;",
+    "CREATE TABLE t3 (x INTEGER, y DOUBLE);"
+  ],
+  "key_bug_features": [
+    "MIN() function with ISNULL condition in queries"
+  ]
+}

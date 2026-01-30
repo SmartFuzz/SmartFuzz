@@ -1,0 +1,16 @@
+{
+    "function": "h3kRing",
+    "operator": "EXISTS",
+    "sql_array": [
+        "CREATE TABLE geo_data (h3index UInt64, value Int32) ENGINE = MergeTree() ORDER BY h3index;",
+        "INSERT INTO geo_data VALUES (644325529233966508, 1), (644325529233966509, NULL), (644325529233966510, 3), (644325529233966511, INT32_MAX);",
+        "SELECT EXISTS(SELECT * FROM geo_data WHERE value IS NOT NULL AND h3index IN (SELECT arrayJoin(h3kRing(644325529233966508, 2))));",
+        "SELECT h3index, value FROM geo_data WHERE EXISTS(SELECT 1 FROM geo_data WHERE value >= 2) AND value IS NOT NULL GROUP BY h3index HAVING COUNT(value) > 0;",
+        "SELECT count(*) FROM geo_data WHERE EXISTS(SELECT * FROM geo_data WHERE h3index IN (h3kRing(644325529233966508, 1)) AND value IS NOT NULL);",
+        "SELECT arrayJoin(h3kRing(h3index, IF(EXISTS(SELECT 1 FROM geo_data WHERE value IS NOT NULL), 1, 0))) AS surrounding_h3 FROM geo_data;",
+        "CREATE TABLE temp_geo_data AS geo_data ENGINE = Temporary;",
+        "INSERT INTO temp_geo_data SELECT h3index, value FROM geo_data WHERE value IS NOT NULL;",
+        "SELECT EXISTS(SELECT * FROM temp_geo_data WHERE value < 0) AS negative_values_present, EXISTS(SELECT * FROM temp_geo_data WHERE h3index = 644325529233966508) AS specific_index_exists;",
+        "SELECT h3index, COUNT(*) FROM geo_data GROUP BY h3index HAVING EXISTS(SELECT 1 FROM temp_geo_data WHERE temp_geo_data.h3index = geo_data.h3index) AND COUNT(value) > 1;"
+    ]
+}

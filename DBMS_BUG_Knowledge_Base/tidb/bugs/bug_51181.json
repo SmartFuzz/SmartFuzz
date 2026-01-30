@@ -1,0 +1,46 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/51181",
+  "title": "TiDB should not allow to analyze different partitions of a table with different analyze versions",
+  "vulnerable_database": "tidb",
+  "date": "2024-02-20T05:50:20Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n1. Create a partitioned table:\r\n```sql\r\nCREATE TABLE employees (\r\n  id INT NOT NULL,\r\n  fname VARCHAR(30),\r\n  lname VARCHAR(30),\r\n  hired DATE NOT NULL DEFAULT '1970-01-01',\r\n  separated DATE DEFAULT '9999-12-31',\r\n  job_code INT,\r\n  store_id INT NOT NULL\r\n) PARTITION BY RANGE (id) (\r\n  PARTITION p0 VALUES LESS THAN (1000),\r\n  PARTITION p1 VALUES LESS THAN (2000),\r\n  PARTITION p2 VALUES LESS THAN (3000),\r\n  PARTITION p3 VALUES LESS THAN MAXVALUE\r\n);\r\nINSERT INTO employees (id, fname, lname, hired, store_id)\r\nVALUES (100, 'John', 'Doe', '2024-02-19', 1);\r\nINSERT INTO employees (id, fname, lname, hired, store_id)\r\nVALUES (2000, 'Alice', 'Smith', '2024-02-19', 2);\r\n```\r\n\r\n2. Analyze them in different sessions:\r\n```sql\r\nset @@session.tidb_analyze_version=2;\r\nanalyze table employees partition p0;\r\n```\r\n\r\n3. Another session:\r\n\r\n```sql\r\nset @@session.tidb_analyze_version=1;\r\nanalyze table employees partition p2;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nAn error to tell users this won't work.\r\n\r\n### 3. What did you see instead (Required)\r\nAnalyzed the table with different versions:\r\n![img_v3_0287_2637a833-8fd7-46ae-a945-1d746cdb41cg](https://github.com/pingcap/tidb/assets/29879298/0cdef7b9-126e-47c9-afbc-130f675a6286)\r\n![img_v3_0287_62bb3a4e-bc24-4bdd-92bd-aaad82197e8g](https://github.com/pingcap/tidb/assets/29879298/4e54e866-09b9-4b5f-b197-16bcc2f60a04)\r\n\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\nmaster\r\n\r\n",
+  "poc": [
+    "CREATE TABLE employees (",
+    "  id INT NOT NULL,",
+    "  fname VARCHAR(30),",
+    "  lname VARCHAR(30),",
+    "  hired DATE NOT NULL DEFAULT '1970-01-01',",
+    "  separated DATE DEFAULT '9999-12-31',",
+    "  job_code INT,",
+    "  store_id INT NOT NULL",
+    ") PARTITION BY RANGE (id) (",
+    "  PARTITION p0 VALUES LESS THAN (1000),",
+    "  PARTITION p1 VALUES LESS THAN (2000),",
+    "  PARTITION p2 VALUES LESS THAN (3000),",
+    "  PARTITION p3 VALUES LESS THAN MAXVALUE",
+    ");",
+    "INSERT INTO employees (id, fname, lname, hired, store_id)",
+    "VALUES (100, 'John', 'Doe', '2024-02-19', 1);",
+    "VALUES (2000, 'Alice', 'Smith', '2024-02-19', 2);"
+  ],
+  "poc_type": "sql_text",
+  "state": "open",
+  "key_bug_features": [
+    "Analyzing partitions with different analyze versions"
+  ],
+  "bug_feature_seed": [
+  "DROP TABLE IF EXISTS employees;",
+  "CREATE TABLE employees (id INT NOT NULL, fname VARCHAR(30), lname VARCHAR(30), hired DATE NOT NULL DEFAULT '1970-01-01', separated DATE DEFAULT '9999-12-31', job_code INT, store_id INT NOT NULL) PARTITION BY RANGE (id) (PARTITION p0 VALUES LESS THAN (1000), PARTITION p1 VALUES LESS THAN (2000), PARTITION p2 VALUES LESS THAN (3000), PARTITION p3 VALUES LESS THAN MAXVALUE);",
+  "INSERT INTO employees (id, fname, lname, hired, store_id) VALUES (100, 'John', 'Doe', '2024-02-19', 1);",
+  "INSERT INTO employees (id, fname, lname, hired, store_id) VALUES (2000, 'Alice', 'Smith', '2024-02-19', 2);",
+  "SET @@session.tidb_analyze_version = 2;",
+  "ANALYZE TABLE employees PARTITION p0;",
+  "SET @@session.tidb_analyze_version = 1;",
+  "ANALYZE TABLE employees PARTITION p2;",
+  "SHOW STATS_META WHERE table_name = 'employees';",
+  "EXPLAIN SELECT * FROM employees WHERE id = 100;",
+  "EXPLAIN SELECT * FROM employees WHERE id = 2000;"
+]
+
+}

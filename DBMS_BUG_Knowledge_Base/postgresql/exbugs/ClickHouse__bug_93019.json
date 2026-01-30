@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/93019",
+  "title": "Merging Maps in Clickhouse by keeping latest values",
+  "description": "### Company or project name\n_No response_\n### Question\nGOAL IS AS FOLLOWS:\nIncrementally update per-entity (Name) metadata stored as maps (metadata_s, metadata_n, metadata_b) in ClickHouse, allowing partial/sparse inserts (updating only some maps or keys at a time) while:\n- Overwriting existing keys with the chronologically latest value.\n- Preserving all unchanged keys from previous inserts.\n- Never resetting unrelated maps or keys to empty due to partial updates.\nIn short: Achieve true \"merge with latest overwrite\" semantics for dynamic key-value metadata per entity, with efficient sparse updates.\nSuccess Criteria (Brief)\n- Partial insert of one map column leaves the other map columns completely unchanged.\n- When a key is updated in a later insert, the new value replaces the old one.\n- New keys are added without affecting existing ones.\n- No client-side read-merge-write required (ideally native table/engine behavior).\n- Final query (e.g., with FINAL or aggregation) shows the correct merged latest state for each entity.\n**This is the close that i can get, but using mapMax keeps the maximum value, but i want to keep the latest value not the maximum value.**\nhttps://fiddle.clickhouse.com/891172a1-9475-4ec5-a6e2-bf30ed689e02\n**### FROM FIDDLE**\n`CREATE TABLE IF NOT EXISTS aggregated_attributes\n(\nName String,\nmetadata_s SimpleAggregateFunction(maxMap, Map(String, String)),\nmetadata_n SimpleAggregateFunction(maxMap, Map(String, Float64)),\nmetadata_b SimpleAggregateFunction(maxMap, Map(String, UInt8))\n)\nENGINE = AggregatingMergeTree\nORDER BY Name;\nINSERT INTO aggregated_attributes (Name, metadata_s)\nVALUES\n('Foo', {'key1': 'value1', 'key2': 'value2'}),\n('Bar', {'key1': 'value1', 'key2': 'value2'});\nSELECT *\nFROM aggregated_attributes FINAL;\nINSERT INTO aggregated_attributes (Name, metadata_n)\nVALUES\n('Foo', {'key1': 5,'key2': 10});\nSELECT *\nFROM aggregated_attributes FINAL;\nINSERT INTO aggregated_attributes (Name, metadata_s)\nVALUES ('Foo', {'key1':'value1', 'key2':'valueNew2', 'key3': 'value3'}),('Bar', {'key1':'valueNew','key2':'value2'});\nSELECT *\nFROM aggregated_attributes FINAL;\nINSERT INTO aggregated_attributes (Name, metadata_n)\nVALUES\n('Foo', {'key1': 10,'key2': 5, 'key3': 0}),\n('Bar', {'key1': 5,'key2': 10});\nSELECT *\nFROM aggregated_attributes FINAL;`\n**Results in clickhouse fiddle**\nName\tmetadata_s\tmetadata_n\tmetadata_b",
+  "date": "2025-12-24T15:58:10Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE IF NOT EXISTS aggregated_attributes (Name VARCHAR PRIMARY KEY, metadata_s JSONB, metadata_n JSONB, metadata_b JSONB);",
+    "INSERT INTO aggregated_attributes (Name, metadata_s) VALUES ('Foo', '{\"key1\": \"value1\", \"key2\": \"value2\"}'), ('Bar', '{\"key1\": \"value1\", \"key2\": \"value2\"}');",
+    "INSERT INTO aggregated_attributes (Name, metadata_n) VALUES ('Foo', '{\"key1\": 5, \"key2\": 10}');",
+    "INSERT INTO aggregated_attributes (Name, metadata_s) VALUES ('Foo', '{\"key1\": \"value1\", \"key2\": \"valueNew2\", \"key3\": \"value3\"}'), ('Bar', '{\"key1\": \"valueNew\", \"key2\": \"value2\"}');",
+    "SELECT Name, metadata_s, metadata_n FROM aggregated_attributes WHERE Name = 'Foo';"
+  ],
+  "key_bug_features": [
+    "Merging maps while preserving latest values during updates"
+  ]
+}

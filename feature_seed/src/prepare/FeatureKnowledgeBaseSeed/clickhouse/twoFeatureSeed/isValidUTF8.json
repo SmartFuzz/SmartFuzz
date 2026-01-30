@@ -1,0 +1,17 @@
+{
+    "function": "isValidUTF8",
+    "operator": "a IN ...",
+    "sql_array": [
+        "CREATE TABLE utf8_test (id Int32, text String, valid Int32);",
+        "INSERT INTO utf8_test VALUES (1, '\\xc3\\xb1', isValidUTF8('\\xc3\\xb1')), (2, '\\xc3\\x28', isValidUTF8('\\xc3\\x28'));",
+        "SELECT id, text, valid FROM utf8_test WHERE valid IN (SELECT valid FROM utf8_test WHERE text LIKE '%\\xc3%');",
+        "CREATE TABLE utf8_empty (id Int32, text String DEFAULT '');",
+        "INSERT INTO utf8_empty VALUES (1, 'valid'), (2, NULL), (3, '\\xe7\\x9a\\x84');",
+        "SELECT id, text, isValidUTF8(text) AS validity FROM utf8_empty WHERE isValidUTF8(text) IN (0, 1);",
+        "CREATE TABLE utf8_join_test (id Int32, word String, is_valid UInt8);",
+        "INSERT INTO utf8_join_test VALUES (1, '\\xc3\\xb1', 1), (2, '\\xc3\\x28', 0);",
+        "SELECT a.id, a.word, a.is_valid FROM utf8_join_test AS a JOIN utf8_test AS b ON a.word IN (b.text) WHERE isValidUTF8(b.text) = 1;",
+        "SELECT id, COUNT(*) AS count FROM utf8_test GROUP BY id HAVING COUNT(*) IN (SELECT COUNT(*) FROM utf8_test WHERE valid = 0);",
+        "SELECT rank, word FROM (SELECT id, word, ROW_NUMBER() OVER (PARTITION BY isValidUTF8(word) ORDER BY id) as rank FROM utf8_join_test) AS r WHERE rank IN (SELECT rank FROM (SELECT id, COUNT(*) OVER () as rank FROM utf8_join_test));"
+    ]
+}

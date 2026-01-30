@@ -1,0 +1,13 @@
+CREATE TABLE test_table (id UInt32, bitmap_data AggregateFunction(bitmap, UInt32));
+INSERT INTO test_table VALUES (1, bitmapBuild([1, 2, 3])), (2, bitmapBuild([2, 3, 4])), (3, bitmapBuild([1, 4, 5]));
+SELECT bitmapCardinality(bitmapMerge(bitmap_data)) AS cardinality FROM test_table;
+SELECT bitmapCardinality(bitmapBuild([])) AS cardinality_empty;
+SELECT bitmapCardinality(bitmapBuild([1, 2, 3, 4, 5, 6])) AS cardinality_full;
+SELECT bitmapCardinality(bitmapBuild([1, 1, 2, 2, 3, 4, 5])) AS cardinality_duplicates;
+SELECT id, bitmapCardinality(bitmap_data) AS cardinality FROM test_table WHERE cardinality > 2;
+CREATE TABLE complex_table (id UInt32, data Array(UInt32), bitmap_data AggregateFunction(bitmap, UInt32));
+INSERT INTO complex_table VALUES (1, [1, 2, 3], bitmapBuild([1, 2])), (2, [4, 5], bitmapBuild([4])), (3, [6], bitmapBuild([6]));
+SELECT id, bitmapCardinality(bitmap_data) AS cardinality FROM complex_table WHERE bitmapCardinality(bitmap_data) <= 1;
+SELECT id, bitmapCardinality(bitmapBuild(data)) AS cardinality FROM complex_table WHERE id IN (SELECT id FROM complex_table WHERE length(data) > 2);
+SELECT bitmapCardinality(bitmapBuild([1, 2, 3, 4, 5])) + bitmapCardinality(bitmapBuild([5, 6, 7, 8, 9])) AS total_cardinality;
+SELECT t1.id, bitmapCardinality(bitmapMerge(t1.bitmap_data)) AS cardinality FROM test_table t1 JOIN test_table t2 ON t1.id = t2.id ORDER BY cardinality DESC;

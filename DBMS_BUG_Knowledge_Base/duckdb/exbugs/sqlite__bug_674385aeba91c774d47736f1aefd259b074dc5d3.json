@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/674385aeba",
+  "title": "CAST('-0.0' AS NUMERIC) computes 0.0 rather than 0",
+  "description": "mrigger added on 2019-06-12 12:58:45:\nIn the example below, the value is not converted to an INTEGER, although the conversion would be lossless:\nSELECT CAST('-0.0' AS NUMERIC); -- expected: 0, unexpected: 0.0\nIn similar situations, the value is converted to an INTEGER as expected:\nSELECT CAST('0.0' AS NUMERIC); -- 0\nSELECT CAST('+0.0' AS NUMERIC); -- 0\nSELECT CAST('-1.0' AS NUMERIC); -- -1\ndrh added on 2019-06-12 13:25:38:\nThe IEEE754 floating point format distinguishes between +0.0 and -0.0 - those\nare different numbers.  So the statement in the initial description of this\nticket that \"-0.0 can be losslessly converted into 0\" is wrong.  If -0.0 is\nconverted into 0, then you lose the fact that you have a negative zero.\nOpen questions:\nShould the CAST operator convert -0.0 into 0 as a special case, in spite of\n      the fact that the conversion losses information?\nShould SQLite be enhanced to display a -0.0 as \"-0.0\" instead of (as it\n      currently does) conflating the -0.0 and +0.0 values into a single display\n      of just \"0.0\"?\nmrigger added on 2019-06-12 14:12:25:\nI think that what \"lossless\" mean in this context is up to interpretation. In some sense, all conversions are lossful. For example, both '1.0' and '1' are converted to 1 and it is not possible to determine whether the original string was '1.0' or '1'.\nSELECT CAST('1.0' AS NUMERIC); -- 1\nSELECT CAST('1' AS NUMERIC); -- 1\ndrh added on 2019-06-12 20:53:50:\nThe CAST of '-0.0' into numeric now yields 0 as a special case, which resolves\nthis ticket.\nThe issue of whether or not to display the minus sign when rendering a -0.0\nvalue into text is still open.  I observe that other database engines,\nand in particular PostgreSQL, do *not* display the minus sign.  So, for now,\nSQLite will follow PostgreSQL's lead and behave the same.",
+  "date": "2019-06-12 12:58:456.16 years ago",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE test_values (id INTEGER PRIMARY KEY, value DOUBLE);",
+    "INSERT INTO test_values (value) VALUES (CAST('-0.0' AS DOUBLE));",
+    "INSERT INTO test_values (value) VALUES (CAST('0.0' AS DOUBLE));",
+    "INSERT INTO test_values (value) VALUES (CAST('+0.0' AS DOUBLE));",
+    "SELECT value, CAST(value AS DOUBLE) FROM test_values WHERE value IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "CAST of '-0.0' yields 0 instead of -0.0"
+  ]
+}

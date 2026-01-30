@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id INTEGER, data_string VARCHAR, data_date DATE);
+INSERT INTO test_data VALUES (1, 'hello_world', DATE '2023-01-01'), (2, 'foo_bar', DATE '2023-01-02'), (3, 'baz_qux', DATE '2023-01-03');
+SELECT id, regexp_extract_all(data_string, '([a-z]+)_', 1) AS extracted_groups, data_date + INTERVAL 5 DAY AS new_date FROM test_data WHERE data_string IS NOT NULL;
+SELECT id, data_string FROM test_data WHERE LENGTH(data_string) > (SELECT COUNT(*) FROM test_data) * 2;
+SELECT id, COUNT(*) FROM (SELECT id, regexp_extract_all(data_string, '([a-z]+)_?', 1) AS group_extracted FROM test_data) AS subquery GROUP BY id HAVING COUNT(group_extracted) > 1;
+SELECT a.id, a.data_string, b.data_date FROM test_data a JOIN (SELECT id, regexp_extract_all(data_string, '([a-z]+)_', 1) AS group_ex FROM test_data) b ON a.id = b.id WHERE b.group_ex IS NOT NULL;
+WITH cte AS (SELECT data_string, regexp_extract_all(data_string, '([a-z]+)_?', 0) FROM test_data) SELECT data_string, COUNT(*) FROM cte GROUP BY data_string HAVING COUNT(*) > 1;
+CREATE TABLE temp_table AS SELECT id, data_date + INTERVAL (SELECT MAX(id) FROM test_data) DAY AS expanded_date FROM test_data;
+SELECT * FROM test_data WHERE data_date IS NOT NULL OR (SELECT COUNT(*) FROM temp_table) > 0;
+SELECT data_string, regexp_extract_all(data_string, '([a-z]+)_?', 1) AS groups FROM test_data WHERE EXISTS (SELECT 1 FROM test_data WHERE data_string IS NOT NULL);

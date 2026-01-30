@@ -1,0 +1,10 @@
+CREATE TABLE test_table (column1 UInt32, column2 String, column3 DateTime) ENGINE = MergeTree() ORDER BY column1;
+INSERT INTO test_table VALUES (1, '2023-01-01 01:01:01', '2023-01-01'), (2, '2023-01-02 02:02:02', '2023-01-02'), (3, NULL, NULL);
+SELECT * FROM file('test.csv', 'CSV', 'column1 UInt32, column2 String, column3 DateTime') WHERE column1 IN (SELECT column1 FROM test_table WHERE column2 = '2023-01-01 01:01:01');
+SELECT column2, COUNT(*) FROM (SELECT * FROM file('test.csv', 'CSV', 'column1 UInt32, column2 String, column3 DateTime')) GROUP BY column2 HAVING column2 IN (SELECT column2 FROM test_table WHERE column1 <= 2);
+SELECT * FROM (SELECT column1, column2 FROM test_table WHERE column1 IN (SELECT DISTINCT(column1) FROM file('test.csv', 'CSV', 'column1 UInt32, column2 String, column3 DateTime'))) ORDER BY column1;
+INSERT INTO FUNCTION file('test.csv', 'CSV', 'column1 UInt32, column2 String, column3 DateTime') VALUES (4, '2023-01-03 03:03:03', '2023-01-03'), (5, NULL, NULL);
+SELECT * FROM test_table WHERE column1 IN (SELECT MAX(column1) FROM test_table) AND column2 IS NULL;
+SELECT column3, SUM(column1) FROM test_table GROUP BY column3 HAVING SUM(column1) > 1 AND column3 IN (SELECT column3 FROM file('test.csv', 'CSV', 'column1 UInt32, column2 String, column3 DateTime') WHERE column1 = 1);
+SELECT column1 FROM test_table WHERE column2 IN (SELECT DISTINCT(column2) FROM (SELECT * FROM file('test.csv', 'CSV', 'column1 UInt32, column2 String, column3 DateTime')) WHERE column1 BETWEEN 1 AND 3);
+SELECT * FROM (SELECT * FROM file('user_files/archives/archive{1..2}.zip :: table.csv')) WHERE column1 IN (1, 2, 3) AND column2 IS NOT NULL;

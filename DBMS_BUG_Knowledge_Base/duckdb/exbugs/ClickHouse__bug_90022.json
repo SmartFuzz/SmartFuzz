@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/90022",
+  "title": "Could you provide a special skipping index？",
+  "description": "### Company or project name\n_No response_\n### Use case\nWe want to exclude whitelist domains(subdomains) from the query, But there is no suitable index to meet the performance requirements.\nWe want an index similar to a trie or postgresql ltree.\n[postgresql ltree](https://www.postgresql.org/docs/18/ltree.html)\n### Describe the solution you'd like\nfor example:\n```sql\nCREATE TABLE IF NOT EXISTS default.http_log\n(\n`timestamp` \t\tDateTime64(9,'UTC'),\n`sip` \t\t\t\tIPv6,\n`sport` \t\t\tUInt16,\n`dip` \t\t\t\tIPv6,\n`dport` \t\t\tUInt16,\n`host`  \t\t\tString\n)\nENGINE = MergeTree\nPARTITION BY toYYYYMMDD(timestamp)\nORDER BY (timestamp);\ninsert into http_log values\n(now(),'1.1.1.1',40001,'2.2.2.2',8080,'api.google.com'),\n(now(),'1.1.1.1',40001,'2.2.2.2',8080,'blog.google.com'),\n(now(),'1.1.1.1',40001,'2.2.2.2',8080,'x.com'),\n(now(),'1.1.1.1',40001,'2.2.2.2',8080,'myownck.com');\nCREATE TABLE IF NOT EXISTS default.domain_whitelist\n(\n`domain`  \t\t\tString\n)\nENGINE = MergeTree\nORDER BY (domain);\nINSERT into domain_whitelist values\n('google.com'),\n('x.com');\nSELECT host  from http_log a where not EXISTS (SELECT 1 from domain_whitelist where endsWith(a.host,domain));\n```\nTable domain_whitelist  has 200k rows, unable to query when `http_log` data is large.\n### Describe alternatives you've considered\n_No response_\n### Additional context\n_No response_",
+  "date": "2025-11-14T06:49:12Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE IF NOT EXISTS http_log (timestamp TIMESTAMP, sip VARCHAR, sport SMALLINT, dip VARCHAR, dport SMALLINT, host VARCHAR);",
+    "INSERT INTO http_log VALUES (CURRENT_TIMESTAMP, '1:1:1:1', 40001, '2:2:2:2', 8080, 'api.example.com'), (CURRENT_TIMESTAMP, '1:1:1:1', 40001, '2:2:2:2', 8080, 'blog.example.com'), (CURRENT_TIMESTAMP, '1:1:1:1', 40001, '2:2:2:2', 8080, 'x.com'), (CURRENT_TIMESTAMP, '1:1:1:1', 40001, '2:2:2:2', 8080, 'myownck.com');",
+    "CREATE TABLE IF NOT EXISTS domain_whitelist (domain VARCHAR);",
+    "INSERT INTO domain_whitelist VALUES ('example.com'), ('x.com'), ('test.com');",
+    "SELECT host FROM http_log a WHERE NOT EXISTS (SELECT 1 FROM domain_whitelist WHERE a.host LIKE '%' || domain);"
+  ],
+  "key_bug_features": [
+    "Excluding whitelist domains from query performance"
+  ]
+}

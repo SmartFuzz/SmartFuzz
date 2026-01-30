@@ -1,0 +1,16 @@
+{
+    "function": "toMonday",
+    "operator": "a ILIKE s",
+    "sql_array": [
+        "CREATE TABLE test_dates (id UInt32, event_date DateTime, description String, nullable_date DateTime Nullable) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_dates VALUES (1, toDateTime('2023-04-21 10:20:30'), 'Initial event', NULL), (2, toDateTime('2023-04-24 15:45:00'), 'A Monday event', toDateTime('2023-04-20 08:00:00'));",
+        "SELECT id, toMonday(event_date) AS monday_start FROM test_dates WHERE event_date ILIKE '2023-04%' AND nullable_date IS NOT NULL;",
+        "SELECT id, toMonday(event_date) AS monday_start FROM test_dates WHERE nullable_date IS NULL OR toMonday(nullable_date) ILIKE '2023-04-24';",
+        "SELECT id, COUNT(*) OVER (PARTITION BY toMonday(event_date)) AS event_count FROM test_dates WHERE nullable_date IS NOT NULL AND event_date ILIKE '2023%';",
+        "WITH (SELECT COUNT(*) FROM test_dates WHERE event_date IS NOT NULL) AS event_total SELECT id, toMonday(event_date) AS monday_start, event_total FROM test_dates;",
+        "SELECT id, toMonday(event_date) AS monday_event, description FROM test_dates WHERE (event_date ILIKE '2023%' AND month(toMonday(event_date)) = 4) GROUP BY monday_event, description HAVING COUNT(*) > 1;",
+        "CREATE TABLE temp_dates AS SELECT id, toMonday(event_date) AS normalized_day FROM test_dates WHERE event_date IS NOT NULL;",
+        "SELECT id, nullable_date ILIKE '2023%' AS is_nullable FROM test_dates ORDER BY is_nullable ASC;",
+        "SELECT id, toMonday(toDate('2023-04-21')) AS event_adjusted FROM test_dates WHERE toMonday(toMonday(event_date)) = toMonday(nullable_date) OR nullable_date IS NULL;"
+    ]
+}

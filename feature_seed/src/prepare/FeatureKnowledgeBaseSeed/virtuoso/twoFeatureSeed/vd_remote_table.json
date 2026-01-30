@@ -1,0 +1,17 @@
+{
+    "function": "vd_remote_table",
+    "operator": "EXISTS",
+    "sql_array": [
+        "CREATE TABLE local_table (id INT PRIMARY KEY, name VARCHAR(255), created_at TIMESTAMP, data JSON, value DECIMAL(10, 5));",
+        "CREATE TABLE remote_table (id INT PRIMARY KEY, value DECIMAL(10, 5), info TEXT);",
+        "INSERT INTO local_table (id, name, created_at, data, value) VALUES (1, 'Sample', CURRENT_TIMESTAMP, '{\"key\":\"value\"}', 123.45678);",
+        "INSERT INTO remote_table (id, value, info) VALUES (1, 123.45678, 'test info');",
+        "SELECT vd_remote_table('local_table', 'remote_table') FROM (SELECT EXISTS (SELECT 1 FROM remote_table WHERE value IS NOT NULL)) AS sub;",
+        "SELECT name FROM local_table WHERE EXISTS (SELECT 1 FROM remote_table WHERE remote_table.value = local_table.value AND remote_table.info IS NOT NULL);",
+        "SELECT COUNT(*) FROM local_table WHERE EXISTS (SELECT * FROM (SELECT created_at FROM local_table WHERE created_at < NOW() - INTERVAL '1 DAY') AS inner_sub);",
+        "SELECT (SELECT EXISTS (SELECT * FROM remote_table WHERE id = 1)) AS remote_check, vd_remote_table('local_table', NULL);",
+        "SELECT T1.name, T2.value FROM local_table AS T1 JOIN remote_table AS T2 ON T1.value > T2.value WHERE EXISTS (SELECT * FROM local_table WHERE name IS NULL);",
+        "SELECT DISTINCT name FROM local_table WHERE EXISTS (SELECT 1 FROM remote_table WHERE value = (SELECT MIN(value) FROM remote_table) AND info LIKE '%test%') GROUP BY name HAVING COUNT(id) > 0;",
+        "SELECT id, value + COALESCE((SELECT SUM(value) FROM remote_table WHERE id IS NOT NULL), 0) AS total_value FROM local_table GROUP BY id ORDER BY total_value DESC;"
+    ]
+}

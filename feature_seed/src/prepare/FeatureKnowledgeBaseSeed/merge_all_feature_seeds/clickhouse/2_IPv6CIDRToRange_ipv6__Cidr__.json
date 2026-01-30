@@ -1,0 +1,13 @@
+CREATE TABLE ip_test (ipv6_address IPv6, cidr UInt8) ENGINE = MergeTree() ORDER BY ipv6_address;
+INSERT INTO ip_test VALUES (toIPv6('2001:0db8:0000:85a3:0000:0000:ac1f:8001'), 32);
+INSERT INTO ip_test VALUES (toIPv6('2001:0db8:0000:abcd:0000:0000:0000:0001'), 24);
+INSERT INTO ip_test VALUES (toIPv6('2001:db8:0:1:0:0:0:1'), 64);
+SELECT IPv6CIDRToRange(ipv6_address, cidr) AS range FROM ip_test WHERE ipv6_address IS NOT NULL;
+SELECT multiIf(cidr > 32, 'Greater than 32', cidr < 16, 'Less than 16', 'Between 16 and 32') AS cidr_classification FROM ip_test;
+SELECT IPv6CIDRToRange(ipv6_address, multiIf(cidr = 32, 24, 32)) AS adjusted_range FROM ip_test;
+SELECT lower_range, higher_range FROM (SELECT IPv6CIDRToRange(ipv6_address, cidr) AS (lower_range, higher_range) FROM ip_test) HAVING lower_range IS NOT NULL;
+SELECT COUNT(*) FROM (SELECT IPv6CIDRToRange(ipv6_address, cidr) AS range FROM ip_test GROUP BY ipv6_address HAVING multiIf(range.1 IS NULL, 'Invalid', 'Valid')) AS result;
+SELECT transform(cidr, [16, 32], [24, 48], 16) AS new_cidr FROM ip_test WHERE ipv6_address = toIPv6('2001:db8::');
+CREATE TABLE IF NOT EXISTS temp_ip_ranges AS SELECT IPv6CIDRToRange(ipv6_address, cidr) AS (lower, upper) FROM ip_test;
+INSERT INTO temp_ip_ranges SELECT lower, upper FROM (SELECT IPv6CIDRToRange(ipv6_address, cidr) AS (lower, upper) FROM ip_test WHERE cidr BETWEEN 16 AND 32) ORDER BY lower;
+SELECT DISTINCT lower, upper FROM temp_ip_ranges WHERE upper IS NOT NULL AND lower IS NOT NULL ORDER BY lower DESC;

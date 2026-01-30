@@ -1,0 +1,12 @@
+[
+    "CREATE TABLE soap_messages (id INT, body_str VARCHAR(5000), decrypted_body VARCHAR(5000), validate_flag BOOLEAN);",
+    "INSERT INTO soap_messages (id, body_str, decrypted_body, validate_flag) VALUES (1, '<soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\"><soap:Body></soap:Body></soap:Envelope>', NULL, TRUE);",
+    "INSERT INTO soap_messages (id, body_str, decrypted_body, validate_flag) VALUES (2, '<soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\"><soap:Body><data>Sample Data</data></soap:Body></soap:Envelope>', NULL, FALSE);",
+    "SELECT xenc_decrypt_soap(body_str, 11, 6, 'UTF-8', 'x-any', vector ('UsernameToken', vector ('label', 'Application-Label', 'keyAlgorithm', 'http://www.w3.org/2001/04/xmlenc#tripledes-cbc')), ekeys) FROM soap_messages WHERE id = 1;",
+    "SELECT xenc_decrypt_soap(body_str, 13, 6, 'UTF-8', 'x-any', vector ('UsernameToken', vector ('label', 'App-Label-2', 'keyAlgorithm', 'http://www.w3.org/2001/04/xmlenc#aes-256-cbc')), ekeys) AS decrypted_data FROM soap_messages WHERE validate_flag = TRUE;",
+    "UPDATE soap_messages SET decrypted_body = xenc_decrypt_soap(body_str, 11, 6, 'UTF-8', 'x-any', vector('UsernameToken', vector('label', 'Application-Label', 'keyAlgorithm', 'http://www.w3.org/2001/04/xmlenc#tripledes-cbc')), ekeys) WHERE id = 2;",
+    "SELECT * FROM soap_messages WHERE decrypted_body IS NOT NULL;",
+    "SELECT COUNT(*) FROM soap_messages WHERE validate_flag = FALSE;",
+    "WITH decrypted AS (SELECT id, xenc_decrypt_soap(body_str, 11, 6, 'UTF-8', 'x-any', vector ('UsernameToken', vector('label', 'App-Label-3', 'keyAlgorithm', 'http://www.w3.org/2001/04/xmlenc#aes-128-cbc')), ekeys) AS decrypted_body FROM soap_messages) SELECT * FROM decrypted WHERE decrypted_body IS NOT NULL;",
+    "DELETE FROM soap_messages WHERE id = 1;"
+]

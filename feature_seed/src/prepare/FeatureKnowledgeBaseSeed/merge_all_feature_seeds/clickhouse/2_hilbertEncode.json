@@ -1,0 +1,18 @@
+CREATE TABLE hilbert_test (id UInt32, val1 UInt32, val2 UInt32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO hilbert_test VALUES (1, 3, 4), (2, 10, 6), (3, 5, 8), (4, 1, 2);
+SELECT hilbertEncode(val1, val2) FROM hilbert_test WHERE val1 > 0;
+SELECT id, hilbertEncode(row_number() OVER (PARTITION BY val1 ORDER BY val2), val2) FROM hilbert_test;
+SELECT COUNT(*) FROM hilbert_test HAVING hilbertEncode(val1, val2) IS NOT NULL;
+SELECT x -> hilbertEncode(x, 1024) FROM (SELECT val1 FROM hilbert_test) AS subquery;
+SELECT (SELECT hilbertEncode(val1, val2) FROM hilbert_test WHERE id = 1) AS encoded_point;
+SELECT id, hilbertEncode(val1, x -> x * val2) FROM hilbert_test;
+WITH (SELECT val1, val2 FROM hilbert_test WHERE val1 IS NOT NULL) AS subquery SELECT hilbertEncode(val1, val2) FROM subquery;
+CREATE TABLE hilbert_complex (key UInt32, data Float64) ENGINE = MergeTree() ORDER BY key;
+INSERT INTO hilbert_complex VALUES (1, 1.5), (2, NULL), (3, -1.0), (4, 3.1415926535);
+SELECT key, hilbertEncode(CAST(data AS UInt32), 100) FROM hilbert_complex WHERE data IS NOT NULL;
+SELECT key, hilbertEncode(CAST(NULL AS UInt32), 200) AS encoding_result FROM hilbert_complex WHERE key = 2;
+SELECT key, hilbertEncode(hilbertEncode(1, 2), 3) FROM hilbert_complex;
+WITH (SELECT key, val FROM (SELECT key, hilbertEncode(val1, val2) AS val FROM hilbert_test)) AS inner_query SELECT SUM(val) OVER (PARTITION BY key) FROM inner_query;
+WITH (SELECT val1, val2 FROM hilbert_test WHERE val1 = 1) AS subquery SELECT x -> hilbertEncode(val1, x) FROM subquery;
+CREATE TABLE temp_hilbert AS SELECT * FROM hilbert_test;
+DROP TABLE IF EXISTS hilbert_test;

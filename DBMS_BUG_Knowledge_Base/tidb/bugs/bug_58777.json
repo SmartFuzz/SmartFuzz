@@ -1,0 +1,46 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/58777",
+  "title": "Wrong Result in Cast Blob to Json",
+  "vulnerable_database": "tidb",
+  "date": "2025-01-08T02:22:20Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n\n```sql\nDROP TABLE IF EXISTS t0;\nCREATE TABLE t0(c0 BLOB);\nINSERT INTO t0 VALUES ('1xx');\n\nSELECT t0.c0 FROM t0 WHERE CAST(t0.c0 AS JSON);\n```\n\n### 2. What did you expect to see? (Required)\n\nsee the following case:\n\n### 3. What did you see instead (Required)\n\n```sql\n// MySQL 8.4.1\nMySQL [test]> SELECT t0.c0 FROM t0 WHERE CAST(t0.c0 AS JSON);\n+------+\n| c0   |\n+------+\n| 1xx  |\n+------+\n1 row in set, 1 warning (0.00 sec)\n\n// TiDB\nmysql> SELECT t0.c0 FROM t0 WHERE CAST(t0.c0 AS JSON);\n+------------+\n| c0         |\n+------------+\n| 0x317878   |\n+------------+\n1 row in set (0.04 sec)\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\nTiDB v8.5.0",
+  "poc": [
+    "DROP TABLE IF EXISTS t0;",
+    "CREATE TABLE t0(c0 BLOB);",
+    "INSERT INTO t0 VALUES ('1xx');",
+    "SELECT t0.c0 FROM t0 WHERE CAST(t0.c0 AS JSON);"
+  ],
+  "poc_type": "sql_text",
+  "state": "closed",
+  "key_bug_features": [
+    "CAST BLOB to JSON in SQL query"
+  ],
+  "bug_feature_seed": [
+    "DROP TABLE IF EXISTS t_cast;",
+    "DROP TABLE IF EXISTS t_ref;",
+    "CREATE TABLE t_cast (id INT PRIMARY KEY AUTO_INCREMENT, c_blob BLOB, c_vb VARBINARY(32), c_txt TEXT, c_json JSON NULL);",
+    "CREATE TABLE t_ref (rid INT PRIMARY KEY, tag VARCHAR(20) NOT NULL, flag TINYINT, dt DATETIME, j JSON);",
+    "INSERT INTO t_ref VALUES (1,'A',1,'1970-01-01 00:00:00',JSON_OBJECT('k',1));",
+    "INSERT INTO t_ref VALUES (2,'B',0,'2038-01-19 03:14:07',JSON_ARRAY(true,false,null));",
+    "INSERT INTO t_cast(c_blob,c_vb,c_txt,c_json) VALUES ('1xx',x'317878','1xx',NULL);",
+    "INSERT INTO t_cast(c_blob,c_vb,c_txt,c_json) VALUES ('true',x'74727565','true',CAST('true' AS JSON));",
+    "INSERT INTO t_cast(c_blob,c_vb,c_txt,c_json) VALUES ('{\"a\":1}',x'7B2261223A317D','{\"a\":1}',JSON_OBJECT('a',1));",
+    "INSERT INTO t_cast(c_blob,c_vb,c_txt,c_json) VALUES (x'00FF',x'00FF',NULL,NULL);",
+    "SELECT id FROM t_cast WHERE CAST(c_blob AS JSON);",
+    "SELECT id FROM t_cast WHERE CAST(c_vb AS JSON) IS NOT NULL;",
+    "SELECT id FROM t_cast WHERE CAST(c_txt AS JSON) = CAST('true' AS JSON);",
+    "SELECT a.id FROM t_cast a JOIN t_ref b ON (a.id % 2) = b.rid WHERE CAST(a.c_blob AS JSON) IS NOT NULL;",
+    "SELECT id FROM (SELECT id,c_blob FROM t_cast WHERE id >= 1) s WHERE CAST(s.c_blob AS JSON);",
+    "UPDATE t_cast SET c_blob = CONCAT(c_txt,'') WHERE id = 1;",
+    "SELECT id FROM t_cast WHERE CAST(c_blob AS JSON) = CAST('{\"a\":1}' AS JSON);",
+    "DELETE FROM t_cast WHERE CAST(c_blob AS JSON) IS NULL;"
+  ],
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t1;",
+    "CREATE TABLE t1(c1 BLOB NOT NULL, c2 INT DEFAULT 0);",
+    "INSERT INTO t1 VALUES ('{\"key\": \"value\"}', 1);",
+    "SELECT c1 FROM t1 WHERE CAST(c1 AS JSON);",
+    "INSERT INTO t1 VALUES (NULL, 2);"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/61176",
+  "title": "Partition table work with PointGet plan get a wrong result",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n```\nCREATE TABLE `t235e2b52` (\n  `col_36` bigint DEFAULT NULL,\n  `col_37` varchar(463) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT 'T',\n  `col_39` bigint DEFAULT '272523819217945548',\n  `col_40` timestamp DEFAULT '2023-09-11 00:00:00',\n  `col_41` text COLLATE utf8mb4_unicode_ci NOT NULL,\n  `col_42` bigint unsigned NOT NULL DEFAULT '5329417101757332864',\n  PRIMARY KEY (`col_37`) /*T![clustered_index] CLUSTERED */\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci\nPARTITION BY RANGE COLUMNS(`col_37`)\n(PARTITION `p0` VALUES LESS THAN ('q&Gmxiqq8qDCv1Lc5w'),\n PARTITION `p1` VALUES LESS THAN (MAXVALUE));\n\ninsert into t235e2b52(col_37, col_41) values ('YOqtJ', '');\nselect * from t235e2b52 where col_37 <=> 'YOqtJ';\n```\n\n### 2. What did you expect to see? (Required)\n\n```\nmysql> select * from t235e2b52 where col_37 <=> 'YOqtJ';\n+--------+--------+--------------------+---------------------+--------+---------------------+\n| col_36 | col_37 | col_39             | col_40              | col_41 | col_42              |\n+--------+--------+--------------------+---------------------+--------+---------------------+\n|   NULL | YOqtJ  | 272523819217945548 | 2023-09-11 00:00:00 |        | 5329417101757332864 |\n+--------+--------+--------------------+---------------------+--------+---------------------+\n1 row in set (0.00 sec)\n```\n\n### 3. What did you see instead (Required)\n\nBefore https://github.com/pingcap/tidb/pull/61141, return empty result.\n\nAfter https://github.com/pingcap/tidb/pull/61141, report unexpected error like\n```\nmysql> select * from t235e2b52 where col_37 <=> 'YOqtJ';\nERROR 1105 (HY000): too many partitions matching for PointGetPlan\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\nmaster\n",
+  "date": "2025-05-19T09:06:47Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t_partitioned (id int NOT NULL, name varchar(255) NOT NULL, value decimal(10,2) DEFAULT NULL, PRIMARY KEY (id));",
+    "INSERT INTO t_partitioned (id, name, value) VALUES (50, 'test1', 123.45);",
+    "INSERT INTO t_partitioned (id, name, value) VALUES (150, 'test2', NULL);",
+    "SELECT * FROM t_partitioned WHERE id = 50;",
+    "SELECT * FROM t_partitioned WHERE value IS NULL;"
+  ],
+  "key_bug_features": [
+    "PointGet plan with partitioned table returns unexpected error"
+  ]
+}

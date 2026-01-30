@@ -1,0 +1,11 @@
+CREATE TABLE test_array (id UInt32, values Array(Int32), flags Array(Bool)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_array (id, values, flags) VALUES (1, [1, 2, 3, 0, 4], [true, false, true, false, true]);
+INSERT INTO test_array (id, values, flags) VALUES (2, [5, NULL, 7, 8, 0], [false, false, false, true, true]);
+SELECT id, arrayLastIndex(x -> if(x > 0, 1, 0), values) FROM test_array WHERE id GLOBAL NOT IN (SELECT id FROM test_array WHERE id = 1);
+SELECT ARRAY JOIN values AS val, flags AS flag FROM test_array WHERE val GLOBAL NOT IN (SELECT value FROM (SELECT DISTINCT arrayLastIndex(x -> x IS NULL, values) AS value FROM test_array));
+SELECT id, arrayLastIndex(x -> if(x = 0, NULL, x), values) AS last_index FROM test_array WHERE last_index GLOBAL NOT IN (SELECT MAX(n) FROM (SELECT DISTINCT values[1] AS n FROM test_array));
+CREATE TABLE temp_table AS SELECT id, values FROM test_array WHERE flags[1] = true;
+INSERT INTO temp_table SELECT id, arraySlice(values, 1, 3) FROM test_array WHERE values != [] AND id = 2;
+SELECT id, arrayLastIndex(x -> x = 4, arrayFilter(x -> x IS NOT NULL, values)) FROM temp_table WHERE id GLOBAL NOT IN (SELECT id FROM test_array WHERE id >= 3);
+SELECT id, arrayLastIndex(x -> x IS NOT NULL AND x > 3, arrayMap(x -> x, values)) AS last_index FROM test_array GROUP BY id HAVING last_index > 0;
+DROP TABLE temp_table;

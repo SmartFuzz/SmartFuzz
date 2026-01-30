@@ -1,0 +1,15 @@
+CREATE TABLE test_series (id SERIAL PRIMARY KEY, value INT);
+INSERT INTO test_series (value) SELECT generate_series(1, 10);
+SELECT a.value, b.value FROM test_series a JOIN test_series b ON a.value = b.value - 1 WHERE a.value IN (SELECT generate_series(5, 15));
+SELECT value, COUNT(*) FROM test_series GROUP BY value HAVING COUNT(*) > 1;
+SELECT *, (SELECT COUNT(*) FROM test_series WHERE value = a.value) AS count FROM test_series a WHERE value IN (SELECT generate_series(1, 10)) ORDER BY count DESC;
+SELECT a.value, b.value FROM (SELECT generate_series(1, 5) AS value) AS a JOIN (SELECT generate_series(1, 5) AS value) AS b ON a.value = b.value;
+CREATE TEMPORARY TABLE temp_test (ip_address INET);
+INSERT INTO temp_test (ip_address) VALUES (inet '192.168.1.1'), (inet '192.168.1.2'), (NULL);
+SELECT * FROM temp_test WHERE ip_address IS NULL OR ip_address = inet '192.168.1.1';
+SELECT value FROM (SELECT value, ROW_NUMBER() OVER (PARTITION BY value ORDER BY value) AS rn FROM test_series) AS subquery WHERE rn = 1;
+SELECT value + 5 AS incremented_value FROM test_series WHERE value = (SELECT generate_series(1, 10) WHERE value IS NOT NULL);
+SELECT generate_series(1, 10) AS series WHERE EXISTS (SELECT 1 FROM temp_test WHERE ip_address = inet '192.168.1.1');
+SELECT generate_series(-1, 0) + value AS boundary_case FROM test_series WHERE value = 0;
+SELECT * FROM test_series WHERE value IS NOT NULL AND value <> NULL;
+UPDATE test_series SET value = NULL WHERE value = 5 RETURNING *;

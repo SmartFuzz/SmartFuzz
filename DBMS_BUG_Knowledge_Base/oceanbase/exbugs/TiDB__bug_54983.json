@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/54983",
+  "title": "build rollup plan case index out of range",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n```\r\nCREATE TABLE t1(\r\nproduct VARCHAR(32),\r\ncountry_id INTEGER NOT NULL,\r\nyear INTEGER,\r\nprofit INTEGER);\r\nINSERT INTO t1  VALUES ( 'Computer', 2,2000, 1200),\r\n( 'TV', 1, 1999, 150),\r\n( 'Calculator', 1, 1999,50),\r\n( 'Computer', 1, 1999,1500),\r\n( 'Computer', 1, 2000,1500),\r\n( 'TV', 1, 2000, 150),\r\n( 'TV', 2, 2000, 100),\r\n( 'TV', 2, 2000, 100),\r\n( 'Calculator', 1, 2000,75),\r\n( 'Calculator', 2, 2000,75),\r\n( 'TV', 1, 1999, 100),\r\n( 'Computer', 1, 1999,1200),\r\n( 'Computer', 2, 2000,1500),\r\n( 'Calculator', 2, 2000,75),\r\n( 'Phone', 3, 2003,10)\r\n;\r\nCREATE TABLE t2 (\r\ncountry_id INTEGER PRIMARY KEY,\r\ncountry CHAR(20) NOT NULL);\r\nINSERT INTO t2 VALUES (1, 'USA'),(2,'India'), (3,'Finland');\r\n\r\nSELECT product FROM t1 WHERE EXISTS (SELECT product, country_id , SUM(profit) FROM t1 AS t2  WHERE t1.product=t2.product GROUP BY product, country_id WITH ROLLUP  HAVING SUM(profit) > 6000);\r\n```\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\nsuccess\r\n\r\n### 3. What did you see instead (Required)\r\n```\r\ntidb> SELECT product FROM t1 WHERE EXISTS (SELECT product, country_id , SUM(profit) FROM t1 AS t2  WHERE t1.product=t2.product GROUP BY product, country_id WITH ROLLUP  HAVING SUM(profit) > 6000);\r\nNo connection. Trying to reconnect...\r\nConnection id:    2097154\r\nCurrent database: test\r\n\r\nERROR 1105 (HY000): runtime error: index out of range [0] with length 0\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\nmaster\r\n\r\n",
+  "date": "2024-07-29T03:05:36Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t3 (id INT PRIMARY KEY, name VARCHAR(50), value DECIMAL(10,2), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t3 VALUES (1, 'Item A', 100.50, '2023-01-01 00:00:00'), (2, 'Item B', NULL, '2023-01-02 00:00:00'), (3, 'Item C', 200.00, NULL);",
+    "CREATE TABLE t4 (category_id INT NOT NULL, description VARCHAR(100), FOREIGN KEY (category_id) REFERENCES t3(id));",
+    "INSERT INTO t4 VALUES (1, 'Electronics'), (2, 'Furniture'), (3, 'Toys');",
+    "SELECT t3.name, SUM(t3.value) FROM t3 LEFT JOIN t4 ON t3.id = t4.category_id GROUP BY t3.name WITH ROLLUP HAVING SUM(t3.value) IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "GROUP BY product, country_id WITH ROLLUP"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+    "function": "json.filter(js, pathexpr)",
+    "operator": "<<",
+    "sql_array": [
+        "CREATE TABLE products (id SERIAL PRIMARY KEY, details JSON, price INT);",
+        "INSERT INTO products (details, price) VALUES (json '{\"price\": null, \"description\": \"A test product\"}', 10);",
+        "INSERT INTO products (details, price) VALUES (json '{\"price\": 20}', 20);",
+        "INSERT INTO products (details, price) VALUES (json '{\"price\": 30}', 30);",
+        "SELECT json.filter(details, '$..price') << 1 AS increased_price FROM products WHERE json.filter(details, '$..price') IS NOT NULL;",
+        "SELECT id, json.filter(details, '$..price') AS price, (json.filter(details, '$..price') << 2) AS shifted_price FROM products WHERE price > json.filter(details, '$..price') << 1;",
+        "CREATE TABLE sales (sale_id SERIAL PRIMARY KEY, product_id INT, sale_price INT, FOREIGN KEY (product_id) REFERENCES products(id));",
+        "INSERT INTO sales (product_id, sale_price) VALUES (1, 9), (2, 15), (3, 30);",
+        "WITH price_filtered AS (SELECT product_id, sale_price, json.filter(details, '$..price') AS json_price FROM sales INNER JOIN products ON sales.product_id = products.id) SELECT product_id, sale_price << 1 AS double_price FROM price_filtered HAVING json_price IS NOT NULL;",
+        "SELECT sale_id, product_id, (json.filter(details, '$..price') << 3) AS quadrupled_price FROM sales JOIN products ON sales.product_id = products.id ORDER BY quadrupled_price DESC;",
+        "SELECT product_id, COUNT(*) AS num_sales FROM sales GROUP BY product_id HAVING COUNT(*) > (json.filter((SELECT details FROM products WHERE id = 1), '$..price') << 1);"
+    ]
+}

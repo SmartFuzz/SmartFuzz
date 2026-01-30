@@ -1,0 +1,57 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/63289",
+  "title": "VIEW containing correlated subquery returns NULL",
+  "vulnerable_database": "tidb",
+  "date": "2025-08-31T06:31:39Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\n\n### 1. Minimal reproduce step (Required)\n```sql\nCREATE TABLE t1 (c1 INT);\nCREATE TABLE t3 (c0 INT);\nINSERT INTO t1 VALUES (10);\nINSERT INTO t3 VALUES (9);\n\nWITH vtable0 AS (\n    SELECT\n        (SELECT t1.c1 FROM t1 WHERE MOD(t1.c1, t3.c0 + 1) = 0) AS c1\n    FROM t3\n    JOIN t1 ON TRUE\n)\nSELECT vtable0.c1 FROM vtable0;\n\nCREATE VIEW vtable0 AS (\n    SELECT\n        (SELECT t1.c1 FROM t1 WHERE MOD(t1.c1, t3.c0 + 1) = 0) AS c1\n    FROM t3\n    JOIN t1 ON TRUE\n);\n\nSELECT vtable0.c1 FROM vtable0;\n```\n### 2. What did you expect to see? (Required)\n10 for the 2nd query, which MySQL output 10.\n### 3. What did you see instead (Required)\n```\n+------+\n| c1   |\n+------+\n|   10 |\n+------+\n```\n```\n+------+\n| c1   |\n+------+\n| NULL |\n+------+\n```\n### 4. What is your TiDB version? (Required)\n```\ntiup playground nightly --host 0.0.0.0 --kv 3 --tiflash 3\n```\n```\n8.0.11-TiDB-v9.0.0-beta.2.pre-384-g5fab436\n```\n\n",
+  "poc": [
+    "CREATE TABLE t1 (c1 INT);",
+    "CREATE TABLE t3 (c0 INT);",
+    "INSERT INTO t1 VALUES (10);",
+    "INSERT INTO t3 VALUES (9);",
+    "WITH vtable0 AS (",
+    "    SELECT",
+    "        (SELECT t1.c1 FROM t1 WHERE MOD(t1.c1, t3.c0 + 1) = 0) AS c1",
+    "    FROM t3",
+    "    JOIN t1 ON TRUE",
+    ")",
+    "SELECT vtable0.c1 FROM vtable0;",
+    "CREATE VIEW vtable0 AS (",
+    ");"
+  ],
+  "poc_type": "sql_text",
+  "state": "open",
+  "key_bug_features": [
+    "VIEW with correlated subquery returns NULL instead of value"
+  ],
+  "bug_feature_seed": [
+    "DROP VIEW IF EXISTS vtable0;",
+    "DROP TABLE IF EXISTS t1;",
+    "DROP TABLE IF EXISTS t3;",
+    "CREATE TABLE t1 (c1 INT);",
+    "CREATE TABLE t3 (c0 INT);",
+    "INSERT INTO t1 VALUES (10);",
+    "INSERT INTO t3 VALUES (9);",
+    "WITH vtable0 AS (SELECT (SELECT t1.c1 FROM t1 WHERE MOD(t1.c1, t3.c0 + 1) = 0) AS c1 FROM t3 JOIN t1 ON TRUE) SELECT vtable0.c1 FROM vtable0;",
+    "CREATE VIEW vtable0 AS SELECT (SELECT t1.c1 FROM t1 WHERE MOD(t1.c1, t3.c0 + 1) = 0) AS c1 FROM t3 JOIN t1 ON TRUE;",
+    "SELECT vtable0.c1 FROM vtable0;",
+    "CREATE VIEW vtable1 AS SELECT (SELECT t1.c1 FROM t1 WHERE MOD(t1.c1, t3.c0 + 1) = 0) AS c1 FROM t3;",
+    "SELECT vtable1.c1 FROM vtable1;",
+    "CREATE VIEW vtable2 AS SELECT (SELECT t1.c1 FROM t1 WHERE MOD(t1.c1, t3.c0 + 1) = 0) AS c1 FROM t3 JOIN t1 ON 1=1;",
+    "SELECT vtable2.c1 FROM vtable2;",
+    "CREATE VIEW vtable3 AS SELECT (SELECT t1.c1 FROM t1 WHERE MOD(t1.c1, t3.c0 + 1) = 0) AS c1 FROM t3 CROSS JOIN t1;",
+    "SELECT vtable3.c1 FROM vtable3;",
+    "CREATE VIEW vtable4 AS SELECT (SELECT t1.c1 FROM t1 WHERE MOD(t1.c1, t3.c0 + 1) = 0 LIMIT 1) AS c1 FROM t3 JOIN t1 ON TRUE;",
+    "SELECT vtable4.c1 FROM vtable4;",
+    "CREATE VIEW vtable5 AS SELECT (SELECT t1.c1 FROM t1 WHERE MOD(t1.c1, t3.c0 + 1) = 0 AND t1.c1 IS NOT NULL) AS c1 FROM t3 JOIN t1 ON TRUE;",
+    "SELECT vtable5.c1 FROM vtable5;"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t2 (c1 INT NOT NULL, c2 VARCHAR(50));",
+    "CREATE TABLE t4 (c0 INT DEFAULT 0, c3 FLOAT);",
+    "INSERT INTO t2 VALUES (20, 'test');",
+    "INSERT INTO t4 VALUES (8, 3.14);",
+    "CREATE VIEW vtable1 AS (SELECT (SELECT t2.c1 FROM t2 WHERE MOD(t2.c1, t4.c0 + 1) = 0) AS c1 FROM t4 JOIN t2 ON TRUE);"
+  ]
+}

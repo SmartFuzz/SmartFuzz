@@ -1,0 +1,16 @@
+{
+    "function": "sys.getcontext(url)",
+    "operator": "<>",
+    "sql_array": [
+        "CREATE TABLE test_urls (id INT PRIMARY KEY, url CLOB NOT NULL);",
+        "INSERT INTO test_urls (id, url) VALUES (1, 'http://example.com/path/to//resource'), (2, 'ftp://anotherexample.com/');",
+        "SELECT sys.getcontext(url) AS context FROM test_urls WHERE sys.getcontext(url) <> 'path' OR id <> 1;",
+        "SELECT id, sys.getcontext(url) AS context FROM test_urls WHERE (sys.getcontext(url) <> 'path' AND id > 0) OR sys.getcontext('http://dummy.com') IS NULL;",
+        "CREATE TABLE url_stats (url_id INT REFERENCES test_urls(id), access_count INT DEFAULT 0, last_access TIMESTAMP);",
+        "INSERT INTO url_stats (url_id, access_count) VALUES (1, 5), (2, 10), (1, NULL);",
+        "SELECT us.url_id, sys.getcontext(tu.url) AS context FROM url_stats us JOIN test_urls tu ON us.url_id = tu.id WHERE (us.access_count <> 10) AND (sys.getcontext(tu.url) IS NOT NULL);",
+        "SELECT COUNT(*) FROM (SELECT DISTINCT sys.getcontext(url) FROM test_urls) AS distinct_contexts HAVING COUNT(*) <> 1;",
+        "UPDATE url_stats SET access_count = NULL WHERE url_id IN (SELECT id FROM test_urls WHERE sys.getcontext(url) <> 'path' AND id IS NOT NULL);",
+        "SELECT sys.getcontext(url) AS url_context, SUM(access_count) AS total_access FROM url_stats us JOIN test_urls tu ON us.url_id = tu.id GROUP BY sys.getcontext(url) HAVING SUM(access_count) <> 10;"
+    ]
+}

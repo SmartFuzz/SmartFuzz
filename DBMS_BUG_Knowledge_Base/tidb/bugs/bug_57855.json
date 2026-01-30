@@ -1,0 +1,26 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/57855",
+  "title": "TiFlash cast blob as signed function's behavior is different with tidb for overflow cases",
+  "vulnerable_database": "tidb",
+  "date": "2024-12-01T12:16:22Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\nprepare data\n```sql\ndrop table if exists t0;\nCREATE TABLE t0(c0 BLOB(123));\nINSERT INTO t0(c0) VALUES ('1'),('2'),('3');\nALTER TABLE t0 SET TIFLASH REPLICA 1;\n```\nexecute query\n```sql\nSELECT /*+ read_from_storage(tikv[t0]) */\n    *\nFROM t0\nWHERE\n    ('4Y') & (\n        (CASE\n            true\n         WHEN ((t0.c0) >> (t0.c0)) THEN t0.c0\n         ELSE (~ (4.1))\n        END)\n    );\n\nSELECT /*+ read_from_storage(tiflash[t0]) */\n    *\nFROM t0\nWHERE\n    ('4Y') & (\n        (CASE\n            true\n         WHEN ((t0.c0) >> (t0.c0)) THEN t0.c0\n         ELSE (~ (4.1))\n        END)\n    );\n```\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\nThe results of the two queries are equal.\n\n### 3. What did you see instead (Required)\nQuery1: empty\nQuery2:\n![Image](https://github.com/user-attachments/assets/09401e0f-1c1f-4778-8be5-07619327ed9a)\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\nRelease Version: v8.4.0\nEdition: Community\nGit Commit Hash: 1a9f0fa25580907d3266dc3edf000ba24379a600\nGit Branch: HEAD\nUTC Build Time: 2024-11-07 15:18:43\nGoVersion: go1.23.2\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv\n\n### 5. Note\nMaybe duplication with https://github.com/pingcap/tidb/issues/57739.\n",
+  "poc": [
+    "drop table if exists t0;",
+    "CREATE TABLE t0(c0 BLOB(123));",
+    "INSERT INTO t0(c0) VALUES ('1'),('2'),('3');",
+    "ALTER TABLE t0 SET TIFLASH REPLICA 1;"
+  ],
+  "poc_type": "sql_text",
+  "state": "open",
+  "key_bug_features": [
+    "TiFlash cast blob as signed function overflow behavior"
+  ],
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t1;",
+    "CREATE TABLE t1(c1 BLOB(255), c2 INT NOT NULL DEFAULT 0);",
+    "INSERT INTO t1(c1, c2) VALUES ('10'), ('20'), ('30');",
+    "SELECT /*+ read_from_storage(tikv[t1]) */ c1, c2 FROM t1 WHERE c2 = (SELECT MAX(c2) FROM t1);",
+    "SELECT /*+ read_from_storage(tiflash[t1]) */ c1, c2 FROM t1 WHERE c2 = (SELECT MIN(c2) FROM t1);"
+  ]
+}

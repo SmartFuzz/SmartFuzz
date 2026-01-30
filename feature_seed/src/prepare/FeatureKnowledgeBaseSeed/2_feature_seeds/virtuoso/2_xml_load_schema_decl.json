@@ -1,0 +1,11 @@
+CREATE TABLE persons (id INT PRIMARY KEY, name VARCHAR(100), age INT, schema VARCHAR(500));
+INSERT INTO persons (id, name, age, schema) VALUES (1, 'Alice', 30, 'http://localhost.localdomain/xmlrepository, persons.xsd'), (2, 'Bob', NULL, 'http://localhost.localdomain/xmlrepository, persons.xsd');
+SELECT id, name, age, xml_load_schema_decl('http://localhost.localdomain/xmlrepository', schema, 'UTF-8', 'x-any') AS schema_errors FROM persons WHERE age IN (SELECT age FROM persons WHERE name IN ('Alice', 'Bob'));
+SELECT name, COUNT(*) AS count, xml_load_schema_decl('http://localhost.localdomain/xmlrepository', schema, 'UTF-8', 'x-any') AS schema_errors FROM persons GROUP BY name HAVING count > 1;
+SELECT id, name FROM persons WHERE xml_load_schema_decl('http://localhost.localdomain/xmlrepository', schema, 'UTF-8', 'x-any') IN (SELECT xml_load_schema_decl('http://localhost.localdomain/xmlrepository', schema, 'UTF-8', 'x-any') FROM persons WHERE age IS NULL);
+SELECT id, name FROM persons WHERE xml_load_schema_decl('http://localhost.localdomain/xmlrepository', schema, 'UTF-8', 'x-any') IN (SELECT DISTINCT xml_load_schema_decl('http://localhost.localdomain/xmlrepository', schema, 'UTF-8', 'x-any') FROM persons GROUP BY id HAVING COUNT(*) > 1) AND age IS NOT NULL;
+CREATE TABLE xml_data (doc_id INT, xml_content XML);
+INSERT INTO xml_data (doc_id, xml_content) VALUES (1, '<person><name>Alice</name><age>30</age></person>'), (2, '<person><name>NULL</name></person>');
+SELECT doc_id, xml_load_schema_decl('http://localhost.localdomain/xmlrepository', xml_content, 'UTF-8', 'x-any') AS errors FROM xml_data WHERE doc_id IN (SELECT doc_id FROM xml_data WHERE xml_content IS NOT NULL);
+SELECT DISTINCT xml_load_schema_decl('http://localhost.localdomain/xmlrepository', schema, 'UTF-8', 'x-any') FROM persons WHERE id IN (SELECT id FROM persons WHERE age IN (SELECT MAX(age) FROM persons));
+SELECT xml_load_schema_decl('http://localhost.localdomain/xmlrepository', schema, 'UTF-8', 'x-any') AS validation_result, CASE WHEN age IS NULL THEN 'Age is NULL' ELSE 'Age is valid' END AS age_status FROM persons WHERE schema IN (SELECT schema FROM persons WHERE name = 'Alice');

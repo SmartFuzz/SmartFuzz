@@ -1,0 +1,14 @@
+CREATE TABLE fuzz_test (ft_id integer, ft_text long varchar, ft_num varchar, PRIMARY KEY (ft_id));
+INSERT INTO fuzz_test (ft_id, ft_text, ft_num) VALUES (1, NULL, '100');
+INSERT INTO fuzz_test (ft_id, ft_text, ft_num) VALUES (2, 'Sample text', '200.00');
+INSERT INTO fuzz_test (ft_id, ft_text, ft_num) VALUES (3, 'Another text', NULL);
+INSERT INTO fuzz_test (ft_id, ft_text, ft_num) VALUES (4, 'More text', '300e5');
+SELECT f.ft_id, f.ft_text, f.ft_num, vt_create_text_index('fuzz_test', 'ft_text', NULL, 0) FROM fuzz_test f WHERE ft_num LIKE '30%' AND ft_text IS NOT NULL;
+SELECT COUNT(*) FROM fuzz_test WHERE ft_text IS NOT NULL AND ft_num NOT IN (SELECT NULL UNION SELECT '200');
+SELECT ft_id, ft_text FROM fuzz_test WHERE ft_text LIKE '%text%' AND (ft_num::integer > 150 OR ft_num::float < 350.5);
+CREATE TABLE xml_test (xt_id integer, xt_file varchar, xt_text long varchar, PRIMARY KEY (xt_id));
+INSERT INTO xml_test (xt_id, xt_file, xt_text) VALUES (1, 'file1.xml', '<root>Valid XML</root>');
+INSERT INTO xml_test (xt_id, xt_file, xt_text) VALUES (2, 'file2.xml', '<root><element>Valid</element></root>');
+SELECT * FROM xml_test WHERE vt_create_text_index('xml_test', 'xt_text', NULL, 1) AND xt_id = ANY(SELECT xt_id FROM xml_test WHERE xt_text IS NOT NULL);
+SELECT AVG(ft_num::float) FROM fuzz_test WHERE ft_num IS NOT NULL AND ft_text IS NOT NULL GROUP BY ft_text HAVING (COUNT(ft_id) > 1) AND (AVG(ft_num::float) < 250);
+SELECT xt.xt_id, xt.xt_file, vt_create_text_index('xml_test', 'xt_text', NULL, 0) FROM xml_test xt JOIN fuzz_test f ON xt.xt_id = f.ft_id WHERE xt.xt_text IS NOT NULL AND (f.ft_num IS NULL OR f.ft_num::integer > 100);

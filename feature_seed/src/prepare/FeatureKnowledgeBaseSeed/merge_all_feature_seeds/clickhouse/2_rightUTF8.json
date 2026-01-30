@@ -1,0 +1,12 @@
+CREATE TABLE test_strings (id UInt32, utf8_string String, sample_value UInt8) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_strings (id, utf8_string, sample_value) VALUES (1, 'Привет', 1), (2, '', 1), (3, NULL, 0);
+SELECT id, rightUTF8(utf8_string, 4) AS right_substring FROM test_strings WHERE sample_value = 1;
+SELECT id, utf8_string FROM test_strings WHERE rightUTF8(utf8_string, -1) GLOBAL IN (SELECT length(utf8_string) FROM test_strings);
+SELECT id, rightUTF8(utf8_string, -2) AS right_substring FROM test_strings WHERE utf8_string IS NOT NULL HAVING right_substring != '';
+SELECT id, rightUTF8(utf8_string, 0) AS empty_string FROM test_strings GROUP BY id HAVING empty_string = '';
+SELECT id, rightUTF8(CONCAT(utf8_string, 'Test'), -2) AS concat_substring FROM test_strings WHERE utf8_string GLOBAL IN (SELECT utf8_string FROM test_strings WHERE id = 1);
+CREATE TABLE test_data (data_value Nullable(Int32), text_value String) ENGINE = MergeTree() ORDER BY data_value;
+INSERT INTO test_data (data_value, text_value) VALUES (1, 'Example'), (NULL, 'Test'), (3, 'Привет мире');
+SELECT text_value, rightUTF8(text_value, 6) AS trimmed_text FROM test_data WHERE data_value IS NOT NULL AND rightUTF8(text_value, -3) GLOBAL IN (SELECT substring(text_value, 1, 5) FROM test_data);
+SELECT COUNT(*) AS count, rightUTF8(text_value, 2) FROM test_data GROUP BY rightUTF8(text_value, 2) HAVING count > 0;
+SELECT id, rightUTF8(IFNULL(text_value, 'Fallback'), 3) FROM test_strings WHERE text_value GLOBAL IN (SELECT rightUTF8(utf8_string, 2) FROM test_strings);

@@ -1,0 +1,13 @@
+CREATE TABLE Shapes (id INT PRIMARY KEY, geometry GEOMETRY);
+INSERT INTO Shapes VALUES (1, POINT(1 2));
+INSERT INTO Shapes VALUES (2, POLYGON((0 0, 1 1, 1 0, 0 0)));
+INSERT INTO Shapes VALUES (3, MULTIPOINT((1 1), (2 2), (3 3)));
+SELECT id, bif:ST_Translate(geometry, 5, 10) AS translated_shape FROM Shapes WHERE bif:ST_Translate(geometry, 5, 10) IS NOT NULL;
+SELECT id, bif:ST_Translate(geometry, CASE WHEN isIRI(geometry) THEN 1 ELSE 0 END, 0) AS translated_shape FROM Shapes WHERE isIRI(geometry);
+SELECT id, bif:ST_Translate(geometry, 0, CASE WHEN geometry IS NULL THEN 0 ELSE 1 END) AS translated_shape FROM Shapes;
+SELECT id, bif:ST_Translate(geometry, -1.0, 0) AS translated_shape FROM Shapes WHERE bif:ST_Translate(geometry, -1.0, 0) IS NOT NULL ORDER BY id;
+CREATE TEMPORARY TABLE TempShapes AS SELECT *, bif:ST_Translate(geometry, 0, 0) AS translated_shape FROM Shapes;
+SELECT id, bif:ST_Translate(geometry, 0, 0) AS shape FROM (SELECT * FROM TempShapes WHERE translated_shape IS NOT NULL) AS subquery WHERE isIRI(translated_shape);
+SELECT S1.id, bif:ST_Translate(S1.geometry, 0.5, 0.5) AS shape_translated, bif:ST_Translate(S2.geometry, 0.5, 0.5) AS shape_joined FROM Shapes S1 JOIN Shapes S2 ON S1.id = S2.id + 1 WHERE isIRI(S1.geometry);
+SELECT SUM(bif:ST_Translate(geometry, 1, 1)) AS TotalShape FROM Shapes GROUP BY id HAVING COUNT(*) > 1;
+SELECT id FROM Shapes WHERE bif:ST_Translate(geometry, -999999, NULL) IS NOT NULL AND (SELECT COUNT(*) FROM Shapes WHERE isIRI(geometry)) > 0;

@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=104674",
+  "title": "MySQLLexer.g4 `BACK_TICK_QUOTED_ID `lexical rule definition bug",
+  "description": "0.\r\nBecause of the needs of a certain business at work, I referred to your code.\r\n\r\n1.\r\nThere is such a table in the database。\r\nCREATE TABLE `test` ( \r\n\t`id` INT ( 11 ) NOT NULL, \r\n\t`x``x``x` VARCHAR ( 255 ), \r\n\tPRIMARY KEY ( `id` ) USING BTREE \r\n);\r\n\r\n2.\r\nI want to add data by clicking the `insert new row` button, and the tool generates such a statement for me。\r\n\r\nINSERT INTO `look`.`test` (`id`, `x`x`x`) VALUES ('2', '3');\r\n\r\n3. \r\nI then clicked the `apply` button, and the tool reported an error.\r\n\r\nOperation failed: There was an error while applying the SQL script to the database.\r\nExecuting:\r\nINSERT INTO `look`.`test` (`id`, `x`x`x`) VALUES ('2', '3');\r\n\r\nERROR 1064: 1064: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'x`x`) VALUES ('2', '3')' at line 1\r\nSQL Statement:\r\nINSERT INTO `look`.`test` (`id`, `x`x`x`) VALUES ('2', '3')\nHow to repeat:\nCreate the table in the description, try to add data to it, it is easy to find the error.\nSuggested fix:\nIn the following file, there is such a piece of code：\r\n\r\nmysql-workbench/library/parsers/grammars/MySQLLexer.g4\r\n\r\nfragment BACK_TICK:    '`';\r\nfragment SINGLE_QUOTE: '\\'';\r\nfragment DOUBLE_QUOTE: '\"';\r\n\r\nBACK_TICK_QUOTED_ID: BACK_TICK (({!isSqlModeActive(NoBackslashEscapes)}? '\\\\')? .)*? BACK_TICK;\r\n\r\nThe key to the problem is that this code does not adapt to ``",
+  "date": "2021-08-20 09:05:00",
+  "vulnerable_version": "8.0, 8.0.26",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test (id INTEGER NOT NULL, x_x_x VARCHAR(255), value DECIMAL(10,2), PRIMARY KEY (id));",
+    "INSERT INTO test (id, x_x_x, value) VALUES (1, 'test1', 10.50);",
+    "INSERT INTO test (id, x_x_x, value) VALUES (2, NULL, 20.00);",
+    "SELECT id, x_x_x, COALESCE(value, 0) AS value FROM test WHERE id < 3;",
+    "UPDATE test SET x_x_x = 'updated' WHERE id = 1;"
+  ],
+  "key_bug_features": [
+    "Incorrect handling of back-tick quoted identifiers in SQL"
+  ]
+}

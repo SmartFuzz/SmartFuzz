@@ -1,0 +1,11 @@
+CREATE TABLE geometries (id INTEGER PRIMARY KEY, geom GEOMETRY, time_attr DATETIME);
+INSERT INTO geometries (geom, time_attr) VALUES (ST_GeomFromText('POINT(1 1)'), CAST('1999-12-31 11:59' AS DATETIME));
+INSERT INTO geometries (geom, time_attr) VALUES (ST_GeomFromText('POINT(2 2)'), CAST('2000-01-01 12:00:00' AS DATETIME));
+SELECT g.id, is_timezoneless(g.time_attr) as timezoned_status, bif:st_distance(g.geom, ST_GeomFromText('POINT(0 0)')) as distance FROM geometries g WHERE is_timezoneless(g.time_attr) = 1 HAVING distance < 1000;
+SELECT g1.id, bif:st_distance(g1.geom, g2.geom) AS distance FROM geometries g1 JOIN geometries g2 ON is_timezoneless(g1.time_attr) = is_timezoneless(g2.time_attr) AND bif:st_distance(g1.geom, g2.geom) > 0 GROUP BY g1.id HAVING MIN(distance) IS NOT NULL;
+SELECT g.id, CAST(is_timezoneless(g.time_attr) AS INTEGER) + bif:st_distance(g.geom, ST_GeomFromText('LINESTRING(0 0, 1 1)')) AS combined_metric FROM geometries g WHERE g.time_attr NOT IN (SELECT time_attr FROM geometries WHERE time_attr IS NULL) ORDER BY combined_metric DESC;
+CREATE TABLE mixed_data (id SERIAL PRIMARY KEY, mixed_col VARCHAR(255), number_col INT, date_col DATETIME);
+INSERT INTO mixed_data (mixed_col, number_col, date_col) VALUES ('Test', NULL, CAST('2023-10-05 15:30:00' AS DATETIME));
+INSERT INTO mixed_data (mixed_col, number_col, date_col) VALUES ('Another Test', 42, NULL);
+SELECT m.id, is_timezoneless(m.date_col) as tz_status, m.number_col + (SELECT COUNT(*) FROM mixed_data) AS fuzzy_count FROM mixed_data m WHERE is_timezoneless(m.date_col) = 0 GROUP BY m.id HAVING fuzzy_count > 0;
+SELECT m1.id, bif:st_distance(ST_GeomFromText('POINT(' || m1.number_col || ' ' || m1.id || ')'), ST_GeomFromText('POINT(2 2)')) AS point_distance FROM mixed_data m1 WHERE m1.date_col IS NOT NULL ORDER BY point_distance ASC;

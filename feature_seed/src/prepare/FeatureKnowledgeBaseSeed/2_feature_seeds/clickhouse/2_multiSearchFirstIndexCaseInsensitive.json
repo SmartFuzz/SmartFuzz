@@ -1,0 +1,11 @@
+CREATE TABLE test_strings (id UInt32, content String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_strings VALUES (1, 'Hello World'), (2, 'HELLO'), (3, 'goodbye world'), (4, 'test case'), (5, 'NULL values are here');
+SELECT id, multiSearchFirstIndexCaseInsensitive(content, ['hello', 'world']) AS index_result FROM test_strings WHERE index_result BETWEEN 1 AND 2;
+SELECT id, multiSearchFirstIndexCaseInsensitive(content, ['Goodbye', 'TEST']) AS index_result FROM test_strings WHERE index_result = 0 OR index_result BETWEEN 1 AND 3;
+CREATE TABLE test_numbers (num_id UInt32, num_value Float64) ENGINE = MergeTree() ORDER BY num_id;
+INSERT INTO test_numbers VALUES (1, 10.5), (2, 20.0), (3, NULL), (4, 30.2);
+SELECT num_id, multiSearchFirstIndexCaseInsensitive(toString(num_value), ['10', '20', '30']) AS index_result FROM test_numbers WHERE num_value BETWEEN 15 AND 25;
+WITH (SELECT COUNT(*) FROM test_strings UNION ALL SELECT COUNT(*) FROM test_numbers) AS counts SELECT c.id, multiSearchFirstIndexCaseInsensitive(content, ['test', 'values']) AS index_result FROM test_strings CROSS JOIN (SELECT * FROM counts) AS c WHERE index_result > 0;
+CREATE TABLE test_mixed (id UInt32, mixed_content String, mixed_value UInt8) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_mixed VALUES (1, 'test1', 1), (2, 'test2', 0), (3, 'test3', NULL), (4, NULL, 1);
+SELECT id, multiSearchFirstIndexCaseInsensitive(COALESCE(mixed_content, 'default'), ['test']) AS index_result FROM test_mixed WHERE mixed_value BETWEEN 0 AND 1;

@@ -1,0 +1,13 @@
+CREATE TABLE test_sin_values (id UInt32, value Float64, threshold Float64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_sin_values (id, value, threshold) VALUES (1, 1.0, 0.0), (2, 0.0, 0.5), (3, 3.14, -1.0), (4, -3.14, 1.0);
+SELECT id, value, sin(value) AS sine_value FROM test_sin_values WHERE sin(value) >= threshold;
+SELECT id, value, (sin(value) >= threshold) AS is_above_threshold FROM test_sin_values;
+SELECT id, value, sin(value) FROM test_sin_values WHERE sin(value) >= (SELECT AVG(threshold) FROM test_sin_values);
+SELECT id, COUNT(*) FROM (SELECT id, sin(value) FROM test_sin_values GROUP BY id, sin(value) HAVING sin(value) >= 0.0) AS subq GROUP BY id;
+SELECT id, avg(sin(value)) OVER (PARTITION BY (CASE WHEN value >= 0 THEN 1 ELSE 0 END)) AS avg_sine FROM test_sin_values;
+SELECT id, sin(value) AS sine_value, threshold FROM test_sin_values WHERE (sin(value) >= threshold AND value IS NOT NULL);
+WITH max_value AS (SELECT MAX(value) FROM test_sin_values) SELECT id, sin(max_value) FROM test_sin_values WHERE id = (SELECT id FROM test_sin_values ORDER BY value DESC LIMIT 1) HAVING sin(max_value) >= 0;
+ALTER TABLE test_sin_values ADD COLUMN precision_value Decimal(10,5);
+INSERT INTO test_sin_values (id, value, threshold, precision_value) VALUES (5, 1.23456, 0.5, 1.23456);
+SELECT id, sin(CAST(precision_value AS Float64)) >= threshold FROM test_sin_values WHERE precision_value IS NOT NULL;
+DROP TABLE test_sin_values;

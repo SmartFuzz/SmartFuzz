@@ -1,0 +1,22 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7433",
+  "title": "MonetDB server crashes in `exp_atom`",
+  "vulnerable_database": "monetdb",
+  "date": "2024-01-17T06:47:09Z",
+  "vulnerable_version": "Unknown",
+  "description": "MonetDB server crashes in `exp_atom`.\n\n**To Reproduce**\n```sql\nCREATE TABLE v0 ( v1 VARCHAR ( 217 ) );\n UPDATE v0 SET v1 = ( SELECT ( v1 IN ( SELECT COUNT ( * ) WHERE v1 = 1 ) ) AS new_column ) ;  \n```\n\n**Backtrace of the Crash**\n```c\n#0 0x7f63fe6362c0 (exp_atom+0x80)\n#1 0x7f63fe667f1f (rewrite_fix_count+0x2ef)\n#2 0x7f63fe655c97 (rel_visitor_bottomup+0x3e7)\n#3 0x7f63fe655b87 (rel_visitor_bottomup+0x2d7)\n#4 0x7f63fe655b28 (rel_visitor_bottomup+0x278)\n#5 0x7f63fe655b87 (rel_visitor_bottomup+0x2d7)\n#6 0x7f63fe655b87 (rel_visitor_bottomup+0x2d7)\n#7 0x7f63fe655b28 (rel_visitor_bottomup+0x278)\n#8 0x7f63fe660b28 (rel_unnest+0xe8)\n#9 0x7f63fe5dceef (sql_processrelation+0x4f)\n#10 0x7f63fe3e6e1b (sql_symbol2relation+0x1bb)\n#11 0x7f63fe413b84 (SQLparser+0x624)\n#12 0x7f63fe412cbc (SQLengine_+0xa5c)\n#13 0x7f63fe4104fe (SQLengine+0x3e)\n#14 0x7f63fe98e2cf (runScenario+0x6f)\n#15 0x7f63fe98f4de (MSscheduleClient+0xb6e)\n#16 0x7f63feac6182 (doChallenge+0x132)\n#17 0x7f63ff7ef8a7 (thread_starter+0xc7)\n#18 0x7f63fe30a609 (start_thread+0xd9)\n#19 0x7f63fe22d133 (clone+0x43)\n```\n\n**Software versions**\n - MonetDB version number: v11.49.1 (Dec2023)\n - OS and version: Ubuntu 20.04\n - From docker image monetdb/monetdb:Dec2023\n\nAn example of steps to reproduce in docker container (**write the poc into /tmp/test.sql first**):\n```bash\ndocker container rm monetdb_test -f\ndocker run -e MDB_DB_ADMIN_PASS=monetdb --name monetdb_test -itd monetdb/monetdb:Dec2023\ndocker exec monetdb_test bash -c 'echo -n -e \"user=monetdb\\npassword=monetdb\\n\" > /root/.monetdb'\n\nsleep 10\ncat /tmp/test.sql | timeout 5s docker exec -i monetdb_test mclient monetdb     # run test case\n\nif docker exec monetdb_test bash -c \"grep '[m]server5' /proc/*/cmdline -lR\"; then\n    echo \"[INFO] Server normal.\"\nelse\n    echo \"[CRASH] Mserver5 process does NOT exist.\"\nfi\n```\n\nIt can also be reproduced on the docker image `monetdb/dev-builds:default`.\n\n**Issue labeling**\nbug",
+  "poc": [
+    "CREATE TABLE v0 ( v1 VARCHAR ( 217 ) );",
+    "UPDATE v0 SET v1 = ( SELECT ( v1 IN ( SELECT COUNT ( * ) WHERE v1 = 1 ) ) AS new_column ) ;"
+  ],
+  "key_bug_features": [
+    "UPDATE with subquery using COUNT causes server crash"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE v1 ( id INT PRIMARY KEY, name VARCHAR(100), age INT CHECK (age >= 0) );",
+    "INSERT INTO v1 (id, name, age) VALUES (1, 'Alice', 30), (2, 'Bob', 25), (3, 'Charlie', NULL);",
+    "CREATE TABLE v2 ( id INT, score FLOAT, FOREIGN KEY (id) REFERENCES v1(id) );",
+    "INSERT INTO v2 (id, score) VALUES (1, 85.5), (2, 90.0), (3, NULL);",
+    "UPDATE v1 SET age = (SELECT COUNT(*) FROM v2 WHERE score > 80) WHERE id = 1;"
+  ]
+}

@@ -1,0 +1,12 @@
+CREATE TABLE geometries (id SERIAL PRIMARY KEY, geom GEOMETRY, name VARCHAR(50) NOT NULL);
+INSERT INTO geometries (geom, name) VALUES (ST_EWKT_READ('GEOMETRYCOLLECTION(POINT(1 1), LINESTRING(2 2, 3 3))'), 'Shape1');
+INSERT INTO geometries (geom, name) VALUES (ST_EWKT_READ('MULTIPOINT(0 0, 2 2)'), 'Shape2');
+INSERT INTO geometries (geom, name) VALUES (ST_EWKT_READ('MULTILINESTRING((1 1, 2 2), (2 2, 3 4))'), 'Shape3');
+SELECT ST_GeometryN(ST_GeometryN(ST_GeometryN(geom, 1), 1), 1) AS first_shape FROM geometries WHERE id >= 1;
+SELECT name, ST_GeometryN(geom, 1) FROM geometries WHERE id >= (SELECT MIN(id) FROM geometries);
+SELECT geom FROM geometries WHERE ST_GeometryN(geom, 2) IS NOT NULL AND id >= 1;
+SELECT COUNT(*) FROM (SELECT ST_GeometryN(geom, 2) AS second_shape FROM geometries WHERE geom IS NOT NULL) AS sub WHERE second_shape >= 'LINESTRING(0 0, 1 1)';
+SELECT ST_GeometryN(geom, 1) AS first_shape FROM geometries WHERE ST_GeometryN(ST_EWKT_READ('GEOMETRYCOLLECTION(POINT(0 0), POINT(1 1))'), 1) >= ST_GeometryN(geom, 1);
+CREATE TABLE geometry_types (id SERIAL PRIMARY KEY, geom GEOMETRY, type VARCHAR(20));
+INSERT INTO geometry_types (geom, type) VALUES (ST_EWKT_READ('MULTIIDIOM(POINT(1 1), POINT(2 2))'), 'MULTIIDIOM');
+SELECT geom FROM geometry_types WHERE ST_GeometryN(geom, 1) IS NOT NULL HAVING COUNT(*) >= (SELECT COUNT(*) FROM geometries WHERE id >= 1);

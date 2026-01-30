@@ -1,0 +1,10 @@
+CREATE TABLE urls (id INT PRIMARY KEY, url_string VARCHAR(255), num_value INT);
+INSERT INTO urls (id, url_string, num_value) VALUES (1, 'http://example.com/page?arg=1', 10);
+INSERT INTO urls (id, url_string, num_value) VALUES (2, 'http://example.com/page?arg=2', 20);
+INSERT INTO urls (id, url_string, num_value) VALUES (3, 'http://example.com/page?arg=3%', NULL);
+SELECT id, http_url(url_string) AS encoded_url FROM urls WHERE http_url(url_string) LIKE '%page%';
+SELECT id FROM urls WHERE num_value IS NULL OR http_url(url_string) LIKE '%arg=2%';
+SELECT num_value FROM urls WHERE url_string LIKE CONCAT('%', http_url('http://example.com/page?arg=' || CAST(num_value AS VARCHAR)), '%');
+SELECT AVG(num_value) OVER (PARTITION BY CASE WHEN num_value IS NULL THEN 0 ELSE num_value END) AS avg_value FROM urls;
+SELECT * FROM urls WHERE (num_value IS NULL AND http_url(url_string) LIKE 'http://%') OR (num_value >= 10 AND http_url(url_string) LIKE 'http://example.com/%');
+SELECT id FROM urls WHERE EXISTS (SELECT 1 FROM urls AS u2 WHERE u2.num_value < (SELECT COUNT(*) FROM urls AS u3 WHERE u3.id = urls.id) AND http_url(u2.url_string) LIKE '%page%');

@@ -1,0 +1,13 @@
+[
+    "CREATE TABLE test_strings (id Int32, haystack String) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO test_strings VALUES (1, 'This is a test string for matching'), (2, 'Another string to check patterns'), (3, 'Something different entirely');",
+    "SELECT id, multiMatchAny(haystack, ['test', 'check', 'different']) FROM test_strings;",
+    "SELECT id, multiMatchAny(haystack, ['notfound', 'missing']) AS match FROM test_strings WHERE match = 0;",
+    "CREATE TABLE patterns (pattern String) ENGINE = MergeTree() ORDER BY pattern;",
+    "INSERT INTO patterns VALUES ('test'), ('matching'), ('notfound');",
+    "SELECT t.id, multiMatchAny(t.haystack, arrayJoin((SELECT pattern FROM patterns))) AS match FROM test_strings t;",
+    "SELECT id, multiMatchAny(haystack, ['a', 'e', 'i', 'o', 'u']) AS vowels_found FROM test_strings WHERE vowels_found = 1;",
+    "SELECT id FROM test_strings WHERE multiMatchAny(haystack, ['test', 'missing']) | multiMatchAny(haystack, ['Another', 'entirely'])=1;",
+    "WITH (SELECT count(*) FROM test_strings) AS total_count SELECT id, multiMatchAny(haystack, ['unique', 'test', 'pattern']) AS match_result FROM test_strings WHERE match_result = 1 LIMIT total_count;",
+    "SELECT t.id, t.haystack, multiMatchAny(t.haystack, ['test', 'string']), patterns.pattern FROM test_strings t LEFT JOIN patterns ON multiMatchAny(t.haystack, [patterns.pattern]) WHERE patterns.pattern IS NOT NULL;"
+]

@@ -1,0 +1,22 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/693",
+  "title": "Sparql \"exists\" function not working with \"bind if\"",
+  "vulnerable_database": "Virtuoso",
+  "date": "2017-11-07 15:59:29",
+  "vulnerable_version": "",
+  "description": "My Virtuoso is (virtuoso-t -h):\nVirtuoso Open Source Edition (Column Store) (multi threaded)\nVersion 7.2.4.2.3217-pthreads as of Jun  3 2016\nCompiled for Linux (x86_64-pc-linux-gnu)\n\nThe Sparql function exists is working fine, but not when combined with (bind if(...)).\nThe query:\nPREFIX dbo: <http://dbpedia.org/property/>\nSELECT  ?uri  ?popEstimate ?existsPopEstim ?usedExPop\nWHERE {\n\t?uri  a <http://dbpedia.org/ontology/Place>.\n\n\t{?uri rdfs:label \"France\"@fr}\n\tUNION {?uri rdfs:label \"Brésil\"@fr}\n\tUNION {?uri rdfs:label \"Amérique\"@fr}\n\n\tOPTIONAL {?uri dbo:populationEstimate ?popEstimate .}\n\tBIND (exists{?uri dbo:populationEstimate ?popEstimate} AS ?existsPopEstim )\n\tBIND (IF(?existsPopEstim , \"ok\", \"no\") AS ?usedExPop)\n}\nLIMIT 100\n\nThe result:\nuri                                  | popEstimate | existsPopEstim | usedExPop",
+  "poc": [
+    "PREFIX dbo: <http://dbpedia.org/property/>\nSELECT  ?uri  ?popEstimate ?existsPopEstim ?usedExPop\nWHERE {\n\t?uri  a <http://dbpedia.org/ontology/Place>.\n\n\t{?uri rdfs:label \"France\"@fr}\n\tUNION {?uri rdfs:label \"Brésil\"@fr}\n\tUNION {?uri rdfs:label \"Amérique\"@fr}\n\n\tOPTIONAL {?uri dbo:populationEstimate ?popEstimate .}\n\tBIND (exists{?uri dbo:populationEstimate ?popEstimate} AS ?existsPopEstim )\n\tBIND (IF(?existsPopEstim , \"ok\", \"no\") AS ?usedExPop)\n}\nLIMIT 100",
+    "SELECT  ?uri  ?pop ?existsPop ?usedExPop\nWHERE {\n\t?uri  a <http://dbpedia.org/ontology/Place>.\n\n\t{?uri rdfs:label \"France\"@en}\n\tUNION {?uri rdfs:label \"Brazil\"@en}\n\tUNION {?uri rdfs:label \"Raging River\"@en}\n\n\tOPTIONAL {?uri dbo:populationTotal ?pop .}\n\tBIND (exists{?uri dbo:populationTotal ?pop} AS ?existsPop)\n\tBIND (IF(?existsPop, \"ok\", \"no\") AS ?usedExPop)\n}\nLIMIT 1000"
+  ],
+  "key_bug_features": [
+    "Sparql exists function fails with bind if"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE Places (uri VARCHAR(255) PRIMARY KEY, label VARCHAR(255), populationEstimate INT);",
+    "INSERT INTO Places (uri, label, populationEstimate) VALUES ('http://dbpedia.org/resource/France', 'France', 67000000);",
+    "INSERT INTO Places (uri, label, populationEstimate) VALUES ('http://dbpedia.org/resource/Brazil', 'Brésil', NULL);",
+    "INSERT INTO Places (uri, label, populationEstimate) VALUES ('http://dbpedia.org/resource/America', 'Amérique', 331000000);",
+    "SELECT uri, label, populationEstimate, IF(exists(SELECT 1 FROM Places p WHERE p.uri = Places.uri AND p.populationEstimate IS NOT NULL), 'ok', 'no') AS usedExPop FROM Places;"
+  ]
+}

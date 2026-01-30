@@ -1,0 +1,26 @@
+{
+  "url": "https://www.postgresql.org/message-id/18885-da51324078588253%40postgresql.org",
+  "title": "BUG #18885: ERROR: corrupt MVNDistinct entry - 2",
+  "vulnerable_database": "postgresql",
+  "date": "2025-04-09 13:46:29",
+  "vulnerable_version": "Unknown",
+  "description": "The following bug has been logged on the website:\nBug reference:      18885\nLogged by:          Robins Tharakan\nEmail address:      tharakan(at)gmail(dot)com\nPostgreSQL version: Unsupported/Unknown\nOperating system:   Ubuntu\nDescription:\nThe following SQL triggers \"ERROR: corrupt MVNDistinct entry\", however this\nseems to be unrelated to a recent bugfix[1] for a similar issue (thus '2' in\nthe $SUBJECT).\nThe surfacing commit appears to be 6bb6a62f3cc45624c601d5270673a17447734629\n[2].\nSQL\n===\n$ cat ../sqith/repro.sql\nCREATE TABLE a(b BIT VARYING, d int4range);\nCREATE TABLE e(LIKE a);\nCREATE TABLE f(LIKE a);\nINSERT INTO f(d, b) VALUES('[0,0)', '');\nCREATE STATISTICS ON d, b FROM f;\nANALYZE;\nSELECT FROM f RIGHT JOIN e ON (e.d=f.d)AND(f.d=e.d);\nCommit\n======\nTesting for start crashing\n---\nChecking (306dd6e727b~0) - 306dd6e727 - fail (1)\nChecking (306dd6e727b~10) - 91f1fe90c7 - fail (1)\nChecking (306dd6e727b~30) - 969ab9d4f5 - fail (1)\nChecking (306dd6e727b~70) - 1495eff7bd - fail (1)\n.\n.\nChecking (306dd6e727b~447) - fae535da0a - pass (0)\nChecking (306dd6e727b~446) - 6bb6a62f3c - fail (1)\nSurfacing Commit is 6bb6a62f3cc45624c601d5270673a17447734629\nSQL Output\n==========\n$ psql -p 9999 postgres -f ../sqith/repro.sql\nCREATE TABLE\nCREATE TABLE\nCREATE TABLE\nINSERT 0 1\nCREATE STATISTICS\nANALYZE\npsql:../sqith/repro.sql:7: ERROR:  corrupt MVNDistinct entry\nFound using SQLSmith / creduce.\n-\nrobins\nhttps://robins.in\nReference\n1. Similar bugfix:\nhttps://git.postgresql.org/gitweb/?p=postgresql.git;a=commitdiff;h=e28033fe1af8037e0fec8bb3a32fabbe18ac06b1\n2. Surfacing commit:\nhttps://git.postgresql.org/gitweb/?p=postgresql.git;a=commitdiff;h=6bb6a62f3cc45624c601d5270673a17447734629",
+  "poc": [
+    "CREATE TABLE a(b BIT VARYING, d int4range);",
+    "CREATE TABLE e(LIKE a);",
+    "CREATE TABLE f(LIKE a);",
+    "INSERT INTO f(d, b) VALUES('[0,0)', '');",
+    "CREATE STATISTICS ON d, b FROM f;"
+  ],
+  "poc_type": "sql_text",
+  "key_bug_features": [
+    "ERROR: corrupt MVNDistinct entry during SQL analysis"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE g(id SERIAL PRIMARY KEY, name TEXT NOT NULL, age INT CHECK (age >= 0));",
+    "CREATE TABLE h(id SERIAL PRIMARY KEY, description VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO g(name, age) VALUES('Alice', 30), ('Bob', -5), (NULL, 25);",
+    "INSERT INTO h(description) VALUES('Test entry'), (NULL), ('Another entry');",
+    "SELECT * FROM g LEFT JOIN h ON g.id = h.id WHERE g.age IS NOT NULL AND h.description IS NOT NULL;"
+  ]
+}

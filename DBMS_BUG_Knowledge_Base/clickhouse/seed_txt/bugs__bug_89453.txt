@@ -1,0 +1,43 @@
+CREATE TABLE repro.test_table (
+    id UInt64,
+    timestamp DateTime,
+    value1 String,
+    value2 Float64,
+    value3 UInt64,
+    PROJECTION ts_projection
+    (
+        SELECT *
+        ORDER BY timestamp
+    )
+) ENGINE = MergeTree()
+PARTITION BY toYYYYMM(timestamp)
+ORDER BY (id, toStartOfHour(timestamp));
+INSERT INTO repro.test_table
+SELECT
+    id,
+    toDateTime('2025-01-01 00:00:00') + toIntervalSecond(rand() % 86400) AS timestamp,
+    value1,
+    value2,
+    value3
+FROM generateRandom('id UInt64, value1 String, value2 Float64, value3 UInt64', 1, 20)
+LIMIT 100000;
+CREATE TABLE repro.another_table (
+    id UInt64,
+    timestamp DateTime,
+    value1 String,
+    value2 Float64,
+    value3 UInt64
+) ENGINE = MergeTree()
+PARTITION BY toYYYYMM(timestamp)
+ORDER BY (id, timestamp);
+INSERT INTO repro.another_table
+SELECT
+    id,
+    toDateTime('2025-01-01 00:00:00') + toIntervalSecond(rand() % 86400) AS timestamp,
+    value1,
+    value2,
+    value3
+FROM generateRandom('id UInt64, value1 String, value2 Float64, value3 UInt64', 1, 20)
+LIMIT 50;
+SELECT * FROM repro.test_table
+WHERE (timestamp >= '2025-01-01 00:00:00') AND (timestamp <= '2025-01-02 00:00:00') AND (value2 IS NOT NULL);

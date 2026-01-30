@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/88009",
+  "title": "VIEW WITH DEFINER -> Distributed -> MergeTree does not propagate correct user (propagate initial user instead of definer user for shards)",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nIf view is using DEFINER, it seems wrong user (initial_user) is being propagated to Distributed table shards, so this renders definer non working.\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\ncluster is using secret in remote_servers, repro on 25.3\n```sql\nCREATE TABLE d3.t1\n(\n`id` UInt32,\n`value` String\n)\nENGINE = ReplicatedMergeTree('/clickhouse/tables/{uuid}/{shard}', '{replica}')\nORDER BY id;\nCREATE TABLE d3.t1_dist\n(\n`id` UInt32,\n`value` String\n)\nENGINE = Distributed('cluster', 'd3', 't1', rand());\nCREATE VIEW d3.v1\n(\n`id` UInt32,\n`value` String\n)\nDEFINER = default SQL SECURITY DEFINER\nAS SELECT\nid,\nvalue\nFROM d3.t1\nWHERE id < 5;\nCREATE VIEW d3.v2\n(\n`id` UInt32,\n`value` String\n)\nDEFINER = default SQL SECURITY DEFINER\nAS SELECT\nid,\nvalue\nFROM d3.t1_dist\nWHERE id < 5;\n```\n```sql\nGRANT SHOW, REMOTE ON *.* TO test_user;\nGRANT SELECT ON d3.v1 TO test_user;\nGRANT SELECT ON d3.v2 TO test_user;\n```",
+  "date": "2025-10-02T09:01:02Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE d3.t2 (id INT, value VARCHAR(255), timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "CREATE TABLE d3.t2_dist (id INT, value VARCHAR(255), timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "CREATE VIEW d3.v3 AS SELECT id, COALESCE(value, 'default_value') AS value FROM d3.t2 WHERE id >= 10;",
+    "CREATE VIEW d3.v4 AS SELECT id, CONCAT(value, '_suffix') AS value FROM d3.t2_dist WHERE timestamp < CURRENT_TIMESTAMP - INTERVAL '1 DAY';",
+    "INSERT INTO d3.t2 (id, value) VALUES (1, 'test_value'), (2, NULL), (3, 'another_value');"
+  ],
+  "key_bug_features": [
+    "Incorrect user propagation in Distributed table shards"
+  ]
+}

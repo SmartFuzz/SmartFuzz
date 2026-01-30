@@ -1,0 +1,5 @@
+CREATE TABLE test_table (id INT, values VARCHAR);
+INSERT INTO test_table VALUES (1, '[10, 20, 30]'), (2, '[NULL, 40, 50]'), (3, '[60, 70, NULL]');
+SELECT id, STRTOK(value, ',', 1) AS transformed_ix FROM test_table CROSS JOIN LATERAL (SELECT value FROM STRING_SPLIT(values, '[]')) AS value;
+SELECT id, MAX(CASE WHEN value IS NOT NULL THEN index ELSE NULL END) AS reduced_ix FROM test_table CROSS JOIN LATERAL (SELECT value, ROW_NUMBER() OVER () - 1 AS index FROM STRING_SPLIT(values, '[]')) AS value GROUP BY id;
+SELECT id, ARRAY_AGG(CASE WHEN value IS NOT NULL THEN value + 1 END) AS incremented_values FROM test_table CROSS JOIN LATERAL (SELECT value FROM STRING_SPLIT(values, '[]')) AS value WHERE value IS NOT NULL GROUP BY id;

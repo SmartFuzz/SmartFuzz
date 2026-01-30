@@ -1,0 +1,16 @@
+CREATE TABLE logs (id INT PRIMARY KEY, log_file VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO logs (log_file) VALUES ('backup_1.log'), ('new_log_1.log'), ('invalid.log');
+CREATE TABLE transactions (txn_id INT PRIMARY KEY, log_id INT, data VARCHAR(255), FOREIGN KEY (log_id) REFERENCES logs(id));
+INSERT INTO transactions (txn_id, log_id, data) VALUES (1, 1, 'Transaction 1'), (2, 2, 'Transaction 2');
+SELECT * FROM logs WHERE NOT (log_file = 'backup_1.log' OR log_file = 'invalid.log');
+SELECT tx.txn_id FROM transactions tx JOIN logs l ON tx.log_id = l.id WHERE NOT EXISTS (SELECT 1 FROM logs WHERE log_file = 'nonexistent.log' AND tx.log_id = l.id);
+SELECT COUNT(*) AS total FROM transactions GROUP BY log_id HAVING NOT (total = 0);
+SELECT * FROM transactions WHERE log_id IN (SELECT id FROM logs WHERE NOT (log_file IS NULL));
+DELETE FROM logs WHERE NOT EXISTS (SELECT 1 FROM transactions WHERE log_id = logs.id);
+CREATE TABLE temp_logs (temp_id INT, log_content VARCHAR(255));
+INSERT INTO temp_logs (temp_id, log_content) SELECT id, log_file FROM logs WHERE NOT (log_file LIKE 'invalid%');
+CALL replay((SELECT log_file FROM logs WHERE NOT (log_file LIKE 'invalid%') LIMIT 1));
+SELECT SUM(COALESCE(length(data), 0)) AS total_length FROM transactions WHERE NOT (log_id IS NULL);
+SELECT * FROM logs WHERE LENGTH(log_file) > 0 AND NOT EXISTS (SELECT 1 FROM transactions t WHERE t.log_id = logs.id);
+CALL replay('new_log_1.log');
+CREATE TEMP TABLE temp_stream AS SELECT * FROM transactions WHERE log_id IN (SELECT id FROM logs WHERE NOT (log_file = 'backup_1.log'));

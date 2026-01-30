@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/43620",
+  "title": "plan replayer capture can't record `execute` stmt sometimes",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```sql\r\ncreate table t(a int, b int, c int, index ib(b));\r\ninsert into t value(1,1,1);\r\nplan replayer capture  'd2e62c459ab99083d84822c41dc1a4ba9a1cf3cae975787b6136cce0f587c908' '*';\r\nprepare stmt1 from \"select * from t where sleep(1) and a in (?,3,4)\";\r\nset @a=1;\r\nexecute stmt1 using @a;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nPlan replayer file is correctly collected and can be find in the corresponding directory.\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nOnly an empty file is created and an error is in the log:\r\n```\r\n [plan_replayer.go:444] [\"[plan-replayer-capture] parse normalized sql failed\"] [sql=\"select * from `t` where `sleep` ( ? ) and `a` in ( ... )\"] [sqlDigest=d2e62c459ab99083d84822c41dc1a4ba9a1cf3cae975787b6136cce0f587c908] [planDigest=bf6a06a4511b6d67940b49a1aac2afb64c14d25892c6ffd5398a1140d7662065] [error=\"line 1 column 52 near \\\"... )\\\" \"]\r\n```\r\n### 4. What is your TiDB version? (Required)\r\n\r\nmaster\r\n\r\n",
+  "date": "2023-05-08T12:21:12Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT, age INTEGER, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO users VALUES(1, 'Alice', 30, NULL);",
+    "CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL, FOREIGN KEY(user_id) REFERENCES users(id));",
+    "INSERT INTO orders VALUES(101, 1, 99.99);",
+    "SELECT * FROM users WHERE age > ? AND id IN (SELECT user_id FROM orders WHERE amount > ?);"
+  ],
+  "key_bug_features": [
+    "plan replayer capture fails on execute statement"
+  ]
+}

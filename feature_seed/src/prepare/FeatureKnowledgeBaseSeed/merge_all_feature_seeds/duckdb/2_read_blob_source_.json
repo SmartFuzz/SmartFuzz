@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id INTEGER, data BLOB, timestamp_column TIMESTAMP);
+INSERT INTO test_table (id, data, timestamp_column) VALUES (1, read_blob('example.bin'), CURRENT_TIMESTAMP);
+SELECT id, read_blob('test_*.bin') AS blob_content FROM test_table WHERE timestamp_column - INTERVAL '1 HOUR' > CURRENT_TIMESTAMP;
+WITH subquery AS (SELECT id, data FROM test_table WHERE LENGTH(data) > 0) SELECT id, read_blob('data_' || id || '.bin') AS content FROM subquery WHERE id >> 1 IN (SELECT id FROM subquery);
+SELECT id, COUNT(*) OVER (PARTITION BY id) AS count_per_id FROM test_table WHERE read_blob('another_*.bin') IS NOT NULL HAVING count_per_id < 10;
+CREATE TABLE another_table (number_column INTEGER, content BLOB);
+INSERT INTO another_table (number_column, content) VALUES (2, read_blob('blob_data_*.bin'));
+SELECT a.id, a.data, a.timestamp_column - INTERVAL (SELECT MIN(DATE(timestamp_column)) FROM test_table) DAY AS interval_subtraction FROM test_table AS a JOIN another_table AS b ON a.id = b.number_column;
+INSERT INTO another_table (number_column, content) VALUES (3, read_blob('empty_blob.bin')) WHERE 3 IS NOT NULL;
+SELECT read_blob('non_existent_*.bin') AS invalid_blob FROM test_table WHERE data IS NOT NULL AND TIMESTAMP '2023-01-01 00:00:00' - INTERVAL 5 MINUTE < timestamp_column;

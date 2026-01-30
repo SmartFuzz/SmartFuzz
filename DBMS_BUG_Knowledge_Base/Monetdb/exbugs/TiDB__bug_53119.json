@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/53119",
+  "title": "The estRows is wrong if SQL is executed multiple times",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n1) create table:\r\nCREATE TABLE `tb` (\r\n  `id` int(11) NOT NULL,\r\n  `f1` int(11) DEFAULT NULL,\r\n  `f2` int(11) DEFAULT NULL,\r\n  `f3` int(11) DEFAULT NULL,\r\n  PRIMARY KEY (`id`),\r\n  KEY `idx_f1` (`f1`) ,\r\n  KEY `idx_f2` (`f2`) \r\n) partition by hash(id)\r\n(partition `p0`,\r\npartition `p1`,\r\npartition `p2`);\r\n2) insert data:\r\ninsert into tb (id,f1,f2,f3) values(1,1,1,1),(2,2,2,2) ......(1000,1000,1000,1000);\r\ninsert into tb (id,f1,f2,f3) values(10000,10000,10000,10000),(20000,20000,20000,20000);\r\n3) analyze table:\r\nanalyze table tb;\r\n4) Query\r\nExecute the following Query first time:\r\n![image](https://github.com/pingcap/tidb/assets/9462431/5ac83138-0b71-4c2a-bf38-ba17c8ee0c0e)\r\nthe estRows of Query 'select * from tb where f2>=1000 and f2<=2000' is right.\r\nThen execute the same Querys again:\r\n![image](https://github.com/pingcap/tidb/assets/9462431/632acff1-9882-474d-a612-1004bc5822fe)\r\nthe estRows of Query 'select * from tb where f2>=1000 and f2<=2000' deviates greatly from the previous one.\r\nWhy is there such a large estimation error?\r\n\r\n### 2. What did you expect to see? (Required)\r\nIf we execute the same query multiple times, without new DML operation, estRows should be the same\r\n![image](https://github.com/pingcap/tidb/assets/9462431/87c7b53d-5d04-4976-b554-ff4498e8c1ae)\r\n\r\n### 3. What did you see instead (Required)\r\n![image](https://github.com/pingcap/tidb/assets/9462431/ee491606-1487-4983-b21f-a2e73240c99e)\r\n\r\n### 4. What is your TiDB version? (Required)\r\npd instance:v8.0.0\r\ntikv instance:v8.0.0\r\ntidb instance:v8.0.0\r\ntiflash instance:v8.0.0\r\n\r\n",
+  "date": "2024-05-09T03:34:06Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE tb2 ( id int NOT NULL, f1 varchar(255), f2 float, f3 timestamp, PRIMARY KEY (id), INDEX idx_f1 (f1), INDEX idx_f2 (f2) );",
+    "INSERT INTO tb2 (id, f1, f2, f3) VALUES (1, 'test1', 1.5, '2020-01-01 00:00:00'), (2, 'test2', 2.5, '2021-01-01 00:00:00'), (3, 'test3', 3.5, '2022-01-01 00:00:00');",
+    "SELECT * FROM tb2 WHERE f2 >= 1.0 AND f2 <= 3.0;",
+    "INSERT INTO tb2 (id, f1, f2, f3) VALUES (4, 'test4', NULL, '2022-01-02 00:00:00');",
+    "SELECT COUNT(*) FROM tb2;"
+  ],
+  "key_bug_features": [
+    "estRows estimation error on repeated SQL query execution"
+  ]
+}

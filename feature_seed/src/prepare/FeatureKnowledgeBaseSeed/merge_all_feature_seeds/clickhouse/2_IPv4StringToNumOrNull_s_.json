@@ -1,0 +1,10 @@
+CREATE TABLE ip_test (ip_address String, id Int32, created_at DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO ip_test (ip_address, id, created_at) VALUES ('192.168.1.1', 1, now()), ('999.999.999.999', 2, now()), ('10.0.0.1', 3, now()), ('', 4, now()), (NULL, 5, now());
+SELECT id, IPv4StringToNumOrNull(ip_address) AS ip_num FROM ip_test WHERE id = ANY (SELECT id FROM ip_test WHERE created_at > now() - INTERVAL 1 DAY) GROUP BY id, ip_num HAVING ip_num IS NOT NULL;
+SELECT DISTINCT IPv4StringToNumOrNull(ip_address) AS ip_num FROM ip_test WHERE id IN (SELECT id FROM ip_test WHERE IPv4StringToNumOrNull(ip_address) IS NULL) ORDER BY ip_num;
+SELECT id, COUNT(*) OVER (PARTITION BY IPv4StringToNumOrNull(ip_address)) AS count_per_ip FROM ip_test WHERE id = ANY (SELECT id FROM ip_test WHERE ip_address <> '') AND ip_address IS NOT NULL ORDER BY count_per_ip DESC;
+CREATE TABLE ip_analysis AS SELECT id, IPv4StringToNumOrNull(ip_address) AS ip_num FROM ip_test WHERE IPv4StringToNumOrNull(ip_address) IS NOT NULL;
+INSERT INTO ip_analysis SELECT id, IPv4StringToNumOrNull(ip_address) FROM ip_test WHERE NOT (ip_address = '192.168.1.1' AND IPv4StringToNumOrNull(ip_address) IS NOT NULL);
+SELECT id FROM ip_analysis WHERE ip_num = ANY (SELECT ip_num FROM ip_analysis WHERE id > 2) ORDER BY id;
+ALTER TABLE ip_test ADD COLUMN new_column UInt32 DEFAULT 0;
+SELECT id, new_column FROM ip_test WHERE new_column = ANY (SELECT SUM(id) FROM ip_test GROUP BY id HAVING COUNT(*) > 1);

@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=102839",
+  "title": "Index out of bounds in regular expression search.",
+  "description": "This bug looks like this (closed) bug:\nhttps://bugs.mysql.com/bug.php?id=9288\nI have this code (because of a question on stackoverflow.com):\r\n\r\nset @q=\"'в работе','на списание','списано'\";\r\nWITH RECURSIVE cte as (\r\n   select 1 as a union all\r\n   select a+1 from cte where a<35\r\n   )\r\nselect distinct  regexp_substr(@q,'''[^,]*''',a) as E from cte;\r\n\r\nWhen setting higher values for the number where U currently entered '35' and error \"ERROR 3686 (HY000): Index out of bounds in regular expression search.\"\r\nis returned.\nHow to repeat:\nWhen doing a single line like this:\r\nselect regexp_substr(\"a,b,c\",'''[^,]*''',100) as E ;\r\n\r\nThe error is also shown.\nSuggested fix:\nDo not throw this error ...",
+  "date": "2021-03-06 11:03:00",
+  "vulnerable_version": "8.0.23",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INTEGER PRIMARY KEY, name NVARCHAR(255), value DECIMAL(10,2), created_at TIMESTAMP DEFAULT NOW());",
+    "INSERT INTO test_table (id, name, value) VALUES (1, 'test1', 10.50), (2, 'test2', NULL), (3, 'test3', 20.00);",
+    "SELECT SUBSTR(name, PATINDEX('%[^,]%', name), LEN(name)) AS extracted FROM test_table WHERE value IS NOT NULL;",
+    "SELECT SUBSTR('a,b,c', PATINDEX('%[^,]%', 'a,b,c'), LEN('a,b,c')) AS test_case;",
+    "SELECT DISTINCT SUBSTR('example1,example2,example3', PATINDEX('%[^,]%', 'example1,example2,example3'), LEN('example1,example2,example3')) AS result FROM (SELECT ROW_NUMBER() OVER() AS a FROM (VALUES (1),(2),(3),(4),(5),(6),(7),(8),(9),(10)) AS T(a)) AS cte WHERE a < 100;"
+  ],
+  "key_bug_features": [
+    "Index out of bounds in regexp_substr function"
+  ]
+}

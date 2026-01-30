@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/491",
+  "title": "HTTP 404 and Virtuoso 22023 Error HT042 when verifying/accessing LDP(R/C)",
+  "vulnerable_database": "Virtuoso",
+  "date": "2015-10-13 14:00:48",
+  "vulnerable_version": "",
+  "description": "Hi,\nI'm running Virtuoso/07.20.3214 (OS X 10.7.5) and wish to create/verify a simple LDPR. I did the following steps based on the official doc.\n1. Login as 'dba' and create 'davuser' user with HOME=/DAV/home/davuser/ directory.\nUSER_CREATE ('davuser', 'davuser',vector ('SQL_ENABLE', 0, 'DAV_ENABLE', 1, 'PERMISSIONS', '110100000RR', 'DISABLED', 0, 'HOME', '/DAV/home/davuser/'));\n\n2. Enable LDP on HOME directory.\nDB.DBA.DAV_PROP_SET('/DAV/home/davuser/', 'LDP', 'ldp:BasicContainer', 'davuser','davuser');\n\n3. Create a simple LDPR.\ncurl -iX PUT -H 'Content-Type: text/plain' -u davuser:davuser -d 'This content is not Turtle.' http://localhost:8890/DAV/home/davuser/test.txt\n\nHTTP/1.1 201 Created\nServer: Virtuoso/07.20.3214 (Darwin) i386-apple-darwin11.4.2\nConnection: close\nDate: Mon, 12 Oct 2015 21:37:13 GMT\nAccept-Ranges: bytes\nLocation: http://localhost:8890/DAV/home/davuser/test.txt\nLink: http://www.w3.org/ns/ldp#Resource; rel=\"type\"\nETag: \"a764e2852c2bf09941a19ffc4c09eeb0\"\nContent-Type: text/plain\nContent-Length: 184\n<TITLE>201 Created</TITLE>....\n4. Verify the created LDPR.\ncurl -iH 'Accept: text/turtle, */*;q=0.1' -u davuser:davuser http://localhost:8890/DAV/home/davuser/test.txt\n\nHTTP/1.1 404 Not Found\nServer: Virtuoso/07.20.3214 (Darwin) i386-apple-darwin11.4.2\nConnection: Keep-Alive\nContent-Type: text/html; charset=UTF-8\nDate: Mon, 12 Oct 2015 21:35:41 GMT\nAccept-Ranges: bytes\nContent-Length: 0\n5. Access the resources in LDPC.\ncurl -i -H 'Accept: text/turtle' -u davuser:davuser http://localhost:8890/DAV/home/davuser/\n\nHTTP/1.1 500 SPARQL Request Failed\nServer: Virtuoso/07.20.3214 (Darwin) i386-apple-darwin11.4.2\nConnection: Keep-Alive\nDate: Mon, 12 Oct 2015 21:57:05 GMT\nAccept-Ranges: bytes\nContent-Type: text/plain\nContent-Length: 300\nVirtuoso 22023 Error HT042: Not valid user id \"SPARQL_ADMIN\"\nAny ideas what's going on? Thanks.",
+  "poc": [
+    "USER_CREATE ('davuser', 'davuser',vector ('SQL_ENABLE', 0, 'DAV_ENABLE', 1, 'PERMISSIONS', '110100000RR', 'DISABLED', 0, 'HOME', '/DAV/home/davuser/'));"
+  ],
+  "key_bug_features": [
+    "Verifying created LDPR returns HTTP 404 error"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE davuser_data (id INT PRIMARY KEY, content TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO davuser_data (id, content) VALUES (1, 'This content is not Turtle.');",
+    "CREATE TABLE davuser_permissions (user_id INT, permission VARCHAR(50), FOREIGN KEY (user_id) REFERENCES davuser_data(id));",
+    "INSERT INTO davuser_permissions (user_id, permission) VALUES (1, 'read');",
+    "SELECT * FROM davuser_data WHERE id = (SELECT MAX(id) FROM davuser_data) AND content IS NOT NULL;"
+  ]
+}

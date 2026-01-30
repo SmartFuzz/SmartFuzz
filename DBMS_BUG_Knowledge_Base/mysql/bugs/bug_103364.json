@@ -1,0 +1,28 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=103364",
+  "title": "Passed string type binding for integer column incorrectly cast to integer",
+  "vulnerable_database": "MySQL Server: Prepared statements",
+  "date": "2021-04-19 08:48:00",
+  "vulnerable_version": "8.0.22,8.0.23",
+  "description": "There seems to be a bug in 8.0.22 and 8.0.23 which is not in 8.0.21 where I have an integer column and want to query rows less than let's say '1.9'. Only one row with value 1 should returned if those rows are (1, 2, 3). This is the case in 8.0.21 but not in 8.0.22 and 8.0.23. \r\n\r\nI experienced this in php pdo and it boiled down to mysql's prepare statement.\nHow to repeat:\n# prepare table\r\nDROP TABLE IF EXISTS my_table;\r\nCREATE TABLE my_table (int_column INT NOT NULL);\r\n\r\nINSERT INTO my_table VALUES (1), (2), (3), (4);\r\n\r\n# this works\r\nSELECT * from my_table where int_column < '1.9';\r\n\r\n# does not work in 8.0.22 and 8.0.23 but works in 8.0.21\r\nPREPARE stmt FROM 'SELECT * from my_table where int_column < ?';\r\nSET @a = '1.9'; # changing this to float 1.9 makes it work\r\nEXECUTE stmt USING @a;\r\nDEALLOCATE PREPARE stmt",
+  "poc": [
+    "DROP TABLE IF EXISTS my_table;",
+    "CREATE TABLE my_table (int_column INT NOT NULL);",
+    "INSERT INTO my_table VALUES (1), (2), (3), (4);",
+    "SELECT * from my_table where int_column < '1.9';",
+    "PREPARE stmt FROM 'SELECT * from my_table where int_column < ?';",
+    "SET @a = '1.9';",
+    "EXECUTE stmt USING @a;"
+  ],
+  "key_bug_features": [
+    "Incorrect casting of string to integer in prepared statements"
+  ],
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS my_table;",
+    "CREATE TABLE my_table (int_column INT NOT NULL, str_column VARCHAR(10));",
+    "INSERT INTO my_table VALUES (1, 'one'), (2, 'two'), (3, 'three'), (4, 'four');",
+    "PREPARE stmt FROM 'SELECT * FROM my_table WHERE int_column < ?';",
+    "SET @a = '2.5';",
+    "EXECUTE stmt USING @a;"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+    "function": "quantileExactWeightedInterpolated",
+    "operator": "a GLOBAL NOT IN ...",
+    "sql_array": [
+        "CREATE TABLE test_data (number Float64, weight UInt32) ENGINE = MergeTree() ORDER BY number;",
+        "INSERT INTO test_data VALUES (1.0, 1), (2.0, 1), (3.0, 2), (4.0, 3), (5.0, 2), (6.0, 1), (NULL, 0);",
+        "SELECT quantileExactWeightedInterpolated(0.5)(number, weight) FROM test_data WHERE number GLOBAL NOT IN (SELECT number FROM test_data WHERE weight > 1);",
+        "SELECT number, weight, quantileExactWeightedInterpolated(0.75)(number, weight) FROM test_data GROUP BY number, weight HAVING number GLOBAL NOT IN (SELECT number FROM test_data WHERE weight = 0) ORDER BY number;",
+        "SELECT DISTINCT number, quantileExactWeightedInterpolated(0.1)(number, weight) AS quantile_value FROM (SELECT number, weight FROM test_data WHERE weight > 0) GROUP BY number HAVING quantile_value GLOBAL NOT IN (SELECT quantile_value FROM (SELECT quantileExactWeightedInterpolated(0.5)(number, weight) AS quantile_value FROM test_data WHERE number IS NOT NULL));",
+        "SELECT a.number, a.weight, b.quantile_value FROM (SELECT number, weight FROM test_data) AS a JOIN (SELECT quantileExactWeightedInterpolated(0.9)(number, weight) AS quantile_value FROM test_data GROUP BY weight) AS b ON a.weight GLOBAL NOT IN (SELECT weight FROM (SELECT weight FROM test_data WHERE number IS NULL));",
+        "SELECT quantileExactWeightedInterpolated(0.99)(number, weight) FROM (SELECT number, weight FROM test_data WHERE number IS NOT NULL AND weight <= 3) HAVING quantileExactWeightedInterpolated(0.99)(number, weight) GLOBAL NOT IN (SELECT DISTINCT quantileExactWeightedInterpolated(0.5)(number, weight) FROM test_data);",
+        "CREATE TABLE test_data_bis (timestamp DateTime, value Float64, weight UInt32) ENGINE = MergeTree() ORDER BY timestamp;",
+        "INSERT INTO test_data_bis VALUES (now(), 2.5, 1), (now() - INTERVAL 1 DAY, 3.0, 2), (now() - INTERVAL 2 DAY, NULL, 0);",
+        "SELECT quantileExactWeightedInterpolated(0.5)(value, weight) FROM test_data_bis WHERE weight GLOBAL NOT IN (SELECT weight FROM test_data_bis WHERE value IS NOT NULL);"
+    ]
+}

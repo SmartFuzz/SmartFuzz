@@ -1,0 +1,7 @@
+CREATE TABLE test_data (id INTEGER PRIMARY KEY, value1 DOUBLE, value2 DOUBLE, status VARCHAR(20));
+INSERT INTO test_data (id, value1, value2, status) VALUES (1, 1.5, NULL, 'active'), (2, 2.0, 5.0, 'inactive'), (3, 3.5, 4.5, NULL), (4, NULL, NULL, 'active');
+SELECT kurtosis(value1 // 2.0) AS kurtosis_value FROM test_data WHERE status IS NOT NULL GROUP BY status HAVING kurtosis(value2 // NULLIF(value1, 0)) > 0;
+SELECT t1.id, kurtosis(t1.value1) - kurtosis(t2.value2 // 1) AS kurtosis_diff FROM test_data t1 JOIN test_data t2 ON t1.id = t2.id WHERE t1.value1 IS NOT NULL AND t2.value2 IS NOT NULL;
+SELECT kurtosis(NULL) AS kurtosis_null, kurtosis(value1 // 2) OVER (PARTITION BY status) AS partitioned_kurtosis FROM test_data;
+SELECT kurtosis((SELECT AVG(value1) FROM test_data WHERE status = 'active') // NULLIF((SELECT AVG(value2) FROM test_data WHERE status IS NOT NULL), 0)) AS kurtosis_of_averages;
+SELECT status, kurtosis(value1 // (SELECT COUNT(*) FROM test_data t3 WHERE t3.status = 'inactive')) AS adjusted_kurtosis FROM test_data GROUP BY status HAVING adjusted_kurtosis <= 1;

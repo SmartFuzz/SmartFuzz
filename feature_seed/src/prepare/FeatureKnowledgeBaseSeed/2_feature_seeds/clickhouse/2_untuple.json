@@ -1,0 +1,13 @@
+CREATE TABLE test_table (id UInt32, value Tuple(a Int32, b Float64));
+INSERT INTO test_table VALUES (1, (2, 3.5)), (2, (4, NULL)), (3, (NULL, 5.0)), (4, (1, 2.3));
+SELECT untuple(value) AS (a, b) FROM test_table WHERE id = 1;
+SELECT id, untuple(value) AS (a, b), a * b AS product FROM test_table HAVING product > 6;
+SELECT DISTINCT untuple((SELECT (value) FROM test_table WHERE id > 1)) AS (a, b) FROM test_table;
+SELECT id, (untuple(value) * 2) AS doubled_value FROM test_table WHERE id < 3;
+SELECT id, (a * b) AS product FROM (SELECT id, untuple(value) AS (a, b) FROM test_table) WHERE product IS NOT NULL;
+SELECT COUNT(*) FROM (SELECT untuple(value) AS (a, b) FROM test_table WHERE a IS NOT NULL) GROUP BY a;
+SELECT untuple((SELECT value FROM test_table WHERE value = (NULL, 2.3) LIMIT 1)) FROM test_table WHERE id = 4;
+CREATE TABLE temp_table AS SELECT untuple(value) AS (a, b) FROM test_table WHERE b IS NOT NULL;
+INSERT INTO temp_table SELECT a, a * b FROM (SELECT untuple(value) AS (a, b) FROM test_table WHERE id <= 3);
+SELECT a, COUNT(*) OVER (PARTITION BY a) AS count_per_a FROM (SELECT untuple(value) AS (a, b) FROM test_table);
+SELECT a, SUM(b) OVER (ORDER BY a ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cumulative_sum FROM (SELECT untuple(value) AS (a, b) FROM test_table);

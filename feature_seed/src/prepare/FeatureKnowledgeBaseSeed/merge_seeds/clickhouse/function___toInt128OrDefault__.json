@@ -1,0 +1,11 @@
+CREATE TABLE test_table (value VARCHAR);
+INSERT INTO test_table VALUES ('-128'), ('abc'), ('0xc0fe'), ('123.456'), ('NaN'), ('Inf'), ('-340282366920938463463374607431768211456'), ('340282366920938463463374607431768211456');
+SELECT toInt128OrDefault(value, CAST('-1', 'Int128')) FROM test_table;
+SELECT toInt128OrDefault(value, 0) FROM test_table WHERE value LIKE 'abc' OR value LIKE 'Inf';
+SELECT toInt128OrDefault(CAST(value AS FLOAT) + 1, CAST('0', 'Int128')) FROM test_table;
+SELECT toInt128OrDefault('0xc0fe', CAST('-1', 'Int128')) AS result FROM test_table WHERE value LIKE '0xc0fe';
+SELECT (SELECT toInt128OrDefault(MAX(CAST(value AS String)), 0) FROM test_table) AS max_value, (SELECT toInt128OrDefault(MIN(CAST(value AS String)), -1) FROM test_table) AS min_value;
+SELECT value, toInt128OrDefault(value, CAST('0', 'Int128')) AS converted FROM (SELECT value FROM test_table WHERE value NOT LIKE '%abc%') WHERE value NOT LIKE '%NaN%';
+SELECT IF(value LIKE 'NaN', toInt128OrDefault(value, CAST('-1', 'Int128')), toInt128OrDefault(value)) FROM test_table;
+WITH (SELECT AVG(toInt128OrDefault(value, 0)) FROM test_table) AS avg_value SELECT avg_value * 2 AS doubled_avg_value;
+SELECT a.value, b.value, toInt128OrDefault(a.value, CAST('0', 'Int128')) + toInt128OrDefault(b.value, CAST('0', 'Int128')) AS sum_value FROM test_table a JOIN test_table b ON a.value != b.value;

@@ -1,0 +1,21 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=101881",
+  "title": "setting global user variable from GROUP_CONCAT in stored procedure wrong result",
+  "description": "One of the stored procedures in our system uses group_concat to build a string that is then assigned to a global variable.\r\nThe string appears correctly the first time, but on the second execution the results are wrong, typically null or from the end of the concatenated data set.\r\nThe problem does not manifest with local variables, nor outside a store procedure.\r\nThis did not happen with 8.0.21 but does with 8.0.22\r\nIn our case we have to use the global variable, as this is then fed to a PREPARE statement. The bug breaks one of our main forms, although we have coded a workaround using an intermediary local variable.\nHow to repeat:\nExecute the following script in MySQLWorkbench or mysql command line:\r\n\r\n[code]\r\nDROP TABLE IF EXISTS `TestSequence`;\r\nCREATE TABLE `TestSequence` (\r\n    `num` VARCHAR(10) PRIMARY KEY\r\n)  ENGINE=INNODB DEFAULT CHARSET=UTF8MB4 COLLATE = UTF8MB4_BIN;\r\n\r\nINSERT INTO `TestSequence`(`num`) VALUES\r\n('0:ZERO'),\r\n('1:ONE'),\r\n('2:TWO'),\r\n('3:THREE'),\r\n('4:FOUR'),\r\n('5:FIVE'),\r\n('6:SIX'),\r\n('7:SEVEN'),\r\n('8:EIGHT'),\r\n('9:NINE');\r\n\r\nDROP PROCEDURE IF EXISTS `p_test`;\r\nDELIMITER //\r\nCREATE PROCEDURE `p_test`()\r\nBEGIN\r\nset @ss = (SELECT GROUP_CONCAT(TS.`num`)\r\nFROM `catdb_dev`.`TestSequence` `TS`);\r\nselect @ss;\r\nEND//\r\nDELIMITER ;\r\n\r\ncall p_test();\r\ncall p_test();\r\n[/code]\r\n\r\nExpected Outcome\r\n----------------\r\n@ss\r\n0:ZERO,1:ONE,2:TWO,3:THREE,4:FOUR,5:FIVE,6:SIX,7:SEVEN,8:EIGHT,9:NINE\r\n@ss\r\n0:ZERO,1:ONE,2:TWO,3:THREE,4:FOUR,5:FIVE,6:SIX,7:SEVEN,8:EIGHT,9:NINE\r\n\r\nActual Outcome\r\n--------------\r\n@ss\r\n0:ZERO,1:ONE,2:TWO,3:THREE,4:FOUR,5:FIVE,6:SIX,7:SEVEN,8:EIGHT,9:NINE\r\n@ss\r\n9:NINE,9:NINE,9:NINE,9:NINE,9:NINE,9:NINE,9:NINE,9:NINE,9:NINE,9:NINE\r\n\r\nWorkaround\r\n----------\r\nFill a local variable and assign it to the global variable if needed.",
+  "date": "2020-12-06 14:29:00",
+  "vulnerable_version": "8.0.22",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS TestSequence;",
+    "CREATE TABLE TestSequence (num VARCHAR(10) PRIMARY KEY, value INTEGER NOT NULL DEFAULT 0);",
+    "INSERT INTO TestSequence (num, value) VALUES ('0:ZERO', 0), ('1:ONE', 1), ('2:TWO', 2), ('3:THREE', 3), ('4:FOUR', 4), ('5:FIVE', 5), ('6:SIX', 6), ('7:SEVEN', 7), ('8:EIGHT', 8), ('9:NINE', 9);",
+    "DROP PROCEDURE IF EXISTS p_test;",
+    "CREATE PROCEDURE p_test() { DECLARE ss STRING;",
+    "SELECT STR_AGG(TS.num ORDER BY TS.value ASC) INTO ss FROM TestSequence TS WHERE TS.value IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "setting global variable from GROUP_CONCAT in stored procedure"
+  ]
+}

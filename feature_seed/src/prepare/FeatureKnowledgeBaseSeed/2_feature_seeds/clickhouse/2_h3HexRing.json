@@ -1,0 +1,10 @@
+CREATE TABLE geo_test (id UInt32, origin UInt64, k UInt16, value String, nullable_value Nullable(String));
+INSERT INTO geo_test VALUES (1, 590080540275638271, 1, 'test1', NULL), (2, 590080540275638271, 2, '', 'nullable'), (3, 0, 10, 'test3', 'not null');
+SELECT id, h3HexRing(origin, k) AS hexRing FROM geo_test WHERE value = 'test1' OR k = 1;
+SELECT id, h3HexRing(origin + toUInt64(k), k) AS hexRing FROM geo_test WHERE nullable_value IS NULL OR value = '';
+SELECT id, h3HexRing(origin, toUInt16(k + 0)) AS hexRing FROM geo_test GROUP BY id HAVING hexRing[1] > 0;
+SELECT id, count(h3HexRing(origin, k)) AS ring_count FROM geo_test WHERE value != '' GROUP BY id HAVING ring_count < 3;
+SELECT ht1.id, h3HexRing(ht1.origin, ht2.k) AS hexRing FROM geo_test ht1 JOIN geo_test ht2 ON ht1.id = ht2.id WHERE ht1.k > ht2.k ORDER BY hexRing[1] DESC;
+SELECT id, h3HexRing(origin, toUInt16(if(value = '', 0, k))) AS hexRing FROM geo_test NULLS LAST;
+SELECT id, h3HexRing(origin + 1, k + 1) AS hexRing FROM geo_test WHERE origin IS NOT NULL AND k IS NOT NULL;
+WITH (SELECT max(k) FROM geo_test) AS max_k SELECT id, h3HexRing(origin, max_k + toUInt16(1)) FROM geo_test;

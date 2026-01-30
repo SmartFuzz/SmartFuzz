@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/633",
+  "title": "Can't delete certain triples (with literals) in Version 7.1.0",
+  "description": "I have noticed the following problem concerning Virtuoso through our integration tests:\nCertain Triples don't get properly deleted with a normal DELETE/DELETE WHERE call on Version 7.1 (I used the docker container \"encoflife/virtuoso:7.1.0\" to reproduce the error)\nMinimal Example for reproducing the Error in the conductor:\nInsert into Default Graph URI \"http://example.org/\" the following Triples:\nINSERT {\n    <http://example.org/renameTest/old> <http://example.org/renameTest/p2> <http://example.org/renameTest/old> .\n    <http://example.org/renameTest/old> <http://example.org/renameTest/p2> \"http://example.org/renameTest/old\" .\n    <http://example.org/renameTest/old> <http://example.org/renameTest/type> \"TYPE\"^^<http://www.w3.org/2001/XMLSchema#string> .\n}\n\nresult: 3 added\nAfterwards, attempt to delete them with:\nDELETE {\nhttp://example.org/renameTest/old http://example.org/renameTest/p2 http://example.org/renameTest/old .\nhttp://example.org/renameTest/old http://example.org/renameTest/p2 \"http://example.org/renameTest/old\" .\nhttp://example.org/renameTest/old http://example.org/renameTest/type \"TYPE\"^^http://www.w3.org/2001/XMLSchema#string .\n}\nresult: 3 deleted\nAfterwards, checking the Graph with a normal Select Query:\nSELECT * { ?s ?p ?o }\nresult:\n<http://example.org/renameTest/old> <http://example.org/renameTest/p2> \"http://example.org/renameTest/old\" .\n<http://example.org/renameTest/old> <http://example.org/renameTest/type> \"TYPE\"^^<http://www.w3.org/2001/XMLSchema#string> .\n\nThe only way I was able to delete those are with DELETE WHERE and not specifying the Object part.\nE.G.:\nDELETE WHERE  {\n    <http://example.org/renameTest/old> <http://example.org/renameTest/p2> ?o .\n }",
+  "date": "2017-03-11 21:41:35",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE testGraph (subject VARCHAR(255), predicate VARCHAR(255), object VARCHAR(255));",
+    "INSERT INTO testGraph (subject, predicate, object) VALUES ('http://example.org/test/subject1', 'http://example.org/test/predicate1', 'http://example.org/test/object1');",
+    "INSERT INTO testGraph (subject, predicate, object) VALUES ('http://example.org/test/subject2', 'http://example.org/test/predicate2', 'Test Literal');",
+    "DELETE FROM testGraph WHERE subject = 'http://example.org/test/subject1';",
+    "SELECT subject, predicate, object FROM testGraph;"
+  ],
+  "key_bug_features": [
+    "DELETE command fails for certain triples with literals"
+  ]
+}

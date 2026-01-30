@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/58395",
+  "title": "`execute` statement get \"invalid memory address or nil pointer dereference\" error",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n```sql\nset GLOBAL tidb_enable_instance_plan_cache=1;\n\ndrop table t3;\nCREATE TABLE t3 (c datetime, PRIMARY KEY (c));\n\nuse test\nprepare p4 from \"select * from t3 where c in (?, ? , '2033-11-23')\";\nset @i0 = '2027-12-17', @i1 = '1986-12-03';\nexecute p4 using @i0, @i1;\n```\n\nopen another session and run\n\n```sql\nuse test\nprepare p4 from \"select * from t3 where c in (?, ?, '2033-11-23')\";\nset @i0 = 'a', @i1 = 'b';\nexecute p4 using @i0, @i1;\n```\n\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\n\n```\nEmpty set (0.00 sec)\n```\n\n### 3. What did you see instead (Required)\n\n```sql\nError 1105 (HY000): runtime error: invalid memory address or nil pointer dereference\n```\n\nIf you run the second `execute` in the same session, there will be no error. As you can in the warnings, plan cache is skipped for this SQL:\n\n```\nWarning | 1105 | skip prepared plan-cache: Batch/PointGet plans may be over-optimized\n```\n\n\n### 4. What is your TiDB version? (Required)\n\nmaster\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "date": "2024-12-18T13:30:21Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t4 (id INTEGER PRIMARY KEY, name TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t4 (id, name) VALUES (1, 'Alice'), (2, 'Bob'), (3, NULL);",
+    "CREATE TABLE t5 (ref_id INTEGER, value REAL, FOREIGN KEY (ref_id) REFERENCES t4(id));",
+    "INSERT INTO t5 (ref_id, value) VALUES (1, 10.50), (2, 20.75), (3, NULL);",
+    "SELECT * FROM t5 WHERE ref_id IN (1, 2);"
+  ],
+  "key_bug_features": [
+    "Executing prepared statement with nil pointer dereference"
+  ]
+}

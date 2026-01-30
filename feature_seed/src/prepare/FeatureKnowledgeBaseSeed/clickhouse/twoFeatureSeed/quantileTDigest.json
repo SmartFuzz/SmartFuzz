@@ -1,0 +1,20 @@
+{
+    "function": "quantileTDigest",
+    "operator": "a BETWEEN b AND c",
+    "sql_array": [
+        "CREATE TABLE fuzz_test (id UInt32, value Float64, date Date, nullable_value Nullable(Int32)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO fuzz_test VALUES (1, 1.0, '2023-01-01', NULL), (2, 2.0, '2023-01-02', 5), (3, 3.0, '2023-01-03', 10), (4, NULL, '2023-01-04', 15);",
+        "SELECT COUNT(*) FROM fuzz_test WHERE value BETWEEN quantileTDigest(0.01)(value) AND quantileTDigest(0.99)(value);",
+        "SELECT id, quantileTDigest(0.5)(value) AS median_value FROM fuzz_test GROUP BY id HAVING median_value IS NOT NULL;",
+        "SELECT id, value FROM fuzz_test WHERE value BETWEEN 2 AND 3.5 AND (SELECT COUNT(*) FROM fuzz_test WHERE nullable_value IS NOT NULL) > 1;",
+        "SELECT id, quantileTDigest(0.95)(value) AS high_quantile FROM (SELECT id, value FROM fuzz_test WHERE id BETWEEN 1 AND 3) GROUP BY id HAVING high_quantile IS NOT NULL;",
+        "SELECT id, value FROM fuzz_test WHERE (SELECT quantileTDigest(0.5)(value) FROM fuzz_test WHERE nullable_value IS NULL) BETWEEN 1 AND 2;",
+        "CREATE TABLE temp_table AS SELECT id, quantileTDigest(0.5)(value) AS that_median FROM fuzz_test GROUP BY id;",
+        "SELECT DISTINCT id FROM fuzz_test WHERE NULLIF(value, 2.0) IS NULL;",
+        "SELECT quantileTDigest(0.5)(value) AS median_value, id FROM fuzz_test WHERE id BETWEEN (SELECT MIN(id) FROM fuzz_test) AND (SELECT MAX(id) FROM fuzz_test) ORDER BY median_value;",
+        "SET enable_mixed_case_identifiers = 1; SELECT COUNT(*) FROM fuzz_test WHERE value BETWEEN quantileTDigest(0.5)(value) AND NULLIF(quantileTDigest(0.9)(value), 0);",
+        "ALTER TABLE fuzz_test ADD COLUMN new_column String;",
+        "UPDATE fuzz_test SET new_column = 'test' WHERE id IN (SELECT id FROM fuzz_test WHERE value IS NOT NULL);",
+        "DROP TABLE IF EXISTS temp_table;"
+    ]
+}

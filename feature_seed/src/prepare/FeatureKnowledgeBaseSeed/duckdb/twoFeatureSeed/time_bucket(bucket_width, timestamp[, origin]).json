@@ -1,0 +1,16 @@
+{
+    "function": "time_bucket(bucket_width, timestamp[, origin])",
+    "operator": "<<",
+    "sql_array": [
+        "CREATE TABLE test_timestamps (id INTEGER, event_time TIMESTAMP, binary_value BITSTRING);",
+        "INSERT INTO test_timestamps VALUES (1, TIMESTAMP '2000-01-01 12:00:00', '1101'::BITSTRING), (2, TIMESTAMP '2002-01-15 09:30:00', '1010'::BITSTRING), (3, TIMESTAMP '1999-08-22 16:45:00', '1001'::BITSTRING);",
+        "SELECT id, time_bucket(INTERVAL '1 month', event_time, TIMESTAMP '2000-01-01 00:00:00') AS bucketed_time, (binary_value << 2) AS shifted_value FROM test_timestamps WHERE event_time IS NOT NULL;",
+        "SELECT id, COUNT(*) AS count, time_bucket(INTERVAL '2 weeks', event_time) AS bucketed_time FROM test_timestamps GROUP BY bucketed_time HAVING count > 1;",
+        "SELECT id, time_bucket(INTERVAL '1 day', event_time, TIMESTAMP '2000-01-03 00:00:00') AS further_bucket, (MAX(binary_value) << 1) AS max_shifted_value FROM test_timestamps GROUP BY further_bucket ORDER BY further_bucket;",
+        "SELECT t1.id, t1.event_time, (t1.binary_value << 3) AS shifted_value FROM test_timestamps t1 JOIN (SELECT DISTINCT id, time_bucket(INTERVAL '1 week', event_time) AS inner_bucket FROM test_timestamps) t2 ON t1.id = t2.id AND t2.inner_bucket IS NOT NULL;",
+        "SELECT id, event_time, time_bucket(INTERVAL '5 days', event_time) AS bkt, (binary_value << (SELECT COUNT(*) FROM test_timestamps)) AS final_shift FROM test_timestamps WHERE event_time >= TIMESTAMP '2002-01-01 00:00:00';",
+        "CREATE TABLE temp_table AS SELECT id, time_bucket(INTERVAL '3 days', event_time) AS bucketed FROM test_timestamps;",
+        "INSERT INTO temp_table SELECT id, time_bucket(INTERVAL '2 weeks', event_time, TIMESTAMP '2000-01-01 00:00:00') FROM test_timestamps WHERE binary_value IS NULL;",
+        "SELECT bkt, COUNT(*) FROM (SELECT time_bucket(INTERVAL '2 months', event_time) AS bkt FROM test_timestamps) tmp GROUP BY bkt HAVING bkt IS NOT NULL;"
+    ]
+}

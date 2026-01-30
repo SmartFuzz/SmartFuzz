@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=101517",
+  "title": "EXPLAIN in tree format is inconsistent with classical format when LIMIT 1 used",
+  "description": "When the syntax \"LIMIT 1\" is used in the derived table, the EXPLAIN output in tree format is inconsistent with the classical format.\nHow to repeat:\nCREATE TABLE t1(a INT);\r\nCREATE TABLE t2(b INT);\r\n\r\nINSERT INTO t1 VALUES (1), (2);\r\nINSERT INTO t2 VALUES (3), (4);\r\n\r\nANALYZE TABLE t1, t2;\r\n\r\nmysql> EXPLAIN FORMAT = TREE SELECT * FROM t1, (SELECT * FROM t2 ORDER BY b LIMIT 1) as derived_table;\r\n+------------------------------------------+\r\n| EXPLAIN                                  |\r\n+------------------------------------------+\r\n| -> Table scan on t1  (cost=0.45 rows=2)\r\n |\r\n+------------------------------------------+\r\n1 row in set (0.00 sec)\r\n\r\nThe execution result is like the above, while the EXPLAIN output in classical format is like the below:\r\nmysql> EXPLAIN SELECT * FROM t1, (SELECT * FROM t2 ORDER BY b LIMIT 1) as derived_table;\r\n+----+-------------+------------+------------+--------+---------------+------+---------+------+------+----------+----------------+\r\n| id | select_type | table      | partitions | type   | possible_keys | key  | key_len | ref  | rows | filtered | Extra          |\r\n+----+-------------+------------+------------+--------+---------------+------+---------+------+------+----------+----------------+\r\n|  1 | PRIMARY     | <derived2> | NULL       | system | NULL          | NULL | NULL    | NULL |    1 |   100.00 | NULL           |\r\n|  1 | PRIMARY     | t1         | NULL       | ALL    | NULL          | NULL | NULL    | NULL |    2 |   100.00 | NULL           |\r\n|  2 | DERIVED     | t2         | NULL       | ALL    | NULL          | NULL | NULL    | NULL |    2 |   100.00 | Using filesort |\r\n+----+-------------+------------+------------+--------+---------------+------+---------+------+------+----------+----------------+\r\n3 rows in set, 1 warning (0.00 sec)\r\n\r\nThe classical format result tells us that the whole query composes of two query blocks, and the second query block needs to do the filesort on t2.\r\nBut the output in tree format tells us we only need to do a table scan on t1, which is confusing.",
+  "date": "2020-11-09 06:32:00",
+  "vulnerable_version": "8.0.20, 8.0.22",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t3(c VARCHAR(10) NOT NULL);",
+    "CREATE TABLE t4(d FLOAT DEFAULT NULL);",
+    "INSERT INTO t3 VALUES ('test1'), ('test2');",
+    "INSERT INTO t4 VALUES (1.5), (NULL);",
+    "EXPLAIN SELECT * FROM t3, (SELECT * FROM t4 ORDER BY d LIMIT 1) as derived_table;"
+  ],
+  "key_bug_features": [
+    "EXPLAIN FORMAT = TREE with LIMIT 1 inconsistency"
+  ]
+}

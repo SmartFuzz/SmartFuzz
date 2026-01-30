@@ -1,0 +1,25 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/60503",
+  "title": "incompatible with mysql in column-type-info",
+  "vulnerable_database": "tidb",
+  "date": "2025-04-11T06:40:57Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\ncreate table testfield (f0 int,f1 double,primary key (f0));\ninsert into testfield values (1,1.1);\ninsert into testfield values (2,2.2);\n\nTiDB\n[tidb@k8s-master tmp]$ mysql  --column-type-info -u root  -P 4000   -h [127.0.0.1](http://127.0.0.1/)  -A -p123123\nmysql: [Warning] Using a password on the command line interface can be insecure.\nWelcome to the MySQL monitor.  Commands end with ; or \\g.\nYour MySQL connection id is 585115960\nServer version: 8.0.11-TiDB-v7.1.8-5.1 TiDB Server (Apache License 2.0) Enterprise Edition, MySQL 8.0 compatible\n\nCopyright (c) 2000, 2025, Oracle and/or its affiliates.\n\nOracle is a registered trademark of Oracle Corporation and/or its\naffiliates. Other names may be trademarks of their respective\nowners.\n\nType 'help;' or '\\h' for help. Type '\\c' to clear the current input statement.\n\nmysql> use test\nDatabase changedmysql> select cast(f1 as char),f1 from testfield;\nField   1:  `cast(f1 as char)`\nCatalog:    `def`\nDatabase:   ``\nTable:      ``\nOrg_table:  ``\nType:       VAR_STRING\nCollation:  utf8mb4_bin (46)\n**Length:     0**\nMax_length: 4\nDecimals:   31\nFlags:      \n\nField   2:  `f1`\nCatalog:    `def`\nDatabase:   `test`\nTable:      `testfield`\nOrg_table:  `testfield`\nType:       NEWDECIMAL\nCollation:  binary (63)\nLength:     12\nMax_length: 4\nDecimals:   2\nFlags:      NUM \n\nMySQL：\n[tidb@k8s-master tmp]$ mysql  --column-type-info -u root     -h [127.0.0.1](http://127.0.0.1/)  -A -p123123\nmysql: [Warning] Using a password on the command line interface can be insecure.\nWelcome to the MySQL monitor.  Commands end with ; or \\g.\nYour MySQL connection id is 26\nServer version: 8.4.4 MySQL Community Server - GPL\n\nCopyright (c) 2000, 2025, Oracle and/or its affiliates.\n\nOracle is a registered trademark of Oracle Corporation and/or its\naffiliates. Other names may be trademarks of their respective\nowners.\n\nType 'help;' or '\\h' for help. Type '\\c' to clear the current input statement.\n\nmysql> use test;\nDatabase changed\nmysql> select cast(f1 as char),f1 from testfield;\nField   1:  `cast(f1 as char)`\nCatalog:    `def`\nDatabase:   ``\nTable:      ``\nOrg_table:  ``\nType:       VAR_STRING\nCollation:  utf8mb4_0900_ai_ci (255)\n**Length:     48**\nMax_length: 4\nDecimals:   31\nFlags:      \n\nField   2:  `f1`\nCatalog:    `def`\nDatabase:   `test`\nTable:      `testfield`\nOrg_table:  `testfield`\nType:       NEWDECIMAL\nCollation:  binary (63)\nLength:     12\nMax_length: 4\nDecimals:   2\nFlags:      NUM \n\n\n+------------------+------+\n| cast(f1 as char) | f1   |\n+------------------+------+\n| 1.10             | 1.10 |\n| 2.20             | 2.20 |\n+------------------+------+\n2 rows in set (0.00 sec)\n\nmysql>\n\n### 2. What did you expect to see? (Required)\nCompatible with MySQL\n\n### 3. What did you see instead (Required)\nincompatible with MySQL\n\n### 4. What is your TiDB version? (Required)\nv8.5.1\n\n<!-- Paste the output of SELECT tidb_version() -->\n+------------------------+\n| version()              |\n+------------------------+\n| 8.0.11-TiDB-v7.1.8-5.1 |\n+------------------------+\n1 row in set (0.00 sec)\n",
+  "poc": [
+    "create table testfield (f0 int,f1 double,primary key (f0));",
+    "insert into testfield values (1,1.1);",
+    "insert into testfield values (2,2.2);"
+  ],
+  "poc_type": "sql_text",
+  "state": "closed",
+  "key_bug_features": [
+    "incompatible with MySQL column type information"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE testfield2 (f0 INT, f1 FLOAT, f2 VARCHAR(10), PRIMARY KEY (f0));",
+    "INSERT INTO testfield2 VALUES (1, 1.1, 'one');",
+    "INSERT INTO testfield2 VALUES (2, 2.2, 'two');",
+    "SELECT f1, CAST(f1 AS CHAR) AS f1_char FROM testfield2 WHERE f1 > 1.0;",
+    "SELECT f2, CAST(NULL AS CHAR) AS null_cast FROM testfield2;"
+  ]
+}

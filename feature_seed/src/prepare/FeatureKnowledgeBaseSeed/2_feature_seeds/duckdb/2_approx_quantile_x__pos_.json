@@ -1,0 +1,11 @@
+CREATE TABLE test_data (id INTEGER PRIMARY KEY, value DOUBLE, group_key VARCHAR(50));
+INSERT INTO test_data VALUES (1, 10.5, 'A'), (2, 20.1, 'B'), (3, NULL, 'A'), (4, 5.5, 'B'), (5, 15.0, 'A');
+SELECT group_key, approx_quantile(value, 0.5) % 2 as quantile_mod FROM test_data GROUP BY group_key HAVING approx_quantile(value, 0.5) IS NOT NULL;
+WITH quantiles AS (SELECT group_key, approx_quantile(value, 0.5) as quantile_val FROM test_data GROUP BY group_key) SELECT *, quantile_val % 3 as mod_quantile FROM quantiles WHERE quantile_val > 10.0;
+SELECT t1.group_key, approx_quantile(t2.value, 0.75) % NULLIF(LENGTH(t1.group_key), 0) AS quantile_mod FROM test_data AS t1 JOIN test_data AS t2 ON t1.group_key = t2.group_key WHERE t1.value IS NOT NULL GROUP BY t1.group_key;
+CREATE TABLE additional_data (id INTEGER PRIMARY KEY, num_value DOUBLE NOT NULL CHECK(num_value >= 0), text_value VARCHAR(50));
+INSERT INTO additional_data VALUES (1, 7.0, 'row1'), (2, 13.5, 'row2'), (3, 0.0, 'row3'), (4, NULL, 'row4');
+SELECT ad.text_value, approx_quantile(ad.num_value, 0.5) % COALESCE(NULL, 1) AS mod_value FROM additional_data ad WHERE ad.num_value IS NOT NULL;
+SELECT approx_quantile(value % 2, 0.5) as approx_quantile_mod FROM test_data WHERE value IS NOT NULL;
+CREATE TEMP TABLE temp_results AS SELECT group_key, value, approx_quantile(value, 0.5) as quantile FROM test_data;
+SELECT group_key, quantile, approx_quantile(quantile, 0.5) % (CAST('5.0' AS DOUBLE) + 0.1) AS final_value FROM temp_results HAVING final_value IS NOT NULL;

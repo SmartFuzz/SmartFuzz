@@ -1,0 +1,17 @@
+{
+    "function": "md5",
+    "operator": "bif:st_distance",
+    "sql_array": [
+        "CREATE TABLE spatial_data (id INT PRIMARY KEY, geom1 GEOMETRY, geom2 GEOMETRY, name VARCHAR(50), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO spatial_data (id, geom1, geom2, name) VALUES (1, ST_GeomFromText('POINT(1 1)'), ST_GeomFromText('POINT(2 2)'), 'Point A');",
+        "INSERT INTO spatial_data (id, geom1, geom2, name) VALUES (2, ST_GeomFromText('POINT(3 3)'), ST_GeomFromText('POINT(4 4)'), 'Point B');",
+        "SELECT md5(name || CAST(bif:st_distance(geom1, geom2) AS VARCHAR)) AS checksum FROM spatial_data WHERE created_at IS NOT NULL ORDER BY checksum;",
+        "SELECT id, md5(CONCAT(name, CAST(bif:st_distance(geom1, ST_GeomFromText('POINT(5 5)')) AS VARCHAR))) AS distance_checksum FROM spatial_data HAVING distance_checksum IS NOT NULL;",
+        "SELECT id, geom1, geom2, md5(name) AS name_md5 FROM spatial_data WHERE bif:st_distance(geom1, geom2) < 3.0 GROUP BY name_md5, id HAVING name_md5 IS NOT NULL;",
+        "SELECT id, md5(CAST(bif:st_distance(geom1, geom2) AS VARCHAR)) AS distance_hash FROM spatial_data WHERE md5(name) IS NOT NULL AND md5(name) != '';",
+        "CREATE TABLE test_nulls (id INT PRIMARY KEY, test_value VARCHAR(50));",
+        "INSERT INTO test_nulls (id, test_value) VALUES (1, NULL), (2, 'test');",
+        "SELECT md5(test_value) AS test_md5 FROM test_nulls WHERE test_value IS NULL OR md5(test_value) = 'test' ORDER BY test_md5;",
+        "SELECT t1.id, md5(t1.name) AS name_hash, bif:st_distance(t1.geom1, t2.geom2) AS distance FROM spatial_data t1 JOIN spatial_data t2 ON t1.id != t2.id WHERE bif:st_distance(t1.geom1, t2.geom2) < 5.0 GROUP BY t1.id, t2.id HAVING distance IS NOT NULL;"
+    ]
+}

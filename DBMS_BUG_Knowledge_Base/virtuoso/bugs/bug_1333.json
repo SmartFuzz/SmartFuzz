@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/1333",
+  "title": "Inference with multiple `FROM` clauses seems to break `rdf:type` predicate",
+  "vulnerable_database": "Virtuoso",
+  "date": "2024-12-04 15:29:07",
+  "vulnerable_version": "",
+  "description": "Following my issue on the forum I have produced an actual minimal example to illustrate the issue\nAs mentioned in my last comment over there, the conditions to reproduce this issue are :\n\nMultiple FROM Clauses (or define input:default-graph-uri pragmas)\n1 Inference rule set\nThe predicate rdf:type (or a) in the query more than once\n\nSee the attached sample datasets:\n\nminimal_hal_schema.ttl.txt\nminimal_hal.ttl.txt\nminimal_session.ttl.txt\n\nAnd the results of the following query :\ndefine input:inference 'test_session'\ndefine input:default-graph-uri <http://localhost:8890/minimal-hal>\ndefine input:default-graph-uri <http://localhost:8890/minimal-session>\nSELECT * WHERE {\n?s a <http://example.com/test#Paper>.\n?s ?p ?a.\n?a a ?c.\n}\n\nAssuming you have defined the inference rule set with rdfs_rule_set('test_session', 'http://localhost:8890/minimal-hal-schema')",
+  "poc": [
+    "define input:inference 'test_session'\ndefine input:default-graph-uri <http://localhost:8890/minimal-hal>\ndefine input:default-graph-uri <http://localhost:8890/minimal-session>\nSELECT * WHERE {\n?s a <http://example.com/test#Paper>.\n?s ?p ?a.\n?a a ?c.\n}"
+  ],
+  "key_bug_features": [
+    "Multiple FROM clauses with rdf:type predicate in query"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE test_papers (id INT PRIMARY KEY, title VARCHAR(255), type VARCHAR(255));",
+    "INSERT INTO test_papers (id, title, type) VALUES (1, 'Paper A', 'http://example.com/test#Paper');",
+    "CREATE TABLE test_authors (id INT PRIMARY KEY, name VARCHAR(255), paper_id INT, FOREIGN KEY (paper_id) REFERENCES test_papers(id));",
+    "INSERT INTO test_authors (id, name, paper_id) VALUES (1, 'Author A', 1);",
+    "SELECT * FROM test_papers p JOIN test_authors a ON p.id = a.paper_id WHERE p.type = 'http://example.com/test#Paper';"
+  ]
+}

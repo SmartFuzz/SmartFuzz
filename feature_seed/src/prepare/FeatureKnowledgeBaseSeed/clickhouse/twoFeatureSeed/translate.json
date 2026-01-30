@@ -1,0 +1,16 @@
+{
+    "function": "translate",
+    "operator": "s1 || s2",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, name String, description String, created_at DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table (id, name, description, created_at) VALUES (1, 'Alice', 'Loves A', '2023-01-01 00:00:00'), (2, 'Bob', 'Bobs B', '2023-01-02 00:00:00'), (3, 'Charlie', 'Charlie C', '2023-01-03 00:00:00'), (4, NULL, 'This is NULL', '2023-01-04 00:00:00'), (5, 'David', 'NULL in name but not in description', NULL);",
+        "CREATE TABLE another_table (category String, level UInt8) ENGINE = MergeTree() ORDER BY category;",
+        "INSERT INTO another_table (category, level) VALUES ('A', 1), ('B', 2), ('C', 3), ('D', NULL);",
+        "SELECT translate(name || ' - ' || description, 'ABCD', 'abcd') AS modified_name FROM test_table WHERE id > 2;",
+        "SELECT translate(name, 'ABC', 'abc') || ' is modified' AS status FROM test_table WHERE created_at IS NOT NULL;",
+        "SELECT category, SUM(level) AS total FROM another_table GROUP BY category HAVING translate(category, 'ABCD', 'abcd') = 'a' OR total > 1;",
+        "SELECT create_at, translate(name, 'ABC', 'abc') || ' joined' FROM test_table WHERE created_at < '2023-01-03 00:00:00' AND name IS NOT NULL;",
+        "SELECT t.id, t.name, t.description, (SELECT COUNT(*) FROM another_table WHERE level > 1) AS level_count FROM test_table t WHERE translate(t.description, 'ABC', 'abc') IS NOT NULL;",
+        "SELECT id, translate(name, 'o', '0') || ' ' || COALESCE(description, 'Description missing') FROM test_table ORDER BY id;"
+    ]
+}

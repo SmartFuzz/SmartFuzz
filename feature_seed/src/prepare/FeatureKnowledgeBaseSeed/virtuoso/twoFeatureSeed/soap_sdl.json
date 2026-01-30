@@ -1,0 +1,20 @@
+{
+    "function": "soap_sdl",
+    "operator": "SPARQL Operator: isLiteral",
+    "sql_array": [
+        "CREATE TABLE pl_module (id SERIAL PRIMARY KEY, name VARCHAR(255), data JSONB);",
+        "INSERT INTO pl_module (name, data) VALUES ('module1', '{\"key\": \"value\", \"number\": 42}');",
+        "INSERT INTO pl_module (name, data) VALUES ('module2', '{\"key\": null, \"number\": 0}');",
+        "INSERT INTO pl_module (name, data) VALUES ('module3', '{\"key\": \"\"}');",
+        "SELECT soap_sdl(name) AS sdl_document FROM pl_module WHERE isLiteral(data->>'key') AND data->>'key' IS NOT NULL;",
+        "SELECT soap_sdl(name) FROM pl_module WHERE id IN (SELECT id FROM (SELECT id FROM pl_module WHERE data->>'number' > 40) AS inner_query) GROUP BY name HAVING COUNT(*) > 0;",
+        "SELECT soap_sdl(name) AS sdl_document FROM pl_module WHERE id = (SELECT MIN(id) FROM pl_module WHERE data->'number' IS NOT NULL) AND isLiteral(data->>'key');",
+        "WITH temp_table AS (SELECT name, soap_sdl(name) AS sdl FROM pl_module) SELECT sdl FROM temp_table WHERE isLiteral(sdl) = true;",
+        "SELECT soap_sdl(name) FROM pl_module WHERE id <> (SELECT MAX(id) FROM pl_module) AND isLiteral(data->>'number'::TEXT);",
+        "CREATE TEMPORARY TABLE temp_modules (id INTEGER, sdl VARCHAR(500));",
+        "INSERT INTO temp_modules (id, sdl) SELECT id, soap_sdl(name) FROM pl_module WHERE isLiteral(data->>'number') AND data->>'number' IS NOT NULL;",
+        "SELECT COUNT(*) FROM temp_modules WHERE isLiteral(sdl);",
+        "SELECT DISTINCT soap_sdl(name) FROM pl_module WHERE data->>'key' IS NULL OR (data->>'number' IS NOT NULL AND data->>'number'::INTEGER < 100) ORDER BY name;",
+        "SELECT soap_sdl(name) FROM pl_module WHERE isLiteral(data->>'key') AND (data->>'number' > (SELECT AVG(COALESCE(data->>'number'::INTEGER, 0)) FROM pl_module));"
+    ]
+}

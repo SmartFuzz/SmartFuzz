@@ -1,0 +1,14 @@
+[
+    "CREATE TABLE MY_MSGS (MSG_ID INTEGER IDENTITY, MSG_HOST VARCHAR, MSG_UIDL VARCHAR, MSG_TEXT LONG VARCHAR, primary key (MSG_ID, MSG_HOST, MSG_UIDL));",
+    "CREATE PROCEDURE get_msgs (IN pop_host VARCHAR, IN pop_uid VARCHAR, IN pop_pwd VARCHAR) { DECLARE msg_vec ANY; DECLARE inx INTEGER; msg_vec := pop3_get(CONCAT(pop_host, ':110'), pop_uid, pop_pwd, 1, 'delete'); inx := 0; WHILE (inx < length(msg_vec)) { INSERT INTO MY_MSGS (MSG_HOST, MSG_UIDL, MSG_TEXT) VALUES (pop_host, aref(aref(msg_vec, inx), 0), aref(aref(msg_vec, inx), 1)); inx := inx + 1; } }",
+    "CREATE PROCEDURE get_msgs_large (IN pop_host VARCHAR, IN pop_uid VARCHAR, IN pop_pwd VARCHAR) { DECLARE msg_vec ANY; DECLARE inx INTEGER; msg_vec := pop3_get(CONCAT(pop_host, ':110'), pop_uid, pop_pwd, 10000000, 'delete'); inx := 0; WHILE (inx < length(msg_vec)) { INSERT INTO MY_MSGS (MSG_HOST, MSG_UIDL, MSG_TEXT) VALUES (pop_host, aref(aref(msg_vec, inx), 0), aref(aref(msg_vec, inx), 1)); inx := inx + 1; } }",
+    " CALL get_msgs('pop.xs4all.nl', 'ghard', '|_337h4x0R');",
+    " CALL get_msgs_large('pop.xs4all.nl', 'ghard', '|_337h4x0R');",
+    "CREATE TABLE TEST_MSGS (MSG_ID INTEGER IDENTITY, MSG_TEXT LONG VARCHAR);",
+    "INSERT INTO TEST_MSGS (MSG_TEXT) SELECT MSG_TEXT FROM MY_MSGS WHERE length(MSG_TEXT) > 5000;",
+    "SELECT MSG_UIDL, length(MSG_TEXT), GET_KEYWORD('Subject', aref(mime_tree(MSG_TEXT), 0)) FROM MY_MSGS WHERE length(MSG_TEXT) < 10000;",
+    "WITH UIDL_LIST AS (SELECT aref(aref(msg_vec, n), 0) AS MSG_UIDL FROM pop3_get(CONCAT('pop.xs4all.nl', ':110'), 'ghard', '|_337h4x0R', 10000000, 'uidl') AS msg_vec CROSS JOIN generate_series(0, length(msg_vec) - 1) AS n) SELECT * FROM UIDL_LIST;",
+    "SELECT DISTINCT MSG_UIDL FROM MY_MSGS WHERE MSG_HOST IN (SELECT DISTINCT MSG_HOST FROM MY_MSGS WHERE length(MSG_TEXT) < 2000);",
+    "SELECT COUNT(*) FROM MY_MSGS WHERE MSG_TEXT LIKE '%urgent%';",
+    "DELETE FROM MY_MSGS WHERE MSG_UIDL = '1003930514.maildrop7.14798';"
+]

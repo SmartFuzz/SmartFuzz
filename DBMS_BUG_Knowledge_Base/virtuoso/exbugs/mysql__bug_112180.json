@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=112180",
+  "title": "\"Skip Scan Range Access Method\" may lead to incorrect query results",
+  "description": "This issue is the same as the following one:\nhttps://bugs.mysql.com/bug.php?id=104406\nHow to repeat:\nCREATE TABLE `foo_t` (\r\n  `id` bigint unsigned NOT NULL AUTO_INCREMENT,\r\n  `schema_id` bigint unsigned NOT NULL,\r\n  `name` varchar(64),\r\n  `type` enum('BASE TABLE','VIEW','SYSTEM VIEW'),\r\n  `engine` varchar(64),\r\n  PRIMARY KEY (`id`),\r\n  UNIQUE KEY `schema_id` (`schema_id`,`name`)\r\n) ENGINE=InnoDB AUTO_INCREMENT=1 STATS_PERSISTENT=0;\r\n\r\n--disable_query_log\r\nconnect (foo,localhost,root,,);\r\nconnection foo;\r\nbegin;\r\nselect count(*) from mysql.user;\r\n\r\nconnection default;\r\n\r\nlet $j = 5;\r\nwhile ($j)\r\n{\r\nlet $i = 1000;\r\nwhile ($i)\r\n{\r\n  dec $i;\r\n  eval insert into foo_t (schema_id, name, type, engine)\r\n  values ($i % 6, CONCAT(\"name_\", $i), 'SYSTEM VIEW', repeat('a', 60));\r\n}\r\ndelete from foo_t where id < 1000000;\r\ndec $j;\r\n}\r\n\r\n--enable_query_log\r\n\r\nlet $i = 670;\r\neval insert into foo_t (schema_id, name, type, engine)\r\nvalues ($i % 6, CONCAT(\"name_\", $i), 'SYSTEM VIEW', repeat('a', 60));\r\n\r\nlet $i = 675;\r\neval insert into foo_t (schema_id, name, type, engine)\r\nvalues ($i % 6, CONCAT(\"name_\", $i), 'SYSTEM VIEW', repeat('a', 60));\r\n\r\nconnect (foo1,localhost,root,,);\r\nconnection foo1;\r\n\r\n# ERROR. The result cannot be read. But, in fact, it should be readable.\r\nlet $cnt1 = `select count(1) from foo_t force index(schema_id) where name like 'name_670'`;\r\n# If the query uses a primary key index, the data is read correctly.\r\nlet $cnt2 = `select count(1) from foo_t force index(primary) where name like 'name_670'`;\r\n\r\n--let $assert_text= Assert value should be same\r\n--let $assert_cond = ($cnt1 = $cnt2)\r\n--source include/assert.inc\r\n\r\ndrop table foo_t;",
+  "date": "2023-08-25 08:50:00",
+  "vulnerable_version": "8.0.34",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE bar_t (id xsd:integer NOT NULL, schema_id xsd:integer NOT NULL, name xsd:string, type xsd:string, engine xsd:string, PRIMARY KEY (id), UNIQUE (schema_id, name));",
+    "INSERT INTO bar_t (schema_id, name, type, engine) VALUES (1, 'test_name_1', 'BASE TABLE', 'InnoDB');",
+    "INSERT INTO bar_t (schema_id, name, type, engine) VALUES (2, 'test_name_2', 'VIEW', 'MyISAM');",
+    "SELECT COUNT(*) FROM bar_t WHERE schema_id IS NULL;",
+    "SELECT COUNT(*) FROM bar_t WHERE name LIKE '%test_name_%' AND schema_id IN (SELECT schema_id FROM bar_t WHERE type = 'BASE TABLE');"
+  ],
+  "key_bug_features": [
+    "Incorrect results using skip scan range access method"
+  ]
+}

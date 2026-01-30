@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=114549",
+  "title": "CAST from DOUBLE to INTEGER sometimes returns 1, sometimes 2",
+  "description": "I used mysql-trunk pulled from github today, revision 824e2b4064053f7daf17d7f3f84b7a3ed92e5fb4 . I verified this on 8.0.34 too.\r\n\r\nThis mtr test shows the problem:\r\n\r\n# Casting the DOUBLE 1.9 to signed INTEGER\r\nselect cast(cast(1.9 as double) as signed) ;\r\n\r\n# Should return the same, using a DOUBLE column\r\ncreate table k(a double);\r\ninsert into k values (1.9);\r\nselect * from  k;\r\nshow create table  k;\r\nselect cast(a as signed) from k;\r\n\r\n# Should return the same, using a DOUBLE literal\r\nselect cast(1.9e0 as signed) from k;\r\n# And here a DOUBLE column of a derived table\r\nselect cast(y as signed) from (select cast(1.9 as double)) as der(y);\r\n\r\n# For reference, when using a DECIMAL input\r\nselect cast(1.9 as signed) from k;\r\n\r\nThe first query with CAST returns 1, all others return 2.\r\nThe problem is inconsistency: depending on where the 1.9 DOUBLE value comes from, it ends up as 1 or 2.\r\nSo\r\n  select cast(cast(1.9 as double) as signed) = cast(1.9e0 as signed) ;\r\nis false, which cannot be correct.\r\n\r\nAccording to the std, how DOUBLE casts to INT (by rounding or truncating) is implementation-defined, which means that it's ok to make a choice, but this choice has to be specified.\nHow to repeat:\nsee above\nSuggested fix:\nLooking in code, when converting a literal DOUBLE like 1.9e0 to an int, Item_float::val_int() calls rint() so it rounds. When converting a DOUBLE column, Field_double::val_int() calls rint() too. But when converting the CAST-AS-DOUBLE, Item_func_typecast_real::val_int() calls Item_func::val_int_from_real(), which does not round.",
+  "date": "2024-04-04 10:15:00",
+  "vulnerable_version": "8.3, 8.0.36",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_double(a REAL, b INTEGER);",
+    "INSERT INTO test_double VALUES (1.9, NULL);",
+    "SELECT CAST(a AS INTEGER) FROM test_double;",
+    "SELECT CAST(CAST(a AS REAL) AS INTEGER) FROM test_double;",
+    "SELECT CAST(1.9 AS INTEGER) FROM test_double;"
+  ],
+  "key_bug_features": [
+    "Inconsistent CAST from DOUBLE to INTEGER"
+  ]
+}

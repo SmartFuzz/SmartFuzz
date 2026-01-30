@@ -1,0 +1,18 @@
+{
+    "function": "lgamma",
+    "operator": "a != ANY (subquery)",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, value Float64, special_value String, created_at DateTime);",
+        "INSERT INTO test_table VALUES (1, 2.5, '1.0'), (2, NULL, '2.0'), (3, 3.7, 'three'), (4, -1.0, '4.5');",
+        "SELECT id, lgamma(value) FROM test_table WHERE value != ANY (SELECT AVG(value) FROM test_table WHERE value IS NOT NULL);",
+        "SELECT id, lgamma(special_value) FROM test_table WHERE special_value != ANY (SELECT toString(value) FROM test_table WHERE value IS NOT NULL);",
+        "SELECT id, lgamma(value) AS gamma_value FROM test_table GROUP BY id HAVING gamma_value != ANY (SELECT COUNT(*) FROM test_table GROUP BY value);",
+        "SELECT id, COUNT(*) AS cnt FROM test_table WHERE lgamma(value) != ANY (SELECT lgamma(value) FROM test_table WHERE value > 0) GROUP BY id HAVING cnt > 1;",
+        "SELECT id, lgamma(value + IFNULL(NULL, 1)) AS gamma_value FROM test_table WHERE gamma_value != ANY (SELECT lgamma(0.0) FROM test_table WHERE value IS NOT NULL);",
+        "CREATE TABLE correlated_table (id UInt32, fk_id UInt32, amount Float64);",
+        "INSERT INTO correlated_table VALUES (1, 1, 10.0), (2, 1, 20.0), (3, 2, NULL);",
+        "SELECT tt.id, lgamma(tt.value) FROM test_table tt WHERE tt.id != ANY (SELECT ct.fk_id FROM correlated_table ct WHERE ct.amount IS NOT NULL AND ct.fk_id = tt.id);",
+        "ALTER TABLE test_table ADD COLUMN new_col Decimal(10, 2);",
+        "SELECT id, new_col, lgamma(value) FROM test_table ORDER BY lgamma(value) != ANY (SELECT AVG(lgamma(value)) FROM test_table) DESC;"
+    ]
+}

@@ -1,0 +1,10 @@
+CREATE TABLE test_intervals (id INTEGER PRIMARY KEY, event_time TIME, duration INTEGER, notes VARCHAR);
+INSERT INTO test_intervals (id, event_time, duration, notes) VALUES (1, TIME '13:00:00', 3600, 'Meeting with team'), (2, TIME '14:30:00', 5400, 'Lunch break'), (3, TIME '15:45:00', 1800, NULL), (4, TIME '13:30:00', NULL, 'Review session');
+SELECT id, event_time, event_time - INTERVAL to_seconds(duration) SECOND AS adjusted_time FROM test_intervals WHERE duration IS NOT NULL;
+SELECT id, event_time, SUM(to_seconds(duration)) OVER (PARTITION BY notes) AS total_duration FROM test_intervals GROUP BY id, event_time, notes HAVING total_duration > 1800;
+SELECT t1.id, t1.event_time, t2.event_time - INTERVAL to_seconds(t1.duration) SECOND AS adjusted_time FROM test_intervals t1 JOIN test_intervals t2 ON t1.id < t2.id WHERE t1.duration IS NOT NULL AND t2.duration IS NOT NULL;
+WITH adjusted AS (SELECT id, event_time, event_time - INTERVAL to_seconds(COALESCE(duration, 0)) SECOND AS adjusted_time FROM test_intervals) SELECT id FROM adjusted WHERE adjusted_time IS NOT NULL;
+CREATE TABLE test_temp (time_entry TIME DEFAULT TIME '00:00:00');
+INSERT INTO test_temp VALUES (TIME '12:00:00'), (TIME '14:15:00');
+SELECT t1.time_entry, t1.time_entry - INTERVAL to_seconds(15) SECOND AS subtracted_time FROM test_temp t1 JOIN test_temp t2 ON t1.time_entry > t2.time_entry;
+SELECT id, event_time, to_seconds(duration) AS total_seconds FROM test_intervals WHERE event_time IS NOT NULL ORDER BY total_seconds DESC;

@@ -1,0 +1,25 @@
+{
+    "function": "strptime(text, format)",
+    "operator": "+",
+    "sql_array": [
+        "CREATE TABLE test_ts_data (id INT, ts_value TIMESTAMP WITH TIME ZONE);",
+        "INSERT INTO test_ts_data VALUES (1, strptime('Wed, 1 January 1992 - 08:38:40 PST', '%a, %-d %B %Y - %H:%M:%S %Z'));",
+        "INSERT INTO test_ts_data VALUES (2, strptime('Thu, 15 July 2021 - 09:45:00 PDT', '%a, %-d %B %Y - %H:%M:%S %Z'));",
+        "CREATE TABLE additional_days (days_to_add INT);",
+        "INSERT INTO additional_days VALUES (5), (10);",
+        "SELECT t.id, (t.ts_value + a.days_to_add) AS updated_ts FROM test_ts_data t JOIN additional_days a ON a.days_to_add BETWEEN 1 AND 10;",
+        "SELECT t.id, strptime('2023-01-01', '%Y-%m-%d') + (SELECT MAX(days_to_add) FROM additional_days) AS boundary_updated_ts FROM test_ts_data t;",
+        "SELECT t.id, strptime('Invalid Date Format', '%Y-%m-%d') + 0 AS coerced_ts FROM test_ts_data t WHERE strptime('Invalid Date Format', '%Y-%m-%d') IS NOT NULL;",
+        "SELECT COUNT(*) FROM test_ts_data WHERE ts_value IS NULL;",
+        "CREATE TABLE aggregate_test (val INT, op_date TIMESTAMP WITH TIME ZONE);",
+        "INSERT INTO aggregate_test VALUES (1, strptime('2023-05-01 10:00:00 UTC', '%Y-%m-%d %H:%M:%S %Z'));",
+        "INSERT INTO aggregate_test VALUES (NULL, strptime('2023-06-01 10:00:00 UTC', '%Y-%m-%d %H:%M:%S %Z'));",
+        "SELECT AVG(val) FROM aggregate_test WHERE op_date + 10 IS NOT NULL;",
+        "SELECT t.id, (strptime('2030-12-31', '%Y-%m-%d') + 10) AS future_ts FROM test_ts_data t HAVING future_ts > CURRENT_TIMESTAMP;",
+        "SELECT t.id, strptime('2010-01-01', '%Y-%m-%d') + (SELECT COUNT(*) FROM aggregate_test) AS count_based_ts FROM test_ts_data t WHERE t.ts_value IS NOT NULL;",
+        "CREATE TABLE join_test (join_id INT, join_ts TIMESTAMP WITH TIME ZONE);",
+        "INSERT INTO join_test VALUES (3, strptime('2023-08-15 15:00:00 AST', '%Y-%m-%d %H:%M:%S %Z'));",
+        "SELECT t.id, (j.join_ts + 5) AS new_joined_ts FROM test_ts_data t LEFT JOIN join_test j ON t.id = j.join_id;",
+        "SELECT j.join_id, strptime('Max Date', '%Y-%m-%d') + (SELECT COUNT(*) FROM join_test) AS future_ts FROM join_test j GROUP BY j.join_id HAVING future_ts IS NOT NULL;"
+    ]
+}

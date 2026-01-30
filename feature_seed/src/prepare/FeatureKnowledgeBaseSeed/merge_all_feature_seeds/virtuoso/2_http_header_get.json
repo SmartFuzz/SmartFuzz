@@ -1,0 +1,11 @@
+CREATE TABLE http_requests (id INT PRIMARY KEY, request_header VARCHAR(255), response_header VARCHAR(255));
+INSERT INTO http_requests (id, request_header, response_header) VALUES (1, 'User-Agent: Mozilla/5.0', 'Content-Type: text/html');
+CREATE TABLE hash_requests (request_id INT, hash_value VARCHAR(40));
+INSERT INTO hash_requests (request_id, hash_value) VALUES (1, bif:sha1(http_header_get()));
+SELECT req.id, bif:sha1(req.request_header) AS hashed_request FROM http_requests req WHERE req.id = 1;
+SELECT req.id, req.request_header, bif:sha1(CONCAT(req.response_header, ' ', http_header_get())) AS complex_hash FROM http_requests req LEFT JOIN hash_requests h ON req.id = h.request_id WHERE h.hash_value IS NULL;
+CREATE TABLE user_data (user_id INT PRIMARY KEY, user_info VARCHAR(255) NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO user_data (user_id, user_info) VALUES (1, NULL), (2, 'Sample Data');
+SELECT u.user_id, bif:sha1(http_header_get()) AS request_hash FROM user_data u WHERE u.user_info IS NULL OR u.created_at > NOW() - INTERVAL '1 DAY' GROUP BY u.user_id HAVING COUNT(u.user_id) > 0;
+SELECT req.id, HTTP_HEADER_1.value AS header_value, bif:sha1(CONCAT(HTTP_HEADER_1.value, ' ', http_header_get())) AS combined_hash FROM (SELECT id, request_header AS value FROM http_requests WHERE id > 0) HTTP_HEADER_1;
+WITH RECURSIVE header_info AS (SELECT id, response_header FROM http_requests WHERE id = 1 UNION ALL SELECT id + 1, response_header FROM http_requests WHERE id < 10) SELECT * FROM header_info WHERE bif:sha1(response_header) IS NOT NULL;

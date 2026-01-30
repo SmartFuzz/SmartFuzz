@@ -1,0 +1,12 @@
+CREATE TABLE rdf_data (id SERIAL PRIMARY KEY, rdf_content VARCHAR NOT NULL, lang VARCHAR, obj_var ANY);
+INSERT INTO rdf_data (rdf_content, lang, obj_var) VALUES ('<http://example.com/resource1>', 'en', 'sample_obj');
+INSERT INTO rdf_data (rdf_content, lang, obj_var) VALUES ('<http://example.com/resource2>', 'fr', NULL);
+INSERT INTO rdf_data (rdf_content, lang, obj_var) VALUES ('<http://example.com/resource3>', NULL, 42);
+CREATE TABLE test_results (result_id SERIAL PRIMARY KEY, ttl_output VARCHAR);
+WITH temp AS (SELECT obj_var FROM rdf_data) SELECT DB.DBA.RDF_CONVERT_RDFXML_TO_TTL((SELECT rdf_content FROM rdf_data WHERE lang IS NOT NULL LIMIT 1), 'http://example.com', NULL) AS ttl_output FROM temp;
+SELECT COUNT(*), DB.DBA.RDF_CONVERT_RDFXML_TO_TTL(rdf_content, 'http://example.com', NULL) / CASE WHEN COUNT(obj_var) > 0 THEN COUNT(obj_var) ELSE 1 END FROM rdf_data GROUP BY lang HAVING COUNT(*) > 1;
+SELECT DB.DBA.RDF_CONVERT_RDFXML_TO_TTL((SELECT rdf_content FROM rdf_data WHERE obj_var IS NULL), 'http://example.com', NULL) AS ttl_test, lang FROM rdf_data;
+CREATE TEMP TABLE temp_rdf AS SELECT rdf_content, DB.DBA.RDF_CONVERT_RDFXML_TO_TTL(rdf_content, 'http://example.com', NULL) AS ttl FROM rdf_data WHERE obj_var IS NOT NULL;
+SELECT ttl FROM temp_rdf WHERE ttl IS NOT NULL ORDER BY DB.DBA.RDF_CONVERT_RDFXML_TO_TTL(rdf_content, 'http://example.com', NULL) / 2.0;
+INSERT INTO test_results (ttl_output) SELECT DB.DBA.RDF_CONVERT_RDFXML_TO_TTL((SELECT rdf_content FROM rdf_data WHERE id = 1), 'http://example.com', NULL) / NULLIF(LANG(id), '') FROM rdf_data;
+DROP TABLE IF EXISTS rdf_data;

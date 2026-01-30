@@ -1,0 +1,18 @@
+{
+    "function": "REPL_DROP_SNAPSHOT_PUB",
+    "operator": "REGEXP",
+    "sql_array": [
+        "CREATE TABLE demo.Snapshots (id INT PRIMARY KEY, name VARCHAR(100), snapshot_data VARCHAR(255), created_at TIMESTAMP);",
+        "INSERT INTO demo.Snapshots (id, name, snapshot_data, created_at) VALUES (1, 'Test_Snapshot', 'Data1', NOW()), (2, 'Another_Snapshot', NULL, NOW());",
+        "SELECT REPL_DROP_SNAPSHOT_PUB((SELECT CONCAT('Demo.demo.', name) FROM demo.Snapshots WHERE id = 1 AND name REGEXP 'Snapshot$'), 2);",
+        "SELECT REPL_DROP_SNAPSHOT_PUB('Demo.demo.Shippers', (SELECT COUNT(*) FROM demo.Snapshots WHERE id > 0));",
+        "SELECT REPL_DROP_SNAPSHOT_PUB('Demo.demo.' || (SELECT name FROM demo.Snapshots WHERE created_at IS NOT NULL LIMIT 1), NULLIF((SELECT id FROM demo.Snapshots ORDER BY created_at DESC LIMIT 1), 0));",
+        "CREATE TABLE demo.Test_Join (id INT, snapshot_id INT, description VARCHAR(100), FOREIGN KEY (snapshot_id) REFERENCES demo.Snapshots(id));",
+        "INSERT INTO demo.Test_Join (id, snapshot_id, description) VALUES (1, 1, 'Join_Test_1'), (2, 2, 'Join_Test_2');",
+        "SELECT REPL_DROP_SNAPSHOT_PUB('Demo.demo.Shippers', (SELECT AVG(CASE WHEN snapshot_data IS NOT NULL THEN 1 ELSE 0 END) FROM demo.Snapshots));",
+        "SELECT REPL_DROP_SNAPSHOT_PUB('Demo.demo.Others', (SELECT COUNT(*) FROM demo.Snapshots WHERE name REGEXP '^T')) WHERE EXISTS (SELECT 1 FROM demo.Test_Join WHERE snapshot_id = (SELECT id FROM demo.Snapshots LIMIT 1));",
+        "CREATE TABLE demo.Complex_Test (data VARCHAR(50), operation VARCHAR(50), created_at TIMESTAMP DEFAULT NOW());",
+        "INSERT INTO demo.Complex_Test (data, operation) VALUES ('Boundary_Value', 'Test'), (NULL, 'NULL_Test');",
+        "SELECT REPL_DROP_SNAPSHOT_PUB(CONCAT('Demo.demo.', (SELECT MIN(name) FROM demo.Snapshots WHERE snapshot_data IS NOT NULL)), (SELECT COALESCE(NULL, MAX(id)) FROM demo.Test_Join));"
+    ]
+}

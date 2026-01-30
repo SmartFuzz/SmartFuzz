@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/0eab1ac759",
+  "title": "O(N*N) behavior where it should be O(N)",
+  "description": "drh added on 2016-09-16 13:57:02:\nThe query at the end of the following SQL exhibits O(N*N) behavior:\nCREATE TABLE t1(x INTEGER UNIQUE PRIMARY KEY NOT NULL, a,b,c,d);\nCREATE TABLE t2(y INT);\nexplain query plan SELECT count(*) FROM t1 WHERE x IN t2;\nThe EXPLAIN QUERY PLAN shows that the subquery against t2 is run twice.  One\nof those two is inside the t1 loop, causing the O(N*N) behavior.\nBisecting shows this problem was introduced by check-in\n[96ea990942] (2016-03-16, version 3.12.0) and was fixed by\ncheck-in [061b800603] (2016-07-26).  That fix was later merged to trunk at\n[ddb5f0558c] but has not yet been released.\nIn other words, this problem has already been fixed on trunk.\nThis ticket is created to an historical record of the problem,\nand to allow for study of the root cause, and to make improvements\nto the test suite to avoid a regression.\nThis problem was first reported on the sqlite-users mailing list\nby Takasumi Iwamoto.\ndrh added on 2016-09-16 14:30:51:\nThe following query causes an assertion fault on trunk:\nCREATE TABLE t1(a INTEGER UNIQUE PRIMARY KEY, b VARCHAR(200));\nSELECT count(*) FROM t1 WHERE a IN (1, 2, 3);\nThe root cause of this failure and the original O(N*N) performance is \nthe redundant UNIQUE constraint on the INTEGER PRIMARY KEY.  That extra\nunique index is confusing the query planner, apparently.",
+  "date": "2016-09-16 13:57:028.90 years ago",
+  "vulnerable_version": "3.14.2",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(x INT NOT NULL PRIMARY KEY, a VARCHAR(255), b FLOAT, c INT, d BOOLEAN);",
+    "CREATE TABLE t2(y INT, z VARCHAR(255) DEFAULT 'default');",
+    "INSERT INTO t1(a, b, c, d) VALUES ('text1', 1.5, 10, NULL);",
+    "INSERT INTO t2(y, z) VALUES (1, 'value1'), (2, 'value2'), (3, 'value3');",
+    "SELECT count(*) FROM t1 WHERE x IN (SELECT y FROM t2 WHERE z IS NOT NULL);"
+  ],
+  "key_bug_features": [
+    "Subquery against t2 runs twice in query plan"
+  ]
+}

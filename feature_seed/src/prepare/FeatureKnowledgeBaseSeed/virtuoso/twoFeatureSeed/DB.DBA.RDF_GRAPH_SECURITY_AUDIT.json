@@ -1,0 +1,22 @@
+{
+    "function": "DB.DBA.RDF_GRAPH_SECURITY_AUDIT",
+    "operator": "SPARQL ! (NOT)",
+    "sql_array": [
+        "CREATE TABLE rdf_graphs (graph_id INTEGER PRIMARY KEY, graph_iri VARCHAR, user_id INTEGER, permissions VARCHAR);",
+        "INSERT INTO rdf_graphs (graph_id, graph_iri, user_id, permissions) VALUES (1, 'http://example.org/graph1', 101, 'READ');",
+        "INSERT INTO rdf_graphs (graph_id, graph_iri, user_id, permissions) VALUES (2, 'http://example.org/graph2', 102, NULL);",
+        "INSERT INTO rdf_graphs (graph_id, graph_iri, user_id, permissions) VALUES (3, 'http://example.org/graph3', 103, 'WRITE');",
+        "INSERT INTO rdf_graphs (graph_id, graph_iri, user_id, permissions) VALUES (4, 'http://example.org/graph4', 104, 'READ,WRITE');",
+        "INSERT INTO rdf_graphs (graph_id, graph_iri, user_id, permissions) VALUES (5, '', 105, 'NOACCESS');",
+        "SELECT DB.DBA.RDF_GRAPH_SECURITY_AUDIT(1) AS audit_result WHERE NOT (SELECT COUNT(*) FROM rdf_graphs) IS NULL;",
+        "SELECT DB.DBA.RDF_GRAPH_SECURITY_AUDIT(0) WHERE NOT (SELECT COUNT(DISTINCT graph_iri) FROM rdf_graphs) < 3;",
+        "CREATE TABLE user_permissions (user_id INTEGER, graph_id INTEGER, permission_level VARCHAR, PRIMARY KEY (user_id, graph_id));",
+        "INSERT INTO user_permissions (user_id, graph_id, permission_level) VALUES (101, 1, 'READ');",
+        "INSERT INTO user_permissions (user_id, graph_id, permission_level) VALUES (102, 2, 'READ');",
+        "INSERT INTO user_permissions (user_id, graph_id, permission_level) VALUES (103, 3, 'WRITE');",
+        "INSERT INTO user_permissions (user_id, graph_id, permission_level) VALUES (104, 4, 'FULL');",
+        "SELECT DB.DBA.RDF_GRAPH_SECURITY_AUDIT((SELECT MIN(user_id) FROM user_permissions WHERE permission_level IS NOT NULL)) WHERE NOT EXISTS (SELECT * FROM rdf_graphs WHERE graph_iri IS NULL);",
+        "SELECT DB.DBA.RDF_GRAPH_SECURITY_AUDIT(1) AS results WHERE NOT EXISTS (SELECT users.user_id FROM user_permissions AS users JOIN rdf_graphs ON users.graph_id = rdf_graphs.graph_id WHERE permissions IS NULL AND graph_iri <> '');",
+        "SELECT COUNT(*) FROM rdf_graphs AS g, (SELECT graph_id FROM user_permissions WHERE NOT (user_id IS NULL)) AS up WHERE g.graph_id = up.graph_id GROUP BY g.graph_id HAVING NOT (COUNT(DISTINCT g.permissions) > 1);"
+    ]
+}

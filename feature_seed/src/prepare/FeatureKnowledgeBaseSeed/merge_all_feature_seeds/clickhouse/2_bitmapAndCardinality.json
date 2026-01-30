@@ -1,0 +1,11 @@
+CREATE TABLE BitmapTest (id UInt32, bitmapData Bitmap) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO BitmapTest VALUES (1, bitmapBuild([1, 2, 3])), (2, bitmapBuild([2, 3, 4])), (3, bitmapBuild([]));
+CREATE TABLE ValuesTable (value Int32) ENGINE = MergeTree() ORDER BY value;
+INSERT INTO ValuesTable VALUES (1), (2), (3), (5);
+SELECT id, bitmapAndCardinality(bitmapData, bitmapBuild([3, 4])) AS cardinality FROM BitmapTest WHERE id != ANY (SELECT value FROM ValuesTable WHERE value > 3) HAVING cardinality > 0;
+SELECT id, bitmapAndCardinality(bitmapData, bitmapBuild([1, 2])) AS cardinality FROM BitmapTest WHERE bitmapAndCardinality(bitmapData, bitmapBuild([3, 6])) != ANY (SELECT value FROM ValuesTable) ORDER BY cardinality DESC;
+WITH (SELECT bitmapBuild([1, 2, 3]) AS b1, bitmapBuild([4, 5]) AS b2) AS subquery SELECT bitmapAndCardinality(b1, b2) FROM subquery WHERE 1 != ANY (SELECT DISTINCT value FROM ValuesTable WHERE value < 2);
+CREATE TABLE ComplexTest (grp UInt32, data String) ENGINE = MergeTree() ORDER BY grp;
+INSERT INTO ComplexTest VALUES (1, 'A'), (1, 'B'), (2, 'A'), (2, 'C');
+SELECT grp, bitmapAndCardinality(bitmapBuild(arrayMap(x -> toUInt32(x), groupArray(data))), bitmapBuild([1, 2, 3, 4])) AS cardinality FROM ComplexTest GROUP BY grp HAVING cardinality != ANY (SELECT value FROM ValuesTable WHERE value < 10);
+SELECT bitmapAndCardinality(bitmapBuild([1]), bitmapBuild([2])) AS test_cardinality WHERE 'test' != ANY (SELECT value FROM ValuesTable) AND cardinality > 0;

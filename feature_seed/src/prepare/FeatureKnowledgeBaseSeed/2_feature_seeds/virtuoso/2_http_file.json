@@ -1,0 +1,12 @@
+CREATE TABLE test_files (id INT PRIMARY KEY, content TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO test_files (id, content) VALUES (1, '<data><value>10</value></data>');
+INSERT INTO test_files (id, content) VALUES (2, '<data><value>20</value></data>');
+INSERT INTO test_files (id, content) VALUES (3, '<data><value></value></data>');
+SELECT http_file('result.xml') FROM (SELECT xpath_integer('/data/value', content) as extracted_value FROM test_files WHERE id = 1) AS subquery;
+SELECT http_file('output.txt') FROM (SELECT id, content FROM test_files WHERE xpath_integer('/data/value', content) > 10) AS filtered;
+SELECT http_file('file.html') FROM (SELECT id, COUNT(*) OVER(PARTITION BY xpath_integer('/data/value', content)) as count_val FROM test_files) AS sub_count WHERE count_val > 0;
+SELECT http_file('empty_check.txt') FROM test_files WHERE content IS NULL OR content = '';
+SELECT http_file(CONCAT('file_', id, '.txt')) FROM (SELECT id, xpath_integer('/data/value', content) AS value FROM test_files) AS value_sub WHERE value_sub.value IS NOT NULL;
+CREATE TABLE join_test (file_id INT, ref_id INT, FOREIGN KEY (file_id) REFERENCES test_files(id));
+INSERT INTO join_test (file_id, ref_id) VALUES (1, 100), (2, 200), (3, NULL);
+SELECT http_file(CASE WHEN ref_id IS NULL THEN 'default.txt' ELSE CONCAT('file_', ref_id, '.txt') END) FROM join_test WHERE file_id IN (SELECT id FROM test_files WHERE xpath_integer('/data/value', content) < 15);

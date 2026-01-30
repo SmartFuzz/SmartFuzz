@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14619",
+  "title": "Inconsistent Index Origin in list_transform() and list_reduce() ",
+  "description": "### What happens?\n\nIn a nutshell, list_transform() uses 1 as its index-origin (IO=1)\r\nwhereas list_reduce() uses 0 instead:\r\n```\r\nD select list_transform([10,20,30], (x,ix) -> ix) as ix;\r\n┌───────────┐\r\n│    ix     │\r\n│  int64[]  │\r\n├───────────┤\r\n│ [1, 2, 3] │\r\n└───────────┘\r\n\r\nD select list_reduce([10,20,30], (acc,x,ix) -> ix) as ix;\r\n┌───────┐\r\n│  ix   │\r\n│ int32 │\r\n├───────┤\r\n│     2 │\r\n└───────┘\r\n```\r\n\n\n### To Reproduce\n\n```\r\nselect list_transform([10,20,30], (x,ix) -> ix) as ix;\r\nselect list_reduce([10,20,30], (acc,x,ix) -> ix) as ix;\r\n```\n\n### OS:\n\nMacOS\n\n### DuckDB Version:\n\nv1.1.3-dev75 c73cfca650 et al\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nPeter Koppstein\n\n### Affiliation:\n\nPrinceton University\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a source build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nNot applicable - the reproduction does not require a data set\n\n### Did you include all code required to reproduce the issue?\n\n- [X] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [X] Yes, I have",
+  "date": "2024-10-29 18:02:53",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT, values JSON);",
+    "INSERT INTO test_table (id, values) VALUES (1, JSON_ARRAY(10, 20, 30)), (2, JSON_ARRAY(NULL, 40, 50)), (3, JSON_ARRAY(60, 70, NULL));",
+    "SELECT id, JSON_UNQUOTE(JSON_EXTRACT(values, '$[0]')) AS first_value FROM test_table;",
+    "SELECT id, JSON_LENGTH(values) - 1 AS last_index FROM test_table;",
+    "SELECT id, JSON_ARRAYAGG(JSON_UNQUOTE(JSON_EXTRACT(values, CONCAT('$[', n.n, ']')))) AS incremented_values FROM test_table JOIN (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2) n ON n.n < JSON_LENGTH(values) WHERE values IS NOT NULL GROUP BY id;"
+  ],
+  "key_bug_features": [
+    "Different index origins in list_transform() and list_reduce()"
+  ]
+}

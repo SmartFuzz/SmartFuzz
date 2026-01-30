@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/18653-f2a96d3b52fd95a0%40postgresql.org",
+  "title": "BUG #18653: Is it necessary for ATExecDropInherit to acquire an AccessExclusiveLock on the parent table?",
+  "description": "The following bug has been logged on the website:\nBug reference:      18653\nLogged by:          Fei Changhong\nEmail address:      feichanghong(at)qq(dot)com\nPostgreSQL version: 17.0\nOperating system:   Operating system: centos 8,Kernel version: 5.10.13\nDescription:\nHi all,\nI encountered a puzzling issue when executing \"ALTER TABLE NO INHERIT\"\nconcurrently with \"SELECT\": In an SQL statement, there are two identical\nsubqueries, but they return different results. This can be reproduced with\nthe following spec test:\n```\nsetup\n{\nCREATE TABLE p (a integer);\nINSERT INTO p VALUES(1);\nCREATE TABLE c1 () INHERITS (p);\nINSERT INTO c1 VALUES(10);\nCREATE TABLE c2 (a integer);\nINSERT INTO c2 VALUES(100);\n}\nteardown\n{\nDROP TABLE IF EXISTS c1, c2, p;\n}\nsession s1\nstep s1b\t{ BEGIN; }\nstep s1delc1\t{ ALTER TABLE c1 NO INHERIT p; }\nstep s1c\t{ COMMIT; }\nsession s2\nstep s2sel\t{ explain analyze select a from p group by a union all select a\nfrom p group by a; }\npermutation s1b s1delc1 s2sel s1c\n```\nThe result of the SELECT is as follows: one of the UNION ALL nodes returns 2\nrows, while the other returns 1 row:\n```\nQUERY PLAN\n--------------------------------------------------------------------------------------------------------------------\nAppend  (cost=60.09..70.28 rows=400 width=4) (actual time=0.022..0.030\nrows=3 loops=1)\n->  HashAggregate  (cost=60.09..62.09 rows=200 width=4) (actual\ntime=0.022..0.023 rows=2 loops=1)\nGroup Key: p.a\nBatches: 1  Memory Usage: 40kB\n->  Append  (cost=0.00..53.07 rows=2805 width=4) (actual\ntime=0.007..0.014 rows=2 loops=1)\n->  Seq Scan on p p_1  (cost=0.00..3.55 rows=255 width=4)\n(actual time=0.007..0.007 rows=1 loops=1)\n->  Seq Scan on c1 p_2  (cost=0.00..35.50 rows=2550 width=4)\n(actual time=0.005..0.005 rows=1 loops=1)\n->  HashAggregate  (cost=4.19..6.19 rows=200 width=4) (actual\ntime=0.005..0.005 rows=1 loops=1)\nGroup Key: p_3.a\nBatches: 1  Memory Usage: 40kB\n->  Seq Scan on p p_3  (cost=0.00..3.55 rows=255 width=4) (actual\ntime=0.002..0.002 rows=1 loops=1)\nPlanning Time: 10.051 ms\nExecution Time: 0.161 ms\n```\nBased on my analysis, the issue occurs because \"ALTER TABLE NO INHERIT\" only\nholds an AccessExclusiveLock on the parent table.\nWhen generating the plan for the first subquery, find_all_inheritors uses\nthe catalog snapshot from before the DDL is committed, so it sees table c1,\nbut gets blocked when trying to lock c1. For the second subquery,\nfind_all_inheritors uses the catalog snapshot from after the DDL is\ncommitted, so it doesn't see c1.\nIs this behavior expected? Alternatively, should we acquire an\nAccessExclusiveLock on the parent table in ATExecDropInherit? This might\nlead to a deadlock.",
+  "date": "2024-10-13 07:23:44",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE p (a INT, b VARCHAR(255) NOT NULL, c TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO p VALUES(1, 'row1', '2023-01-01 10:00:00');",
+    "CREATE TABLE c1 (a INT, b VARCHAR(255), c TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO c1 VALUES(10, 'row2', NULL);",
+    "SELECT a, b FROM p WHERE a IN (SELECT a FROM c1) UNION ALL SELECT a, b FROM p WHERE b IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "ALTER TABLE NO INHERIT executed concurrently with SELECT"
+  ]
+}

@@ -1,0 +1,10 @@
+CREATE TABLE hash_test (id INT PRIMARY KEY, data VARCHAR(50), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO hash_test (id, data) VALUES (1, 'test1'), (2, NULL), (3, 'test2'), (4, '');
+SELECT id, md5_init() AS md5_context FROM hash_test WHERE data IN (SELECT data FROM hash_test WHERE data IS NOT NULL);
+SELECT id, md5_init() AS md5_context FROM hash_test WHERE created_at IN (SELECT MIN(created_at) FROM hash_test);
+SELECT id, md5_init() AS md5_context FROM hash_test WHERE data IN (SELECT data FROM hash_test WHERE data IN ('test1', 'test2') UNION SELECT NULL);
+SELECT id FROM hash_test WHERE (md5_init() IN (SELECT md5_init() FROM hash_test GROUP BY data HAVING COUNT(*) > 1));
+CREATE TABLE another_test (id INT PRIMARY KEY, hash_context VARCHAR(32) DEFAULT md5_init());
+INSERT INTO another_test (id) SELECT id FROM hash_test WHERE data IS NOT NULL;
+SELECT a.id, a.hash_context FROM another_test a JOIN hash_test b ON a.hash_context IN (SELECT md5_init() FROM hash_test WHERE data IS NOT NULL) WHERE b.data IS NOT NULL;
+SELECT COUNT(*) FROM hash_test WHERE md5_init() IN (SELECT md5_init() FROM hash_test WHERE id = 1) HAVING COUNT(id) > 1;

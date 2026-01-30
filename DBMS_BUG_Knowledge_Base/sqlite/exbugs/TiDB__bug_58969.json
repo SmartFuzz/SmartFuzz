@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/58969",
+  "title": "Miss partition information for global index with `Point_Get` plan",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n```sql\nCREATE TABLE `t` (\n  `a` int DEFAULT NULL,\n  `b` int DEFAULT NULL,\n  `c` int DEFAULT NULL,\n  UNIQUE KEY `idx` (`a`),\n  UNIQUE KEY `idx1` (`b`) /*T![global_index] GLOBAL */\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin\nPARTITION BY HASH (`a`) PARTITIONS 4;\nexplain select * from t partition(p1) where b = 1;\n```\n\n### 2. What did you expect to see? (Required)\n\nLike index `idx`, has partition info in `access object`.\n\n```sql\nmysql> explain select * from t partition(p1) where a = 1;\n+-------------+---------+------+-------------------------------------+---------------+\n| id          | estRows | task | access object                       | operator info |\n+-------------+---------+------+-------------------------------------+---------------+\n| Point_Get_1 | 1.00    | root | table:t, partition:p1, index:idx(a) |               |\n+-------------+---------+------+-------------------------------------+---------------+\n1 row in set (0.01 sec)\n```\n\n### 3. What did you see instead (Required)\n\n```sql\nmysql> explain select * from t partition(p1) where b = 1;\n+-------------+---------+------+------------------------+---------------+\n| id          | estRows | task | access object          | operator info |\n+-------------+---------+------+------------------------+---------------+\n| Point_Get_1 | 1.00    | root | table:t, index:idx1(b) |               |\n+-------------+---------+------+------------------------+---------------+\n1 row in set (0.01 sec)\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n```\nmysql> select tidb_version();\n+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| tidb_version()                                                                                                                                                                                                                                                                 |\n+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| Release Version: v9.0.0-alpha-112-ga3cc774869-dirty\nEdition: Community\nGit Commit Hash: a3cc774869aa581892fbeba869190796197e0bb3\nGit Branch: master\nUTC Build Time: 2025-01-15 08:09:50\nGoVersion: go1.23.4\nRace Enabled: false\nCheck Table Before Drop: false\nStore: unistore |\n+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n1 row in set (0.00 sec)\n```",
+  "date": "2025-01-16T03:34:05Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2 ( x INTEGER DEFAULT NULL, y TEXT DEFAULT NULL, z DATETIME DEFAULT NULL, UNIQUE (x), UNIQUE (y) );",
+    "INSERT INTO t2 (x, y, z) VALUES (5, 'test', CURRENT_TIMESTAMP);",
+    "INSERT INTO t2 (x, y, z) VALUES (15, 'example', CURRENT_TIMESTAMP);",
+    "SELECT * FROM t2 WHERE y = 'example';",
+    "SELECT * FROM t2 WHERE x = 5;"
+  ],
+  "key_bug_features": [
+    "Miss partition information for global index with Point_Get"
+  ]
+}

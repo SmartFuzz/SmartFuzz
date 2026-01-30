@@ -1,0 +1,23 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/3872",
+  "title": "mserver crashes under specific combination of JOIN and WHERE conditions",
+  "vulnerable_database": "monetdb",
+  "date": "2020-11-30T13:20:29Z",
+  "vulnerable_version": "Unknown",
+  "description": "",
+  "poc": [
+    "CREATE TABLE foo (startdate DATE, enddate DATE);",
+    "CREATE TABLE bar (id INTEGER);",
+    "SELECT COUNT(*)\r\n FROM foo AS A\r\n INNER JOIN foo AS B\r\n ON (\r\n    (B.startdate = B.enddate\r\n       AND (B.startdate = A.startdate OR B.startdate = A.enddate)\r\n    ) OR (\r\n       A.startdate < B.enddate AND A.enddate > B.startdate\r\n    )\r\n )\r\n WHERE EXISTS (\r\n    SELECT TRUE\r\n    FROM bar\r\n    WHERE A.startdate > '2010-10-01'\r\n )\r\n AND A.startdate >= B.startdate;"
+  ],
+  "key_bug_features": [
+    "JOIN and WHERE conditions causing mserver crashes"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE foo (startdate DATE NOT NULL, enddate DATE NOT NULL);",
+    "CREATE TABLE bar (id INTEGER PRIMARY KEY, value VARCHAR(255));",
+    "INSERT INTO foo (startdate, enddate) VALUES ('2020-01-01', '2020-12-31'), (NULL, '2021-12-31'), ('2019-01-01', NULL);",
+    "INSERT INTO bar (id, value) VALUES (1, 'test1'), (2, 'test2');",
+    "SELECT COUNT(*) FROM foo AS A INNER JOIN foo AS B ON (B.startdate IS NULL OR (B.startdate = A.startdate AND B.enddate IS NOT NULL)) WHERE EXISTS (SELECT 1 FROM bar WHERE A.startdate < '2021-01-01') AND A.enddate > '2020-01-01';"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=108043",
+  "title": "Long Message Buffer usage ist constantly increasing",
+  "description": "Since we upgraded our MySQL clusters (ndbcluster) from generation 7.6 to version 8.0.29 we see a coniniuosly increasing usage of the \"Long Message Buffer\".\r\nThis system is running since the upgrade from 7.6 to 8.0 on the 2. of July.\r\nmysql> SELECT node_id, memory_type, total, used/total *100 as memory_used FROM ndbinfo.memoryusage;\r\n+---------+---------------------+--------------+-------------+\r\n| node_id | memory_type         | total        | memory_used |\r\n+---------+---------------------+--------------+-------------+\r\n|      10 | Data memory         | 154618822656 |      5.5944 |\r\n|      10 | Long message buffer |     67108864 |     41.7969 |\r\n|      11 | Data memory         | 154618822656 |      5.5949 |\r\n|      11 | Long message buffer |     67108864 |     63.2813 |\r\n+---------+---------------------+--------------+-------------+\r\nWe see this behaviour in bussy test systems too. The number of pages/KB of used buffer space varies over the day a little bit, but is constantly increasing long term. \r\nIs this expected behaviour in version 8.0.29 or a sign of a memory leak?\r\nIs there anything, we can do about this? \r\nA restart of the datanodes (in test systems) resolves this only temporarily.\nHow to repeat:\nrun MySQLcluster 8.0.*",
+  "date": "2022-08-01 10:21:00",
+  "vulnerable_version": "8.0.30",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_memory_usage (id INT PRIMARY KEY, node_id INT NOT NULL, memory_type VARCHAR(50) NOT NULL, total BIGINT NOT NULL, used BIGINT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_memory_usage (id, node_id, memory_type, total, used) VALUES (1, 10, 'Long message buffer', 67108864, 28000000);",
+    "INSERT INTO test_memory_usage (id, node_id, memory_type, total, used) VALUES (2, 11, 'Data memory', 154618822656, 10000000);",
+    "SELECT node_id, memory_type, total, (used / total) * 100 AS memory_used FROM test_memory_usage WHERE used > total * 0.5;",
+    "UPDATE test_memory_usage SET used = NULL WHERE node_id = 10 AND memory_type = 'Long message buffer';"
+  ],
+  "key_bug_features": [
+    "Increasing usage of Long Message Buffer after MySQL upgrade"
+  ]
+}

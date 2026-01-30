@@ -1,0 +1,13 @@
+[
+    "CREATE TABLE certs (id INT PRIMARY KEY, cert_data BLOB, ca_data BLOB);",
+    "INSERT INTO certs (id, cert_data, ca_data) VALUES (1, file_to_string('keys/srv/cert.cer'), file_to_string('keys/srv/ca.cer'));",
+    "SELECT x509_certificate_verify(cert_data, vector(ca_data), 'self-signed') FROM certs WHERE id = 1;",
+    "SELECT id, x509_certificate_verify(cert_data, vector(ca_data), 'self-signed') AS verification_result FROM certs;",
+    "CREATE TABLE test_results (id INT PRIMARY KEY, cert_id INT, result BOOLEAN);",
+    "INSERT INTO test_results (id, cert_id, result) SELECT 1, id, x509_certificate_verify(cert_data, vector(ca_data), 'self-signed') FROM certs WHERE id = 1;",
+    "WITH result AS (SELECT id, x509_certificate_verify(cert_data, vector(ca_data), 'self-signed') AS is_valid FROM certs) SELECT * FROM result WHERE is_valid = TRUE;",
+    "SELECT COUNT(*) FROM certs WHERE x509_certificate_verify(cert_data, vector(ca_data), 'self-signed') IS NOT NULL;",
+    "SELECT id FROM certs WHERE x509_certificate_verify(cert_data, vector(ca_data), 'self-signed') = 'error' AND id = 1;",
+    "DELETE FROM certs WHERE x509_certificate_verify(cert_data, vector(ca_data), 'self-signed') = 'valid';",
+    "SELECT id, x509_certificate_verify(c.cert_data, vector(c.ca_data), 'self-signed') FROM certs AS c JOIN test_results AS t ON c.id = t.cert_id WHERE t.result = TRUE;"
+]

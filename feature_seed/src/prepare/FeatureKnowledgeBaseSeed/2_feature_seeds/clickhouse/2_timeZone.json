@@ -1,0 +1,11 @@
+CREATE TABLE test_times (id UInt32, event_time DateTime, timezone String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_times VALUES (1, '2023-01-01 00:00:00', 'UTC'), (2, '2023-01-02 00:00:00', 'America/New_York'), (3, now(), timeZone());
+SELECT id, event_time, timezone FROM test_times WHERE timezone <= timeZone();
+SELECT id, COUNT(*) FROM test_times GROUP BY timezone HAVING timezone <= timeZone() ORDER BY COUNT(*) DESC;
+SELECT id FROM (SELECT id, timezone, event_time FROM test_times WHERE event_time <= toUnixTimestamp(now()) AND timezone = timeZone()) AS sub WHERE timezone <= 'America/New_York';
+SELECT id, event_time, timezone FROM test_times WHERE EXISTS (SELECT 1 FROM test_times AS inner_table WHERE inner_table.id <= test_times.id AND inner_table.timezone = timeZone());
+CREATE TABLE test_times_ext (id UInt32, event_time DateTime, is_active Nullable(UInt8)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_times_ext VALUES (1, '2023-01-01 00:00:00', 1), (2, '2023-01-02 00:00:00', NULL), (3, now(), 0);
+SELECT COUNT(*) FROM test_times_ext WHERE is_active IS NULL AND timezone <= timeZone();
+SELECT id, event_time, timezone FROM test_times_ext WHERE (event_time < toDateTime('2023-01-03 00:00:00') OR timezone <= timeZone()) AND is_active IS NULL ORDER BY event_time;
+SELECT id, MAX(event_time) FROM (SELECT id, event_time, timezone FROM test_times_ext WHERE timezone <= timeZone()) AS inner_group GROUP BY id;

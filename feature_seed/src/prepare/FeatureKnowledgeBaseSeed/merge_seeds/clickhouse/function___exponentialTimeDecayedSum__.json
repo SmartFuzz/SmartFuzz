@@ -1,0 +1,13 @@
+CREATE TABLE time_series (value Float64, time DateTime);
+INSERT INTO time_series VALUES (1.0, '2023-01-01 00:00:00'), (2.0, '2023-01-01 01:00:00'), (3.0, '2023-01-01 02:00:00'), (4.0, '2023-01-01 03:00:00'), (5.0, '2023-01-01 04:00:00');
+SELECT time, value, exponentialTimeDecayedSum(1)(value, time) OVER (ORDER BY time) AS exp_avg FROM time_series;
+CREATE TABLE second_series (value Float64, time DateTime);
+INSERT INTO second_series VALUES (10.0, '2023-01-01 05:00:00'), (20.0, '2023-01-01 06:00:00'), (30.0, '2023-01-01 07:00:00');
+SELECT t1.time, t1.value, t2.value, exponentialTimeDecayedSum(5)(t1.value, t1.time) OVER (ORDER BY t1.time) AS exp_avg, exponentialTimeDecayedSum(2)(t2.value, t2.time) OVER (ORDER BY t2.time) AS exp_avg_2 FROM time_series AS t1 JOIN second_series AS t2 ON t1.time < t2.time;
+SELECT number, value, exponentialTimeDecayedSum(10)(value, number) OVER (ORDER BY number) AS exp_smooth FROM (SELECT number, (number % 5) AS value FROM numbers(100));
+CREATE TABLE aggregated_series (date Date, value Float64);
+INSERT INTO aggregated_series VALUES ('2023-01-01', 1.5), ('2023-01-02', 2.5), ('2023-01-03', 3.5);
+SELECT date, exponentialTimeDecayedSum(1)(value, date) OVER (ORDER BY date) AS exp_avg FROM aggregated_series;
+CREATE TABLE complex_series (time DateTime, value Float64);
+INSERT INTO complex_series VALUES ('2023-01-01 00:00:00', 5.0), ('2023-01-01 01:00:00', 6.0), ('2023-01-01 02:00:00', 7.0), ('2023-01-01 03:00:00', NULL), ('2023-01-01 04:00:00', 8.0);
+SELECT time, value, exponentialTimeDecayedSum(5)(IFNULL(value, 0), time) OVER (ORDER BY time) AS exp_avg FROM complex_series;

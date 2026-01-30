@@ -1,0 +1,33 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/43116",
+  "title": "index out of range panic when setting tidb_opt_range_max_size small",
+  "vulnerable_database": "tidb",
+  "date": "2023-04-18T02:44:19Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n```\r\nuse test;\r\nCREATE TABLE `sbtest1` (\r\n\t`id` bigint(20) NOT NULL AUTO_INCREMENT,\r\n\t`k` int(11) NOT NULL DEFAULT '0',\r\n\t`c` char(120) NOT NULL DEFAULT '',\r\n\t`pad` char(60) NOT NULL DEFAULT '',\r\n\tPRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */ ,\r\n\tKEY `k_1` (`k`)\r\n);\r\nset @@tidb_opt_range_max_size = 111;\r\nexplain select * from test.sbtest1 a where pad in ('1','1','1','1','1') and id in (1,1,1,1,1);\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\nOutput the plan successfully. No panic happens.\r\n\r\n### 3. What did you see instead (Required)\r\n```\r\nmysql> explain select * from test.sbtest1 a where pad in ('1','1','1','1','1') and id in (1,1,1,1,1);\r\nERROR 1105 (HY000): runtime error: index out of range [0] with length 0\r\n```\r\n\r\nerror stack:\r\n```\r\n[2023/04/18 10:38:08.990 +08:00] [ERROR] [conn.go:1039] [\"connection running loop panic\"] [conn=2199023255955] [lastSQL=\"explain select * from test.sbtest1 a where pad in ('1','1','1','1','1') and id in (1,1,1,1,1)\"] [err=\"runtime error: index out of range [0] with length 0\"] [stack=\"github.com/pingcap/tidb/server.(*clientConn).Run.func1\r\n\t/Users/xuyifan/tidb/server/conn.go:1042\r\nruntime.gopanic\r\n\t/usr/local/go/src/runtime/panic.go:884\r\ngithub.com/pingcap/tidb/executor.(*Compiler).Compile.func1\r\n\t/Users/xuyifan/tidb/executor/compiler.go:54\r\nruntime.gopanic\r\n\t/usr/local/go/src/runtime/panic.go:884\r\nruntime.goPanicIndex\r\n\t/usr/local/go/src/runtime/panic.go:113\r\ngithub.com/pingcap/tidb/util/ranger.(*Range).PrefixEqualLen\r\n\t/Users/xuyifan/tidb/util/ranger/types.go:220\r\ngithub.com/pingcap/tidb/statistics.getPseudoRowCountByIndexRanges\r\n\t/Users/xuyifan/tidb/statistics/table.go:1198\r\ngithub.com/pingcap/tidb/statistics.(*HistColl).GetRowCountByIndexRanges\r\n\t/Users/xuyifan/tidb/statistics/table.go:629\r\ngithub.com/pingcap/tidb/planner/core.(*DataSource).detachCondAndBuildRangeForPath\r\n\t/Users/xuyifan/tidb/planner/core/logical_plans.go:1398\r\ngithub.com/pingcap/tidb/planner/core.(*DataSource).fillIndexPath\r\n\t/Users/xuyifan/tidb/planner/core/logical_plans.go:1545\r\ngithub.com/pingcap/tidb/planner/core.(*DataSource).DeriveStats\r\n\t/Users/xuyifan/tidb/planner/core/stats.go:422\r\ngithub.com/pingcap/tidb/planner/core.(*baseLogicalPlan).recursiveDeriveStats\r\n\t/Users/xuyifan/tidb/planner/core/stats.go:130\r\ngithub.com/pingcap/tidb/planner/core.(*baseLogicalPlan).recursiveDeriveStats\r\n\t/Users/xuyifan/tidb/planner/core/stats.go:123\r\ngithub.com/pingcap/tidb/planner/core.physicalOptimize\r\n\t/Users/xuyifan/tidb/planner/core/optimizer.go:1112\r\ngithub.com/pingcap/tidb/planner/core.DoOptimize\r\n\t/Users/xuyifan/tidb/planner/core/optimizer.go:305\r\ngithub.com/pingcap/tidb/planner.optimize\r\n\t/Users/xuyifan/tidb/planner/optimize.go:469\r\ngithub.com/pingcap/tidb/planner.Optimize\r\n\t/Users/xuyifan/tidb/planner/optimize.go:297\r\ngithub.com/pingcap/tidb/planner/core.(*PlanBuilder).buildExplain\r\n\t/Users/xuyifan/tidb/planner/core/planbuilder.go:4994\r\ngithub.com/pingcap/tidb/planner/core.(*PlanBuilder).Build\r\n\t/Users/xuyifan/tidb/planner/core/planbuilder.go:794\r\ngithub.com/pingcap/tidb/planner.buildLogicalPlan\r\n\t/Users/xuyifan/tidb/planner/optimize.go:513\r\ngithub.com/pingcap/tidb/planner.optimize\r\n\t/Users/xuyifan/tidb/planner/optimize.go:434\r\ngithub.com/pingcap/tidb/planner.Optimize\r\n\t/Users/xuyifan/tidb/planner/optimize.go:297\r\ngithub.com/pingcap/tidb/executor.(*Compiler).Compile\r\n\t/Users/xuyifan/tidb/executor/compiler.go:98\r\ngithub.com/pingcap/tidb/session.(*session).ExecuteStmt\r\n\t/Users/xuyifan/tidb/session/session.go:2154\r\ngithub.com/pingcap/tidb/server.(*TiDBContext).ExecuteStmt\r\n\t/Users/xuyifan/tidb/server/driver_tidb.go:252\r\ngithub.com/pingcap/tidb/server.(*clientConn).handleStmt\r\n\t/Users/xuyifan/tidb/server/conn.go:2061\r\ngithub.com/pingcap/tidb/server.(*clientConn).handleQuery\r\n\t/Users/xuyifan/tidb/server/conn.go:1852\r\ngithub.com/pingcap/tidb/server.(*clientConn).dispatch\r\n\t/Users/xuyifan/tidb/server/conn.go:1339\r\ngithub.com/pingcap/tidb/server.(*clientConn).Run\r\n\t/Users/xuyifan/tidb/server/conn.go:1120\r\ngithub.com/pingcap/tidb/server.(*Server).onConn\r\n\t/Users/xuyifan/tidb/server/server.go:677\"]\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\nmaster\r\n\r\n",
+  "poc": [
+    "use test;",
+    "CREATE TABLE `sbtest1` (",
+    " `id` bigint(20) NOT NULL AUTO_INCREMENT,",
+    " `k` int(11) NOT NULL DEFAULT '0',",
+    " `c` char(120) NOT NULL DEFAULT '',",
+    " `pad` char(60) NOT NULL DEFAULT '',",
+    " PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */ ,",
+    " KEY `k_1` (`k`)",
+    ");",
+    "set @@tidb_opt_range_max_size = 111;",
+    "explain select * from test.sbtest1 a where pad in ('1','1','1','1','1') and id in (1,1,1,1,1);"
+  ],
+  "poc_type": "sql_text",
+  "state": "closed",
+  "key_bug_features": [
+    "setting tidb_opt_range_max_size to a small value"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE `sbtest2` (`id` int NOT NULL, `value` varchar(255) DEFAULT NULL, `created_at` timestamp DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (`id`));",
+    "INSERT INTO `sbtest2` (`id`, `value`) VALUES (1, 'test1'), (2, 'test2'), (3, NULL);",
+    "CREATE TABLE `sbtest3` (`id` bigint NOT NULL, `amount` decimal(10,2) NOT NULL, `description` text, PRIMARY KEY (`id`));",
+    "INSERT INTO `sbtest3` (`id`, `amount`, `description`) VALUES (1, 100.00, 'first entry'), (2, 200.50, 'second entry');",
+    "SELECT * FROM `sbtest2` WHERE `value` IS NULL OR `id` IN (SELECT `id` FROM `sbtest3` WHERE `amount` > 150.00);"
+  ]
+}

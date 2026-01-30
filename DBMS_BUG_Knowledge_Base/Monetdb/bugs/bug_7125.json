@@ -1,0 +1,38 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7125",
+  "title": "MonetDB Round Function issues in the latest release",
+  "vulnerable_database": "monetdb",
+  "date": "2021-05-11T06:52:28Z",
+  "vulnerable_version": "Unknown",
+  "description": "- When using round function inside case statement, an error of division by zero occurs\n\n**To Reproduce**",
+  "poc": [
+    "Create Table \r\n        create table round_test(\r\n            category String null,\r\n            colorby String null,\r\n            stddev_dep_delay double null,\r\n            usl double null,\r\n            lsl double null\r\n        );",
+    "insert into round_test values ( '2017_6','NK',108.939,8258.0,-64.0 );",
+    "insert into round_test values ( '2017_6','VX',null,8258.0,-63.0 );",
+    "insert into round_test values ( '2017_6','EV',101.249,8258.0,-64.0 );",
+    "insert into round_test values ( '2017_6','UA',112.307,8258.0,-64.0 );",
+    "insert into round_test values ( '2017_6','F9',null,8409.0,-64.0 );",
+    "insert into round_test values ( '2017_6','B6',null,8258.0,-64.0 );",
+    "insert into round_test values ( '2017_6','OO',158.159,8258.0,-64.0 );",
+    "insert into round_test values ( '2017_6','WN',null,8258.0,-64.0 );",
+    "insert into round_test values ( '2017_6','AA',160.657,8258.0,-64.0 );",
+    "insert into round_test values ( '2017_6','DL',44.279,8258.0,-63.0 );",
+    "insert into round_test values ( '2017_6','AS',null,8258.0,-64.0 );",
+    "insert into round_test values ( '2017_6','HA',0.0,8258.0,-64.0 );",
+    "insert into round_test values ( '2017_6',null,null,null,null );",
+    "select * from round_test;",
+    "select a.*,\r\n                case when stddev_dep_delay is null or stddev_dep_delay=0 \r\n                    then -9999 \r\n                else round(((usl - lsl) / (6 * stddev_dep_delay)), 3) end as pp_dep_delay\r\n            from round_test a;",
+    "select a.*,\r\n            case when stddev_dep_delay is null or stddev_dep_delay=0 \r\n                then -9999 \r\n            else \r\n                --round( \r\n                    ((usl - lsl) / (6 * stddev_dep_delay)) \r\n                --   , 3)\r\n                end as pp_dep_delay\r\n        from round_test a;",
+    "select a.*, round( \r\n            case when stddev_dep_delay is null or stddev_dep_delay=0 \r\n                then -9999 \r\n            else ((usl - lsl) / (6 * stddev_dep_delay)) end , 3) as pp_dep_delay\r\n        from round_test a;"
+  ],
+  "key_bug_features": [
+    "Round function inside case statement causes division by zero"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE round_test_extended(category STRING NULL, colorby STRING NULL, stddev_dep_delay DOUBLE NULL, usl DOUBLE NULL, lsl DOUBLE NULL, additional_info STRING NULL);",
+    "INSERT INTO round_test_extended VALUES ('2017_6', 'NK', 108.939, 8258.0, -64.0, 'info1');",
+    "INSERT INTO round_test_extended VALUES ('2017_6', 'VX', NULL, 8258.0, -63.0, 'info2');",
+    "SELECT a.*, CASE WHEN stddev_dep_delay IS NULL OR stddev_dep_delay = 0 THEN -9999 ELSE ROUND(((usl - lsl) / (6 * stddev_dep_delay)), 3) END AS pp_dep_delay FROM round_test_extended a;",
+    "SELECT a.*, ROUND(CASE WHEN stddev_dep_delay IS NULL OR stddev_dep_delay = 0 THEN -9999 ELSE ((usl - lsl) / (6 * stddev_dep_delay)) END, 3) AS pp_dep_delay FROM round_test_extended a WHERE colorby IS NOT NULL;"
+  ]
+}

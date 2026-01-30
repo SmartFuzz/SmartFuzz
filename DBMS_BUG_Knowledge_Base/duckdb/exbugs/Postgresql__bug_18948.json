@@ -1,0 +1,21 @@
+{
+  "url": "https://www.postgresql.org/message-id/18948-a05bf0726c2c993a%40postgresql.org",
+  "title": "BUG #18948: Equivalent MAX() result in view and inline query yields inconsistent row count",
+  "description": "The following bug has been logged on the website:\nBug reference:      18948\nLogged by:          Wenking Deng\nEmail address:      dengwenking(at)gmail(dot)com\nPostgreSQL version: 15.0\nOperating system:   Docker\nDescription:\nThis bug demonstrates a discrepancy in PostgreSQL when comparing the result\nof an aggregate function used inline versus stored in a view. The queries\nSELECT MAX(c0) FROM t0 and SELECT c0 FROM v1 produce exactly the same value.\nHowever, when applying a WHERE (1 = NULL) condition, the inline version\nreturns one row (with NULL), while the view version returns zero rows.\nReproduce Steps:\n-- Setup: Create table t0 and view v1\nCREATE TABLE t0 (c0 REAL);\nINSERT INTO t0 (c0) VALUES (1.830250668324684e+38);\nINSERT INTO t0 (c0) VALUES (-3.29559603270012e+38);\nINSERT INTO t0 (c0) VALUES (3.352134689102562e+38);\nCREATE VIEW v1 AS SELECT MAX(c0) AS c0 FROM t0;\n-- Query 1: Inline MAX() without WHERE\ndb1=# SELECT MAX(c0) FROM t0;\nmax\n---------------\n3.3521347e+38\n(1 row)\n-- Query 2: View value (same result)\ndb1=# SELECT c0 FROM v1;\nc0\n---------------\n3.3521347e+38\n(1 row)\n-- Query 3: Inline MAX() with WHERE (1 = NULL)\ndb1=# SELECT MAX(c0) FROM t0 WHERE (1 = NULL);\nmax\n-----\n(1 row)\n-- Query 4: View value with same WHERE clause\ndb1=# SELECT (c0) FROM v1 WHERE (1 = NULL);\nc0\n----\n(0 rows)\nExpected Result:\nBoth SELECT should return one row with NULL.",
+  "date": "2025-06-07 02:44:08",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE t0 (c0 FLOAT CHECK (c0 IS NOT NULL));",
+    "INSERT INTO t0 (c0) VALUES (1.830250668324684e+38);",
+    "INSERT INTO t0 (c0) VALUES (-3.29559603270012e+38);",
+    "INSERT INTO t0 (c0) VALUES (3.352134689102562e+38);",
+    "CREATE VIEW v1 AS SELECT MAX(c0) AS c0 FROM t0;",
+    "SELECT MAX(c0) FROM t0 WHERE (1 = NULL);"
+  ],
+  "key_bug_features": [
+    "Inconsistent row count with MAX() in view and inline query"
+  ]
+}

@@ -1,0 +1,16 @@
+CREATE TABLE test_array_null (id Int32, values Array(Int32), nullable_val Nullable(Int32));
+INSERT INTO test_array_null VALUES (1, [1, 2, 3]), (2, [NULL, 4]), (3, [5, 6, 7]);
+SELECT arrayMax(values) AS max_values FROM test_array_null WHERE values IS NOT NULL;
+SELECT arrayMax(x -> (x + 2), values) AS shifted_max FROM test_array_null;
+SELECT id, arrayMax(values) AS max_val FROM test_array_null GROUP BY id HAVING max_val IS NOT NULL;
+SELECT id, arrayMax(values) AS max_val, nullable_val IS NULL AS is_null FROM test_array_null WHERE nullable_val IS NULL;
+SELECT arrayMax(values) AS overall_max FROM (SELECT values FROM test_array_null WHERE values IS NOT NULL);
+SELECT id, arrayMax(x -> (-x), values) AS negated_max FROM test_array_null WHERE id IN (SELECT id FROM test_array_null WHERE nullable_val IS NOT NULL);
+CREATE TABLE test_boundary (num Int32, nullable_num Nullable(Int32));
+INSERT INTO test_boundary VALUES (1, 10), (2, NULL), (3, 5), (4, 0);
+SELECT arrayMax(num) AS max_num FROM test_boundary WHERE nullable_num IS NULL HAVING max_num > 9;
+SELECT id, arrayMax(values) AS max_array_value FROM test_array_null WHERE arrayMax(values) IS NULL;
+SELECT a.id, arrayMax(b.values) AS max_a_val FROM test_array_null a JOIN test_array_null b ON a.id = b.id WHERE a.values IS NOT NULL AND b.values IS NULL GROUP BY a.id;
+SELECT arrayMax((SELECT arrayMax(values) FROM test_array_null WHERE id = 1)) AS single_value_max;
+SELECT arrayMax(100 - x) AS complement_max FROM (SELECT values FROM test_array_null WHERE values IS NOT NULL ORDER BY id LIMIT 5);
+SELECT arrayMax(values) AS max_val FROM (SELECT values FROM test_array_null WHERE values IS NOT NULL) AS temp WHERE arrayMax(values) IS NOT NULL;

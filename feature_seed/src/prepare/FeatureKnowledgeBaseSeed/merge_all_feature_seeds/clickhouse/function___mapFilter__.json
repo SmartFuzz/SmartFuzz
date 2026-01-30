@@ -1,0 +1,10 @@
+CREATE TABLE test_map_filter (key String, value Int32) ENGINE = Memory;
+INSERT INTO test_map_filter VALUES ('key1', 1), ('key2', 2), ('key3', 3), ('key4', 4);
+SELECT mapFilter((k, v) -> (v > 2), map(key, value)) AS filtered_map FROM test_map_filter;
+SELECT mapFilter((k, v) -> ((v % 2) = 0), map('key1', value, 'key2', value * 2)) AS even_values FROM (SELECT value FROM test_map_filter WHERE key = 'key2');
+SELECT mapFilter((k, v) -> (k = 'key3' AND v > 2), map(key, value)) AS specific_filter FROM test_map_filter;
+CREATE TABLE test_nested (id Int32, _map Map(String, Int32)) ENGINE = Memory;
+INSERT INTO test_nested VALUES (1, map('key1', 1, 'key2', 2)), (2, map('key3', 3, 'key4', 4));
+SELECT mapFilter((k, v) -> (v < 3), _map) AS filtered_nested FROM test_nested;
+SELECT mapFilter((k, v) -> (k LIKE 'key%' AND v >= 2), map(key, value)) AS filtered_keys FROM test_map_filter WHERE value IN (SELECT DISTINCT value FROM test_map_filter WHERE value > 1);
+SELECT sum(value) FROM (SELECT mapFilter((k, v) -> (v > 1), map(key, value)) AS filtered_pair FROM test_map_filter) WHERE filtered_pair IS NOT NULL;

@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/92882",
+  "title": "Projection is not used when query includes filter on a subcolumn",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nWhen querying a MergeTree table with a projection that orders by `company_name`, a simple filter on `company_name` correctly uses the projection and primary key to prune data efficiently.\nHowever, when adding an additional filter on an `Array(JSON)` column (e.g., `has(locations.country_code, 'US')`), the query planner stops using the projection and primary key condition, even though the `company_name` predicate remains unchanged. This causes the query to scan all granules/parts instead of using the projection for efficient filtering and be potentially much slower.\nThis appears to be a query planner bug where the presence of a JSON column filter prevents the optimizer from using projections and primary key indexes for other predicates in the same query.\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nVersion used: 25.11.1.558. It also happens in the latest version.\nFiddle: https://fiddle.clickhouse.com/0e3db939-5fb0-436d-b0a6-b9583192cd48\n```sql\n-- 1. Inspect schema of the source Parquet\nDESCRIBE TABLE s3('https://media.theirstack.com/jobs/jan-2025-sample-with-locations.parquet');\n-- schema:\n-- id            UInt32\n-- posted_at     UInt16\n-- discovered_at DateTime64(3, 'UTC')\n-- url           String\n-- title         String\n-- company_name  String\n-- locations     Array(JSON)\n-- 2. Create a MergeTree table with a projection and a JSON array column\nDROP TABLE IF EXISTS job_sample;\nCREATE TABLE job_sample\n(\n`id` UInt32,\n`posted_at` Date,\n`discovered_at` DateTime64(3, 'UTC'),\n`url` String,\n`title` String,\n`company_name` String,\n`description` String,\n`locations` Array(JSON),\nPROJECTION sorted_by_company_name\n(\nSELECT *\nORDER BY\ncompany_name,\nposted_at\n)\n)\nENGINE = MergeTree\nPARTITION BY toYYYYMM(posted_at)\nORDER BY (posted_at, discovered_at)\nSETTINGS index_granularity = 128;\n-- 3. Load sample data from S3 Parquet\nINSERT INTO job_sample\nSELECT *\nFROM s3('https://media.theirstack.com/jobs/jan-2025-sample-with-locations.parquet', 'Parquet');",
+  "date": "2025-12-23T11:14:41Z",
+  "vulnerable_version": "25.11.1.558",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS job_sample_v2;",
+    "CREATE TABLE job_sample_v2 (id INTEGER, posted_at DATE, discovered_at TIMESTAMP, url VARCHAR, title VARCHAR, company_name VARCHAR, description VARCHAR, locations VARCHAR);",
+    "INSERT INTO job_sample_v2 VALUES (1, '2023-01-01', '2023-01-01 12:00:00', 'http://example.com', 'Job Title 1', 'Company A', 'Description A', '[{\"country_code\":\"US\"}]');",
+    "INSERT INTO job_sample_v2 VALUES (2, '2023-01-02', '2023-01-02 12:00:00', 'http://example.com', 'Job Title 2', 'Company B', 'Description B', '[{\"country_code\":\"CA\"}]');",
+    "SELECT * FROM job_sample_v2 WHERE company_name = 'Company A' AND CONTAINS(locations, '{\"country_code\":\"US\"}');",
+    "SELECT COUNT(*) FROM job_sample_v2 WHERE company_name = 'Company B' AND (CONTAINS(locations, '{\"country_code\":\"US\"}') OR posted_at < '2023-01-02');"
+  ],
+  "key_bug_features": [
+    "Filter on Array(JSON) column disables projection usage"
+  ]
+}

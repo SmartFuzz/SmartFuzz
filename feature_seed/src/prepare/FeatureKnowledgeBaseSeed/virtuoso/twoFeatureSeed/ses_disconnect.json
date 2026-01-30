@@ -1,0 +1,17 @@
+{
+    "function": "ses_disconnect",
+    "operator": "XPath /",
+    "sql_array": [
+        "CREATE TABLE sessions (id INT PRIMARY KEY, data XML, status VARCHAR(10));",
+        "INSERT INTO sessions (id, data, status) VALUES (1, '<root><child>value</child></root>', 'active'), (2, '<root><child>value2</child></root>', 'inactive');",
+        "SELECT id, xpath_string('/root/child', data) AS child_value FROM sessions WHERE status = 'active';",
+        "SELECT id FROM sessions WHERE data IS NOT NULL AND ses_disconnect(id) IS NULL;",
+        "SELECT id, COUNT(*) OVER (PARTITION BY status) AS status_count FROM sessions WHERE data IS NOT NULL;",
+        "SELECT id FROM sessions WHERE id IN (SELECT id FROM sessions WHERE status = 'active' AND ses_disconnect(id) IS NULL) AND status IS NOT NULL;",
+        "CREATE TABLE temp_sessions (session_id INT, session_data XML, session_status VARCHAR(10) CHECK (session_status IN ('active', 'inactive')));",
+        "INSERT INTO temp_sessions (session_id, session_data, session_status) VALUES (3, '<root><child></child></root>', 'active'), (4, '<root><child>value4</child></root>', NULL);",
+        "SELECT ts.session_id, xpath_string('/root/child', ts.session_data) AS child_value FROM temp_sessions ts WHERE ts.session_status IS NOT NULL AND EXISTS (SELECT 1 FROM sessions s WHERE s.id = ts.session_id AND s.status = 'inactive');",
+        "SELECT session_id, COUNT(*) FROM temp_sessions GROUP BY session_id HAVING COUNT(*) > 1;",
+        "DROP TABLE IF EXISTS sessions;"
+    ]
+}

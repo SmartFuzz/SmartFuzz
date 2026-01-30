@@ -1,0 +1,17 @@
+{
+    "function": "ngramMinHash",
+    "operator": "a = b",
+    "sql_array": [
+        "CREATE TABLE test_strings (id UInt32, text String, created_at DateTime DEFAULT now());",
+        "INSERT INTO test_strings VALUES (1, 'ClickHouse'), (2, ''), (3, 'example'), (4, NULL), (5, 'TESTING'), (6, 'ClickHouse'), (7, 'other example');",
+        "SELECT id, ngramMinHash(text, 3, 6) AS hashes FROM test_strings WHERE text IS NOT NULL;",
+        "SELECT a.id, a.text FROM test_strings a JOIN (SELECT id, ngramMinHash(text, 4, 5) AS hashes FROM test_strings WHERE text != '') b ON a.id = b.id WHERE (ngramMinHash(a.text, 3, 6) = b.hashes) AND a.text != 'ClickHouse';",
+        "SELECT id, ngramMinHash(text, 1, 10) AS min_max_hashes FROM test_strings GROUP BY min_max_hashes HAVING min_max_hashes.1 = ngramMinHash('ClickHouse', 3, 6).1;",
+        "WITH (SELECT ngramMinHash(text, 3, 6) FROM test_strings WHERE text IN ('ClickHouse', 'other example')) AS common_hashes SELECT a.id, a.text FROM test_strings a WHERE ngramMinHash(a.text, 5, 7).2 = common_hashes.2;",
+        "SELECT id, ngramMinHash(text, 2, 3) AS hash_pairs FROM test_strings WHERE ngramMinHash(CAST(text AS String), 3, 5) != (NULL, NULL);",
+        "ALTER TABLE test_strings ADD COLUMN hash_tuple Tuple(UInt64, UInt64);",
+        "INSERT INTO test_strings (id, text, hash_tuple) VALUES (8, 'boundary test', ngramMinHash('boundary test', 3, 6));",
+        "SELECT id, ngramMinHash(CONCAT(text, text), 5, 6) FROM test_strings WHERE id = (SELECT id FROM test_strings WHERE text IS NULL LIMIT 1);",
+        "WITH previous_hash AS (SELECT ngramMinHash(text, 3, 6) FROM test_strings WHERE text != '') SELECT COUNT(*) FROM test_strings WHERE ngramMinHash(text, 4, 6).1 IN (SELECT * FROM previous_hash) AND created_at IS NOT NULL; "
+    ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=101820",
+  "title": "UUID() wrong evaluation.",
+  "description": "UUID() is wrongly evaluate depending on collation.\nHow to repeat:\nDROP TABLE  if EXISTS testUUID;\r\ncreate table testUUID (ID int, new_ID varchar(100), new_ID2 varchar(100), new_ID3 BINARY(16)) CHARACTER SET UTF8MB4 COLLATE utf8mb4_general_ci;\r\ninsert into testUUID (id) values (1),(2),(3);\r\n\r\nSET NAMES 'utf8' COLLATE 'utf8_general_ci';\r\n\r\nUPDATE testUUID SET new_id = uuid(), new_id2 = REPLACE(uuid(), '-', ''), new_id3 = UNHEX(REPLACE(UUID(), '-', ''));\r\n\r\nSELECT new_ID, new_ID2 FROM testUUID; \r\n/* good !\r\nnew_ID;new_ID2\r\nac65af1e-33e7-11eb-9b97-c8348e0fed44;ac65af3133e711eb9b97c8348e0fed44\r\nac65b27d-33e7-11eb-9b97-c8348e0fed44;ac65b28733e711eb9b97c8348e0fed44\r\nac65b300-33e7-11eb-9b97-c8348e0fed44;ac65b30433e711eb9b97c8348e0fed44\r\n\r\n*/\r\nSET NAMES 'utf8mb4' COLLATE 'utf8mb4_general_ci';\r\nUPDATE testUUID SET new_id = uuid(), new_id2 = REPLACE(uuid(), '-', ''), new_id3 = UNHEX(REPLACE(UUID(), '-', ''));\r\nSELECT new_ID, new_ID2 FROM testUUID; \r\n/* BAD !!!! new_ID2 have all the same UUID value !\r\nnew_ID;new_ID2\r\nac6aa6ae-33e7-11eb-9b97-c8348e0fed44;ac6aa54a33e711eb9b97c8348e0fed44\r\nac6aa7be-33e7-11eb-9b97-c8348e0fed44;ac6aa54a33e711eb9b97c8348e0fed44\r\nac6aa7e9-33e7-11eb-9b97-c8348e0fed44;ac6aa54a33e711eb9b97c8348e0fed44\r\n*/",
+  "date": "2020-12-01 15:23:00",
+  "vulnerable_version": "56, 5.7, 5.6.50, 5.7.32",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS testUUID;",
+    "CREATE TABLE testUUID (ID INT PRIMARY KEY, new_ID VARCHAR(100) NOT NULL, new_ID2 VARCHAR(100) DEFAULT NULL, new_ID3 BINARY(16) UNIQUE);",
+    "INSERT INTO testUUID (ID) VALUES (1), (2), (3), (4);",
+    "UPDATE testUUID SET new_ID = UUID(), new_ID2 = REPLACE(UUID(), '-', ''), new_ID3 = UNHEX(REPLACE(UUID(), '-', '')) WHERE ID < 3;",
+    "SELECT new_ID, new_ID2 FROM testUUID;"
+  ],
+  "key_bug_features": [
+    "UUID() evaluation depends on character set and collation"
+  ]
+}

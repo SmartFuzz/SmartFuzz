@@ -1,0 +1,15 @@
+CREATE TABLE test_xml_entities (id INT, xml_data XML);
+INSERT INTO test_xml_entities VALUES (1, '<root>Hello world! This is a test.</root>');
+INSERT INTO test_xml_entities VALUES (2, '<root>This XML contains some text.</root>');
+SELECT id FROM test_xml_entities WHERE xper_locate_words(xml_data) <= (SELECT COUNT(*) FROM test_xml_entities);
+SELECT xml_data FROM test_xml_entities WHERE xper_locate_words(xml_data) <= '<root>Hello world!</root>';
+SELECT COUNT(*) FROM test_xml_entities WHERE xper_locate_words(xml_data) <= (SELECT id FROM test_xml_entities WHERE xml_data IS NOT NULL LIMIT 1);
+SELECT id, xper_locate_words(CONCAT(xml_data, ' extra text')) FROM test_xml_entities WHERE xper_locate_words(xml_data) <= 'text';
+CREATE TABLE test_data (a INT, b VARCHAR(255), xml_col XML);
+INSERT INTO test_data (a, b, xml_col) VALUES (10, 'test', '<root><a>1</a><a>2</a></root>');
+SELECT xper_locate_words(xml_col) FROM test_data WHERE a <= (SELECT MAX(a) FROM test_data) AND b IS NOT NULL;
+CREATE TEMPORARY TABLE temp_data AS SELECT id, xper_locate_words(xml_data) AS fragment FROM test_xml_entities WHERE xml_data IS NOT NULL;
+SELECT * FROM temp_data WHERE fragment <= '<root>Hello world!';
+ALTER TABLE test_data ADD COLUMN c INT DEFAULT NULL;
+UPDATE test_data SET c = (SELECT COUNT(*) FROM test_data WHERE xper_locate_words(xml_col) IS NOT NULL) WHERE b <= '';
+DROP TABLE IF EXISTS test_xml_entities;

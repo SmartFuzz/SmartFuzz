@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=116318",
+  "title": "useServerPrepStmts useLocalTransactionState cause first execute rollback failure",
+  "description": "I have seen the\nBug #109013\n,and use Connector/J 9.0.0\r\nbut when i first start my project execute method，the transcation rollback fail，and after all execute rollback success\r\nI have set useServerPrepStmts and useLocalTransactionState to true in my config\r\n\r\nHere is a use-case that readily fails.\r\n- start a transaction (connection has auto-commit=false).\r\n- insert a row successfully in a table.\r\n- insert another row with the same key (should fail)\r\n- rollback the transaction(conn.rollback())\nHow to repeat:\n// Here is a sample program that would demonstrate the problem.\r\n// Prep:\r\n// CREATE TABLE `xyz` (`id` int NOT NULL, PRIMARY KEY(`id`)) ENGINE=InnoDB;\r\n\r\nimport java.sql.*;\r\n\r\n/**\r\n * Created by ravis on 11/3/22\r\n *\r\n * CREATE TABLE `xyz` (`id` int NOT NULL, PRIMARY KEY(`id`)) ENGINE=InnoDB;\r\n */\r\npublic class MySQLBug {\r\n\r\n    public static void main(final String[] args) {\r\n\r\n        try {\r\n\r\n            for (int i = 0; i < 5; i++) {\r\n                final Connection conn = DriverManager.getConnection(\"jdbc:mysql://127.0.0.1:3306/somedb?useSSL=false&useServerPrepStmts=true&useLocalTransactionState=true\", \"user\",\"passwd\");\r\n                conn.setAutoCommit(false);\r\n                //doItBatch(conn); // one way \r\n                doItOneByOne(conn); // another way\r\n                conn.setAutoCommit(true); // past this, the actual bad data is committed\r\n                conn.close();\r\n            }\r\n        } catch (final Exception e) {\r\n            e.printStackTrace();\r\n        }\r\n    }\r\n\r\n    private static void doItBatch(final Connection conn) throws SQLException {\r\n\r\n        try (final PreparedStatement st = conn.prepareStatement(\"insert into xyz values(?)\")) {\r\n            st.setInt(1, 1);\r\n            st.addBatch();\r\n            st.setInt(1, 1);\r\n            st.addBatch();\r\n\r\n            st.executeBatch();\r\n            conn.commit(); // unreachable\r\n        } catch (final Exception e) {\r\n            e.printStackTrace();\r\n            conn.rollback(); // this functionally fails\r\n        }\r\n    }\r\n\r\n    private static void doItOneByOne(final Connection conn) throws SQLException {\r\n\r\n        try (final PreparedStatement st = conn.prepareStatement(\"insert into xyz values(?)\")) {\r\n            st.clearParameters();\r\n            st.setInt(1, 1);\r\n            st.executeUpdate();\r\n\r\n            st.clearParameters();\r\n            st.setInt(1, 1);\r\n            st.executeUpdate();\r\n\r\n            conn.commit(); // unreachable\r\n        } catch (final Exception e) {\r\n            e.printStackTrace();\r\n            conn.rollback(); // this functionally fails\r\n        }\r\n    }\r\n}",
+  "date": "2024-10-09 03:34:00",
+  "vulnerable_version": "9.0.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE xyz (id INTEGER NOT NULL, name TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(id));",
+    "INSERT INTO xyz (id, name) VALUES (1, 'First Entry');",
+    "INSERT INTO xyz (id, name) VALUES (1, NULL);",
+    "INSERT INTO xyz (id, name) VALUES (2, 'Second Entry');",
+    "SELECT * FROM xyz WHERE id = (SELECT MAX(id) FROM xyz);"
+  ],
+  "key_bug_features": [
+    "useServerPrepStmts and useLocalTransactionState both set to true"
+  ]
+}

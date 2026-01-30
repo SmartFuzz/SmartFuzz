@@ -1,0 +1,13 @@
+CREATE TABLE test_network (id INT PRIMARY KEY, ip INET NOT NULL, description CLOB);
+INSERT INTO test_network (id, ip, description) VALUES (1, inet '192.168.1.5/24', 'Local Network');
+INSERT INTO test_network (id, ip, description) VALUES (2, inet '10.1.1.1/16', 'Test Network');
+SELECT sys.host(inet '192.168.1.5/24') AS host_name, timestamp(6) '2022-01-01 12:00:00.000000' AS event_time FROM test_network WHERE id = 1;
+CREATE TABLE test_events (event_id INT PRIMARY KEY, event_time TIMESTAMP(6), network_id INT REFERENCES test_network(id));
+INSERT INTO test_events (event_id, event_time, network_id) VALUES (1, timestamp(6) '2023-01-01 00:00:00.000000', 1);
+INSERT INTO test_events (event_id, event_time, network_id) VALUES (2, timestamp(6) '2022-12-31 23:59:59.999999', 2);
+SELECT sys.host(ip) AS ip_host, COUNT(event_id) OVER (PARTITION BY network_id) AS event_count FROM test_network JOIN test_events ON test_network.id = test_events.network_id WHERE sys.host(ip) IS NOT NULL;
+SELECT sys.host(inet '255.255.255.255/32') AS edge_case_host, timestamp(6) '2023-01-01 23:59:59.999999' AS boundary_time FROM test_network WHERE ip <> inet '0.0.0.0/0' HAVING COUNT(id) < 10;
+CREATE TABLE log_entries (entry_id INT PRIMARY KEY, log_time TIMESTAMP(6), network_ip INET);
+INSERT INTO log_entries (entry_id, log_time, network_ip) VALUES (1, timestamp(6) '2023-01-01 12:00:00.000000', inet '192.168.1.5/24');
+SELECT timestamp(6) '2023-01-01 12:00:00.000000' AS converted_time, sys.host(network_ip) AS log_host FROM log_entries WHERE log_time IS NOT NULL;
+SELECT DISTINCT sys.host(inet '192.168.1.5/24') AS distinct_host FROM test_network LEFT JOIN test_events ON test_network.id = test_events.network_id WHERE test_events.event_time IS NULL;

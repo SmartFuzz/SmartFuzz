@@ -1,0 +1,10 @@
+CREATE TABLE test_fuzzing (id UInt32, name String, score Float32, created_at DateTime, unique_val String, nullable_val Nullable(Int32));
+INSERT INTO test_fuzzing VALUES (1, 'Alice', 98.7, now(), 'abc', NULL), (2, 'Bob', NULL, now() - INTERVAL 1 DAY, 'abc', 5), (3, 'Charlie', 75.5, now() - INTERVAL 2 DAY, NULL, NULL);
+SELECT id, printf('Score of %s: %.2f', name, IF(score IS NULL, 0.0, score)) AS formatted_score FROM test_fuzzing WHERE printf('Entry: %d %s', id, name) != 'Entry: 4 Unknown' AND unique_val != 'def';
+SELECT id, name, score, created_at FROM test_fuzzing WHERE created_at >= now() - INTERVAL 1 DAY AND (score != 98.7 OR printf('Value: %s', unique_val) != 'Value: abc') ORDER BY score DESC;
+SELECT COUNT(*) AS total_entries FROM test_fuzzing WHERE printf('ID mismatch %d', id) != 'ID mismatch 0' HAVING total_entries > 1;
+SELECT id, name, score FROM test_fuzzing WHERE (NULL IS NULL OR printf('%s existence check', name) != '');
+SELECT id, name, score, created_at FROM test_fuzzing WHERE score != (SELECT AVG(score) FROM test_fuzzing WHERE score IS NOT NULL) AND printf('%s score: %f', name, score) IS NOT NULL ORDER BY created_at DESC;
+CREATE TABLE temp_fuzz (temp_id UInt32, temp_name String) ENGINE = MergeTree() ORDER BY temp_id;
+INSERT INTO temp_fuzz VALUES (1, 'Temp1'), (2, 'Temp2'), (3, 'Temp3');
+SELECT a.id, a.name, a.score, b.temp_name FROM test_fuzzing AS a JOIN temp_fuzz AS b ON a.id != b.temp_id WHERE printf('Mismatched name: %s', a.name) != printf('Mismatched name: %s', b.temp_name);

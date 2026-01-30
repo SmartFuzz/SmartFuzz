@@ -1,0 +1,16 @@
+CREATE TABLE mime_messages (id INTEGER PRIMARY KEY, raw_message TEXT NOT NULL);
+INSERT INTO mime_messages (raw_message) VALUES ('From: Somebody <someuser@somehost>\nMime-Version: 1.0\nContent-Type: "multipart/mixed";
+\n\tboundary="--the boundary"\nTo: self@localhost\nThis is a multipart MIME message\n----the boundary\nContent-Type: image/gif;
+filename="the_big_picture.gif"\nGIF........\n----the boundary\nContent-Type: message/rfc822\nFrom: Ford@Perfect\nTo: vogon\nMime-Version: 1.0\nContent-Type: multipart/alternate;
+boundary="--sub-boundary"\nThis is some Message\n----sub-boundary\nContent-Type: text/plain\nHi\n----sub-boundary\nContent-Type: text/html\n<P>Hi</P>\n----sub-boundary--\nSome garbage\n----the boundary\nContent-Type: text/plain\nSome additional text\n----the boundary--\nSome additional garbage');
+SELECT * FROM mime_messages WHERE raw_message LIKE '%multipart%' AND raw_message LIKE '%Content-Type%';
+SELECT COUNT(*) FROM mime_messages WHERE raw_message LIKE '%Content-Type: message/rfc822%';
+SELECT id, raw_message FROM mime_messages WHERE raw_message LIKE '%From: Somebody%' AND id IN (SELECT id FROM mime_messages WHERE raw_message LIKE '%boundary="--the boundary%');
+INSERT INTO mime_messages (raw_message) VALUES ('From: Agent <agent@example.com>\nMime-Version: 1.0\nContent-Type: "multipart/alternative";
+\nboundary="--abcde"\n\n----abcde\nContent-Type: text/plain;
+charset="UTF-8"\nThis is the plain text version.\n----abcde\nContent-Type: text/html;
+charset="UTF-8"\n<html><body>This is the <strong>HTML</strong> version.</body></html>\n----abcde--');
+SELECT id, raw_message FROM mime_messages WHERE id NOT IN (SELECT id FROM mime_messages WHERE raw_message LIKE '%Some additional garbage%');
+SELECT * FROM mime_messages WHERE EXISTS (SELECT * FROM mime_messages WHERE raw_message LIKE '%image/gif%') LIMIT 10;
+DELETE FROM mime_messages WHERE raw_message LIKE '%some user removed%';
+SELECT id, raw_message, (SELECT COUNT(*) FROM mime_messages WHERE raw_message LIKE '%boundary%') AS boundary_count FROM mime_messages WHERE raw_message IS NOT NULL ORDER BY boundary_count DESC;

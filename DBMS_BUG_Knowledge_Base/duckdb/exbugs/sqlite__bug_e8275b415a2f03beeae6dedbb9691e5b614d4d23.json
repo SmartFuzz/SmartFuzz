@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/e8275b415a",
+  "title": "Assertion fault from window function inside of recursive CTE",
+  "description": "drh added on 2018-09-27 11:03:57:\nThe following SQL results in an assertion fault:\nWITH RECURSIVE\n  t(id, parent) AS (VALUES(1,2)),\n  q(id, parent, rn) AS (\n    VALUES(1,2,3)\n    UNION ALL\n    SELECT t.*, ROW_NUMBER() OVER (ORDER BY t.id) AS rn\n      FROM q JOIN t ON t.parent = q.id\n  )\nSELECT * FROM q;\nAs the SQL makes use of window functions, this defect only affects SQLite\nversion 3.25 and its patches.  The problem was reported on the sqlite-users\nmailing list by Yaroslav Schekin.",
+  "date": "2018-09-27 11:03:576.87 years ago",
+  "vulnerable_version": "3.25.2",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INTEGER PRIMARY KEY, parent INTEGER, value TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table (id, parent, value) VALUES (1, 2, 'test1'), (2, NULL, 'test2'), (3, 1, 'test3');",
+    "WITH RECURSIVE t(id, parent) AS (SELECT id, parent FROM test_table WHERE parent IS NOT NULL), q(id, parent, rn) AS (SELECT id, parent, ROW_NUMBER() OVER (ORDER BY id) AS rn FROM test_table WHERE parent IS NOT NULL UNION ALL SELECT t.id, t.parent, ROW_NUMBER() OVER (ORDER BY t.id) FROM q JOIN t ON t.parent = q.id) SELECT * FROM q;",
+    "SELECT COUNT(*) FROM test_table WHERE value IS NULL;",
+    "UPDATE test_table SET value = 'updated' WHERE id = (SELECT id FROM test_table WHERE value = 'test1' LIMIT 1);"
+  ],
+  "key_bug_features": [
+    "Assertion fault with window function in recursive CTE"
+  ]
+}

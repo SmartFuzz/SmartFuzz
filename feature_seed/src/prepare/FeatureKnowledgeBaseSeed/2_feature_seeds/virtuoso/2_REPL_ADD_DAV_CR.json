@@ -1,0 +1,12 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, content TEXT, timestamp TIMESTAMP NULL, meta_data JSON);
+INSERT INTO test_table VALUES (1, 'conflict resolve test', CURRENT_TIMESTAMP, '{"key":"value"}');
+INSERT INTO test_table VALUES (2, NULL, NULL, NULL);
+INSERT INTO test_table VALUES (3, 'keyword', CURRENT_TIMESTAMP, NULL);
+INSERT INTO test_table VALUES (4, '', CURRENT_TIMESTAMP, '{"key":null}');
+SELECT * FROM test_table WHERE meta_data IS NULL;
+SELECT * FROM test_table WHERE bif:contains(content, 'conflict') AND id > (SELECT MAX(id) FROM test_table WHERE content IS NOT NULL);
+SELECT REPL_ADD_DAV_CR('/DAV/test', 'min_ctime', (SELECT MIN(timestamp) FROM test_table WHERE id IS NOT NULL), 'min_ctime') AS resolver;
+SELECT id, COUNT(*) OVER (PARTITION BY content) AS content_count FROM test_table GROUP BY content HAVING content_count > 1;
+SELECT * FROM test_table WHERE bif:contains(content, 'keyword') OR (SELECT COUNT(*) FROM test_table WHERE content IS NOT NULL) IS NULL;
+SELECT * FROM test_table WHERE timestamp > CURRENT_TIMESTAMP - INTERVAL '1 day' AND REPL_ADD_DAV_CR('/DAV/test', 'min_ctime', 0, 'min_ctime') IS NOT NULL;
+SELECT * FROM (SELECT id, content, REPL_ADD_DAV_CR('/DAV/test', meta_data::TEXT, 5, 'min_ctime') AS cr FROM test_table) AS derived WHERE bif:contains(content, 'test');

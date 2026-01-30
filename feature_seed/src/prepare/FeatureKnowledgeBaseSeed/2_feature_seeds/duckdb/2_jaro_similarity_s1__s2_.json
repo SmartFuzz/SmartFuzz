@@ -1,0 +1,15 @@
+CREATE TABLE test_strings (id INTEGER, s1 VARCHAR, s2 VARCHAR);
+INSERT INTO test_strings (id, s1, s2) VALUES (1, 'duck', 'duckdb'), (2, 'Hello', NULL), (3, '', 'world'), (4, 'Test', 'tEst');
+SELECT id, jaro_similarity(s1, s2) AS similarity, (jaro_similarity(s1, s2) & '111'::BITSTRING) AS bitwise_result FROM test_strings WHERE s1 IS NOT NULL;
+SELECT id, s1, s2, jaro_similarity(s1, s2) AS similarity FROM test_strings WHERE LENGTH(s1) > 0 AND LENGTH(s2) > 0;
+SELECT t1.id FROM test_strings t1 JOIN test_strings t2 ON (jaro_similarity(t1.s1, t2.s2) > 0.5) AND (t1.id <> t2.id);
+SELECT id, jaro_similarity(s1, s2) AS similarity FROM test_strings GROUP BY s1, s2 HAVING jaro_similarity(s1, s2) > 0.4;
+CREATE TABLE number_strings (num_id INTEGER, bit_pattern BITSTRING);
+INSERT INTO number_strings (num_id, bit_pattern) VALUES (1, '10001'::BITSTRING), (2, '10101'::BITSTRING);
+SELECT n.num_id, (jaro_similarity(t.s1, t.s2) & n.bit_pattern) AS combined_value FROM test_strings t JOIN number_strings n ON n.num_id = t.id WHERE n.bit_pattern IS NOT NULL;
+SELECT id, (jaro_similarity(s1, s2) & '1'::BITSTRING) AS single_bit FROM test_strings WHERE jaro_similarity(s1, s2) IS NOT NULL;
+WITH Similarities AS (SELECT id, jaro_similarity(s1, s2) AS sim FROM test_strings WHERE s2 IS NOT NULL) SELECT id, sim, (sim & '110'::BITSTRING) AS and_result FROM Similarities WHERE sim > 0.6;
+SELECT id, jaro_similarity(s1, s2) AS sim FROM test_strings WHERE s1 = '' OR s2 = '' UNION SELECT id, jaro_similarity(s1, s2) AS sim FROM test_strings WHERE s1 IS NULL OR s2 IS NULL;
+SELECT MAX(jaro_similarity(s1, s2)) AS max_similarity FROM test_strings WHERE LENGTH(s1) >= 1 AND LENGTH(s2) >= 1;
+CREATE TEMP TABLE temp_table AS SELECT id, jaro_similarity(s1, s2) AS similarity FROM test_strings;
+SELECT MAX(similarity & '111'::BITSTRING) FROM temp_table WHERE similarity IS NOT NULL;

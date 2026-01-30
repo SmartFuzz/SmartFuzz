@@ -1,0 +1,10 @@
+CREATE TABLE settings (id INT PRIMARY KEY, setting_name VARCHAR, setting_value VARCHAR);
+INSERT INTO settings VALUES (1, 'access_mode', 'read'), (2, 'timezone', 'UTC'), (3, 'max_connections', '100');
+CREATE TABLE dates (event_date DATE, event_name VARCHAR);
+INSERT INTO dates VALUES (DATE '2021-01-01', 'New Year'), (DATE '2021-08-15', 'Holiday');
+SELECT event_name, event_date - INTERVAL (SELECT COUNT(*) FROM settings) DAY AS adjusted_date FROM dates WHERE adjusted_date IS NOT NULL;
+SELECT current_setting('access_mode') AS access_mode, event_date, event_date - INTERVAL (SELECT value::INT FROM settings WHERE setting_name = 'max_connections') DAY AS released_date FROM dates;
+SELECT event_name, adjusted_date FROM (SELECT event_name, event_date - INTERVAL (d.days) DAY AS adjusted_date FROM dates, (VALUES (1), (2), (3), (4)) AS d(days)) AS subquery WHERE adjusted_date IS NOT NULL AND adjusted_date < DATE '2021-12-31';
+SELECT COUNT(*) FROM (SELECT event_name, event_date - INTERVAL (current_setting('max_connections')::INT) DAY AS adjusted_date FROM dates) AS temp WHERE adjusted_date IS NOT NULL;
+SELECT MAX(current_setting('max_connections')::INT) FROM settings HAVING MAX(current_setting('max_connections')::INT) > 50;
+SELECT event_name, event_date, current_setting('timezone') AS current_time_zone FROM dates WHERE event_date - INTERVAL (SELECT COUNT(*) FROM settings) DAY >= DATE '2019-01-01' ORDER BY event_date DESC;

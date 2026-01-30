@@ -1,0 +1,10 @@
+CREATE TABLE geo_data (id UInt32, lon Float64, lat Float64, resolution UInt8) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO geo_data VALUES (1, 37.79506683, 55.71290588, 15), (2, -122.4194, 37.7749, 10), (3, NULL, NULL, 7), (4, 0.0, 0.0, 15);
+SELECT geoToH3(lon + 1.0, lat + 1.0, resolution) AS h3Index FROM geo_data WHERE lon IS NOT NULL AND lat IS NOT NULL;
+SELECT geoToH3((SELECT AVG(lon) FROM geo_data WHERE resolution > 5), (SELECT AVG(lat) FROM geo_data WHERE resolution < 10), 14) AS h3IndexAverage;
+SELECT id, geoToH3(lon, lat, resolution) AS h3Index FROM geo_data GROUP BY id HAVING h3Index != 0;
+SELECT geoToH3(lon, lat, resolution) + 5 AS complexGeoIndex FROM geo_data WHERE resolution >= 0 AND resolution <= 15;
+CREATE TABLE geo_results AS SELECT geoToH3(lon + 5.5, lat - 3.5, resolution) AS shiftedH3Index FROM geo_data;
+INSERT INTO geo_results SELECT geoToH3(lon - 1.0, lat + 2.0, resolution) FROM geo_data WHERE lon < 0.0;
+SELECT COUNT(*) FROM geo_data WHERE geoToH3(NULLIF(lon, 0.0), lat, resolution) > 0;
+SELECT geoToH3(lon, lat, resolution) AS h3Index, COUNT(*) OVER (PARTITION BY resolution) AS resolutionCount FROM geo_data ORDER BY resolutionCount DESC;

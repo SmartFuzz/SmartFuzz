@@ -1,0 +1,10 @@
+CREATE TABLE test_data (name String, value UInt32, timestamp DateTime, nullable_value Nullable(UInt32)) ENGINE = MergeTree() ORDER BY timestamp;
+INSERT INTO test_data VALUES ('Alice', 100, '2023-01-01 10:00:00', NULL), ('Bob', 200, '2023-02-01 11:00:00', 50), ('Charlie', 300, '2023-03-01 12:00:00', 150);
+SELECT count(*) / (SELECT count() FROM test_data) FROM hdfsCluster('cluster_simple', 'hdfs://hdfs1:9000/{some,another}_dir/some_file_{1..3}', 'TSV', 'name String, value UInt32');
+SELECT name, value, nullable_value / (SELECT max(value) FROM test_data WHERE value IS NOT NULL) as normalized_value FROM test_data WHERE nullable_value IS NULL;
+SELECT name, avg(value) / max(nullable_value) as avg_norm FROM test_data GROUP BY name HAVING avg_norm > 0.5;
+SELECT SUM(value) / (SELECT count(nullable_value) FROM test_data WHERE nullable_value IS NOT NULL) as avg_without_nulls FROM test_data;
+SELECT name, value, (SELECT count(*) FROM hdfsCluster('cluster_simple', 'hdfs://hdfs1:9000/{some,another}_dir/*', 'TSV', 'name String, value UInt32')) AS file_count FROM test_data WHERE value / 100 > 1;
+CREATE TABLE temp_records AS SELECT *, toNullable(value / 2) AS processed_value FROM test_data WHERE timestamp > '2023-01-01 00:00:00';
+SELECT name, processed_value FROM temp_records WHERE processed_value IS NOT NULL HAVING processed_value > (SELECT avg(value) FROM test_data WHERE value > 100) / 2;
+SELECT name, (value * 2) / (00.0 + 1) AS safe_division FROM test_data WHERE value > 0;

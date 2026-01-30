@@ -1,0 +1,16 @@
+CREATE TABLE test_table (id Int32, text_column String, nullable_column Nullable(Int32));
+INSERT INTO test_table VALUES (1, 'A'), (2, 'B'), (3, ''), (4, NULL);
+SELECT ascii(text_column) AS ascii_value, nullable_column IS NULL AS is_nullable FROM test_table WHERE ascii(text_column) > 0;
+SELECT COUNT(*) FROM (SELECT text_column, ascii(text_column) AS ascii_val FROM test_table GROUP BY text_column HAVING ascii_val IS NOT NULL);
+SELECT (SELECT ascii(text_column) FROM test_table WHERE id = 1) IS NULL AS first_ascii_null_check;
+SELECT id, text_column, nullable_column FROM test_table WHERE ascii(text_column) > 65 AND nullable_column IS NULL;
+CREATE TABLE temp_table AS SELECT id, text_column, ascii(text_column) AS ascii_val FROM test_table;
+SELECT temp_table.id, temp_table.ascii_val, test_table.nullable_column IS NULL AS nullable_check FROM temp_table JOIN test_table ON temp_table.id = test_table.id WHERE ascii_val > 65;
+SELECT ascii(text_column) AS ascii_value FROM test_table WHERE id IN (SELECT id FROM test_table WHERE nullable_column IS NULL) HAVING ascii_value > 0;
+INSERT INTO test_table VALUES (5, 'C'), (6, NULL), (7, 'D');
+SELECT text_column, ( SELECT COUNT(*) FROM test_table WHERE ascii(text_column) > 0 AND nullable_column IS NULL) AS null_check_count FROM test_table GROUP BY text_column HAVING null_check_count > 0;
+SELECT ascii(text_column) AS ascii_value, nullable_column IS NULL AS is_nullable, (ascii(text_column) + 100) AS modified_value FROM test_table WHERE ascii(text_column) IS NOT NULL;
+SELECT id, text_column FROM test_table WHERE ascii(text_column) = (SELECT MAX(ascii(text_column)) FROM test_table) AND id IS NOT NULL;
+CREATE TABLE another_test (id Int32, value Nullable(Int32));
+INSERT INTO another_test VALUES (1, 0), (2, NULL), (3, 100);
+SELECT ascii(text_column) AS ascii_val, another_test.value IS NULL AS another_null_check FROM test_table JOIN another_test ON test_table.id = another_test.id WHERE another_test.value IS NULL OR ascii_val < 50 GROUP BY another_test.value HAVING COUNT(*) > 1;

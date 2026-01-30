@@ -1,0 +1,10 @@
+CREATE TABLE test_dates (id Int32, created_at DateTime, status String);
+INSERT INTO test_dates VALUES (1, '2023-04-21 10:20:30', 'active'), (2, '2023-04-30 15:45:00', 'inactive'), (3, NULL, 'pending');
+SELECT toDayOfMonth(created_at) FROM test_dates WHERE created_at NOT IN (SELECT MAX(created_at) FROM test_dates);
+SELECT COUNT(*) FROM (SELECT toDayOfMonth(created_at) as day FROM test_dates GROUP BY day HAVING day NOT IN (1, 2, 3));
+SELECT id, toDayOfMonth(created_at) FROM test_dates WHERE (SELECT COUNT(*) FROM test_dates t2 WHERE t2.status NOT IN (SELECT status FROM test_dates WHERE created_at IS NOT NULL)) > 1;
+SELECT id, toDayOfMonth(toDateTime(CASE WHEN created_at IS NULL THEN '2023-01-01 00:00:00' ELSE created_at END)) FROM test_dates WHERE id NOT IN (SELECT id FROM test_dates WHERE created_at IS NOT NULL);
+CREATE TABLE temp_dates (id Int32, event_date Date, description String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO temp_dates VALUES (1, '2023-04-01', 'Start'), (2, '2023-04-05', 'Middle'), (3, '2023-04-10', 'End');
+SELECT id, toDayOfMonth(event_date) FROM temp_dates WHERE event_date NOT IN (SELECT event_date FROM temp_dates WHERE event_date < toDate('2023-04-01'));
+SELECT SUM(toDayOfMonth(event_date)) OVER (PARTITION BY description) FROM temp_dates ORDER BY description NOT IN ('Middle', 'End');

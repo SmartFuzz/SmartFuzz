@@ -1,0 +1,21 @@
+{
+    "function": "joinGetOrNull",
+    "operator": "a = ANY (subquery)",
+    "sql_array": [
+        "CREATE DATABASE db_fuzz_test;",
+        "CREATE TABLE db_fuzz_test.main_table(id UInt32, val String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO db_fuzz_test.main_table VALUES (1, 'A'), (2, 'B'), (3, 'C'), (4, NULL);",
+        "CREATE TABLE db_fuzz_test.join_table(id UInt32, data UInt32) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO db_fuzz_test.join_table VALUES (1, 100), (2, 200), (5, 500);",
+        "SELECT id, joinGetOrNull(db_fuzz_test.join_table, 'data', toUInt32(number)) FROM numbers(5);",
+        "SELECT id, val FROM db_fuzz_test.main_table WHERE id = ANY (SELECT id FROM db_fuzz_test.join_table WHERE data = 200);",
+        "SELECT id, joinGetOrNull(db_fuzz_test.join_table, 'data', id) AS joined_data FROM db_fuzz_test.main_table WHERE id < 5;",
+        "SELECT id, val FROM (SELECT id, joinGetOrNull(db_fuzz_test.join_table, 'data', id) AS joined_data FROM db_fuzz_test.main_table) AS sub WHERE joined_data IS NULL;",
+        "SELECT id, count() FROM db_fuzz_test.main_table GROUP BY val HAVING joinGetOrNull(db_fuzz_test.join_table, 'data', id) IS NOT NULL;",
+        "SELECT id, val FROM db_fuzz_test.main_table WHERE val = ANY (SELECT val FROM db_fuzz_test.main_table WHERE id IN (1, 2, 3));",
+        "CREATE TABLE db_fuzz_test.temp_table(id Nullable(UInt32), value Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO db_fuzz_test.temp_table VALUES (1, 1.5), (2, NULL), (3, 3.5), (NULL, 4.5);",
+        "SELECT value FROM db_fuzz_test.temp_table WHERE value = ANY (SELECT value FROM db_fuzz_test.temp_table WHERE id IS NOT NULL);",
+        "SELECT id, joinGetOrNull(db_fuzz_test.join_table, 'data', toUInt32(null)) AS result WHERE toUInt32(id) = ANY (SELECT id FROM db_fuzz_test.main_table);"
+    ]
+}

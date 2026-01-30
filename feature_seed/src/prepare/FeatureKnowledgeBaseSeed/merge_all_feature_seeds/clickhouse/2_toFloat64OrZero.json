@@ -1,0 +1,12 @@
+CREATE TABLE test_table (id UInt32, value String, created_at DateTime);
+INSERT INTO test_table VALUES (1, '42.7', now()), (2, 'abc', now()), (3, '3.14', now()), (4, '0xc0fe', now()), (5, '', now());
+CREATE TABLE another_table (id UInt32, ref_value UInt32);
+INSERT INTO another_table VALUES (1, 2), (2, 3), (3, 4);
+SELECT id, toFloat64OrZero(value) AS float_value FROM test_table WHERE float_value GLOBAL NOT IN (SELECT ref_value FROM another_table);
+SELECT id, value, toFloat64OrZero(value) AS float_value FROM test_table WHERE float_value > 0 AND (SELECT count() FROM another_table WHERE ref_value = 1) > 0;
+SELECT id, toFloat64OrZero(value) AS float_value FROM test_table GROUP BY id HAVING float_value < 0.5 OR float_value = 0;
+SELECT t.id, toFloat64OrZero(t.value) AS float_value, a.ref_value FROM test_table AS t JOIN another_table AS a ON toFloat64OrZero(t.value) GLOBAL NOT IN (a.ref_value);
+SELECT COUNT(*) FROM (SELECT toFloat64OrZero(value) AS float_value FROM test_table WHERE float_value <= 0) AS subquery;
+SELECT id, toFloat64OrZero(value) AS float_value FROM test_table WHERE value != '' AND (SELECT toFloat64OrZero('abc') + toFloat64OrZero('3.14')) > float_value;
+SELECT id, toFloat64OrZero(value) AS float_value, row_number() OVER (PARTITION BY id ORDER BY created_at) AS rn FROM test_table;
+SELECT toFloat64OrZero(value) AS float_value FROM test_table WHERE value IS NULL OR value = '' UNION ALL SELECT toFloat64OrZero('10') - toFloat64OrZero('1') AS float_value;

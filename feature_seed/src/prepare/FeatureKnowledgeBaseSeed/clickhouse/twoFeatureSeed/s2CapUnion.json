@@ -1,0 +1,16 @@
+{
+    "function": "s2CapUnion",
+    "operator": "IS NULL",
+    "sql_array": [
+        "CREATE TABLE geo_test (id UInt64, center UInt64, radius Float64, nullable_center Nullable(UInt64));",
+        "INSERT INTO geo_test VALUES (1, 3814912406305146967, 1.0, NULL), (2, 1157347770437378819, 2.0, 1234567890123456789), (3, 3814912406305146967, 0.5, NULL);",
+        "SELECT s2CapUnion(center, radius, IF(nullable_center IS NULL, center, nullable_center), CAST(radius AS Float64)) AS cap_union_result FROM geo_test WHERE radius > 0.0;",
+        "SELECT id, s2CapUnion(center, radius, NULL, radius) AS null_cap_union FROM geo_test WHERE nullable_center IS NULL GROUP BY id HAVING null_cap_union IS NULL;",
+        "SELECT s2CapUnion(center, radius, (SELECT AVG(radius) FROM geo_test WHERE radius IS NOT NULL), radius) AS avg_cap_union FROM geo_test ORDER BY avg_cap_union;",
+        "SELECT DISTINCT s2CapUnion(center, radius, radius, 1.0) AS distinct_cap_union, nullable_center IS NULL AS is_null FROM geo_test WHERE IS NULL(nullable_center) IS NULL;",
+        "SELECT s2CapUnion(center, radius, (SELECT AVG(radius) FROM geo_test WHERE radius < 5.0), IF(nullable_center IS NULL, 0, nullable_center)) AS complex_union FROM geo_test GROUP BY center HAVING s2CapUnion(center, radius, center, radius) IS NOT NULL;",
+        "CREATE TEMPORARY TABLE temp_geo AS SELECT center, radius FROM geo_test WHERE radius < 2.0;",
+        "INSERT INTO temp_geo SELECT nullable_center, radius FROM geo_test WHERE nullable_center IS NOT NULL;",
+        "SELECT s2CapUnion(center, radius, (SELECT MAX(radius) FROM temp_geo), 0.0) AS edge_case_union FROM geo_test WHERE radius > (SELECT COUNT(*) FROM temp_geo) OR nullable_center IS NULL;"
+    ]
+}

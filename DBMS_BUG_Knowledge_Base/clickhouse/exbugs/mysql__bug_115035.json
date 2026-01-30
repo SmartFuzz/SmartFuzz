@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=115035",
+  "title": "View with ORDER BY misses a row",
+  "description": "Please, consider\r\nSELECT 1 FROM t1 ORDER BY count(*) OVER (PARTITION BY min(t1.c0));\r\n(t1 being empty).\r\n\r\nBecause it has COUNT(*) it must return one row.\r\nDuring resolution, mysql says \"there's only one row so ORDER BY can be removed\", so it removes it. Then during execution, as it still has a trace of COUNT(*) somewhere else in Items, it will still return one row properly.\r\n\r\nBut if instead we put this SELECT into a view, the view's body has no ORDER BY, so when later we SELECT from the view (in a new statement), there's no trace of COUNT, it's just \"select 1 from t1\" and it returns an empty set.\nHow to repeat:\nCREATE TABLE t1 (c0 INT PRIMARY KEY);\r\n\r\n# returns 1 row\r\nSELECT 1 FROM t1 ORDER BY count(*) OVER (PARTITION BY min(t1.c0));\r\n\r\n# put same SELECT into a view\r\ncreate view v as  SELECT 1 FROM t1 ORDER BY count(*) OVER (PARTITION BY min(t1.c0));\r\n\r\n# returns 0 row\r\nselect * from v;\nSuggested fix:\nremove ORDER BY only if is_view_context_analysis() is true, in setup_order_final().",
+  "date": "2024-05-16 10:46:00",
+  "vulnerable_version": "8.0.34, 8.3",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (c0 Int32, c1 String, c2 Date);",
+    "INSERT INTO t1 (c0, c1, c2) VALUES (1, 'test', NULL);",
+    "CREATE VIEW v AS SELECT 1 AS result FROM t1;",
+    "SELECT * FROM v;",
+    "SELECT 1 FROM t1 WHERE c2 IS NULL ORDER BY c0;"
+  ],
+  "key_bug_features": [
+    "ORDER BY removal in view context leads to empty result"
+  ]
+}

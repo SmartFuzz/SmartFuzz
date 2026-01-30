@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/56462",
+  "title": "Casting integer with display width to string results in truncation",
+  "description": "## Bug Report\r\n\r\n\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```sql\r\nDROP TABLE IF EXISTS test.t;\r\nCREATE TABLE test.t (id bigint(11) UNSIGNED PRIMARY KEY);\r\nINSERT INTO test.t VALUES (1234567890123456);\r\nSELECT IFNULL(id, 'abcdef') FROM test.t;\r\n```\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nMySQL:\r\n```\r\nmysql-9.0.1> DROP TABLE IF EXISTS test.t;\r\nQuery OK, 0 rows affected (0.02 sec)\r\n\r\nmysql-9.0.1> CREATE TABLE test.t (id bigint(11) UNSIGNED PRIMARY KEY);\r\nQuery OK, 0 rows affected, 1 warning (0.02 sec)\r\n\r\nmysql-9.0.1> INSERT INTO test.t VALUES (1234567890123456);\r\nQuery OK, 1 row affected (0.00 sec)\r\n\r\nmysql-9.0.1> SELECT IFNULL(id, 'abcdef') FROM test.t;\r\n+----------------------+\r\n| IFNULL(id, 'abcdef') |\r\n+----------------------+\r\n| 1234567890123456     |\r\n+----------------------+\r\n1 row in set (0.00 sec)\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nTiDB:\r\n```\r\nmysql-8.0.11-TiDB-v8.3.0> DROP TABLE IF EXISTS test.t;\r\nQuery OK, 0 rows affected, 1 warning (0.00 sec)\r\n\r\nmysql-8.0.11-TiDB-v8.3.0> CREATE TABLE test.t (id bigint(11) UNSIGNED PRIMARY KEY);\r\nQuery OK, 0 rows affected (0.05 sec)\r\n\r\nmysql-8.0.11-TiDB-v8.3.0> INSERT INTO test.t VALUES (1234567890123456);\r\nQuery OK, 1 row affected (0.00 sec)\r\n\r\nmysql-8.0.11-TiDB-v8.3.0> SELECT IFNULL(id, 'abcdef') FROM test.t;\r\n+----------------------+\r\n| IFNULL(id, 'abcdef') |\r\n+----------------------+\r\n| 12345678901          |\r\n+----------------------+\r\n1 row in set, 1 warning (0.00 sec)\r\n\r\nmysql-8.0.11-TiDB-v8.3.0> SHOW WARNINGS;\r\n+---------+------+------------------------------------------+\r\n| Level   | Code | Message                                  |\r\n+---------+------+------------------------------------------+\r\n| Warning | 1406 | Data Too Long, field len 11, data len 16 |\r\n+---------+------+------------------------------------------+\r\n1 row in set (0.00 sec)\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n- v8.3.0\r\n- v7.5.1\r\n\r\n### Related\r\n\r\nThis is similar to #44213 but for a different set of types.\r\n\r\nThis is related to https://github.com/pingcap/tidb/issues/44786",
+  "date": "2024-10-07T20:17:08Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS test.u;",
+    "CREATE TABLE test.u (id INTEGER NOT NULL, name TEXT);",
+    "INSERT INTO test.u VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie');",
+    "SELECT COALESCE(name, CAST(id AS TEXT)) FROM test.u WHERE id > 1;",
+    "SELECT COALESCE(CAST(id AS TEXT), 'default') FROM test.u WHERE id = 3;"
+  ],
+  "key_bug_features": [
+    "Casting integer with display width to string"
+  ]
+}

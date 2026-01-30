@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/18643-8d455145acd8243e%40postgresql.org",
+  "title": "BUG #18643: EXPLAIN estimated rows mismatch",
+  "description": "The following bug has been logged on the website:\nBug reference:      18643\nLogged by:          ming wei tan\nEmail address:      mingwei(dot)tc(at)gmail(dot)com\nPostgreSQL version: 12.20\nOperating system:   Debian 12.20-1.pgdg120+1 (Docker)\nDescription:\nGiven predicate A and B, it is expected that size (SELECT X where A)  <=\nsize (SELECT X WHERE A or B)\nHowever, `EXPLAIN SELECT t2.c0 FROM t2 WHERE t2.c0 IN (t2.c0)` returns\nrows=2537\nQUERY PLAN\n------------------------------------------------------\nSeq Scan on t2  (cost=0.00..35.50 rows=2537 width=4)\nFilter: (c0 IS NOT NULL)\nWhile, `EXPLAIN SELECT t2.c0 FROM t2 WHERE (t2.c0 IN (t2.c0)) OR (t2.c0 >\n4)` returns rows=858\nQUERY PLAN\n-----------------------------------------------------\nSeq Scan on t2  (cost=0.00..48.25 rows=858 width=4)\nFilter: ((c0 = c0) OR (c0 > 4))\nRunning on docker image postgres:12\nTest cases:\nDROP DATABASE IF EXISTS database4;\nCREATE DATABASE database4 WITH ENCODING 'UTF8' TEMPLATE template0;\n\\c database4;\nCREATE TABLE t2(c0 int);\nINSERT INTO t2(c0) VALUES(1);\nINSERT INTO t2(c0) VALUES(2);\nEXPLAIN SELECT t2.c0 FROM t2 WHERE t2.c0 IN (t2.c0);\nEXPLAIN SELECT t2.c0 FROM t2 WHERE (t2.c0 IN (t2.c0)) OR (t2.c0 > 4);\nDROP DATABASE IF EXISTS database4;\nCREATE DATABASE database4 WITH ENCODING 'UTF8' TEMPLATE template0;\n\\c database4;\nCREATE TABLE t2(c0 int);\nINSERT INTO t2(c0) VALUES(1);\nINSERT INTO t2(c0) VALUES(2);\nEXPLAIN SELECT t2.c0 FROM t2 WHERE (t2.c0)=(t2.c0);\nEXPLAIN SELECT t2.c0 FROM t2 WHERE ((t2.c0)=(t2.c0) OR (t2.c0 > 4);",
+  "date": "2024-10-01 07:47:34",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE t2(c0 INTEGER, c1 TEXT, c2 INTEGER);",
+    "INSERT INTO t2(c0, c1, c2) VALUES(1, 'test', 1);",
+    "INSERT INTO t2(c0, c1, c2) VALUES(2, 'example', 0);",
+    "SELECT t2.c0 FROM t2 WHERE t2.c0 IN (SELECT c0 FROM t2 WHERE c2 = 1);",
+    "SELECT t2.c0 FROM t2 WHERE (t2.c0 = t2.c0) OR (t2.c1 IS NOT NULL);"
+  ],
+  "key_bug_features": [
+    "EXPLAIN returns inconsistent row estimates for similar queries"
+  ]
+}

@@ -1,0 +1,15 @@
+CREATE TABLE test_blob(id INT, data BLOB);
+INSERT INTO test_blob VALUES (1, '\xAA\xBB'::BLOB), (2, NULL), (3, '\xCC\xDD'::BLOB);
+CREATE TABLE test_numbers(num1 INT, num2 INT);
+INSERT INTO test_numbers VALUES (10, 3), (NULL, 15), (-5, -1);
+SELECT num1, num2, hex(data - 1::BLOB) AS hex_value FROM test_blob JOIN test_numbers ON num1 = id WHERE hex(data - (SELECT NULL)) IS NOT NULL;
+SELECT num1, hex(data) AS hex_data, (num1 - num2) + 10 AS adjusted FROM test_blob JOIN test_numbers ON id = num1 GROUP BY num1, adjusted HAVING adjusted > 5;
+WITH subquery AS (SELECT id, hex(data) AS hex_data FROM test_blob WHERE data IS NOT NULL) SELECT id, hex_data, (SELECT COUNT(*) FROM test_numbers) - 1 AS count_diff FROM subquery;
+SELECT hex(data) FROM test_blob WHERE data IS NULL OR hex(data) - '1'::VARCHAR = hex('\x00'::BLOB);
+SELECT num1, hex(data - '\xAA'::BLOB) AS hex_difference FROM test_blob JOIN test_numbers ON num1 = id ORDER BY hex_difference;
+SELECT id, hex(data) AS hex_value FROM test_blob WHERE NOT EXISTS (SELECT 1 FROM test_numbers WHERE num1 - id = 0)::BOOLEAN;
+CREATE TABLE test_mixed_types(value VARCHAR, numb INT);
+INSERT INTO test_mixed_types VALUES ('blob1', 1), ('blob2', NULL), (NULL, 0);
+SELECT value, hex(data) - '1'::VARCHAR AS hex_operation FROM test_blob JOIN test_mixed_types ON value = hex(data) WHERE numb IS NOT NULL;
+UPDATE test_blob SET data = '\xFF'::BLOB WHERE id = 3;
+SELECT id, hex(data) AS hex_data FROM test_blob GROUP BY id HAVING hex(data) IS NOT NULL ORDER BY id DESC;

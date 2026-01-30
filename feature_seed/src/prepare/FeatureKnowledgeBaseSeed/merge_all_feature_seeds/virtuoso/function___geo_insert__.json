@@ -1,0 +1,14 @@
+CREATE TABLE geo_table (id INT, geom GEOMETRY, PRIMARY KEY (id));
+INSERT INTO geo_table (id, geom) VALUES (1, GEOMETRYFROMTEXT('POINT(1 2)', 0));
+CREATE TABLE r_tree_table (id INT, geom GEOMETRY, PRIMARY KEY (id));
+INSERT INTO r_tree_table (id, geom) VALUES (1, GEOMETRYFROMTEXT('POLYGON((0 0, 0 10, 10 10, 10 0, 0 0))', 0));
+INSERT INTO r_tree_table (id, geom) VALUES (2, GEOMETRYFROMTEXT('LINESTRING(0 0, 10 10)', 0));
+CREATE TRIGGER geo_insert_trigger AFTER INSERT ON geo_table FOR EACH ROW EXECUTE PROCEDURE geo_insert('r_tree_table');
+INSERT INTO geo_table (id, geom) VALUES (2, GEOMETRYFROMTEXT('POINT(5 5)', 0));
+INSERT INTO geo_table (id, geom) VALUES (3, GEOMETRYFROMTEXT('MULTIPOINT((1 1), (2 2), (3 3))', 0));
+INSERT INTO geo_table (id, geom) VALUES (4, GEOMETRYFROMTEXT('POLYGON((0 0, 5 0, 5 5, 0 5, 0 0))', 0));
+SELECT id FROM geo_table WHERE ST_Intersects(geom, GEOMETRYFROMTEXT('POLYGON((4 4, 6 4, 6 6, 4 6, 4 4))', 0));
+SELECT id FROM r_tree_table WHERE ST_Contains(geom, GEOMETRYFROMTEXT('POINT(1 1)', 0));
+UPDATE r_tree_table SET geom = GEOMETRYFROMTEXT('POINT(2 3)', 0) WHERE id = 1;
+DELETE FROM r_tree_table WHERE id = 2;
+SELECT COUNT(*) FROM geo_table WHERE ST_Area(geom) > 5;

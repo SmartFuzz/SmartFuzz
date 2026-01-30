@@ -1,0 +1,21 @@
+{
+  "url": "https://www.postgresql.org/message-id/16911-ca792f6bbe244754%40postgresql.org",
+  "title": "BUG #16911: \"permission denied\" error deleting rows as superuser from a table owned by a non-superuser",
+  "description": "The following bug has been logged on the website:\nBug reference:      16911\nLogged by:          Evgeny Morozov\nEmail address:      pg(dot)org(at)realityexists(dot)net\nPostgreSQL version: 13.2\nOperating system:   Windows 7 x64, Ubuntu 18.04 x64\nDescription:\nOriginally discovered on PostgreSQL 12.5 running on Ubuntu 18.04, but the\nsame happens on PostgreSQL 13.2 running on Windows 7. Create a blank\ndatabase and run the following script in it as a superuser:\nCREATE ROLE test_owner_role; -- Needs to be a non-superuser\nDROP SCHEMA IF EXISTS myschema CASCADE;\nCREATE SCHEMA myschema;\nCREATE TABLE myschema.pktable (id int NOT NULL PRIMARY KEY);\nALTER TABLE myschema.pktable OWNER TO test_owner_role; -- Any non-superuser\nrole\nCREATE TABLE myschema.fktable (customer_id int REFERENCES\nmyschema.pktable(id));\nINSERT INTO myschema.pktable VALUES (1);\nDELETE FROM myschema.pktable;\nExpected result: no errors; the row is successfully deleted from\nmyschema.pktable.\nActual result: the final DELETE fails with\nERROR:  permission denied for schema myschema\nLINE 1: SELECT 1 FROM ONLY \"myschema\".\"pktable\" x WHERE \"id\" OPERATO...\n^\nQUERY:  SELECT 1 FROM ONLY \"myschema\".\"pktable\" x WHERE \"id\"\nOPERATOR(pg_catalog.=) $1 FOR KEY SHARE OF x\nSQL state: 42501\nThis does not happen if the table is owner by a superuser or if I grant\nmyself USAGE rights on schema \"myschema\".",
+  "date": "2021-03-03 17:51:46",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "DROP SCHEMA IF EXISTS myschema CASCADE;",
+    "CREATE SCHEMA myschema;",
+    "CREATE TABLE myschema.pktable (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "CREATE TABLE myschema.fktable (customer_id INT, FOREIGN KEY (customer_id) REFERENCES myschema.pktable(id));",
+    "INSERT INTO myschema.pktable (name) VALUES ('Test Name');",
+    "SELECT * FROM myschema.pktable;"
+  ],
+  "key_bug_features": [
+    "permission denied error for superuser deleting non-superuser owned rows"
+  ]
+}

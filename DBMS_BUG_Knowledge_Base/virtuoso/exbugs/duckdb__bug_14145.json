@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14145",
+  "title": "list_max() and max() lose type information",
+  "description": "### What happens?\n\nFor example:\r\n```\r\nD select list_max( [{'a':1}::JSON, [2]::JSON ]) as max;\r\n┌─────────┐\r\n│   max   │\r\n│ varchar │\r\n├─────────┤\r\n│ {\"a\":1} │\r\n└─────────┘\r\n\r\nD select max(l) from (select unnest( [{'a':1}::JSON, [2]::JSON ]) as l);\r\n┌─────────┐\r\n│ max(l)  │\r\n│ varchar │\r\n├─────────┤\r\n│ {\"a\":1} │\r\n└─────────┘\r\n```\r\n\r\n\r\nConstrast the above with the DuckDB function max_list() defined as follows:\r\n```\r\nD create or replace function max_list(l) as (\r\n  list_reduce(l, (acc, x) -> greatest(acc,x))\r\n);\r\n\r\nD select max_list( [ ['b']::JSON, ['a']::JSON ) as max;\r\n\r\n┌───────┐\r\n│  max  │\r\n│ json  │\r\n├───────┤\r\n│ [\"b\"] │\r\n└───────┘\r\n```\n\n### To Reproduce\n\n```\r\nselect list_max( [{'a':1}::JSON, [2]::JSON ]) as max;\r\nselect max(l) from (select unnest( [{'a':1}::JSON, [2]::JSON ]) as l);\r\n```\n\n### OS:\n\nMacOS\n\n### DuckDB Version:\n\n1.0, 1.1\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nPeter\n\n### Affiliation:\n\nKoppstein\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a stable release\n\n### Did you include all relevant data sets for reproducing the issue?\n\nNot applicable - the reproduction does not require a data set\n\n### Did you include all code required to reproduce the issue?\n\n- [X] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [X] Yes, I have",
+  "date": "2024-09-27 08:55:11",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_json_data (id INTEGER, data VARCHAR);",
+    "INSERT INTO test_json_data VALUES (1, '{\"a\":1}'), (2, '[2]');",
+    "SELECT MAX(data) AS max_value FROM test_json_data;",
+    "SELECT MAX(d) FROM (SELECT SPLIT(data, ',') AS d FROM test_json_data);",
+    "SELECT MAX(STR_TO_JSON('[{\"b\":2},{\"a\":1}]')) AS max_json;"
+  ],
+  "key_bug_features": [
+    "list_max() and max() lose type information"
+  ]
+}

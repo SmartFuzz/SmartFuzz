@@ -1,0 +1,31 @@
+CREATE SCHEMA "financialdata" AUTHORIZATION "analyst";
+CREATE TABLE financialdata.stocks (
+ "id" SERIAL NOT NULL,
+ "trade_time" TIMESTAMP WITH TIME ZONE NOT NULL,
+ "trade_date" TIMESTAMP WITH TIME ZONE,
+ "ticker" VARCHAR(10) NOT NULL,
+ "currency" VARCHAR(10) NOT NULL,
+ "opening_price" DOUBLE NOT NULL,
+ "highest_price" DOUBLE NOT NULL,
+ "lowest_price" DOUBLE NOT NULL,
+ "closing_price" DOUBLE NOT NULL,
+ "trade_volume" DOUBLE,
+ CONSTRAINT stocks_id_pkey PRIMARY KEY ("id")
+ );
+INSERT INTO financialdata.stocks (trade_time, trade_date, ticker, currency, opening_price, highest_price, lowest_price, closing_price, trade_volume) VALUES (NOW(), NOW(), 'AAPL', 'USD', 150.0, 155.0, 149.0, 154.0, 10000.0);
+SELECT * FROM (
+ 			WITH daily_open(trade_date, opening_price, rnk) AS (
+ 					SELECT trade_date, opening_price, ROW_NUMBER() OVER (PARTITION BY trade_date ORDER BY trade_time ASC) AS rnk FROM financialdata.stocks 
+ 						WHERE ticker='AAPL' AND trade_date IS NOT NULL AND CAST(trade_date AS DATE) > CURRENT_DATE - INTERVAL '30 days'
+ 				),
+ 				daily_close(trade_date, closing_price, rnk) AS (
+ 						SELECT trade_date, closing_price, ROW_NUMBER() OVER (PARTITION BY trade_date ORDER BY trade_time DESC) AS rnk FROM financialdata.stocks
+ 							WHERE ticker='AAPL' AND trade_date IS NOT NULL AND CAST(trade_date AS DATE) > CURRENT_DATE - INTERVAL '30 days'
+ 				),
+ 				daily_stats(trade_date, highest_price, lowest_price, trade_volume) AS (
+ 						SELECT trade_date, MAX(highest_price) AS highest_price, MIN(lowest_price) AS lowest_price, SUM(trade_volume) FROM financialdata.stocks 
+ 							WHERE ticker='AAPL' AND trade_date IS NOT NULL AND CAST(trade_date AS DATE) > CURRENT_DATE - INTERVAL '30 days' GROUP BY trade_date
+ 				)
+ 				SELECT daily_open.trade_date, daily_open.opening_price, daily_stats.highest_price, daily_stats.lowest_price, daily_close.closing_price, daily_stats.trade_volume FROM daily_open, daily_close, daily_stats WHERE daily_open.rnk=1 AND daily_close.rnk=1 AND daily_open.trade_date=daily_close.trade_date AND daily_open.trade_date=daily_stats.trade_date ORDER BY trade_date DESC
+ 			) AS result;
+SELECT CAST(trade_date AS DATE) FROM financialdata.stocks LIMIT 10;

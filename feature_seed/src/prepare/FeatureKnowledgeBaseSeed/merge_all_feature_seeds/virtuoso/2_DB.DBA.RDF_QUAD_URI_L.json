@@ -1,0 +1,16 @@
+CREATE TABLE rdf_data (g_uri VARCHAR(255), s_uri VARCHAR(255), p_uri VARCHAR(255), obj_literal VARCHAR(255), PRIMARY KEY (g_uri, s_uri, p_uri));
+INSERT INTO rdf_data VALUES ('g_iri1', 's_iri1', 'p_iri1', 'literal_value1');
+INSERT INTO rdf_data VALUES ('g_iri2', 's_iri2', 'p_iri2', 'literal_value2');
+INSERT INTO rdf_data VALUES ('g_iri3', 's_iri3', 'p_iri3', NULL);
+DB.DBA.RDF_QUAD_URI_L('g_iri1', 's_iri1', 'p_iri1', xpath_string('/root/@id', '<root id="xml_id1"/>'));
+DB.DBA.RDF_QUAD_URI_L('g_iri2', 's_iri2', 'p_iri2', xpath_string('/root/@id', '<root id="xml_id2"/>'));
+SELECT g_uri, s_uri, p_uri FROM rdf_data WHERE obj_literal IS NULL OR obj_literal = '';
+SELECT g_uri, xpath_string('/root/@id', '<root id="xml_id3"/>') AS id_value FROM rdf_data WHERE s_uri = 's_iri3';
+WITH temp_agg AS (SELECT g_uri, COUNT(*) AS total FROM rdf_data GROUP BY g_uri HAVING COUNT(*) > 1) SELECT * FROM temp_agg;
+SELECT g_uri, AVG(LENGTH(obj_literal)) OVER (PARTITION BY g_uri) AS avg_length FROM rdf_data;
+SELECT g_uri, s_uri FROM rdf_data a JOIN rdf_data b ON a.g_uri = b.g_uri AND a.p_uri <> b.p_uri WHERE a.obj_literal IS NOT NULL;
+DB.DBA.RDF_QUAD_URI_L('g_iri3', 's_iri3', 'p_iri3', 'z016, ' || NULLIF(xpath_string('/root/@nonexistent', '<root/>'), ''));
+SELECT g_uri, COUNT(*) AS triplet_count FROM rdf_data GROUP BY g_uri HAVING COUNT(*) < (SELECT COUNT(*) FROM rdf_data) / 2;
+CREATE TEMPORARY TABLE temp_rdf AS SELECT * FROM rdf_data WHERE obj_literal IS NOT NULL;
+DB.DBA.RDF_QUAD_URI_L('g_iri2', xpath_string('/root/@id', '<root id="xml_id3"/>'), 'p_iri2', 'complex_literal');
+SELECT g_uri, MAX(COALESCE(obj_literal, 'empty')) AS max_literal FROM rdf_data WHERE g_uri = 'g_iri1' GROUP BY g_uri ORDER BY max_literal DESC;

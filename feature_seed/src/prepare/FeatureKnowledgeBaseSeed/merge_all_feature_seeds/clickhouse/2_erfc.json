@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id UInt32, values Array(Float64), score Float64 DEFAULT erfc(1.0));
+INSERT INTO test_table VALUES (1, [0.1, 0.5, 1.0], 0.2), (2, [0.3, 0.7, 1.5], NULL), (3, [0.0, 2.0, 3.0], erfc(5));
+CREATE TABLE join_table (test_id UInt32, test_value Float64);
+INSERT INTO join_table VALUES (1, 0.1), (1, 0.2), (2, 0.3), (3, NULL);
+SELECT t.id, AVG(erfc(arrayElement(t.values, 2))) AS average_erfc FROM test_table t JOIN join_table j ON t.id = j.test_id GROUP BY t.id HAVING average_erfc IS NOT NULL;
+SELECT DISTINCT t.id, erfc(COALESCE(j.test_value, 100)) FROM test_table t LEFT JOIN join_table j ON t.id = j.test_id WHERE erfc(arrayElement(t.values, 1)) > 0.1 ORDER BY erfc(arrayElement(t.values, 2));
+SELECT t.id, (SELECT erfc(MAX(score)) FROM test_table WHERE id = t.id) AS max_erfc FROM test_table t WHERE values[1] IS NOT NULL;
+SELECT id, erfc(VALUES) AS erfc_calculated FROM (SELECT id, arrayElement(values, 1) AS VALUES FROM test_table) ORDER BY erfc_calculated DESC;
+CREATE TABLE complex_table (num_value UInt8, detail String, data Array(Nullable(Float64)));
+INSERT INTO complex_table VALUES (1, 'Test Detail 1', [NULL, 1.0, 2.0]), (2, 'Test Detail 2', [3.0, NULL, 4.5]), (3, 'Test Detail 3', [7.8, 5.0, NULL]);
+SELECT AVG(erfc(COALESCE(arrayElement(data, 2), 0.0))) AS avg_erfc FROM complex_table GROUP BY num_value HAVING avg_erfc < 1.0;

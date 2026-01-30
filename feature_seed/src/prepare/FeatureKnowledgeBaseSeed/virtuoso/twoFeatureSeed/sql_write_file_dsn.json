@@ -1,0 +1,17 @@
+{
+    "function": "sql_write_file_dsn",
+    "operator": "+",
+    "sql_array": [
+        "CREATE TABLE test_data (id INT, value VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO test_data (id, value) VALUES (1, 'example'), (2, NULL), (3, 'test');",
+        "CREATE TABLE additional_data (data_id INT, data_value FLOAT, category VARCHAR(50));",
+        "INSERT INTO additional_data (data_id, data_value, category) VALUES (1, 10.5, 'A'), (2, NULL, 'B'), (3, 20.0, 'C');",
+        "SELECT sql_write_file_dsn('mydsn', 'ODBC', 'example', (SELECT COUNT(*) + 1 FROM test_data)) AS file_dsn_output FROM dual;",
+        "SELECT t.id, t.value + ' modified' AS new_value FROM test_data t WHERE t.id < (SELECT MAX(data_id) FROM additional_data) + 1;",
+        "SELECT a.data_id, a.data_value + (SELECT AVG(value::FLOAT) FROM test_data WHERE value IS NOT NULL) AS adjusted_value FROM additional_data a WHERE EXISTS (SELECT 1 FROM test_data t WHERE t.id = a.data_id);",
+        "SELECT a.category, COUNT(*) AS total FROM additional_data a GROUP BY a.category HAVING COUNT(*) > (SELECT t.id + 1 FROM test_data t WHERE t.value IS NOT NULL ORDER BY t.id DESC LIMIT 1);",
+        "WITH temp_summary AS (SELECT data_id, SUM(data_value) + 10 AS total_value FROM additional_data GROUP BY data_id) SELECT ts.data_id, sql_write_file_dsn('summary_' || ts.data_id, 'ODBC', 'data', ts.total_value) FROM temp_summary ts WHERE total_value NOT IN (SELECT NULL + value::FLOAT FROM test_data);",
+        "DROP TABLE IF EXISTS test_data;",
+        "DROP TABLE IF EXISTS additional_data;"
+    ]
+}

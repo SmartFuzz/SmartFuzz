@@ -1,0 +1,29 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=104116",
+  "title": "SQL_CALC_FOUND_ROWS with LIMIT returns invalid val when query in parentheses",
+  "vulnerable_database": "MySQL Server: DML",
+  "date": "2021-06-25 19:04:00",
+  "vulnerable_version": "5.7",
+  "description": "When calling SELECT FOUND_ROWS() after using SQL_CALC_FOUND_ROWS with LIMIT on a query surrounded by parentheses always returns the actual returned rows and not the found rows; The correct value is returned if the query is not surrounded by parentheses. Happens for both InnoDB and MyISAM tables.\r\nCREATE TABLE dev.sql_calc_test (ID INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, FOO TINYINT NOT NULL DEFAULT 0);\r\nmysql> INSERT INTO dev.sql_calc_test VALUES(NULL, 1),(NULL,2),(NULL,3),(NULL,4);\r\nmysql> SELECT SQL_CALC_FOUND_ROWS * FROM dev.sql_calc_test LIMIT 0;\r\nmysql> SELECT FOUND_ROWS();\r\n+--------------+\r\n| FOUND_ROWS() |\r\n+--------------+\r\n|            4 |\r\n+--------------+\r\n\r\nmysql> (SELECT SQL_CALC_FOUND_ROWS * FROM dev.sql_calc_test) LIMIT 0;\r\nmysql> SELECT FOUND_ROWS();\r\n+--------------+\r\n| FOUND_ROWS() |\r\n+--------------+\r\n|            0 |\r\n+--------------+\n\nmysql> (SELECT SQL_CALC_FOUND_ROWS * FROM dev.sql_calc_test) LIMIT 1;\r\nmysql> SELECT FOUND_ROWS();\r\n+--------------+\r\n| FOUND_ROWS() |\r\n+--------------+\r\n|            1 |\r\n+--------------+\r\n\r\nWhen using the same syntax with a UNION query, it works correctly:\r\nmysql> (SELECT SQL_CALC_FOUND_ROWS * FROM dev.sql_calc_test WHERE FOO<2) UNION \r\n(SELECT * FROM dev.sql_calc_test WHERE FOO=3) \r\nLIMIT 0;\r\nmysql> select FOUND_ROWS();\r\n+--------------+\r\n| FOUND_ROWS() |\r\n+--------------+\r\n|            2 |\r\n+--------------+\r\n\r\nThis was working correctly at least in 5.6.10.\nHow to repeat:\nmysql> CREATE TABLE dev.sql_calc_test (ID INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, FOO TINYINT NOT NULL DEFAULT 0);\r\nQuery OK, 0 rows affected (0.02 sec)\r\n\r\nmysql> INSERT INTO dev.sql_calc_test VALUES(NULL, 1),(NULL,2),(NULL,3),(NULL,4);\r\nQuery OK, 4 rows affected (0.00 sec)\r\nRecords: 4  Duplicates: 0  Warnings: 0\r\n\r\nmysql> SELECT SQL_CALC_FOUND_ROWS * FROM dev.sql_calc_test LIMIT 0;\r\nEmpty set (0.00 sec)\r\n\r\nmysql> SELECT FOUND_ROWS();\r\n+--------------+\r\n| FOUND_ROWS() |\r\n+--------------+\r\n|            4 |\r\n+--------------+\r\n1 row in set (0.00 sec)\r\n\r\nmysql> (SELECT SQL_CALC_FOUND_ROWS * FROM dev.sql_calc_test) LIMIT 0;\r\nEmpty set (0.00 sec)\r\n\r\nmysql> SELECT FOUND_ROWS();\r\n+--------------+\r\n| FOUND_ROWS() |\r\n+--------------+\r\n|            0 |\r\n+--------------+\r\n1 row in set (0.00 sec)\r\n\r\nmysql> (SELECT SQL_CALC_FOUND_ROWS * FROM dev.sql_calc_test WHERE FOO<2) \r\nUNION \r\n(SELECT * FROM dev.sql_calc_test WHERE FOO=3) \r\nLIMIT 0;\r\nEmpty set (0.00 sec)\r\n\r\nmysql> select FOUND_ROWS();\r\n+--------------+\r\n| FOUND_ROWS() |\r\n+--------------+\r\n|            2 |\r\n+--------------+\r\n1 row in set (0.00 sec)\n\nmysql> SELECT SQL_CALC_FOUND_ROWS * FROM dev.sql_calc_test WHERE FOO<2  \r\nUNION \r\nSELECT * FROM dev.sql_calc_test WHERE FOO=3 \r\nLIMIT 0;\r\nEmpty set (0.01 sec)\r\n\r\nmysql> SELECT FOUND_ROWS();\r\n+--------------+\r\n| FOUND_ROWS() |\r\n+--------------+\r\n|            2 |\r\n+--------------+\r\n1 row in set (0.00 sec)\nSuggested fix:\nReturn the proper count of found rows.",
+  "poc": [
+    "CREATE TABLE dev.sql_calc_test (ID INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, FOO TINYINT NOT NULL DEFAULT 0);",
+    "INSERT INTO dev.sql_calc_test VALUES(NULL, 1),(NULL,2),(NULL,3),(NULL,4);",
+    "SELECT SQL_CALC_FOUND_ROWS * FROM dev.sql_calc_test LIMIT 0;",
+    "SELECT FOUND_ROWS();",
+    "SELECT SQL_CALC_FOUND_ROWS * FROM dev.sql_calc_test) LIMIT 0;",
+    "SELECT SQL_CALC_FOUND_ROWS * FROM dev.sql_calc_test) LIMIT 1;",
+    "SELECT SQL_CALC_FOUND_ROWS * FROM dev.sql_calc_test WHERE FOO<2) UNION\n(SELECT * FROM dev.sql_calc_test WHERE FOO=3)\nLIMIT 0;",
+    "select FOUND_ROWS();",
+    "SELECT SQL_CALC_FOUND_ROWS * FROM dev.sql_calc_test WHERE FOO<2\nUNION\nSELECT * FROM dev.sql_calc_test WHERE FOO=3\nLIMIT 0;"
+  ],
+  "key_bug_features": [
+    "Using SQL_CALC_FOUND_ROWS with LIMIT in parentheses"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE dev.sql_calc_test_2 (ID INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, FOO TINYINT NOT NULL DEFAULT 0, BAR VARCHAR(255) DEFAULT NULL);",
+    "INSERT INTO dev.sql_calc_test_2 VALUES (NULL, 1, 'test1'), (NULL, 2, 'test2'), (NULL, 3, 'test3'), (NULL, 4, 'test4');",
+    "SELECT SQL_CALC_FOUND_ROWS * FROM (SELECT * FROM dev.sql_calc_test_2 WHERE FOO > 1) AS subquery LIMIT 2;",
+    "SELECT FOUND_ROWS();",
+    "SELECT SQL_CALC_FOUND_ROWS * FROM dev.sql_calc_test_2 WHERE FOO IS NULL LIMIT 1;"
+  ]
+}

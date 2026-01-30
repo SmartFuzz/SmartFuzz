@@ -1,0 +1,10 @@
+CREATE TABLE test_table (name String, value UInt32);
+INSERT INTO test_table VALUES ('Alice', 1), ('Bob', 2), ('Carol', 3);
+SELECT count(*) FROM hdfsCluster('cluster_simple', 'hdfs://hdfs1:9000/{some,another}_dir/some_file_{1..3}', 'TSV', 'name String, value UInt32');
+SELECT name, value FROM hdfsCluster('cluster_simple', 'hdfs://hdfs1:9000/{some,another}_dir/*', 'TSV', 'name String, value UInt32') WHERE value > 1;
+SELECT COUNT(*) FROM (SELECT name, sum(value) as total FROM hdfsCluster('cluster_simple', 'hdfs://hdfs1:9000/data/*.tsv', 'TSV', 'name String, value UInt32') GROUP BY name);
+SELECT name, value FROM hdfsCluster('cluster_simple', 'hdfs://hdfs1:9000/{data_dir,other_data_dir}/file_?/*.tsv', 'TSV', 'name String, value UInt32') WHERE name IN (SELECT name FROM test_table);
+CREATE TABLE result_table AS SELECT name, MAX(value) as max_value FROM hdfsCluster('cluster_simple', 'hdfs://hdfs1:9000/{some,another}_dir/some_file_*.tsv', 'TSV', 'name String, value UInt32') GROUP BY name;
+SELECT result_table.name, result_table.max_value FROM result_table JOIN test_table ON result_table.name = test_table.name WHERE test_table.value < 3;
+SELECT DISTINCT name FROM hdfsCluster('cluster_simple', 'hdfs://hdfs1:9000/data/**', 'TSV', 'name String, value UInt32');
+INSERT INTO test_table SELECT name, value FROM hdfsCluster('cluster_simple', 'hdfs://hdfs1:9000/{data_dir,other_data_dir}/file_?.tsv', 'TSV', 'name String, value UInt32') WHERE value BETWEEN 1 AND 2;

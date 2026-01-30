@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/ef9318757b",
+  "title": "Incorrect result due to the skip-ahead-distinct optimization",
+  "description": "drh added on 2017-11-21 15:19:27:\nThe query in the SQL shown below gives an incorrect answer after\nANALYZE has been run:\nCREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER);\nCREATE INDEX t1b ON t1(b);\nCREATE TABLE t2(x INTEGER PRIMARY KEY, y INTEGER);\nCREATE INDEX t2y ON t2(y);\nWITH RECURSIVE c(x) AS (VALUES(0) UNION ALL SELECT x+1 FROM c WHERE x<49)\n  INSERT INTO t1(b) SELECT x/10 - 1 FROM c;\nWITH RECURSIVE c(x) AS (VALUES(-1) UNION ALL SELECT x+1 FROM c WHERE x<19)\n  INSERT INTO t2(x,y) SELECT x, 1 FROM c;\nSELECT DISTINCT y FROM t1, t2 WHERE b=x AND b<>-1;\nANALYZE;\nSELECT DISTINCT y FROM t1, t2 WHERE b=x AND b<>-1;\nThis problem seems to have been introduced by the skip-ahead-distinct\noptimization of check-in [f489b5bb6b35665], first included in SQLite\nversion 3.19.0.  The problem was reported on the public mailing list\nby David Raymond.\ndrh added on 2017-11-23 00:16:03:\nTwo more test cases:\nCREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER);\nCREATE INDEX t1b ON t1(b);\nCREATE TABLE t2(x INTEGER PRIMARY KEY, y INTEGER);\nCREATE INDEX t2y ON t2(y);\nWITH RECURSIVE c(x) AS (VALUES(0) UNION ALL SELECT x+1 FROM c WHERE x<49)\n  INSERT INTO t1(b) SELECT -(x/10 - 1) FROM c;\nWITH RECURSIVE c(x) AS (VALUES(-1) UNION ALL SELECT x+1 FROM c WHERE x<19)\n  INSERT INTO t2(x,y) SELECT -x, 1 FROM c;\nSELECT DISTINCT y FROM t1, t2 WHERE b=x AND b<>1 ORDER BY y DESC;\nANALYZE;\nSELECT DISTINCT y FROM t1, t2 WHERE b=x AND b<>1 ORDER BY y DESC;\nCREATE TABLE t1(a, b);\nCREATE INDEX t1a ON t1(a, b);\n-- Lots of rows of (1, 'no'), followed by a single (1, 'yes').\nWITH RECURSIVE c(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM c WHERE x<100)\n  INSERT INTO t1(a, b) SELECT 1, 'no' FROM c;\nINSERT INTO t1(a, b) VALUES(1, 'yes');\nCREATE TABLE t2(x PRIMARY KEY);\nINSERT INTO t2 VALUES('yes');\nSELECT DISTINCT a FROM t1, t2 WHERE x=b;\nANALYZE;\nSELECT DISTINCT a FROM t1, t2 WHERE x=b;",
+  "date": "2017-11-21 15:19:277.72 years ago",
+  "vulnerable_version": "3.21.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(a INT PRIMARY KEY, b VARCHAR(255) NOT NULL);",
+    "CREATE TABLE t2(x INT PRIMARY KEY, y FLOAT DEFAULT 0.0);",
+    "INSERT INTO t1(b) VALUES('test'), ('example'), (NULL), ('sample');",
+    "INSERT INTO t2(x, y) VALUES(1, 1.5), (2, NULL), (3, 3.5);",
+    "SELECT DISTINCT y FROM t1 JOIN t2 ON b = x WHERE b IS NOT NULL AND y IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "skip-ahead-distinct optimization after ANALYZE is run"
+  ]
+}

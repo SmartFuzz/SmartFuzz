@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/19990",
+  "title": "Incorrect error message when insert violates foreign key",
+  "description": "### What happens?\n\nWhen inserting from a dataframe into a table with a foreign key and the foreign key constraint is violated, the package attempts to tell you which row violates the constraint. However, it seems to be instead pulling the key from the first row of the dataframe, not the row that's actually violating the constraint.\n\nNote: adapted from [this issue](https://github.com/duckdb/duckdb-python/issues/196) initially submitted to the Python package, synthesized with comments and an example from @paultiq showing the problem is not exclusive to Python. He flags this is a regression--the problem is present in 1.4.0+, but not in 1.3.2.\n\n### To Reproduce\n\n```sql\n-- Reference table contains values 1 and 2\nCREATE TABLE reference (\n    reference_id BIGINT PRIMARY KEY\n);\nINSERT INTO reference values (1), (2);\n\n-- Main table references rows 2 and 3\nCREATE TABLE data (\n    data_id INT PRIMARY KEY,\n    reference_id BIGINT,\n    FOREIGN KEY (reference_id) REFERENCES reference(reference_id)\n);\ncreate table temp_data as select * from (values(1, 1), (2, 3)) as t(data_id, reference_id);\nINSERT INTO data BY NAME SELECT * FROM temp_data;\n```\n\nGives following response:\n> Constraint Error:\n> Violates foreign key constraint because key \"reference_id: 1\" does not exist in the referenced table\n\nThis is despite key 1 being present in `reference`; it is 3 that violates the constraint.\n\n### OS:\n\nUbuntu 22.04\n\n### DuckDB Version:\n\n1.4.2\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nGideon Moore\n\n### Affiliation:\n\nStanford University, Economics Department\n\n### Did you include all relevant configuration (e.g., CPU architecture, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant data sets for reproducing the issue?\n\nNot applicable - the reproduction does not require a data set",
+  "date": "2025-11-30 01:12:30",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE reference (reference_id BIGINT PRIMARY KEY, description VARCHAR);",
+    "INSERT INTO reference VALUES (1, 'First'), (2, 'Second'), (3, 'Third');",
+    "CREATE TABLE data (data_id INT PRIMARY KEY, reference_id BIGINT, value DOUBLE PRECISION, FOREIGN KEY (reference_id) REFERENCES reference(reference_id));",
+    "CREATE TEMP TABLE temp_data (data_id INT, reference_id BIGINT, value DOUBLE PRECISION);",
+    "INSERT INTO temp_data VALUES (1, 1, 10.5), (2, NULL, 20.0), (3, 4, 30.0);",
+    "INSERT INTO data (data_id, reference_id, value) SELECT data_id, reference_id, value FROM temp_data;"
+  ],
+  "key_bug_features": [
+    "Incorrect foreign key violation error message generation"
+  ]
+}

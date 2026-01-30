@@ -1,0 +1,14 @@
+CREATE TABLE test_vectors (id Int32, vec1 Array(UInt16), vec2 Array(UInt8));
+INSERT INTO test_vectors VALUES (1, [1, 2, 3], [4, 5, 6]), (2, [10, 20, NULL], [1, NULL, 3]), (3, [NULL, 2, 3], [4, 5, 6]);
+SELECT id, arrayDotProduct(vec1, vec2) AS dot_product FROM test_vectors WHERE arrayDotProduct(vec1, vec2) <> 0;
+SELECT id, arrayDotProduct(vec1, vec2) AS dot_product FROM test_vectors WHERE arrayDotProduct(vec1, vec2) <> arrayDotProduct([0, 1, 2], [0, 0, 0]);
+SELECT id, arrayDotProduct(vec1, vec2) AS dot_product FROM test_vectors WHERE arrayDotProduct(vec1, vec2) IS NOT NULL AND dot_product <> 30;
+SELECT id, arrayDotProduct(vec1, vec2) AS dot_product FROM test_vectors WHERE (dot_product < 50) AND (vec1[1] <> 2);
+CREATE TABLE test_aggregated AS SELECT id, SUM(arrayDotProduct(vec1, vec2)) AS total_dot_product FROM test_vectors GROUP BY id HAVING total_dot_product <> 0;
+SELECT id, (SELECT COUNT(*) FROM test_vectors t2 WHERE arrayDotProduct(t2.vec1, t2.vec2) IS NOT NULL) AS count_valid FROM test_vectors;
+SELECT id, arrayDotProduct(vec1, [cast(x, 'Int8')]) AS dot_product FROM (SELECT id, arrayJoin(vec2) AS x FROM test_vectors WHERE vec2 <> []) WHERE id <> 2;
+SELECT DISTINCT id FROM test_vectors WHERE arrayDotProduct(vec1, vec2) IS NOT NULL AND arrayDotProduct(vec1, vec2) <> (SELECT max(arrayDotProduct(vec1, vec2)) FROM test_vectors);
+CREATE TEMPORARY TABLE temp_test AS SELECT id, arrayDotProduct(vec1, vec2) AS temp_dot_product FROM test_vectors WHERE temp_dot_product IS NULL;
+ALTER TABLE test_vectors ADD COLUMN vec3 Array(Float32);
+INSERT INTO test_vectors (id, vec1, vec2, vec3) VALUES (4, [1, 2, 3], [4, 5, 6], [7.0, 8.0, 9.0]);
+SELECT id, arrayDotProduct(vec1, vec2) AS dot_product FROM test_vectors WHERE arrayDotProduct(vec1, vec2) <> 0 AND vec3[0] IS NOT NULL ORDER BY dot_product DESC;

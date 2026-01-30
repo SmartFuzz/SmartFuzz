@@ -1,0 +1,19 @@
+{
+    "function": "sequenceCount",
+    "operator": "-a",
+    "sql_array": [
+        "CREATE TABLE events (time DateTime, number UInt8) ENGINE = MergeTree() ORDER BY time;",
+        "INSERT INTO events (time, number) VALUES (now(), 1), (now() + INTERVAL 1 SECOND, 2), (now() + INTERVAL 2 SECOND, 3), (now() + INTERVAL 3 SECOND, 1), (now() + INTERVAL 4 SECOND, 2);",
+        "SELECT sequenceCount('(?1).*?(?2)')(time, number = -1, number = -2) FROM events;",
+        "SELECT COUNT(*) FROM (SELECT sequenceCount('(?1).*?(?2)')(time, number = -1, number = -2) AS seq_count FROM events) AS derived WHERE seq_count IS NOT NULL;",
+        "SELECT * FROM (SELECT time, sequenceCount('(?1).*?(?2)')(time, number = number - 1, number = number - 2) AS seq_count FROM events GROUP BY time HAVING seq_count > 0) as chain_events;",
+        "SELECT time, -sequenceCount('(?1).*?(?2)')(time, number = 1, number = 2) FROM events GROUP BY time ORDER BY time DESC;",
+        "CREATE TABLE temp_events AS SELECT time, -1 AS number UNION ALL SELECT now() + INTERVAL 10 SECOND, 2;",
+        "INSERT INTO temp_events (time, number) VALUES (now() + INTERVAL 5 SECOND, 3), (now() + INTERVAL 15 SECOND, 1);",
+        "SELECT sequenceCount('(?1).*?(?2)')(time, number = 1, number = 2), -COUNT(*) FROM temp_events;",
+        "SELECT sequenceCount('(?1).*?(?2)')(time, number = CAST(NULL AS UInt8), number = 0) FROM events;",
+        "SELECT sequenceCount('(?1).*?(?2)')(time, number = 1, number = CAST('2' AS UInt8)) FROM events;",
+        "DROP TABLE IF EXISTS events;",
+        "DROP TABLE IF EXISTS temp_events;"
+    ]
+}

@@ -1,0 +1,10 @@
+CREATE TABLE geo_data (id UInt64, s2index UInt64, description String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO geo_data (id, s2index, description) VALUES (1, 5074766849661468672, 'First entry'), (2, 5074766849661468673, 'Second entry');
+SELECT id, s2GetNeighbors(s2index) AS neighbors FROM geo_data WHERE s2index IN (SELECT s2index FROM geo_data WHERE description LIKE 'First%');
+SELECT id, arrayElement(s2GetNeighbors(s2index), 2) AS second_neighbor FROM geo_data WHERE id = (SELECT MIN(id) FROM geo_data);
+SELECT id, arrayJoin(s2GetNeighbors(s2index)) AS neighbor_index FROM geo_data WHERE s2index = (SELECT MAX(s2index) FROM geo_data WHERE s2index > 0);
+SELECT id, count() AS neighbor_count FROM geo_data GROUP BY id HAVING neighbor_count > 0;
+CREATE TABLE temp_neighbors AS SELECT s2GetNeighbors(s2index) AS neighbors FROM geo_data WHERE description IS NOT NULL;
+SELECT id, neighbors[1], neighbors[3] FROM (SELECT s2GetNeighbors(s2index) AS neighbors FROM geo_data) AS subquery;
+INSERT INTO geo_data (id, s2index, description) VALUES (3, 5555555555555555555, 'Boundary entry');
+SELECT description, arrayJoin(s2GetNeighbors(s2index)) AS neighbor FROM geo_data WHERE id = 3;

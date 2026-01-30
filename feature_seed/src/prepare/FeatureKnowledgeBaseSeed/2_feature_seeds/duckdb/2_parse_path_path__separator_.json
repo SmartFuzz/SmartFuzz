@@ -1,0 +1,11 @@
+CREATE TABLE file_paths (id INT, path VARCHAR, processed_path VARCHAR);
+INSERT INTO file_paths (id, path) VALUES (1, '/path/to/file1.csv'), (2, 'C:\path\to\file2.csv'), (3, '/empty/path');
+SELECT id, path, parse_path(path, 'forward_slash') AS parsed_components, xor(id::BITSTRING, 1::BITSTRING) AS xored_id FROM file_paths WHERE processed_path IS NULL;
+SELECT id, path, parse_path(path, 'backslash') AS backslash_parsed, (id XOR 3)::BITSTRING AS modified_xor FROM file_paths WHERE id > 1 AND processed_path IS NULL;
+WITH ParsedPaths AS (SELECT id, parse_path(path, 'system') AS components FROM file_paths) SELECT components, COUNT(*) FROM ParsedPaths GROUP BY components HAVING COUNT(*) > 1;
+SELECT id, path, xor(parse_path(path, 'both_slash')::BITSTRING, '110'::BITSTRING) FROM file_paths WHERE path IS NOT NULL AND id < 3;
+SELECT id, path, xor(CAST(path AS BITSTRING), '010'::BITSTRING) FROM file_paths WHERE id = (SELECT MAX(id) FROM file_paths) ORDER BY id DESC;
+CREATE TABLE test_values (val INT);
+INSERT INTO test_values (val) VALUES (0), (1), (2), (3), (4), (5);
+SELECT val, parse_path('/dummy/path/file' || val || '.txt', 'system') AS parsed FROM test_values WHERE xor(val::BITSTRING, 1::BITSTRING) = '0'::BITSTRING;
+SELECT id, parse_path(path, 'backslash') AS parsed_path, xor(XOR(0::BITSTRING, id::BITSTRING), 1::BITSTRING) FROM file_paths WHERE processed_path IS NULL;

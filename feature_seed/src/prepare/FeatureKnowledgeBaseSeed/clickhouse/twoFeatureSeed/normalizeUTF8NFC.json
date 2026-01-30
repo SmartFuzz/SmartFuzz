@@ -1,0 +1,19 @@
+{
+    "function": "normalizeUTF8NFC",
+    "operator": "a LIKE s",
+    "sql_array": [
+        "CREATE TABLE test_strings (id Int32, input_str String);",
+        "INSERT INTO test_strings VALUES (1, '\u00e2'), (2, 'abcdefg'), (3, NULL), (4, 'non-ascii-\u00e2'), (5, '');",
+        "SELECT id, input_str, normalizeUTF8NFC(input_str) AS normalized, length(normalizeUTF8NFC(input_str)) AS normalized_length FROM test_strings WHERE normalizeUTF8NFC(input_str) LIKE '%\u00e2%';",
+        "CREATE TABLE test_join (id Int32, ref_id Int32, comparison_str String);",
+        "INSERT INTO test_join VALUES (1, 1, '\u00e2'), (2, 1, 'abcdefg'), (3, 2, 'none \u00e2'), (4, 2, '');",
+        "SELECT t1.id, t1.input_str, t2.comparison_str FROM test_strings t1 JOIN test_join t2 ON normalizeUTF8NFC(t1.input_str) LIKE normalizeUTF8NFC(t2.comparison_str) WHERE t1.id IS NOT NULL OR t2.comparison_str IS NULL;",
+        "SELECT count(*) FROM (SELECT id, input_str, normalizeUTF8NFC(input_str) AS nfc FROM test_strings GROUP BY nfc HAVING nfc IS NOT NULL) AS subquery HAVING count(nfc) > 1;",
+        "CREATE TABLE test_null_propagation (id Int32, nullable_str String);",
+        "INSERT INTO test_null_propagation VALUES (1, 'test'), (2, NULL), (3, 'sample'), (4, 'normalize \u00e2');",
+        "SELECT id, normalizeUTF8NFC(NULLIF(nullable_str, '')) AS normalized FROM test_null_propagation WHERE normalized LIKE 'test%';",
+        "CREATE TABLE boundary_tests (id Int32, boundary_str String);",
+        "INSERT INTO boundary_tests VALUES (1, ''), (2, 'a' + repeat('b', 1000)), (3, 'a' + repeat('\u00e7', 500)), (4, normalizeUTF8NFC('\u00e2'));",
+        "SELECT id, length(boundary_str), normalizeUTF8NFC(boundary_str) AS normalized FROM boundary_tests WHERE length(normalized) BETWEEN 1 AND 1000 AND normalized LIKE 'a%';"
+    ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=103709",
+  "title": "export data of double field failed to import when it is double's lower boundary",
+  "description": "The export data of double field failed to import when it is double's lower boundary (-1.7976931348623157e308), while it succeed in 8.0.18 and previous version.\nHow to repeat:\nmysql> create table t1 (a DOUBLE);\r\nQuery OK, 0 rows affected (0.04 sec)\r\n\r\nmysql> insert into t1 values (-1.7976931348623157e308);\r\nQuery OK, 1 row affected (0.01 sec)\r\n\r\nmysql> select * from t1;\r\n+-------------------------+\r\n| a                       |\r\n+-------------------------+\r\n| -1.7976931348623157e308 |\r\n+-------------------------+\r\n1 row in set (0.00 sec)\r\n\r\nmysql> select concat(a) from t1;\r\n+------------------------+\r\n| concat(a)              |\r\n+------------------------+\r\n| -1.797693134862316e308 |\r\n+------------------------+\r\n1 row in set (0.00 sec)\r\n\r\nmysql> select * from t1 into outfile '~/decimal.dat';\r\nQuery OK, 1 row affected (0.00 sec)\r\n\r\nmysql> load data infile '~/decimal.dat' into table t1;\r\nERROR 1264 (22003): Out of range value for column 'a' at row 1\r\n\r\n$ cat ~/decimal.dat\r\n-1.797693134862316e308",
+  "date": "2021-05-15 09:13:00",
+  "vulnerable_version": "8.0.25",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (b DOUBLE NOT NULL, c INT DEFAULT 0);",
+    "INSERT INTO t2 VALUES (-1.7976931348623157e308, NULL);",
+    "SELECT b, COALESCE(c, -1) AS c_value FROM t2;",
+    "SELECT b + 1.0 AS incremented_value FROM t2;",
+    "COPY t2 FROM '~/decimal.dat' DELIMITER ',';"
+  ],
+  "key_bug_features": [
+    "importing double's lower boundary value fails"
+  ]
+}

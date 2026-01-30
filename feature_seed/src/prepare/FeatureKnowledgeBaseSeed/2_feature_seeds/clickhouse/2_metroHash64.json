@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id UInt64, value String, created_at DateTime, status Nullable(UInt8));
+INSERT INTO test_table VALUES (1, 'test', toDateTime('2023-10-01 12:00:00'), NULL);
+INSERT INTO test_table VALUES (2, 'example', toDateTime('2023-10-02 15:00:00'), 1);
+INSERT INTO test_table VALUES (3, 'sample', toDateTime('2023-10-03 18:30:00'), 0);
+SELECT metroHash64(value, created_at, status OR 1) AS MetroHash, toTypeName(MetroHash) AS type FROM test_table WHERE status IS NOT NULL;
+SELECT id, metroHash64(value, (SELECT max(created_at) FROM test_table)) AS MetroHash FROM test_table WHERE id = (SELECT id FROM test_table WHERE created_at < toDateTime('2023-10-02 00:00:00') LIMIT 1);
+SELECT metroHash64(arrayIf((SELECT value FROM test_table WHERE status = 1), created_at, 'fallback')) AS MetroHash FROM test_table GROUP BY value HAVING count(*) > 1 OR MetroHash IS NOT NULL;
+SELECT metroHash64(value, toString(NULL), CASE WHEN status = 0 THEN 'inactive' ELSE 'active' END) AS MetroHash FROM test_table WHERE created_at >= emptyString() OR status IS NULL;
+SELECT metroHash64(value, created_at) AS MetroHash FROM test_table WHERE dateDiff('day', created_at, now()) < 5 AND (status IS NULL OR status = 1) ORDER BY MetroHash ASC;
+DROP TABLE IF EXISTS test_table;

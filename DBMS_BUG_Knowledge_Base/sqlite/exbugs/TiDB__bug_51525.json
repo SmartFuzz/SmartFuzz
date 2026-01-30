@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/51525",
+  "title": "Unexpected Estimated Rows by GROUP BY",
+  "description": "## Bug Report\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```sql\r\nCREATE TABLE t0(c0 BLOB);\r\nINSERT INTO t0(c0) VALUES (NULL), (NULL);\r\nANALYZE TABLE t0;\r\n\r\nEXPLAIN SELECT t0.c0 FROM t0 WHERE ((t0.c0)LIKE(0.1)); -- estRows=0.00\r\nEXPLAIN SELECT t0.c0 FROM t0 WHERE ((t0.c0)LIKE(0.1)) GROUP BY t0.c0; -- estRows=1.00\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\nThe second query has one more `GROUP BY` clause, so I think it should not return more rows than the first query.\r\n\r\nAttach both query plans:\r\n```\r\nid      estRows task    access object   operator info\r\nTableReader_7   0.00    root            data:Selection_6\r\n└─Selection_6   0.00    cop[tikv]               like(database9.t0.c0, \"0.1\", 92)\r\n  └─TableFullScan_5     2.00    cop[tikv]       table:t0        keep order:false, stats:pseudo\r\n```\r\n```\r\nid      estRows task    access object   operator info\r\nHashAgg_8       1.00    root            group by:database9.t0.c0, funcs:firstrow(database9.t0.c0)->database9.t0.c0\r\n└─TableReader_15        0.00    root            data:Selection_14\r\n  └─Selection_14        0.00    cop[tikv]               like(database9.t0.c0, \"0.1\", 92)\r\n    └─TableFullScan_13  2.00    cop[tikv]       table:t0        keep order:false, stats:pseudo\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\nThe second query returns less or same estimated rows than the first query. \r\n\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n```\r\n| Release Version: v7.6.0-alpha-347-g598ccada40\r\nEdition: Community\r\nGit Commit Hash: 598ccada4065e4871bc5bce53a039cbb598a6d82\r\nGit Branch: master\r\nUTC Build Time: 2024-03-04 06:43:19\r\nGoVersion: go1.21.0\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: unistore |\r\n```\r\n\r\n",
+  "date": "2024-03-05T13:22:53Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1(c1 INTEGER, c2 TEXT, c3 BLOB);",
+    "INSERT INTO t1(c1, c2, c3) VALUES (1, 'test', NULL), (2, 'example', NULL), (3, NULL, NULL);",
+    "ANALYZE;",
+    "EXPLAIN QUERY PLAN SELECT t1.c2 FROM t1 WHERE t1.c1 = 1 AND t1.c3 IS NULL;",
+    "EXPLAIN QUERY PLAN SELECT t1.c2 FROM t1 WHERE t1.c1 = 1 AND t1.c3 IS NULL GROUP BY t1.c2;"
+  ],
+  "key_bug_features": [
+    "GROUP BY clause affecting estimated row count"
+  ]
+}

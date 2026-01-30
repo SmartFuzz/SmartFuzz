@@ -1,0 +1,21 @@
+{
+    "function": "subtractMinutes",
+    "operator": "INTERVAL",
+    "sql_array": [
+        "CREATE TABLE test_datetime (id UInt32, date_value Date, datetime_value DateTime, notes String);",
+        "INSERT INTO test_datetime VALUES (1, toDate('2024-01-01'), toDateTime('2024-01-01 12:00:00'), 'Initial entry');",
+        "INSERT INTO test_datetime VALUES (2, toDate('2024-01-02'), toDateTime('2024-01-01 12:30:00'), NULL);",
+        "SELECT id, subtractMinutes(datetime_value, INTERVAL 30 MINUTE) AS modified_datetime, date_value FROM test_datetime WHERE date_value >= toDate('2023-12-31');",
+        "SELECT id, date_value, datetime_value, subtractMinutes(subtractMinutes(datetime_value, INTERVAL 15 MINUTE), INTERVAL 15 MINUTE) AS double_subtract FROM test_datetime HAVING double_subtract IS NOT NULL;",
+        "SELECT id, date_value, datetime_value, (datetime_value + INTERVAL 10 MINUTE - subtractMinutes(datetime_value, 10)) AS round_trip_check FROM test_datetime WHERE notes IS NOT NULL;",
+        "SELECT id, date_value, datetime_value, subtractMinutes(datetime_value, 60) AS to_hour_ago FROM (SELECT id, date_value, datetime_value FROM test_datetime WHERE id = 1) AS subquery;",
+        "SELECT t1.id, t1.date_value, t2.datetime_value, subtractMinutes(t1.datetime_value, (SELECT COUNT(*) FROM test_datetime WHERE notes IS NOT NULL)) AS subtracted_time FROM test_datetime t1 JOIN test_datetime t2 ON t1.id = t2.id;",
+        "WITH toDateTime('2024-01-01 00:00:00') AS base_time SELECT subtractMinutes(base_time, 120) AS two_hours_before, subtractMinutes(base_time + INTERVAL 3 DAY, 5) AS three_days_five_minutes_before;",
+        "CREATE TABLE test_interval (id UInt32, event_time DateTime, interval_value String);",
+        "INSERT INTO test_interval VALUES (1, toDateTime('2024-01-01 12:00:00'), '2 MINUTE'), (2, toDateTime('2024-01-02 13:00:00'), NULL);",
+        "SELECT id, event_time, subtractMinutes(event_time, toInt32(splitByString(interval_value, ' ')[1])) AS modified_time FROM test_interval WHERE interval_value IS NOT NULL;",
+        "SELECT id, subtractMinutes(now() + INTERVAL 2 DAY, INTERVAL 2 HOUR) AS modified_now FROM test_datetime GROUP BY id HAVING modified_now < now();",
+        "SELECT id, date_value, datetime_value, subtractMinutes(datetime_value, INTERVAL 10 MINUTE) AS adjusted_time FROM test_datetime WHERE EXISTS (SELECT 1 FROM test_datetime t WHERE t.notes IS NULL AND t.date_value = test_datetime.date_value);",
+        "SELECT id, date_value, datetime_value, subtractMinutes(datetime_value, INTERVAL 120 MINUTE) AS two_hours_ago, subtractMinutes(date_value, 5) AS five_days_from_min FROM test_datetime WHERE date_value < addDays(now(), 5) ORDER BY five_days_from_min;"
+    ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/53338",
+  "title": "Inconsistent result when using hash partition and auto_increment constraint",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```sql\r\n\r\nCREATE TABLE t0(c0 INTEGER UNSIGNED NOT NULL  AUTO_INCREMENT ) PARTITION BY HASH(c0) PARTITIONS 2;\r\nCREATE TABLE t1(c0 INTEGER UNSIGNED NOT NULL  AUTO_INCREMENT );\r\n\r\nINSERT INTO t0 VALUES (1), (2);\r\nINSERT INTO t1 VALUES (1), (2);\r\nUPDATE t0 SET c0=1;\r\nUPDATE t1 SET c0=1;\r\n\r\ninsert into t0 values(0);\r\ninsert into t1 values(0);\r\n\r\nSELECT t0.c0 FROM t0 order by c0;\r\nSELECT t1.c0 FROM t1 order by c0;\r\n\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\ntwo queries produce same result\r\n\r\n### 3. What did you see instead (Required)\r\n```sql\r\nMySQL [d0]> SELECT t0.c0 FROM t0 order by c0;\r\n+----+\r\n| c0 |\r\n+----+\r\n|  1 |\r\n|  1 |\r\n|  6 |\r\n+----+\r\n3 rows in set (0.01 sec)\r\n\r\nMySQL [d0]> SELECT t1.c0 FROM t1 order by c0;\r\n+----+\r\n| c0 |\r\n+----+\r\n|  1 |\r\n|  1 |\r\n|  5 |\r\n+----+\r\n3 rows in set (0.00 sec)\r\n```\r\n### 4. What is your TiDB version? (Required)\r\n\r\nrelease version 8.0.0\r\n\r\n",
+  "date": "2024-05-16T13:30:13Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2(c0 INTEGER NOT NULL, c1 VARCHAR(50) DEFAULT NULL, c2 TIMESTAMP DEFAULT CURRENT_TIMESTAMP) PARTITION BY HASH(c0);",
+    "CREATE TABLE t3(c0 SERIAL PRIMARY KEY, c1 FLOAT NOT NULL);",
+    "INSERT INTO t2 (c0, c1) VALUES (1, 'test1'), (2, 'test2'), (3, 'test3');",
+    "INSERT INTO t3 (c1) VALUES (1.5), (2.5);",
+    "SELECT t2.c0, t2.c1 FROM t2 WHERE t2.c0 IS NOT NULL ORDER BY t2.c0;"
+  ],
+  "key_bug_features": [
+    "hash partition with auto_increment constraint inconsistency"
+  ]
+}

@@ -1,0 +1,13 @@
+CREATE TABLE filesystem_info (path String, size UInt64, updated_at DateTime) ENGINE = MergeTree() ORDER BY path;
+INSERT INTO filesystem_info VALUES ('/data', 5000000000, now()), ('/logs', 2000000000, now()), ('/temp', 100000000, now());
+SELECT path, size FROM filesystem_info WHERE size IN (SELECT size FROM filesystem_info WHERE updated_at > now() - INTERVAL 1 DAY);
+SELECT path, formatReadableSize(filesystemCapacity()) AS capacity FROM filesystem_info WHERE size IN (SELECT filesystemCapacity() FROM filesystem_info);
+SELECT path FROM filesystem_info HAVING size IN (SELECT max(size) FROM filesystem_info WHERE size IS NOT NULL);
+SELECT path, size, filesystemCapacity() AS total_capacity FROM filesystem_info WHERE total_capacity IN (SELECT total_capacity - size FROM filesystem_info);
+SELECT GROUP BY path HAVING filesystemCapacity() IN (SELECT size FROM filesystem_info WHERE path LIKE '%temp%');
+SELECT path, formatReadableSize(IFNULL(size, 0)) AS adjusted_size FROM filesystem_info WHERE '5000000000' IN (SELECT CAST(size AS String) FROM filesystem_info);
+CREATE TABLE temp_data (id UInt32, data String, created_at DateTime DEFAULT now()) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO temp_data VALUES (1, 'data1'), (2, NULL), (3, 'data3');
+SELECT id, data FROM temp_data WHERE data IN (SELECT CAST(NULL AS String) FROM temp_data) AND size IN (SELECT filesystemCapacity() FROM filesystem_info);
+SELECT path, size, filesystemCapacity() FROM filesystem_info WHERE path IN (SELECT path FROM temp_data WHERE created_at > now() - INTERVAL 1 WEEK);
+SELECT path, size, formatReadableSize(filesystemCapacity() - size) AS space_left FROM filesystem_info WHERE size > (SELECT min(size) FROM filesystem_info) ORDER BY space_left DESC;

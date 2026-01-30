@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/86922",
+  "title": "refreshable materialized view, don't full cleanup old destination table after new destination table with new UUID",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nAfter create refreshable materialized view, it recreate destination table with new uuid on every refresh, it's OK, but on file system refresh process don't cleanup old table properly, and I can't create destination table with the same UUID\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nuse following commands for reproduce\n```sql\nDROP DATABASE IF EXISTS test SYNC;\nCREATE DATABASE test ENGINE=Atomic;\nCREATE TABLE  IF NOT EXISTS `test`.`mv_src_table` UUID 'dc60928b-ff47-448d-806c-2dc2e06714fb' ON CLUSTER 'cluster' (id UInt64) Engine=ReplicatedMergeTree('/clickhouse/tables/{database}/{table}','replica1') ORDER BY id;\nCREATE  TABLE  IF NOT EXISTS `test`.`mv_refreshable_dst_table` UUID '620be150-bdef-47b2-a295-428dd8e79c97' ON CLUSTER 'cluster' (id UInt64) Engine=MergeTree ORDER BY id;\nCREATE  MATERIALIZED VIEW  IF NOT EXISTS `test`.`mv_refreshable` UUID '98be4ca8-fe55-471a-9c56-2e722a7cd8c1' ON CLUSTER 'cluster' REFRESH EVERY 1 MINUTE TO `test`.`mv_refreshable_dst_table` AS SELECT max(id) AS id FROM `test`.`mv_src_table`;\nDROP TABLE `test`.`mv_refreshable_dst_table` SYNC;\n-- INEXPECTED ERROR HERE\nCREATE  TABLE  IF NOT EXISTS `test`.`mv_refreshable_dst_table` UUID '620be150-bdef-47b2-a295-428dd8e79c97' ON CLUSTER 'cluster' (id UInt64) Engine=MergeTree ORDER BY id;\n```\nroot reason\nAfter creating MATERIALIZED VIEW, I tried to check the old UUID and got a non-empty file structure, but the expected result was that the folder should not exist.\n```bash\nls -la /var/lib/clickhouse/store/620/620be150-bdef-47b2-a295-428dd8e79c97/\ntotal 16\ndrwxr-x--- 3 clickhouse clickhouse 4096 Sep 10 05:32 .\ndrwxr-x--- 3 clickhouse clickhouse 4096 Sep 10 05:32 ..\ndrwxr-x--- 2 clickhouse clickhouse 4096 Sep 10 05:32 detached\n-rw-r----- 1 clickhouse clickhouse    1 Sep 10 05:32 format_version.txt\n```\nand `mv_refreshable_dst_table` contains different uuid as expected\n```sql\nSELECT uuid FROM system.tables WHERE database='test' AND table='mv_refreshable_dst_table';\n┌─uuid─────────────────────────────────┐\n1. │ 38ca3e2a-4f8c-4d54-99c9-6b4b00c94968 │\n```\nand data present\n```\nroot@clickhouse:/# ls -la /var/lib/clickhouse/store/38c/38ca3e2a-4f8c-4d54-99c9-6b4b00c94968/\ntotal 20\ndrwxr-x--- 4 clickhouse clickhouse 4096 Sep 10 06:00 .\ndrwxr-x--- 3 clickhouse clickhouse 4096 Sep 10 06:00 ..\ndrwxr-x--- 2 clickhouse clickhouse 4096 Sep 10 06:00 all_1_1_0\ndrwxr-x--- 2 clickhouse clickhouse 4096 Sep 10 06:00 detached\n-rw-r----- 1 clickhouse clickhouse    1 Sep 10 06:00 format_version.txt\n```\nalso reproduced on 25.3\ni think this is just present from the beginning: REFRESHABLE MATERIALIZED VIEW just create junk empty folders in store for every refresh\n### Expected behavior\nproperly cleanup store sub-folders after refresh materialized view\n### Error message and/or stacktrace\ngot error",
+  "date": "2025-09-10T06:54:57Z",
+  "vulnerable_version": "25.8.2.29",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "DROP SCHEMA IF EXISTS test CASCADE;",
+    "CREATE SCHEMA test;",
+    "CREATE TABLE IF NOT EXISTS test.mv_src_table (id BIGINT, name VARCHAR(255), created_at TIMESTAMP);",
+    "INSERT INTO test.mv_src_table (id, name, created_at) VALUES (1, 'test1', CURRENT_TIMESTAMP), (2, 'test2', CURRENT_TIMESTAMP);",
+    "CREATE TABLE IF NOT EXISTS test.mv_refreshable_dst_table (id BIGINT, value DOUBLE PRECISION);",
+    "CREATE VIEW test.mv_refreshable AS SELECT id, MAX(id) * 1.0 AS value FROM test.mv_src_table GROUP BY id;"
+  ],
+  "key_bug_features": [
+    "incomplete cleanup of old destination table on refresh"
+  ]
+}

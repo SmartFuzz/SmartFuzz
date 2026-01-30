@@ -1,0 +1,12 @@
+CREATE TABLE test_table (id Int32, value String, number Nullable(Float32), str_val String) ENGINE = Memory;
+INSERT INTO test_table VALUES (1, '42.7', NULL, 'example'), (2, 'abc', toFloat32OrNull('3.14'), 'test'), (3, '', toFloat32OrNull(''), 'empty'), (4, '1e3', NULL, 'exponential');
+SELECT id, value, transform(value, ['abc', 'example'], [toFloat32OrNull(value), number], NULL) AS transformed_value FROM test_table WHERE transformed_value IS NOT NULL;
+SELECT id, value, multiIf(value = '', toFloat32OrNull(NULL), value LIKE '%.%', toFloat32OrNull(value), 1) AS conditional_conversion FROM test_table HAVING conditional_conversion IS NOT NULL;
+SELECT id, value, number, toFloat32OrNull(number) AS converted_num FROM test_table WHERE converted_num IS NOT NULL ORDER BY id;
+SELECT id, value, SUM(toFloat32OrNull(value)) OVER (PARTITION BY value ORDER BY id) AS running_total FROM test_table;
+SELECT id, value, multiIf(value = 'abc', toFloat32OrNull(value), value = '42.7', toFloat32OrNull(value), 0) AS multiif_conversion FROM test_table GROUP BY value HAVING multiif_conversion IS NOT NULL;
+SELECT id FROM (SELECT id, number, transform(number, [1, 2], [toFloat32OrNull(value), toFloat32OrNull(str_val)], NULL) AS transformed_number FROM test_table) AS subquery WHERE transformed_number IS NOT NULL;
+SELECT id, value, toFloat32OrNull(value) AS float_value FROM test_table WHERE str_val IS NOT NULL AND value != '0' ORDER BY float_value DESC;
+ALTER TABLE test_table ADD COLUMN new_col Nullable(Float32);
+UPDATE test_table SET new_col = toFloat32OrNull(value) WHERE new_col IS NULL;
+SELECT DISTINCT value, multiIf(value = '1e3', toFloat32OrNull(value), toFloat32OrNull('abc'), -1) AS conditional_float FROM test_table HAVING conditional_float > 0;

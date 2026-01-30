@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/89128",
+  "title": "PostgreSQL table engine ignores time zone offset when reading timestamptz into DateTime",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nThe PostgreSQL table engine reads `timestamptz`/`timestamp with time zone` columns into `DateTime` (with or without an explicit time zone) using the Postgres server's time zone, not the time zone of the `DateTime` column (which defaults to the ClickHouse server's time zone).\nInternally, it appears that [the output of `COPY (SELECT ...) TO STDOUT`](https://clickhouse.com/docs/engines/table-engines/integrations/postgresql#implementation-details) is being parsed with the offset being ignored, e.g. a `timestamptz` outputted as `1999-12-31 19:00:00-05` is parsed as `1999-12-31 19:00:00` without the `-05` offset.\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nI have a table in a PostgreSQL server in the US/Central time zone with a `timestamptz` (aka `timestamp with time zone`) column:\n```sql\nCREATE TABLE my_pg_table (\nstamp timestamptz PRIMARY KEY\n);\nINSERT INTO my_pg_table VALUES ('2000-01-01T00:00:00Z');\nSHOW timezone;\n-- US/Central\n```\n(The column output is unambiguous because the date/time string always contains a time zone offset, e.g. `1999-12-31 19:00:00.000 -0500`.)\nI create a remote connection to that table in ClickHouse:\n```sql\nCREATE TABLE ch_pg_table_inferred\nENGINE = PostgreSQL('example.com:5432', 'my_database_name', 'my_pg_table', 'my_username', 'my_password');\n```\nClickHouse settings:\n- `date_time_input_format`: `best_effort`\n- `date_time_output_format`: `iso`\n- `SELECT timezone()`: `UTC`\nWhen I read the timestamp through ClickHouse, the `DateTime` column contains the date/time in the PostgreSQL server's time zone instead of the ClickHouse server's time zone (UTC):\n```sql\nSELECT stamp FROM ch_pg_table_inferred;\n-- 1999-12-31 19:00:00\n```\nEven if I create the table with an explicit `DateTime('UTC')` column, ClickHouse still doesn't take into account the offset returned by PostgreSQL:\n```sql\nCREATE TABLE ch_pg_table_utc (\nstamp DateTime('UTC')\n)\nENGINE = PostgreSQL('example.com:5432', 'my_database_name', 'my_pg_table', 'my_username', 'my_password');\nSELECT stamp FROM ch_pg_table_utc;\n-- 1999-12-31 19:00:00.000 +0000\n```\nBut If I instead create the remote connection with a `String` column, I can recover the real timestamp with `parseDateTimeBestEffort`:\n```sql\nCREATE TABLE ch_pg_table_string (\nstamp String\n)\nENGINE = PostgreSQL('example.com:5432', 'my_database_name', 'my_pg_table', 'my_username', 'my_password');\nSELECT\nstamp,\nparseDateTimeBestEffort(stamp) AS stamp_default,",
+  "date": "2025-10-29T05:19:25Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE my_pg_table (stamp TIMESTAMP PRIMARY KEY);",
+    "INSERT INTO my_pg_table VALUES ('2000-01-01 00:00:00 UTC'), ('1999-12-31 19:00:00 -05');",
+    "CREATE TABLE ch_pg_table_string (stamp VARCHAR(255)) ENGINE = OBTable('example.com:5432', 'my_database_name', 'my_pg_table', 'my_username', 'my_password');",
+    "SELECT stamp, TO_TIMESTAMP(stamp) AS parsed_stamp FROM ch_pg_table_string;",
+    "CREATE TABLE ch_pg_table_with_null (stamp TIMESTAMP NULL) ENGINE = OBTable('example.com:5432', 'my_database_name', 'my_pg_table', 'my_username', 'my_password');"
+  ],
+  "key_bug_features": [
+    "PostgreSQL engine ignores time zone offset for timestamptz"
+  ]
+}

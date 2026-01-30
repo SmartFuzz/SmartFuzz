@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/42821",
+  "title": "Incorrect results of SELECT caused by JOIN table",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n**Setup the environment:**\r\n\r\n```\r\nCREATE TABLE t4 (vkey int(11), c13 double);\r\nINSERT INTO t4 VALUES (31,0);\r\nCREATE TABLE t7 (vkey int(11), pkey int(11), c26 double, c27 int(11));\r\nINSERT INTO t7 VALUES (29,164000,0,NULL);\r\n```\r\n\r\n**Testcase 1**\r\n```\r\nselect 1 as c0\r\nfrom\r\n  (t7 as ref_0\r\n    inner join (t7 as ref_1\r\n      right join t4 as ref_2\r\n      on (ref_1.vkey = ref_2.vkey ))\r\n    on (ref_0.c26 = ref_2.c13 ))\r\nwhere not (not (\r\n             (nullif(ref_0.pkey, ref_1.c27) is not null) and false\r\n          ));\r\n```\r\nTestcase 1 outputs 1 row.\r\n\r\n```\r\n+----+\r\n| c0 |\r\n+----+\r\n|  1 |\r\n+----+\r\n1 row in set (0.00 sec)\r\n```\r\n\r\nThen, I replace `(nullif(ref_0.pkey, ref_1.c27) is not null) and false` with `false`. The results should not be changed because `anything and false` is `false`. The test case becomes:\r\n\r\n**Testcase 2**\r\n```\r\nselect 1 as c0\r\nfrom\r\n  (t7 as ref_0\r\n    inner join (t7 as ref_1\r\n      right join t4 as ref_2\r\n      on (ref_1.vkey = ref_2.vkey ))\r\n    on (ref_0.c26 = ref_2.c13 ))\r\nwhere not (not (\r\n             false\r\n          ));\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nTestcase 1 and Testcase 2 should output the same results.\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nTestcase 2 outputs\r\n```\r\nEmpty set (0.00 sec)\r\n```\r\nWhile Testcase 1 outputs:\r\n```\r\n+----+\r\n| c0 |\r\n+----+\r\n|  1 |\r\n+----+\r\n1 row in set (0.00 sec)\r\n```\r\n\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| Release Version: v7.1.0-alpha-27-gf5ca27ef3\r\nEdition: Community\r\nGit Commit Hash: f5ca27ef326e94fb29b4ba35a5d59aa575f66880\r\nGit Branch: master\r\nUTC Build Time: 2023-03-23 13:57:53\r\nGoVersion: go1.20.2\r\nRace Enabled: false\r\nTiKV Min Version: 6.2.0-alpha\r\nCheck Table Before Drop: false\r\nStore: unistore |\r\n+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n\r\n",
+  "date": "2023-04-05T09:16:52Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t8 (id int primary key, value varchar(255), amount decimal(10,2));",
+    "INSERT INTO t8 VALUES (1, 'test', 100.50);",
+    "CREATE TABLE t9 (id int primary key, t8_id int, FOREIGN KEY (t8_id) REFERENCES t8(id));",
+    "INSERT INTO t9 VALUES (1, 1), (2, NULL);",
+    "SELECT t8.value, t9.id FROM t8 LEFT JOIN t9 ON t8.id = t9.t8_id WHERE t9.id IS NULL;"
+  ],
+  "key_bug_features": [
+    "JOIN table causes incorrect SELECT results"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=101614",
+  "title": "mysql_stmt_prepare() does not return on query with \"order by ?\"",
+  "description": "On MySQL 8.0.22, mysql_stmt_prepare() does not return on query with \"order by ?\".\nHow to repeat:\nmysql> create database test;\r\nmysql> use test;\r\nmysql> create table t (id int auto_increment primary key, n int);\r\nmysql> insert into t values (1,5),(2,4),(3,3),(4,2),(5,1);\r\n\r\n--- test.c ---\r\n#include <stdio.h>\r\n#include <string.h>\r\n#include <mysql/mysql.h>\r\n\r\nint main(int argc, char *argv[])\r\n{\r\n  MYSQL my;\r\n  MYSQL_STMT *st;\r\n  MYSQL_BIND bind[1], bind2[2];\r\n  memset(bind, 0, sizeof(bind));\r\n  memset(bind2, 0, sizeof(bind2));\r\n\r\n  mysql_init(&my);\r\n  if (mysql_real_connect(&my, \"127.0.0.1\", \"root\", \"\", \"test\", 0, NULL, 0) == NULL)\r\n    goto error;\r\n  if ((st = mysql_stmt_init(&my)) == NULL)\r\n    goto error;\r\n\r\n  char *q = \"select id,n from t order by ?\";\r\n  mysql_stmt_prepare(st, q, strlen(q));\r\n\r\n  long n = 2;\r\n  bind[0].buffer_type = MYSQL_TYPE_LONG;\r\n  bind[0].buffer = &n;\r\n  bind[0].length = NULL;\r\n  bind[0].buffer_length = sizeof(n);\r\n  bind[0].is_null = 0;\r\n\r\n  if (mysql_stmt_bind_param(st, bind) != 0)\r\n    goto stmt_error;\r\n  if (mysql_stmt_execute(st) != 0)\r\n    goto stmt_error;\r\n\r\n  long id = 0;\r\n  bind2[0].buffer_type = MYSQL_TYPE_LONG;\r\n  bind2[0].buffer = &id;\r\n  bind2[0].buffer_length = sizeof(id);\r\n  bind2[0].length = NULL;\r\n  bind2[1].buffer_type = MYSQL_TYPE_LONG;\r\n  bind2[1].buffer = &n;\r\n  bind2[1].buffer_length = sizeof(n);\r\n  bind2[1].length = NULL;\r\n\r\n  if (mysql_stmt_bind_result(st, bind2) != 0)\r\n    goto stmt_error;\r\n  if (mysql_stmt_store_result(st) != 0)\r\n    goto stmt_error;\r\n\r\n  while (mysql_stmt_fetch(st) == 0) {\r\n    printf(\"%ld %ld\\n\", id, n);\r\n  }\r\n  exit(0);\r\n\r\nerror:\r\n  puts(mysql_error(&my));\r\n  exit(1);\r\n\r\nstmt_error:\r\n  puts(mysql_stmt_error(st));\r\n  exit(1);\r\n}\r\n---\r\n\r\n% gcc test.c -lmysqlclient\r\n% ./a.out\r\n\r\nOn 8.0.21:\r\n5 1\r\n4 2\r\n3 3\r\n2 4\r\n1 5\r\n\r\nOn 8.0.22:\r\n(no reply)",
+  "date": "2020-11-15 12:32:00",
+  "vulnerable_version": "8.0.22",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE DATABASE test_db;",
+    "USE test_db;",
+    "CREATE TABLE test_table (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(50), age INT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table (name, age) VALUES ('Alice', 30), ('Bob', NULL), ('Charlie', 25);",
+    "SELECT id, name, age FROM test_table ORDER BY age;"
+  ],
+  "key_bug_features": [
+    "mysql_stmt_prepare() with query containing \"order by ?\""
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=107088",
+  "title": "Divide by zero in cost_group_min_max",
+  "description": "cost_group_min_max will sometimes divide by zero if there is an empty table on this line:\r\n\r\n      quick_prefix_selectivity =\r\n          (double)quick_prefix_records / (double)table_records;\n\nI don't think this adversely affects query planning, though it will cause ubsan errors, increasing the noise.\nHow to repeat:\nHopefully, this should be obvious by inspection, but it should be easy to reproduce with something like:\r\n\r\ncreate table t (i int, j int, k int, key(i, j, k));\r\nexplain select i, j, k from t where i > 2 group by i;\r\n\r\nand checking under gdb (or ubsan) that divide by zero is occuring.\nSuggested fix:\nIn get_best_group_min_max, we should skip considering group by plans for empty tables.",
+  "date": "2022-04-21 19:46:00",
+  "vulnerable_version": "8.0.28",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t (i Int32, j Int32, k Int32) ENGINE = MergeTree() ORDER BY (i, j, k);",
+    "INSERT INTO t (i, j, k) VALUES (NULL, 1, 2);",
+    "INSERT INTO t (i, j, k) VALUES (3, NULL, 4);",
+    "SELECT i, j, k FROM t WHERE i > 2 GROUP BY i;",
+    "SELECT COUNT(*) FROM t WHERE j IS NULL;"
+  ],
+  "key_bug_features": [
+    "Divide by zero when processing empty tables"
+  ]
+}

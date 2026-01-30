@@ -1,0 +1,16 @@
+CREATE TABLE test_table (id UInt32, value Float64, status String, created_at DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table (id, value, status, created_at) VALUES (1, 5.0, 'active', now()), (2, 0.0, 'inactive', now()), (3, NULL, 'active', now()), (4, 10.0, 'pending', now());
+SELECT id, value, multiply(value, 2) AS doubled_value FROM test_table WHERE id NOT BETWEEN 2 AND 4;
+SELECT id, multiply(value, (SELECT COUNT(*) FROM test_table WHERE status = 'active')) AS active_multiplier FROM test_table GROUP BY id HAVING active_multiplier > 0;
+SELECT id, value FROM test_table WHERE multiply(value, 3) NOT BETWEEN 1 AND 9 OR value IS NULL;
+SELECT id, multiply(value, (SELECT max(value) FROM test_table)) AS multiplied_max FROM test_table WHERE value NOT BETWEEN 2.5 AND 7.5;
+SELECT id, multiply(value, 5) AS scalar_product FROM (SELECT id, value FROM test_table WHERE created_at > now() - INTERVAL 1 DAY) AS subquery WHERE scalar_product NOT BETWEEN 4 AND 20;
+SELECT id, value, (multiply(value, 3) + 10) AS adjusted_value FROM test_table HAVING adjusted_value NOT BETWEEN 5 AND 30;
+SELECT id, multiply(value + 1, 2) AS complex_product, (CASE WHEN value IS NULL THEN 'NULL' ELSE 'NOT NULL' END) AS null_check FROM test_table WHERE id NOT BETWEEN 2 AND 3;
+CREATE TABLE temp_table (numeric_val Nullable(Int32), text_val String) ENGINE = MergeTree() ORDER BY numerical_val;
+INSERT INTO temp_table (numeric_val, text_val) VALUES (NULL, 'text1'), (3, 'text2'), (5, 'text3');
+SELECT multiply(COALESCE(numeric_val, 1), 2) AS adjusted_value FROM temp_table WHERE text_val NOT BETWEEN 'text1' AND 'text3';
+SELECT id, multiply(COALESCE(value, 0), 0.5) AS halved_value FROM test_table HAVING halved_value NOT BETWEEN 0 AND 5;
+SELECT id, multiply(text_val, 2) AS invalid_product FROM temp_table WHERE numeric_val NOT BETWEEN 1 AND 10;
+DROP TABLE IF EXISTS test_table;
+DROP TABLE IF EXISTS temp_table;

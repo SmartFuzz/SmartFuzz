@@ -1,0 +1,13 @@
+CREATE TABLE web_logs (id INT PRIMARY KEY, request_time TIMESTAMP, request_path VARCHAR(255), response_code INT);
+INSERT INTO web_logs (id, request_time, request_path, response_code) VALUES (1, NOW(), sprintf('%s/index.html', http_root()), 200);
+INSERT INTO web_logs (id, request_time, request_path, response_code) VALUES (2, NOW(), sprintf('%s/404.html', http_root()), NULL);
+SELECT id, request_time, response_code FROM web_logs WHERE response_code IN (200, NULL);
+SELECT id, COUNT(*) AS total_requests FROM web_logs GROUP BY id HAVING total_requests IN (SELECT COUNT(*) FROM web_logs WHERE response_code IS NOT NULL);
+SELECT request_path FROM web_logs WHERE request_path IN (SELECT sprintf('%s/%s', http_root(), 'banner.html')) AND response_code IS NOT NULL;
+SELECT request_path, request_time FROM web_logs WHERE request_path IN (SELECT sprintf('%s/%s', http_root(), 'image.png')) OR response_code IS NULL;
+CREATE TABLE web_users (user_id INT PRIMARY KEY, username VARCHAR(50) UNIQUE NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO web_users (user_id, username) VALUES (1, 'user1'), (2, 'user2'), (3, NULL);
+SELECT COUNT(user_id) AS active_users FROM web_users WHERE username IN (SELECT username FROM web_users WHERE username IS NOT NULL) HAVING active_users >= 1;
+SELECT http_root(), COUNT(*) AS log_count FROM web_logs WHERE request_time > NOW() - INTERVAL '1 DAY' GROUP BY http_root();
+SELECT user_id, COUNT(request_path) AS path_count FROM web_logs JOIN web_users ON web_logs.id = web_users.user_id GROUP BY user_id HAVING path_count IN (SELECT COUNT(*) FROM web_logs WHERE request_path IS NOT NULL) ORDER BY path_count DESC;
+SELECT DISTINCT http_root() AS server_root, (SELECT MIN(response_code) FROM web_logs) AS min_response FROM web_logs WHERE request_time <= NOW() GROUP BY server_root;

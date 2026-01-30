@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/62850",
+  "title": "foreign key consistency broken",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n\n```\nCREATE TABLE `parent` (\n  `id` int(11) NOT NULL,\n  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;\n\nCREATE TABLE `child` (\n  `v` int(11) DEFAULT NULL,\n  `parent_id` int(11) DEFAULT NULL,\n  KEY `fk_1` (`parent_id`),\n  CONSTRAINT `fk_1` FOREIGN KEY (`parent_id`) REFERENCES `test`.`parent` (`id`) ON DELETE CASCADE ON UPDATE CASCADE\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;\n\nINSERT INTO `parent` values (1), (2), (3);\n```\n\nNow use two mysql client, and mysql1:\n\n```\nbegin;\ninsert into child values (3, 3);\n```\n\nmysql2:\n\n```\nupdate parent set id = 5 where id = 3;\n```\n\nmysql1:\n\n```\ncommit;\n```\n\n\n### 2. What did you expect to see? (Required)\n\n```\nmysql> select * from parent;\n+----+\n| id |\n+----+\n|  1 |\n|  2 |\n|  5 |\n+----+\n3 rows in set (0.01 sec)\n\nmysql> select * from child;\n+------+-----------+\n| v    | parent_id |\n+------+-----------+\n|    3 |         5 |\n+------+-----------+\n1 row in set (0.00 sec)\n```\n\n### 3. What did you see instead (Required)\n\n```\nmysql> select * from parent;\n+----+\n| id |\n+----+\n|  1 |\n|  2 |\n|  5 |\n+----+\n3 rows in set (0.01 sec)\n\nmysql> select * from child;\n+------+-----------+\n| v    | parent_id |\n+------+-----------+\n|    3 |         3 |\n+------+-----------+\n1 row in set (0.00 sec)\n```\n\nAs you can see, foreign key constraints is broken.\nAll parent_id values in the child table should exist in the parent table's id!\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\nmaster branch\n\n```\ncommit 0906244b995c7b92f17ccdd834e359e8349d6f61 (HEAD -> master, origin/master, origin/HEAD)\nAuthor: Weizhen Wang <wangweizhen@pingcap.com>\nDate:   Tue Jul 29 14:58:22 2025 +0800\n\n    planner: no need to check predicate type in the updateInPredicate (#62674)\n    \n    close pingcap/tidb#62675\n```\n\nThis bug should affect all versions.",
+  "date": "2025-08-06T06:42:46Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE parent ( id SERIAL PRIMARY KEY );",
+    "CREATE TABLE child ( v INT DEFAULT NULL, parent_id INT DEFAULT NULL, CONSTRAINT fk_1 FOREIGN KEY (parent_id) REFERENCES parent (id) ON DELETE CASCADE ON UPDATE CASCADE );",
+    "INSERT INTO parent VALUES (1), (2), (3);",
+    "INSERT INTO child VALUES (NULL, 2);",
+    "UPDATE parent SET id = 4 WHERE id = 2;",
+    "SELECT * FROM child;"
+  ],
+  "key_bug_features": [
+    "Concurrent updates break foreign key constraint consistency"
+  ]
+}

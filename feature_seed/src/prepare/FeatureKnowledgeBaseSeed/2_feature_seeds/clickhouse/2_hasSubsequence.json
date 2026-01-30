@@ -1,0 +1,14 @@
+CREATE TABLE test_strings (id UInt32, haystack String, needle String, created_at DateTime DEFAULT now());
+INSERT INTO test_strings (id, haystack, needle) VALUES (1, 'abcde', 'ace'), (2, 'hello world', 'lo'), (3, 'fuzzy fuzz', 'zy'), (4, 'sequence', 'q'), (5, '', 'nonempty');
+SELECT id, hasSubsequence(haystack, needle) AS has_subseq FROM test_strings WHERE hasSubsequence(haystack, needle) = 1;
+SELECT id, hasSubsequence(haystack, needle) AS check_subsequence FROM (SELECT id, haystack, needle FROM test_strings WHERE id IN (SELECT id FROM test_strings WHERE haystack = 'abcde')) WHERE check_subsequence = 1;
+SELECT COUNT(*) AS total FROM (SELECT hasSubsequence(haystack, 'test') AS subseq_check FROM test_strings) GROUP BY subseq_check HAVING subseq_check = 1;
+CREATE TABLE temp_join (id UInt32, str1 String, str2 String);
+INSERT INTO temp_join (id, str1, str2) VALUES (1, 'test string', 'test'), (2, 'random', 'nothing'), (3, 'deep testing', 'deep');
+SELECT t1.id, hasSubsequence(t1.str1, t2.str2) AS result FROM temp_join t1 JOIN test_strings t2 ON hasSubsequence(t1.str1, t2.needle) = 1;
+WITH (hasSubsequence((SELECT str1 FROM temp_join WHERE id = 1), (SELECT needle FROM test_strings WHERE id = 1))) AS subseq_result SELECT subseq_result;
+CREATE TABLE edge_cases (id UInt32, num_val Int32, str_val String);
+INSERT INTO edge_cases (id, num_val, str_val) VALUES (1, 123, '123'), (2, 0, '0'), (3, -1, '-1'), (4, 2147483647, 'max_int'), (5, -2147483648, 'min_int');
+SELECT id, hasSubsequence(str_val, CAST(num_val AS String)) AS subsequence_check FROM edge_cases WHERE subsequence_check = 1;
+SELECT hasSubsequence('quick brown fox', 'qw') AS quick, hasSubsequence('lazy dog', 'az') AS lazy;
+SELECT (hasSubsequence('hangman', 'an') + hasSubsequence('hangman', 'hn')) AS total_subsequence_check;

@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=113506",
+  "title": "Item_func_conv_charset::eq not correct",
+  "description": "Function Item_func_conv_charset::eq is not implemented and may cause wrong result.\nHow to repeat:\nmysql> create table t1 (a char(10));\r\nQuery OK, 0 rows affected (0.21 sec)\r\n\r\nmysql> insert into t1 values ('你好'), ('中午好');\r\nQuery OK, 2 rows affected (0.03 sec)\r\nRecords: 2  Duplicates: 0  Warnings: 0\r\n\r\nmysql> select a, convert(a using latin1) from t1 order by convert(a using utf8mb4);\r\n+-----------+-------------------------+\r\n| a         | convert(a using latin1) |\r\n+-----------+-------------------------+\r\n| 你好      | ??                      |\r\n| 中午好    | ???                     |\r\n+-----------+-------------------------+\r\n2 rows in set (0.01 sec)\r\n\r\nmysql> select a from t1 order by convert(a using utf8mb4);\r\n+-----------+\r\n| a         |\r\n+-----------+\r\n| 中午好    |\r\n| 你好      |\r\n+-----------+\r\n2 rows in set (0.00 sec)\nSuggested fix:\nAdd comparison to conv_charset\r\n\r\nbool Item_func::eq(const Item *item, bool binary_cmp, bool semantic_eq) const {\r\n  /* Assume we don't have rtti */\r\n  if (this == item) return true;\r\n  if (item->type() != FUNC_ITEM) return false;\r\n  const Item_func *item_func = down_cast<const Item_func *>(item);\r\n  if (!compare_funcs_type(this, item_func)) return false;\r\n  if (conv_charset != down_cast<const Item_func_conv_charset *>(item_func)->conv_charset) return false;\r\n  for (uint i = 0; i < arg_count; i++)\r\n    if (!args[i]->eq(item_func->args[i], binary_cmp, semantic_eq)) return false;\r\n  return true;\r\n}",
+  "date": "2023-12-25 02:26:00",
+  "vulnerable_version": "8.0,8.0.35, 8.1.0, 8.2.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (b TEXT NOT NULL, c TEXT DEFAULT NULL);",
+    "INSERT INTO t2 (b, c) VALUES ('测试', NULL), ('例子', '示例');",
+    "SELECT b, c FROM t2 WHERE b LIKE '测%';",
+    "CREATE TABLE t3 (d INTEGER, e TEXT DEFAULT 'abcde');",
+    "INSERT INTO t3 (d) VALUES (1), (2), (NULL);"
+  ],
+  "key_bug_features": [
+    "Incorrect comparison in character set conversion function"
+  ]
+}

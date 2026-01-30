@@ -1,0 +1,11 @@
+CREATE TABLE sensor_data(ts TIMESTAMP, value INT);
+INSERT INTO sensor_data VALUES    (TIMESTAMP '2000-01-01 01:02:03', 42),    (TIMESTAMP '2000-02-01 01:02:03', 100),    (TIMESTAMP '2000-03-01 12:11:10', 1000) ;
+COPY (SELECT YEAR(ts) AS year, MONTH(ts) AS month, * FROM sensor_data) TO '__TEST_DIR__/partitioned_append' (FORMAT PARQUET, PARTITION_BY (year, month), APPEND);
+SELECT year, month, SUM(value) FROM '__TEST_DIR__/partitioned_append/**/*.parquet' GROUP BY ALL ORDER BY ALL;
+DELETE FROM sensor_data;
+INSERT INTO sensor_data VALUES    (TIMESTAMP '2000-01-01 02:02:03', 62),    (TIMESTAMP '2000-03-01 13:11:10', 50) ;
+COPY (SELECT YEAR(ts) AS year, MONTH(ts) AS month, * FROM sensor_data) TO '__TEST_DIR__/partitioned_append' (FORMAT PARQUET, PARTITION_BY (year, month), APPEND, FILENAME_PATTERN 'my_pattern_{uuid}');
+SELECT year, month, SUM(value) FROM '__TEST_DIR__/partitioned_append/**/*.parquet' GROUP BY ALL ORDER BY ALL;
+COPY (SELECT YEAR(ts) AS year, MONTH(ts) AS month, * FROM sensor_data) TO '__TEST_DIR__/partitioned_append' (FORMAT PARQUET, PARTITION_BY (year, month), FILENAME_PATTERN 'my_pattern_{uuid}', APPEND);
+SELECT year, month, SUM(value) FROM '__TEST_DIR__/partitioned_append/**/*.parquet' GROUP BY ALL ORDER BY ALL;
+COPY (SELECT YEAR(ts) AS year, MONTH(ts) AS month, * FROM sensor_data) TO '__TEST_DIR__/partitioned_append' (FORMAT PARQUET, PARTITION_BY (year, month), APPEND, FILENAME_PATTERN 'my_pattern_without_uuid');

@@ -1,0 +1,12 @@
+CREATE TABLE ip_test (id UInt32, address String, created_at DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO ip_test VALUES (1, '2001:0db8:85a3:0000:0000:8a2e:0370:7334', now()), (2, 'invalid:ip', now()), (3, '', now()), (4, '2001:db8:1234::5678', now());
+SELECT id, IPv6StringToNumOrNull(address) AS addr_num FROM ip_test WHERE addr_num BETWEEN 0 AND 340282366920938463463374607431768211455;
+SELECT id, address FROM ip_test WHERE address NOT BETWEEN '' AND '2001:0db8:85a3:0000:0000:8a2e:0370:7334' AND IPv6StringToNumOrNull(address) IS NULL;
+SELECT id, IPv6StringToNumOrNull(address) AS addr_num FROM ip_test HAVING addr_num IS NOT NULL AND addr_num BETWEEN 1 AND 100;
+SELECT id, address FROM (SELECT id, address FROM ip_test WHERE address <> '' OR address IS NULL) AS sub WHERE address LIKE '%db8%' AND IPv6StringToNumOrNull(address) IS NOT NULL;
+SELECT COUNT(*) FROM ip_test WHERE IPv6StringToNumOrNull(address) BETWEEN (SELECT MIN(IPv6StringToNumOrNull(address)) FROM ip_test) AND (SELECT MAX(IPv6StringToNumOrNull(address)) FROM ip_test);
+WITH (SELECT AVG(IPv6StringToNumOrNull(address)) FROM ip_test) AS avg_num SELECT id FROM ip_test WHERE IPv6StringToNumOrNull(address) > avg_num;
+CREATE TABLE another_ip_test (id UInt32, ip_address String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO another_ip_test VALUES (1, '::1'), (2, '2001:db8::1'), (3, 'invalid:address'), (4, '2001:0db8:85a3:0000:0000:8a2e:0370:7334');
+SELECT a.id, a.ip_address, IPv6StringToNumOrNull(a.ip_address) FROM another_ip_test AS a JOIN ip_test AS b ON IPv6StringToNumOrNull(a.ip_address) <> IPv6StringToNumOrNull(b.address) WHERE (IPv6StringToNumOrNull(a.ip_address) IS NULL) OR (IPv6StringToNumOrNull(b.address) IS NULL);
+SELECT b.id, COUNT(*) FROM another_ip_test AS a JOIN ip_test AS b ON IPv6StringToNumOrNull(a.ip_address) == IPv6StringToNumOrNull(b.address) GROUP BY b.id HAVING COUNT(*) > 1;

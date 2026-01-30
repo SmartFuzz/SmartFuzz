@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/b9f0101077",
+  "title": "Violation of the Query Planner Stability Guarantee",
+  "description": "drh added on 2017-06-23 19:21:59:\nThe Query Planner Stability Guarantee (QPSG) states that SQLite will\nalways generate the same query plan given the same source SQL text, as long\nas certain conditions are met, such as that there are no changes in the\ndatabase schema.  The QPSG is important for many embedded systems.\nUnfortunately the QPSG is violated in SQLite 3.19.3 by the query at the\nend of the following SQL:\nCREATE TABLE t1(a INTEGER PRIMARY KEY, b);\nCREATE INDEX t1b ON t1(b);\nSELECT a FROM t1 WHERE b GLOB ?1;\nIf the ?1 parameter is bound with \"xyz*\" then the query uses the t1b index.\nBut if the ?1 parameter is bound to \"0xyz*\" then a full table scan is run.\nThis is a violation of the QPST.\nThe problem appears to have been introduced by the LIKE optimization\nenhancement of check-in [158290c0ab] which landed in SQLite 3.18.0.\ndrh added on 2017-06-23 19:38:20:\nFurther testing shows that this problem is much older than originally thought.\nIf the column passed to the GLOB operator has type TEXT, like this:\nCREATE TABLE t1(a INTEGER PRIMARY KEY, b TEXT);\nCREATE INDEX t1b ON t1(b);\nSELECT a FROM t1 WHERE b GLOB ?1;\nThen the trouble dates back to check-in [50136840d5] circa 2009-10-16\nwhich first landed on version 3.6.20.\nThis is the test script used for bisecting:\nsqlite3 db :memory:\ndb eval {\n  CREATE TABLE t1(a INTEGER PRIMARY KEY, b TEXT);\n  CREATE INDEX t1b ON t1(b);\n}\nset x \"abc*\"\nset orig [db eval {explain SELECT a FROM t1 WHERE b GLOB $x}]\nset x \"*abc\"\nset new [db eval {explain SELECT a FROM t1 WHERE b GLOB $x}]\nif {$new!=$orig} {\n  puts \"different plan on reprepare\"\n} else {\n  puts \"same plan!\"\n}",
+  "date": "2017-06-23 19:21:598.13 years ago",
+  "vulnerable_version": "3.19.3",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(a Int32, b String NOT NULL);",
+    "CREATE INDEX t1b ON t1(b);",
+    "INSERT INTO t1(b) VALUES ('xyz'), ('0xyz'), ('abc'), (NULL);",
+    "SELECT a FROM t1 WHERE b LIKE 'xyz%';",
+    "SELECT a FROM t1 WHERE b LIKE '0xyz%';"
+  ],
+  "key_bug_features": [
+    "GLOB operator with different parameter values triggers query plan change"
+  ]
+}

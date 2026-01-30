@@ -1,0 +1,22 @@
+{
+    "function": "date_part(part, timestamp)",
+    "operator": "+",
+    "sql_array": [
+        "CREATE TABLE test_timestamps (id INT PRIMARY KEY, event_time TIMESTAMP, event_detail TEXT);",
+        "INSERT INTO test_timestamps (id, event_time, event_detail) VALUES (1, TIMESTAMP '1992-09-20 20:38:40', 'Event 1');",
+        "INSERT INTO test_timestamps (id, event_time, event_detail) VALUES (2, TIMESTAMP '1990-01-01 00:00:00', 'Event 2');",
+        "INSERT INTO test_timestamps (id, event_time, event_detail) VALUES (3, TIMESTAMP '2023-10-10 10:10:10', NULL);",
+        "SELECT id, date_part('minute', event_time + INTERVAL '5 DAY') AS adjusted_minute FROM test_timestamps WHERE event_time IS NOT NULL;",
+        "SELECT id, event_time, (date_part('minute', event_time) + 10) AS minute_plus_ten FROM test_timestamps WHERE event_detail IS NOT NULL ORDER BY minute_plus_ten DESC;",
+        "SELECT id, date_part('minute', event_time + INTERVAL (SELECT MAX(interval_days) FROM (SELECT 5 AS interval_days) AS temp)) AS adjusted_minute FROM test_timestamps;",
+        "SELECT id, COUNT(*) OVER (PARTITION BY date_part('minute', event_time + INTERVAL '3 HOUR')) AS minute_count FROM test_timestamps;",
+        "SELECT DISTINCT id, (event_time + INTERVAL '2 DAY') AS future_event_time FROM test_timestamps WHERE event_time IS NOT NULL;",
+        "SELECT id, date_part('minute', event_time) AS current_minute, DATE_TRUNC('hour', event_time + INTERVAL '1 HOUR') AS truncated_hour FROM test_timestamps WHERE id IN (SELECT id FROM test_timestamps WHERE event_detail IS NOT NULL);",
+        "CREATE TEMPORARY TABLE temp_intervals (id INT, interval_days INT);",
+        "INSERT INTO temp_intervals (id, interval_days) VALUES (1, 10), (2, NULL);",
+        "SELECT t.id, (t.event_time + INTERVAL i.interval_days DAY) AS adjusted_time FROM test_timestamps t JOIN temp_intervals i ON t.id = i.id WHERE i.interval_days IS NOT NULL;",
+        "SELECT id, COUNT(*) AS event_count, date_part('minute', MAX(event_time + INTERVAL '10 MINUTE')) AS max_minute_adjusted FROM test_timestamps GROUP BY id HAVING MAX(event_time) IS NOT NULL;",
+        "DROP TABLE test_timestamps;",
+        "DROP TABLE temp_intervals;"
+    ]
+}

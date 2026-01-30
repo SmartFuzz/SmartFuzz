@@ -1,0 +1,8 @@
+CREATE TABLE test_data (id UInt32, x_value Float64, y_value Float64, category String) ENGINE = Memory;
+INSERT INTO test_data (id, x_value, y_value, category) VALUES (1, 5.6, -4.4, 'A'), (2, -9.6, 3.1, 'B'), (3, -1.3, NULL, 'C'), (4, NULL, 9.7, 'D'), (5, 4.4, 0.037, 'A'), (6, -8.6, -7.8, 'B'), (7, 5.1, 9.3, 'C'), (8, 7.9, -3.6, 'D'), (9, -8.2, NULL, 'A'), (10, -3, 7.3, 'B');
+SELECT category, covarSampStable(ifNull(x_value, 0), y_value) % 2 as result FROM test_data GROUP BY category HAVING result > 0;
+SELECT category, covarSampStable(x_value, y_value) FROM (SELECT x_value, y_value, category FROM test_data WHERE x_value < 0 AND y_value IS NOT NULL ORDER BY x_value) GROUP BY category;
+SELECT DISTINCT covarSampStable(x_value % 1.1, y_value) FROM (SELECT x_value, y_value FROM test_data WHERE category = 'A' AND (x_value IS NOT NULL OR y_value IS NOT NULL));
+SELECT covarSampStable((SELECT AVG(x_value) FROM test_data WHERE id < 5), (SELECT AVG(y_value) FROM test_data WHERE category = 'B')) AS covariance_result;
+CREATE TEMPORARY TABLE temp_values AS SELECT x_value, y_value, category, x_value % 3 as mod_x FROM test_data WHERE category = 'C' AND x_value > 0;
+SELECT covarSampStable(x_value, y_value) FROM (SELECT mod_x, y_value FROM temp_values) WHERE mod_x IS NOT NULL GROUP BY mod_x;

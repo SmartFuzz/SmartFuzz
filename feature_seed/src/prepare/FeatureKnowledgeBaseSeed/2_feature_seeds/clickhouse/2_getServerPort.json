@@ -1,0 +1,16 @@
+CREATE TABLE ports_test (id UInt32, port_name String, is_used UInt8);
+INSERT INTO ports_test VALUES (1, 'tcp_port', 1), (2, 'http_port', 0), (3, 'mysql_port', 1);
+SELECT id, port_name FROM ports_test WHERE is_used IN (SELECT is_used FROM ports_test WHERE id = 1);
+SELECT getServerPort(port_name) AS server_port, id FROM ports_test WHERE is_used = 1 AND port_name IN ('tcp_port', 'mysql_port');
+SELECT id, port_name, getServerPort(port_name) AS server_port FROM ports_test WHERE server_port = (SELECT getServerPort('http_port') WHERE port_name = 'http_port');
+SELECT COUNT(*) FROM ports_test WHERE getServerPort(port_name) IN (SELECT getServerPort('mysql_port'));
+SELECT getServerPort(port_name) AS port_value FROM (SELECT port_name FROM ports_test) WHERE port_value IS NOT NULL;
+SELECT id, getServerPort(port_name) AS server_port FROM ports_test GROUP BY port_name HAVING server_port < 10000;
+CREATE TABLE tmp_ports (port UInt16) ENGINE = Memory;
+INSERT INTO tmp_ports SELECT getServerPort(port_name) FROM ports_test WHERE getServerPort(port_name) IN ('tcp_port', 'http_port');
+SELECT p.id, p.port_name, tp.port FROM ports_test p JOIN tmp_ports tp ON getServerPort(p.port_name) = tp.port WHERE tp.port IS NOT NULL ORDER BY p.id;
+SELECT id, port_name, getServerPort(port_name) AS server_port FROM ports_test WHERE server_port IN (SELECT server_port FROM (SELECT getServerPort('tcp_port') AS port) AS sub);
+CREATE TABLE ports_log (log_id UInt32, event String, event_time DateTime) ENGINE = MergeTree() ORDER BY event_time;
+INSERT INTO ports_log VALUES (1, 'check tcp port', now()), (2, 'check http port', now());
+SELECT log_id, event FROM ports_log WHERE event IN ('check tcp port', 'check http port') AND getServerPort('tcp_port') > 0;
+SELECT COUNT() FROM ports_log WHERE event_time BETWEEN now() - INTERVAL 1 DAY AND now() AND event IN (SELECT event FROM ports_log WHERE log_id = 1);

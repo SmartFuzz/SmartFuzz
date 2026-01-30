@@ -1,0 +1,17 @@
+CREATE TABLE test_timestamps (id SERIAL PRIMARY KEY, start_time TIMESTAMP, end_time TIMESTAMP);
+INSERT INTO test_timestamps (start_time, end_time) VALUES (timestamp '2021-12-31 18:40:40', timestamp '2021-02-20 16:30:20');
+INSERT INTO test_timestamps (start_time, end_time) VALUES (NULL, timestamp '2021-02-20 16:30:20');
+INSERT INTO test_timestamps (start_time, end_time) VALUES (timestamp '2021-12-31 18:40:40', NULL);
+SELECT id, timestampdiff_month(start_time, end_time) AS month_diff FROM test_timestamps WHERE timestampdiff_month(start_time, end_time) <> 0;
+CREATE TABLE additional_data (id SERIAL PRIMARY KEY, related_time TIMESTAMP);
+INSERT INTO additional_data (related_time) VALUES (timestamp '2023-01-01 00:00:00'), (timestamp '2023-02-01 12:00:00');
+SELECT a.id, timestampdiff_month(a.start_time, a.end_time) AS month_diff, (SELECT COUNT(*) FROM additional_data WHERE related_time <> a.start_time) AS related_count FROM test_timestamps a WHERE timestampdiff_month(a.start_time, a.end_time) <> NULL;
+SELECT a.id, COUNT(b.id) FROM test_timestamps a LEFT JOIN additional_data b ON timestampdiff_month(a.start_time, b.related_time) <> 0 GROUP BY a.id HAVING COUNT(b.id) > 1;
+SELECT id, timestampdiff_month(COALESCE(start_time, end_time), end_time) AS month_diff FROM test_timestamps WHERE month_diff <> 10 OR month_diff IS NULL;
+SELECT id, timestampdiff_month(related_time, start_time) AS month_diff FROM additional_data, test_timestamps WHERE (timestampdiff_month(related_time, start_time) <> timestampdiff_month(start_time, related_time));
+CREATE TEMPORARY TABLE temp_data (temp_time TIMESTAMP);
+INSERT INTO temp_data (temp_time) VALUES (timestamp '2022-01-01 00:00:00');
+SELECT DISTINCT (SELECT COUNT(*) FROM temp_data) AS unique_count, timestampdiff_month(temp_time, (SELECT MAX(end_time) FROM test_timestamps WHERE end_time IS NOT NULL)) AS temp_diff FROM temp_data;
+DROP TABLE IF EXISTS test_timestamps;
+DROP TABLE IF EXISTS additional_data;
+DROP TABLE IF EXISTS temp_data;

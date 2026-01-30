@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/a0bac8b3c3",
+  "title": "CREATE INDEX changes the answer",
+  "description": "drh added on 2016-07-26 03:31:08:\nIn the following SQL, the same query is run twice, once before and once after\na CREATE INDEX.  This is clearly a bug since a CREATE INDEX should never \nchange the answer, only make the answer appear more quickly.  The fact that\nthe index and the query are both a bit goofy should not matter.\nCREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER);\nINSERT INTO t1(a,b) VALUES(500,123);\nSELECT min(a) FROM t1 WHERE b='123' AND a>'456';\nCREATE INDEX t1ba ON t1(b, a);\nSELECT min(a) FROM t1 WHERE b='123' AND a>'456';\nA quick initial assessment of this problem suggests that it is a bug in the\nmin/max optimization.\ndrh added on 2016-07-26 04:21:32:\nThe index need not by goofy.  The following is another example of the\nfailures that omits the PRIMARY KEY constraint:\nCREATE TABLE t1(a INTEGER, b INTEGER);\nINSERT INTO t1(a,b) VALUES(500,123),(600,123);\nSELECT min(a) FROM t1 WHERE b='123' AND a>'456';\nCREATE INDEX t1ba ON t1(b, a);\nSELECT min(a) FROM t1 WHERE b='123' AND a>'456';\nThe use of the min() operator is required to generate the error however.\nThe problem is in the logic that skips initial NULL entries on the column\nthat is the argument to min().",
+  "date": "2016-07-26 03:31:089.04 years ago",
+  "vulnerable_version": "3.13.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t2(x INT, y VARCHAR(255), z FLOAT);",
+    "INSERT INTO t2(x, y, z) VALUES(100, 'abc', 1.5), (200, 'def', NULL);",
+    "SELECT MIN(x) FROM t2 WHERE y='abc' AND z IS NOT NULL;",
+    "CREATE INDEX t2yz ON t2(y, z);",
+    "SELECT MIN(x) FROM t2 WHERE y='abc' AND z IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "CREATE INDEX changes the result of min() function"
+  ]
+}

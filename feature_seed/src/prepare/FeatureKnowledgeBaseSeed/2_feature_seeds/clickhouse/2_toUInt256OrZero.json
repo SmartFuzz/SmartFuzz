@@ -1,0 +1,10 @@
+CREATE TABLE fuzz_test (id UInt32, value String, associated_id UInt32, created_at DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO fuzz_test VALUES (1, '100'), (2, '256'), (3, 'abc'), (4, '0xc0fe'), (5, 'NaN'), (6, ''), (7, '18446744073709551616');
+SELECT id, toUInt256OrZero(value) AS converted_value FROM fuzz_test WHERE associated_id = ANY (SELECT id FROM fuzz_test WHERE value = 'abc');
+SELECT id, associated_id, value, toUInt256OrZero(concat('Value: ', value)) AS concatenated_converted_value FROM fuzz_test;
+SELECT created_at, toUInt256OrZero(value) AS value_converted FROM fuzz_test GROUP BY created_at HAVING value_converted = ANY (SELECT toUInt256OrZero(value) FROM fuzz_test WHERE value != '');
+SELECT COUNT(*), toUInt256OrZero(value) AS value_converted FROM fuzz_test GROUP BY value_converted HAVING value_converted = ANY (SELECT toUInt256OrZero('100'));
+SELECT f1.id, f2.id AS associated_id FROM fuzz_test AS f1 JOIN fuzz_test AS f2 ON toUInt256OrZero(f1.value) = f2.associated_id WHERE f1.value IS NOT NULL;
+SELECT toUInt256OrZero(NULLIF(value, '')) AS null_safe_conversion FROM fuzz_test WHERE associated_id = ANY (SELECT associated_id FROM fuzz_test);
+SELECT value, toUInt256OrZero(value) AS conversion_test FROM fuzz_test ORDER BY conversion_test ASC;
+DROP TABLE fuzz_test;

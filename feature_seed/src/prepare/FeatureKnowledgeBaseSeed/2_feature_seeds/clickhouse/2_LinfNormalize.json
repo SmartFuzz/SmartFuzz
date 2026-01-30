@@ -1,0 +1,11 @@
+CREATE TABLE test_vectors (id UInt32, vector Tuple(Float32, Float32, Float32) DEFAULT (0, 0, 0));
+INSERT INTO test_vectors VALUES (1, (1, 2, 3)), (2, (4, NULL, 6)), (3, (0, 0, 0)), (4, (7, 8, 9));
+SELECT id, LinfNormalize(vector) AS unit_vector FROM test_vectors WHERE vector NOT BETWEEN (1, 1, 1) AND (5, 5, 5) ORDER BY id;
+SELECT id, LinfNormalize((SELECT MAX(vector.1) FROM test_vectors)) AS normalized FROM test_vectors WHERE vector NOT BETWEEN (LinfNormalize(vector), (7, 8, 9).1) AND (9, 10, 11);
+CREATE TABLE other_vectors (id UInt32, vector Tuple(Float32, Float32, Float32) DEFAULT (0, 0, 0));
+INSERT INTO other_vectors VALUES (1, (3, 4, 5)), (2, (10, 20, 30)), (3, (5, NULL, 5));
+SELECT a.id, LinfNormalize((a.vector.1, b.vector.2, 1.0)) FROM test_vectors AS a JOIN other_vectors AS b ON a.vector.1 NOT BETWEEN b.vector.1 AND b.vector.2 GROUP BY a.id HAVING a.id NOT IN (SELECT id FROM other_vectors) ORDER BY a.id;
+SELECT id, LinfNormalize((CASE WHEN vector.1 IS NULL THEN 0 ELSE vector.1 END, CASE WHEN vector.2 IS NULL THEN 0 ELSE vector.2 END)) FROM test_vectors WHERE vector NOT BETWEEN LinfNormalize((0, 0, 0)) AND LinfNormalize((7, 8, 9));
+SELECT COUNT(*) FROM (SELECT LinfNormalize(vector) AS normalized_vector FROM test_vectors WHERE vector NOT BETWEEN (0, 1, 2) AND (8, 9, 10)) AS subquery HAVING COUNT(normalized_vector) > 0;
+DROP TABLE IF EXISTS test_vectors;
+DROP TABLE IF EXISTS other_vectors;

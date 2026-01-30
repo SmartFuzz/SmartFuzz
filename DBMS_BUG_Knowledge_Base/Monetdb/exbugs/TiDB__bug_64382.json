@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/64382",
+  "title": "Incorrect behavior from INT to DATE in EXTRACT and YEARWEEK functions.",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\nCREATE TABLE t28 (c1 INT4);\nINSERT t28 () VALUES (801085953);\nINSERT t28 () VALUES (1201377077);\n\n\nSELECT * FROM t28 WHERE ((((YEARWEEK((EXTRACT(YEAR_MONTH FROM t28.c1)), 5)) BETWEEN 2 AND (0 > SOME (SELECT 1))) IS UNKNOWN));\n-- (1201377077,'RCLmx40OlAXbNm02msvZQ3mYMjS6K')\n\nSELECT YEARWEEK((EXTRACT(YEAR_MONTH FROM t28.c1)), 5) FROM t28;\n-- 201997 ，null\n\nSELECT SUM(count) FROM (SELECT (((((YEARWEEK((EXTRACT(YEAR_MONTH FROM t28.c1)), 5)) BETWEEN 2 AND (0 > SOME (SELECT 801085953))) IS UNKNOWN))) IS TRUE AS count FROM t28) AS ta_norec;\n-- 2\n\n### 2. What did you expect to see? (Required)\nThe SELECT YEARWEEK(...) query should return NULL for both rows. The first query should return 2 rows.\n### 3. What did you see instead (Required)\n```shell\nmysql> SELECT * FROM t28 WHERE ((((YEARWEEK((EXTRACT(YEAR_MONTH FROM t28.c1)), 5)) BETWEEN 2 AND (0 > SOME (SELECT 1))) IS UNKNOWN));\n+------------+\n| c1         |\n+------------+\n| 1201377077 |\n+------------+\n1 row in set, 2 warnings (0.00 sec)\nmysql> SELECT YEARWEEK((EXTRACT(YEAR_MONTH FROM t28.c1)), 5) FROM t28;\n+------------------------------------------------+\n| YEARWEEK((EXTRACT(YEAR_MONTH FROM t28.c1)), 5) |\n+------------------------------------------------+\n|                                         201997 |\n|                                           NULL |\n+------------------------------------------------+\n2 rows in set, 1 warning (0.00 sec)\n\nmysql> SELECT SUM(count) FROM (SELECT (((((YEARWEEK((EXTRACT(YEAR_MONTH FROM t28.c1)), 5)) BETWEEN 2 AND (0 > SOME (SELECT 801085953))) IS UNKNOWN))) IS TRUE AS count FROM t28) AS ta_norec;\n+------------+\n| SUM(count) |\n+------------+\n|          2 |\n+------------+\n1 row in set, 4 warnings (0.00 sec)\n```\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\nRelease Version: v8.5.0-20251010-ec6b882\nEdition: Community\nGit Commit Hash: https://github.com/pingcap/tidb/commit/ec6b882d188f77c199907ba26843a872b8c5fd6d\nGit Branch: heads/refs/tags/v8.5.0-20251010-ec6b882\nUTC Build Time: 2025-10-10 10:21:51\nGoVersion: go1.23.3\nRace Enabled: false\nCheck Table Before Drop: false\nStore: unistore\n",
+  "date": "2025-11-10T06:24:38Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t29 (c1 INT, c2 DATE, c3 VARCHAR(255));",
+    "INSERT INTO t29 (c1, c2, c3) VALUES (801085953, '2023-01-01', 'test1');",
+    "INSERT INTO t29 (c1, c2, c3) VALUES (1201377077, NULL, 'test2');",
+    "SELECT c1, EXTRACT(YEAR FROM c2) AS year, EXTRACT(MONTH FROM c2) AS month FROM t29 WHERE c1 > 0;",
+    "SELECT COUNT(*) FROM t29 WHERE (EXTRACT(YEAR FROM c2) IS NULL) OR (c3 IS NOT NULL);"
+  ],
+  "key_bug_features": [
+    "Incorrect behavior in YEARWEEK and EXTRACT functions"
+  ]
+}

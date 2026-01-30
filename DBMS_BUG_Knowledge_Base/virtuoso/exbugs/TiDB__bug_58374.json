@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/58374",
+  "title": "Query hash partition caused panic",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n```sql\nCREATE TABLE IF NOT EXISTS `testPartition` (\n    `OrderDate` DATETIME\n) PARTITION BY HASH(\n    YEAR(`OrderDate`) * 10000 + MONTH(`OrderDate`) * 100 + DAYOFMONTH(`OrderDate`)\n) PARTITIONS 50;\ninsert into `testPartition` value (NULL);\nselect * from  `testPartition` where `OrderDate` is null;\n```\n\n### 2. What did you expect to see? (Required)\n\n```sql\nmysql> select * from  `testPartition` where `OrderDate` is null;\n+-----------+\n| OrderDate |\n+-----------+\n| NULL      |\n+-----------+\n1 row in set (0.00 sec)\n```\n\n### 3. What did you see instead (Required)\n\n```\nselect * from  `smartbimpp`.`testPartition` where `OrderDate` is null;\nERROR 1105 (HY000): runtime error: index out of range [2] with length 2\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n```sql\nmysql> select tidb_version();\n+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| tidb_version()                                                                                                                                                                                                                                                           |\n+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| Release Version: v8.5.0-alpha-375-g1405c5e1a5\nEdition: Community\nGit Commit Hash: 1405c5e1a5ec86941f5c06d82a8502267c4740a6\nGit Branch: master\nUTC Build Time: 2024-12-18 07:44:22\nGoVersion: go1.23.4\nRace Enabled: false\nCheck Table Before Drop: false\nStore: unistore |\n+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n1 row in set (0.01 sec)\n```\n",
+  "date": "2024-12-18T07:44:13Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE testPartition2 ( ID INTEGER PRIMARY KEY, OrderDate TIMESTAMP, Status VARCHAR(10) DEFAULT 'Pending' );",
+    "INSERT INTO testPartition2 (ID, OrderDate) VALUES (1, NULL);",
+    "INSERT INTO testPartition2 (ID, OrderDate, Status) VALUES (2, TIMESTAMP '2024-01-01 00:00:00', 'Completed');",
+    "SELECT * FROM testPartition2 WHERE OrderDate IS NULL;",
+    "SELECT COUNT(*) FROM testPartition2 WHERE Status = 'Pending' OR OrderDate IS NULL;"
+  ],
+  "key_bug_features": [
+    "Querying null values in hash partitioned table"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+    "function": "h3GetFaces",
+    "operator": "a * b",
+    "sql_array": [
+        "CREATE TABLE h3_data (index UInt64, value UInt64) ENGINE = MergeTree() ORDER BY index;",
+        "INSERT INTO h3_data VALUES (599686042433355775, 1), (599686042433355776, 2), (599686042433355777, 3), (0, NULL), (18446744073709551615, 10);",
+        "SELECT h3GetFaces(index * 2) AS faces, SUM(value) FROM h3_data GROUP BY faces HAVING faces IS NOT NULL;",
+        "SELECT faces, COUNT(*) FROM (SELECT h3GetFaces(index) AS faces FROM h3_data WHERE index > 0) AS subquery GROUP BY faces;",
+        "SELECT h3GetFaces(index) AS faces, AVG(value) OVER (PARTITION BY faces) AS avg_value FROM h3_data WHERE NULLIF(value, 0) IS NOT NULL;",
+        "SELECT h3GetFaces(NULLIF(index, 0) * 2) AS faces FROM h3_data WHERE index IS NOT NULL;",
+        "WITH (SELECT SUM(value) FROM h3_data) AS total_value SELECT h3GetFaces(index * total_value) AS faces FROM h3_data;",
+        "SELECT h3GetFaces(CAST(index AS String)) AS faces FROM h3_data WHERE value > RAND();",
+        "SELECT DISTINCT h3GetFaces(index * 3) FROM h3_data JOIN (SELECT index AS sub_index FROM h3_data WHERE value IS NOT NULL) AS sub ON sub.sub_index = h3_data.index;",
+        "CREATE TEMPORARY TABLE temp_h3 AS SELECT index, h3GetFaces(index) AS faces FROM h3_data WHERE index < 10;",
+        "INSERT INTO temp_h3 SELECT index, h3GetFaces(index * 4) FROM h3_data WHERE value IS NOT NULL;",
+        "SELECT index, h3GetFaces(index) * 10 AS multiplied_faces FROM h3_data ORDER BY multiplied_faces DESC;"
+    ]
+}

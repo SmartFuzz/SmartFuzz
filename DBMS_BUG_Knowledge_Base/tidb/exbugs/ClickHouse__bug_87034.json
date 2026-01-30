@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/87034",
+  "title": "High memory usage in merge JSON type columns",
+  "description": "### Company or project name\n_No response_\n### Question\nI have some questions related to MergeTree and JSON-type fields. I'm currently testing the performance differences between JSON fields (with and without hints) and traditional columns. I noticed that in terms of memory usage:\nJSON with hint > JSON without hint >> traditional columns.\nmy test tables:\ncolumn tables:\n```\nCREATE TABLE default.column_table\n(\n`id` UInt32,\n`event_time` DateTime,\ns1\tNullable(String),\ns2\tNullable(String),\n.......\ns100\tNullable(String)\n)\nENGINE = MergeTree\nORDER BY (event_time,id)\nSETTINGS index_granularity = 8192;\n```\njson column without hints\n```\nCREATE TABLE default.json_no_hint_table (\n`id` UInt32,\n`event_time` DateTime,\n`data` JSON\n) ENGINE = MergeTree\nORDER BY\n(id, event_time) SETTINGS index_granularity = 8192\n```\njson column with 100 hints\n```\ncreate table default.json_hint_table\n(\n`id` UInt32,\n`event_time` DateTime,\n`data` JSON(`1` String, `10`  .... `99` String, `100` String)\n)\nENGINE = MergeTree\nORDER BY (id, event_time)\nSETTINGS index_granularity = 8192\n```\ntest result\nhttps://docs.google.com/document/d/1yrpm2Z_g5-1MLRBj4bNw6yNwWtYCsToj_9RXX8CVfnw/edit?usp=sharing\nI'm trying to understand why JSON fields consume significantly more memory during merges compared to traditional columns in MergeTree. Additionally, I've noticed that using schema hints for JSON fields actually increases memory usage even further, compared to not using any hints.\nIs there a reason why JSON fields are so much more memory-intensive during merges? And why does enabling hints seem to make memory usage even worse?\nAny insights into how JSON fields are handled internally during merges, especially with and without hints, would be greatly appreciated.",
+  "date": "2025-09-12T05:36:46Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE default.test_json_table (id UInt32, event_time DATETIME, data JSON) ENGINE = InnoDB;",
+    "INSERT INTO default.test_json_table (id, event_time, data) VALUES (1, '2023-10-01 12:00:00', '{\"key1\": \"value1\", \"key2\": \"value2\"}');",
+    "CREATE TABLE default.test_json_hint_table (id UInt32, event_time DATETIME, data JSON) ENGINE = InnoDB;",
+    "INSERT INTO default.test_json_hint_table (id, event_time, data) VALUES (2, '2023-10-01 12:05:00', '{\"key1\": \"value3\", \"key2\": \"value4\"}');",
+    "SELECT id, event_time, data FROM default.test_json_table WHERE JSON_UNQUOTE(JSON_EXTRACT(data, '$.key1')) IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "High memory usage during merges of JSON type columns"
+  ]
+}

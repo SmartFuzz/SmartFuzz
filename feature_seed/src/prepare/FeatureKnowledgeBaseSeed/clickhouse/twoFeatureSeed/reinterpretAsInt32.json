@@ -1,0 +1,16 @@
+{
+    "function": "reinterpretAsInt32",
+    "operator": "-a",
+    "sql_array": [
+        "CREATE TABLE test_table (id UUID, value Float64, str_value String, created_at DateTime, nullable_int Int32 NULL);",
+        "INSERT INTO test_table VALUES (uuid(), 3.14, 'Test', now(), NULL), (uuid(), 10.5, '', now(), 42);",
+        "SELECT reinterpretAsInt32(-value) AS negated_value, toTypeName(negated_value) FROM test_table WHERE str_value = '' AND value > 0;",
+        "SELECT id, reinterpretAsInt32(toInt16(257)) AS reinterpret_value, -reinterpret_value FROM (SELECT created_at, reinterpretAsInt32(value) AS reinterpret_value FROM test_table GROUP BY created_at HAVING reinterpret_value IS NOT NULL) AS subquery WHERE -reinterpret_value < 0;",
+        "SELECT id, value, reinterpretAsInt32(value) + (-nullable_int) AS calculated_result FROM test_table JOIN (SELECT id, reinterpretAsInt32(str_value) AS reinterpret_str_value FROM test_table WHERE str_value IS NOT NULL) AS join_table ON test_table.id = join_table.id WHERE calculated_result > 0;",
+        "SELECT (*, reinterpretAsInt32(1.0) / (-value)) AS division FROM (SELECT value FROM test_table WHERE NULLIF(value, 0) IS NOT NULL) AS safe_values ORDER BY division;",
+        "SELECT reinterpretAsInt32(CAST('4294967295' AS String)) AS large_number_check, toTypeName(large_number_check) FROM test_table WHERE large_number_check IS NOT NULL;",
+        "SELECT -reinterpretAsInt32('NaN') AS check_nan FROM (SELECT value FROM test_table WHERE value IS NOT NULL) AS nan_check;",
+        "CREATE TABLE temp_table (temp_value Int32, temp_str String) ENGINE = Memory;",
+        "INSERT INTO temp_table SELECT reinterpretAsInt32(value) AS temp_value, str_value FROM test_table WHERE str_value <> '' ORDER BY created_at;"
+    ]
+}

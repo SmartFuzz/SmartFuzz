@@ -1,0 +1,10 @@
+CREATE TABLE geo_points (id INT PRIMARY KEY, x FLOAT, y FLOAT);
+INSERT INTO geo_points VALUES (1, 5.0, 5.0), (2, 0.0, 3.0), (3, 4.0, 0.0), (4, NULL, NULL);
+CREATE TABLE regex_test (pattern VARCHAR(50));
+INSERT INTO regex_test VALUES ('a.*'), ('^b'), ('c[0-9]'), ('^\\d{3,}$');
+SELECT id, dist_from_point_to_line_segment(x, y, 0, 3, 4, 0) AS distance FROM geo_points WHERE (id REGEXP (SELECT pattern FROM regex_test WHERE pattern REGEXP '.*') OR x IS NULL);
+SELECT id, AVG(dist_from_point_to_line_segment(x, y, 0, 3, 4, 0)) OVER (PARTITION BY (CASE WHEN x IS NULL THEN 1 ELSE 0 END)) AS avg_distance FROM geo_points GROUP BY id HAVING avg_distance IS NOT NULL;
+SELECT * FROM geo_points WHERE (dist_from_point_to_line_segment(x, y, 0, 3, 4, 0) = (SELECT MAX(dist_from_point_to_line_segment(x, y, 0, 3, 4, 0)) FROM geo_points)) AND (x REGEXP (SELECT pattern FROM regex_test LIMIT 1));
+SELECT T1.id, T2.pattern FROM geo_points T1 JOIN regex_test T2 ON (T1.x::VARCHAR REGEXP T2.pattern) WHERE T1.y IS NOT NULL ORDER BY T1.id DESC;
+CREATE TEMPORARY TABLE alt_test AS SELECT x, dist_from_point_to_line_segment(x, y, 0, 3, 4, 0) AS distance FROM geo_points WHERE y IS NOT NULL;
+SELECT COUNT(*) FROM alt_test WHERE distance > 1 OR distance IS NULL HAVING COUNT(*) > 0;

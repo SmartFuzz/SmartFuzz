@@ -1,0 +1,24 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=104144",
+  "title": "REPLACE INTO removes the row",
+  "vulnerable_database": "MySQL Server: DML",
+  "date": "2021-06-29 12:14:00",
+  "vulnerable_version": "8.0.25, 5.7.34, 5.6.51",
+  "description": "REPLACE INTO statement may delete rows if there is more than one duplicate violation.\r\n\r\nLike documentation claims:\r\n\r\nMySQL uses the following algorithm for REPLACE (and LOAD DATA ... REPLACE):\r\n1. Try to insert the new row into the table\r\n2. While the insertion fails because a duplicate-key error occurs for a primary key or unique index:\r\n 2a. Delete from the table the conflicting row that has the duplicate key value\r\n 2b. Try again to insert the new row into the table\r\n\r\nThe problem - if on the stage (2b)=>(1) the duplicate violation occures again due to another unique constraint then one more row is deleted according to (2a).\r\n\r\nSo REPLACE INTO may decrease total table rows amount.\nHow to repeat:\nCREATE TABLE test (id INT PRIMARY KEY, val INT UNIQUE);\r\nINSERT INTO test VALUES (1,1), (2,2);\r\nSELECT * FROM test;  -- Output 1\r\nREPLACE INTO test (id, val) VALUES (2,1);\r\nSELECT * FROM test;  -- Output 2\r\n\r\nOutput 1:\r\n\r\nid\tval\r\n1\t1\r\n2\t2\r\n\r\nOutput 2:\r\n\r\nid\tval\r\n2\t1\r\n\r\nFiddle:\nhttps://dbfiddle.uk/?rdbms=mysql_8.0&fiddle=a01b0903440278711e8577a75cf11973",
+  "poc": [
+    "CREATE TABLE test (id INT PRIMARY KEY, val INT UNIQUE);",
+    "INSERT INTO test VALUES (1,1), (2,2);",
+    "SELECT * FROM test;",
+    "REPLACE INTO test (id, val) VALUES (2,1);"
+  ],
+  "key_bug_features": [
+    "REPLACE INTO deletes rows on duplicate key violations"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE test1 (id INT PRIMARY KEY, val INT UNIQUE, description VARCHAR(255));",
+    "INSERT INTO test1 VALUES (1, 100, 'First entry'), (2, 200, 'Second entry');",
+    "REPLACE INTO test1 (id, val, description) VALUES (2, 150, 'Updated second entry');",
+    "CREATE TABLE test2 (id INT PRIMARY KEY, val INT, FOREIGN KEY (val) REFERENCES test1(id));",
+    "INSERT INTO test2 VALUES (1, 1), (2, 2);"
+  ]
+}

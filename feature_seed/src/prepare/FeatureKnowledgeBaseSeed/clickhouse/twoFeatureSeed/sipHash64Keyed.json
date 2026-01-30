@@ -1,0 +1,18 @@
+{
+    "function": "sipHash64Keyed",
+    "operator": "s1 || s2",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt64, data String, created_at DateTime, key Tuple(UInt64, UInt64));",
+        "INSERT INTO test_table VALUES (1, 'test1', toDateTime('2023-01-01 00:00:00'), (506097522914230528, 1084818905618843912));",
+        "INSERT INTO test_table VALUES (2, NULL, toDateTime('2023-01-02 00:00:00'), (1234567890123456789, 9876543210987654321));",
+        "INSERT INTO test_table VALUES (3, 'data3', toDateTime('2023-01-03 00:00:00'), (0, 0));",
+        "SELECT sipHash64Keyed((key.1, key.2), data || cast(id AS String), 'suffix', 10, created_at) AS SipHash FROM test_table WHERE SipHash IS NOT NULL GROUP BY id, data, key ORDER BY SipHash;",
+        "SELECT id, sipHash64Keyed((key.1, key.2), data || 'fixed_string' || CAST(created_at AS String), 0, 0) AS HashValue FROM test_table WHERE HashValue > 0;",
+        "SELECT id, sipHash64Keyed((key.1, key.2), data || 'empty' || '' , 100, created_at) AS HashEmpty FROM test_table HAVING HashEmpty IS NOT NULL;",
+        "SELECT sipHash64Keyed((key.1, key.2), 'prefix' || toString(id), data || NULL, created_at) AS CombinedHash FROM test_table WHERE toDateTime(NULL) < created_at;",
+        "CREATE TABLE temp_table AS SELECT id, sipHash64Keyed((key.1, key.2), 'detail' || s1 || s2, 0, toDateTime('2023-01-05 00:00:00')) AS detailed_hash FROM (SELECT id, data AS s1, concat(NOT NULL, 's2') AS s2 FROM test_table) GROUP BY id, s1, s2;",
+        "INSERT INTO temp_table SELECT id, sipHash64Keyed((key.1, key.2), data || 'extra', 10, created_at) FROM test_table;",
+        "SELECT id, sipHash64Keyed((key.1, key.2), 'layer1' || (SELECT count() FROM test_table) || 'layer2', 20, created_at) AS NestedHash FROM test_table;",
+        "DROP TABLE IF EXISTS temp_table;"
+    ]
+}

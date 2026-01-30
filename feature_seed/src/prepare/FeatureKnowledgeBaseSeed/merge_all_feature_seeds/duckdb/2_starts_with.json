@@ -1,0 +1,12 @@
+CREATE TABLE test_table (id INTEGER, name STRING, event_date DATE, interval_days INTEGER);
+INSERT INTO test_table VALUES (1, 'apple', DATE '2023-01-01', 5), (2, 'banana', DATE '2023-01-05', NULL), (3, 'apply', DATE '2023-01-10', 10), (4, 'cherry', DATE '2023-01-15', 15);
+SELECT id, name, event_date + INTERVAL (CASE WHEN interval_days IS NULL THEN 0 ELSE interval_days END) DAY AS updated_date FROM test_table WHERE starts_with(name, 'a') AND event_date < DATE '2023-01-10';
+SELECT id, COUNT(*) OVER (PARTITION BY starts_with(name, 'a')) AS count_per_prefix FROM test_table WHERE updated_date = DATE '2023-01-06' + INTERVAL (0) DAY HAVING count_per_prefix > 0;
+SELECT DISTINCT name, (SELECT COUNT(*) FROM test_table AS t WHERE starts_with(t.name, LEFT(name, 1))) AS same_prefix_count FROM test_table WHERE event_date = (SELECT MAX(event_date) FROM test_table) ORDER BY same_prefix_count DESC;
+SELECT id, name, event_date FROM test_table WHERE starts_with(name, 'a') ORDER BY event_date + INTERVAL (COALESCE(interval_days, 0)) DAY DESC;
+CREATE TABLE temp_table AS SELECT id, interval_days, starts_with(name, 'b') AS has_b FROM test_table WHERE event_date + INTERVAL (COALESCE(interval_days, 0)) DAY < DATE '2023-01-16';
+SELECT SUM(interval_days) OVER (ORDER BY id) AS cumulative_interval FROM temp_table;
+ALTER TABLE test_table ADD COLUMN another_name STRING;
+UPDATE test_table SET another_name = CONCAT(name, ' updated') WHERE starts_with(name, 'a');
+SELECT id, another_name FROM test_table WHERE another_name IS NOT NULL AND id < 3 ORDER BY another_name + '';
+DROP TABLE IF EXISTS temp_table;

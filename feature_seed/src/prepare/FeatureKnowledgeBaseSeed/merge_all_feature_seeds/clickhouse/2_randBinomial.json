@@ -1,0 +1,12 @@
+CREATE TABLE test_binomial (id UInt64, success_count UInt64, probability Float64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_binomial VALUES (1, randBinomial(100, 0.75), 0.75), (2, randBinomial(100, 0.85), 0.85), (3, randBinomial(100, 0.55), 0.55);
+SELECT id, success_count FROM test_binomial WHERE success_count BETWEEN randBinomial(10, 0.2) AND randBinomial(100, 0.8);
+SELECT id, success_count, probability FROM test_binomial WHERE randBinomial(100, 0.5) BETWEEN 0 AND success_count AND probability IS NOT NULL;
+SELECT COUNT(*) as high_success FROM (SELECT id, success_count FROM test_binomial WHERE success_count >= randBinomial(100, 0.9) AND success_count <= randBinomial(100, 0.99));
+SELECT id, success_count, probability, randBinomial(success_count, probability) as random_trial FROM test_binomial WHERE (randBinomial((success_count + 1), probability) BETWEEN 10 AND 100) AND probability IS NOT NULL;
+SELECT id, AVG(success_count) as avg_success FROM (SELECT id, success_count FROM test_binomial GROUP BY id HAVING success_count > randBinomial(50, 0.5));
+SELECT id, success_count FROM test_binomial WHERE NOT (success_count BETWEEN randBinomial(0, 0.5) AND NULL) OR (SELECT COUNT(*) FROM test_binomial WHERE success_count IS NULL) = 0;
+CREATE TABLE temp_binomials AS SELECT id, randBinomial(50, CAST(probability AS Float64)) as trial_success FROM test_binomial;
+INSERT INTO temp_binomials SELECT id, randBinomial(75, 0.6) FROM numbers(10);
+SELECT id, COUNT(*) FROM temp_binomials GROUP BY id HAVING COUNT(*) BETWEEN 0 AND MAX(trial_success);
+DROP TABLE temp_binomials;

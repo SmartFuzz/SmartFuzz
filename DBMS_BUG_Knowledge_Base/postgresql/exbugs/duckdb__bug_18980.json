@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/18980",
+  "title": "[CSV reject_errors] csv_line of faulty csv line seems to get truncated between 9995/10000 characters",
+  "description": "### What happens?\n\nImporting a long faulty csv line with `ignore_errors=true, store_rejects=true` option results in truncated line being saved into `csv_line` field of reject_errors table\n\n### To Reproduce\n\nDownload the attached `bad_policy.csv`.\n\n```\n$ duckdb\nDuckDB v1.3.2 (Ossivalis) 0b83e5d2f6\nEnter \".help\" for usage hints.\nConnected to a transient in-memory database.\nUse \".open FILENAME\" to reopen on a persistent database.\n```\n```sql\ncreate table baduri (\"policy\" varchar, \"data\" varchar);\nINSERT INTO baduri BY NAME SELECT * FROM read_csv('bad_policy.csv', delim=' ', null_padding=true, nullstr=['-', ''], columns={\"policy\": varchar, \"data\": varchar}, escape='\"', quote='\"', header=true, new_line='\\r\\n', auto_detect=false, ignore_errors=true, store_rejects=true);\nselect len(csv_line) from reject_errors;\n```\n```text\n┌───────────────┐\n│ len(csv_line) │\n│     int64     │\n├───────────────┤\n│     9999      │\n```\n\n[bad_policy.csv](https://github.com/user-attachments/files/22308609/bad_policy.csv)\n\nThis example shows using cli but its also true with `go-duckdb`\n\n### OS:\n\nMac OS X\n\n### DuckDB Version:\n\nDuckDB v1.3.2 (Ossivalis) 0b83e5d2f6\n\n### DuckDB Client:\n\ncli\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nRitesh Nadhani\n\n### Affiliation:\n\nNetskope Inc\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a stable release\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "date": "2025-09-13 04:15:16",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_data (id SERIAL PRIMARY KEY, name VARCHAR(255), value FLOAT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_data (id, name, value) VALUES (1, 'Sample', 123.45);",
+    "CREATE TABLE reject_errors (csv_line TEXT, error_message TEXT);",
+    "INSERT INTO reject_errors (csv_line, error_message) SELECT 'This is a long faulty csv line that exceeds the limit of characters allowed in the csv_line field, which should trigger an error.', 'Line too long' WHERE LENGTH('This is a long faulty csv line that exceeds the limit of characters allowed in the csv_line field, which should trigger an error.') > 9999;",
+    "SELECT COUNT(*) FROM reject_errors WHERE LENGTH(csv_line) > 9999;"
+  ],
+  "key_bug_features": [
+    "Truncated csv_line when importing long faulty CSV with options"
+  ]
+}

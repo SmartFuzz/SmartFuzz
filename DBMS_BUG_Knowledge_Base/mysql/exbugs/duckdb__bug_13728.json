@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/13728",
+  "title": "UNPIVOT and COLUMNS(varlist) don't work in a MACRO where varlist is a parameter",
+  "description": "### What happens?\r\n\r\nI want a MACRO that unpivots a table on a list of columns, passed as a variable.\r\n\r\n### To Reproduce\r\n\r\n```sql\r\nCREATE OR replace TABLE t1 AS SELECT 42 AS i, 84 AS j;\r\nUNPIVOT t1 ON columns(['i','j']) ; -- ok\r\n```\r\n```sql\r\nCREATE OR replace FUNCTION dummy(vars) AS TABLE (\r\n\tUNPIVOT t1 ON columns(vars) \r\n) ;\r\n\r\nFROM dummy(['i','j']) ;\r\n```\r\n\r\n```console\r\nBinder Error: No matching columns found that match regex \"vars\"\r\n```\r\n\r\nHowever these will work:\r\n\r\n```sql\r\nCREATE OR replace FUNCTION dummy2() AS TABLE (\r\n\tUNPIVOT t1 ON columns(['i','j']) \r\n) ;\r\n\r\nFROM dummy2() ; -- ok\r\n```\r\n```sql\r\nSET variable vars = ['i','j'] ;\r\n\r\nCREATE OR replace FUNCTION dummy3() AS TABLE (\r\n\tUNPIVOT t1 ON columns(getvariable(vars)) \r\n) ;\r\n\r\nFROM dummy3() ; -- ok\r\n```\r\n\r\n### OS:\r\n\r\nWin11\r\n\r\n### DuckDB Version:\r\n\r\nv1.0.1-dev5058\r\n\r\n### DuckDB Client:\r\n\r\nJava\r\n\r\n### Full Name:\r\n\r\neric mauviere\r\n\r\n### Affiliation:\r\n\r\nicem7\r\n\r\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\r\n\r\nI have tested with a nightly build\r\n\r\n### Did you include all relevant data sets for reproducing the issue?\r\n\r\nNo - Other reason (please specify in the issue body)\r\n\r\n### Did you include all code required to reproduce the issue?\r\n\r\n- [X] Yes, I have\r\n\r\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\r\n\r\n- [X] Yes, I have",
+  "date": "2024-09-04 07:20:04",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (a INT, b VARCHAR(255), c DOUBLE, d BOOLEAN);",
+    "INSERT INTO t2 VALUES (1, 'test', 3.14, TRUE), (2, 'example', NULL, FALSE);",
+    "CREATE PROCEDURE unpivot_test(IN vars VARCHAR(255)) BEGIN SET @sql = CONCAT('SELECT * FROM t2 WHERE ', vars, ' IS NOT NULL');",
+    "PREPARE stmt FROM @sql;",
+    "EXECUTE stmt;",
+    "DEALLOCATE PREPARE stmt;"
+  ],
+  "key_bug_features": [
+    "UNPIVOT with parameterized column list in MACRO"
+  ]
+}

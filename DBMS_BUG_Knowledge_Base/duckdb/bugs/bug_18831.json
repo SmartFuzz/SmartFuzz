@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/18831",
+  "title": "Too many open files read_parquet with LIMIT",
+  "vulnerable_database": "DuckDB",
+  "date": "2025-09-02 19:13:18",
+  "vulnerable_version": "",
+  "description": "### What happens?\n\nWhen trying to use `read_parquet` with no `LIMIT` clause attached to read a directory full of a bunch of files it works normally, however if I include a `LIMIT` I instead get the error:\n`Cannot open file \"<filename here>\" :  Too many open files`\n\nInterestingly I only see this when the LIMIT is within a certain range, it must be greater than 50 and less than or equal to 1_000_000. \n\n### To Reproduce\n\nCreate dataset:\n```sql\nCALL dbgen(sf=10);\nCOPY (SELECT *, strftime(l_shipdate, '%Y-%m') AS l_ship_month FROM lineitem)\nTO 'lineitem.parquet'\n(FORMAT 'parquet', PARTITION_BY (l_ship_month, l_shipmode));\n```\n\nTry and read:\n```sql\nFROM 'lineitem.parquet' LIMIT 50; -- Works\nFROM 'lineitem.parquet' LIMIT 51; --Fails\nFROM 'lineitem.parquet' LIMIT 1000000; -- Fails\nFROM 'lineitem.parquet' LIMIT 1000001; -- Works\n```\n\nCopying to a parquet also seems to cause the error\n\n### OS:\n\nLinux x86_64\n\n### DuckDB Version:\n\nv1.4.0-dev3597\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nJulian Meyers\n\n### Affiliation:\n\nN/A\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a source build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "poc": [
+    "SELECT *, strftime(l_shipdate, '%Y-%m') AS l_ship_month FROM lineitem)\nTO 'lineitem.parquet'\n(FORMAT 'parquet', PARTITION_BY (l_ship_month, l_shipmode));"
+  ],
+  "key_bug_features": [
+    "LIMIT clause causes too many open files error"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE lineitem (l_orderkey INTEGER, l_partkey INTEGER, l_suppkey INTEGER, l_linenumber INTEGER, l_quantity DOUBLE, l_extendedprice DOUBLE, l_discount DOUBLE, l_tax DOUBLE, l_returnflag CHAR(1), l_linestatus CHAR(1), l_shipdate DATE, l_commitdate DATE, l_receiptdate DATE, l_shipinstruct CHAR(25), l_shipmode CHAR(10), l_linenumber INTEGER, l_ship_month VARCHAR(7));",
+    "INSERT INTO lineitem VALUES (1, 1, 1, 1, 10.0, 100.0, 0.1, 0.05, 'A', 'F', '2023-10-01', '2023-10-02', '2023-10-03', 'DELIVER IN PERSON', 'AIR', 1, '2023-10');",
+    "COPY (SELECT * FROM lineitem) TO 'lineitem.parquet' (FORMAT 'parquet', PARTITION_BY (l_ship_month, l_shipmode));",
+    "SELECT * FROM 'lineitem.parquet' LIMIT 50;",
+    "SELECT * FROM 'lineitem.parquet' LIMIT 51;"
+  ]
+}

@@ -1,0 +1,13 @@
+CREATE TABLE persons (id INT, name VARCHAR(255), location VARCHAR(255) NULL);
+INSERT INTO persons (id, name, location) VALUES (1, 'Alice', NULL), (2, 'Bob', 'New York'), (3, 'Charlie', 'Los Angeles');
+CREATE TABLE locations (id INT, lat FLOAT, lon FLOAT);
+INSERT INTO locations (id, lat, lon) VALUES (1, 34.0522, -118.2437), (2, 40.7128, -74.0060);
+SELECT p.name, (sql:GROUP_CONCAT_DISTINCT(bif:crc64(p.location), ' | ')) AS aggregated_locations FROM persons p LEFT JOIN locations l ON p.location IS NULL OR l.id = p.id GROUP BY p.name HAVING COUNT(l.id) > 0;
+SELECT name, (sql:GROUP_CONCAT_DISTINCT(bif:crc64(location), ' , ')) FROM persons GROUP BY name HAVING COUNT(location) > 1;
+SELECT p1.name, p2.name, (sql:GROUP_CONCAT_DISTINCT(bif:crc64(p2.location), ' , ')) AS locs FROM persons p1 JOIN persons p2 ON p1.id <> p2.id WHERE p1.location IS NULL OR p2.location IS NOT NULL GROUP BY p1.name, p2.name;
+SELECT (sql:GROUP_CONCAT_DISTINCT(bif:crc64(NULL)), ' , ') AS null_test FROM persons GROUP BY name;
+CREATE TEMPORARY TABLE temp_locations AS SELECT * FROM locations WHERE lat BETWEEN 34.0 AND 35.0;
+SELECT name, COUNT(*) FROM persons WHERE location IN (SELECT location FROM temp_locations GROUP BY location HAVING COUNT(*) > 1) GROUP BY name;
+INSERT INTO persons (id, name, location) VALUES (4, 'David', ' '), (5, 'Eve', NULL);
+SELECT (sql:GROUP_CONCAT_DISTINCT(bif:crc64(location), ';
+')) AS all_locations FROM persons WHERE location IS NOT NULL ORDER BY all_locations DESC;

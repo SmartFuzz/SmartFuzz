@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/85895",
+  "title": "Duplicate alias does not works with distributed table",
+  "description": "### Describe what's wrong\nWhen querying a distributed table defining alias, if the alias have the same function the query fail with a NUMBER_OF_COLUMNS_DOESNT_MATCH\n## workaround\n- define the alias only in the shard and define them as simple column in the distributed table  ( might have a small negative impact on network )\n- define the alias only once\n- define the alias once and re-use it in another alias\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\n```sql\ncreate table shard_Test on cluster '{cluster}' (a  String,  b  Float64, c Float64, d Float64 ALIAS b + c,  e Float64 ALIAS b + c ) Engine = MergeTree() ORDER BY a;\ncreate table  Test on cluster '{cluster}' (a  String,  b  Float64, c Float64, d Float64 ALIAS b + c,  e Float64 ALIAS b + c   ) Engine = Distributed('{cluster}', 'default', 'shard_Test', rand());\n```\n```\nSelect\nsum(d) as f,\nsum(e) as g\nFROM Test;\n```\n### Expected behavior\nI would expect no error at all or an error when creating the table.\n### Error message and/or stacktrace\n```\nReceived exception from server (version 25.7.2):\nCode: 20. DB::Exception: Received from localhost:9101. DB::Exception: Number of columns doesn't match (source: 1 and result: 2). (NUMBER_OF_COLUMNS_DOESNT_MATCH)\n```\n### Additional context\nclickhouse v25.7.2",
+  "date": "2025-08-19T15:48:33Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE shard_Test (a VARCHAR(255), b FLOAT, c FLOAT, d FLOAT AS (b + c), e FLOAT AS (b + c)) ENGINE = OBTableEngine() PARTITION BY HASH(a) PARTITIONS 4;",
+    "CREATE TABLE Test (a VARCHAR(255), b FLOAT, c FLOAT, d FLOAT AS (b + c), e FLOAT AS (b + c)) ENGINE = Distributed('{cluster}', 'default', 'shard_Test', rand());",
+    "INSERT INTO shard_Test VALUES ('row1', 1.0, 2.0);",
+    "INSERT INTO shard_Test VALUES ('row2', 3.0, NULL);",
+    "SELECT SUM(d) AS f, SUM(e) AS g FROM Test;"
+  ],
+  "key_bug_features": [
+    "Duplicate aliases in distributed table cause query failure"
+  ]
+}

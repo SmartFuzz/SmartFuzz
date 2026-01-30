@@ -1,0 +1,17 @@
+{
+    "function": "xml_template",
+    "operator": "NOT LIKE",
+    "sql_array": [
+        "CREATE TABLE xml_test (id INT PRIMARY KEY, data XML, name VARCHAR(100), value INT);",
+        "INSERT INTO xml_test (id, data, name, value) VALUES (1, xtree_doc('<template><name>{{name}}</name><value>{{value}}</value></template>'), 'test1', 10);",
+        "INSERT INTO xml_test (id, data, name, value) VALUES (2, xtree_doc('<template><name>{{name}}</name><value>{{value}}</value></template>'), 'test2', NULL);",
+        "SELECT xml_template(data, ARRAY[CAST('name' AS VARCHAR) || '=' || name, 'value=' || COALESCE(CAST(value AS VARCHAR), 'NULL')], 'output') FROM xml_test WHERE name NOT LIKE '%test3%';",
+        "SELECT id, xml_template(data, ARRAY['name=' || name, 'value=' || (CASE WHEN value IS NULL THEN 'NULL' ELSE CAST(value AS VARCHAR) END)], 'output') AS xml_result FROM xml_test WHERE data IS NOT NULL AND id NOT LIKE '0';",
+        "SELECT COUNT(*) FROM (SELECT xml_template(data, ARRAY['name=' || name, 'value=' || value], 'output') FROM xml_test) AS result WHERE result.xml_result NOT LIKE '<name>test2</name>%';",
+        "CREATE TABLE orders (order_id INT PRIMARY KEY, user_id INT, order_date DATE, amount DECIMAL(10, 2));",
+        "INSERT INTO orders (order_id, user_id, order_date, amount) VALUES (1, 1, '2023-01-01', 99.99);",
+        "INSERT INTO orders (order_id, user_id, order_date, amount) VALUES (2, NULL, '2023-01-02', NULL);",
+        "SELECT o.order_id, xml_template('<order><id>{{id}}</id><total>{{total}}</total></order>', ARRAY['id=' || CAST(o.order_id AS VARCHAR), 'total=' || COALESCE(CAST(o.amount AS VARCHAR), '0')], 'output') FROM orders o WHERE o.amount NOT LIKE '100%' AND o.user_id IS NOT NULL;",
+        "SELECT COUNT(*) FROM orders o WHERE NOT EXISTS (SELECT 1 FROM xml_test xt WHERE xt.id = o.user_id AND xt.name = 'test1') AND o.amount IS NOT NULL;"
+    ]
+}

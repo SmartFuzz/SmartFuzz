@@ -1,0 +1,14 @@
+{
+    "function": "xenc_x509_generate",
+    "operator": "SPARQL: sameTerm",
+    "sql_array": [
+        "CREATE TABLE certificates (id SERIAL PRIMARY KEY, public_key VARCHAR(512), name VARCHAR(256), country VARCHAR(2), organization VARCHAR(256), org_unit VARCHAR(256), email VARCHAR(256), alt_names VARCHAR(256), creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO certificates (public_key, name, country, organization, org_unit, email, alt_names) VALUES ('dummy_pub_key', 'Test Name', 'US', 'Test Org', 'Test Org Unit', 'test@example.com', 'URI:test.alt.name');",
+        "DECLARE kname VARCHAR; kname := xenc_SPKI_read(NULL, 'dummy_pub_key'); SELECT xenc_x509_generate('id_rsa', kname, sequence_next('ca_id_rsa'), 365, vector('CN', (SELECT name FROM certificates WHERE sameTerm(name, 'Test Name')), 'C', country, 'O', organization, 'OU', org_unit, 'emailAddress', email), vector('subjectAltName', 'URI:' || (SELECT alt_names FROM certificates WHERE public_key = 'dummy_pub_key'))) AS cert FROM certificates WHERE sameTerm(public_key, 'dummy_pub_key');",
+        "SELECT * FROM certificates WHERE sameTerm(name, (SELECT name FROM certificates WHERE country = 'US')) OR NULLIF(email, '') IS NULL;",
+        "UPDATE certificates SET name = (SELECT MAX(name) FROM certificates) WHERE sameTerm(country, (SELECT country FROM certificates ORDER BY creation_date DESC LIMIT 1));",
+        "CREATE TABLE certificate_log (log_id SERIAL PRIMARY KEY, cert_id INTEGER REFERENCES certificates(id), log_message VARCHAR(512), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO certificate_log (cert_id, log_message) SELECT id, 'Generated certificate for ' || name FROM certificates WHERE xenc_x509_generate('id_rsa', (SELECT kname FROM (SELECT xenc_SPKI_read(NULL, public_key) AS kname FROM certificates) AS subquery LIMIT 1), sequence_next('ca_id_rsa'), 365, vector('CN', name), vector('subjectAltName', 'URI:' || alt_names)) IS NOT NULL;",
+        "SELECT DISTINCT c1.name FROM certificates c1 JOIN certificates c2 ON sameTerm(c1.public_key, c2.public_key) WHERE c1.creation_date > (SELECT MIN(creation_date) FROM certificates) AND c2.country IS NOT NULL HAVING COUNT(c2.email) > 0;"
+    ]
+}

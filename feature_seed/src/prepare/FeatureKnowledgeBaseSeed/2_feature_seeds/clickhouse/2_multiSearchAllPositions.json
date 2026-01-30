@@ -1,0 +1,15 @@
+CREATE TABLE fuzz_test_strings (id UInt32, haystack String, needle Array(String));
+INSERT INTO fuzz_test_strings VALUES (1, 'Hello, World!', ['hello', '!', 'world']);
+INSERT INTO fuzz_test_strings VALUES (2, '', ['a', 'b', 'c']);
+INSERT INTO fuzz_test_strings VALUES (3, 'Edge Case: 1234567890', ['123', '456', 'zero']);
+INSERT INTO fuzz_test_strings VALUES (4, NULL, ['NULL', 'case']);
+SELECT id, multiSearchAllPositions(haystack, needle) AS positions FROM fuzz_test_strings WHERE positions[1] > 0;
+SELECT id, haystack, needle FROM fuzz_test_strings WHERE haystack GLOBAL IN (SELECT haystack FROM fuzz_test_strings WHERE id = 1);
+SELECT id, multiSearchAllPositions(haystack, ['hello', 'nope']) AS positions FROM fuzz_test_strings GROUP BY id HAVING arrayLength(positions) > 0;
+SELECT id, multiSearchAllPositions(haystack, ['123', 'zero', '456']) AS positions FROM fuzz_test_strings WHERE haystack GLOBAL IN (SELECT DISTINCT haystack FROM fuzz_test_strings);
+SELECT id, multiSearchAllPositions(haystack, ARRAY(SELECT needle FROM fuzz_test_strings WHERE id = 2)) AS positions FROM fuzz_test_strings;
+CREATE TABLE temp_fuzz_table AS SELECT id, haystack, needle, multiSearchAllPositions(haystack, needle) AS positions FROM fuzz_test_strings;
+ALTER TABLE temp_fuzz_table ADD COLUMN position_count UInt32;
+UPDATE temp_fuzz_table SET position_count = arrayLength(positions);
+SELECT id, position_count FROM temp_fuzz_table WHERE position_count = 0;
+DROP TABLE IF EXISTS temp_fuzz_table;

@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14532",
+  "title": "small RECURSIVE cte issue in DuckDB (workaroundable but you may want to know)",
+  "description": "### What happens?\r\n\r\nthe Recursive CTE get a bit lost if I don't change intermediate field names to a different name\r\nThe problem doesn't happen on SQLite\r\n\r\n\r\n\r\n### To Reproduce\r\n\r\nMinimal example: (in your live WASM site https://shell.duckdb.org/ on duckdb-1.1.2)\r\n````\r\nDROP TABLE IF EXISTS bos;\r\ncreate table bos as (\r\n    select 'North' as Destination, 'Plant' as Origin\r\n  union \r\n    select 'Central', 'Plant'\r\n   union\r\n    select 'Central' ,' PlantB'\r\n   union\r\n    select 'Plant', 'PlantB');\r\n\r\nDROP TABLE IF EXISTS LocationLevel ; -- Trying to generate Low LevelCode\r\nCREATE TABLE LocationLevel as \r\nwith recursive cte(location, level) as (\r\n   select bos.destination as location, 1 as level  from bos \r\n       where not exists( select 1 from bos b2  where bos.destination =b2.origin)\r\n   union all\r\n      select bos.origin,   1 + level from cte inner join bos on cte.location = bos.Destination\r\n      where coalesce(cte.location,'') <>''  \r\n           )\r\nselect location , max(level) as level  from cte \r\n group by location;\r\n````\r\n\r\nit works if I rename Level:\r\n\r\n```\r\nDROP TABLE IF EXISTS LocationLevel ;\r\n CREATE TABLE LocationLevel as \r\nwith recursive cte(location, ducklevel) as (\r\n   select bos.destination as location, 1 as ducklevel  from bos \r\n       where not exists( select 1 from bos b2  where bos.destination =b2.origin)\r\n   union all\r\n      select bos.origin,   1 + ducklevel from cte inner join bos on cte.location = bos.Destination\r\n      where coalesce(cte.location,'') <>''  \r\n           )\r\nselect location , max(ducklevel) as level  from cte  \r\n group by location;  \r\n```\r\n\r\n### OS:\r\n\r\nWASM: your webpage Duckdb-1.1.2\r\n\r\n### DuckDB Version:\r\n\r\n1.1.2\r\n\r\n### DuckDB Client:\r\n\r\nany (on your webpage https://shell.duckdb.org/ for example)\r\n\r\n### Hardware:\r\n\r\n_No response_\r\n\r\n### Full Name:\r\n\r\nstonebig\r\n\r\n### Affiliation:\r\n\r\nWinPython.github.io\r\n\r\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\r\n\r\nI have tested with a stable release\r\n\r\n### Did you include all relevant data sets for reproducing the issue?\r\n\r\nYes\r\n\r\n### Did you include all code required to reproduce the issue?\r\n\r\n- [X] Yes, I have\r\n\r\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\r\n\r\n- [X] Yes, I have",
+  "date": "2024-10-24 12:48:57",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS employees;",
+    "CREATE TABLE employees (id INTEGER, name VARCHAR, salary DECIMAL(10, 2), department_id INTEGER, PRIMARY KEY (id));",
+    "INSERT INTO employees (id, name, salary, department_id) VALUES (1, 'Alice', 70000.00, 1), (2, 'Bob', 50000.00, 2), (3, 'Charlie', NULL, 1);",
+    "DROP TABLE IF EXISTS departments;",
+    "CREATE TABLE departments (id INTEGER, name VARCHAR NOT NULL, PRIMARY KEY (id));",
+    "INSERT INTO departments (id, name) VALUES (1, 'HR'), (2, 'Engineering');"
+  ],
+  "key_bug_features": [
+    "Recursive CTE fails with same intermediate field names"
+  ]
+}

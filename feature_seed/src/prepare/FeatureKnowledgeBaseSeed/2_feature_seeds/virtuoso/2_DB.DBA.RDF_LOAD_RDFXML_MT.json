@@ -1,0 +1,10 @@
+CREATE TABLE RDF_TEST (id INTEGER PRIMARY KEY, data VARCHAR, graph_uri VARCHAR);
+INSERT INTO RDF_TEST (id, data, graph_uri) VALUES (1, '<root><a>1</a></root>', 'http://example.com/test');
+INSERT INTO RDF_TEST (id, data, graph_uri) VALUES (2, '<root><b>2</b></root>', 'http://example.com/test2');
+SELECT * FROM RDF_TEST WHERE id = (SELECT MIN(id) FROM RDF_TEST);
+SELECT xml_tree_doc(data) FROM RDF_TEST WHERE graph_uri IN (SELECT graph_uri FROM RDF_TEST WHERE id > 0);
+DELETE FROM RDF_TEST WHERE id IN (SELECT id FROM RDF_TEST WHERE data IS NULL OR data = '');
+SELECT DB.DBA.RDF_LOAD_RDFXML_MT(file_to_string_output('tmp/Kingsley_Idehen.rdf'), xml_tree_doc(data), graph_uri) FROM RDF_TEST WHERE id = 1;
+SELECT DB.DBA.RDF_LOAD_RDFXML_MT(file_to_string_output('tmp/test.rdf'), '', graph_uri) FROM RDF_TEST WHERE data IS NOT NULL;
+CREATE TABLE RDF_AGGREGATE AS SELECT graph_uri, COUNT(*) AS triple_count FROM RDF_TEST GROUP BY graph_uri HAVING COUNT(*) > 1;
+SELECT * FROM RDF_AGGREGATE WHERE triple_count = (SELECT MAX(triple_count) FROM RDF_AGGREGATE);

@@ -1,0 +1,11 @@
+CREATE TABLE rdf_metadata_test (id INT PRIMARY KEY, description VARCHAR(255) NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO rdf_metadata_test (id, description) VALUES (1, 'Initial metadata'), (2, NULL), (3, 'Backup metadata with NULL value');
+SELECT DB.DBA.RDF_RESTORE_METADATA(NULL) AS restore_result WHERE 1 IS NULL;
+SELECT DB.DBA.RDF_RESTORE_METADATA(description) FROM rdf_metadata_test WHERE description IS NULL;
+SELECT DB.DBA.RDF_RESTORE_METADATA('backup_file.rdf') AS result FROM rdf_metadata_test WHERE created_at IS NOT NULL;
+SELECTDB.DBA.RDF_RESTORE_METADATA(COALESCE(NULLIF(description, ''), 'empty_backup.rdf')) AS restore_result FROM rdf_metadata_test WHERE id = (SELECT MAX(id) FROM rdf_metadata_test);
+CREATE TABLE empty_metadata_test (metadata_id INT, metadata_value VARCHAR(255) NULL);
+INSERT INTO empty_metadata_test (metadata_id, metadata_value) VALUES (1, ''), (2, 'Sample metadata');
+SELECT DB.DBA.RDF_RESTORE_METADATA((SELECT metadata_value FROM empty_metadata_test WHERE metadata_value IS NOT NULL LIMIT 1)) AS restore_result;
+SELECT DB.DBA.RDF_RESTORE_METADATA('backup.rdf') FROM rdf_metadata_test WHERE EXISTS (SELECT 1 WHERE created_at IS NULL);
+SELECT DB.DBA.RDF_RESTORE_METADATA(NULLIF(CAST(MIN(id) AS VARCHAR), ''))), COUNT(*) FROM rdf_metadata_test GROUP BY description HAVING COUNT(*) > 1;

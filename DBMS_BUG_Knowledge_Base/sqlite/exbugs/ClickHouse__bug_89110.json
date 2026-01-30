@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/89110",
+  "title": "Chaining Refreshable Materialized Views and Materialized Views doesn't provide a result",
+  "description": "### Company or project name\n_No response_\n### Describe the unexpected behaviour\nWhen I chain a refreshable materialized views and an incremental materialized views, the last table doesn't receive any data.\n### Which ClickHouse versions are affected?\nI'm using ClickHouse 25.1.8.25\n### How to reproduce\nThis is a small example from a much more complex use case:\n- Table `initial` will receive data from user\n- Table `target1` will receive data from `initial` through a refreshable materialized view `initial_target1_mv`\n- Table `target2` will receive data from `target1` through an incremental materialized view `target1_target2_mv`\n```sql\nCREATE TABLE IF NOT EXISTS default.initial\n(\nn          UInt32,\n_timestamp DateTime DEFAULT now()\n)\nENGINE = ReplacingMergeTree(_timestamp)\nORDER BY (n);\nCREATE TABLE IF NOT EXISTS default.target1\n(\nx          UInt32,\n_timestamp DateTime DEFAULT now()\n)\nENGINE = ReplacingMergeTree(_timestamp)\nORDER BY (x);\nCREATE TABLE IF NOT EXISTS default.target2\n(\nx          UInt32,\n_timestamp DateTime DEFAULT now()\n)\nENGINE = ReplacingMergeTree(_timestamp)\nORDER BY (x);\nCREATE MATERIALIZED VIEW IF NOT EXISTS default.initial_target1_mv\n-- @formatter:off\nREFRESH EVERY 1 MINUTE TO default.target1 AS\n-- @formatter:on\nSELECT n AS x\nFROM default.initial\nWHERE randCanonical() < 0.5;\nCREATE MATERIALIZED VIEW IF NOT EXISTS default.target1_target2_mv\nTO default.target2 AS\nSELECT x\nFROM default.target1;\nINSERT INTO default.initial(n)\nSELECT  number AS n\nFROM numbers(11);\nSELECT *\nFROM default.initial;\nSELECT *",
+  "date": "2025-10-28T16:11:33Z",
+  "vulnerable_version": "25.1.8.25",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE IF NOT EXISTS initial_complex (n INTEGER, description TEXT, _timestamp DATETIME DEFAULT CURRENT_TIMESTAMP);",
+    "CREATE TABLE IF NOT EXISTS target1_complex (x INTEGER, status TEXT, _timestamp DATETIME DEFAULT CURRENT_TIMESTAMP);",
+    "CREATE TABLE IF NOT EXISTS target2_complex (x INTEGER, value REAL, _timestamp DATETIME DEFAULT CURRENT_TIMESTAMP);",
+    "CREATE VIEW initial_target1_mv_complex AS SELECT n AS x, CASE WHEN n % 2 = 0 THEN 'even' ELSE 'odd' END AS status FROM initial_complex WHERE RANDOM() % 2 = 0;",
+    "CREATE VIEW target1_target2_mv_complex AS SELECT x, CAST(x AS REAL) * 1.5 AS value FROM target1_complex WHERE status IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Chaining refreshable and incremental materialized views fails"
+  ]
+}

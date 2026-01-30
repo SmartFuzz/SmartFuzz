@@ -1,0 +1,13 @@
+CREATE TABLE Categories (CategoryID INTEGER NOT NULL, Description VARCHAR(255) NOT NULL);
+CREATE TABLE Products (ProductName VARCHAR(255) NOT NULL, CategoryID INTEGER NOT NULL);
+INSERT INTO Categories (CategoryID, Description) VALUES (1, 'Electronics'), (2, 'Books');
+INSERT INTO Products (ProductName, CategoryID) VALUES ('Smartphone', 1), ('Laptop', 1), ('Novel', 2);
+CREATE XML VIEW cat AS { SELECT 'CategoryID', 'Description' as description FROM Categories C JOIN (SELECT CategoryID, ProductName FROM Products) P ON P.CategoryID = C.CategoryID };
+SELECT xml_load_mapping_schema_decl('http://localhost.localdomain/xmlrepository', 'catmp.xsd', 'UTF-8', 'x-any'), (SELECT COUNT(*) FROM Categories) AS total_categories WHERE total_categories = (SELECT COUNT(DISTINCT CategoryID) FROM Products);
+SELECT (SELECT COUNT(*) FROM Products) AS total_products, xml_load_mapping_schema_decl('http://localhost.localdomain/xmlrepository', 'catmp.xsd', 'UTF-8', 'x-any') FROM Categories WHERE CategoryID IS NOT NULL AND (SELECT COUNT(*) FROM Products WHERE Products.CategoryID = Categories.CategoryID) > 0;
+SELECT C.CategoryID, COALESCE((SELECT COUNT(*) FROM Products WHERE CategoryID = C.CategoryID AND ProductName = ''), 0) AS empty_product_names FROM Categories C GROUP BY C.CategoryID HAVING (COUNT(CASE WHEN Description IS NULL THEN 1 END) > 0) = true;
+SELECT xml_load_mapping_schema_decl('http://localhost.localdomain/xmlrepository', 'catmp.xsd', 'UTF-8', 'x-any') AS xml_data, (SELECT MAX(CategoryID) FROM Categories) AS max_id FROM Products HAVING max_id = (SELECT MIN(CategoryID) FROM Categories) AND max_id IS NOT NULL;
+INSERT INTO Products (ProductName, CategoryID) VALUES ('UltraBook', NULL);
+SELECT C.CategoryID, xml_load_mapping_schema_decl('http://localhost.localdomain/xmlrepository', 'catmp.xsd', 'UTF-8', 'x-any') FROM Categories C LEFT JOIN Products P ON P.CategoryID = C.CategoryID WHERE COALESCE(P.ProductName, '') = '';
+CREATE TEMPORARY TABLE TempCategories AS SELECT CategoryID FROM Categories WHERE CategoryID > (SELECT AVG(CategoryID) FROM Categories);
+SELECT xml_load_mapping_schema_decl('http://localhost.localdomain/xmlrepository', 'catmp.xsd', 'UTF-8', 'x-any') FROM TempCategories T WHERE EXISTS (SELECT 1 FROM Products P WHERE P.CategoryID = T.CategoryID) AND T.CategoryID IS NOT NULL;

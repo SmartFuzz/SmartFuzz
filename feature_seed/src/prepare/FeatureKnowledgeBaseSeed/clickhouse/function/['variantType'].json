@@ -1,0 +1,19 @@
+[
+    "CREATE TABLE test (v Variant(UInt64, String, Array(UInt64))) ENGINE = Memory;",
+    "INSERT INTO test VALUES (NULL), (42), ('Hello, World!'), ([1, 2, 3]);",
+    "SELECT variantType(v) FROM test;",
+    "SELECT toTypeName(variantType(v)) FROM test LIMIT 1;",
+    "CREATE TABLE test2 (id UInt32, v Variant(UInt64, String));",
+    "INSERT INTO test2 VALUES (1, NULL), (2, 100), (3, 'Sample'), (4, ([10, 20, 30]));",
+    "SELECT id, variantType(v) FROM test2;",
+    "WITH (SELECT count(*) FROM test2) AS cnt SELECT id, variantType(v) FROM test2 WHERE cnt > 2;",
+    "CREATE TABLE test3 (id UInt32, v Variant(Int32, Float64, Array(String))) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO test3 VALUES (1, NOT NULL), (2, 3.14), (3, ARRAY('A', 'B', 'C'));",
+    "SELECT variantType(v) FROM test3;",
+    "SELECT id, toTypeName(variantType(v)) AS type_name FROM test3 ORDER BY id DESC;",
+    "CREATE TABLE test4 AS test3 ENGINE = Memories;",
+    "INSERT INTO test4 SELECT * FROM test3 WHERE id IN (SELECT id FROM test3 WHERE variantType(v) = 'UInt64');",
+    "SELECT id, v, variantType(v) FROM test4 WHERE id IN (SELECT id FROM test2 WHERE variantType(v) = 'String');",
+    "WITH (SELECT COUNT(*) FROM test4) AS total SELECT id, variantType(v) AS type FROM test4 WHERE total > 3 ORDER BY type;",
+    "SELECT id, variantType(v) AS type FROM test4 WHERE type NOT IN (SELECT toTypeName(variantType(v)) FROM test2);"
+]

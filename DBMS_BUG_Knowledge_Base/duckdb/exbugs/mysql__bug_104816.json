@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=104816",
+  "title": "\"IN (0, ...)\" on a JSON column returns non-matching values",
+  "description": "Create a table with a JSON column. Performing a query for \"WHERE column IN (0)\" returns the correct results, but adding any other value to the IN expression (even \"IN (0, 0)\") will return non-matching values.\r\n\r\nReproduced on MySQL 5.7.35; not present in 8.0.26.\nHow to repeat:\nExecute the following DDL:\r\n\r\ncreate schema test collate utf8_general_ci;\r\ncreate table test.data(value JSON); \r\ninsert into test.data(value) values('0'),(null),('1'),('2'),('{\"prop\":1}'),('\"test\"'),('\"\"');\r\n\r\nExecute this: SELECT value FROM data WHERE value IN (0);\r\nIt returns the one expected row.\r\n\r\nExecute this: SELECT value FROM data WHERE value IN (0, 0);\r\nIt returns four rows:\r\n0\r\n{\"prop\": 1}\r\n\"test\"\r\n\"\"\r\n\r\nThis only happens for 0; \"WHERE value IN (1, 2)\" works as expected.\nSuggested fix:\nOnly the first row should be returned for the second query.",
+  "date": "2021-09-02 18:57:00",
+  "vulnerable_version": "5.7.35",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test2.data(value JSON, id INTEGER PRIMARY KEY);",
+    "INSERT INTO test2.data(value) VALUES('0'),(null),('1'),('2'),('{\"prop\":1}'),('\"test\"'),('\"\"');",
+    "SELECT value FROM test2.data WHERE value IN (0, '0');",
+    "SELECT value FROM test2.data WHERE value IN (0, 1, NULL);",
+    "SELECT COUNT(*) FROM test2.data WHERE value IS NULL;"
+  ],
+  "key_bug_features": [
+    "\"IN (0, 0)\" query returns unexpected non-matching values"
+  ]
+}

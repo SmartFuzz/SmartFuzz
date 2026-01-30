@@ -1,0 +1,23 @@
+{
+    "function": "REPL_CREATE_SNAPSHOT_PUB",
+    "operator": "AND",
+    "sql_array": [
+        "CREATE TABLE Demo.demo.Shippers (id INT PRIMARY KEY, name VARCHAR(255), last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO Demo.demo.Shippers (id, name) VALUES (1, 'Alice'), (2, 'Bob'), (3, NULL), (4, '');",
+        "SELECT DB.DBA.REPL_CREATE_SNAPSHOT_PUB ('Demo.demo.Shippers', 1) AND (SELECT COUNT(*) FROM Demo.demo.Shippers WHERE name IS NOT NULL);",
+        "SELECT CASE WHEN (DB.DBA.REPL_CREATE_SNAPSHOT_PUB ('Demo.demo.Shippers', 2) AND (SELECT COUNT(*) FROM Demo.demo.Shippers WHERE name = '') > 0) THEN 'Snapshot Created' ELSE 'No Snapshot' END AS Status;",
+        "SELECT id, name FROM Demo.demo.Shippers WHERE DB.DBA.REPL_CREATE_SNAPSHOT_PUB ('Demo.demo.Shippers', 1) AND id IS NOT NULL;",
+        "SELECT id, name FROM Demo.demo.Shippers WHERE (DB.DBA.REPL_CREATE_SNAPSHOT_PUB ('Demo.demo.Shippers', 0) AND NOT EXISTS (SELECT * FROM Demo.demo.Shippers WHERE name IS NOT NULL));",
+        "SELECT DB.DBA.REPL_CREATE_SNAPSHOT_PUB ('Demo.demo.Shippers', (SELECT COUNT(*) FROM Demo.demo.Shippers WHERE name IS NOT NULL)) AND (SELECT COUNT(*) FROM Demo.demo.Shippers HAVING COUNT(name) > 0);",
+        "CREATE TABLE Demo.demo.Orders (order_id INT PRIMARY KEY, shipper_id INT, order_date DATE, FOREIGN KEY (shipper_id) REFERENCES Demo.demo.Shippers(id));",
+        "INSERT INTO Demo.demo.Orders (order_id, shipper_id, order_date) VALUES (1, 1, '2023-01-01'), (2, 2, NULL), (3, 4, '2023-01-03');",
+        "SELECT o.order_id, o.order_date FROM Demo.demo.Orders o WHERE DB.DBA.REPL_CREATE_SNAPSHOT_PUB ('Demo.demo.Orders', 1) AND o.shipper_id IS NOT NULL;",
+        "SELECT DB.DBA.REPL_CREATE_SNAPSHOT_PUB ('Demo.demo.Orders', 1) AND (SELECT COUNT(*) FROM Demo.demo.Orders WHERE order_date > '2023-01-01') AND shipper_id IS NOT NULL;",
+        "SELECT shipper_id, COUNT(order_id) AS OrderCount FROM Demo.demo.Orders GROUP BY shipper_id HAVING COUNT(order_id) > (SELECT COUNT(*) FROM Demo.demo.Shippers WHERE name IS NOT NULL) AND id IS NOT NULL;",
+        "CREATE TEMPORARY TABLE Temp AS SELECT * FROM Demo.demo.Shippers WHERE name IS NULL;",
+        "INSERT INTO Temp (id, name) VALUES (5, 'Charlie'), (6, '');",
+        "SELECT DB.DBA.REPL_CREATE_SNAPSHOT_PUB ('/DAV/doc', (SELECT COUNT(*) FROM Temp WHERE name = '')) AND (SELECT COUNT(*) FROM Temp WHERE name IS NULL) AS TempStatus;",
+        "SELECT DISTINCT name FROM Demo.demo.Shippers WHERE DB.DBA.REPL_CREATE_SNAPSHOT_PUB ('Demo.demo.Shippers', 1) AND CHAR_LENGTH(name) < 50 ORDER BY name;",
+        "SELECT REPL.create_snapshot_pub (DB.DBA.REPL_CREATE_SNAPSHOT_PUB ('Demo.demo.Shippers', 1) OR FALSE) AS ResultCheck;"
+    ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/681",
+  "title": "Virtuoso 37000 Error SP031: SPARQL compiler: Variable '_::trans_subj_11_9' is used in subexpressions of the query but not assigned",
+  "description": "Dear everyone,\nVirtuoso version 07.20.3217\nI get an error if I \"Strict checking of void variables\". If not, the result seems wrong.\nThis error is: Virtuoso 37000 Error SP031: SPARQL compiler: Variable '_::trans_subj_11_9' is used in subexpressions of the query but not assigned. How can I handle this error?\nSee my data:\nprefix : <http://example.org/>\n\n:1 :exit true .\n:4 :exit true .\n:5 :exit true .\n:6 :exit true .\n:7 :exit true .\n:9 :exit true .\n\n:1 :similar :2 .\n:2 :similar :4 .\n:4 :similar :5 .\n\n:1 :part :3 .\n:3 :similar :6 .\n:3 :part :7 .\n:8 :similar :9 .\n\nAnd my request:\nPREFIX : <http://example.org/>\n\nSELECT ?start ?end\nWHERE {\n\n        ?start (:similar|:part)+ ?end .\n        ?end :exit true .\n        FILTER NOT EXISTS {\n            ?start (:similar|:part)* ?end_ .\n            ?end_ :exit true .\n            ?end_ (:similar|:part)+ ?end .\n            ?end :exit true .\n        }\n        FILTER NOT EXISTS {\n            ?start (:similar|:part)* ?end2 .\n            ?end2 :part ?end3 .\n            ?end3 (:similar|:part)* ?end .\n            ?end :exit true .\n            FILTER EXISTS {\n                ?start (:similar|:part)* ?end2 .\n                ?end2 :similar ?end4 .\n                ?end4 (:similar|:part)* ?end__ .\n                ?end__ :exit true .\n            }\n        }\n}\nORDER BY ?start\n\nOriginal post: stackoverflow",
+  "date": "2017-10-03 12:48:02",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE example_data (id SERIAL PRIMARY KEY, exit_status BOOLEAN, similar_id INT, part_id INT);",
+    "INSERT INTO example_data (id, exit_status, similar_id, part_id) VALUES (1, TRUE, 2, 3), (2, FALSE, 4, NULL), (3, TRUE, NULL, 7), (4, TRUE, 5, 3);",
+    "SELECT * FROM example_data WHERE exit_status IS NOT NULL AND similar_id IS NOT NULL;",
+    "UPDATE example_data SET exit_status = FALSE WHERE id = 2;",
+    "SELECT id, exit_status FROM example_data WHERE exit_status = TRUE AND (similar_id IS NULL OR part_id IS NOT NULL);"
+  ],
+  "key_bug_features": [
+    "Strict checking of void variables in SPARQL query"
+  ]
+}

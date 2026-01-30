@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/86206",
+  "title": "Support Date[Time] data types for partitioning",
+  "vulnerable_database": "ClickHouse",
+  "date": "2025-08-26T14:48:35Z",
+  "vulnerable_version": "",
+  "description": "Should work\n```sql\nCREATE TABLE wikistat_iceberg\n(\n`time` DateTime,\n`project` String,\n`subproject` String,\n`path` String,\n`hits` UInt64\n)\nENGINE = IcebergS3('https://s3.us-east-2.amazonaws.com/wikistatbucket/', '***', '***')\nPARTITION BY (identity(path), identity(time));\nINSERT INTO wikistat_iceberg WITH\nparseDateTimeBestEffort(extract(_file, '^pageviews-([\\\\d\\\\-]+)\\\\.gz$')) AS time,\nsplitByChar(' ', line) AS values,\nsplitByChar('.', values[1]) AS projects\nSELECT\ntime,\nprojects[1] AS project,\nprojects[2] AS subproject,\ndecodeURLComponent(values[2]) AS path,\nCAST(values[3], 'UInt64') AS hits\nFROM s3Cluster('default', 'https://clickhouse-public-datasets.s3.amazonaws.com/wikistat/original/pageviews*.gz', 'LineAsString')\nWHERE length(values) >= 3\nLIMIT 10\nQuery id: 1ffc4763-7bad-4e00-b2a2-a2180d22dcae\nElapsed: 3.317 sec. Processed 261.64 thousand rows, 2.62 MB (78.87 thousand rows/s., 790.20 KB/s.)\nPeak memory usage: 10.15 MiB.\nReceived exception from server (version 25.8.1):\nCode: 36. DB::Exception: Received from localhost:9000. DB::Exception: Unsupported type for iceberg Date. (BAD_ARGUMENTS)\n```",
+  "poc": [
+    "CREATE TABLE wikistat_iceberg\n(\n    `time` DateTime,\n    `project` String,\n    `subproject` String,\n    `path` String,\n    `hits` UInt64\n)\nENGINE = IcebergS3('https://s3.us-east-2.amazonaws.com/wikistatbucket/', '***', '***')\nPARTITION BY (identity(path), identity(time));"
+  ],
+  "key_bug_features": [
+    "Unsupported type for iceberg Date during partitioning"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE wikistat_iceberg_v2\n(\n    `time` DateTime,\n    `project` String,\n    `subproject` String,\n    `path` String,\n    `hits` UInt64,\n    `created_at` Date DEFAULT today()\n)\nENGINE = IcebergS3('https://s3.us-east-2.amazonaws.com/wikistatbucket/', '***', '***')\nPARTITION BY (identity(path), identity(created_at));",
+    "INSERT INTO wikistat_iceberg_v2\nSELECT\n    now() AS time,\n    'project1' AS project,\n    'subproject1' AS subproject,\n    '/path/to/resource' AS path,\n    CAST(100 AS UInt64),\n    today() AS created_at;",
+    "CREATE TABLE wikistat_temp\n(\n    `temp_time` DateTime,\n    `temp_hits` UInt64\n) ENGINE = Memory;",
+    "INSERT INTO wikistat_temp\nSELECT\n    time,\n    hits\nFROM wikistat_iceberg_v2\nWHERE hits > 50;",
+    "SELECT\n    temp_time,\n    SUM(temp_hits) AS total_hits\nFROM wikistat_temp\nGROUP BY temp_time\nHAVING total_hits > 100;"
+  ]
+}

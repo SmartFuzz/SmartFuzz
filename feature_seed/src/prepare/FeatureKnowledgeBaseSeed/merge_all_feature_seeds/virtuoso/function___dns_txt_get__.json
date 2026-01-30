@@ -1,0 +1,18 @@
+CREATE TABLE dns_records (id INT PRIMARY KEY, domain VARCHAR(255), record_type VARCHAR(10), value TEXT);
+INSERT INTO dns_records (id, domain, record_type, value) VALUES (1, 'x._domainkey.example.com', 'TXT', 'v=DKIM1;
+k=rsa;
+p=...');
+INSERT INTO dns_records (id, domain, record_type, value) VALUES (2, 'example.com', 'TXT', 'v=spf1 include:example.net -all');
+SELECT dns_txt_get(null, 'x._domainkey.example.com');
+SELECT dns_txt_get(null, (SELECT domain FROM dns_records WHERE id = 1));
+SELECT dns_txt_get(null, (SELECT domain FROM dns_records WHERE record_type = 'TXT' LIMIT 1));
+SELECT dns_txt_get(null, (SELECT domain FROM dns_records WHERE value LIKE '%DKIM%'));
+SELECT * FROM dns_records WHERE record_type = 'TXT' AND value = (SELECT value FROM dns_records WHERE id = 1);
+SELECT dns_txt_get(null, CONCAT('x._domainkey.', (SELECT domain FROM dns_records WHERE id = 2)));
+SELECT dns_txt_get(null, (SELECT domain FROM dns_records WHERE domain LIKE '%example%'));
+SELECT dns_txt_get(null, (SELECT MAX(domain) FROM dns_records));
+SELECT dns_txt_get(null, (SELECT DISTINCT domain FROM dns_records WHERE record_type = 'TXT' ORDER BY domain LIMIT 1));
+DELETE FROM dns_records WHERE id = 1;
+SELECT dns_txt_get(null, 'nonexistent._domainkey.example.com');
+SELECT dns_txt_get(null, (SELECT domain FROM dns_records WHERE id IS NULL));
+SELECT dns_txt_get(null, (SELECT domain FROM dns_records WHERE LENGTH(value) > 20));

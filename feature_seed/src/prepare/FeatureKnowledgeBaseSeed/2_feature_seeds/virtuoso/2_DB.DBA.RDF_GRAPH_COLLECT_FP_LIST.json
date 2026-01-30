@@ -1,0 +1,12 @@
+CREATE TABLE test_graphs (id INT, graph_name VARCHAR(100), triple_data TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO test_graphs (id, graph_name, triple_data) VALUES (1, 'Graph1', '<http://example.org/subject1> <http://example.org/predicate1> <http://example.org/object1>'), (2, 'Graph2', '<http://example.org/subject2> <http://example.org/predicate2> <http://example.org/object2>');
+SELECT DB.DBA.RDF_GRAPH_COLLECT_FP_LIST(NULL) WHERE (SELECT COUNT(*) FROM test_graphs) IS NULL;
+SELECT DB.DBA.RDF_GRAPH_COLLECT_FP_LIST(graph_name) FROM test_graphs WHERE graph_name IS NOT NULL GROUP BY graph_name HAVING COUNT(triple_data) > 0;
+SELECT graph_name, DB.DBA.RDF_GRAPH_COLLECT_FP_LIST(graph_name) AS collected_data FROM test_graphs GROUP BY graph_name HAVING collected_data IS NULL;
+SELECT graph_name FROM test_graphs WHERE EXISTS (SELECT * FROM test_graphs t2 WHERE t2.graph_name IS NOT NULL AND t2.id = 1) AND (SELECT DB.DBA.RDF_GRAPH_COLLECT_FP_LIST(graph_name) FROM test_graphs) IS NOT NULL;
+CREATE TABLE edge_cases (id INT PRIMARY KEY, test_value VARCHAR(255) NULL);
+INSERT INTO edge_cases (id, test_value) VALUES (1, NULL), (2, 'Test'), (3, ' '), (4, '9999-99-99');
+SELECT DB.DBA.RDF_GRAPH_COLLECT_FP_LIST(NULL) FROM edge_cases WHERE test_value IS NULL OR test_value = ' ' ORDER BY test_value;
+SELECT graph_name FROM test_graphs WHERE (SELECT COUNT(*) FROM edge_cases WHERE test_value IS NOT NULL) > 0 AND graph_name IS NOT NULL;
+DROP TABLE IF EXISTS edge_cases;
+SELECT graph_name, DB.DBA.RDF_GRAPH_COLLECT_FP_LIST(triple_data) FROM test_graphs WHERE triple_data IS NOT NULL GROUP BY graph_name ORDER BY graph_name ASC;

@@ -1,0 +1,19 @@
+{
+    "function": "UTCTimestamp",
+    "operator": "EXTRACT",
+    "sql_array": [
+        "CREATE TABLE test_dates (id UInt32, event_at DateTime, description String);",
+        "INSERT INTO test_dates VALUES (1, UTCTimestamp(), 'Event 1'), (2, UTCTimestamp() - INTERVAL 1 DAY, 'Event 2'), (3, UTCTimestamp() + INTERVAL 2 DAY, 'Event 3');",
+        "SELECT id, EXTRACT(YEAR FROM event_at) as year, EXTRACT(MONTH FROM event_at) as month, EXTRACT(DAY FROM event_at) as day FROM test_dates WHERE EXTRACT(DAY FROM event_at) = 1;",
+        "SELECT id, SUM(EXTRACT(HOUR FROM event_at)) as total_hours FROM test_dates WHERE event_at < UTCTimestamp() GROUP BY id HAVING total_hours > 0;",
+        "CREATE TABLE test_null (id UInt32, created_at DateTime DEFAULT UTCTimestamp(), status Nullable(String));",
+        "INSERT INTO test_null VALUES (1, NULL, 'active'), (2, UTCTimestamp(), NULL), (3, UTCTimestamp() - INTERVAL 1 HOUR, 'inactive');",
+        "SELECT id, EXTRACT(MONTH FROM created_at) as creation_month FROM test_null WHERE status IS NULL;",
+        "SELECT id, EXTRACT(YEAR FROM IFNULL(created_at, toDateTime('1970-01-01 00:00:00'))) as creation_year FROM test_null WHERE status = 'active';",
+        "WITH UTCTimestamp() AS now_time SELECT id, EXTRACT(SECOND FROM now_time) as current_second FROM test_dates;",
+        "SELECT id, COUNT(*) as count FROM test_null GROUP BY id HAVING EXTRACT(MONTH FROM MAX(created_at)) = 1;",
+        "CREATE TEMPORARY TABLE test_join (id UInt32, event_at DateTime, user_id UInt32);",
+        "INSERT INTO test_join VALUES (1, UTCTimestamp(), 1), (2, UTCTimestamp() - INTERVAL 3 DAY, 2);",
+        "SELECT t.id, EXTRACT(DAY FROM t.event_at) as event_day, u.status FROM test_join t JOIN (SELECT id, status FROM test_null) u ON t.user_id = u.id WHERE EXTRACT(HOUR FROM t.event_at) > 5;"
+    ]
+}

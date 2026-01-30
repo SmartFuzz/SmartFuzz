@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id UInt32, num_value Int32, str_value String, flag Nullable(UInt8));
+INSERT INTO test_table VALUES (1, 1, 'test1', 1), (2, -1, 'test2', NULL), (3, 0, 'test3', 0), (4, 2147483647, 'test4', 1);
+SELECT id, bitPositionsToArray(num_value) AS bit_positions FROM test_table WHERE multiIf(num_value < 0, 'Negative', num_value > 0, 'Positive', 'Zero') = 'Negative';
+SELECT id, bitPositionsToArray(num_value) AS bit_positions FROM test_table WHERE (flag IS NULL) AND (num_value < 0 OR multiIf(num_value = 0, 1, 0) = 1);
+SELECT id, COUNT() AS count_of_ones FROM (SELECT id, bitPositionsToArray(num_value) AS bit_positions FROM test_table) GROUP BY id HAVING count_of_ones > 0;
+SELECT id, bitPositionsToArray(toInt8(num_value)) AS bit_positions FROM (SELECT id, NULLIF(num_value, 0) AS num_value FROM test_table) WHERE num_value IS NOT NULL;
+WITH (SELECT COUNT(*) AS total FROM test_table WHERE str_value LIKE 'test%') AS total_count SELECT bitPositionsToArray(total_count) AS bit_positions FROM test_table;
+SELECT id, bitPositionsToArray(num_value) AS bit_positions FROM test_table WHERE multiIf(str_value = 'test1', num_value, str_value = 'test2', NULL, true, 0) IS NOT NULL;
+CREATE TABLE temp_table AS SELECT id, str_value, multiIf(flag IS NULL, 0, flag) AS adjusted_flag FROM test_table;
+SELECT id, bitPositionsToArray(toInt32(adjusted_flag)) AS bit_positions FROM temp_table WHERE adjusted_flag IS NOT NULL GROUP BY id ORDER BY id DESC;

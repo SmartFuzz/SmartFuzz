@@ -1,0 +1,33 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/61685",
+  "title": "Data Inconsistency: TiFlash Returns Erroneous BIGINT Displayed as Signed TINYINT, Differing from TiKV After DDL (BOOL to BIGINT)",
+  "vulnerable_database": "tidb",
+  "date": "2025-06-11T14:45:00Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\n\n### 1. Minimal reproduce step (Required)\n```\nDROP TABLE IF EXISTS t0;\nCREATE TABLE t0(c0 BOOL DEFAULT false , c1 SMALLINT ZEROFILL , c2 FLOAT UNSIGNED NOT NULL , PRIMARY KEY(c0, c1, c2));\nALTER TABLE t0 SET TIFLASH REPLICA 1;\nCREATE INDEX i0 ON t0(c0 ASC);\nINSERT INTO t0(c0, c1, c2) VALUES (false, 28113, 0.4882897927434835);\nINSERT IGNORE  INTO t0(c0, c1, c2) VALUES (true, -23905, 0.06630539889272724);\nALTER TABLE t0 MODIFY c0 BIGINT;\nDELETE FROM t0 WHERE (t0.c2) IS TRUE;\nINSERT INTO t0(c0, c1, c2) VALUES (-1595799905, 4841, 0.9775436227802476);\n\nselect /*+ read_from_storage(tikv[t0]) */ t0.c0 from t0;\nselect /*+ read_from_storage(tiflash[t0]) */ t0.c0 from t0;\n```\n\n### 2. What did you expect to see? (Required)\nThe same query returns the same results on both TiKV and TiFlash.\n### 3. What did you see instead (Required)\n```\nmysql> select /*+ read_from_storage(tikv[t0]) */ t0.c0 from t0;\n+-------------+\n| c0          |\n+-------------+\n| -1595799905 |\n+-------------+\n1 row in set (0.00 sec)\n\nmysql> select /*+ read_from_storage(tiflash[t0]) */ t0.c0 from t0;\n+-----+\n| c0  |\n+-----+\n| -97 |\n+-----+\n1 row in set (0.01 sec)\n```\n### 4. What is your TiDB version? (Required)\n+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| tidb_version()                                                                                                                                                                                                                                                                             |\n+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| Release Version: v9.0.0-beta.1.pre-918-g4419a28\nEdition: Community\nGit Commit Hash: 4419a28eb9cd988a7f2959c400aa21a63ee884fa\nGit Branch: HEAD\nUTC Build Time: 2025-06-11 05:47:23\nGoVersion: go1.23.10\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv\nKernel Type: Classic |\n+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n1 row in set (0.00 sec)",
+  "poc": [
+    "DROP TABLE IF EXISTS t0;",
+    "CREATE TABLE t0(c0 BOOL DEFAULT false , c1 SMALLINT ZEROFILL , c2 FLOAT UNSIGNED NOT NULL , PRIMARY KEY(c0, c1, c2));",
+    "ALTER TABLE t0 SET TIFLASH REPLICA 1;",
+    "CREATE INDEX i0 ON t0(c0 ASC);",
+    "INSERT INTO t0(c0, c1, c2) VALUES (false, 28113, 0.4882897927434835);",
+    "INSERT IGNORE  INTO t0(c0, c1, c2) VALUES (true, -23905, 0.06630539889272724);",
+    "ALTER TABLE t0 MODIFY c0 BIGINT;",
+    "DELETE FROM t0 WHERE (t0.c2) IS TRUE;",
+    "INSERT INTO t0(c0, c1, c2) VALUES (-1595799905, 4841, 0.9775436227802476);",
+    "select /*+ read_from_storage(tikv[t0]) */ t0.c0 from t0;",
+    "select /*+ read_from_storage(tiflash[t0]) */ t0.c0 from t0;"
+  ],
+  "poc_type": "sql_text",
+  "state": "open",
+  "key_bug_features": [
+    "ALTER TABLE t0 MODIFY c0 BIGINT"
+  ],
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t1;",
+    "CREATE TABLE t1(c0 BOOL DEFAULT true, c1 TINYINT UNSIGNED, c2 DECIMAL(10, 2) NOT NULL, PRIMARY KEY(c0, c1));",
+    "INSERT INTO t1(c0, c1, c2) VALUES (NULL, 5, 10.50);",
+    "ALTER TABLE t1 MODIFY c0 BIGINT;",
+    "SELECT /*+ read_from_storage(tikv[t1]) */ c0, c1 FROM t1 WHERE c2 > 5.00;"
+  ]
+}

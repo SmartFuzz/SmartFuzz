@@ -1,0 +1,10 @@
+CREATE TABLE test_fuzzing (id UInt64, key Tuple(UInt64, UInt64), nullable_data Nullable(String), value Float64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_fuzzing VALUES (1, (506097522914230528, 1084818905618843912), 'test', 3.14), (2, (506097522914230528, 1084818905618843912), NULL, 2.71), (3, (506097522914230528, 1084818905618843912), '', 1.41);
+SELECT hex(sipHash128Keyed(key, IF(nullable_data IS NULL, 'NULL', nullable_data), 'raw_data', value)) FROM test_fuzzing GROUP BY key HAVING count(*) > 1;
+SELECT id, sipHash128Keyed((key.1, key.2), nullable_data, value) AS hash_value FROM test_fuzzing WHERE (nullable_data IS NULL OR nullable_data = '') ORDER BY hash_value DESC;
+SELECT key, hex(sipHash128Keyed((key.1, key.2), value, IF(nullable_data IS NULL, 'default', nullable_data), 100 * value)) FROM test_fuzzing WHERE value < 4.0 GROUP BY key HAVING hex(sipHash128Keyed((key.1, key.2), NULL, value)) IS NOT NULL;
+SELECT id, CASE WHEN nullable_data IS NULL THEN 'No Data' ELSE nullable_data END AS data_status, COUNT() FROM test_fuzzing GROUP BY id, data_status HAVING COUNT() > 0;
+SELECT hex(sipHash128Keyed((key.1, key.2), if(value IS NULL, 0.0, value), value, 10)) FROM test_fuzzing WHERE key IS NOT NULL ORDER BY key ASC;
+CREATE TABLE temp_fuzzing AS test_fuzzing ENGINE = MergeTree() ORDER BY id;
+INSERT INTO temp_fuzzing SELECT * FROM test_fuzzing WHERE value IS NOT NULL;
+SELECT COUNT(*) FROM temp_fuzzing WHERE key IS NOT NULL AND key.1 > 500000000000000000;

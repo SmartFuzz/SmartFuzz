@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/86963",
+  "title": "test_throttling/test.py::test_remote_read_throttling_reload is flaky",
+  "description": "Report: https://s3.amazonaws.com/clickhouse-test-reports/json.html?PR=86845&sha=latest&name_0=PR&name_1=Integration+tests+%28amd_asan%2C+old+analyzer%2C+5%2F6%29\n```\n=================================== FAILURES ===================================\n______________________ test_remote_read_throttling_reload ______________________\n[gw3] linux -- Python 3.10.12 /usr/bin/python3\ndef test_remote_read_throttling_reload():\nnode.query(\nf\"\"\"\ndrop table if exists data;\ncreate table data (key UInt64 CODEC(NONE)) engine=MergeTree() order by tuple() settings min_bytes_for_wide_part=1e9, storage_policy='s3';\ninsert into data select * from numbers(1e6);\n\"\"\"\n)\n# without bandwidth limit\n_, took = elapsed(node.query, f\"select * from data\")\nassert_took(took, 0)\n# add bandwidth limit and reload config on fly\nnode_update_config(\n\"server\", \"max_remote_read_network_bandwidth_for_server\", \"2M\", False\n)\nnode.query(\"SYSTEM RELOAD CONFIG\")\n# reading 1e6*8 bytes with 2M default bandwidth should take (8-2)/2=3 seconds\n_, took = elapsed(node.query, f\"select * from data\")\nassert_took(took, 3)\n# update bandwidth back to 0\nnode_update_config(\n\"server\", \"max_remote_read_network_bandwidth_for_server\", \"0\", False\n)\nnode.query(\"SYSTEM RELOAD CONFIG\")\n_, took = elapsed(node.query, f\"select * from data\")\n>       assert took < 1\nE       assert 1.0218348503112793 < 1\ntest_throttling/test.py:401: AssertionError\n----------------------------- Captured stderr call -----------------------------\n```",
+  "date": "2025-09-10T16:09:31Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS test_data;",
+    "CREATE TABLE test_data (id BIGINT, value VARCHAR(255), created_at DATETIME DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_data (id, value) SELECT number, CAST(number AS CHAR) FROM (SELECT 0 AS number UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10) AS numbers;",
+    "SELECT id, value FROM test_data WHERE MOD(id, 2) = 0;",
+    "ALTER TABLE test_data ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP;"
+  ],
+  "key_bug_features": [
+    "flaky remote read throttling reload test"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+    "function": "cos",
+    "operator": "a GLOBAL IN ...",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt8, value Float32, flags Array(UInt8), timestamp DateTime DEFAULT now());",
+        "INSERT INTO test_table VALUES (1, 0.0, [1, 2, 3], '2021-01-01 00:00:00'), (2, 3.14159, [4, 5, 6], '2021-01-02 00:00:00'), (3, -1.0, [], '2021-01-03 00:00:00');",
+        "WITH cos(value) AS cosine_value SELECT id, cosine_value, arrayJoin(flags) AS expanded_flags FROM test_table WHERE cosine_value GLOBAL IN (SELECT value FROM test_table WHERE value < -0.5) ORDER BY timestamp;",
+        "SELECT id, count(*) AS cnt FROM (SELECT id, cos(value) AS cosine_value FROM test_table GROUP BY id, cosine_value HAVING cnt > 0) WHERE cosine_value GLOBAL IN (1.0, 0.5, -1.0);",
+        "CREATE TABLE temp_table AS SELECT id, cos(value) AS cos_value FROM test_table WHERE value IS NOT NULL;",
+        "INSERT INTO temp_table SELECT id, cos(0.0), flags FROM (SELECT id, flags FROM test_table WHERE flags IS NOT NULL) AS temp WHERE cos(value) GLOBAL IN (SELECT cos(min(value)) FROM test_table);",
+        "SELECT cos(x) FROM (SELECT DISTINCT value AS x FROM test_table) WHERE x GLOBAL IN (SELECT max(cos(value)) FROM temp_table);",
+        "ALTER TABLE test_table ADD COLUMN description String DEFAULT 'default';",
+        "SELECT description, cos(value) AS cosine_value FROM test_table ORDER BY cosine_value DESC;",
+        "DELETE FROM test_table WHERE id GLOBAL IN (SELECT id FROM temp_table WHERE cos_value IS NULL);"
+    ]
+}

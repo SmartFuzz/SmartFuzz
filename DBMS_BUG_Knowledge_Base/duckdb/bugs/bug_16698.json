@@ -1,0 +1,24 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/16698",
+  "title": "Upsert incorrectly sets existing values to `NULL` if the `ON CONFLICT` column is updated",
+  "vulnerable_database": "DuckDB",
+  "date": "2025-03-17 20:37:26",
+  "vulnerable_version": "",
+  "description": "### What happens?\n\nWhen an `INSERT ... ON CONFLICT DO UPDATE` statement updates the `ON CONFLICT` column, DuckDB incorrectly sets existing values in the row to `NULL`. See the repro instructions for an example (and how the current behavior differs from Postgres).\n\n### To Reproduce\n\nCreate `repro.sql`\r\n\r\n```sql\r\nCREATE TABLE events (id integer PRIMARY KEY, name text);\r\nINSERT INTO events VALUES (1, 'Test 1');\r\nINSERT INTO events (id) VALUES (1) ON CONFLICT (id) DO UPDATE SET id = excluded.id;\r\nSELECT * FROM events;\r\n```\r\n\r\nAnd run:\r\n\r\n```sh\r\nduckdb -f repro.sql\r\n```\r\n\r\nWith DuckDB, this incorrectly sets `name` (and any other columns in the row) to `NULL`:\r\n\r\n```text\r\n┌───────┬─────────┐\r\n│  id   │  name   │\r\n│ int32 │ varchar │\r\n├───────┼─────────┤\r\n│   1   │ NULL    │\r\n└───────┴─────────┘\r\n```\r\n\r\nWith PostgreSQL (`psql -f repro.sql`), this correctly preserves the existing values:\r\n\r\n```text\r\nCREATE TABLE\r\nINSERT 0 1\r\nINSERT 0 1\r\n id |  name  \r\n----+--------\r\n  1 | Test 1\r\n(1 row)\r\n```\n\n### OS:\n\nmacOS 15.3.2 arm64\n\n### DuckDB Version:\n\n1.2.1\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nAndrew Kane\n\n### Affiliation:\n\nN/A\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a nightly build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [X] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [X] Yes, I have",
+  "poc": [
+    "CREATE TABLE events (id integer PRIMARY KEY, name text);",
+    "INSERT INTO events VALUES (1, 'Test 1');",
+    "INSERT INTO events (id) VALUES (1) ON CONFLICT (id) DO UPDATE SET id = excluded.id;",
+    "SELECT * FROM events;"
+  ],
+  "key_bug_features": [
+    "ON CONFLICT column update sets existing values to NULL"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE users (user_id integer PRIMARY KEY, username text, age integer);",
+    "INSERT INTO users VALUES (1, 'Alice', 30);",
+    "INSERT INTO users (user_id) VALUES (1) ON CONFLICT (user_id) DO UPDATE SET username = excluded.username;",
+    "SELECT * FROM users;",
+    "INSERT INTO users (user_id, age) VALUES (2, NULL) ON CONFLICT (user_id) DO UPDATE SET age = excluded.age;"
+  ]
+}

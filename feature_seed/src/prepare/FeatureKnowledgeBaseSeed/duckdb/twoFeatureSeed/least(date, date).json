@@ -1,0 +1,19 @@
+{
+    "function": "least(date, date)",
+    "operator": "+",
+    "sql_array": [
+        "CREATE TABLE test_dates (id INT PRIMARY KEY, start_date DATE, end_date DATE);",
+        "INSERT INTO test_dates VALUES (1, DATE '2023-01-01', DATE '2023-01-10'), (2, DATE '2023-02-01', NULL), (3, DATE '2023-03-01', DATE '2023-02-15');",
+        "SELECT id, least(start_date, end_date) AS earliest_date, TIMESTAMP '2023-01-01 00:00:00' + INTERVAL (DATEDIFF(end_date, start_date) + 5) DAY AS extended_timestamp FROM test_dates WHERE end_date IS NOT NULL;",
+        "SELECT id, least(start_date, DATE '2023-03-05') AS comp_date, TIMESTAMP '2023-01-01 00:00:00' + INTERVAL (CASE WHEN end_date IS NOT NULL THEN DATEDIFF(end_date, start_date) ELSE 0 END) DAY FROM test_dates GROUP BY id HAVING comp_date < TIMESTAMP '2023-01-05 00:00:00' + INTERVAL 1 DAY;",
+        "SELECT id, TIMESTAMP '2023-01-01 00:00:00' + INTERVAL (least(DATEDIFF(end_date, start_date), 10) + 3) DAY AS adjusted_timestamp FROM test_dates WHERE least(start_date, end_date) IS NOT NULL;",
+        "CREATE TEMPORARY TABLE temp_dates AS SELECT id, least(start_date, end_date) AS minimum_date FROM test_dates WHERE start_date IS NOT NULL;",
+        "SELECT temp_dates.id, TIMESTAMP '2023-01-01 00:00:00' + INTERVAL (DATEDIFF(minimum_date, TIMESTAMP '2022-12-31') + 2) DAY AS calculated_date FROM temp_dates JOIN test_dates ON temp_dates.id = test_dates.id WHERE calculated_date IS NOT NULL;",
+        "SELECT id, COALESCE(least(start_date, end_date), DATE '1999-01-01') AS fallback_date FROM test_dates;",
+        "CREATE TABLE additional_dates (id INT PRIMARY KEY, event_date DATE DEFAULT current_date);",
+        "INSERT INTO additional_dates (id, event_date) VALUES (1, DATE '2024-01-01');",
+        "SELECT ad.id, TIMESTAMP ad.event_date + INTERVAL (least(ad.event_date, DATE '2023-03-01') + 5) DAY AS future_event FROM additional_dates ad;",
+        "SELECT id, least(COALESCE(start_date, end_date, DATE '2000-01-01'), DATE '2023-01-01') AS fallback_result FROM test_dates WHERE start_date + INTERVAL 1 DAY < end_date;",
+        "SELECT id, least(NULL, end_date) AS null_case FROM test_dates;"
+    ]
+}

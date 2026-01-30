@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id UInt32, value Int8, status Nullable(String));
+INSERT INTO test_data (id, value, status) VALUES (1, 127, 'active'), (2, -128, NULL), (3, 0, 'inactive');
+SELECT id, bitNot(value) AS inverted_value FROM test_data WHERE id GLOBAL NOT IN (SELECT id FROM test_data WHERE status IS NOT NULL);
+SELECT id, value FROM test_data t1 WHERE NOT (value = 0 AND id GLOBAL NOT IN (SELECT id FROM test_data WHERE value > 0)) GROUP BY id HAVING inverted_value < 0;
+SELECT id, bitNot(value) FROM test_data WHERE id GLOBAL NOT IN (SELECT id FROM test_data WHERE bitNot(value) = -1) ORDER BY bitNot(value);
+CREATE TABLE temp_data AS SELECT id, value, bitNot(value) AS inverted_value FROM test_data;
+SELECT id FROM temp_data WHERE id GLOBAL NOT IN (SELECT id FROM temp_data WHERE inverted_value IS NULL);
+INSERT INTO test_data (id, value, status) VALUES (4, 100, 'active'), (5, -50, 'active'), (6, 127, NULL);
+SELECT value, bitNot(value) FROM test_data WHERE id GLOBAL NOT IN (SELECT id FROM test_data WHERE status IS NOT NULL AND value < -100) ORDER BY value;
+DROP TABLE temp_data;

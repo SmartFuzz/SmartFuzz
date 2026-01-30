@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/58053",
+  "title": "`execute update` statement returns unexpected errors when using Plan Cache in some corner cases",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\nUse tiup to create cluster with TiKV and run the following code:\n\n```SQL\ndrop table if exists t3;\nCREATE TABLE t3 (col1 int, col2 decimal(32,30));\n\nINSERT INTO t3 VALUES(1, 0.000000000000000000000000000000);\n\nupdate t3 set col1 = 2 where col2 in (1, 'a');\n\nprepare p2 from \"update t3 set col1 = 2 where col2 in (?, ?)\";\nset @i0 = 1, @i1 = 'a';\nexecute p2 using @i0, @i1;\n```\n\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\n\nBoth queries return error.\n\n### 3. What did you see instead (Required)\n\n```SQL\nupdate t3 set col1 = 2 where col2 in (1, 'a');\n-- ERROR 1292 (22007): Truncated incorrect DECIMAL value: 'a'\n\nexecute p2 using @i0, @i1;\n-- Query OK, 1 row affected (4.90 sec)\n-- Rows matched: 1  Changed: 1  Warnings: 0\n```\n\n### 4. What is your TiDB version? (Required)\n\nmaster\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "date": "2024-12-06T07:30:17Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t4;",
+    "CREATE TABLE t4 (id INTEGER PRIMARY KEY, value REAL NOT NULL, description TEXT);",
+    "INSERT INTO t4 VALUES (1, 123.45678, 'Valid entry'), (2, 0.00000, 'Zero entry');",
+    "UPDATE t4 SET value = NULL WHERE id = 2;",
+    "SELECT * FROM t4 WHERE value IN (NULL, 'invalid');"
+  ],
+  "key_bug_features": [
+    "execute prepared statement with invalid decimal value"
+  ]
+}

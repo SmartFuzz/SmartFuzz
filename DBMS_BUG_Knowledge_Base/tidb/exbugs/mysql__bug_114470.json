@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=114470",
+  "title": "returned data that does not match expected data length for column",
+  "description": "On the SQL Server I have 4 lines of SQL:\r\ndrop table if  exists sugar.CQU_APPLICATION_CSTM_TEMP ;\r\ndrop table if  exists sugar.CQU_APPLICATION_CSTM_OLD ;\r\nSELECT * INTO sugar.CQU_APPLICATION_CSTM_TEMP from openquery(SUGARCRM,'select * from cqu_application_cstm limit 0') ;\r\nINSERT INTO sugar.CQU_APPLICATION_CSTM_TEMP SELECT * from openquery(SUGARCRM,'select * from cqu_application_cstm') ;\r\nRunning these 4 lines, the first 3 succeed. The fourth line fails with:\r\nMsg 7347, Level 16, State 1, Line 4\r\nOLE DB provider 'MSDASQL' for linked server 'SUGARCRM' returned data that does not match expected data length for column '[MSDASQL].cqu_event_id_c'. The (maximum) expected data length is 72, while the returned data length is 68.\r\n\r\nCompletion time: 2024-03-25T15:37:46.9972243+10:00\r\n\r\nBogus error as 68 is smaller than 72, yet the error suggests its too big.\r\n\r\nOn the mysql side I see that that column is only 36 at maximum. Now 72 is fine as there can be differences.\r\nmysql> select max(char_length(cqu_event_id_c)) from cqu_application_cstm;\r\n+----------------------------------+\r\n| max(char_length(cqu_event_id_c)) |\r\n+----------------------------------+\r\n| 36 |\r\n+----------------------------------+\r\n1 row in set (2.41 sec)\r\n\r\nBut how do I get the data across? Please note that this is the only table that fails. There are around 200 tables all correctly returning data.\r\n\r\nWhere the error appears: Windows Server - SQL Server.\r\nSource database: Red Hat Enterprise Linux release 8.9 (Ootpa)\r\nMySQL Version: mysql  Ver 8.0.36 for Linux on x86_64 (Source distribution)\nHow to repeat:\nThis fails every time on this table without success.\nSuggested fix:\nI am at a loss as to how this has happened. I do need it to work though.",
+  "date": "2024-03-25 05:48:00",
+  "vulnerable_version": "8.3.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE sugar.CQU_APPLICATION_CSTM_TEMP (cqu_event_id_c VARCHAR(72), cqu_name VARCHAR(100), cqu_date_created DATETIME, cqu_amount DECIMAL(10,2));",
+    "CREATE TABLE sugar.CQU_APPLICATION_CSTM_OLD (cqu_event_id_c VARCHAR(72), cqu_name VARCHAR(100), cqu_date_created DATETIME, cqu_amount DECIMAL(10,2));",
+    "INSERT INTO sugar.CQU_APPLICATION_CSTM_TEMP (cqu_event_id_c, cqu_name, cqu_date_created, cqu_amount) VALUES (NULL, 'Test Event', NOW(), 100.00);",
+    "INSERT INTO sugar.CQU_APPLICATION_CSTM_OLD (cqu_event_id_c, cqu_name, cqu_date_created, cqu_amount) SELECT cqu_event_id_c, cqu_name, cqu_date_created, cqu_amount FROM sugar.CQU_APPLICATION_CSTM_TEMP WHERE cqu_amount > 50.00;",
+    "SELECT COUNT(*) FROM sugar.CQU_APPLICATION_CSTM_TEMP WHERE CHAR_LENGTH(cqu_event_id_c) < 72;"
+  ],
+  "key_bug_features": [
+    "Mismatch in expected and returned data length for column"
+  ]
+}

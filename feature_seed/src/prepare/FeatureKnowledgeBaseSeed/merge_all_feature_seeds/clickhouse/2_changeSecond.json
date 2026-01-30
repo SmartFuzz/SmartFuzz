@@ -1,0 +1,12 @@
+CREATE TABLE test_dates (id Int32, event_time DateTime, event_description String, additional_time Int32);
+INSERT INTO test_dates VALUES (1, toDateTime('2023-10-01 10:00:00'), 'Time event 1', 30), (2, toDateTime('2023-10-01 12:30:00'), 'Time event 2', 45);
+SELECT id, changeSecond(event_time, 30) AS modified_time, event_description FROM test_dates WHERE event_time > toDateTime('2023-10-01 09:00:00') AND id IN (SELECT id FROM test_dates WHERE additional_time > 40);
+SELECT changeSecond(event_time + INTERVAL 1 HOUR, 15) AS updated_time FROM test_dates WHERE event_time < (SELECT MAX(event_time) FROM test_dates);
+SELECT id, changeSecond(event_time + INTERVAL additional_time SECOND, 10) AS altered_time FROM test_dates;
+WITH (SELECT COUNT(*) FROM test_dates) AS total_events SELECT total_events, id, changeSecond(event_time + INTERVAL total_events SECOND, 5) FROM test_dates GROUP BY id, total_events HAVING modified_time > toDateTime('2023-10-01 10:30:00');
+SELECT id, changeSecond(event_time, 0) AS no_change_time FROM test_dates WHERE additional_time IS NOT NULL;
+SELECT id, changeSecond(toDateTime64(event_time, 3), 15) AS high_precision_time FROM test_dates;
+WITH (SELECT AVG(additional_time) FROM test_dates) AS avg_time SELECT id, changeSecond(event_time + INTERVAL avg_time SECOND, 50) AS adjusted_time FROM test_dates ORDER BY adjusted_time;
+CREATE TABLE temp_dates (id Int32, event_time DateTime, status Nullable(String));
+INSERT INTO temp_dates VALUES (1, toDateTime('2023-10-02 10:00:00'), NULL), (2, toDateTime('2023-10-02 11:30:00'), 'Scheduled');
+SELECT id, changeSecond(event_time, 10) AS changed_time, IFNULL(status, 'Unknown') AS event_status FROM temp_dates WHERE status IS NULL OR id = (SELECT MAX(id) FROM temp_dates);

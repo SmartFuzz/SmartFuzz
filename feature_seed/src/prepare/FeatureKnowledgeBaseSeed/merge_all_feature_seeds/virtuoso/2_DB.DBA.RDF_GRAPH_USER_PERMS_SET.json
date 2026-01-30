@@ -1,0 +1,10 @@
+CREATE TABLE user_permissions (id INT PRIMARY KEY, uname VARCHAR(50), graph_iri VARCHAR(100), perms VARCHAR(20));
+INSERT INTO user_permissions (id, uname, graph_iri, perms) VALUES (1, 'user1', 'http://example.com/graph1', 'rw');
+INSERT INTO user_permissions (id, uname, graph_iri, perms) VALUES (2, 'user2', 'http://example.com/graph2', 'r');
+INSERT INTO user_permissions (id, uname, graph_iri, perms) VALUES (3, 'user3', 'http://example.com/graph3', NULL);
+SELECT DB.DBA.RDF_GRAPH_USER_PERMS_SET('user1', 'http://example.com/graph1', 'r') WHERE 'abc' REGEXP 'a.*';
+SELECT DB.DBA.RDF_GRAPH_USER_PERMS_SET(uname, graph_iri, CASE WHEN perms IS NULL THEN 'n' ELSE perms END) FROM user_permissions WHERE id = 1 AND uname REGEXP '^user.*';
+SELECT DB.DBA.RDF_GRAPH_USER_PERMS_SET(NULLIF(uname, 'user2'), graph_iri, CONCAT(perms, 'r')) FROM user_permissions WHERE NOT (perms REGEXP '^(r|n)$');
+UPDATE user_permissions SET perms = DB.DBA.RDF_GRAPH_USER_PERMS_SET(uname, graph_iri, 'n') WHERE id IN (SELECT id FROM user_permissions WHERE uname REGEXP 'user[1]');
+SELECT COUNT(*) OVER (PARTITION BY perms) AS perm_count FROM user_permissions WHERE DB.DBA.RDF_GRAPH_USER_PERMS_SET(uname, graph_iri, 'rw') IS NOT NULL HAVING perm_count > 1;
+SELECT DISTINCT DB.DBA.RDF_GRAPH_USER_PERMS_SET(uname, graph_iri, NULLIF(perms, '')) FROM user_permissions WHERE perms REGEXP '^r.*';

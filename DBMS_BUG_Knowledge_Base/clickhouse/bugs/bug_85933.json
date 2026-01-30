@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/85933",
+  "title": "SELECT ... FROM Distributed table returns multiple rows instead of single aggregated result",
+  "vulnerable_database": "ClickHouse",
+  "date": "2025-08-20T13:00:59Z",
+  "vulnerable_version": "25.4.5.24",
+  "description": "### Company or project name\nbitquery\n### Describe what's wrong\nDescribe the bug\nA query to a Distributed table that should return a single aggregated value sometimes returns multiple rows.\nThe problem appears presumably when one of the replicas is lagging behind.\nIf the query is executed on a non-lagging replica, the result is correct (single row).\nSELECT hostName(), max(Block_Slot_Max)\nFROM solana.dex_trades_price_minute_aggr\nhostName()|max(Block_Slot_Max)|\n----------+-------------------+\ncharch28  |361294653          |\ncharch30  |361294653          |\ncharch33  |361294653          |\ncharch34  |361084397          |\n[multiple_rows_trace.txt](https://github.com/user-attachments/files/21897133/trace.txt)\n[single_row_trace.txt](https://github.com/user-attachments/files/21897395/single_row_trace.txt)\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nClickHouse version: 25.4.5.24\n### Expected behavior\n_No response_\n### Error message and/or stacktrace\n_No response_\n### Additional context\nDDL:\nCREATE TABLE solana.dex_trades_price_minute_aggr (\nBlock_Time DateTime,\nBlock_Date Date,\n......\nBlock_Slot_Min SimpleAggregateFunction(min, UInt64),\nBlock_Slot_Max SimpleAggregateFunction(max, UInt64),\nPartition_Id String,\nPartition_Hash String\n)\nENGINE = Distributed('streaming_solana_segment','solana','dex_trades_price_minute_aggr_storage');\nSELECT cluster,shard_num,internal_replication,replica_num,host_name,is_local  FROM `system`.clusters AS c\nWHERE `cluster` LIKE '%streaming_solana_segment%'\ncluster                 |shard_num|internal_replication|replica_num|host_name|is_local|\n------------------------+---------+--------------------+-----------+---------+--------+\nstreaming_solana_segment|        1|                   1|          1|charch28 |       0|\nstreaming_solana_segment|        1|                   1|          2|charch30 |       1|\nstreaming_solana_segment|        1|                   1|          3|charch33 |       0|\nstreaming_solana_segment|        1|                   1|          4|charch34 |       0|",
+  "poc": [
+    "CREATE TABLE solana.dex_trades_price_minute_aggr (\n    Block_Time DateTime,\n    Block_Date Date,\n    ......\n    Block_Slot_Min SimpleAggregateFunction(min, UInt64),\n    Block_Slot_Max SimpleAggregateFunction(max, UInt64),\n    Partition_Id String,\n    Partition_Hash String\n)\nENGINE = Distributed('streaming_solana_segment','solana','dex_trades_price_minute_aggr_storage');"
+  ],
+  "key_bug_features": [
+    "Querying Distributed table with lagging replica returns multiple rows"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE solana.dex_trades_price_minute_aggr (Block_Time DateTime, Block_Date Date, Block_Slot_Min SimpleAggregateFunction(min, UInt64), Block_Slot_Max SimpleAggregateFunction(max, UInt64), Partition_Id String, Partition_Hash String) ENGINE = Distributed('streaming_solana_segment','solana','dex_trades_price_minute_aggr_storage');",
+    "INSERT INTO solana.dex_trades_price_minute_aggr (Block_Time, Block_Date, Block_Slot_Min, Block_Slot_Max, Partition_Id, Partition_Hash) VALUES (now(), toDate(now()), 100, 200, 'partition_1', 'hash_1');",
+    "INSERT INTO solana.dex_trades_price_minute_aggr (Block_Time, Block_Date, Block_Slot_Min, Block_Slot_Max, Partition_Id, Partition_Hash) VALUES (now(), toDate(now()), 150, 250, 'partition_2', 'hash_2');",
+    "SELECT hostName(), max(Block_Slot_Max) FROM solana.dex_trades_price_minute_aggr GROUP BY hostName();",
+    "SELECT hostName(), max(Block_Slot_Max) FROM solana.dex_trades_price_minute_aggr WHERE Block_Slot_Max IS NOT NULL GROUP BY hostName();"
+  ]
+}

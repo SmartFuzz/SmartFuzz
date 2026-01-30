@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/86098",
+  "title": "Test `test_throttling/test.py::test_remote_write_throttling_reload` is flaky",
+  "description": "https://play.clickhouse.com/play?user=play#CldJVEgKICAgICd0ZXN0X3JlbW90ZV93cml0ZV90aHJvdHRsaW5nX3JlbG9hZCcgQVMgbmFtZV9zdWJzdHIsCiAgICA5MCBBUyBpbnRlcnZhbF9kYXlzLAogICAgKCdTdGF0ZWxlc3MgdGVzdHMgKGFzYW4pJywgJ1N0YXRlbGVzcyB0ZXN0cyAoYWRkcmVzcyknLCAnU3RhdGVsZXNzIHRlc3RzIChhZGRyZXNzLCBhY3Rpb25zKScpIEFTIGJhY2twb3J0X2FuZF9yZWxlYXNlX3NwZWNpZmljX2NoZWNrcwpTRUxFQ1QKICAgIGNoZWNrX3N0YXJ0X3RpbWUgQVMgZCwKICAgIHB1bGxfcmVxdWVzdF9udW1iZXIgQVMgcHIsCiAgICByZXBvcnRfdXJsCkZST00gY2hlY2tzCldIRVJFICgobm93KCkgLSB0b0ludGVydmFsRGF5KGludGVydmFsX2RheXMpKSA8PSBjaGVja19zdGFydF90aW1lKSBBTkQgKHB1bGxfcmVxdWVzdF9udW1iZXIgTk9UIElOICgKICAgIFNFTEVDVCBwdWxsX3JlcXVlc3RfbnVtYmVyIEFTIHBybgogICAgRlJPTSBjaGVja3MKICAgIFdIRVJFIChwcm4gIT0gMCkgQU5EICgobm93KCkgLSB0b0ludGVydmFsRGF5KGludGVydmFsX2RheXMpKSA8PSBjaGVja19zdGFydF90aW1lKSBBTkQgKGNoZWNrX25hbWUgSU4gKGJhY2twb3J0X2FuZF9yZWxlYXNlX3NwZWNpZmljX2NoZWNrcykpCikpIEFORCAocG9zaXRpb24odGVzdF9uYW1lLCBuYW1lX3N1YnN0cikgPiAwKSBBTkQgKHRlc3Rfc3RhdHVzIElOICgnRkFJTCcsICdFUlJPUicsICdGTEFLWScpKQpPUkRFUiBCWSBkIERFU0MK\nExample: https://s3.amazonaws.com/clickhouse-test-reports/PRs/74079/99cd120ce049e3740f0baaf6bb700b4dfcc568f6//integration_tests_amd_asan_old_analyzer_6_6/integration_run_parallel_0.log\n```\n_____________________ test_remote_write_throttling_reload ______________________\n[gw1] linux -- Python 3.10.12 /usr/bin/python3\ndef test_remote_write_throttling_reload():\nnode.query(\nf\"\"\"\ndrop table if exists data;\ncreate table data (key UInt64 CODEC(NONE)) engine=MergeTree() order by tuple() settings min_bytes_for_wide_part=1e9, storage_policy='s3';\ninsert into data select * from numbers(1e6);\n\"\"\"\n)\n# without bandwidth limit\n_, took = elapsed(node.query, f\"insert into data select * from numbers(1e6)\")\nassert_took(took, 0)\n# add bandwidth limit and reload config on fly\nnode_update_config(\n\"server\", \"max_remote_write_network_bandwidth_for_server\", \"2M\", False\n)\nnode.query(\"SYSTEM RELOAD CONFIG\")\n# writing 1e6*8 bytes with 2M default bandwidth should take (8-2)/2=3 seconds\n_, took = elapsed(node.query, f\"insert into data select * from numbers(1e6)\")\nassert_took(took, 3)\n# update bandwidth back to 0\nnode_update_config(\n\"server\", \"max_remote_write_network_bandwidth_for_server\", \"0\", False\n)\nnode.query(\"SYSTEM RELOAD CONFIG\")\n_, took = elapsed(node.query, f\"insert into data select * from numbers(1e6)\")\n>       assert took < 1\nE       assert 1.3175480365753174 < 1\ntest_throttling/test.py:524: AssertionError\n```",
+  "date": "2025-08-24T23:56:00Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS test_data;",
+    "CREATE TABLE test_data (id INTEGER, name VARCHAR, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, value FLOAT, is_active TINYINT);",
+    "INSERT INTO test_data (id, name, value, is_active) VALUES (1, 'Test1', 10.5, 1), (2, 'Test2', NULL, 0), (3, 'Test3', 20.0, 1);",
+    "SELECT id, name, value FROM test_data WHERE value IS NOT NULL;",
+    "ALTER TABLE test_data ALTER COLUMN value SET DATA TYPE FLOAT;"
+  ],
+  "key_bug_features": [
+    "Reloading config while writing with bandwidth limit"
+  ]
+}

@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id INTEGER, name VARCHAR, values ARRAY<INTEGER>, created_at TIMESTAMP);
+INSERT INTO test_data VALUES (1, 'test1', ARRAY[1, 2, 3], '2023-10-01 10:00:00'), (2, 'test2', ARRAY[4, 5, NULL], NULL), (3, 'test3', ARRAY[], '2023-10-03 12:00:00');
+SELECT id, (union.tag(values := ARRAY[1, 2, 3, NULL]) AS extracted_values).values AS extracted_values, (SELECT COUNT(*) FROM test_data WHERE values <-> ARRAY[2, 3, 4]) AS distance_count FROM test_data WHERE created_at IS NOT NULL;
+SELECT name, COUNT(*) AS occurrences FROM test_data GROUP BY name HAVING COUNT(*) > (SELECT AVG(COUNT(*)) FROM test_data GROUP BY name);
+SELECT id, (SELECT COUNT(*) FROM test_data t2 WHERE t2.id = t1.id AND t2.values <-> t1.values) AS value_distances FROM test_data t1;
+SELECT id, union.tag(values := (SELECT ARRAY_AGG(id) FROM test_data)) AS union_values FROM test_data GROUP BY id;
+CREATE TABLE another_table (id INTEGER, related_id INTEGER, value VARCHAR NOT NULL);
+INSERT INTO another_table VALUES (1, 1, 'related1'), (2, 2, NULL), (3, 1, 'related3');
+SELECT a.id, COUNT(*) AS related_count FROM test_data t JOIN another_table a ON t.id = a.related_id GROUP BY a.id HAVING related_count < (SELECT COUNT(*) FROM another_table WHERE value IS NOT NULL);
+SELECT a.id, (SELECT COUNT(*) FROM another_table b WHERE b.related_id = a.id AND b.value IS NOT NULL) AS non_null_count FROM another_table a WHERE non_null_count <-> (SELECT COUNT(*) FROM another_table) ORDER BY non_null_count DESC;

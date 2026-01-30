@@ -1,0 +1,19 @@
+{
+    "function": "substringIndex",
+    "operator": "a >= b",
+    "sql_array": [
+        "CREATE TABLE test_strings (id UInt32, s String, delim String, count Int32, created_at DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_strings (id, s, delim, count, created_at) VALUES (1, 'aaa.bbb.ccc.ddd', '.', 2, now()), (2, 'www.clickhouse.com', '.', 1, now()), (3, '', '.', -1, now()), (4, 'test-string', '-', 1, now());",
+        "SELECT id, substringIndex(s, delim, count) AS substring, created_at FROM test_strings WHERE substringIndex(s, delim, count) IS NOT NULL AND count >= 0;",
+        "SELECT id, substringIndex(s, delim, -1) AS substring, created_at FROM test_strings WHERE substringIndex(s, delim, -3) IS NOT NULL AND (count >= 0 OR count < 0);",
+        "SELECT id, substringIndex(s, delim, 1) AS substr1, substringIndex(s, delim, 2) AS substr2 FROM test_strings WHERE substr1 >= substr2;",
+        "SELECT id, s, count, CASE WHEN count >= 0 THEN substringIndex(s, delim, count) ELSE NULL END AS substr FROM test_strings WHERE created_at > now() - INTERVAL 1 DAY;",
+        "SELECT id, substringIndex(s, delim, count) AS selected_substring FROM (SELECT id, s, delim, count FROM test_strings WHERE s != '') AS filtered WHERE selected_substring IS NOT NULL;",
+        "CREATE TABLE test_numbers (id UInt32, num String, created_at DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_numbers (id, num, created_at) VALUES (1, '100', now()), (2, '200', now()), (3, '300', now());",
+        "SELECT id, substringIndex(s, delim, CAST(num AS Int32)) AS num_substr FROM (SELECT id, s, delim, num FROM test_strings JOIN test_numbers ON id = num) WHERE num IS NOT NULL AND delim != '';",
+        "SELECT COUNT(*) FROM test_strings GROUP BY substringIndex(s, delim, count) HAVING COUNT(*) >= 1;",
+        "CREATE TEMPORARY TABLE temp_test AS SELECT * FROM test_strings WHERE count >= 0;",
+        "SELECT id, substringIndex(s, delim, count) AS temp_sub FROM temp_test WHERE temp_sub IS NOT NULL UNION ALL SELECT id, substringIndex('', delim, count) FROM temp_test WHERE count < 0;"
+    ]
+}

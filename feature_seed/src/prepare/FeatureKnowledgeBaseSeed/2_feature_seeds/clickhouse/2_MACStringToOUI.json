@@ -1,0 +1,9 @@
+CREATE TABLE mac_addresses (id UInt32, mac String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO mac_addresses VALUES (1, '00:1A:2B:3C:4D:5E'), (2, 'InvalidMACAddress'), (3, '00:1A:2B:3C:4D:5F');
+CREATE TABLE ouis (oui UInt64) ENGINE = MergeTree() ORDER BY oui;
+INSERT INTO ouis SELECT DISTINCT MACStringToOUI(mac) FROM mac_addresses;
+SELECT id, MACStringToOUI(mac) AS oui FROM mac_addresses WHERE oui NOT IN (SELECT DISTINCT oui FROM ouis);
+SELECT id, mac, MACStringToOUI(mac) AS oui, COUNT(*) OVER (PARTITION BY MACStringToOUI(mac)) AS cnt FROM mac_addresses WHERE MACStringToOUI(mac) NOT IN (1, 2, 3);
+SELECT id FROM mac_addresses WHERE MACStringToOUI(mac) NOT IN (SELECT MACStringToOUI('00:00:00:00:00:00') UNION ALL SELECT MACStringToOUI('FF:FF:FF:FF:FF:FF')) AND mac IS NOT NULL;
+SELECT id, MAX(MACStringToOUI(mac)) AS max_oui FROM mac_addresses GROUP BY id HAVING MAX(MACStringToOUI(mac)) NOT IN (0) OR MAX(MACStringToOUI(mac)) IS NULL;
+WITH (SELECT COUNT(*) FROM mac_addresses WHERE mac IS NULL) AS null_count SELECT id, MACStringToOUI(mac) AS oui FROM mac_addresses WHERE oui NOT IN (SELECT MultiIf(null_count > 0, 1, 0, 2, 3));

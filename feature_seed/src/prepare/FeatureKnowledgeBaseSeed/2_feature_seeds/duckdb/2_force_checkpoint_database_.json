@@ -1,0 +1,16 @@
+CREATE TABLE test_table (id INTEGER PRIMARY KEY, start_time TIME, interval_duration INTERVAL, data_string VARCHAR(20));
+INSERT INTO test_table VALUES (1, TIME '12:30:00', INTERVAL '3 HOUR', 'edge_case_1');
+INSERT INTO test_table VALUES (2, TIME '23:59:59', INTERVAL '1 MINUTE', NULL);
+INSERT INTO test_table VALUES (3, TIME '00:00:00', INTERVAL '2 HOUR', 'long_string_test_case_123');
+SELECT id, start_time + interval_duration AS new_time FROM test_table WHERE id = (SELECT id FROM test_table WHERE data_string IS NULL);
+SELECT id, (start_time + INTERVAL (CASE WHEN interval_duration IS NULL THEN 0 ELSE 5 END) HOUR) AS adjusted_time FROM test_table HAVING adjusted_time BETWEEN TIME '00:00:00' AND TIME '23:59:59';
+SELECT id, (start_time + interval_duration) AS total_time, COUNT(*) OVER (PARTITION BY data_string) AS occurrences FROM test_table WHERE id < (SELECT MAX(id) FROM test_table);
+WITH adjusted_times AS (SELECT id, start_time + INTERVAL 1 HOUR AS incremented_time FROM test_table) SELECT * FROM adjusted_times WHERE incremented_time < (SELECT MIN(start_time) FROM test_table);
+SELECT id, FORCE_CHECKPOINT('my_db'), start_time + INTERVAL 2 HOUR AS future_time FROM test_table WHERE future_time > TIME '20:00:00';
+CREATE TABLE another_table (reference_id INTEGER, timestamp_value TIMESTAMP);
+INSERT INTO another_table SELECT id, TIMESTAMP '2023-09-01 12:00:00' + (start_time + interval_duration) FROM test_table;
+SELECT a.reference_id, a.timestamp_value, FORCE_CHECKPOINT('my_db') FROM another_table a JOIN test_table b ON a.reference_id = b.id WHERE b.data_string IS NOT NULL;
+UPDATE test_table SET interval_duration = INTERVAL 1 DAY WHERE id = 1;
+SELECT id, start_time, interval_duration, COALESCE(data_string, 'N/A') AS effective_string FROM test_table WHERE start_time + interval_duration IS NULL;
+DROP TABLE IF EXISTS temp_table;
+CREATE TEMPORARY TABLE temp_table AS SELECT id, start_time + INTERVAL 1 WEEK AS future_time FROM test_table WHERE future_time < TIME '00:05:00';

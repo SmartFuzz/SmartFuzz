@@ -1,0 +1,17 @@
+{
+    "function": "jaccard(s1, s2)",
+    "operator": ">>",
+    "sql_array": [
+        "CREATE TABLE test_strings (id INTEGER PRIMARY KEY, text_value VARCHAR(255));",
+        "INSERT INTO test_strings (id, text_value) VALUES (1, 'duck'), (2, 'luck'), (3, 'd entirely different text'), (4, NULL);",
+        "SELECT id, jaccard(text_value, 'luck') AS similarity FROM test_strings WHERE jaccard(text_value, 'luck') IS NOT NULL;",
+        "CREATE TABLE test_bitstrings (id INTEGER PRIMARY KEY, bit_data BITSTRING);",
+        "INSERT INTO test_bitstrings (id, bit_data) VALUES (1, '1001011'::BITSTRING), (2, '1110000'::BITSTRING), (3, NULL);",
+        "SELECT t.id, jaccard(t.text_value, 'luck') AS similarity, (bit_data >> 2) AS shifted FROM test_strings t JOIN test_bitstrings b ON t.id = b.id WHERE jaccard(t.text_value, 'luck') > 0.5 AND b.bit_data IS NOT NULL;",
+        "SELECT id, jaccard(text_value, (SELECT text_value FROM test_strings WHERE id = 3)) AS similarity FROM test_strings t1 WHERE jaccard(text_value, (SELECT text_value FROM test_strings WHERE id = 3)) IS NOT NULL;",
+        "SELECT t.id, jaccard(text_value, 'luck') AS similarity, (bit_data >> 1) AS shifted FROM test_strings t JOIN test_bitstrings b ON jaccard(t.text_value, 'luck') > 0.5 GROUP BY t.id, b.bit_data HAVING COUNT(*) > 1;",
+        "CREATE TABLE combined_test (id INTEGER PRIMARY KEY, sim_score FLOAT);",
+        "INSERT INTO combined_test (id, sim_score) SELECT t.id, jaccard(t.text_value, (SELECT text_value FROM test_strings WHERE id = 4)) FROM test_strings t WHERE text_value IS NOT NULL AND t.id IN (SELECT id FROM test_bitstrings WHERE bit_data >> 1 IS NOT NULL);",
+        "SELECT AVG(sim_score) FROM combined_test WHERE sim_score IS NOT NULL;"
+    ]
+}

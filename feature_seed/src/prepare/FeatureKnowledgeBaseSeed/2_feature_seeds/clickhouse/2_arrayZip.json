@@ -1,0 +1,10 @@
+CREATE TABLE test_arrays (id UInt32, arr1 Array(String), arr2 Array(Int32)) ENGINE = Memory;
+INSERT INTO test_arrays VALUES (1, ['a', 'b', 'c'], [1, 2, 3]), (2, ['d', 'e', 'f'], [4, NULL, 6]), (3, ['g', NULL, 'i'], [7, 8, 9]);
+SELECT id, arrayZip(arr1, arr2) AS zipped_array FROM test_arrays WHERE 1 = ALL (SELECT arr2[1] FROM test_arrays WHERE arr2 IS NOT NULL);
+SELECT id, arrayZip(arr1, arr2) AS zipped_array FROM test_arrays WHERE arr2 = ALL (SELECT arrayJoin(arr2) FROM test_arrays) HAVING COUNT(arr1) > 0;
+WITH (SELECT arr2 FROM test_arrays WHERE id = 1) AS subquery SELECT id, arrayZip(arr1, subquery) AS zipped_array FROM test_arrays WHERE arr2[1] IS NOT NULL;
+CREATE TABLE temp_test AS SELECT arrayZip(['x', 'y', 'z'], [1, 0, 3]) AS combined_array;
+INSERT INTO temp_test VALUES ([1, 2, NULL], [NULL, 3, 4]);
+SELECT combined_array, arrayZip(arr1, arr2) FROM temp_test WHERE combined_array = ALL (SELECT (arr1, arr2) FROM test_arrays WHERE arr1 IS NOT NULL);
+SELECT arrayZip(arr1, arr2), id FROM test_arrays WHERE arrayZip(arr1, arr2) IS NOT NULL GROUP BY id HAVING count(zipped_array) < 5;
+DROP TABLE temp_test;

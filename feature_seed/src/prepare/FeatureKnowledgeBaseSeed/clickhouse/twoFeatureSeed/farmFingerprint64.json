@@ -1,0 +1,16 @@
+{
+    "function": "farmFingerprint64",
+    "operator": "a.N",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, data String, tuple_data Tuple(Int32, String), created_at DateTime DEFAULT now());",
+        "INSERT INTO test_table VALUES (1, 'test', (1, 'tuple1'), '2023-01-01 00:00:00'), (2, 'example', (2, 'tuple2'), '2023-01-02 00:00:00'), (3, NULL, (3, 'tuple3'), NULL);",
+        "SELECT id, farmFingerprint64(tupleElement(tuple_data, 2)) AS hashed_value FROM test_table WHERE data IS NOT NULL;",
+        "SELECT id, farmFingerprint64(tupleElement(tuple_data, 1)) AS hashed_value, COUNT(*) OVER (PARTITION BY data) AS data_count FROM test_table GROUP BY id, hashed_value HAVING data_count > 1;",
+        "SELECT id, farmFingerprint64(tupleElement(tuple_data, 2)) AS hashed_value FROM (SELECT id, data, tuple_data FROM test_table WHERE created_at >= '2023-01-01' AND created_at <= '2023-01-02') AS subquery WHERE hashed_value IS NOT NULL;",
+        "SELECT farmFingerprint64(CAST(NULL AS String)) AS null_hash FROM test_table;",
+        "SELECT id, farmFingerprint64(farmFingerprint64(CONCAT(data, 'suffix'))) AS nested_hash FROM test_table WHERE id > (SELECT MAX(id) FROM test_table WHERE tupleElement(tuple_data, 1) < 2);",
+        "SELECT farmFingerprint64(tupleElement(a.tuple_data, 1)) AS tuple_hash FROM (SELECT tuple_data FROM test_table AS a) AS a;",
+        "CREATE TABLE temp_table AS SELECT id, data, farmFingerprint64(data) AS fingerprint FROM test_table WHERE data != '';",
+        "INSERT INTO temp_table SELECT id, data, farmFingerprint64(data) FROM (SELECT id, data FROM test_table WHERE id % 2 = 0);"
+    ]
+}

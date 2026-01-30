@@ -1,0 +1,18 @@
+{
+    "function": "toISOYear",
+    "operator": "IS NOT NULL",
+    "sql_array": [
+        "CREATE TABLE t_dates (id UInt32, date_col Date, nullable_date Nullable(Date)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO t_dates VALUES (1, toDate('2024-10-02'), NULL), (2, toDate('2023-01-01'), toDate('2023-01-01'));",
+        "SELECT id, toISOYear(date_col) AS ISO_year FROM t_dates WHERE nullable_date IS NOT NULL;",
+        "SELECT id, toISOYear(date_col) AS ISO_year FROM t_dates WHERE date_col IS NOT NULL AND (toISOYear(nullable_date) IS NOT NULL OR date_col IS NOT NULL);",
+        "SELECT id, AVG(toISOYear(date_col)) AS avg_ISO_year FROM t_dates GROUP BY id HAVING avg_ISO_year IS NOT NULL;",
+        "CREATE TABLE t_more_data (id UInt32, timestamp_col DateTime64(3), nullable_timestamp Nullable(DateTime64(3))) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO t_more_data VALUES (1, toDateTime64('2024-10-02 10:10:10', 3), NULL), (2, toDateTime64('2023-06-15 15:15:15', 3), toDateTime64('2023-06-15 15:15:15', 3));",
+        "SELECT id, toISOYear(toDate(timestamp_col)) AS ISO_year FROM t_more_data WHERE timestamp_col IS NOT NULL AND timestamp_col IS NOT NULL;",
+        "SELECT id, toISOYear(toDate(nullable_timestamp)) AS nullable_ISO_year FROM t_more_data WHERE nullable_timestamp IS NOT NULL AND (toISOYear(timestamp_col) IS NULL OR id IS NOT NULL);",
+        "SELECT id, windowFunc(id) OVER (PARTITION BY toISOYear(toDate(timestamp_col))) AS windowed_value FROM t_more_data WHERE toISOYear(timestamp_col) IS NOT NULL;",
+        "CREATE TEMPORARY TABLE temp_dates AS SELECT date_col FROM t_dates WHERE date_col IS NOT NULL;",
+        "SELECT ISO_year, COUNT(*) FROM (SELECT toISOYear(date_col) AS ISO_year FROM temp_dates) GROUP BY ISO_year HAVING ISO_year IS NOT NULL;"
+    ]
+}

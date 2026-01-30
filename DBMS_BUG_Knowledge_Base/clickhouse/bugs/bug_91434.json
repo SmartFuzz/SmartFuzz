@@ -1,0 +1,23 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/91434",
+  "title": "Performance degradation when using ALIAS column with new JSON data type compared to direct JSON field access",
+  "vulnerable_database": "ClickHouse",
+  "date": "2025-12-03T16:07:07Z",
+  "vulnerable_version": "",
+  "description": "### Company or project name\n_No response_\n### Describe the situation\nWhen using the new JSON data type, selecting a field via an ALIAS column produces significantly worse performance compared to selecting the same field directly from the JSON object.\n### Which ClickHouse versions are affected?\n25.11.2\n### How to reproduce\n```sql\nCREATE TABLE default.json_test (\njson JSON,\ncol_a Int64 ALIAS json.a\n) ENGINE = MergeTree\nORDER BY tuple();\nINSERT INTO default.json_test\nSELECT formatRow('JSONEachRow',\nnumber as a,\nnumber / 10 as b,\nnumber / 100 as c,\nnumber / 1000 as d,\nnumber / 10000 as e)\nFROM numbers(10000000);\nOPTIMIZE TABLE default.json_test FINAL;\n```\nQuery 1 — Using ALIAS column\n```sql\nSELECT col_a FROM default.json_test FORMAT Null;\n0.309 sec\n```\nQuery 2 — Direct JSON field access\n```sql\nSELECT json.a AS col_a FROM default.json_test FORMAT Null;\n0.047 sec\n```\nIts getting worse with bigger JSON\n### Expected performance\nSelecting an alias of a JSON field should have similar performance than accessing the JSON field directly.\n### Additional context\nProfile events query 1\n```json\n{\n\"Query\":1,\n\"SelectQuery\":1,\n\"InitialQuery\":1,\n\"QueriesWithSubqueries\":1,\n\"SelectQueriesWithSubqueries\":1,\n\"FileOpen\":28,\n\"ReadBufferFromFileDescriptorReadBytes\":251771438,\n\"ReadCompressedBytes\":248990021,\n\"CompressedReadBufferBlocks\":7325,\n\"CompressedReadBufferBytes\":482736197,",
+  "poc": [
+    "CREATE TABLE default.json_test (\n    json JSON,\n    col_a Int64 ALIAS json.a\n) ENGINE = MergeTree\nORDER BY tuple();",
+    "INSERT INTO default.json_test\nSELECT formatRow('JSONEachRow',\n                 number as a,\n                 number / 10 as b,\n                 number / 100 as c,\n                 number / 1000 as d,\n                 number / 10000 as e)\nFROM numbers(10000000);",
+    "OPTIMIZE TABLE default.json_test FINAL;"
+  ],
+  "key_bug_features": [
+    "Using ALIAS column with new JSON data type"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE default.json_test_v2 (json JSON, col_b Int64 ALIAS json.b, col_c String ALIAS json.c) ENGINE = MergeTree ORDER BY tuple();",
+    "INSERT INTO default.json_test_v2 SELECT formatRow('JSONEachRow', number as a, number * 2 as b, toString(number * 3) as c) FROM numbers(10000000);",
+    "SELECT col_b, col_c FROM default.json_test_v2 WHERE col_b IS NOT NULL FORMAT Null;",
+    "SELECT json.b AS direct_b, json.c AS direct_c FROM default.json_test_v2 WHERE json.b > 5000000 FORMAT Null;",
+    "SELECT col_b, COUNT(*) FROM default.json_test_v2 GROUP BY col_b HAVING col_b < 100 FORMAT Null;"
+  ]
+}

@@ -1,0 +1,11 @@
+CREATE TABLE time_test (id INT PRIMARY KEY, event_time TIMESTAMPTZ, value NUMERIC);
+INSERT INTO time_test (id, event_time, value) VALUES (1, TIMESTAMPTZ '1992-03-22 01:02:03', 5.1);
+INSERT INTO time_test (id, event_time, value) VALUES (2, TIMESTAMPTZ '1993-03-22 01:02:03', NULL);
+INSERT INTO time_test (id, event_time, value) VALUES (3, TIMESTAMPTZ '1994-03-22 01:02:03', 10.0);
+SELECT id, tan(value * 2) AS tan_value, event_time + INTERVAL (SELECT COUNT(*) FROM time_test WHERE value IS NOT NULL) DAY AS new_event_time FROM time_test WHERE event_time IS NOT NULL;
+SELECT id, value, event_time + INTERVAL 0 DAY, tan(COALESCE(value, 0)) AS adjusted_tan FROM time_test WHERE id IN (SELECT id FROM time_test WHERE value > 5) ORDER BY adjusted_tan;
+WITH adjusted_times AS (SELECT id, event_time + INTERVAL (tan(value) * 10) DAY AS adjusted_time FROM time_test) SELECT id, adjusted_time FROM adjusted_times WHERE adjusted_time > TIMESTAMPTZ '1993-04-01 00:00:00';
+SELECT id, value, tan(value) + (event_time + INTERVAL 5 DAY) AS combined_result FROM time_test GROUP BY id, value HAVING tan(value) > 0;
+SELECT id, tan(value) FROM time_test WHERE event_time BETWEEN TIMESTAMPTZ '1992-01-01' AND TIMESTAMPTZ '1995-01-01' AND value IS NOT NULL ORDER BY tan(value) DESC;
+DROP TABLE IF EXISTS temp_test;
+CREATE TEMP TABLE temp_test AS SELECT id, event_time, tan(value) + (event_time + INTERVAL 2 DAY) AS new_expression FROM time_test WHERE value IS NOT NULL;

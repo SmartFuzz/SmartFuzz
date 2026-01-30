@@ -1,0 +1,18 @@
+{
+    "function": "XMLInsertBefore",
+    "operator": "bif:st_within",
+    "sql_array": [
+        "CREATE TABLE spatial_data (id INT PRIMARY KEY, geom VARCHAR(255), data XML);",
+        "INSERT INTO spatial_data (id, geom, data) VALUES (1, 'POINT(0 0)', xtree_doc('<data><child0>Value1</child0></data>'));",
+        "INSERT INTO spatial_data (id, geom, data) VALUES (2, 'POINT(1 1)', xtree_doc('<data><child1>Value2</child1></data>'));",
+        "INSERT INTO spatial_data (id, geom, data) VALUES (3, 'POINT(2 2)', xtree_doc('<data><child2>Value3</child2></data>'));",
+        "SELECT * FROM spatial_data WHERE bif:st_within(geom, 'POLYGON((0 -1, 0 2, 3 2, 3 -1, 0 -1))') AND XMLInsertBefore(xpath_eval('//child0', data), xtree_doc('<newChild/>')) IS NOT NULL;",
+        "SELECT id, data, XMLInsertBefore(xpath_eval('//child0', data), xtree_doc('<insertedChild1/>')) AS modified_data FROM spatial_data WHERE XMLInsertBefore(xpath_eval('//child2/text()', data), 'Inserted Text: ') IS NOT NULL;",
+        "WITH modified AS (SELECT id, data, XMLInsertBefore(xpath_eval('//child1', data), xtree_doc('<child3/>')) AS modified_data FROM spatial_data WHERE bif:st_within(geom, 'POLYGON((1 -1, 1 2, 4 2, 4 -1, 1 -1))')) SELECT COUNT(*) FROM modified HAVING COUNT(*) > 0;",
+        "CREATE TABLE test_data (id INT PRIMARY KEY, description VARCHAR(255), xml_data XML);",
+        "INSERT INTO test_data (id, description, xml_data) VALUES (1, 'Initial data', xtree_doc('<root><element>A</element></root>'));",
+        "UPDATE test_data SET xml_data = XMLInsertBefore(xpath_eval('//element', xml_data), xtree_doc('<insertedElement/>')) WHERE id = 1;",
+        "SELECT id, XMLInsertBefore(xpath_eval('//element/text()', xml_data), 'Hello, ') AS updated_xml FROM test_data WHERE id = 1 AND bif:st_within('POINT(0 0)', 'POLYGON((0 -1, 0 1, 1 1, 1 -1, 0 -1))') = TRUE;",
+        "DROP TABLE IF EXISTS remove_data;"
+    ]
+}

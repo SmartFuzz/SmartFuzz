@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/43184",
+  "title": "br: failed to constructs the rewrite rules in the snapshot + log restore",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n1. Start a new cluster (upstream)\r\n2. Start a log backup task\r\n3. Run this sqls:\r\n```sql\r\ncreate table test.A (id int, a char(20));\r\ncreate table test.B (id char(20), a int);\r\ninsert into test.A (id, a) values (1, \"aaa\"), (2, \"bbb\");\r\ninsert into test.B (id, a) values (\"ccc\", 3), (\"ddd\", 4);\r\n```\r\n4. Do snapshot backup\r\n5. Run this sqls:\r\n```sql\r\nrename table test.A to test.C;\r\nrename table test.B to test.A;\r\nrename table test.C to test.B;\r\ninsert into test.A (id, a) values (\"yyy\", 27), (\"zzz\", 26);\r\ninsert into test.B (id, a) values (5, \"eee\"), (6, \"fff\");\r\n```\r\n6. wait until the checkpoint of log backup advance\r\n7. restore snapshot + log to another new cluster(downstream).\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\nsuccess to restore\r\n### 3. What did you see instead (Required)\r\nSometimes the domain has not update in time, so it would success to restore.\r\n```sql\r\nmysql> select * from test.B;\r\nERROR 1105 (HY000): invalid data type: Failed to decode row v2 data as i64\r\n```\r\n### 4. What is your TiDB version? (Required)\r\nmaster\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2023-04-19T06:39:44Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE test.D (id SERIAL PRIMARY KEY, b VARCHAR(50) NOT NULL, c FLOAT DEFAULT 0.0);",
+    "CREATE TABLE test.E (id INT, d DATE, FOREIGN KEY (id) REFERENCES test.D(id));",
+    "INSERT INTO test.D (id, b) VALUES (1, 'test1'), (2, 'test2');",
+    "INSERT INTO test.E (id, d) VALUES (1, '2023-01-01'), (2, NULL);",
+    "SELECT a.id, a.b, COALESCE(b.d, 'No Date') AS d_date FROM test.D a LEFT JOIN test.E b ON a.id = b.id;"
+  ],
+  "key_bug_features": [
+    "restore snapshot and log to another new cluster"
+  ]
+}

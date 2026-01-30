@@ -1,0 +1,23 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=108715",
+  "title": "Mysql_field returns NUM_FLAG (32768) for grouped by columns",
+  "vulnerable_database": "MySQL Server: Information schema",
+  "date": "2022-10-08 20:11:00",
+  "vulnerable_version": "5.7, 8.0",
+  "description": "Use mysql.exe with --column-type-info.\r\n\r\nWhen a VARCHAR column is grouped in a SELECT statement, the metadata flag field contains value 32768 which means that the column is numeric. But a VARCHAR field is not numeric. \r\n\r\nThis does not conform to the specification in the IS_NUM macro.\nHow to repeat:\nCREATE TABLE `test` (\r\n    `id` int(11) NOT NULL,\r\n    `col` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL\r\n  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\r\n\r\nINSERT INTO `test` (`id`, `col`) VALUES\r\n(1, 'test1'),\r\n(2, 'test2'),\r\n(3, '1'),\r\n(4, '\\'\\''),\r\n(5, '\\\"\\\"'),\r\n(6, '\\'test\\''),\r\n(7, '\\\"test\\\"'),\r\n(8, '\\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\"'),\r\n(9, '\\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\"');\r\n\r\n-- This will show NUM for flags field\r\nSELECT col FROM test GROUP BY col;",
+  "poc": [
+    "CREATE TABLE `test` (\n`id` int(11) NOT NULL,\n`col` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;",
+    "INSERT INTO `test` (`id`, `col`) VALUES\n(1, 'test1'),\n(2, 'test2'),\n(3, '1'),\n(4, '\\'\\''),\n(5, '\\\"\\\"'),\n(6, '\\'test\\''),\n(7, '\\\"test\\\"'),\n(8, '\\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\"'),\n(9, '\\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\", \\\"test\\\"');",
+    "show NUM for flags field\nSELECT col FROM test GROUP BY col;"
+  ],
+  "key_bug_features": [
+    "VARCHAR column flagged as numeric in GROUP BY"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE `test_numeric` (\n`id` int(11) NOT NULL,\n`col` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,\n`num_col` int(11) DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;",
+    "INSERT INTO `test_numeric` (`id`, `col`, `num_col`) VALUES\n(1, 'test1', 10),\n(2, 'test2', NULL),\n(3, '1', 1),\n(4, 'NULL', NULL),\n(5, 'test3', 5);",
+    "SELECT col, COUNT(num_col) FROM test_numeric GROUP BY col;",
+    "CREATE TABLE `test_join` (\n`id` int(11) NOT NULL,\n`ref_id` int(11) NOT NULL,\n`value` varchar(255) DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;",
+    "INSERT INTO `test_join` (`id`, `ref_id`, `value`) VALUES\n(1, 1, 'A'),\n(2, 1, 'B'),\n(3, 2, 'C');"
+  ]
+}

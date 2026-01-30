@@ -1,0 +1,16 @@
+CREATE TABLE registry_test (id INT, var_name VARCHAR(255), var_value VARCHAR(255));
+INSERT INTO registry_test (id, var_name, var_value) VALUES (1, 'example_var', 'example_value');
+INSERT INTO registry_test (id, var_name, var_value) VALUES (2, '__protected_var', 'protected_value');
+SELECT id, registry_name_is_protected(var_name) AS protection_level FROM registry_test WHERE var_name SIMILAR TO '__%';
+SELECT r.id, r.var_name, registry_name_is_protected(r.var_name) FROM registry_test r JOIN (SELECT var_name FROM registry_test WHERE var_value LIKE '%value%') AS v ON r.var_name = v.var_name;
+SELECT r.id, COUNT(*) AS variable_count FROM registry_test r WHERE registry_name_is_protected(r.var_name) = 0 GROUP BY r.var_name HAVING COUNT(*) > 1;
+SELECT r.*, (SELECT COUNT(*) FROM registry_test WHERE registry_name_is_protected(var_name) = 1) AS protected_count FROM registry_test r WHERE var_name SIMILAR TO '%var%';
+SELECT MAX(COALESCE(NULLIF(var_value, ''), 'no_value')) FROM registry_test WHERE registry_name_is_protected(var_name) IS NOT NULL;
+CREATE TABLE another_registry_test (id INT, var_name VARCHAR(255) NOT NULL UNIQUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO another_registry_test (id, var_name) VALUES (1, 'test_var'), (2, '__another_protected_var');
+SELECT r.var_name, CASE WHEN registry_name_is_protected(r.var_name) = 0 THEN 'modifiable' ELSE 'protected' END AS status FROM another_registry_test r WHERE r.var_name SIMILAR TO '__%';
+SELECT r.id, r.var_name FROM another_registry_test r WHERE var_name NOT IN (SELECT var_name FROM registry_test WHERE var_value IS NULL) AND registry_name_is_protected(var_name) > 0;
+INSERT INTO registry_test (id, var_name, var_value) VALUES (3, 'empty_string', '');
+SELECT registry_name_is_protected(r.var_name) FROM registry_test r WHERE r.var_name SIMILAR TO 'e%';
+SELECT MIN(id), MAX(id) FROM registry_test WHERE registry_name_is_protected(var_name) <> 2;
+SELECT r.var_name, registry_name_is_protected(r.var_name) FROM registry_test r LEFT JOIN another_registry_test a ON r.var_name = a.var_name WHERE a.id IS NULL;

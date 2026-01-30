@@ -1,0 +1,16 @@
+CREATE TABLE vdir_table (id INT PRIMARY KEY, vdir_path VARCHAR(255), admin_path VARCHAR(255), domain_name VARCHAR(255), host_name VARCHAR(255));
+INSERT INTO vdir_table (id, vdir_path, admin_path, domain_name, host_name) VALUES (1, '/vdir1', '/admin1/', 'www.foo.com', 'host.foo.com');
+INSERT INTO vdir_table (id, vdir_path, admin_path, domain_name, host_name) VALUES (2, '/vdir2', '/admin2/', 'www.bar.com', 'host.bar.com');
+SELECT http_map_table(vdir_path, admin_path, domain_name, host_name) FROM vdir_table WHERE admin_path NOT LIKE '/admin%';
+SELECT * FROM vdir_table WHERE NOT EXISTS (SELECT 1 FROM vdir_table AS inner_vdir WHERE inner_vdir.admin_path NOT LIKE vdir_table.admin_path) GROUP BY vdir_path HAVING COUNT(*) > 1;
+SELECT http_map_table('/testapp', '/admin/', 'www.foo.com', 'host.foo.com', NULL, NULL, NULL, 'SSL', 'TEST_APP', 'mytestapp_auth_hook', 'mytestapp_post_processor', NULL, 'mytestapp_user', 1, vector ('NameSpace', 'http://example.com/test/v11/', 'ServiceName','testApp')) WHERE '/testapp' NOT LIKE '%test%';
+CREATE TABLE complex_table (id INT, data VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, amount DECIMAL(10, 2));
+INSERT INTO complex_table (id, data, amount) VALUES (1, 'test_data', NULL);
+INSERT INTO complex_table (id, data, amount) VALUES (2, 'another_test', 123.45);
+SELECT id, http_map_table(data, '/admin/', 'www.test.com', 'host.test.com') FROM complex_table WHERE amount NOT LIKE '1%' AND created_at IS NOT NULL;
+SELECT data FROM complex_table WHERE 'sample' NOT LIKE '%' || data || '%' OR data IS NULL;
+CREATE TEMPORARY TABLE temp_mapping (temp_id INT, temp_path VARCHAR(255));
+INSERT INTO temp_mapping (temp_id, temp_path) VALUES (1, 'temp_vdir1');
+SELECT http_map_table(temp_path, '/admin/', 'www.temp.com', 'host.temp.com') FROM temp_mapping WHERE temp_path NOT LIKE 'temp_v%';
+SELECT * FROM complex_table WHERE data NOT IN (SELECT data FROM temp_mapping WHERE temp_path IS NOT NULL);
+DROP TABLE IF EXISTS temp_mapping;

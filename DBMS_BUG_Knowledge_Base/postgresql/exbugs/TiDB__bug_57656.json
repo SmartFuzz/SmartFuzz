@@ -1,0 +1,19 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/57656",
+  "title": "Tiflash Fail to Execute Query",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n```sql\r\nDROP TABLE IF EXISTS person;\r\nCREATE TABLE person (\r\n    id INT NOT NULL PRIMARY KEY,\r\n    name VARCHAR(255) NOT NULL,\r\n    address_info JSON,\r\n    age DOUBLE GENERATED ALWAYS AS ((id + 100) /2) VIRTUAL\r\n);\r\n\r\nALTER TABLE person SET TIFLASH REPLICA 1;\r\nINSERT INTO person (id, name, address_info) \r\nVALUES \r\n    (1, 'Alice', '{\"street\": \"123 Elm St\", \"city\": \"Wonderland\", \"zipcode\": \"12345\"}'),\r\n    (2, 'Bob', '{\"street\": \"456 Oak St\", \"city\": \"Nowhere\", \"zipcode\": \"67890\"}'),\r\n    (3, 'Charlie', '{\"street\": \"789 Pine St\", \"city\": \"Somewhere\", \"zipcode\": \"11223\"}');\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nI find that the returned result is inconsistent across two queries. Moreover, Tiflash cannot even execute this query.\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n```sql\r\nmysql> SELECT /*+ READ_FROM_STORAGE(tikv[person]) */ age FROM person limit 1;\r\n+------+\r\n| age  |\r\n+------+\r\n| 50.5 |\r\n+------+\r\n1 row in set (0.04 sec)\r\n\r\nmysql> SELECT /*+ READ_FROM_STORAGE(tiflash[person]) */ age FROM person limit 1;\r\nERROR 1815 (HY000): Internal : Can't find a proper physical plan for this query\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\nTiDB v8.4.0\r\n\r\n",
+  "date": "2024-11-24T14:46:55Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS employee;",
+    "CREATE TABLE employee (id INT NOT NULL PRIMARY KEY, name VARCHAR(255) NOT NULL, salary DECIMAL(10, 2) NOT NULL, department_id INT, birth_date DATE);",
+    "INSERT INTO employee (id, name, salary, department_id, birth_date) VALUES (1, 'Alice', 75000.00, 1, '1990-01-01'), (2, 'Bob', 50000.50, 2, '1985-05-15'), (3, 'Charlie', 60000.75, NULL, '1992-12-30');",
+    "SELECT id, name, EXTRACT(YEAR FROM AGE(birth_date)) AS age FROM employee WHERE department_id IS NULL;"
+  ],
+  "key_bug_features": [
+    "Tiflash fails to execute query with virtual column"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=117013",
+  "title": "MAX() as a Window Function Blindly Returns NULL for the First Row under Specific Conditions",
+  "description": "Hi,\r\n\r\nWhen using the max() as a window function, an unexpected behavior occurs under certain conditions.\r\n\r\nThe MAX() function returns NULL for the first row within the window frame, despite data existing in the first row.\r\n\r\nThis bug triggers when the following conditions are satisfied:\r\n\r\n1. The max() function is used as a window function (e.g., MAX(column) OVER ( ... )).\r\n2. The window frame’s start is defined using N FOLLOWING (e.g., ROWS BETWEEN 1 FOLLOWING AND …).\r\n3. The window frame is ordered by the same expression with the argument of max(), differing only in syntax (e.g., aliases or table references).\r\n4. The window frame is ordered in descending order. (e.g., ORDER BY column DESC).\nHow to repeat:\n**Minimized Query to Reproduce**:\r\n\r\n```sql\r\nCREATE TABLE t0 (c0 INT);\r\nINSERT INTO t0 VALUES (1), (2);\r\nSELECT c0, MAX(C0) OVER (ORDER BY c0 DESC ROWS BETWEEN 1 FOLLOWING AND 1 FOLLOWING)\r\nFROM t0;\r\n```\r\n\r\n**Expected Result**:\r\n\r\n```\r\nmysql> SELECT c0, MAX(c0+0) OVER (ORDER BY c0 DESC ROWS BETWEEN 1 FOLLOWING AND 1 FOLLOWING) FROM t0;\r\n+------+----------------------------------------------------------------------------+\r\n| c0   | MAX(c0+0) OVER (ORDER BY c0 DESC ROWS BETWEEN 1 FOLLOWING AND 1 FOLLOWING) |\r\n+------+----------------------------------------------------------------------------+\r\n|    2 |                                                                          1 |\r\n|    1 |                                                                       NULL |\r\n+------+----------------------------------------------------------------------------+\r\n2 rows in set (0.00 sec)\r\n```\r\n\r\nThe window frame for row 2 consists of 1, so MAX() returns 1. (Note c0 + 0 to force normal results.)\r\n\r\n**Actual result** (MySQL, version 8.4 and 8.0.32):\r\n\r\n```\r\nmysql> SELECT c0, MAX(C0) OVER (ORDER BY c0 DESC ROWS BETWEEN 1 FOLLOWING AND 1 FOLLOWING) FROM t0;\r\n+------+--------------------------------------------------------------------------+\r\n| c0   | MIN(C0) OVER (ORDER BY c0 DESC ROWS BETWEEN 1 FOLLOWING AND 1 FOLLOWING) |\r\n+------+--------------------------------------------------------------------------+\r\n|    2 |                                                                     NULL |\r\n|    1 |                                                                     NULL |\r\n+------+--------------------------------------------------------------------------+\r\n2 rows in set (0.00 sec)\r\n```\r\n\r\nHowever, NULL is returned instead of 1.\nSuggested fix:\nWe believe this bug is likely caused by the optimization logic handling the above conditions.\r\n\r\nWe suggest reviewing the MySQL code related to the MAX() function as a window function to ensure it returns the correct results.\r\n\r\nThank you for your time and attention to this matter. We look forward to your response.\r\n\r\nBest regards,",
+  "date": "2024-12-18 14:19:00",
+  "vulnerable_version": "8.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (id SERIAL PRIMARY KEY, value NUMERIC(10, 2), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t1 (id, value) VALUES (1, 10.00), (2, 20.00), (3, NULL);",
+    "SELECT id, MAX(value + 0) OVER (ORDER BY created_at DESC ROWS BETWEEN 1 FOLLOWING AND 1 FOLLOWING) FROM t1;",
+    "CREATE TABLE t2 (name VARCHAR(50), score INT CHECK (score >= 0));",
+    "INSERT INTO t2 (name, score) VALUES ('Alice', 100), ('Bob', 90), ('Charlie', NULL);"
+  ],
+  "key_bug_features": [
+    "MAX() window function returns NULL for first row"
+  ]
+}

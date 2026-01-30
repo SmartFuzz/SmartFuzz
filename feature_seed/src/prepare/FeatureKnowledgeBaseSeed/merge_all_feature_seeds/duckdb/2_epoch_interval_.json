@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id INT, start_date DATE, end_date DATE, interval_value INTERVAL, value DOUBLE PRECISION);
+INSERT INTO test_table (id, start_date, end_date, interval_value, value) VALUES (1, DATE '2020-01-01', DATE '2020-01-31', INTERVAL '5 HOURS', 1.5), (2, DATE '2021-02-01', DATE '2021-02-28', INTERVAL '10 HOURS', NULL), (3, DATE '2022-03-01', DATE '2022-03-31', INTERVAL '0 HOURS', 0.0), (4, DATE '2023-04-01', DATE '2023-04-30', INTERVAL '15 HOURS', 2.25);
+SELECT id, epoch(interval_value) AS epoch_seconds, (end_date - start_date) AS date_difference FROM test_table WHERE value IS NOT NULL;
+SELECT id, (epoch(interval_value) + 1000) AS modified_epoch_value FROM test_table WHERE (end_date - start_date) > INTERVAL '0 DAY' ORDER BY modified_epoch_value DESC;
+SELECT t1.id, (epoch(t1.interval_value) - epoch(INTERVAL '2 HOURS')) AS adjusted_epoch FROM test_table t1 JOIN test_table t2 ON t1.id = t2.id WHERE t1.value IS NOT NULL;
+SELECT id, COUNT(*) AS total FROM test_table GROUP BY epoch(interval_value) HAVING total > 1;
+WITH date_differences AS (SELECT id, (end_date - start_date) AS difference FROM test_table) SELECT * FROM date_differences WHERE difference > DATE '2021-02-15' - DATE '2021-02-01';
+SELECT id, (epoch(interval_value) - (epoch(INTERVAL '5 HOURS') * 2)) AS double_adjusted_epoch FROM test_table WHERE value BETWEEN 1.0 AND 2.5;
+CREATE TABLE another_test (id INT, epoch_time DOUBLE PRECISION);
+INSERT INTO another_test (id, epoch_time) SELECT id, epoch(interval_value) FROM test_table WHERE value IS NOT NULL;
+SELECT a.id, (e.epoch_time - (SELECT epoch(INTERVAL '3 HOURS') FROM another_test WHERE id = a.id)) AS final_epoch FROM another_test a JOIN test_table t ON a.id = t.id WHERE t.interval_value IS NOT NULL;

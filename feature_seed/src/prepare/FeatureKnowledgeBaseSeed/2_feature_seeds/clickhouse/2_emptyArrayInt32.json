@@ -1,0 +1,13 @@
+CREATE TABLE test_table (id Int32, value String, nums Array(Int32), created_at DateTime);
+INSERT INTO test_table VALUES (1, 'test1', emptyArrayInt32(), now()), (2, 'test2', emptyArrayInt32(), now()), (3, 'test3', emptyArrayInt32(), now());
+SELECT id, value FROM test_table WHERE length(value) <= (SELECT count(*) FROM test_table WHERE id < 4);
+SELECT id, value FROM test_table WHERE arrayExists(x -> x <= 2, nums) AND created_at <= now();
+SELECT id, value, (SELECT count(*) FROM test_table WHERE id < t.id) AS smaller_count FROM test_table t WHERE smaller_count <= 2;
+SELECT id, value FROM test_table WHERE created_at <= (SELECT max(created_at) FROM test_table WHERE value = 'test2') AND id <= 3;
+SELECT id, value, arrayReduce('groupArray', nums) AS grouped_nums FROM test_table GROUP BY id, value HAVING arrayJoin(grouped_nums) <= 0;
+SELECT id, value FROM test_table WHERE (SELECT count() FROM test_table WHERE id <= 3) <= (SELECT count(*) FROM test_table WHERE created_at < now());
+SELECT id, second_value FROM (SELECT id, value AS second_value FROM test_table) WHERE second_value <= (SELECT min(value) FROM (SELECT value FROM test_table)) AND id < 3;
+CREATE TABLE temp_table (temp_id Int32, temp_value String) ENGINE = MergeTree() ORDER BY temp_id;
+INSERT INTO temp_table SELECT id, value FROM test_table WHERE value IS NOT NULL;
+SELECT temp_id, temp_value FROM temp_table JOIN test_table ON temp_id <= (SELECT min(id) FROM test_table WHERE value IS NOT NULL);
+DROP TABLE IF EXISTS test_table;

@@ -1,0 +1,19 @@
+{
+    "function": "xslt_stale",
+    "operator": "BETWEEN",
+    "sql_array": [
+        "CREATE TABLE stylesheets (id INT PRIMARY KEY, url VARCHAR(255) NOT NULL, content XML);",
+        "INSERT INTO stylesheets VALUES (1, 'http://example.com/stylesheet1.xsl', '<xsl:stylesheet>...</xsl:stylesheet>');",
+        "INSERT INTO stylesheets VALUES (2, 'http://example.com/stylesheet2.xsl', '<xsl:stylesheet>...</xsl:stylesheet>');",
+        "SELECT id, xslt_stale(url) AS stale FROM stylesheets WHERE xslt_stale(url) IS NOT NULL;",
+        "SELECT id, content, xslt(url, '<xml>document</xml>') AS transformed FROM stylesheets WHERE id BETWEEN 1 AND 2;",
+        "CREATE TABLE xml_docs (doc_id INT PRIMARY KEY, xml_content XML);",
+        "INSERT INTO xml_docs VALUES (1, '<xml>doc1</xml>'), (2, '<xml>doc2</xml>');",
+        "SELECT xslt_stale((SELECT url FROM stylesheets WHERE id = 1)) AS reload_stale, xml_content FROM xml_docs WHERE doc_id BETWEEN 1 AND (SELECT MAX(doc_id) FROM xml_docs);",
+        "SELECT id, url, COUNT(*) OVER (PARTITION BY url) AS url_count FROM stylesheets WHERE url IS NOT NULL AND xslt_stale(url) IS NOT NULL;",
+        "SELECT url, CASE WHEN COUNT(*) BETWEEN 1 AND 5 THEN 'valid' ELSE 'invalid' END AS status FROM stylesheets GROUP BY url HAVING MAX(id) > 0;",
+        "CREATE TEMPORARY TABLE temp_xml (temp_id INT, temp_content XML);",
+        "INSERT INTO temp_xml SELECT doc_id, xslt(url, xml_content) FROM stylesheets JOIN xml_docs ON stylesheets.id = xml_docs.doc_id;",
+        "SELECT temp_id, temp_content FROM temp_xml WHERE temp_id BETWEEN 1 AND 2 AND NOT temp_content IS NULL;"
+    ]
+}

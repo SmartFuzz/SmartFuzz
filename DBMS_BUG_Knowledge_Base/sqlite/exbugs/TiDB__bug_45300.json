@@ -1,0 +1,19 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/45300",
+  "title": "[Runtime Filter] The ```Unexpected empty values``` error when filter values is empty",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n1. create table\r\n```\r\ncreate table right_empty_table(k1 int);\r\nalter table right_empty_table set tiflash replica 1;\r\ncreate table left_table(k1 int, k2 int);\r\ninsert into left_table values (1,1);\r\n alter table left_table set tiflash replica 1;\r\nset tidb_isolation_read_engines=\"tidb,tiflash\";\r\n```\r\n2. enable runtime filter local\r\n```\r\n set tidb_runtime_filter_mode=LOCAL;\r\n``` \r\n3. query\r\n```\r\nmysql> select /*+ hash_join_build(right_empty_table) */ * from left_table , right_empty_table where left_table.k2=right_empty_table.k1;\r\nERROR 1105 (HY000): other error for mpp stream: From MPP<query:<query_ts:1689068675331558971, local_query_id:11, server_id:2199946, start_ts:442779218824396801>,task_id:2>: Code: 0, e.displayText() = DB::Exception: Code: 0, e.displayText() = DB::Exception: Unexpected empty values, e.what() = DB::Exception,\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nreturn empty result\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nERROR 1105 (HY000): other error for mpp stream: From MPP<query:<query_ts:1689068675331558971, local_query_id:11, server_id:2199946, start_ts:442779218824396801>,task_id:2>: Code: 0, e.displayText() = DB::Exception: Code: 0, e.displayText() = DB::Exception: Unexpected empty values, e.what() = DB::Exception,\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\nv7.2 version and after\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\nThe TPC-DS query 37 and 61 have this  problem.\r\n\r\n",
+  "date": "2023-07-11T09:46:30Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE right_empty_table(k1 INTEGER, k2 TEXT DEFAULT NULL);",
+    "CREATE TABLE left_table(k1 INTEGER NOT NULL, k2 INTEGER CHECK(k2 >= 0));",
+    "INSERT INTO left_table VALUES (1, 1), (2, NULL), (3, 3);",
+    "SELECT * FROM left_table, right_empty_table WHERE left_table.k2 = right_empty_table.k1;"
+  ],
+  "key_bug_features": [
+    "Runtime filter error with empty filter values"
+  ]
+}

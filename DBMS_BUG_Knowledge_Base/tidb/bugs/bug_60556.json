@@ -1,0 +1,31 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/60556",
+  "title": "planner: unexpected results after enabling fix-54337",
+  "vulnerable_database": "tidb",
+  "date": "2025-04-14T20:35:22Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n\n```\ncreate table t (\n  a int,\n  b int,\n  key ab(a, b)\n);\n\ninsert into t values (100, 500);\n\nset @@tidb_opt_fix_control = \"54337:OFF\";\n\nselect 1 from t where ((a>100) or (a=100 and b>0)) and ((a<100) or (a=100 and b<10));\n\nset @@tidb_opt_fix_control = \"54337:ON\";\n\nselect 1 from t where ((a>100) or (a=100 and b>0)) and ((a<100) or (a=100 and b<10));\n```\n\n### 2. What did you expect to see? (Required)\n\nThese 2 queries above should output the same results.\n\n### 3. What did you see instead (Required)\n\nThe second query has a different output after enabling fix-54337:\n\n```\nmysql> set @@tidb_opt_fix_control = \"54337:OFF\";\nQuery OK, 0 rows affected (0.00 sec)\n\nmysql> select 1 from t where ((a>100) or (a=100 and b>0)) and ((a<100) or (a=100 and b<10));\nEmpty set (0.00 sec)\n\nmysql> set @@tidb_opt_fix_control = \"54337:ON\";\nQuery OK, 0 rows affected (0.00 sec)\n\nmysql> select 1 from t where ((a>100) or (a=100 and b>0)) and ((a<100) or (a=100 and b<10));\n+---+\n| 1 |\n+---+\n| 1 |\n| 1 |\n+---+\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\nMaster Branch.\n\n",
+  "poc": [
+    "create table t (",
+    "  a int,",
+    "  b int,",
+    "  key ab(a, b)",
+    ");",
+    "insert into t values (100, 500);",
+    "set @@tidb_opt_fix_control = \"54337:OFF\";",
+    "select 1 from t where ((a>100) or (a=100 and b>0)) and ((a<100) or (a=100 and b<10));",
+    "set @@tidb_opt_fix_control = \"54337:ON\";"
+  ],
+  "poc_type": "sql_text",
+  "state": "closed",
+  "key_bug_features": [
+    "Changing fix control alters query output unexpectedly"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE users (id INT PRIMARY KEY, name VARCHAR(100), age INT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO users (id, name, age) VALUES (1, 'Alice', 30);",
+    "CREATE TABLE orders (order_id INT PRIMARY KEY, user_id INT, amount DECIMAL(10, 2), FOREIGN KEY (user_id) REFERENCES users(id));",
+    "INSERT INTO orders (order_id, user_id, amount) VALUES (101, 1, 150.75);",
+    "SELECT u.name, o.amount FROM users u JOIN orders o ON u.id = o.user_id WHERE u.age > 25 AND o.amount < 200.00;"
+  ]
+}

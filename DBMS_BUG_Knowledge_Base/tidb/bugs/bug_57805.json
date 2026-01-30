@@ -1,0 +1,29 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/57805",
+  "title": "Inconsistent Query Results with Logical Operations on JSON Data and IS_IPV4_MAPPED",
+  "vulnerable_database": "tidb",
+  "date": "2024-11-28T12:48:58Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\n\nIn TiDB, queries involving logical operations and JSON data return inconsistent results when executed on a view versus a materialized table. Specifically, the query on the materialized table (t1) returns 6 rows, while the equivalent query on the view returns 7 rows. \n\n### 1. Minimal reproduce step (Required)\n\nCreate table t0 and insert data:\n```sql\nCREATE TABLE t0 (c0 MEDIUMINT, c1 JSON);\nINSERT INTO t0 (c0, c1) VALUES (7420571, 'true');\nINSERT INTO t0 (c0, c1) VALUES (-3814254, '-30');\nINSERT INTO t0 (c0, c1) VALUES (6737107, '\"p\"');\nINSERT INTO t0 (c0, c1) VALUES (2132911, '[-25, -100]');\nINSERT INTO t0 (c0, c1) VALUES (6587968, '\"B\"');\nINSERT INTO t0 (c0, c1) VALUES (-1395065, 'false');\n```\n\nCreate materialized table t1 and query it:\n```sql\nCREATE TABLE t1 (c0 bigint , c1 JSON);\nINSERT INTO t1 SELECT (IS_IPV4_MAPPED(c0)) , c1 FROM t0 ;\n\nmy:root@127.0.0.1:4000=> SELECT c1 FROM t1 WHERE (((((c0) OR c1) <= ('\"1\"' OR (c0))) = (((c0) = c1) != ((c0) = ('100')))) OR (CASE WHEN (NULL <= c1) THEN ((-391983275431311411)) ELSE ((8114370851638574898)) END) IN (SELECT c1 FROM t1 WHERE (CASE WHEN ((c0) OR '1') THEN (('\"h\"')) ELSE (('-87')) END)));\n  c1  \n------\n true \n -30 \n -9 \n true \n -98 \n -66 \n(6 rows)\n```\n\nCreate t1 as view instead and query it using the same SELECT query:\n```sql\nCREATE VIEW t1 AS SELECT IS_IPV4_MAPPED(c0) AS c0, c1 FROM t0 ;\n\nmy:root@127.0.0.1:4000=> SELECT c1 FROM t1 WHERE (((((c0) OR c1) <= ('\"1\"' OR (c0))) = (((c0) = c1) != ((c0) = ('100')))) OR (CASE WHEN (NULL <= c1) THEN ((-391983275431311411)) ELSE ((8114370851638574898)) END) IN (SELECT c1 FROM t1 WHERE (CASE WHEN ((c0) OR '1') THEN (('\"h\"')) ELSE (('-87')) END)));\n  c1   \n-------\n true \n -30 \n -9 \n true \n -98 \n -66 \n false \n(7 rows)\n```\n\n### 2. What did you expect to see? (Required)\nBoth queries on the materialized table and the view should return identical results, as the logical conditions and data are equivalent.\n\n### 3. What did you see instead (Required)\nQuery on the materialized table (t1) returns 6 rows.\nQuery on the view (t1) returns 7 rows, including an additional row with c1 = false.\n\n### 4. What is your TiDB version? (Required)\n\n```\nmy:root@127.0.0.1:4000=> SELECT tidb_version();\n                      tidb_version()                       \n-----------------------------------------------------------\n Release Version: v8.3.0                                  +\n Edition: Community                                       +\n Git Commit Hash: 1a0c3ac3292fff7742faa0c00a662ccb66ba40db+\n Git Branch: HEAD                                         +\n UTC Build Time: 2024-08-20 10:23:00                      +\n GoVersion: go1.21.10                                     +\n Race Enabled: false                                      +\n Check Table Before Drop: false                           +\n Store: tikv \n(1 row)\n```\n\n",
+  "poc": [
+    "CREATE TABLE t0 (c0 MEDIUMINT, c1 JSON);",
+    "INSERT INTO t0 (c0, c1) VALUES (7420571, 'true');",
+    "INSERT INTO t0 (c0, c1) VALUES (-3814254, '-30');",
+    "INSERT INTO t0 (c0, c1) VALUES (6737107, '\"p\"');",
+    "INSERT INTO t0 (c0, c1) VALUES (2132911, '[-25, -100]');",
+    "INSERT INTO t0 (c0, c1) VALUES (6587968, '\"B\"');",
+    "INSERT INTO t0 (c0, c1) VALUES (-1395065, 'false');"
+  ],
+  "poc_type": "sql_text",
+  "state": "closed",
+  "key_bug_features": [
+    "Inconsistent results from logical operations on JSON data"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t2 (c0 INT, c1 JSON, c2 VARCHAR(255) NOT NULL DEFAULT 'default');",
+    "INSERT INTO t2 (c0, c1) VALUES (1, 'true');",
+    "INSERT INTO t2 (c0, c1) VALUES (2, 'null');",
+    "INSERT INTO t2 (c0, c1) VALUES (3, 'false');",
+    "SELECT c1 FROM t2 WHERE (c0 < 5) OR (c1 IS NOT NULL) AND (c1 = 'true');"
+  ]
+}

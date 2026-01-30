@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/18616-acbb9e5caf41e964%40postgresql.org",
+  "title": "BUG #18616: Long-running hash index build can not be interrupted",
+  "description": "The following bug has been logged on the website:\nBug reference:      18616\nLogged by:          Alexander Lakhin\nEmail address:      exclusion(at)gmail(dot)com\nPostgreSQL version: 17rc1\nOperating system:   Ubuntu 22.04\nDescription:\nThe following script:\nCREATE TABLE t(i int);\nINSERT INTO t SELECT 1 FROM generate_series(1, 10000000);\nSET maintenance_work_mem = '1GB';\nSET statement_timeout = '90s';\nCREATE INDEX hi ON t USING hash (i);\nreaches a state, when the backend can not be interrupted.\ngdb shows that the code execution loops inside:\n#0  _h_indexbuild (...) at hashsort.c:151\n#1  0x0000557f3671cbf3 in hashbuild (...)\nat hash.c:183\n...\nwith tups_done increasing slowly (given the total number of tuples).\nReproduced on all supported versions.",
+  "date": "2024-09-13 10:00:00",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE t1(id INTEGER PRIMARY KEY, value TEXT NOT NULL);",
+    "INSERT INTO t1(value) SELECT 'test' || (i) FROM (SELECT ROW_NUMBER() OVER () AS i FROM (SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10) AS a) AS b LIMIT 100;",
+    "CREATE TABLE t2(a INT, b VARCHAR, c TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t2(a, b) SELECT i, NULL FROM (SELECT ROW_NUMBER() OVER () AS i FROM (SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10) AS a) AS b LIMIT 1000;",
+    "CREATE INDEX idx_t2_a ON t2(a);"
+  ],
+  "key_bug_features": [
+    "Long-running hash index build cannot be interrupted"
+  ]
+}

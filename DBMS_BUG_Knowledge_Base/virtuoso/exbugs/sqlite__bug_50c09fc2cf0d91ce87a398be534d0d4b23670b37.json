@@ -1,0 +1,21 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/50c09fc2cf",
+  "title": "Crash on REPLACE INTO of a table with an AFTER DELETE trigger.",
+  "description": "drh added on 2019-10-24 19:29:57:\nThe following script leads to an assertion fault:\nPRAGMA recursive_triggers = true;\nCREATE TABLE t0(a, b, c UNIQUE);\nCREATE UNIQUE INDEX i0 ON t0(b) WHERE a;\nCREATE TRIGGER tr0 AFTERE DELETE ON t0 BEGIN\n  DELETE FROM t0;\nEND;\nINSERT INTO t0(a,b,c) VALUES(0,0,9),(1,1,1);\nREPLACE INTO t0(a,b,c) VALUES(2,0,9);\nThe problem is that the performance optimization of \ncheck-in [bec5b6d4d083556d] (2016-11-08) is subtly\nincorrect.  The idea is sound: it avoids unnecessary seek operations\non a cursor if we know that the cursor is unperturbed, and the cursor will\nbe unperturbed if either the INSERT is not a REPLACE or if there are no\ntriggers - either explicit triggers are implicit triggers created by\nforeign key constraints.  The problem is that the conditional only\ndetects INSERT triggers that might fire, and fails to\ndetect DELETE triggers that fire as a consequence of the REPLACE.\nThe assertion fault was first detected by Manuel Rigger and was reported by private email.\ndrh added on 2019-10-24 19:33:27:\nTypo:  \"AFTERE\" in the demo script should be \"AFTER\", of course.",
+  "date": "2019-10-24 19:29:575.80 years ago",
+  "vulnerable_version": "3.30.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "SET RECURSIVE_TRIGGERS = TRUE;",
+    "CREATE TABLE fuzz_virtuoso_t0(a INTEGER, b INTEGER, c INTEGER UNIQUE);",
+    "CREATE UNIQUE INDEX fuzz_virtuoso_i0 ON fuzz_virtuoso_t0(b) WHERE a IS NOT NULL;",
+    "CREATE TRIGGER fuzz_virtuoso_tr0 AFTER DELETE ON fuzz_virtuoso_t0 FOR EACH ROW DELETE FROM fuzz_virtuoso_t0;",
+    "INSERT INTO fuzz_virtuoso_t0(a,b,c) VALUES(0,0,9),(1,1,1);",
+    "INSERT INTO fuzz_virtuoso_t0(a,b,c) VALUES(2,0,9);"
+  ],
+  "key_bug_features": [
+    "REPLACE INTO with AFTER DELETE trigger causes assertion fault"
+  ]
+}

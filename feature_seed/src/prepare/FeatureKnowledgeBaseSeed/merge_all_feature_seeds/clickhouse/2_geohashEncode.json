@@ -1,0 +1,16 @@
+CREATE TABLE test_geo (id Int32, longitude Float64, latitude Float64, precision Int8);
+INSERT INTO test_geo (id, longitude, latitude, precision) VALUES (1, -5.60302734375, 42.593994140625, 0);
+INSERT INTO test_geo (id, longitude, latitude, precision) VALUES (2, -185.0, -95.0, 20);
+SELECT geohashEncode(longitude % 1.0, latitude, precision) AS encoded_geohash FROM test_geo WHERE longitude IS NOT NULL;
+SELECT id, geohashEncode(longitude * 2.0, latitude, precision) AS encoded_geohash FROM test_geo WHERE longitude BETWEEN -180 AND 180 GROUP BY id, latitude;
+SELECT id, geohashEncode(longitude + 180.0, latitude * (precision % 3 + 1), 12) AS encoded_geohash FROM test_geo HAVING encoded_geohash IS NOT NULL;
+CREATE TABLE test_geo_extended AS SELECT *, geohashEncode(longitude, latitude, precision % 5) AS enc_hash FROM test_geo;
+SELECT id, COUNT(*) AS total FROM test_geo_extended GROUP BY enc_hash HAVING total >= (SELECT COUNT(*) FROM test_geo) % 5;
+SELECT geohashEncode(longitude, latitude, geohashEncode(longitude, latitude, 0) % 5 + 1) AS final_geohash FROM test_geo ORDER BY final_geohash DESC;
+INSERT INTO test_geo (id, longitude, latitude, precision) VALUES (3, NULL, 20.0, 5);
+SELECT id, geohashEncode(longitude %% 2.0, CASE WHEN latitude IS NULL THEN 0.0 ELSE latitude END, precision) AS encoded_geohash FROM test_geo;
+SELECT id, geohashEncode(longitude, latitude / 2.0 + 90.0, nullIf(precision, 0)) AS encoded_geohash FROM test_geo WHERE precision IS NOT NULL;
+DROP TABLE IF EXISTS test_geo;
+CREATE TABLE temp_geo (longitude Float64, latitude Float64) ENGINE = Memory;
+INSERT INTO temp_geo VALUES (-5.0, 45.0), (180.0, 90.0), (NULL, NULL);
+SELECT geohashEncode(longitude * 1.5, latitude - 45, 1) AS encoded_geohash FROM temp_geo WHERE longitude IS NOT NULL;

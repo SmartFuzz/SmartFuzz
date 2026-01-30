@@ -1,0 +1,6 @@
+CREATE TABLE t1 (id Int32, name String, score Float64) ENGINE = IcebergLocal(local, path = '/var/lib/clickhouse/user_files/t1/', format = 'Parquet') PARTITION BY (sipHash128Reference(id, name));
+INSERT INTO t1 VALUES (1, 'Alice', 95.5), (2, 'Bob', 88.0), (3, 'Charlie', 76.5);
+CREATE TABLE t2 (user_id Int32, age UInt8, active Nullable(Bool)) ENGINE = IcebergLocal(local, path = '/var/lib/clickhouse/user_files/t2/', format = 'Parquet') PARTITION BY (sipHash128Reference(user_id, age));
+INSERT INTO t2 VALUES (1, 25, true), (2, 30, NULL), (3, 22, false);
+CREATE TABLE t3 AS SELECT user_id, count(*) AS login_count FROM t2 GROUP BY user_id PARTITION BY (sipHash128Reference(user_id, login_count));
+SELECT * FROM t1 JOIN t3 ON t1.id = t3.user_id WHERE t1.score > 80.0 ORDER BY t1.name;

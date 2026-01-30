@@ -1,0 +1,12 @@
+CREATE TABLE Orders (OrderID INT, OrderDate DATE, ShippedDate DATE);
+INSERT INTO Orders (OrderID, OrderDate, ShippedDate) VALUES (1, '2023-01-01', '2023-01-05');
+INSERT INTO Orders (OrderID, OrderDate, ShippedDate) VALUES (2, '2023-01-02', NULL);
+INSERT INTO Orders (OrderID, OrderDate, ShippedDate) VALUES (3, '2023-01-01', '2023-01-04');
+INSERT INTO Orders (OrderID, OrderDate, ShippedDate) VALUES (4, '2023-01-03', '2023-01-10');
+SELECT datediff('day', (SELECT MAX(OrderDate) FROM Orders), (SELECT MIN(ShippedDate) FROM Orders WHERE ShippedDate IS NOT NULL)) AS ProcessingTime;
+SELECT OrderID, datediff('hour', OrderDate, ShippedDate) AS Processing_Hours FROM Orders WHERE ShippedDate IS NOT NULL;
+SELECT OrderID, (SELECT NEW OrderType('OrderType', OrderID, datediff('day', OrderDate, ShippedDate))) FROM Orders WHERE OrderID = 1) AS Order_Info FROM Orders;
+SELECT OrderID, AVG(datediff('day', OrderDate, ShippedDate)) OVER (PARTITION BY (CASE WHEN ShippedDate IS NOT NULL THEN 1 ELSE 0 END)) AS Avg_Processing FROM Orders GROUP BY OrderID HAVING AVG(datediff('day', OrderDate, ShippedDate)) IS NOT NULL;
+CREATE TEMPORARY TABLE TempOrders AS SELECT OrderID, datediff('day', OrderDate, ShippedDate) AS DaysDiff FROM Orders WHERE ShippedDate IS NOT NULL;
+SELECT OrderID, DaysDiff FROM TempOrders WHERE DaysDiff > (SELECT AVG(DaysDiff) FROM TempOrders);
+SELECT OrderID, NEW CustomType((SELECT MIN(DATEDIFF('day', OrderDate, ShippedDate)) FROM TempOrders)) AS MinimumProcessingTime FROM Orders;

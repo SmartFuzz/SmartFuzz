@@ -1,0 +1,10 @@
+CREATE TABLE test_dates (id INTEGER PRIMARY KEY, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ, days_interval INTERVAL);
+INSERT INTO test_dates (id, created_at, updated_at, days_interval) VALUES (1, TIMESTAMPTZ '2023-01-01 12:00:00+00', TIMESTAMPTZ '2023-01-05 12:00:00+00', INTERVAL '5 days'), (2, TIMESTAMPTZ '2023-02-01 12:00:00+00', TIMESTAMPTZ '2023-02-10 12:00:00+00', INTERVAL '9 days'), (3, TIMESTAMPTZ '2023-03-01 12:00:00+00', NULL, INTERVAL NULL);
+SELECT id, age(updated_at, created_at - days_interval) AS age_difference FROM test_dates WHERE created_at IS NOT NULL;
+SELECT id, age(COALESCE(updated_at, created_at), created_at - INTERVAL (SELECT MAX(days_interval) FROM test_dates WHERE days_interval IS NOT NULL)) AS adjusted_age FROM test_dates;
+SELECT id, age(TIMESTAMPTZ '2023-03-01 12:00:00+00', created_at) - INTERVAL '1 day' AS age_adjusted FROM test_dates WHERE updated_at IS NOT NULL;
+SELECT id, age(created_at, updated_at) AS total_age FROM (SELECT id, created_at, updated_at FROM test_dates WHERE updated_at IS NOT NULL) AS subquery GROUP BY id HAVING total_age > INTERVAL '5 days';
+SELECT id, (age(updated_at, created_at) + INTERVAL '1 day') AS one_day_adjusted_age FROM test_dates WHERE created_at > TIMESTAMPTZ '2023-01-01 00:00:00+00' AND updated_at IS NOT NULL;
+CREATE TABLE secondary_dates (refid INTEGER, ref_date TIMESTAMPTZ, PRIMARY KEY (refid));
+INSERT INTO secondary_dates (refid, ref_date) VALUES (1, TIMESTAMPTZ '2023-03-01 12:00:00+00'), (2, TIMESTAMPTZ '2023-03-05 12:00:00+00');
+SELECT a.id, a.created_at, a.updated_at, age(a.updated_at, a.created_at) AS age_diff, (a.created_at - b.ref_date) AS date_difference FROM test_dates AS a JOIN secondary_dates AS b ON a.id = b.refid WHERE b.ref_date IS NOT NULL AND a.updated_at IS NOT NULL;

@@ -1,0 +1,16 @@
+{
+    "function": "makeDate",
+    "operator": "a / b",
+    "sql_array": [
+        "CREATE TABLE test_dates (id UInt32, event_date Date, value Float32) ENGINE = Memory;",
+        "INSERT INTO test_dates VALUES (1, makeDate(2023, 2, 28), 100.0), (2, makeDate(2022, 365), 200.0), (3, makeDate(2021, 1, 1), NULL);",
+        "SELECT id, event_date, value / (SELECT COUNT(*) FROM test_dates) AS normalized_value FROM test_dates WHERE value IS NOT NULL;",
+        "SELECT id, event_date, value / makeDate(2023, 2, 29) AS division_date FROM test_dates WHERE makeDate(2023, 2, 29) IS NOT NULL;",
+        "SELECT id, makeDate(2023, 1, 31) AS month_end, makeDate(2023, 1, 15) AS mid_month, (makeDate(2023, 1, 31) - makeDate(2023, 1, 15)) / 2 AS average_difference FROM test_dates;",
+        "CREATE TABLE test_dates_join (id UInt32, join_date Date, amount Float32) ENGINE = Memory;",
+        "INSERT INTO test_dates_join VALUES (1, makeDate(2023, 3, 1), 300.0), (2, makeDate(2023, 3, 1), 150.0), (3, makeDate(2023, 3, 2), NULL);",
+        "SELECT t1.id, t1.event_date, t2.join_date, t1.value / (t2.amount + 1e-6) AS safe_division FROM test_dates t1 JOIN test_dates_join t2 ON makeDate(2023, 3, 1) = t2.join_date WHERE t1.value IS NOT NULL;",
+        "SELECT id, COUNT(*) AS total_events, makeDate(2023, 3, 1) AS reference_date FROM test_dates GROUP BY id HAVING total_events / COUNT(*) < 1;",
+        "SELECT avg(value) AS average_value, makeDate(2023, day_of_year) AS derived_date FROM (SELECT value, dayOfYear(event_date) AS day_of_year FROM test_dates WHERE event_date >= makeDate(2023, 1, 1)) GROUP BY derived_date ORDER BY derived_date DESC;"
+    ]
+}

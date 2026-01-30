@@ -1,0 +1,12 @@
+[
+    "CREATE TABLE aggregate_test (UserID UInt64, RegionID UInt32, SendTiming UInt64) ENGINE = AggregatingMergeTree() ORDER BY UserID;",
+    "INSERT INTO aggregate_test SELECT uniqState(UserID), RegionID, quantilesState(0.5, 0.9)(SendTiming) FROM (SELECT UserID, RegionID, SendTiming FROM source_table) GROUP BY RegionID;",
+    "CREATE TABLE source_table (UserID UInt64, RegionID UInt32, SendTiming UInt64);",
+    "INSERT INTO source_table VALUES (1, 1, 100), (2, 1, 200), (3, 2, 300), (4, 2, 400);",
+    "SELECT uniqMerge(state) FROM (SELECT uniqState(UserID) AS state FROM aggregate_test GROUP BY RegionID);",
+    "SELECT uniq(UserID), quantilesMerge(quantilesState(0.5, 0.9)(SendTiming)) FROM aggregate_test GROUP BY RegionID;",
+    "CREATE TABLE aggregate_results AS SELECT RegionID, uniqMerge(state) AS unique_users, quantilesMerge(quantilesState(0.5, 0.9)(SendTiming)) AS timing_quantiles FROM (SELECT RegionID, uniqState(UserID) AS state, quantilesState(0.5, 0.9)(SendTiming) FROM aggregate_test GROUP BY RegionID);",
+    "WITH (SELECT uniqState(UserID) FROM aggregate_test WHERE RegionID = 1) AS state1, (SELECT quantilesState(0.5, 0.9)(SendTiming) FROM aggregate_test WHERE RegionID = 1) AS state2 SELECT uniqMerge(state1) AS unique_users, quantilesMerge(state2) AS timing_quantiles;",
+    "INSERT INTO aggregate_test SELECT uniqState(UserID), RegionID, quantilesState(0.5, 0.9)(SendTiming) FROM (SELECT * FROM source_table WHERE UserID IN (SELECT UserID FROM aggregate_test WHERE RegionID = 1)) GROUP BY RegionID;",
+    "SELECT sum(uniqMerge(state)) FROM (SELECT uniqState(UserID) AS state FROM aggregate_test GROUP BY RegionID) WHERE RegionID = 2;"
+]

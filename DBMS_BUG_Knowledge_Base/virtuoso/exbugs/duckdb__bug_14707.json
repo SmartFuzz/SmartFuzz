@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14707",
+  "title": "COPY … TO with hive partitioning behavior inconsistency between CSV and PARQUET formats and with the documentation",
+  "description": "### What happens?\r\n\r\nBy using COPY … TO with PARTITION_BY and without WRITE_PARTITION_COLUMNS options we don’t get rid of partitions fields with PARQUET as we do with CSV.\r\n\r\n### To Reproduce\r\n\r\n```\r\nCOPY (\r\n\tSELECT\r\n\t\t1 AS foo, \r\n\t\t2024 AS year,\r\n\t\t11 AS month,\r\n\t\t5 AS day\r\n) TO '.' (\r\n\tFORMAT PARQUET,\r\n\tOVERWRITE_OR_IGNORE,\r\n\tPARTITION_BY (year, month, day),\r\n\tFILENAME_PATTERN 'test'\r\n);\r\n```\r\nWe get the following file content (with partitioning fields):\r\n```\r\nfoo|day|month|year|\r\n---+---+-----+----+\r\n  1|  5|   11|2024|\r\n```\r\nIf we choose CSV instead of PARQUET, we get the expected result (without partitioning fields):\r\n```\r\nfoo\r\n1\r\n```\r\nAccording to the documentation (https://duckdb.org/docs/sql/statements/copy.html, version 1.1), WRITE_PARTITION_COLUMNS is a Boolean option, I should  be able to use it with a true or false value.\r\nWith the following options:\r\n```\r\n\tFORMAT CSV,\r\n\tOVERWRITE_OR_IGNORE,\r\n\tPARTITION_BY (year, month, day),\r\n\tWRITE_PARTITION_COLUMNS false,\r\n\tFILENAME_PATTERN 'test'\r\n```\r\nI get the same result with WRITE_PARTITION_COLUMNS set to true or false:\r\n```\r\nfoo|year|month|day|\r\n---+----+-----+---+\r\n  1|2024|   11|  5|\r\n```\r\nWith WRITE_PARTITION_COLUMNS set to false, I would expect to get rid of partition fields (like when this option is absent).\r\n\r\n\r\n\r\n\r\n### OS:\r\n\r\nWindows 11, x64\r\n\r\n### DuckDB Version:\r\n\r\n1.1.2\r\n\r\n### DuckDB Client:\r\n\r\nduckdb.exe\r\n\r\n### Hardware:\r\n\r\n_No response_\r\n\r\n### Full Name:\r\n\r\nOlivier Colin\r\n\r\n### Affiliation:\r\n\r\nTeamwork\r\n\r\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\r\n\r\nI have tested with a stable release\r\n\r\n### Did you include all relevant data sets for reproducing the issue?\r\n\r\nYes\r\n\r\n### Did you include all code required to reproduce the issue?\r\n\r\n- [X] Yes, I have\r\n\r\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\r\n\r\n- [X] Yes, I have",
+  "date": "2024-11-05 08:52:50",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (foo INTEGER, year INTEGER, month INTEGER, day INTEGER);",
+    "INSERT INTO test_table (foo, year, month, day) VALUES (1, 2024, 11, 5);",
+    "EXPORT TO 'test.parquet' AS SELECT foo, year, month, day FROM test_table;",
+    "EXPORT TO 'test_csv.csv' AS SELECT foo FROM test_table WHERE year IS NOT NULL;",
+    "SELECT * FROM DB.DIRECTORY WHERE FILENAME = 'test.parquet';"
+  ],
+  "key_bug_features": [
+    "COPY … TO with PARTITION_BY not removing partition fields"
+  ]
+}

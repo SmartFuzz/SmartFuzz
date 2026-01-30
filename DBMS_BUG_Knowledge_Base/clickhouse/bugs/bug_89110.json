@@ -1,0 +1,24 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/89110",
+  "title": "Chaining Refreshable Materialized Views and Materialized Views doesn't provide a result",
+  "vulnerable_database": "ClickHouse",
+  "date": "2025-10-28T16:11:33Z",
+  "vulnerable_version": "25.1.8.25",
+  "description": "### Company or project name\n_No response_\n### Describe the unexpected behaviour\nWhen I chain a refreshable materialized views and an incremental materialized views, the last table doesn't receive any data.\n### Which ClickHouse versions are affected?\nI'm using ClickHouse 25.1.8.25\n### How to reproduce\nThis is a small example from a much more complex use case:\n- Table `initial` will receive data from user\n- Table `target1` will receive data from `initial` through a refreshable materialized view `initial_target1_mv`\n- Table `target2` will receive data from `target1` through an incremental materialized view `target1_target2_mv`\n```sql\nCREATE TABLE IF NOT EXISTS default.initial\n(\nn          UInt32,\n_timestamp DateTime DEFAULT now()\n)\nENGINE = ReplacingMergeTree(_timestamp)\nORDER BY (n);\nCREATE TABLE IF NOT EXISTS default.target1\n(\nx          UInt32,\n_timestamp DateTime DEFAULT now()\n)\nENGINE = ReplacingMergeTree(_timestamp)\nORDER BY (x);\nCREATE TABLE IF NOT EXISTS default.target2\n(\nx          UInt32,\n_timestamp DateTime DEFAULT now()\n)\nENGINE = ReplacingMergeTree(_timestamp)\nORDER BY (x);\nCREATE MATERIALIZED VIEW IF NOT EXISTS default.initial_target1_mv\n-- @formatter:off\nREFRESH EVERY 1 MINUTE TO default.target1 AS\n-- @formatter:on\nSELECT n AS x\nFROM default.initial\nWHERE randCanonical() < 0.5;\nCREATE MATERIALIZED VIEW IF NOT EXISTS default.target1_target2_mv\nTO default.target2 AS\nSELECT x\nFROM default.target1;\nINSERT INTO default.initial(n)\nSELECT  number AS n\nFROM numbers(11);\nSELECT *\nFROM default.initial;\nSELECT *",
+  "poc": [
+    "CREATE TABLE IF NOT EXISTS default.initial\n(\n    n          UInt32,\n    _timestamp DateTime DEFAULT now()\n)\n    ENGINE = ReplacingMergeTree(_timestamp)\n        ORDER BY (n);",
+    "CREATE TABLE IF NOT EXISTS default.target1\n(\n    x          UInt32,\n    _timestamp DateTime DEFAULT now()\n)\n    ENGINE = ReplacingMergeTree(_timestamp)\n        ORDER BY (x);",
+    "CREATE TABLE IF NOT EXISTS default.target2\n(\n    x          UInt32,\n    _timestamp DateTime DEFAULT now()\n)\n    ENGINE = ReplacingMergeTree(_timestamp)\n        ORDER BY (x);",
+    "INSERT INTO default.initial(n)\nSELECT  number AS n\nFROM numbers(11);"
+  ],
+  "key_bug_features": [
+    "Chaining refreshable and incremental materialized views fails"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE IF NOT EXISTS default.initial_complex\n(\n    n          UInt32,\n    description String,\n    _timestamp DateTime DEFAULT now()\n)\nENGINE = ReplacingMergeTree(_timestamp)\nORDER BY (n);",
+    "CREATE TABLE IF NOT EXISTS default.target1_complex\n(\n    x          UInt32,\n    status     Nullable(String),\n    _timestamp DateTime DEFAULT now()\n)\nENGINE = ReplacingMergeTree(_timestamp)\nORDER BY (x);",
+    "CREATE TABLE IF NOT EXISTS default.target2_complex\n(\n    x          UInt32,\n    value      Float64,\n    _timestamp DateTime DEFAULT now()\n)\nENGINE = ReplacingMergeTree(_timestamp)\nORDER BY (x);",
+    "CREATE MATERIALIZED VIEW IF NOT EXISTS default.initial_target1_mv_complex\nREFRESH EVERY 1 MINUTE TO default.target1_complex AS\nSELECT n AS x, CASE WHEN n % 2 = 0 THEN 'even' ELSE 'odd' END AS status\nFROM default.initial_complex\nWHERE rand() < 0.5;",
+    "CREATE MATERIALIZED VIEW IF NOT EXISTS default.target1_target2_mv_complex\nTO default.target2_complex AS\nSELECT x, CAST(x AS Float64) * 1.5 AS value\nFROM default.target1_complex WHERE status IS NOT NULL;"
+  ]
+}

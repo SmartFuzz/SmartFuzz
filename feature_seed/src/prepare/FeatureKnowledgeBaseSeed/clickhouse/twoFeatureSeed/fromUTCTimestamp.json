@@ -1,0 +1,16 @@
+{
+    "function": "fromUTCTimestamp",
+    "operator": "(x1, x2, ...)",
+    "sql_array": [
+        "CREATE TABLE test_dates (id UInt32, event_time DateTime64(3), user_timezone String);",
+        "INSERT INTO test_dates VALUES (1, toDateTime64('2023-03-16 10:00:00', 3), 'Asia/Shanghai');",
+        "INSERT INTO test_dates VALUES (2, toDateTime64('2023-03-16 10:00:00', 3), 'America/New_York');",
+        "SELECT id, fromUTCTimestamp(event_time, user_timezone) AS local_time FROM test_dates WHERE user_timezone IS NOT NULL;",
+        "SELECT id, fromUTCTimestamp((SELECT MAX(event_time) FROM test_dates WHERE user_timezone = 'Asia/Shanghai'), 'UTC') AS max_local_time FROM test_dates GROUP BY id;",
+        "SELECT id, fromUTCTimestamp(toDateTime64(CAST(id AS String), 3), user_timezone) FROM test_dates HAVING local_time IS NOT NULL;",
+        "SELECT *, (fromUTCTimestamp(event_time, user_timezone), event_time) AS timestamp_tuple FROM test_dates WHERE id IN (SELECT id FROM test_dates WHERE user_timezone LIKE '%Asia%') ORDER BY event_time DESC;",
+        "SELECT id, (fromUTCTimestamp(event_time, user_timezone), COUNT(*)) AS count_tuple FROM test_dates GROUP BY id ORDER BY count_tuple[2] DESC;",
+        "CREATE TABLE temp_dates AS SELECT id, fromUTCTimestamp(event_time, 'UTC') AS utc_time FROM test_dates;",
+        "INSERT INTO temp_dates SELECT id, fromUTCTimestamp(toDateTime64('2020-02-29 12:00:00', 3), 'Asia/Tokyo') FROM test_dates WHERE id < 3;"
+    ]
+}

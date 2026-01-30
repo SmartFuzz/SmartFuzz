@@ -1,0 +1,19 @@
+{
+    "function": "arrayFirstIndex(func, arr1, ...)",
+    "operator": "a != ANY (subquery)",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, values Array(Int32), label String);",
+        "INSERT INTO test_table VALUES (1, [1, 2, 3], 'A'), (2, [4, 5, 6], 'B'), (3, [7, 8, 9], NULL);",
+        "SELECT id, arrayFirstIndex(x -> x > 5, values) AS index_greater_than_5 FROM test_table WHERE id != ANY (SELECT id FROM test_table WHERE label IS NOT NULL);",
+        "SELECT id, arrayFirstIndex(x -> x IS NULL, values) AS index_null_value FROM test_table WHERE id != ANY (SELECT id FROM test_table WHERE label = 'C');",
+        "CREATE TABLE temp_table AS SELECT id, arrayFirstIndex(x -> x = 4, values) AS index_of_4 FROM test_table;",
+        "INSERT INTO temp_table VALUES (4, 1);",
+        "SELECT id, arrayFirstIndex(x -> x < 3, values) AS index_less_than_3 FROM test_table WHERE id NOT IN (SELECT id FROM temp_table WHERE index_of_4 > 0);",
+        "SELECT count(*) FROM test_table GROUP BY arrayFirstIndex(x -> x < 0, values) HAVING count() > 0;",
+        "SELECT id FROM test_table WHERE arrayFirstIndex(x -> x != ANY (SELECT DISTINCT value FROM (SELECT [2, 3] AS value)), values) IS NOT NULL;",
+        "ALTER TABLE test_table ADD COLUMN extra_value Nullable(Float64);",
+        "INSERT INTO test_table (id, values, label, extra_value) VALUES (5, [NULL, 1, NULL], 'D', 10.5);",
+        "SELECT id, arrayFirstIndex(x -> x = 1, values) AS first_index FROM test_table WHERE extra_value != ANY (SELECT DISTINCT extra_value FROM test_table WHERE extra_value IS NOT NULL);",
+        "SELECT id, arrayFirstIndex(x -> x IS NOT NULL, values) AS index_not_null FROM test_table WHERE arrayFirstIndex(x -> x >= 2, values) IS NOT NULL;"
+    ]
+}

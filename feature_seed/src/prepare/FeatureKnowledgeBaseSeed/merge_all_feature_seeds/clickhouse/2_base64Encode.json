@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id UInt32, plaintext String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, 'hello world'), (2, ''), (3, NULL), (4, 'very long string that is quite challenging to encode using base64 for fuzz testing purposes');
+SELECT base64Encode(plaintext) AS encoded_value, (id - 1) AS decremented_id FROM test_table WHERE plaintext IS NOT NULL;
+SELECT base64Encode(plaintext) AS encoded_value, (id - 1) AS decremented_id FROM test_table WHERE plaintext <> '' OR id = 2;
+SELECT base64Encode(plaintext) AS encoded_value, (id - 1) AS decremented_id FROM test_table GROUP BY encoded_value HAVING decremented_id > 0;
+CREATE TABLE another_table (other_id UInt32, reference_id UInt32) ENGINE = MergeTree() ORDER BY other_id;
+INSERT INTO another_table VALUES (1, 1), (2, NULL), (3, 3);
+SELECT a.other_id, base64Encode(b.plaintext) AS encoded_value FROM another_table a JOIN test_table b ON a.reference_id = (b.id - 1) WHERE b.plaintext IS NOT NULL;
+SELECT base64Encode(plaintext) AS encoded_value FROM (SELECT plaintext, (id - 1) AS decremented_id FROM test_table) AS subquery WHERE decremented_id >= 0;
+SELECT base64Encode(plaintext) AS encoded_value FROM test_table WHERE (plaintext IS NULL AND plaintext <> 'some string') OR (id BETWEEN 1 AND 4);

@@ -1,0 +1,17 @@
+{
+    "function": "toFloat64",
+    "operator": "a IN ...",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, value String);",
+        "INSERT INTO test_table VALUES (1, '42.7'), (2, 'NaN'), (3, '0'), (4, 'invalid'), (5, '3.14');",
+        "CREATE TABLE another_table (ref_id UInt32, ref_value Float64);",
+        "INSERT INTO another_table VALUES (1, toFloat64('2.71')), (2, toFloat64('Inf')), (3, toFloat64('0'));",
+        "SELECT id, value, toFloat64(value) AS float_value FROM test_table WHERE toFloat64(value) IN (SELECT ref_value FROM another_table WHERE ref_id > 1);",
+        "SELECT id, value, CASE WHEN toFloat64(value) IN (toFloat64('NaN'), toFloat64('0')) THEN 'zero or NaN' END AS categorization FROM test_table WHERE value IS NOT NULL;",
+        "SELECT id, ref_value, toFloat64(ref_value) IN (SELECT toFloat64('NaN'), toFloat64('100'), toFloat64('3.14')) AS comparison FROM another_table WHERE toFloat64(ref_value) < 5.0;",
+        "SELECT COUNT(*) FROM (SELECT value FROM test_table WHERE toFloat64(value) IN ('42.7', 'invalid', '3.14') GROUP BY toFloat64(value) HAVING toFloat64(value) IS NOT NULL) AS nested_query;",
+        "SELECT a.id, a.value, toFloat64(a.value) AS converted_value FROM test_table AS a JOIN another_table AS b ON a.id = b.ref_id AND toFloat64(a.value) IN (SELECT ref_value FROM another_table WHERE ref_value > 0) GROUP BY a.id, a.value HAVING converted_value BETWEEN 0.1 AND 1000.0;",
+        "CREATE TEMPORARY TABLE temp_table AS SELECT toFloat64(value) AS temp_value FROM test_table;",
+        "SELECT AVG(temp_value) FROM temp_table WHERE temp_value IS NOT NULL;"
+    ]
+}

@@ -1,0 +1,12 @@
+CREATE TABLE largestTriangleThreeBuckets_test (x Float64, y Float64) ENGINE = Memory;
+INSERT INTO largestTriangleThreeBuckets_test VALUES (1.0, 2.0), (2.0, 4.0), (3.0, NULL), (4.0, 8.0), (5.0, 10.0);
+SELECT largestTriangleThreeBuckets(3)(x, y) FROM (SELECT x, y FROM largestTriangleThreeBuckets_test WHERE y IS NOT NULL ORDER BY x);
+SELECT largestTriangleThreeBuckets(2)(a.x, b.y) FROM (SELECT x, y FROM largestTriangleThreeBuckets_test WHERE x <= 5.0) AS a JOIN (SELECT x, y FROM largestTriangleThreeBuckets_test WHERE y IS NOT NULL) AS b ON a.x <= b.x GROUP BY a.x HAVING COUNT(*) > 1;
+SELECT largestTriangleThreeBuckets(4)(x, y) FROM (SELECT x, y FROM largestTriangleThreeBuckets_test WHERE x >= 1.0 AND x <= 5.0) UNION ALL (SELECT largestTriangleThreeBuckets(4)(x, y) FROM largestTriangleThreeBuckets_test WHERE x <= 0.0);
+SELECT largestTriangleThreeBuckets(5)(x, y) FROM (SELECT x, IF(y < 5.0, CAST(y AS Float64), NULL) AS y FROM largestTriangleThreeBuckets_test WHERE x >= 1.0 AND y IS NOT NULL ORDER BY x) WHERE x <= (SELECT MAX(x) FROM largestTriangleThreeBuckets_test);
+SELECT largestTriangleThreeBuckets(3)(x, y) FROM (SELECT DISTINCT x, y FROM largestTriangleThreeBuckets_test WHERE y IS NOT NULL AND x >= 1.0) WHERE (SELECT COUNT() FROM largestTriangleThreeBuckets_test) > 0;
+CREATE TABLE temp_test AS SELECT largestTriangleThreeBuckets(2)(x, y) FROM largestTriangleThreeBuckets_test GROUP BY x HAVING AVG(y) IS NOT NULL;
+SELECT largestTriangleThreeBuckets(4)(x, y) FROM (SELECT x, MAX(y) AS y FROM largestTriangleThreeBuckets_test GROUP BY x) WHERE x <= 10.0 AND NOT (y IS NULL);
+ALTER TABLE largestTriangleThreeBuckets_test ADD COLUMN z DateTime64;
+INSERT INTO largestTriangleThreeBuckets_test VALUES (6.0, 12.0, NULL);
+DROP TABLE IF EXISTS largestTriangleThreeBuckets_test;

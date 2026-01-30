@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=117093",
+  "title": "The comparison results of DECIMAL type data do not meet expectations.",
+  "description": "In the WHERE condition, I compared a floating-point number with a column of DECIMAL type, and the query results are inconsistent with expectations. \r\nI believe this query should not return any results.\r\n\r\nmysql> SELECT * FROM t0;\r\n+------+\r\n| c0   |\r\n+------+\r\n|    0 |\r\n+------+\r\n1 row in set (0.00 sec)\r\n\r\nmysql> SELECT TRUE FROM t0 WHERE ((- (0.8957012519606671))) >= (t0.c0);\r\n+------+\r\n| TRUE |\r\n+------+\r\n|    1 |\r\n+------+\r\n1 row in set (0.01 sec)\r\nmysql> SELECT ((- (0.8957012519606671))) >= (t0.c0) FROM t0;\r\n+---------------------------------------+\r\n| ((- (0.8957012519606671))) >= (t0.c0) |\r\n+---------------------------------------+\r\n|                                     0 |\r\n+---------------------------------------+\r\n1 row in set (0.00 sec)\r\n\r\nI found two similar bug reports, #112826 and #114218. I'm not sure if they are duplicates.\nHow to repeat:\nDROP TABLE IF EXISTS t0;\r\nCREATE TABLE t0(c0 DECIMAL);\r\nINSERT INTO t0 VALUES (0);\r\n\r\nSELECT TRUE FROM t0 WHERE ((- (0.8957012519606671))) >= (t0.c0); -- 1 row\r\nSELECT ((- (0.8957012519606671))) >= (t0.c0) FROM t0;            -- {0}",
+  "date": "2025-01-02 05:51:00",
+  "vulnerable_version": "8.4.1, 8.0.40",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t1;",
+    "CREATE TABLE t1(c1 DECIMAL(10,5), c2 FLOAT);",
+    "INSERT INTO t1 VALUES (0.00000, 0.895701);",
+    "SELECT TRUE FROM t1 WHERE c1 < (- (0.8957012519606671));",
+    "SELECT (c1 >= c2) FROM t1 WHERE c2 IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Comparing floating-point number with DECIMAL type in WHERE clause"
+  ]
+}

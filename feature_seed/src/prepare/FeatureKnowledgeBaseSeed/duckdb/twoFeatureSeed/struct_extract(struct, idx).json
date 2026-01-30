@@ -1,0 +1,16 @@
+{
+    "function": "struct_extract(struct, idx)",
+    "operator": "||",
+    "sql_array": [
+        "CREATE TABLE test_table (id INT, data STRUCT<val1 INT, val2 INT>, val_list LIST<INT> DEFAULT NULL);",
+        "INSERT INTO test_table VALUES (1, row(42, 84), [1, 2, 3]), (2, row(10, 20), NULL), (3, row(5, 15), [4, 5, NULL]);",
+        "SELECT struct_extract(data, 1) || (SELECT struct_extract(data, 2) FROM test_table WHERE id = 1) AS extracted_value FROM test_table WHERE id = 1;",
+        "SELECT id, struct_extract(data, 1) as extracted_val, val_list || [99] AS updated_list FROM test_table WHERE val_list IS NOT NULL;",
+        "SELECT id, struct_extract(data, 1) || [-1] as combined_values FROM (SELECT id, data FROM test_table WHERE id <= 2) AS subquery;",
+        "SELECT COUNT(*) FROM test_table WHERE struct_extract(data, 1) IS NULL OR struct_extract(data, 2) IS NULL GROUP BY struct_extract(data, 1) HAVING struct_extract(data, 1) > 0;",
+        "CREATE TABLE test_table_2 AS SELECT id, struct_extract(data, 2) AS extracted_val, val_list || [NULL] AS null_combination FROM test_table WHERE id > 1;",
+        "INSERT INTO test_table_2 (id, extracted_val, null_combination) VALUES (4, struct_extract(row(0, 0), 1) || [8], NULL);",
+        "SELECT struct_extract(data, 1) || struct_extract(data, 2) AS combined_struct_values FROM test_table WHERE id IN (SELECT id FROM test_table_2);",
+        "SELECT DISTINCT struct_extract(data, 1) || (SELECT MAX(extracted_val) FROM test_table_2 WHERE null_combination IS NULL) AS final_value FROM test_table;"
+    ]
+}

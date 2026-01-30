@@ -1,0 +1,16 @@
+CREATE TABLE test_strings (haystack String, needle String) ENGINE = MergeTree() ORDER BY tuple();
+INSERT INTO test_strings VALUES ('abcde', 'CDE');
+INSERT INTO test_strings VALUES ('abcdefg', 'gh');
+INSERT INTO test_strings VALUES ('CaseInsensitivity', 'insensitiviTY');
+INSERT INTO test_strings VALUES ('test', 'TEST');
+INSERT INTO test_strings VALUES ('similarity', 'Similarity');
+INSERT INTO test_strings VALUES ('ngram', 'Ngram');
+SELECT ngramDistanceCaseInsensitiveUTF8(haystack, needle) FROM test_strings WHERE haystack LIKE '%abc%' AND needle LIKE '%CDE%';
+SELECT ngramDistanceCaseInsensitiveUTF8('abcdEF', 'efg') AS distance;
+SELECT DISTINCT ngramDistanceCaseInsensitiveUTF8(haystack, needle) AS distance FROM test_strings WHERE distance >= 0.5;
+SELECT d1.distance, d2.distance FROM (SELECT ngramDistanceCaseInsensitiveUTF8(haystack, needle) AS distance FROM test_strings) AS d1 INNER JOIN (SELECT ngramDistanceCaseInsensitiveUTF8(needle, haystack) AS distance FROM test_strings) AS d2 ON d1.distance = d2.distance;
+WITH (SELECT haystack, needle FROM test_strings WHERE length(haystack) > 3) AS subquery SELECT ngramDistanceCaseInsensitiveUTF8(subquery.haystack, subquery.needle) AS distance FROM subquery;
+WITH (SELECT ngramDistanceCaseInsensitiveUTF8(haystack, needle) AS distance FROM test_strings) AS distances SELECT AVG(distance) FROM distances;
+WITH (SELECT haystack FROM test_strings WHERE needle = 'CDE') AS specific_haystack SELECT ngramDistanceCaseInsensitiveUTF8((SELECT haystack FROM specific_haystack), 'CDE') AS distance;
+CREATE TABLE results AS SELECT ngramDistanceCaseInsensitiveUTF8(haystack, needle) as distance FROM test_strings;
+SELECT COUNT(*) FROM results WHERE distance > 0.7;

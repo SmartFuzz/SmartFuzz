@@ -1,0 +1,21 @@
+{
+    "function": "get_value_for(schema_nm, seq_nm)",
+    "operator": "time(3) with time zone",
+    "sql_array": [
+        "CREATE TABLE test_sequences (id SERIAL PRIMARY KEY, seq_value BIGINT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO test_sequences (seq_value) VALUES (get_value_for('dwh2', 'seq_9201'));",
+        "SELECT id, seq_value, created_at FROM test_sequences WHERE seq_value > (SELECT get_value_for('dwh2', 'seq_9201') - 5);",
+        "CREATE TABLE time_test (event_time TIMESTAMPTZ, event_name VARCHAR(50) NOT NULL);",
+        "INSERT INTO time_test (event_time, event_name) VALUES (time(3) with time zone '18:40:05.123+02:00', 'Fuzz Event 1'), (time(3) with time zone '23:59:59.999+05:30', 'Fuzz Event 2');",
+        "SELECT event_name, event_time, get_value_for('dwh2', 'seq_9201') AS current_seq FROM time_test WHERE event_time > (time(3) with time zone '12:00:00.000+00:00');",
+        "SELECT event_name, COUNT(*) FROM time_test GROUP BY event_name HAVING COUNT(*) = get_value_for('dwh2', 'seq_9201') OR event_time IS NULL;",
+        "SELECT t.event_name, t.event_time FROM time_test t JOIN test_sequences s ON t.event_time::time = time(3) with time zone '10:30:00.000+01:00' WHERE s.seq_value IS NOT NULL ORDER BY t.event_time DESC;",
+        "SELECT event_name, get_value_for('dwh2', 'seq_9201') + 10 AS adjusted_value FROM time_test WHERE event_time IS NOT NULL;",
+        "SELECT seq_value, MAX(event_time) OVER (PARTITION BY event_name) AS max_event_time FROM time_test JOIN test_sequences ON test_sequences.id = get_value_for('dwh2', 'seq_9201') HAVING MAX(event_time) < time(3) with time zone '21:30:00.000+00:00';",
+        "CREATE TEMP TABLE temp_events (event_time TIMESTAMPTZ, event_type VARCHAR(30), seq_num BIGINT);",
+        "INSERT INTO temp_events (event_time, event_type, seq_num) VALUES (time(3) with time zone '09:00:00.000+00:00', 'Type A', get_value_for('dwh2', 'seq_9201')), (time(3) with time zone '14:15:30.123+00:00', 'Type B', NULL);",
+        "SELECT COUNT(*) FROM temp_events WHERE seq_num IS NULL OR event_type ILIKE '%A%';",
+        "DROP TABLE IF EXISTS test_sequences;",
+        "DROP TABLE IF EXISTS time_test;"
+    ]
+}

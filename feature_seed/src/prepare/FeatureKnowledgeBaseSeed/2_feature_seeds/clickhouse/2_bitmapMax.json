@@ -1,0 +1,13 @@
+CREATE TABLE test_table (id UInt32, bitmap_col Nullable(BITMAP), value Nullable(Int32)) ENGINE = Memory;
+INSERT INTO test_table VALUES (1, bitmapBuild([1, 2, 3]), 10), (2, NULL, NULL), (3, bitmapBuild([]), 5);
+SELECT id, bitmapMax(bitmap_col) AS max_bit FROM test_table WHERE bitmap_col IS NOT NULL GROUP BY id HAVING max_bit > 0;
+SELECT id, value, bitmapMax(bitmap_col) AS max_bit FROM test_table WHERE IS NOT NULL AND (value IS NOT NULL OR bitmap_col IS NOT NULL);
+SELECT id, bitmapMax(bitmap_col) AS max_bit FROM (SELECT id, bitmap_col FROM test_table WHERE bitmap_col IS NOT NULL ORDER BY id) AS subquery WHERE max_bit > 1;
+CREATE TABLE temp_table (val Nullable(Int32), bitmap_col Nullable(BITMAP)) ENGINE = Memory;
+INSERT INTO temp_table VALUES (NULL, bitmapBuild([1, 2, 3])), (5, NULL), (NULL, NULL);
+SELECT val, bitmapMax(bitmapBuild(arrayJoin([1, 2, 3, NULL]))) AS max_bit FROM temp_table WHERE bitmap_col IS NOT NULL HAVING max_bit IS NOT NULL;
+SELECT id, bitmapMax(bitmap_col) AS max_bit FROM (SELECT id, bitmap_col FROM test_table UNION ALL SELECT id, bitmap_col FROM temp_table WHERE val IS NOT NULL) AS combined WHERE max_bit IS NOT NULL;
+SELECT t.id FROM test_table t JOIN temp_table tt ON bitmapMax(t.bitmap_col) = bitmapMax(tt.bitmap_col) WHERE t.value IS NOT NULL AND tt.val IS NOT NULL;
+CREATE TABLE another_table (data Enum('A', 'B', 'C'), map_col Map(String, UInt32)) ENGINE = Memory;
+INSERT INTO another_table VALUES ('A', {'key1': 1, 'key2': 2}), ('B', {}), ('C', {'key1': 3, 'key2': 4});
+SELECT data, bitmapMax(bitmapBuild(arrayJoin(mapKeys(map_col)))) AS max_key FROM another_table WHERE map_col IS NOT NULL GROUP BY data HAVING max_key > 0;

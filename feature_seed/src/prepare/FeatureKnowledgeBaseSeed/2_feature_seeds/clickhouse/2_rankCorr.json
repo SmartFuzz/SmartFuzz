@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id UInt32, number Float64, text String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, 1.0, 'Alpha'), (2, 2.2, 'Bravo'), (3, NULL, 'Charlie'), (4, 4.4, 'Delta'), (5, 5.5, 'Echo');
+SELECT rankCorr(number, (SELECT avg(number) FROM test_table WHERE number IS NOT NULL)) AS correlation FROM test_table WHERE text LIKE 'A%';
+SELECT rankCorr(number, number) FROM (SELECT number FROM test_table WHERE number IS NOT NULL AND text LIKE '%o') GROUP BY number HAVING count(*) > 1;
+SELECT rankCorr(number, CAST(text AS Float64)) FROM test_table WHERE text LIKE '%l%' GROUP BY text HAVING (rankCorr(number, CAST(text AS Float64)) IS NOT NULL);
+SELECT rankCorr(number, (SELECT rankCorr(number, number) FROM test_table WHERE id < 3)) FROM test_table WHERE number LIKE '%.0' OR number IS NULL;
+CREATE TABLE temp_table AS SELECT id, number, text FROM test_table WHERE number > 2.0;
+SELECT t1.id, rankCorr(t1.number, t2.number) AS correlation FROM test_table t1 JOIN temp_table t2 ON t1.id = t2.id WHERE t1.text LIKE 'B%' GROUP BY t1.id;
+SELECT t.number, rankCorr(t.number, (SELECT roundBankers(rankCorr(id, number), 2) FROM test_table)) as correlation FROM test_table t WHERE text IS NOT NULL;
+INSERT INTO test_table VALUES (6, 6.6, 'Foxtrot'), (7, NULL, 'Golf'), (8, 8.8, 'Hotel');
+SELECT rankCorr(COALESCE(number, 0), number) FROM test_table WHERE number LIKE '%.5' GROUP BY text HAVING count(*) > 1;

@@ -1,0 +1,19 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=103315",
+  "title": "Query result failure caused by character set",
+  "description": "version is 8.0.22 and code commit id is ee4455a.\r\nIn a testcase query result failure caused by character set.\r\nquery result is correct when charset and collate is \r\nDEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci.\r\nquery resut is wrong when charset and collate is\r\nCHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci.\nHow to repeat:\ncreate database test;\r\nuse test;\r\nDROP TABLE IF EXISTS t3;\r\n#create table COLLATE is utf8mb4_general_ci\r\nCREATE TABLE `t3` (\r\n  `c0` text,\r\n  KEY `i0` (`c0`(1))\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;\r\n\r\ninsert into t3 select '-1415158225';\r\ninsert into t3 select '1415158225';\r\n#the following two query's result both has two rows, it is corret.\r\nSELECT t3.c0, ('᳙4MCcdmz') > (t3.c0) from t3;\r\n+-------------+--------------------------+\r\n| c0          | ('᳙4MCcdmz') > (t3.c0)   |\r\n+-------------+--------------------------+\r\n| -1415158225 |                        1 |\r\n| 1415158225  |                        1 |\r\n+-------------+--------------------------+\r\n2 rows in set (0.01 sec)\r\n\r\nSELECT t3.c0 FROM t3 WHERE ('᳙4MCcdmz') > (t3.c0);\r\n+-------------+\r\n| c0          |\r\n+-------------+\r\n| -1415158225 |\r\n| 1415158225  |\r\n+-------------+\r\n2 rows in set (0.00 sec)\r\n\r\nDROP TABLE IF EXISTS t2;\r\nCREATE TABLE `t2` (\r\n  `c0` text,\r\n  KEY `i0` (`c0`(1))\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\r\ninsert into t2 select '-1415158225';\r\ninsert into t2 select '1415158225';\r\n#the following two query's result has different rows, it is corret.\r\nSELECT t2.c0, ('᳙4MCcdmz') > (t2.c0) from t2;\r\n+-------------+--------------------------+\r\n| c0          | ('᳙4MCcdmz') > (t2.c0)   |\r\n+-------------+--------------------------+\r\n| -1415158225 |                        1 |\r\n| 1415158225  |                        1 |\r\n+-------------+--------------------------+\r\n\r\nSELECT t2.c0 FROM t2 WHERE ('᳙4MCcdmz') > (t2.c0);\r\nEmpty set (0.00 sec)",
+  "date": "2021-04-14 05:21:00",
+  "vulnerable_version": "8.0, 8.0.23",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE DATABASE test_fuzz;",
+    "CREATE TABLE t1 (id Int32, name String);",
+    "INSERT INTO t1 VALUES (1, 'TestName1'), (2, 'TestName2');",
+    "SELECT * FROM t1 WHERE name = 'TestName1';"
+  ],
+  "key_bug_features": [
+    "Query result failure with different character set collations"
+  ]
+}

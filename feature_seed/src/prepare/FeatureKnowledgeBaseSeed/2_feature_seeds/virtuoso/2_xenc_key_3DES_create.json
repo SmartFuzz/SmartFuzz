@@ -1,0 +1,15 @@
+CREATE TABLE keys (id INT PRIMARY KEY, session_key VARCHAR(255) NOT NULL, secret VARCHAR(255) NOT NULL);
+INSERT INTO keys (id, session_key, secret) VALUES (1, 'ses_key', 'secret1'), (2, 'ses_key_2', 'NULL');
+SELECT xenc_key_3DES_create(session_key, secret) FROM keys WHERE id > 1;
+CREATE TABLE test_data (key_id INT, value VARCHAR(255), FOREIGN KEY (key_id) REFERENCES keys(id));
+INSERT INTO test_data (key_id, value) VALUES (1, 'test_value'), (2, NULL), (NULL, 'null_value');
+SELECT key_id, value FROM test_data WHERE key_id IS NULL OR xenc_key_3DES_create('ses_key', value) > '0';
+SELECT count(*) FROM (SELECT DISTINCT xenc_key_3DES_create(session_key, secret) AS encrypted_key FROM keys GROUP BY session_key HAVING COUNT(*) > 1) AS subquery;
+SELECT t.key_id, t.value FROM test_data t JOIN keys k ON k.id = t.key_id WHERE xenc_key_3DES_create(k.session_key, k.secret) > 'some_string' AND k.session_key IS NOT NULL;
+SELECT xenc_key_3DES_create('boundary_key', 'max_value') FROM keys WHERE EXISTS (SELECT 1 FROM test_data WHERE value IS NOT NULL) AND id <= 100;
+SELECT xenc_key_3DES_create(session_key, COALESCE(secret, 'default_secret')) FROM keys WHERE LENGTH(secret) > 0;
+UPDATE keys SET session_key = xenc_key_3DES_create('updated_key', '') WHERE id = (SELECT MAX(id) FROM keys WHERE secret IS NOT NULL);
+SELECT SUM(CASE WHEN xenc_key_3DES_create(session_key, secret) > 'some_value' THEN 1 ELSE 0 END) AS count_encrypted_keys FROM keys;
+SELECT xenc_key_3DES_create(session_key, 'empty_string_test') AS encrypted_key FROM keys WHERE LENGTH(session_key) = 0;
+SELECT CASE WHEN (SELECT COUNT(*) FROM keys) > 0 THEN xenc_key_3DES_create('conditional_key', (SELECT secret FROM keys WHERE id = 1)) ELSE NULL END AS conditional_encryption;
+DROP TABLE IF EXISTS test_data;

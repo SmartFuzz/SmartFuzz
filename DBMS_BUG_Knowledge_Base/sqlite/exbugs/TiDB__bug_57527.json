@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/57527",
+  "title": "Wrong Result from Tiflash in processing timestamp",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n```sql\r\nDrop table if exists t1;\r\nCREATE TABLE t1 (\r\n    id INT PRIMARY KEY AUTO_INCREMENT,\r\n    col1 timestamp DEFAULT NULL\r\n);\r\n\r\nALTER TABLE t1 SET TIFLASH REPLICA 1;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nI find that the returned information is inconsistent across two queries.\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n```sql\r\nmysql> SELECT /*+ READ_FROM_STORAGE(TIFLASH[t1])*/\r\n    ->     col1,\r\n    ->     ADDDATE(col1, INTERVAL 12 HOUR_MINUTE) AS modified_col1,\r\n    ->     CASE\r\n    ->         WHEN ADDDATE(col1, INTERVAL 12 HOUR_MINUTE) IS NULL THEN 'NULL VALUE'\r\n    ->         ELSE 'VALID VALUE'\r\n    ->     END AS value_status,\r\n    ->     LENGTH(col1) AS col1_length,\r\n    ->     CONCAT(ADDDATE(col1, INTERVAL 12 HOUR_MINUTE), ' processed') AS processed_value\r\n    -> FROM t1\r\n    -> WHERE\r\n    ->     ADDDATE(col1, INTERVAL 12 HOUR_MINUTE) IS NULL\r\n    ->     OR LENGTH(col1) > 5;\r\nERROR 1105 (HY000): other error for mpp stream: Code: 0, e.displayText() = DB::TiFlashException: date_add function does not support unit HOUR_MINUTE yet., e.what() = DB::TiFlashException,\r\n\r\n\r\nmysql> SELECT /*+ READ_FROM_STORAGE(TIKV[t1])*/\r\n    ->     col1,\r\n    ->     ADDDATE(col1, INTERVAL 12 HOUR_MINUTE) AS modified_col1,\r\n    ->     CASE\r\n    ->         WHEN ADDDATE(col1, INTERVAL 12 HOUR_MINUTE) IS NULL THEN 'NULL VALUE'\r\n    ->         ELSE 'VALID VALUE'\r\n    ->     END AS value_status,\r\n    ->     LENGTH(col1) AS col1_length,\r\n    ->     CONCAT(ADDDATE(col1, INTERVAL 12 HOUR_MINUTE), ' processed') AS processed_value\r\n    -> FROM t1\r\n    -> WHERE\r\n    ->     ADDDATE(col1, INTERVAL 12 HOUR_MINUTE) IS NULL\r\n    ->     OR LENGTH(col1) > 5;\r\nEmpty set (0.04 sec)\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\nTiDB v8.4.0",
+  "date": "2024-11-20T03:30:26Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t2;",
+    "CREATE TABLE t2 (id INTEGER PRIMARY KEY AUTOINCREMENT, col1 TIMESTAMP DEFAULT NULL, col2 TEXT NOT NULL);",
+    "INSERT INTO t2 (col1, col2) VALUES (NULL, 'test1'), (DATETIME('now'), 'test2');",
+    "SELECT col1, DATETIME(col1, '+1 hour') AS modified_col1 FROM t2 WHERE col1 IS NULL OR col2 = 'test1';",
+    "SELECT col1, LENGTH(col2) AS col2_length FROM t2 WHERE LENGTH(col2) > 5;"
+  ],
+  "key_bug_features": [
+    "ADDDATE function does not support unit HOUR_MINUTE"
+  ]
+}

@@ -1,0 +1,10 @@
+CREATE TABLE shapes (id INT PRIMARY KEY, geom Geometry);
+INSERT INTO shapes (id, geom) VALUES (1, 'POINT(1 1)'^^<http://www.openlinksw.com/schemas/virtrdf#Geometry>), (2, 'BOX(0 0, 5 5)'^^<http://www.openlinksw.com/schemas/virtrdf#Geometry>), (3, 'LINESTRING(0 0, 5 5)'^^<http://www.openlinksw.com/schemas/virtrdf#Geometry>);
+SELECT s.id, bif:st_xmax(s.geom) * 2 AS scaled_xmax FROM shapes s WHERE bif:st_xmax(s.geom) IS NOT NULL;
+SELECT s1.id, bif:st_xmax(s1.geom) AS xmax FROM shapes s1 JOIN shapes s2 ON bif:st_xmax(s1.geom) = bif:st_xmax(s2.geom) * 1.5 ORDER BY xmax DESC;
+SELECT id, bif:st_xmax(geom) AS xmax FROM (SELECT id, geom FROM shapes WHERE id IN (SELECT id FROM shapes WHERE geom IS NOT NULL)) AS subquery HAVING xmax > 2;
+SELECT id, bif:st_xmax(geom) AS xmax FROM shapes GROUP BY id HAVING xmax = MAX(bif:st_xmax(geom)) * 0.5;
+CREATE TABLE shapes_extended (id INT PRIMARY KEY, geom Geometry, description VARCHAR(255));
+INSERT INTO shapes_extended (id, geom, description) VALUES (4, 'POLYGON((0 0, 4 0, 4 4, 0 4, 0 0))'^^<http://www.openlinksw.com/schemas/virtrdf#Geometry>, 'Square'), (5, 'MULTIPOLYGON(((0 0, 2 2, 2 0, 0 0)),((3 1, 4 1, 4 3, 3 1)))'^^<http://www.openlinksw.com/schemas/virtrdf#Geometry>, 'Two squares');
+SELECT e.id, bif:st_xmax(e.geom) - bif:st_xmax(s.geom) AS boundary_difference FROM shapes_extended e, shapes s WHERE e.id != s.id AND (bif:st_xmax(e.geom) IS NOT NULL OR bif:st_xmax(s.geom) IS NOT NULL);
+SELECT e1.id, COUNT(*) FROM shapes_extended e1 JOIN shapes_extended e2 ON e1.id != e2.id GROUP BY e1.id HAVING MAX(bif:st_xmax(e1.geom) * 1.5) < bif:st_xmax(e2.geom);

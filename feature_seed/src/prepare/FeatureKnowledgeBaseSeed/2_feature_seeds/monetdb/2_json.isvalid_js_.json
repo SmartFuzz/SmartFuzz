@@ -1,0 +1,14 @@
+CREATE TABLE test_json_data (id SERIAL PRIMARY KEY, js_data JSON, value DECIMAL(10, 2));
+INSERT INTO test_json_data (js_data, value) VALUES (json '{"a":[1,2]}', 10.0);
+INSERT INTO test_json_data (js_data, value) VALUES (json '{"b":[3,4]}', NULL);
+INSERT INTO test_json_data (js_data, value) VALUES (json '{"c":"invalid_json"}', 0.0);
+SELECT id, json.isvalid(js_data) AS is_valid, value / 2.0 AS halved_value FROM test_json_data WHERE json.isvalid(js_data) IS TRUE;
+SELECT id, (value / NULLIF(value, 0.0)) AS safe_division FROM test_json_data;
+SELECT id, value, json.isvalid(js_data) IS FALSE AS is_invalid FROM test_json_data WHERE value IS NOT NULL ORDER BY is_invalid DESC;
+SELECT id, value, CASE WHEN json.isvalid(js_data) THEN value / 3.0 ELSE 0 END AS adjusted_value FROM test_json_data;
+CREATE TABLE additional_data (ref_id INT REFERENCES test_json_data(id), description TEXT);
+INSERT INTO additional_data (ref_id, description) VALUES (1, 'Valid JSON Entry');
+INSERT INTO additional_data (ref_id, description) VALUES (2, 'Null Entry');
+SELECT a.id, a.value, json.isvalid(a.js_data) AS is_valid, COUNT(b.ref_id) OVER (PARTITION BY a.id) AS reference_count FROM test_json_data a LEFT JOIN additional_data b ON a.id = b.ref_id GROUP BY a.id, a.value;
+SELECT a.id, a.js_data, (SELECT COUNT(*) FROM additional_data b WHERE b.ref_id = a.id AND json.isvalid(a.js_data)) AS valid_references, json.isvalid(a.js_data) / NULLIF(a.value, 0) AS safety_check FROM test_json_data a;
+SELECT value, (json.isvalid(js_data) AND value / (CASE WHEN value < 1 THEN NULL ELSE value END)) AS computed_value FROM test_json_data HAVING computed_value IS NOT NULL;

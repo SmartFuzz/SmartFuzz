@@ -1,0 +1,14 @@
+CREATE TABLE test_table (id UInt32, url String, access_key_id String, secret_access_key String, filename String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, 'http://example.com/file1', 'key1', 'secret1', 'file1.txt'), (2, 'http://example.com/file2', 'key2', 'secret2', 'file2.txt');
+SELECT COUNT(*) FROM test_table WHERE access_key_id NOT LIKE '%key%' AND filename NOT LIKE CONCAT('%', secret_access_key, '%');
+SELECT * FROM icebergS3(iceberg_conf, filename = (SELECT filename FROM test_table WHERE id = (SELECT MAX(id) FROM test_table)));
+SELECT url, COUNT(*) AS file_count FROM test_table GROUP BY url HAVING COUNT(*) NOT LIKE '0';
+SELECT * FROM (SELECT access_key_id FROM test_table WHERE NOT (url NOT LIKE 'http://%')) AS subquery WHERE url NOT LIKE (SELECT url FROM test_table);
+CREATE TABLE edge_case_table (id Int32, value Nullable(Float64)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO edge_case_table VALUES (1, NULL), (2, 12.34), (3, -1.23), (4, 0);
+SELECT AVG(value) FROM edge_case_table WHERE id NOT IN (SELECT id FROM edge_case_table WHERE value IS NULL) HAVING AVG(value) NOT LIKE 0;
+SELECT value NOT LIKE CAST('12%' AS String) AS is_not_like FROM edge_case_table WHERE value IS NOT NULL;
+CREATE TABLE complex_join_table (table1_id UInt32, table2_id UInt32) ENGINE = MergeTree() ORDER BY table1_id;
+INSERT INTO complex_join_table VALUES (1, 1), (1, 2), (2, 1);
+SELECT t1.table1_id, COUNT(*) AS join_count FROM complex_join_table t1 JOIN complex_join_table t2 ON t1.table1_id NOT LIKE CONCAT('%', t2.table2_id, '%') GROUP BY t1.table1_id HAVING join_count NOT LIKE '0';
+SELECT * FROM icebergS3(iceberg_conf, filename = (SELECT filename FROM test_table WHERE access_key_id NOT LIKE '%test%'));

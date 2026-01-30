@@ -1,0 +1,10 @@
+CREATE TABLE test_urls (id SERIAL PRIMARY KEY, scheme TEXT, authority TEXT, path TEXT);
+INSERT INTO test_urls (scheme, authority, path) VALUES ('http', 'usr@www.a.com:123', 'docs/index.html'), ('ftp', 'admin@ftp.site:21', ''), ('https', 'user@host.com:456', 'api/v1/resource');
+SELECT * FROM test_urls WHERE sys.newurl(scheme, authority, path) < sys.newurl('https', 'example.com', '');
+SELECT id, sys.newurl(scheme, authority, path) AS constructed_url FROM test_urls GROUP BY constructed_url HAVING constructed_url < sys.newurl('http', 'another.com', '');
+SELECT t1.id, t2.scheme FROM test_urls t1 JOIN test_urls t2 ON sys.newurl(t1.scheme, t1.authority, t1.path) < sys.newurl(t2.scheme, t2.authority, t2.path) WHERE t1.authority IS NOT NULL;
+SELECT COUNT(*) FROM (SELECT DISTINCT sys.newurl(scheme, authority, path) AS unique_url FROM test_urls WHERE scheme IS NOT NULL GROUP BY scheme) AS subquery WHERE unique_url < sys.newurl('http', 'different.com', '');
+SELECT COUNT(*) FROM test_urls WHERE (SELECT COUNT(*) FROM test_urls t WHERE t.scheme < test_urls.scheme) > 1;
+INSERT INTO test_urls (scheme, authority, path) VALUES ('', '', NULL);
+WITH url_count AS (SELECT COUNT(*) AS cnt FROM test_urls WHERE authority IS NULL) SELECT sys.newurl(scheme, authority, path) FROM test_urls WHERE cnt < 2;
+SELECT * FROM test_urls WHERE COALESCE(sys.newurl(scheme, authority, path), sys.newurl('http', 'default.com', '')) < sys.newurl('ftp', 'ftp.example.com', '');

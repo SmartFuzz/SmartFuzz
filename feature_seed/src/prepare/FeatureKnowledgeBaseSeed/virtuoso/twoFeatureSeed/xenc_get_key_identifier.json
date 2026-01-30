@@ -1,0 +1,17 @@
+{
+    "function": "xenc_get_key_identifier",
+    "operator": "bif:st_within",
+    "sql_array": [
+        "CREATE TABLE keys (id INT PRIMARY KEY, key_value VARCHAR(255) NULL);",
+        "INSERT INTO keys (id, key_value) VALUES (1, 'myKey'), (2, NULL), (3, 'yourKey');",
+        "CREATE TABLE spatial_data (id INT PRIMARY KEY, geom GEOMETRY, key_id INT REFERENCES keys(id));",
+        "INSERT INTO spatial_data (id, geom, key_id) VALUES (1, ST_GeomFromText('POINT(1 1)', 0), 1), (2, ST_GeomFromText('POINT(2 2)', 0), 2);",
+        "SELECT xenc_get_key_identifier( (SELECT key_value FROM keys WHERE id = 1) ), bif:st_within(geom, ST_GeomFromText('POLYGON((0 0, 3 0, 3 3, 0 3, 0 0))', 0)) AS within_area FROM spatial_data WHERE key_id = 1;",
+        "SELECT ST_AsText(geom) FROM spatial_data WHERE bif:st_within(geom, (SELECT ST_GeomFromText('POLYGON((-1 -1, 4 -1, 4 4, -1 4, -1 -1))', 0)));",
+        "SELECT xenc_get_key_identifier('yourKey'), COUNT(*) FROM spatial_data WHERE key_id IN (SELECT id FROM keys WHERE key_value IS NOT NULL) GROUP BY key_id HAVING COUNT(*) > 0;",
+        "SELECT DISTINCT xenc_get_key_identifier(CASE WHEN key_value IS NULL THEN 'empty' ELSE key_value END) FROM keys WHERE id IN (SELECT DISTINCT key_id FROM spatial_data) ORDER BY 1;",
+        "SELECT xenc_get_key_identifier(key_value), bif:st_within(ST_GeomFromText('LINESTRING(0 0, 3 3)', 0), geom) FROM keys JOIN spatial_data ON keys.id = spatial_data.key_id WHERE keys.key_value LIKE '%' || xenc_get_key_identifier('myKey') || '%';",
+        "ALTER TABLE keys ADD COLUMN outdated_key BOOLEAN DEFAULT FALSE;",
+        "UPDATE keys SET outdated_key = TRUE WHERE xenc_get_key_identifier(key_value) IS NOT NULL;"
+    ]
+}

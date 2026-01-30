@@ -1,0 +1,11 @@
+CREATE TABLE timestamps (event_id INTEGER, event_time TIMESTAMPTZ, duration INTERVAL);
+INSERT INTO timestamps VALUES (1, TIMESTAMPTZ '2023-01-01 12:00:00', INTERVAL '3 HOURS');
+INSERT INTO timestamps VALUES (2, TIMESTAMPTZ '2023-01-02 15:00:00', INTERVAL '1 DAY');
+INSERT INTO timestamps VALUES (3, TIMESTAMPTZ '2023-01-03 09:30:00', INTERVAL '12 MINUTES');
+SELECT event_id, date_part('hour', event_time + duration) AS hour_after_duration FROM timestamps WHERE event_time IS NOT NULL ORDER BY hour_after_duration;
+SELECT event_id, date_part('minute', (event_time + duration) + INTERVAL '2 HOURS') AS adjusted_minutes FROM timestamps WHERE event_time > TIMESTAMPTZ '2023-01-01 00:00:00' GROUP BY adjusted_minutes HAVING adjusted_minutes IS NOT NULL;
+SELECT DISTINCT date_part('day', event_time + INTERVAL '1 DAY') AS event_day FROM timestamps WHERE event_time + INTERVAL '2 DAYS' <= current_timestamp;
+CREATE TABLE temp_events AS SELECT event_id, event_time, event_time + duration AS new_event_time FROM timestamps WHERE duration IS NOT NULL;
+SELECT te.event_id, date_part('minute', te.new_event_time) + 10 AS extra_minutes FROM temp_events te JOIN timestamps t ON te.event_id = t.event_id WHERE date_part('minute', te.new_event_time) IS NOT NULL;
+WITH ranked_events AS (SELECT event_id, date_part('minute', event_time + INTERVAL '1 HOUR') OVER (ORDER BY event_time) AS ranked_minute FROM timestamps) SELECT event_id FROM ranked_events WHERE ranked_minute IS NOT NULL ORDER BY ranked_minute DESC;
+SELECT t1.event_id, (date_part('minute', t1.event_time + INTERVAL '1 DAY') + date_part('minute', t2.event_time)) AS total_minutes FROM timestamps t1 JOIN timestamps t2 ON t1.event_id != t2.event_id WHERE t1.event_time < t2.event_time;

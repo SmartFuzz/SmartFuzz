@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/18156-a44bc7096f0683e6%40postgresql.org",
+  "title": "BUG #18156: Self-referential foreign key in partitioned table not enforced on deletes",
+  "description": "The following bug has been logged on the website:\nBug reference:      18156\nLogged by:          Matthew Gabeler-Lee\nEmail address:      fastcat(at)gmail(dot)com\nPostgreSQL version: 16.0\nOperating system:   Linux\nDescription:\nWhen a partitioned table has a self-referential foreign key, I'm finding\nthat the key is not enforced during deletes from the table.\nA simple repro script:\ncreate table x (\np int4 not null,\ni int4 not null,\nf int4 null,\nprimary key (p, i),\nforeign key (p, f) references x (p, i)\n)\npartition by list (p);\ncreate table x1 partition of x for values in (0);\ninsert into x values (0,1,null), (0,2,1);\ndelete from x where (p,i) = (0,1);\nselect * from x;\nThe final select shows the one row with the clearly violated foreign key\nvalues:\np | i | f\n---+---+---\n0 | 2 | 1\n(1 row)\nI've reproduced this with 15.4 and 16.0 using the official docker images,\nspecifically `postgres/15-alpine` and `postgres/16-alpine`. I haven't tested\nolder versions as my application requires features new to 15.x. I've tried\nwith both list and hash partitioning, and it reproduces with both. I can\nonly reproduce it with self-referential foreign keys and only with\npartitioned tables.\nI discovered this with a slightly more complex situation involving an `on\ndelete set null` clause in the FK, but as seen above that is not required to\nreproduce the issue.",
+  "date": "2023-10-13 14:26:56",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE y (id INT AUTO_INCREMENT PRIMARY KEY, ref_id INT, FOREIGN KEY (ref_id) REFERENCES y(id) ON DELETE CASCADE);",
+    "INSERT INTO y (ref_id) VALUES (NULL), (1), (2);",
+    "DELETE FROM y WHERE id = 1;",
+    "SELECT * FROM y;",
+    "CREATE TABLE z (a INT NOT NULL, b INT, c INT, FOREIGN KEY (c) REFERENCES z(a) ON DELETE SET NULL) PARTITION BY RANGE (a);"
+  ],
+  "key_bug_features": [
+    "Self-referential foreign key not enforced on deletes"
+  ]
+}

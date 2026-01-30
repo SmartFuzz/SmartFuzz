@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/57725",
+  "title": "TiFlash cast double as date behaves differently with tidb for unnormal cases",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n### 1. Minimal reproduce step (Required)\nprepare data\n```sql\nDROP table if exists v1;\nDROP table if exists v2;\nCREATE TABLE v1 (c0 DOUBLE);\nCREATE TABLE v2 (c0 TEXT(232));\n\nINSERT IGNORE INTO v2 VALUES ('B');\nINSERT INTO v1 VALUES (0.4813424496784843), (0.8955355849595229);\nALTER TABLE v2 SET TIFLASH REPLICA 1;\nALTER TABLE v1 SET TIFLASH REPLICA 1;\n```\nexecute query\n```sql\nSELECT /*+ read_from_storage(tikv[v1]) */ v1.c0, v2.c0 FROM v1 INNER JOIN v2 ON (v2.c0 NOT REGEXP ((CAST(v1.c0 AS DATE))));\nSELECT /*+ read_from_storage(tiflash[v1]) */ v1.c0, v2.c0 FROM v1 INNER JOIN v2 ON (v2.c0 NOT REGEXP ((CAST(v1.c0 AS DATE))));\n```\n\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\nThe results of the two queries are equal.\n\n### 3. What did you see instead (Required)\nQuery1 result:\n```\n0.4813424496784843,B\n```\n\nQuery2 result:\n```\n0.4813424496784843,B\n0.8955355849595229,B\n```\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\nRelease Version: v8.4.0\nEdition: Community\nGit Commit Hash: 1a9f0fa25580907d3266dc3edf000ba24379a600\nGit Branch: HEAD\nUTC Build Time: 2024-11-07 15:18:43\nGoVersion: go1.23.2\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv\n",
+  "date": "2024-11-26T11:36:29Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS v3;",
+    "CREATE TABLE v3 (c1 INT, c2 DOUBLE, c3 TEXT);",
+    "INSERT INTO v3 VALUES (1, 0.1234567890123456, 'Test1'), (2, 0.9876543210987654, 'Test2');",
+    "SELECT c1, c2, c3 FROM v3 WHERE c2 > DATE '1970-01-01';",
+    "SELECT v1.c0, v3.c3 FROM v1 INNER JOIN v3 ON (v3.c2 NOT LIKE CAST(v1.c0 AS TEXT));"
+  ],
+  "key_bug_features": [
+    "TiFlash cast double as date in join query"
+  ]
+}

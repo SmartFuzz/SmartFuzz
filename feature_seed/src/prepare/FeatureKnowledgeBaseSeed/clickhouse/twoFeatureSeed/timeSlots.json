@@ -1,0 +1,16 @@
+{
+    "function": "timeSlots",
+    "operator": "a < b",
+    "sql_array": [
+        "CREATE TABLE test_time_slots (id UInt32, start_time DateTime, duration UInt32, size UInt32) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_time_slots (id, start_time, duration, size) VALUES (1, toDateTime('2023-01-01 10:00:00'), 3600, 1800), (2, toDateTime('2023-02-01 11:00:00'), 7200, 3600);",
+        "SELECT id, timeSlots(start_time, duration, size) AS time_intervals FROM test_time_slots WHERE timeSlots(start_time, duration) < toDateTime('2023-01-02 10:00:00');",
+        "SELECT id, timeSlots(start_time, duration) AS time_intervals FROM test_time_slots WHERE timeIntervals < toDateTime('2023-01-02 10:00:00') AND start_time < toDateTime('2023-01-03 10:00:00');",
+        "CREATE TABLE test_dates (id UInt32, check_time DateTime64(3), test_duration Decimal64(5, 2)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_dates (id, check_time, test_duration) VALUES (1, toDateTime64('2023-01-01 10:00:00.123', 3), 3600.00), (2, toDateTime64('2023-02-01 11:00:00.456', 3), 7200.50);",
+        "SELECT id, timeSlots(check_time, toUInt32(test_duration), toUInt32(1800)) AS intervals FROM test_dates WHERE timeSlots(check_time, test_duration, toUInt32(1800)) < toDateTime64('2023-01-02 10:00:00.000', 3);",
+        "SELECT id, timeSlots(check_time, toUInt32(test_duration)) AS intervals FROM test_dates WHERE intervals < toDateTime64('2023-01-02 10:00:00.000', 3) AND intervals < timeSlots(toDateTime64('2023-01-01 10:00:00.789', 3), toUInt32(10));",
+        "CREATE TABLE temp_slots AS SELECT timeSlots(toDateTime('2023-01-01 10:00:00'), 3600) AS temp_intervals UNION ALL SELECT timeSlots(toDateTime('2023-01-01 12:00:00'), 1800);",
+        "SELECT id, COUNT(*) AS total_intervals FROM (SELECT id, timeSlots(check_time, test_duration) AS intervals FROM test_dates) GROUP BY id HAVING total_intervals < 3;"
+    ]
+}

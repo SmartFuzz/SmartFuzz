@@ -1,0 +1,26 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/1b8d726456",
+  "title": "MAX yields unexpected result for UTF-16",
+  "vulnerable_version": "3.32.0",
+  "date": "2020-03-04 22:56:295.44 years ago",
+  "path": "/home/crawl_bugs/sqlite/ticket_output/ticket_info_1b8d726456.json",
+  "poc": [
+    "PRAGMA encoding = 'UTF-16';",
+    "CREATE TABLE t0(c0 TEXT);",
+    "INSERT INTO t0(c0) VALUES ('윆'), (1);",
+    "SELECT MAX(CASE 1 WHEN 1 THEN t0.c0 END) FROM t0;",
+    "SELECT MAX(t0.c0) FROM t0;"
+  ],
+  "vulnerable_database": "sqlite",
+  "description": "mrigger added on 2020-03-04 22:56:29:\nConsider the following statements:\nPRAGMA encoding = 'UTF-16';\nCREATE TABLE t0(c0 TEXT);\nINSERT INTO t0(c0) VALUES ('윆'), (1);\nSELECT MAX(CASE 1 WHEN 1 THEN t0.c0 END) FROM t0; -- 윆\nSELECT MAX(t0.c0) FROM t0; -- 1\nI would expect both queries to produce the same result, however, the first returns '윆', while the second returns 1. When using UTF-8, both queries return '윆'.\ndrh added on 2020-03-05 16:26:30:\nThe default sort order for text is whatever order the text is rendered\nin using memcmp() as a comparison function.  That order is different\ndepending on the text encoding.  UTF-8 is mostly the same as UTF-16BE,\nexcept for a few corner cases involving surrogate pairs.  But UTF-16LE\nis quite different.\n(This surprising fact about text sort order needs to be discussed on the\n\"quirks\" documentation page.)\nThe fact that the sort order of text is different depending on the text\nencoding is less of a problem than it might seem at first because:\nAlmost all SQLite databases use the UTF8 encoding.  The UTF16 encodings\n      are seldom used.  Even on Android which uses UTF16LE encoding for\n      the Java applications, the text is usually converted to UTF8 prior to\n      being inserted into SQLite databases.\nIn western countries, at least, most text is ASCII, and ASCII text\n      always sorts in the same order regardless of the encoding.\nMost text comparisons are for equality, and memcmp() always works\n      for equality comparisons regardless of the text encoding.\nThe problem reported by this ticket arose because SQLite was using\na UTF8 collating sequence for some, but not all,\nexpressions in a database that had\na UTF16LE text encoding.  The fix was to ensure that the same collating\nsequence is used for *all* comparisons within the same database.\nThis ticket is labeled \"minor\" in severity because of the observation that\nit impacts hardly any databases in the wild.",
+  "key_bug_features": [
+    "Different collating sequence for UTF-16LE text encoding"
+  ],
+  "bug_features_seed": [
+    "PRAGMA encoding = 'UTF-16';",
+    "CREATE TABLE t1(c1 TEXT COLLATE NOCASE, c2 INTEGER NOT NULL DEFAULT 0);",
+    "INSERT INTO t1(c1, c2) VALUES ('가', 10), ('나', 20), ('윆', 30), (NULL, 40);",
+    "SELECT MAX(CASE WHEN c2 > 15 THEN c1 ELSE NULL END) FROM t1;",
+    "SELECT MAX(c1) FROM t1 WHERE c2 IS NOT NULL;"
+  ]
+}

@@ -1,0 +1,18 @@
+CREATE TABLE transactions (id INT, amount FLOAT, created_at TIMESTAMP);
+INSERT INTO transactions VALUES (1, 100.00, transaction_timestamp());
+INSERT INTO transactions VALUES (2, 200.00, transaction_timestamp());
+SELECT id, amount, created_at FROM transactions WHERE created_at > transaction_timestamp() - INTERVAL '1 DAY';
+SELECT AVG(amount) FROM transactions WHERE created_at < transaction_timestamp();
+SELECT id, amount, created_at FROM transactions ORDER BY created_at DESC LIMIT 5;
+CREATE TABLE users (user_id INT, last_login TIMESTAMP);
+INSERT INTO users VALUES (1, transaction_timestamp());
+INSERT INTO users VALUES (2, transaction_timestamp() - INTERVAL '2 HOURS');
+SELECT u.user_id, t.amount FROM users u JOIN transactions t ON u.last_login < t.created_at WHERE t.amount > 150.00;
+WITH recent_transactions AS (SELECT id, amount, created_at FROM transactions WHERE created_at >= transaction_timestamp() - INTERVAL '7 DAYS') SELECT COUNT(*) FROM recent_transactions;
+SELECT transaction_timestamp() AS current_time, SUM(amount) OVER (PARTITION BY DATE(created_at)) AS daily_total FROM transactions;
+SELECT transaction_timestamp() AS current_time, CASE WHEN COUNT(*) > 5 THEN 'High' ELSE 'Low' END AS transaction_volume FROM transactions WHERE created_at >= transaction_timestamp() - INTERVAL '1 MONTH';
+CREATE TABLE orders (order_id INT, user_id INT, order_time TIMESTAMP DEFAULT transaction_timestamp());
+INSERT INTO orders (user_id) VALUES (1);
+INSERT INTO orders (user_id) VALUES (2);
+SELECT user_id, COUNT(*) AS order_count FROM orders GROUP BY user_id HAVING order_count > 1;
+SELECT o.order_id, u.last_login FROM orders o LEFT JOIN users u ON o.user_id = u.user_id WHERE u.last_login IS NULL AND o.order_time < transaction_timestamp() - INTERVAL '1 MONTH';

@@ -1,0 +1,10 @@
+CREATE TABLE urls (url String, id UInt32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO urls VALUES ('http://example.com/?param1=value1&param2=value2#section1', 1), ('https://www.test.com/article?id=5&action=edit', 2), ('ftp://ftp.example.org/resource', 3), ('http://google.com/#top', 4), ('https://www.example.com/path/to/resource?query=123', 5);
+SELECT cutQueryString(cutFragment(url)) AS cleaned_url, id FROM urls WHERE cutWWW(url) = 'example.com' OR cutWWW(url) LIKE '%.com';
+SELECT id, cutURLParameter(url, 'param1') || ' | ' || cutQueryStringAndFragment(url) AS modified_url FROM urls WHERE id < 3;
+SELECT id, cutURLParameter(cutQueryString(url), 'action') AS final_url FROM urls HAVING final_url IS NOT NULL ORDER BY final_url DESC;
+SELECT DISTINCT cutURLParameter(url, 'param2') || ' - ' || cutQueryString(url) as url_view FROM urls WHERE id = 1 UNION SELECT DISTINCT url FROM urls WHERE url LIKE 'http%' ORDER BY url_view;
+SELECT id, cutFragment(cutQueryString(url)) AS base_url FROM urls JOIN (SELECT DISTINCT cutQueryString(url) AS unique_base FROM urls) AS derived ON cutQueryString(url) = unique_base GROUP BY id, base_url HAVING count(base_url) > 1;
+SELECT cutURLParameter(cutFragment(cutQueryString(cutWWW(url))), 'id') || ' - ' || url AS url_with_cut FROM urls WHERE url IS NOT NULL OR url != '' ORDER BY cutURLParameter(url_with_cut, 'action') DESC;
+SELECT cutQueryStringAndFragment(cutWWW(url)) AS sanitized_url FROM (SELECT url, id FROM urls WHERE id >= 1) AS filtered_urls WHERE sanitized_url IS NOT NULL;
+SELECT cutQueryString(url) AS url_without_query, COUNT(*) FROM (SELECT DISTINCT url FROM urls WHERE url LIKE '%example%') AS subquery GROUP BY url_without_query HAVING COUNT(*) > 1;

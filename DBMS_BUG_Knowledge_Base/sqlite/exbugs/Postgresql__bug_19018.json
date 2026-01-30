@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/19018-a5ed1ced2ec2e2ff%40postgresql.org",
+  "title": "BUG #19018: high memory usage and \"stack depth limit exceeded\", with GiST index on ltree",
+  "description": "The following bug has been logged on the website:\nBug reference:      19018\nLogged by:          Joseph Silva\nEmail address:      dull(dot)bananas0(at)gmail(dot)com\nPostgreSQL version: 17.5\nOperating system:   Fedora\nDescription:\nIf I run this, then the postgres process's memory usage approaches 6 GB, and\nthe insertion when\ni=253 fails with \"stack depth limit exceeded\":\n```\nCREATE EXTENSION ltree;\nCREATE TABLE comment (path ltree);\nCREATE INDEX ON comment USING gist (path);\nDO $$\nDECLARE\ni int := 1;\np text := '0';\nBEGIN\nWHILE i < 1000 LOOP\np := p || '.' || i::text;\ni := i + 1;\nINSERT INTO comment (path) VALUES (p::ltree);\nCOMMIT;\nEND LOOP;\nEND\n$$;\n```\nIf index creation is delayed until after insertions, then the insertions\nsucceed but index creation\nfails.",
+  "date": "2025-08-11 22:00:52",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE comment (id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO comment (path) VALUES ('0.1.2.3'), ('0.1.2.4'), (NULL);",
+    "INSERT INTO comment (path) SELECT '0.' || i FROM (SELECT 1 AS i UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10) AS numbers;",
+    "CREATE INDEX idx_path ON comment (path);",
+    "SELECT * FROM comment;"
+  ],
+  "key_bug_features": [
+    "GiST index creation on ltree causes high memory usage"
+  ]
+}

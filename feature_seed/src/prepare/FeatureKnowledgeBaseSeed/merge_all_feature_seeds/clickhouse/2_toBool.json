@@ -1,0 +1,12 @@
+CREATE TABLE test_bool (id UInt32, value String, flag Int8) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_bool VALUES (1, 'true', 1), (2, 'false', 0), (3, '', -1), (4, 'TRUE', 1), (5, 'FALSE', 0);
+SELECT id, toBool(value) AS bool_value, flag FROM test_bool WHERE toBool(value) == flag;
+SELECT id, toBool(value) AS bool_value FROM test_bool WHERE flag == toBool(toUInt8(1));
+SELECT id, toBool(value) AS bool_value FROM test_bool WHERE toBool(toInt8(flag)) == (SELECT max(flag) FROM test_bool);
+SELECT id, toBool(value) AS bool_value FROM test_bool WHERE (toBool(value) AND flag) == 1;
+SELECT id FROM (SELECT id, toBool(value) AS bool_value FROM test_bool) AS subquery WHERE bool_value == true;
+CREATE TABLE test_cast (num Float64, string_value String) ENGINE = MergeTree() ORDER BY num;
+INSERT INTO test_cast VALUES (1.0, 'true'), (0.0, 'false'), (NULL, 'invalid'), (-1.5, 'TRUE');
+SELECT toBool(string_value) FROM test_cast WHERE toFloat64(num) == (SELECT max(num) FROM test_cast);
+WITH (SELECT toBool('false') AS false_value) AS inner_query SELECT toBool(num) == false_value FROM test_cast;
+SELECT id, toBool(num) FROM (SELECT 100 AS id, toFloat64(num) AS num FROM test_cast) GROUP BY id, num HAVING toBool(num) == true;

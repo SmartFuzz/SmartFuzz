@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=102825",
+  "title": "mysqld selects an unexpected function",
+  "description": "mysqld selects an unexpected function.\nHow to repeat:\nmy.cnf:\r\n\r\nlower_case_table_names = 0\n\nmysql> set global log_bin_trust_function_creators = 1;\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nmysql> create database test;\r\nQuery OK, 1 row affected (0.00 sec)\r\nmysql> create database TEST;\r\nQuery OK, 1 row affected (0.00 sec)\r\n\r\nmysql> use test\r\nDatabase changed\r\nmysql> delimiter $$\r\nmysql> create function foo() returns int begin return 10; end $$\r\nQuery OK, 0 rows affected (0.00 sec)\r\nmysql> use TEST$$\r\nDatabase changed\r\nmysql> create function foo() returns int begin return 20; end $$\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nmysql> delimiter ;\r\nmysql> select test.foo();\r\n+------------+\r\n| test.foo() |\r\n+------------+\r\n|         10 |\r\n+------------+\r\n1 row in set (0.00 sec)\r\n\r\n### It is OK.\r\n\r\nmysql> select TEST.foo();\r\n+------------+\r\n| TEST.foo() |\r\n+------------+\r\n|         10 |\r\n+------------+\r\n1 row in set (0.00 sec)\r\n\r\n### 'foo' in schema 'TEST' should be executed and 20 is returned.\r\n\r\nmysql> select Test.foo();\r\n+------------+\r\n| Test.foo() |\r\n+------------+\r\n|         10 |\r\n+------------+\r\n1 row in set (0.00 sec)\r\n\r\n### There is no schema  named 'Test',  it should not run successfully ?",
+  "date": "2021-03-05 11:34:00",
+  "vulnerable_version": "8.0.23, 5.7.23",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR(50), value DECIMAL(10,2) NOT NULL);",
+    "CREATE TABLE TEST_TABLE (id INT PRIMARY KEY, name VARCHAR(50), value DECIMAL(10,2) NOT NULL);",
+    "INSERT INTO test_table (id, name, value) VALUES (1, 'Test1', 10.00);",
+    "INSERT INTO TEST_TABLE (id, name, value) VALUES (1, 'Test2', 20.00);",
+    "SELECT test_table.value FROM test_table WHERE id = (SELECT id FROM TEST_TABLE WHERE name = 'Test2');"
+  ],
+  "key_bug_features": [
+    "Case sensitivity in function selection across schemas"
+  ]
+}

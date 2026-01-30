@@ -1,0 +1,33 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/57675",
+  "title": "unexpected overflow error during insert into the partition table",
+  "vulnerable_database": "tidb",
+  "date": "2024-11-25T08:48:04Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n``` SQL\r\ncreate table tb (s char(10), b bit(48), bb blob(6)) partition by hash (b) partitions 16;\r\ninsert into tb values ('\\0\\b\\n\\r\\t\\Z', _binary '\\0\\b\\n\\r\\t\\Z', unhex('00080A0D091A'));\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nMySQL:\r\n``` sql\r\nmysql> create table tb (s char(10), b bit(48), bb blob(6)) partition by hash (b) partitions 16;\r\nQuery OK, 0 rows affected (0.11 sec)\r\n\r\nmysql> insert into tb values ('\\0\\b\\n\\r\\t\\Z', _binary '\\0\\b\\n\\r\\t\\Z', unhex('00080A0D091A'));\r\nQuery OK, 1 row affected (0.03 sec)\r\n\r\nmysql> select * from tb;\r\n+--------+----------------+----------------+\r\n| s      | b              | bb             |\r\n+--------+----------------+----------------+\r\n|\r\n\t | 0x00080A0D091A | 0x00080A0D091A |\r\n+--------+----------------+----------------+\r\n1 row in set (0.01 sec)\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n``` SQL\r\nmysql> create table tb (s char(10), b bit(48), bb blob(6)) partition by hash (b) partitions 16;\r\nQuery OK, 0 rows affected (0.04 sec)\r\n\r\nmysql> insert into tb values ('\\0\\b\\n\\r\\t\\Z', _binary '\\0\\b\\n\\r\\t\\Z', unhex('00080A0D091A'));\r\nERROR 1690 (22003): constant 34528364826 overflows int\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\nmaster\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "poc": [
+    "create table tb (s char(10), b bit(48), bb blob(6)) partition by hash (b) partitions 16;",
+    "insert into tb values ('\\0\\b\\n\\r\\t\\Z', _binary '\\0\\b\\n\\r\\t\\Z', unhex('00080A0D091A'));"
+  ],
+  "poc_type": "sql_text",
+  "state": "closed",
+  "key_bug_features": [
+    "insert into partition table with overflow error"
+  ],
+  "bug_feature_seed":[
+  "DROP TABLE IF EXISTS tb;",
+  "CREATE TABLE tb (s CHAR(10), b BIT(48), bb BLOB(6)) PARTITION BY HASH (b) PARTITIONS 16;",
+  "INSERT INTO tb VALUES ('ctrl', _binary '\\0\\b\\n\\r\\t\\Z', UNHEX('00080A0D091A'));",
+  "INSERT INTO tb VALUES ('zero', b'000000000000000000000000000000000000000000000000', UNHEX('000000000000'));",
+  "INSERT INTO tb VALUES ('one',  b'000000000000000000000000000000000000000000000001', UNHEX('000000000001'));",
+  "INSERT INTO tb VALUES ('max',  b'111111111111111111111111111111111111111111111111', UNHEX('FFFFFFFFFFFF'));",
+  "INSERT INTO tb VALUES ('mid1', _binary UNHEX('00080A0D091A'), UNHEX('00080A0D091A'));",
+  "INSERT INTO tb VALUES ('mid2', _binary UNHEX('7FFFFFFFFFFF'), UNHEX('7FFFFFFFFFFF'));",
+  "INSERT INTO tb VALUES ('cast1', CAST(_binary UNHEX('00080A0D091A') AS BINARY(6)), UNHEX('00080A0D091A'));",
+  "INSERT INTO tb SELECT 'subq', b, bb FROM tb WHERE b IS NOT NULL LIMIT 1;",
+  "INSERT INTO tb SELECT 'dup', b, bb FROM tb ORDER BY b DESC LIMIT 1;",
+  "INSERT INTO tb VALUES ('edge1', _binary UNHEX('800000000000'), UNHEX('800000000000'));",
+  "INSERT INTO tb VALUES ('edge2', _binary UNHEX('000000000000'), UNHEX('000000000000'));"
+]
+
+}

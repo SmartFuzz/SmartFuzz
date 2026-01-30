@@ -1,0 +1,10 @@
+CREATE TABLE test_table1 (id INT, value1 ARRAY<INT>, date_col DATE);
+CREATE TABLE test_table2 (id INT, value2 ARRAY<INT>, days_to_add INT);
+INSERT INTO test_table1 VALUES (1, [1, 2, NULL], DATE '2023-01-01');
+INSERT INTO test_table1 VALUES (2, [3, NULL, 5], DATE '2023-01-05');
+INSERT INTO test_table2 VALUES (1, [10, 20], 5);
+INSERT INTO test_table2 VALUES (2, [30, NULL], 10);
+SELECT ARRAY_CAT(value1, value2) AS combined_value FROM (SELECT id, value1, (SELECT value2 FROM test_table2 WHERE id = test_table1.id) AS value2 FROM test_table1);
+SELECT DATE '2023-01-01' + INTERVAL (days_to_add) DAY FROM test_table2 WHERE id IN (SELECT id FROM test_table1 WHERE value1 IS NOT NULL);
+SELECT id, ARRAY_CAT(value1, value2) AS combined_array, DATE '2023-01-01' + INTERVAL (days_to_add) DAY AS new_date FROM test_table1 INNER JOIN test_table2 ON test_table1.id = test_table2.id WHERE ARRAY_CAT(value1, value2) IS NOT NULL GROUP BY id, value1, value2, days_to_add HAVING COUNT(*) > 0;
+SELECT id, ARRAY_CAT(value1, value2) AS combined_array, DATE '2023-01-01' + INTERVAL (d.days) DAY FROM test_table1 INNER JOIN (SELECT id, value2, days_to_add AS days FROM test_table2 WHERE value2 IS NOT NULL) AS d ON test_table1.id = d.id WHERE d.days >= 5 GROUP BY id, value1, d.value2 ORDER BY new_date DESC;

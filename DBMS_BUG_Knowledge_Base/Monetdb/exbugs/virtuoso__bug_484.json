@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/484",
+  "title": "Materializing properties (triples) accross all graphs causes error on restart",
+  "description": "On\n./virtuoso-t -?\nVirtuoso Open Source Edition (Column Store) (multi threaded)\nVersion 7.2.1.3214-pthreads as of Aug 31 2015\nCompiled for Linux (x86_64-unknown-linux-gnu)\nCopyright (C) 1998-2015 OpenLink Software\n\nRunning this query which is supposed to materialize all properties across all graphs causes an error upon restarting the server:\nSparql\nInsert {\n  Graph ?g { ?p a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> }\n}\n{\n  { Select Distinct ?g ?p {\n    Graph ?g {\n      ?s ?p ?o\n    } } }\n}\n;\n\n14:24:21 OpenLink Virtuoso Universal Server\n14:24:21 Version 07.20.3214-pthreads for Linux as of Aug 31 2015\n14:24:21 uses parts of OpenSSL, PCRE, Html Tidy\n14:24:23 Database version 3126\n14:24:23 SQL Optimizer enabled (max 1000 layouts)\n14:24:24 Compiler unit is timed at 0.000171 msec\n14:24:26 Roll forward started\n14:24:26 Roll forward complete\n14:24:26 Error executing a server init statement : 22023: SR500: Undefined JSO class IRI <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> --  DB.DBA.RDF_QUAD_FT_UPGRADE ()\n14:24:26 Checkpoint started\n14:24:26 Checkpoint finished, log reused\n14:24:26 HTTP/WebDAV server online at 8823\n14:24:26 Server online at 1123 (pid 6301)\n\nApparently this issues causes at least the spatial index to become unusable once the virtuoso server gets restarted. For example: immediately after loading the data, this query gives result - however, after a restart the result set is empty\nPrefix ogc: <http://www.opengis.net/ont/geosparql#>\nPrefix geom: <http://geovocab.org/geometry#>\n\nSelect * {\n  ?s geom:geometry [ ogc:asWKT ?g ] .\n  Filter(bif:st_intersects (?g, bif:st_point (0, 0), 1000)) .\n}\nLimit 10\n\nSimilar issue: http://ehc.ac/p/virtuoso/mailman/message/32359397/",
+  "date": "2015-09-29 15:43:48",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE graph1 (subject VARCHAR(255), predicate VARCHAR(255), object VARCHAR(255));",
+    "INSERT INTO graph1 VALUES ('http://example.org/subject1', 'http://example.org/predicate1', 'http://example.org/object1');",
+    "INSERT INTO graph1 SELECT DISTINCT subject, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property' FROM graph1;",
+    "SELECT * FROM graph1 LIMIT 10;",
+    "DELETE FROM graph1 WHERE subject = 'http://example.org/subject1' AND predicate = 'http://example.org/predicate1' AND object = 'http://example.org/object1';"
+  ],
+  "key_bug_features": [
+    "Materializing properties across all graphs on server restart"
+  ]
+}

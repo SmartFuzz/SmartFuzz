@@ -1,0 +1,17 @@
+{
+    "function": "extractAllGroupsHorizontal",
+    "operator": "a <= b",
+    "sql_array": [
+        "CREATE TABLE test_strings (id UInt32, data String, num_value Int32) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_strings VALUES (1, 'abc=111, def=222, ghi=333', 10), (2, 'def=444, xyz=555', 20), (3, 'ghi=666, abc=777', NULL);",
+        "SELECT id, extractAllGroupsHorizontal(data, '([a-z]+)=([0-9]+)') AS matches FROM test_strings WHERE CAST(num_value AS Nullable(Int32)) <= 20;",
+        "SELECT id, data, extractAllGroupsHorizontal(data, '([a-z]+)=([0-9]+)') AS matches FROM test_strings WHERE extractAllGroupsHorizontal(data, '([a-z]+)=([0-9]+)')[1][1] IS NOT NULL;",
+        "SELECT id, arrayJoin(extractAllGroupsHorizontal(data, '([a-z]+)=([0-9]+)')) AS match_groups FROM test_strings GROUP BY id, matches HAVING count(*) <= NULLIF(num_value, 0);",
+        "SELECT id, COUNT(*) FROM (SELECT id, data, extractAllGroupsHorizontal(data, '([a-z]+)=([0-9]+)') FROM test_strings WHERE data LIKE '%abc=%') GROUP BY id;",
+        "SELECT id, data FROM test_strings WHERE extractAllGroupsHorizontal(data, '([a-z]+)=([0-9]+)')[1][1] <= 111 AND data IS NOT NULL;",
+        "CREATE TABLE temp_test (temp_id UInt32, temp_data String) ENGINE = MergeTree() ORDER BY temp_id;",
+        "INSERT INTO temp_test VALUES (1, 'foo=1, bar=2'), (2, NULL);",
+        "SELECT tt.temp_id, extractAllGroupsHorizontal(tt.temp_data, '([a-z]+)=([0-9]+)') AS temp_matches FROM temp_test tt LEFT JOIN test_strings ts ON ts.id <= tt.temp_id;",
+        "SELECT id, data FROM test_strings WHERE extractAllGroupsHorizontal(data, '([a-z]+)=([0-9]+)')[1][1] = '888';"
+    ]
+}

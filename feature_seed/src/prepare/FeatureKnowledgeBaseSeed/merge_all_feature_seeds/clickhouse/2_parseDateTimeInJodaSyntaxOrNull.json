@@ -1,0 +1,11 @@
+CREATE TABLE date_test (id UInt32, date_str String);
+INSERT INTO date_test VALUES (1, '2023-10-01T10:15:30Z'), (2, 'INVALID_DATE'), (3, '2023-09-30T23:59:59Z');
+SELECT id, parseDateTimeInJodaSyntaxOrNull(date_str) AS parsed_date FROM date_test WHERE parsed_date IS NOT NULL OR date_str = '';
+SELECT id, parsed_date FROM (SELECT id, parseDateTimeInJodaSyntaxOrNull(date_str) as parsed_date FROM date_test) WHERE parsed_date IS NULL OR parsed_date < '2023-10-01 00:00:00';
+CREATE TABLE join_test (id UInt32, date_str String, category UInt32);
+INSERT INTO join_test VALUES (1, '2023-10-01T10:15:30Z', 1), (2, '2023-09-30T23:59:59Z', 2), (3, 'INVALID_DATE', 1);
+SELECT a.id, a.parsed_date FROM (SELECT id, parseDateTimeInJodaSyntaxOrNull(date_str) AS parsed_date FROM date_test) AS a JOIN (SELECT id, parseDateTimeInJodaSyntaxOrNull(date_str) AS parsed_date FROM join_test WHERE category = 1) AS b ON a.id = b.id OR a.parsed_date IS NULL;
+SELECT id, COUNT(*) FROM (SELECT id, parseDateTimeInJodaSyntaxOrNull(date_str) AS parsed_date FROM date_test) GROUP BY id HAVING COUNT(parsed_date) OR id = 2;
+CREATE TABLE precision_test (id UInt32, numeric_str String);
+INSERT INTO precision_test VALUES (1, '12345.67890'), (2, 'NaN'), (3, '0.0');
+SELECT id, parseDateTimeInJodaSyntaxOrNull(numeric_str) AS parsed_date WHERE parsed_date IS NULL OR numeric_str < '0.1';

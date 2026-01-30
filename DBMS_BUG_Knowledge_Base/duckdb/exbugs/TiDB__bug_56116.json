@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/56116",
+  "title": "unique key get wrong row count when to query the Null value ",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```\r\ncreate table t2(id bigint(20) DEFAULT NULL, UNIQUE KEY index_on_id (id));\r\ninsert into t2 values (), (), ();\r\nanalyze table t2;\r\nexplain select count(*) from t2 where id is null;\r\n```\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\n```\r\nStreamAgg_17 1.00 root  funcs:count(Column#5)->Column#3,\r\n└─IndexReader_18 1.00 root  index:StreamAgg_9,\r\n  └─StreamAgg_9 1.00 cop[tikv]  funcs:count(1)->Column#5,\r\n    └─IndexRangeScan_16 3.00 cop[tikv] table:t2, index:index_on_id(id) range:[NULL,NULL], keep order:false,\r\n```\r\n### 3. What did you see instead (Required)\r\n\r\n```\r\nStreamAgg_17 1.00 root  funcs:count(Column#5)->Column#3,\r\n└─IndexReader_18 1.00 root  index:StreamAgg_9,\r\n  └─StreamAgg_9 1.00 cop[tikv]  funcs:count(1)->Column#5,\r\n    └─IndexRangeScan_16 1.00 cop[tikv] table:t2, index:index_on_id(id) range:[NULL,NULL], keep order:false,\r\n```\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2024-09-18T08:53:29Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t3(id INT DEFAULT NULL, name VARCHAR(50), UNIQUE INDEX index_on_id (id));",
+    "INSERT INTO t3 VALUES (NULL, 'Alice'), (NULL, 'Bob'), (1, 'Charlie');",
+    "ANALYZE TABLE t3;",
+    "EXPLAIN SELECT COUNT(*) FROM t3 WHERE id IS NULL;",
+    "SELECT COUNT(*) FROM t3 WHERE name IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "count query on unique key with null values"
+  ]
+}

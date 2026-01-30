@@ -1,0 +1,17 @@
+CREATE TABLE test_struct (id INT, data STRUCT<name VARCHAR, age INT>);
+INSERT INTO test_struct VALUES (1, struct_pack(name := 'Alice', age := 30));
+INSERT INTO test_struct VALUES (2, struct_pack(name := 'Bob', age := 25));
+SELECT data.name, data.age FROM test_struct WHERE id = 1;
+SELECT struct_pack(name := 'Charlie', age := 35) AS new_data;
+CREATE TABLE another_test (value STRUCT<score FLOAT, comments VARCHAR>);
+INSERT INTO another_test VALUES (struct_pack(score := 85.5, comments := 'Excellent'));
+SELECT value.comments FROM another_test WHERE value.score > 80;
+SELECT struct_pack(name := 'Delta', age := 40) AS struct_data, id FROM test_struct;
+CREATE TABLE combined_test (grp_id INT, combined_data STRUCT<member_name VARCHAR, score_result FLOAT>);
+INSERT INTO combined_test SELECT id, struct_pack(member_name := data.name, score_result := 95.0) FROM test_struct;
+SELECT combined_data.member_name, combined_data.score_result FROM combined_test WHERE grp_id = 1;
+SELECT struct_pack(grp_name := (SELECT name FROM test_struct WHERE id = 1), total := (SELECT COUNT(*) FROM test_struct)) AS complex_struct;
+WITH nested_struct AS (SELECT struct_pack(item_name := 'item', item_price := 10.99) AS item_data) SELECT item_data.item_name, item_data.item_price FROM nested_struct;
+SELECT struct_pack(key := t1.id, value := struct_pack(name := t2.data.name, age := t2.data.age)) FROM test_struct t1 JOIN test_struct t2 ON t1.id != t2.id;
+INSERT INTO test_struct SELECT 3, struct_pack(name := 'Eve', age := NULL);
+SELECT struct_pack(name := COALESCE(data.name, 'Unknown'), age := COALESCE(data.age, 0)) FROM test_struct;

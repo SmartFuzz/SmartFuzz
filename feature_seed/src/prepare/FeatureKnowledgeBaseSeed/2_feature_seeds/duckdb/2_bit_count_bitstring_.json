@@ -1,0 +1,15 @@
+CREATE TABLE test_table (id INT, bit_col BITSTRING);
+INSERT INTO test_table (id, bit_col) VALUES (1, '1101011'::BITSTRING), (2, '0000000'::BITSTRING), (3, '1111111'::BITSTRING);
+SELECT id, bit_count(bit_col << 2) AS shifted_bit_count FROM test_table WHERE bit_count(bit_col) > 0;
+SELECT id, (SELECT COUNT(*) FROM test_table AS t2 WHERE t2.id != t1.id) FROM test_table AS t1;
+SELECT id, bit_count(bit_col) AS original_count FROM test_table GROUP BY id HAVING original_count < 5;
+CREATE TABLE other_table (value BITSTRING);
+INSERT INTO other_table (value) VALUES ('1010101'::BITSTRING), ('11110000'::BITSTRING), (NULL);
+SELECT t1.id, bit_count(t1.bit_col << 1) AS new_count, (SELECT COUNT(*) FROM other_table WHERE value IS NOT NULL) AS non_null_count FROM test_table AS t1 JOIN other_table AS t2 ON bit_count(t1.bit_col) > 4;
+SELECT id, bit_count(bit_col) AS original_count FROM test_table WHERE bit_count(bit_col) IS NOT NULL ORDER BY original_count DESC;
+ALTER TABLE test_table ADD COLUMN additional_bit_col BITSTRING;
+UPDATE test_table SET additional_bit_col = bit_col << 1 WHERE id = 1;
+SELECT id, bit_count(additional_bit_col) FROM test_table WHERE additional_bit_col IS NOT NULL;
+SELECT id, bit_count(bit_col << (SELECT MAX(id) FROM test_table)) AS complex_bit_count FROM test_table;
+CREATE TEMPORARY TABLE temp_table AS SELECT id, bit_count(bit_col) AS bit_counted FROM test_table;
+SELECT t.id, t.bit_counted FROM temp_table AS t WHERE t.bit_counted > (SELECT AVG(bit_counted) FROM temp_table);

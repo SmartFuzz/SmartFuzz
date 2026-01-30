@@ -1,0 +1,35 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/60760",
+  "title": "REORGANIZE behavior is not consistent with mysql",
+  "vulnerable_database": "tidb",
+  "date": "2025-04-23T14:03:55Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n```\nCREATE TABLE sales_partitioned (\n    sale_id INT AUTO_INCREMENT,\n    region VARCHAR(50),\n    amount DECIMAL(10,2),\n    sale_date DATE DEFAULT '2023-01-01',\n    PRIMARY KEY (sale_id, sale_date)\n) PARTITION BY RANGE COLUMNS(sale_date) (\n    PARTITION p2022 VALUES LESS THAN ('2023-01-01'),\n    PARTITION p2023 VALUES LESS THAN ('2024-01-01')\n);\n\n ALTER TABLE sales_partitioned REORGANIZE PARTITION p2023 INTO (\n    PARTITION p2023q1 VALUES LESS THAN ('2023-04-01'),\n    PARTITION p2023q2 VALUES LESS THAN ('2023-07-01')\n);\n```\n### 2. What did you expect to see? (Required)\n\nResults from mysql:\n```\nMySQL [test2]>  ALTER TABLE sales_partitioned REORGANIZE PARTITION p2023 INTO (\n    ->     PARTITION p2023q1 VALUES LESS THAN ('2023-04-01'),\n    ->     PARTITION p2023q2 VALUES LESS THAN ('2023-07-01')\n    -> );\nERROR 1520 (HY000): Reorganize of range partitions cannot change total ranges except for last partition where it can extend the range\n```\n\n### 3. What did you see instead (Required)\nresults from tidb:\n```\nMySQL [test1]>  ALTER TABLE sales_partitioned REORGANIZE PARTITION p2023 INTO (\n    ->     PARTITION p2023q1 VALUES LESS THAN ('2023-04-01'),\n    ->     PARTITION p2023q2 VALUES LESS THAN ('2023-07-01')\n    -> );\nQuery OK, 0 rows affected, 1 warning (1.67 sec)\n```\n\n### 4. What is your TiDB version? (Required)\n```\nMySQL [test1]> select tidb_version();\n+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| tidb_version()                                                                                                                                                                                                                                |\n+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| Release Version: v7.5.6\nEdition: Community\nGit Commit Hash: 1ad553d6de2cb0c9b2f3cfdb760aaae109b2c466\nGit Branch: HEAD\nUTC Build Time: 2025-03-12 10:49:51\nGoVersion: go1.21.13\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv |\n+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n1 row in set (0.01 sec)\n```\n",
+  "poc": [
+    "CREATE TABLE sales_partitioned (",
+    "    sale_id INT AUTO_INCREMENT,",
+    "    region VARCHAR(50),",
+    "    amount DECIMAL(10,2),",
+    "    sale_date DATE DEFAULT '2023-01-01',",
+    "    PRIMARY KEY (sale_id, sale_date)",
+    ") PARTITION BY RANGE COLUMNS(sale_date) (",
+    "    PARTITION p2022 VALUES LESS THAN ('2023-01-01'),",
+    "    PARTITION p2023 VALUES LESS THAN ('2024-01-01')",
+    ");",
+    " ALTER TABLE sales_partitioned REORGANIZE PARTITION p2023 INTO (",
+    "    PARTITION p2023q1 VALUES LESS THAN ('2023-04-01'),",
+    "    PARTITION p2023q2 VALUES LESS THAN ('2023-07-01')"
+  ],
+  "poc_type": "sql_text",
+  "state": "open",
+  "key_bug_features": [
+    "REORGANIZE PARTITION behavior inconsistent with MySQL"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE sales_partitioned_v2 (sale_id INT AUTO_INCREMENT, region VARCHAR(50) NOT NULL, amount DECIMAL(10,2) CHECK (amount >= 0), sale_date DATE DEFAULT CURRENT_DATE, PRIMARY KEY (sale_id, sale_date)) PARTITION BY RANGE COLUMNS(sale_date) (PARTITION p2022 VALUES LESS THAN ('2023-01-01'), PARTITION p2023 VALUES LESS THAN ('2024-01-01'));",
+    "INSERT INTO sales_partitioned_v2 (region, amount, sale_date) VALUES ('North', 150.00, '2023-02-15');",
+    "ALTER TABLE sales_partitioned_v2 REORGANIZE PARTITION p2023 INTO (PARTITION p2023q1 VALUES LESS THAN ('2023-04-01'), PARTITION p2023q2 VALUES LESS THAN ('2023-07-01'));",
+    "SELECT sale_id, region, amount FROM sales_partitioned_v2 WHERE sale_date IS NOT NULL;",
+    "UPDATE sales_partitioned_v2 SET amount = amount + 50 WHERE region = 'North' AND sale_date < '2023-03-01';"
+  ]
+}

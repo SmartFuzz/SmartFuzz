@@ -1,0 +1,14 @@
+CREATE TABLE XMLTYPE_TEST (ID INTEGER PRIMARY KEY, XMLVAL LONG XML, NUMVAL INTEGER);
+INSERT INTO XMLTYPE_TEST VALUES (1, XMLType('<emp><empno>221</empno><ename>John</ename></emp>'), 10);
+INSERT INTO XMLTYPE_TEST VALUES (2, XMLType('<po><pono>331</pono><poname>PO_1</poname></po>'), NULL);
+INSERT INTO XMLTYPE_TEST VALUES (3, XMLType('<emp><empno></empno><ename>Jane</ename></emp>'), 5);
+SELECT e.ID, e.XMLVAL.extract('//empno/text()').getNumVal() AS EMPNO FROM XMLTYPE_TEST e WHERE e.XMLVAL.existsNode('/emp/empno') = 1 OR e.NUMVAL IS NULL;
+SELECT e.ID, XMLType.XMLType('<additional><valid>Test</valid></additional>')->existsNode('/additional/valid') AS VALID_STATUS FROM XMLTYPE_TEST e WHERE xpath_contains(XMLVAL, '//ename') AND e.NUMVAL > 0;
+SELECT COUNT(*) FROM XMLTYPE_TEST e WHERE e.XMLVAL.existsNode('/emp') = 1 HAVING COUNT(*) > 1;
+SELECT e.ID FROM XMLTYPE_TEST e JOIN (SELECT ID, NUMVAL FROM XMLTYPE_TEST WHERE NUMVAL IS NOT NULL) AS derived ON e.ID = derived.ID WHERE xpath_contains(e.XMLVAL, '//empno') AND e.NUMVAL IS NOT NULL;
+SELECT XMLType.XMLType('<root><emptyNode></emptyNode></root>')->existsNode('/root/emptyNode') AS HAS_EMPTY FROM XMLTYPE_TEST WHERE ID = 1;
+CREATE TABLE TEMP_XML_TEST (TEN INTEGER, TXMLVAL LONG XML);
+INSERT INTO TEMP_XML_TEST VALUES (1, XMLType('<temp><date>2023-10-01</date></temp>'));
+SELECT EXISTS (SELECT 1 FROM TEMP_XML_TEST temp WHERE xpath_contains(temp.TXMLVAL, '//date') AND TEN = (SELECT MAX(TEN) FROM TEMP_XML_TEST));
+SELECT e.ID, e.XMLVAL.extract('//*[local-name()="empno"]').getNumVal() AS EMPNO FROM (SELECT XMLVAL FROM XMLTYPE_TEST WHERE NUMVAL IS NOT NULL) AS e WHERE xpath_contains(e.XMLVAL, '//emp');
+DROP TABLE IF EXISTS TEMP_XML_TEST;

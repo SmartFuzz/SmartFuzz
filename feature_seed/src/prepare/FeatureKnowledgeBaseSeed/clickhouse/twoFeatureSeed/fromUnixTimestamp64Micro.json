@@ -1,0 +1,17 @@
+{
+    "function": "fromUnixTimestamp64Micro",
+    "operator": "a != ANY (subquery)",
+    "sql_array": [
+        "CREATE TABLE timestamps (id Int32, event_time Int64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO timestamps VALUES (1, 1234567891011), (2, 1234567899999), (3, NULL);",
+        "SELECT id, fromUnixTimestamp64Micro(event_time, 'UTC') AS converted FROM timestamps WHERE event_time != ANY (SELECT event_time FROM timestamps WHERE event_time IS NOT NULL);",
+        "SELECT id, fromUnixTimestamp64Micro(event_time, 'America/New_York') AS converted_time, event_time != ANY (SELECT event_time FROM timestamps WHERE event_time = 1234567891011) AS is_different FROM timestamps;",
+        "CREATE TABLE events (event_id Int32, timestamp Int64, description String) ENGINE = MergeTree() ORDER BY event_id;",
+        "INSERT INTO events VALUES (1, 1234567891011, 'Event A'), (2, 1234567899999, 'Event B'), (3, NULL, 'Event C');",
+        "SELECT e.event_id, fromUnixTimestamp64Micro(e.timestamp, 'UTC') AS event_time FROM events e JOIN timestamps t ON e.event_id != ANY (SELECT id FROM timestamps WHERE event_time IS NOT NULL) WHERE e.timestamp IS NOT NULL;",
+        "WITH (SELECT MAX(timestamp) FROM events) AS max_ts SELECT id, fromUnixTimestamp64Micro(event_time, 'UTC') AS converted FROM timestamps WHERE event_time != ANY (SELECT timestamp FROM events WHERE timestamp IS NOT NULL AND timestamp < max_ts);",
+        "CREATE TABLE complex_events (event_id Int32, timestamp Int64, level Int32) ENGINE = MergeTree() ORDER BY event_id;",
+        "INSERT INTO complex_events VALUES (1, 1234567896510, 5), (2, 1234567899999, NULL), (3, 9876543210123, 2);",
+        "SELECT e.event_id, fromUnixTimestamp64Micro(e.timestamp, 'UTC') AS event_time, e.level != ANY (SELECT level FROM complex_events WHERE level IS NOT NULL) FROM complex_events e WHERE e.timestamp IS NOT NULL;"
+    ]
+}

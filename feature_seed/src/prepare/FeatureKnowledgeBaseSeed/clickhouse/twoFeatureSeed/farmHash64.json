@@ -1,0 +1,21 @@
+{
+    "function": "farmHash64",
+    "operator": "a == b",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt64, value String, created_at DateTime, number Nullable(Int32)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table VALUES (1, 'test1', toDateTime('2022-01-01 00:00:00'), 10), (2, NULL, toDateTime('2022-01-02 00:00:00'), NULL), (3, 'test3', toDateTime('2022-01-03 00:00:00'), 20);",
+        "SELECT farmHash64(value, IF(number IS NULL, 0, number), created_at) AS FarmHash, toTypeName(FarmHash) AS type FROM test_table WHERE farmHash64(value) == farmHash64('test2');",
+        "SELECT id, farmHash64(value, created_at, number) AS FarmHash FROM test_table WHERE number >= (SELECT avg(number) FROM test_table WHERE number IS NOT NULL) HAVING FarmHash IS NOT NULL;",
+        "SELECT t1.id, farmHash64(t1.value, t2.created_at) AS FarmHash FROM test_table t1 JOIN test_table t2 ON t1.id = t2.id WHERE farmHash64(t1.value) == farmHash64(t2.value);",
+        "SELECT id, farmHash64(value, created_at) AS FarmHash FROM test_table GROUP BY id, value, created_at HAVING FarmHash > 0;",
+        "SELECT t1.id, t1.value, farmHash64(value) AS FarmHash FROM test_table t1 WHERE EXISTS (SELECT 1 FROM test_table t2 WHERE t1.id == t2.id AND t2.number IS NOT NULL) ORDER BY FarmHash DESC;",
+        "CREATE TABLE temp_table (grp UInt8, val String) ENGINE = Memory;",
+        "INSERT INTO temp_table VALUES (1, 'test1'), (2, 'test2'), (1, 'test3');",
+        "SELECT grp, farmHash64(val) AS FarmHash FROM temp_table GROUP BY grp HAVING farmHash64(val) == farmHash64('collision_test');",
+        "INSERT INTO test_table VALUES (4, '', toDateTime('2022-01-04 00:00:00'), -1);",
+        "SELECT DISTINCT farmHash64(value, number) AS FarmHash FROM test_table WHERE number IS NOT NULL AND trim(value) != '';",
+        "SELECT farmHash64(array(value, toString(number)), created_at) AS ComplexHash FROM test_table WHERE farmHash64(value, number) == farmHash64('test', 10, NULL) AND created_at < now();",
+        "ALTER TABLE test_table ADD COLUMN new_col Float64 DEFAULT 0;",
+        "SELECT new_col, farmHash64(value, number, new_col) AS FarmHash FROM test_table WHERE farmHash64(value, number) IS NOT NULL ORDER BY FarmHash;"
+    ]
+}

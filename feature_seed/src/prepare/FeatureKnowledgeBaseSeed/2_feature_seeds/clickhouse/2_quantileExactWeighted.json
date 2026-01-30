@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id UInt32, val Float64, weight UInt32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_data VALUES (1, 10.0, 1), (2, 20.0, 2), (3, 30.0, 1), (4, NULL, 2), (5, 5.0, 0);
+SELECT quantileExactWeighted(0.5, weight)(val) FROM (SELECT val, weight FROM test_data WHERE val IS NOT NULL) GROUP BY val;
+SELECT quantileExactWeighted(0.01, weight)(val) FROM (SELECT DISTINCT val, weight FROM test_data WHERE weight > 0) HAVING quantileExactWeighted(0.5, weight)(val) > 15;
+SELECT id, quantileExactWeighted(0.75, weight)(val) FROM test_data WHERE weight IS NOT NULL GROUP BY id HAVING id = 2;
+SELECT quantileExactWeighted(0.5)(CAST(NULL AS Float64), CAST(weight AS Float64)) FROM test_data WHERE weight IS NOT NULL;
+SELECT COUNT(*) FROM (SELECT DISTINCT id FROM test_data WHERE quantileExactWeighted(0.5, weight)(val) = 15.0) AS inner_query;
+SELECT quantitative, AVG(val) FROM (SELECT val, quantileExactWeighted(0.95, weight)(val) AS quantitative FROM test_data GROUP BY val) WHERE quantitative > (SELECT quantileExactWeighted(0.5)(val) FROM test_data);
+SELECT quantileExactWeighted(0.5, weight)(val) FROM (SELECT val, weight FROM test_data WHERE weight != 0) GROUP BY val ORDER BY quantileExactWeighted(0.5, weight)(val);
+SELECT quantileExactWeighted(0.5, weight)(val) FROM (SELECT id, (CASE WHEN val IS NOT NULL THEN val ELSE 0 END) AS val, weight FROM test_data) GROUP BY id HAVING SUM(weight) > 1;

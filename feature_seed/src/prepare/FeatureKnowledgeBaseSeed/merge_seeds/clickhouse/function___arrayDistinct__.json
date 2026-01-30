@@ -1,0 +1,15 @@
+CREATE TABLE test_array (arr Array(Int32));
+INSERT INTO test_array VALUES ([1, 2, 2, 3, 1]), ([4, 5, 5, 6]), ([7, 8, 8, 8, 9]);
+SELECT arrayDistinct(arr) FROM test_array;
+SELECT arrayDistinct([NULL, 2, NULL, 3, 4, 4]) AS distinct_array;
+SELECT arrayDistinct([1, 2, 2, 3, 1]) AS distinct_array, count(*) AS total_count FROM test_array GROUP BY distinct_array;
+CREATE TABLE another_array (id UInt32, arr Array(Int32));
+INSERT INTO another_array VALUES (1, [1, 2, 4]), (2, [2, 2, 2]), (3, [3, 3, 1]);
+SELECT id, arrayDistinct(arr) FROM another_array WHERE id IN (SELECT id FROM another_array WHERE arrayExists(x -> x > 2, arr));
+CREATE TABLE complex_table (id UInt32, value Array(Int32));
+INSERT INTO complex_table VALUES (1, [1, 1, 2, 2]), (2, [3, 4, 4, 5]);
+SELECT id, arrayDistinct(arrayConcat(value, [1, 2, 2, 3])) AS distinct_concat FROM complex_table;
+SELECT id, arrayDistinct(arr) FROM (SELECT id, arr FROM another_array UNION ALL SELECT id, arr FROM test_array) AS combined;
+CREATE TABLE nested_table (group_id UInt32, values Array(Int32));
+INSERT INTO nested_table VALUES (1, [1, 1, 2]), (1, [2, 3, 3]), (2, [4, 5]);
+SELECT group_id, arrayDistinct(arrayFlatten(groupArray(values))) FROM nested_table GROUP BY group_id;

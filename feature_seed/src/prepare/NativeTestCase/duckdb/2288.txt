@@ -1,0 +1,16 @@
+ATTACH '__TEST_DIR__/test_empty_new.db' AS db_v13 (STORAGE_VERSION 'v1.3.0');
+ATTACH '__TEST_DIR__/test_empty_old.db' AS db_v1 (STORAGE_VERSION 'v1.0.0');
+USE db_v1;
+USE db_v13;
+PRAGMA force_compression='${compression}';
+CREATE TABLE test_empty (a VARCHAR);
+INSERT INTO test_empty VALUES(''); INSERT INTO test_empty VALUES('A'); INSERT INTO test_empty VALUES(NULL); INSERT INTO test_empty VALUES('B'); INSERT INTO test_empty VALUES(''); INSERT INTO test_empty VALUES('A');
+CHECKPOINT;
+select * from test_empty;
+SELECT lower(compression)='${compression}' FROM pragma_storage_info('test_empty') WHERE segment_type ILIKE 'VARCHAR' LIMIT 1;
+CREATE TABLE test_empty_large AS SELECT '' as a from range(0,10000) union all select 'A' union all select '';
+CHECKPOINT;
+select count(*), min(a[1]), max(a[1]) from test_empty_large limit 5;
+SELECT lower(compression)='${compression}' FROM pragma_storage_info('test_empty_large') WHERE segment_type ILIKE 'VARCHAR' LIMIT 1;
+DROP TABLE test_empty;
+DROP TABLE test_empty_large;

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/58024",
+  "title": "Inconsistent result after disabling partition_processor",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n```sql\ndelete from mysql.opt_rule_blacklist;\nadmin reload opt_rule_blacklist;\ncreate table `t0` (`a` int(11),`b` int) partition by range (`a`) (partition `p0` values less than (3),partition `p1` values less than (maxvalue));\ninsert into `t0` values (1,1),(2,1),(3,1),(4,2),(4,2);\n\ndelete from mysql.opt_rule_blacklist;\nadmin reload opt_rule_blacklist;\nselect * from `t0`;\nINSERT INTO mysql.opt_rule_blacklist VALUES(\"partition_processor\");\nADMIN reload opt_rule_blacklist;\nselect * from `t0`;\n```\n\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\nQueries return same result.\n\n### 3. What did you see instead (Required)\n```sql\nmysql> delete from mysql.opt_rule_blacklist;\nQuery OK, 0 rows affected (0.01 sec)\n\nmysql> admin reload opt_rule_blacklist;\nQuery OK, 0 rows affected (0.00 sec)\n\nmysql> select * from `t0`;\n+------+------+\n| a    | b    |\n+------+------+\n|    1 |    1 |\n|    2 |    1 |\n|    3 |    1 |\n|    4 |    2 |\n|    4 |    2 |\n+------+------+\n5 rows in set (0.00 sec)\n\nmysql> INSERT INTO mysql.opt_rule_blacklist VALUES(\"partition_processor\");\nQuery OK, 1 row affected (0.01 sec)\n\nmysql> ADMIN reload opt_rule_blacklist;\nQuery OK, 0 rows affected (0.00 sec)\n\nmysql> select * from `t0`;\nEmpty set (0.00 sec)\n\n```\n\n### 4. What is your TiDB version? (Required)\n```sql\nRelease Version: v8.5.0-alpha-281-g282430e657\nEdition: Community\nGit Commit Hash: 282430e657d49bb4bae578f0e0b732ac0df3ba57\nGit Branch: master\nUTC Build Time: 2024-12-04 09:16:29\nGoVersion: go1.23.4\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv \n```\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "date": "2024-12-05T14:19:25Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (id SERIAL PRIMARY KEY, value VARCHAR(255) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t1 (id, value, created_at) VALUES (1, 'test1', NOW()), (2, 'test2', NOW());",
+    "CREATE TABLE t2 (a INT, b FLOAT, c DECIMAL(10,2), d TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t2 (a, b, c, d) VALUES (1, 1.1, 10.00, NOW()), (2, 2.2, 20.00, NOW());",
+    "SELECT * FROM t1 WHERE id IN (SELECT a FROM t2 WHERE b > 1.0);"
+  ],
+  "key_bug_features": [
+    "Disabling partition_processor affects query results"
+  ]
+}

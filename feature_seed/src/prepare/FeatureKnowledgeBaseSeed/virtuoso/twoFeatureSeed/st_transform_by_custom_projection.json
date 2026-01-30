@@ -1,0 +1,17 @@
+{
+    "function": "st_transform_by_custom_projection",
+    "operator": "JSON Operator: json_get",
+    "sql_array": [
+        "CREATE TABLE geo_shapes (id SERIAL PRIMARY KEY, shape GEOMETRY NOT NULL, metadata JSON NOT NULL DEFAULT '{}');",
+        "INSERT INTO geo_shapes (shape, metadata) VALUES (st_ewkt_read('POLYGON((1 2, 2 1, 2 3, 1 2))'), json_build_object('key', 'Value', 'number', 123));",
+        "SELECT json_get(metadata, 'key') AS key_value, st_transform_by_custom_projection(shape, 'OLAEAPS', 30, 60) AS transformed_shape FROM geo_shapes WHERE json_get(metadata, 'number')::INT > 100;",
+        "CREATE TABLE other_shapes (id SERIAL PRIMARY KEY, shape GEOMETRY NOT NULL, extra JSON NOT NULL DEFAULT '{}');",
+        "INSERT INTO other_shapes (shape, extra) VALUES (st_ewkt_read('LINESTRING(0 0, 1 1, 2 1, 1 0)'), json_build_object('nested', json_build_object('key1', 'value1', 'key2', 456)));",
+        "SELECT s1.id, json_get(s2.extra, 'nested') AS nested_json FROM geo_shapes s1 JOIN other_shapes s2 ON st_intersects(s1.shape, s2.shape) GROUP BY s1.id, nested_json HAVING COUNT(s2.id) > 0;",
+        "SELECT json_get(metadata, 'key'), st_transform_by_custom_projection(st_ewkt_read('POLYGON((0 0, 1 1, 2 0, 0 0))'), 'OLAEAPS', 15, 45) FROM geo_shapes WHERE shape IS NOT NULL AND json_get(metadata, 'number') IS NOT NULL;",
+        "CREATE TABLE temp_shapes AS SELECT id, shape, metadata FROM geo_shapes;",
+        "UPDATE temp_shapes SET shape = st_transform_by_custom_projection(shape, 'OLAEAPS', 10, 20) WHERE json_get(metadata, 'number')::INT = 123;",
+        "SELECT st_transform_by_custom_projection(st_ewkt_read('POLYGON((3 3, 3 4, 4 4, 4 3, 3 3))'), 'OLAEAPS', 90, 120) AS new_transformed_shape FROM geo_shapes WHERE json_get(metadata, 'key') IS NULL;",
+        "DROP TABLE temp_shapes;"
+    ]
+}

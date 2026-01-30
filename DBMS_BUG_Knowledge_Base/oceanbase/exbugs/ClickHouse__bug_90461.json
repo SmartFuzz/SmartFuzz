@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/90461",
+  "title": "Multiple functions report inaccurate monotonicity information",
+  "description": "Some examples:\n```sql\ndrop table if exists w;\ncreate table w (x DateTime) engine MergeTree order by x settings index_granularity=1;\ninsert into w values ('1987-11-22 12:02:07'),('1987-12-28 20:46:48');\nselect count() from w where toWeek(x, 9) IN (32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43);\n```\n`LOGICAL_ERROR`: `Invalid binary search result in MergeTreeSetIndex` because `toWeek`'s `getMonotonicityForRange` doesn't know about the `mode` parameter, which affects where the year boundary is (i.e. inputs at which the `toWeek` output wraps around).\n```sql\ndrop table if exists t0;\nCREATE TABLE t0 (x Int) ENGINE = MergeTree ORDER BY x SETTINGS index_granularity = 1;\nINSERT INTO t0 SELECT [2, 65535, 65536][number+1] FROM numbers(3);\nSELECT 1 FROM t0 WHERE toDate(x) IN (2);\n```\n`LOGICAL_ERROR`: `Invalid binary search result in MergeTreeSetIndex` because `toDate`'s `getMonotonicityForRange` doesn't know about the thing where small input numbers are assumed to be number of days number, while bigger inputs are assumed to be number of seconds.\nAnother common symptom is `LOGICAL_ERROR` `Inconsistent KeyCondition behavior`.\n---\nThe way the `IFunction` et al are structured makes them very prone to this type of bugs. E.g. in `FunctionsConversion.h` there's lots of complicated code for dispatching from argument types to conversion implementation code (which is often nontrivial, involving range checking/clamping, sometimes affected by settings like `datetime_overflow_behavior`, multiplying/dividing by constants, adjusting by timezone, parsing/formatting strings, etc), then *separately* complicated code for dispatching from argument types to monotonicity information. Then additionally there's some ad-hoc code in KeyCondition to additionally adjust monotonicity information for some functions, e.g. `KeyCondition::isFunctionReallyMonotonic` and timezone check in `FunctionWithOptionalConstArg::getMonotonicityForRange`.\nThere are probably many bugs of this kind. We should add a strong stress/fuzz test to catch most of them, and/or do a big overhaul of how monotonicity reporting works in `IFunction`. The latter sounds like a lot of work, so I'm just doing the former for now.\n(Possibly some of these bugs are load-bearing and shouldn't just be fixed. E.g. imagine if function `toDate(DateTime64)` wrapped on overflow instead of saturating, and suppose a table has `ORDER BY toDate(timestamp)`; then a query with `WHERE timestamp >= now64()`; then it doesn't follow that `toDate(timestamp) >= toDate(now64())` - `toDate(timestamp)` can take all values 0-65535 on timestamps above `now64()`; so maybe KeyCondition can't use primary key at all in this case, unless `toDate(DateTime64)` incorrectly reports itself as monotonic. Or maybe it can, I haven't checked carefully yet.)",
+  "date": "2025-11-19T23:46:10Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS test_table;",
+    "CREATE TABLE test_table (id INT, event_time TIMESTAMP, value FLOAT) PRIMARY KEY (event_time);",
+    "INSERT INTO test_table VALUES (1, '2023-01-01 00:00:00', 10.5), (2, '2023-01-02 12:00:00', 20.0), (3, '2023-01-03 18:00:00', 30.5);",
+    "SELECT COUNT(*) FROM test_table WHERE EXTRACT(WEEK FROM event_time) IN (1, 2, 3, 4, 5);",
+    "SELECT value FROM test_table WHERE DATE(event_time) = DATE(FROM_UNIXTIME(1672537600));"
+  ],
+  "key_bug_features": [
+    "Incorrect monotonicity reporting in date functions"
+  ]
+}

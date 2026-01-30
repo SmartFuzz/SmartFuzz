@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/45292",
+  "title": "Sleep in subquery not executed correctly",
+  "description": "## Bug Report\r\n\r\nWhen calling `SLEEP()` multiple times in separate subqueries the execution time is not the expected execution time.\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```\r\nSELECT SLEEP(2) UNION ALL SELECT SLEEP(3);\r\nSELECT SLEEP(2),SLEEP(3);\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nBoth statements taking 5s each.\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nTiDB:\r\n```\r\nmysql> SELECT SLEEP(2) UNION ALL SELECT SLEEP(3);\r\n+----------+\r\n| SLEEP(2) |\r\n+----------+\r\n|        0 |\r\n|        0 |\r\n+----------+\r\n2 rows in set (3.00 sec)\r\n\r\nmysql> SELECT SLEEP(2),SLEEP(3);\r\n+----------+----------+\r\n| SLEEP(2) | SLEEP(3) |\r\n+----------+----------+\r\n|        0 |        0 |\r\n+----------+----------+\r\n1 row in set (5.00 sec)\r\n```\r\n\r\nMySQL 8.0:\r\n```\r\nmysql> SELECT SLEEP(2) UNION ALL SELECT SLEEP(3);\r\n+----------+\r\n| SLEEP(2) |\r\n+----------+\r\n|        0 |\r\n|        0 |\r\n+----------+\r\n2 rows in set (5.00 sec)\r\n\r\nmysql> SELECT SLEEP(2),SLEEP(3);\r\n+----------+----------+\r\n| SLEEP(2) | SLEEP(3) |\r\n+----------+----------+\r\n|        0 |        0 |\r\n+----------+----------+\r\n1 row in set (5.00 sec)\r\n\r\nmysql> SELECT VERSION();\r\n+-----------+\r\n| VERSION() |\r\n+-----------+\r\n| 8.0.33    |\r\n+-----------+\r\n1 row in set (0.00 sec)\r\n```\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n```\r\nRelease Version: v7.3.0-alpha-160-g90dabc0433\r\nEdition: Community\r\nGit Commit Hash: 90dabc0433a75db650ac683897d264ef58d63a73\r\nGit Branch: master\r\nUTC Build Time: 2023-07-11 07:57:57\r\nGoVersion: go1.20.5\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: unistore\r\n```",
+  "date": "2023-07-11T08:15:54Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE test_sleep (id Int32, value String);",
+    "INSERT INTO test_sleep (id, value) VALUES (1, 'test1'), (2, 'test2');",
+    "SELECT sleep(1) AS sleep1, (SELECT sleep(2) FROM test_sleep WHERE id = 1) AS sleep2;",
+    "SELECT (SELECT sleep(3) FROM test_sleep WHERE id = 2) AS sleep3 UNION ALL SELECT sleep(1);",
+    "SELECT sleep(2), (SELECT COUNT(*) FROM test_sleep) AS count;"
+  ],
+  "key_bug_features": [
+    "Multiple SLEEP() calls in subqueries not timed correctly"
+  ]
+}

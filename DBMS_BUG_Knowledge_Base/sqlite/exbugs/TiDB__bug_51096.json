@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/51096",
+  "title": "different reuslt caused by double precision",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n```\r\nUSE test;\r\nDROP DATABASE IF EXISTS database2;\r\nCREATE DATABASE database2;\r\nUSE database2;\r\nCREATE TABLE t0(c0 NUMERIC UNSIGNED , c1 DOUBLE, c2 BOOL );\r\nREPLACE INTO t0 VALUES (1726229803, 0.15695553372105964, false);\r\n\r\n--sql1\r\nSELECT f1 FROM (SELECT (((t0.c0)/(1475275145))) AS f1 FROM t0) AS t WHERE ((f1)+('?'));\r\n--sql2\r\nSELECT f1 FROM (SELECT (((t0.c0)/(1475275145))) AS f1, (((((t0.c0)/(1475275145)))+('?'))) IS TRUE AS flag FROM t0) AS t WHERE flag=1;\r\n\r\n```\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\n`sql1 and sql2 should have the same result.`\r\n### 3. What did you see instead (Required)\r\n\r\n```\r\nmysql> SELECT f1 FROM (SELECT (((t0.c0)/(1475275145))) AS f1 FROM t0) AS t WHERE ((f1)+('?'));\r\n+----------------------------------+\r\n| f1                               |\r\n+----------------------------------+\r\n| 1.170107019000000000000000000000 |\r\n+----------------------------------+\r\n1 row in set, 1 warning (0.00 sec)\r\n\r\nmysql> SELECT f1 FROM (SELECT (((t0.c0)/(1475275145))) AS f1, (((((t0.c0)/(1475275145)))+('?'))) IS TRUE AS flag FROM t0) AS t WHERE flag=1;\r\n+--------+\r\n| f1     |\r\n+--------+\r\n| 1.1701 |\r\n+--------+\r\n1 row in set, 1 warning (0.00 sec)\r\n```\r\n### 4. What is your TiDB version? (Required)\r\n`Server version: 8.0.11-TiDB-v7.5.0 TiDB Server (Apache License 2.0) Community Edition, MySQL 8.0 compatible`\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2024-02-11T09:14:05Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1(id INTEGER PRIMARY KEY, value REAL, status INTEGER);",
+    "INSERT INTO t1 VALUES (1, 1.234567890123456789, 1);",
+    "SELECT id, value FROM t1 WHERE value > 1.0;",
+    "SELECT id, (value + 0.0000001) AS adjusted_value FROM t1 WHERE status = 1;",
+    "SELECT id FROM t1 WHERE (value * 2) IS NULL;"
+  ],
+  "key_bug_features": [
+    "Inconsistent results from double precision calculations"
+  ]
+}

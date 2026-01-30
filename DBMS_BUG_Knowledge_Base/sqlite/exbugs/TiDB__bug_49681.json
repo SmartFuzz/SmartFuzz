@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/49681",
+  "title": "aggregate query gets 'should ensure all columns have the same length' error on partition table",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n``` SQL\r\nCREATE TABLE `tl339c67ba` (\r\n  `col_41` datetime NOT NULL DEFAULT '2011-05-21 00:00:00',\r\n  `col_42` char(92) NOT NULL,\r\n  `col_43` float DEFAULT '6891.0747',\r\n  `col_44` char(5) DEFAULT 'b_',\r\n  `col_45` smallint(6) DEFAULT '-7116',\r\n  `col_46` json NOT NULL,\r\n  `col_47` date NOT NULL,\r\n  `col_48` time NOT NULL,\r\n  `col_49` json DEFAULT NULL,\r\n  `col_50` mediumint(8) unsigned NOT NULL,\r\n  KEY `idx_17` ((cast(`col_46` as unsigned array)),`col_44`,`col_45`),\r\n  PRIMARY KEY (`col_50`,`col_42`) /*T![clustered_index] NONCLUSTERED */\r\n) ENGINE=InnoDB DEFAULT CHARSET=gbk COLLATE=gbk_chinese_ci\r\nPARTITION BY HASH (`col_50`) PARTITIONS 6;\r\nINSERT INTO `tl339c67ba` VALUES ('2024-02-13 00:00:00','l',NULL,'P5',14565,'800370530','1998-09-03','06:25:19','[-137365.35472449657, 98740.22614562341, -96230.65667019188, 81088.77765708079, 126813.96345066803, 228411.26303739505, -31360.293560806753, -40673.38888043809, 421555.88300412416, 4097.420882023372, -43759.19093454673, -618381.5308285163, 57324.58237695448, -11254.431120740595, -11831.811494338499, 632228.8397806884, -147234.135661395, -10233.283960475097, -60623.850914205344, 20194.112452002195, 31881.62808860628, 20531.172403172404, -48548.85255468495, 104726.24161292956, -180867.75742741392, 160201.2879594866]',16155661);\r\n\r\nSELECT AVG(DISTINCT `tl339c67ba`.`col_50`) AS `r0`,RTRIM(`tl339c67ba`.`col_42`) AS `r1`,`tl339c67ba`.`col_43` AS `r2` FROM `tl339c67ba` WHERE `tl339c67ba`.`col_49`!=_UTF8MB4'2110938915' GROUP BY `tl339c67ba`.`col_43`,`tl339c67ba`.`col_47`,`tl339c67ba`.`col_42`;\r\n```\r\n### 2. What did you expect to see? (Required)\r\nMySQL:\r\n``` SQL\r\nmysql> SELECT AVG(DISTINCT `tl339c67ba`.`col_50`) AS `r0`,RTRIM(`tl339c67ba`.`col_42`) AS `r1`,`tl339c67ba`.`col_43` AS `r2` FROM `tl339c67ba` WHERE `tl339c67ba`.`col_49`!=_UTF8MB4'2110938915' GROUP BY `tl339c67ba`.`col_43`,`tl339c67ba`.`col_47`,`tl339c67ba`.`col_42`;\r\n+---------------+------+------+\r\n| r0            | r1   | r2   |\r\n+---------------+------+------+\r\n| 16155661.0000 | l    | NULL |\r\n+---------------+------+------+\r\n1 row in set (0.01 sec)\r\n```\r\n### 3. What did you see instead (Required)\r\n``` SQL\r\nmysql> SELECT AVG(DISTINCT `tl339c67ba`.`col_50`) AS `r0`,RTRIM(`tl339c67ba`.`col_42`) AS `r1`,`tl339c67ba`.`col_43` AS `r2` FROM `tl339c67ba` WHERE `tl339c67ba`.`col_49`!=_UTF8MB4'2110938915' GROUP BY `tl339c67ba`.`col_43`,`tl339c67ba`.`col_47`,`tl339c67ba`.`col_42`;\r\nERROR 1105 (HY000): should ensure all columns have the same length, expect 1, but got 0\r\n```\r\n### 4. What is your TiDB version? (Required)\r\nnightly-7d33d0d226ea69ef49fb0a6786f8972e112adf4b\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2023-12-21T09:54:01Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE test_partition (id INTEGER NOT NULL, name TEXT NOT NULL, value REAL DEFAULT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, data TEXT NOT NULL, PRIMARY KEY (id));",
+    "INSERT INTO test_partition VALUES (1, 'test1', 100.00, '2024-01-01 00:00:00', '{\"key\": \"value1\"}');",
+    "INSERT INTO test_partition VALUES (2, 'test2', NULL, '2024-01-02 00:00:00', '{\"key\": \"value2\"}');",
+    "SELECT AVG(value) AS avg_value, COUNT(name) AS count_name FROM test_partition WHERE json_extract(data, '$.key') != 'value1' GROUP BY name;",
+    "SELECT id, name, COALESCE(value, 0) AS value FROM test_partition WHERE created_at < '2024-01-03 00:00:00' ORDER BY id DESC;"
+  ],
+  "key_bug_features": [
+    "aggregate query on partition table with inconsistent column lengths"
+  ]
+}

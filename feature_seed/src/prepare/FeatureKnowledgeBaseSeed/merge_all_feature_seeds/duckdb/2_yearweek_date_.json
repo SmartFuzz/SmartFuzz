@@ -1,0 +1,11 @@
+CREATE TABLE test_dates (id INT, event_date DATE, description VARCHAR);
+INSERT INTO test_dates VALUES (1, DATE '1992-02-15', 'Event A'), (2, DATE '2023-10-01', 'Event B'), (3, NULL, 'Event C');
+SELECT id, yearweek(event_date // 1) AS iso_year_week FROM test_dates;
+CREATE TABLE additional_data (user_id INT, last_access DATE, notes VARCHAR);
+INSERT INTO additional_data VALUES (1, DATE '2023-09-15', 'Note 1'), (2, DATE '2023-10-02', 'Note 2'), (NULL, DATE '2023-09-20', 'Note 3');
+SELECT (SELECT COUNT(*) FROM additional_data WHERE user_id IS NOT NULL) // (SELECT COUNT(*) FROM additional_data) AS user_ratio;
+SELECT a.id, a.event_date, yearweek(COALESCE(a.event_date, DATE '1900-01-01')) // 52 AS year_week_ratio FROM test_dates a JOIN additional_data b ON a.id = b.user_id;
+SELECT AVG(yearweek(event_date)) AS avg_year_week FROM test_dates GROUP BY description HAVING AVG(yearweek(event_date)) > 2000;
+WITH filtered_data AS (SELECT * FROM test_dates WHERE event_date IS NOT NULL) SELECT id, yearweek(LEAST(event_date, DATE '2023-12-31')) // 100 AS year_week_boundary FROM filtered_data;
+SELECT a.id, yearweek(a.event_date) AS year_week, b.last_access // 1 AS last_access_ratio FROM test_dates a LEFT JOIN additional_data b ON a.id = b.user_id WHERE b.last_access IS NOT NULL;
+CREATE TEMPORARY TABLE combined AS SELECT a.event_date, b.last_access, yearweek(a.event_date) // yearweek(b.last_access) AS yearweek_ratio FROM test_dates a, additional_data b WHERE a.id = b.user_id;

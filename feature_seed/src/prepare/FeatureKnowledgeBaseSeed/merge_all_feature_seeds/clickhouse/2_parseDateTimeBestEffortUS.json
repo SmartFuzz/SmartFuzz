@@ -1,0 +1,9 @@
+CREATE TABLE test_dates (id UInt32, event_date DateTime, value Float64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_dates VALUES (1, parseDateTimeBestEffortUS('2023-10-15 12:30:00'), 100.5), (2, parseDateTimeBestEffortUS('10/15/2023'), 200.0), (3, parseDateTimeBestEffortUS('20231015'), 300.0);
+SELECT id, event_date, value * 2 as doubled_value FROM test_dates WHERE event_date > parseDateTimeBestEffortUS('2023-10-01 00:00:00') GROUP BY id, event_date, doubled_value HAVING sum(value) < 500;
+SELECT id, parseDateTimeBestEffortUS('10/31/2023') * 1.5 as adjusted_date_value FROM test_dates WHERE id IN (SELECT id FROM test_dates WHERE value < 150) ORDER BY adjusted_date_value;
+SELECT id, value * (SELECT AVG(value) FROM test_dates) as adjusted_value FROM test_dates JOIN (SELECT id, parseDateTimeBestEffortUS('2023-11-01 12:00:00') as reference_date FROM test_dates) ref ON test_dates.id = ref.id WHERE ref.reference_date IS NOT NULL;
+SELECT id, event_date, value * (CASE WHEN event_date < parseDateTimeBestEffortUS('2023-09-01 00:00:00') THEN 0.85 ELSE 1.15 END) as modified_value FROM test_dates WHERE value IS NOT NULL ORDER BY modified_value ASC;
+CREATE TABLE temp_dates AS SELECT id, parseDateTimeBestEffortUS('15-08-2020') AS ambiguous_date, value FROM test_dates WHERE value > 100;
+INSERT INTO temp_dates SELECT id, parseDateTimeBestEffortUS('2023-12'), value FROM test_dates WHERE value IS NULL;
+SELECT id, SYSUTCDATE() * value as product FROM test_dates WHERE id IN (SELECT id FROM test_dates WHERE value > 250);

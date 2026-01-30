@@ -1,0 +1,14 @@
+CREATE TABLE test_strings (id UInt32, str String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_strings VALUES (1, '中国'), (2, '日本'), (3, ''), (4, NULL), (5, 'abc'), (6, 'xyz');
+SELECT id, str FROM test_strings WHERE startsWithUTF8(str, '\xe4') GLOBAL IN (SELECT str FROM test_strings WHERE str IS NOT NULL);
+SELECT id, str FROM test_strings WHERE str IN (SELECT str FROM test_strings WHERE str IS NOT NULL AND startsWithUTF8(str, '\xe6')) ORDER BY str;
+SELECT id, str FROM test_strings WHERE startsWithUTF8(str, '\xef') AND str IS NOT NULL GROUP BY str HAVING count(*) > 1;
+SELECT id, count(*) OVER (PARTITION BY startsWithUTF8(str, '\xe5')) as prefix_count FROM test_strings;
+CREATE TABLE test_numbers (num UInt32) ENGINE = MergeTree() ORDER BY num;
+INSERT INTO test_numbers VALUES (1), (2), (3), (NULL), (5);
+SELECT t1.id, t1.str FROM test_strings AS t1 JOIN test_numbers AS t2 ON startsWithUTF8(t1.str, '\xe4') AND t1.id GLOBAL IN (SELECT num FROM test_numbers WHERE num IS NOT NULL);
+SELECT id, startsWithUTF8(str, '\xe4') AS starts_check FROM test_strings WHERE str IS NOT NULL ORDER BY starts_check DESC, id;
+CREATE TABLE test_edge_cases (num Int32, description String) ENGINE = MergeTree() ORDER BY num;
+INSERT INTO test_edge_cases VALUES (0, ''), (1, 'test'), (2, NULL), (3, '中文测试');
+SELECT num, description FROM test_edge_cases WHERE startsWithUTF8(description, '\xe4') AND num GLOBAL IN (SELECT num FROM test_edge_cases WHERE description IS NOT NULL) ORDER BY num;
+SELECT t1.num, t1.description FROM test_edge_cases AS t1 JOIN (SELECT num FROM test_edge_cases WHERE description IS NULL OR description = '') AS t2 ON t1.num = t2.num GROUP BY t1.num, t1.description HAVING count(*) > 0;

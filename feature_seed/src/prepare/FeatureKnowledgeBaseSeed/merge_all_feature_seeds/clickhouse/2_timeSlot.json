@@ -1,0 +1,10 @@
+CREATE TABLE test_time_slots (id UInt32, event_time DateTime, info String, additional_info Nullable(String));
+INSERT INTO test_time_slots VALUES (1, toDateTime('2000-01-02 03:04:05', 'UTC'), 'event1', NULL), (2, toDateTime('1970-01-01 00:00:00', 'UTC'), 'event2', 'info2'), (3, toDateTime('2149-12-31 23:59:59', 'UTC'), 'event3', 'info3');
+SELECT id, timeSlot(event_time) as rounded_time, additional_info FROM test_time_slots WHERE additional_info -> 'info' IS NOT NULL;
+SELECT DISTINCT event_time, timeSlot(event_time) AS half_hour_slot, COUNT(*) OVER (PARTITION BY timeSlot(event_time)) as count FROM (SELECT event_time, additional_info FROM test_time_slots WHERE additional_info IS NOT NULL) AS t ORDER BY timeSlot(event_time);
+SELECT t1.id, t1.event_time, t2.info FROM test_time_slots AS t1 JOIN (SELECT id, timeSlot(event_time, 'UTC') AS rounded_time FROM test_time_slots WHERE event_time IS NOT NULL) AS t2 ON t1.event_time = t2.rounded_time;
+SELECT id, timeSlot(event_time) AS rounded_time FROM (SELECT id, event_time, additional_info FROM test_time_slots) WHERE rounded_time IS NOT NULL HAVING rounded_time > toDateTime('2000-01-01 00:00:00', 'UTC');
+SELECT timeSlot(event_time) FROM (SELECT maximum(event_time) AS max_time FROM test_time_slots) AS max_table WHERE timeSlot(max_time) IS NOT NULL;
+SELECT event_time, (event_time -> timeSlot) AS modified_time FROM test_time_slots WHERE event_time BETWEEN toDateTime('1970-01-01 00:00:00', 'UTC') AND toDateTime('2149-12-31 23:59:59', 'UTC');
+CREATE TEMPORARY TABLE temp_slots AS SELECT timeSlot(event_time) AS half_hour_slot FROM test_time_slots WHERE additional_info IS NULL;
+SELECT half_hour_slot, COUNT(*) FROM temp_slots GROUP BY half_hour_slot HAVING COUNT(*) > 1;

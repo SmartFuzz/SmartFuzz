@@ -1,0 +1,13 @@
+CREATE TABLE test_table (id INT, data LONG VARCHAR, other_data VARCHAR(255));
+INSERT INTO test_table (id, data, other_data) VALUES (1, 'Example data for testing', NULL);
+SELECT id, isblob(data) FROM test_table WHERE NOT BETWEEN id AND 2;
+SELECT id, data FROM test_table WHERE NOT isblob(other_data) AND data IS NOT NULL;
+SELECT COUNT(*) FROM (SELECT id, data FROM test_table WHERE isblob(data) NOT BETWEEN 0 AND 1) AS subquery;
+CREATE TABLE another_table (id INT PRIMARY KEY, value DECIMAL(10,2));
+INSERT INTO another_table (id, value) VALUES (1, 100.00), (2, NULL), (3, 0.00);
+SELECT a.id, isblob(b.data) FROM test_table AS b JOIN another_table AS a ON b.id = a.id WHERE NOT a.value BETWEEN 90 AND 110;
+SELECT a.id, SUM(CASE WHEN isblob(b.data) THEN 1 ELSE 0 END) AS blob_count FROM test_table AS b LEFT JOIN another_table AS a ON b.id = a.id GROUP BY a.id HAVING NOT COUNT(b.id) BETWEEN 0 AND 1;
+SELECT b.id, isblob(b.data), a.value FROM another_table AS a JOIN test_table AS b ON NOT isblob(b.data) AND a.value NOT BETWEEN 0 AND (SELECT MAX(value) FROM another_table);
+CREATE TEMPORARY TABLE temp_table AS SELECT id, data FROM test_table WHERE NOT isblob(data);
+SELECT * FROM temp_table WHERE id NOT BETWEEN 1 AND 5;
+SELECT b.id, COUNT(*) FROM (SELECT data FROM test_table WHERE isblob(data)) AS b WHERE NOT EXISTS (SELECT * FROM another_table WHERE id = b.id) GROUP BY b.id;

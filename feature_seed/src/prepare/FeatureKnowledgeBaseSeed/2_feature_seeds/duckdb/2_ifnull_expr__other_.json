@@ -1,0 +1,13 @@
+CREATE TABLE test_table (id INTEGER, value STRING, num_value FLOAT, date_value DATE);
+INSERT INTO test_table VALUES (1, 'test', 10.5, NULL), (2, NULL, 0.0, '2022-01-01'), (3, 'example', 20.0, NULL), (4, 'another', NULL, '2023-12-31');
+SELECT id, ifnull(value, 'fallback') AS processed_value, num_value // (SELECT COUNT(*) FROM test_table WHERE num_value > 0) AS average_div FROM test_table GROUP BY id, processed_value HAVING processed_value IS NOT NULL;
+SELECT id, ifnull(5 // (num_value + 1), 0) AS edge_case_div, date_value FROM test_table WHERE ifnull(date_value, '1900-01-01') > '2000-01-01';
+SELECT id, ifnull((5 // NULL), 'undefined') AS null_division, num_value FROM test_table WHERE num_value IS NOT NULL ORDER BY edge_case_div ASC LIMIT 5;
+CREATE TABLE second_table (ref_id INTEGER, description STRING);
+INSERT INTO second_table VALUES (1, 'related to test'), (2, 'related to null'), (3, 'related to example');
+SELECT t1.id, ifnull(t1.value, 'missing') AS value, ifnull(t1.num_value // t2.ref_id, 0) AS derived_value FROM test_table t1 LEFT JOIN second_table t2 ON t1.id = t2.ref_id WHERE t2.ref_id IS NOT NULL;
+CREATE TEMPORARY TABLE temp_table AS SELECT ifnull(value, '') AS safe_value, avg(num_value) AS average FROM test_table WHERE num_value IS NOT NULL GROUP BY safe_value HAVING average > 5.0;
+SELECT IFNULL(MAX(num_value) // (SELECT COUNT(*) FROM temp_table), 1) AS division_check FROM temp_table;
+DROP TABLE IF EXISTS test_table;
+DROP TABLE IF EXISTS second_table;
+DROP TABLE IF EXISTS temp_table;

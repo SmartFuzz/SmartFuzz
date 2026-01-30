@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/63880",
+  "title": "Noisy messages for index histogram",
+  "description": "## Bug Report\n\nNoisy messages like this:\n\n```json\n{\n  \"level\": \"WARN\",\n  \"time\": \"2025/10/08 18:10:37.342 +00:00\",\n  \"caller\": \"stats_syncload.go:415\",\n  \"message\": \"fail to get hist meta for this histogram, possibly a deleted one\",\n  \"table_id\": 1039,\n  \"hist_id\": 2,\n  \"is_index\": true\n}\n```\n\nThis happens for multiple table_id's and multiple hist_id's, but `is_index` is always true.\n\nIt looks like `mysql.stats_histograms` doesn't have an entry for the table_id/hist_id/is_index combination.\n\nThe message seems to repeat with the same properties.\n\nThis seems similar to:\n- #57804\n- #56740\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\n\n### 3. What did you see instead (Required)\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\nv8.5.2",
+  "date": "2025-10-09T19:23:03Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_comment",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table (id, name) VALUES (1, 'test1'), (2, 'test2'), (3, NULL);",
+    "CREATE INDEX idx_name ON test_table (name);",
+    "SELECT * FROM test_table WHERE name IS NULL;",
+    "SELECT COUNT(*) FROM test_table WHERE id IN (SELECT id FROM test_table WHERE name LIKE 'test%');"
+  ],
+  "key_bug_features": [
+    "Missing histogram entry for index in stats_histograms"
+  ]
+}

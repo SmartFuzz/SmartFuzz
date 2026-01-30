@@ -1,0 +1,14 @@
+{
+    "function": "bitstring_agg(arg, min, max)",
+    "operator": "+",
+    "sql_array": [
+        "CREATE TABLE test_data (id INTEGER PRIMARY KEY, value BIT, event_date DATE, days_interval INTEGER);",
+        "INSERT INTO test_data VALUES (1, B'0000000000000000000000000000000000000000000000000000000000000001', DATE '2023-01-01', 7), (2, B'0000000000000000000000000000000000000000000000000000000000000010', DATE '2023-01-02', 14), (3, B'0000000000000000000000000000000000000000000000000000000000000100', DATE '2023-01-03', NULL), (4, B'0000000000000000000000000000000000000000000000000000000000001000', DATE '2023-01-04', -1);",
+        "SELECT bitstring_agg(value, 1, 4) AS agg_bits, DATE '2023-01-01' + INTERVAL (days_interval) DAY FROM test_data GROUP BY event_date HAVING event_date IS NOT NULL;",
+        "SELECT value, event_date, DATE '2023-01-01' + INTERVAL (CASE WHEN days_interval IS NULL THEN 0 ELSE days_interval END) DAY AS new_date FROM test_data WHERE BIT_AND(value) IS NOT NULL;",
+        "SELECT id, DATE '2023-01-01' + INTERVAL (days_interval + 10) DAY AS updated_date, bitstring_agg(value, 1, 4) OVER (PARTITION BY event_date) FROM test_data WHERE days_interval BETWEEN 0 AND 30;",
+        "WITH cte AS (SELECT value, DATE '2023-01-01' + INTERVAL (days_interval) DAY AS modified_date FROM test_data WHERE days_interval IS NOT NULL) SELECT bitstring_agg(value, 1, 4) AS aggregated_bits FROM cte WHERE modified_date < DATE '2023-01-05';",
+        "CREATE TEMPORARY TABLE temp_data AS SELECT id, value, event_date FROM test_data WHERE value IS NOT NULL;",
+        "SELECT bitstring_agg(value, 1, 4) AS temp_bits, DATE '2023-01-10' + INTERVAL (days_interval - 5) DAY FROM temp_data GROUP BY event_date HAVING COUNT(value) > 1;"
+    ]
+}

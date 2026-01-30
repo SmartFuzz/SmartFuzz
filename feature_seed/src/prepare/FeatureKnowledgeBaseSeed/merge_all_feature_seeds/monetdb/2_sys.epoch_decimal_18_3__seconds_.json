@@ -1,0 +1,15 @@
+CREATE TABLE test_table (id integer PRIMARY KEY, ts timestamp, value decimal(18,3));
+INSERT INTO test_table VALUES (1, sys.epoch(1234567890.456), 123.456);
+INSERT INTO test_table VALUES (2, sys.epoch(4567890000.789), NULL);
+INSERT INTO test_table VALUES (3, NULL, 999.999);
+SELECT ts, value / (SELECT COUNT(*) FROM test_table) FROM test_table WHERE value IS NOT NULL;
+SELECT id, sys.epoch(value / (5.0 / 2) + 60) FROM test_table WHERE value IS NOT NULL;
+SELECT id, ts, value, value / NULL AS division_by_null FROM test_table HAVING division_by_null IS NULL;
+SELECT id, ts, value FROM test_table WHERE ts > sys.epoch(1234567890.456) AND ts < sys.epoch(4567890000.789);
+SELECT MAX(ts), MIN(value) / NULLIF(MIN(value), 0) FROM test_table GROUP BY id HAVING MIN(value) IS NOT NULL;
+SELECT id, sys.epoch((value * 1.999) / NULLIF(value, 0) + 60) AS adjusted_time FROM test_table ORDER BY adjusted_time DESC;
+CREATE TABLE temp_table (temp_id integer, temp_value decimal(18,3));
+INSERT INTO temp_table SELECT id, value FROM test_table WHERE value IS NOT NULL;
+UPDATE test_table SET value = sys.epoch(5 / 2) WHERE value IS NULL;
+SELECT tt.id, sys.epoch(tt.value / (SELECT COUNT(*) FROM test_table tt2 WHERE tt2.value IS NOT NULL) + 60) FROM temp_table tt;
+DROP TABLE temp_table;

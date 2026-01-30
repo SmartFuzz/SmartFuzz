@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/93385",
+  "title": "arrayJoin usage in doc: generating-test-data#simple-uniform-dataset",
+  "description": "### Company or project name\n_No response_\n### Describe the issue\nI'm reading the guides documents and find that\n`arrayJoin(...): randomly selects one of three event types`  is not suitable describe in [https://clickhouse.com/docs/guides/generating-test-data#simple-uniform-dataset](https://clickhouse.com/docs/guides/generating-test-data#simple-uniform-dataset)\nmaybe use example or change docs for arrayJoin?\n```\nINSERT INTO user_events\nSELECT\ngenerateUUIDv4() AS event_id,\nrand() % 10000 AS user_id,\narrayElement(['click','view','purchase'], toUInt32(rand()) % 3 + 1) AS event_type,\nnow() - INTERVAL rand() % 3600*24 SECOND AS event_time\nFROM numbers(1000000);\n```\n### Additional context\n_No response_",
+  "date": "2026-01-05T03:55:51Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE user_events (event_id UUID, user_id INTEGER, event_type VARCHAR, event_time TIMESTAMP);",
+    "INSERT INTO user_events SELECT generate_uuid() AS event_id, random() % 10000 AS user_id, CASE (random() % 3) WHEN 0 THEN 'click' WHEN 1 THEN 'view' ELSE 'purchase' END AS event_type, now() - INTERVAL (random() % 3600 * 24) SECOND AS event_time FROM range(100000);",
+    "CREATE TABLE user_summary (user_id INTEGER, event_count INTEGER);",
+    "INSERT INTO user_summary SELECT user_id, COUNT(*) AS event_count FROM user_events GROUP BY user_id;",
+    "SELECT user_id, event_count FROM user_summary WHERE event_count > 10 ORDER BY event_count DESC;"
+  ],
+  "key_bug_features": [
+    "arrayJoin with random event type selection"
+  ]
+}

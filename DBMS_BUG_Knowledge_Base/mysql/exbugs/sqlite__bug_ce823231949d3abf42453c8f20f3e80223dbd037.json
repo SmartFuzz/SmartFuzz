@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/ce82323194",
+  "title": "Duplicate CTE name gives incorrect result",
+  "description": "drh added on 2019-05-22 22:44:25:\nIf two views both use a Common Table Expression with the same name,\nand both views are used in a join, and the query flattening optimization\nruns, then the query planner can confuse the names of the two CTEs resulting\nin an incorrect results.  The following SQL demontrates:\nCREATE TABLE t1(id INTEGER NULL PRIMARY KEY, name Text);\nINSERT INTO t1 VALUES (1, 'john');\nINSERT INTO t1 VALUES (2, 'james');\nINSERT INTO t1 VALUES (3, 'jingle');\nINSERT INTO t1 VALUES (4, 'himer');\nINSERT INTO t1 VALUES (5, 'smith');\nCREATE VIEW v2 AS\n  WITH t4(Name) AS (VALUES ('A'), ('B'))\n  SELECT Name Name FROM t4;\nCREATE VIEW v3 AS\n  WITH t4(Att, Val, Act) AS (VALUES\n    ('C', 'D', 'E'),\n    ('F', 'G', 'H')\n  )\n  SELECT D.Id Id, P.Name Protocol, T.Att Att, T.Val Val, T.Act Act\n  FROM t1 D\n  CROSS JOIN v2 P\n  CROSS JOIN t4 T;\nSELECT * FROM v3;\nThe problem bisects to check-in [9e35c89dbe744312] (2017-05-02) which was\nfirst released with version 3.19.0 (2017-05-22).  This problem was reported\non the sqlite-users mailing list by Stephen Hunt.",
+  "date": "2019-05-22 22:44:256.22 years ago",
+  "vulnerable_version": "3.28.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(id INT PRIMARY KEY, name VARCHAR(255) NOT NULL, age INT CHECK(age >= 0));",
+    "INSERT INTO t1 VALUES (1, 'john', 30);",
+    "INSERT INTO t1 VALUES (2, 'james', NULL);",
+    "CREATE VIEW v2 AS SELECT 'A' AS Name UNION SELECT 'B';",
+    "CREATE VIEW v3 AS SELECT D.id, P.name, T.Att, T.Val, T.Act FROM t1 D CROSS JOIN v2 P CROSS JOIN (SELECT 'C' AS Att, 'D' AS Val, 'E' AS Act UNION SELECT 'F', 'G', 'H') T;"
+  ],
+  "key_bug_features": [
+    "Duplicate CTE names in joined views cause incorrect results"
+  ]
+}

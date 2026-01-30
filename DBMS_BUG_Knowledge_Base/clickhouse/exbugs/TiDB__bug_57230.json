@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/57230",
+  "title": "TiDB cannot clean up the stats meta after dropping the database",
+  "description": "## Bug Report\r\n\r\nTiDB cannot clean up the stats meta after dropping the database.\r\n\r\n### 1. Minimal reproduce step (Required)\r\n1. Start a TiDB cluser\r\n2. Use the `test` database\r\n3. Create a table and insert some data\r\n```sql\r\nCREATE TABLE test.my_table (\r\n    id INT PRIMARY KEY,\r\n    name VARCHAR(255),\r\n    value INT\r\n);\r\n\r\nINSERT INTO test.my_table (id, name, value)\r\nWITH RECURSIVE numbers AS (\r\n    SELECT 1 as n\r\n    UNION ALL\r\n    SELECT n + 1 FROM numbers WHERE n < 1000\r\n)\r\nSELECT\r\n    n as id,\r\n    CONCAT('Name_', n) as name,\r\n    FLOOR(RAND() * 1000) as value\r\nFROM numbers;\r\n```\r\n4. Wait for 10 minutes\r\n5. Drop the database.\r\n6. Wait for another 20 minutes, and check the stats meta.\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nThe stats meta is correctly deleted.\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nIt is still there.\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\nall the versions\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2024-11-08T03:48:56Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE test.another_table (id Int32 NOT NULL, description String, created_at DateTime DEFAULT now(), value Decimal(10, 2) CHECK(value >= 0));",
+    "INSERT INTO test.another_table (id, description, value) VALUES (1, 'Test Entry', 99.99);",
+    "CREATE TABLE test.join_table (id Int32, another_id Int32, PRIMARY KEY (id));",
+    "INSERT INTO test.join_table (id, another_id) VALUES (1, NULL);",
+    "SELECT a.id, a.description, j.id AS join_id FROM test.another_table a LEFT JOIN test.join_table j ON a.id = j.another_id WHERE a.value IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Dropping the database does not clean up stats meta"
+  ]
+}

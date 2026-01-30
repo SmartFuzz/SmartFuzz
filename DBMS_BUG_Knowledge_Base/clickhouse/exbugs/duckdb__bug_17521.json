@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/17521",
+  "title": "Incorrect `hashjoin_highcardinality` benchmark",
+  "description": "### What happens?\n\nHi Team,\n\nWhile running the benchmark suite, I came across this unexpected behavior:\n\n```\n➜  duckdb git:(main) ✗ build/release/benchmark/benchmark_runner benchmark/micro/join/hashjo\nin_highcardinality.benchmark \nname    run     timing\nbenchmark/micro/join/hashjoin_highcardinality.benchmark 1       INCORRECT\nINCORRECT RESULT: Catalog Error: Column with name v2 already exists!\n\n====================================================\n================  FAILURES SUMMARY  ================\n====================================================\n\n1: benchmark/micro/join/hashjoin_highcardinality.benchmark\nname    run     timing\nbenchmark/micro/join/hashjoin_highcardinality.benchmark 1               INCORRECT\nINCORRECT RESULT: Catalog Error: Column with name v2 already exists!\n\n```\n\nHowever, running the same on terminal gives the output:\n\nI ran this on duckdb terminal, and I see the correct output:\n```\nD create table t1 as select i as v1, i as v2 from range (0, 1000) t(i);\nD create table t2 as select i as v1, i as v2 from range (0, 10000000) t(i);\nD select t1.v2, t2.v2, count(*) from t1 inner join t2 on (t1.v1 = t2.v1) group by t1.v2, t2\n.v2 order by t1.v2 limit 5;\n┌───────┬───────┬──────────────┐\n│  v2   │  v2   │ count_star() │\n│ int64 │ int64 │    int64     │\n├───────┼───────┼──────────────┤\n│     0 │     0 │            1 │\n│     1 │     1 │            1 │\n│     2 │     2 │            1 │\n│     3 │     3 │            1 │\n│     4 │     4 │            1 │\n└───────┴───────┴──────────────┘\n\n```\n\n### To Reproduce\n\n1. Trigger a Benchmark build using this: `BUILD_BENCHMARK=1 BUILD_TPCH=1 make`\n\n2. Run this command: `build/release/benchmark/benchmark_runner benchmark/micro/join/hashjo\nin_highcardinality.benchmark`\n\n\n### OS:\n\nmacos\n\n### DuckDB Version:\n\nBuild from master\n\n### DuckDB Client:\n\nNone\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nRoshan Swain\n\n### Affiliation:\n\nIndividual Contributor\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a source build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "date": "2025-05-17 06:47:25",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (v1 Int32, v2 Int32, v3 Int32 DEFAULT 0);",
+    "CREATE TABLE t2 (v1 Int32, v2 Int32, v4 String, v5 Float64);",
+    "INSERT INTO t1 SELECT i, i, i % 2 FROM numbers(1000);",
+    "INSERT INTO t2 SELECT i, i, concat('value', toString(i)), i * 1.0 FROM numbers(10000000);",
+    "SELECT t1.v2, t2.v2, COUNT(*) FROM t1 INNER JOIN t2 ON (t1.v1 = t2.v1) GROUP BY t1.v2, t2.v2 ORDER BY t1.v2 LIMIT 5;"
+  ],
+  "key_bug_features": [
+    "Column with name v2 already exists error"
+  ]
+}

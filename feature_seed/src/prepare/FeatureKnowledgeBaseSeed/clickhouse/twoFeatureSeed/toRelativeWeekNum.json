@@ -1,0 +1,16 @@
+{
+    "function": "toRelativeWeekNum",
+    "operator": "[x1, ...]",
+    "sql_array": [
+        "CREATE TABLE test_dates (date_column Date, value_column UInt32);",
+        "INSERT INTO test_dates VALUES (toDate('2000-02-29'), 1), (toDate('2001-01-01'), 2), (toDate('2001-12-31'), 3);",
+        "SELECT toRelativeWeekNum(toDate(date_column)) AS week_num, arrayJoin([value_column, NULL, 5]) AS value_array FROM test_dates WHERE date_column >= toDate('2000-01-01');",
+        "SELECT date_column, toRelativeWeekNum(toDate(date_column)) AS week_num FROM test_dates JOIN (SELECT date_column FROM test_dates WHERE value_column IS NULL) AS sub ON test_dates.date_column = sub.date_column;",
+        "SELECT toRelativeWeekNum(toDate('2022-02-28')) AS week_num, arrayMap(x -> toRelativeWeekNum(toDate('2020-01-01') + interval x week), [0, 1, 2]) AS week_ranges FROM test_dates;",
+        "CREATE TABLE temp_dates AS SELECT date_column, toRelativeWeekNum(date_column) AS week_num FROM test_dates;",
+        "INSERT INTO temp_dates SELECT toDate('2024-01-01'), toRelativeWeekNum(toDate('2024-01-01'));",
+        "SELECT week_num FROM temp_dates WHERE week_num >= 100 AND week_num < 200 ORDER BY week_num DESC;",
+        "SELECT date_column, COUNT(*) AS count_events FROM test_dates GROUP BY toRelativeWeekNum(date_column) HAVING count_events > 1;",
+        "SELECT date_column, (SELECT COUNT(*) FROM test_dates WHERE date_column < t.date_column) AS prior_week_count FROM test_dates AS t WHERE toRelativeWeekNum(date_column) IS NOT NULL ORDER BY date_column;"
+    ]
+}

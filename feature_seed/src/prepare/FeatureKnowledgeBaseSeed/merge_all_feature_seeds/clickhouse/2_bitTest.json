@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id Int32, value Int32, created_at DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table (id, value, created_at) VALUES (1, 43, '2023-01-01 00:00:01'), (2, NULL, '2023-01-02 00:00:02'), (3, 21, '2023-01-03 00:00:03');
+SELECT id, value, bitTest(value, 1) AS bit_val FROM test_table WHERE bitTest(value, 0) > 0;
+SELECT AVG(bitTest(value, 2)) AS avg_bit_val FROM (SELECT value FROM test_table WHERE value IS NOT NULL GROUP BY value HAVING COUNT(*) > 1);
+SELECT id, value, bitTest(COALESCE(value, -1), 1) AS bit_val FROM test_table WHERE (bitTest(value, 1) > 0) OR (value IS NULL);
+CREATE TABLE join_table (key Int32, score Int32) ENGINE = MergeTree() ORDER BY key;
+INSERT INTO join_table (key, score) VALUES (1, 10), (2, NULL), (3, 30);
+SELECT t1.id, t1.value, bitTest(t1.value, 0) AS bit_val1, bitTest(t2.score, 1) AS bit_val2 FROM test_table t1 JOIN join_table t2 ON t1.id > t2.key WHERE bitTest(t1.value, 2) > bitTest(t2.score, 1);
+SELECT COUNT(*) FROM (SELECT t1.id FROM test_table t1 JOIN join_table t2 ON t1.value > bitTest(t2.score, 0) GROUP BY t1.id HAVING bitTest(COALESCE(t1.value, 0), 1) > 0);
+SELECT id, value, bitTest(value, 0) AS max_bit_val FROM test_table WHERE value IS NOT NULL ORDER BY NULLIF(bitTest(value, 3), 0) DESC LIMIT 5;

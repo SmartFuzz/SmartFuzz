@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id UInt32, value Float64, str_value String, nullable_value Nullable(Float64));
+INSERT INTO test_table VALUES (1, 0.5, 'example1', NULL), (2, 0.9, 'example2', 0.3), (3, 0.0, '', 1.1);
+SELECT id, atanh(value) AS inverse_tangent FROM test_table WHERE atanh(value) <> atanh(0);
+SELECT id, value, str_value FROM test_table WHERE atanh(value) <> atanh(NULLIF(str_value, '')) AND value IS NOT NULL;
+SELECT id, value FROM test_table WHERE atanh(0.5) <> (SELECT atanh(MAX(value)) FROM test_table WHERE value IS NOT NULL);
+CREATE TABLE another_table (ref_id UInt32, ref_value Float64);
+INSERT INTO another_table VALUES (1, 0.7), (2, 1.0), (3, -0.5);
+SELECT tt.id, atanh(tt.value) AS atanh_value, atanh(attempt_value.ref_value) FROM test_table AS tt JOIN another_table AS attempt_value ON tt.id <> attempt_value.ref_id WHERE atanh(tt.value) IS NOT NULL ORDER BY atanh_value;
+SELECT COUNT(*) FROM (SELECT id, value FROM test_table GROUP BY id HAVING atanh(value) <> atanh(0.5) AND notIsNull(nullable_value));
+SELECT atanh(NULL) AS null_result, (SELECT COUNT(*) FROM test_table WHERE atanh(value) <> atanh(-0.9)) AS count_non_matching;

@@ -1,0 +1,5 @@
+CREATE TABLE d3.t2 (id UInt32, value Nullable(String), timestamp DateTime DEFAULT now()) ENGINE = ReplicatedMergeTree('/clickhouse/tables/{uuid}/{shard}', '{replica}') ORDER BY id;
+CREATE TABLE d3.t2_dist (id UInt32, value Nullable(String), timestamp DateTime DEFAULT now()) ENGINE = Distributed('cluster', 'd3', 't2', rand());
+CREATE VIEW d3.v3 (id UInt32, value String) DEFINER = default SQL SECURITY DEFINER AS SELECT id, if(value IS NULL, 'default_value', value) FROM d3.t2 WHERE id >= 10;
+CREATE VIEW d3.v4 (id UInt32, value String) DEFINER = default SQL SECURITY DEFINER AS SELECT id, concat(value, '_suffix') FROM d3.t2_dist WHERE timestamp < now() - INTERVAL 1 DAY;
+INSERT INTO d3.t2 (id, value) VALUES (1, 'test_value'), (2, NULL), (3, 'another_value');

@@ -1,0 +1,21 @@
+{
+    "function": "txn_error",
+    "operator": "SPARQL Operator: datatype",
+    "sql_array": [
+        "CREATE TABLE test_data (id INT PRIMARY KEY, value VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO test_data (id, value) VALUES (1, 'test string'), (2, 'another example'), (3, NULL), (4, '2023-10-01 10:10:10'), (5, '12345');",
+        "SELECT id, value, datatype(value) AS value_type FROM test_data WHERE id IN (SELECT id FROM test_data WHERE value IS NOT NULL) AND value <> '';",
+        "SELECT id, value FROM test_data WHERE datatype(value) IN (SELECT datatype(value) FROM test_data WHERE value LIKE 'test%') ORDER BY created_at DESC;",
+        "SELECT id, value FROM test_data t1 JOIN (SELECT id, value FROM test_data WHERE id < 3) t2 ON t1.id = t2.id;",
+        "SELECT COUNT(*) FROM (SELECT id, value FROM test_data WHERE value IS NOT NULL GROUP BY value HAVING COUNT(value) > 1) AS duplicates;",
+        "SELECT id, value FROM test_data WHERE id = (SELECT MAX(id) FROM test_data WHERE value IS NOT NULL);",
+        "SELECT id, value FROM test_data WHERE value IS NULL OR (txn_error(6) AND value = 'another example');",
+        "SELECT id, COUNT(value) AS value_count FROM test_data GROUP BY value HAVING COUNT(value) > 1 AND NULLIF(value, '') IS NOT NULL;",
+        "CREATE TEMPORARY TABLE temp_data AS SELECT id, value FROM test_data WHERE id > 2;",
+        "INSERT INTO temp_data (id, value) VALUES (NULL, 'new value'), (6, NULL), (7, 'test string');",
+        "SELECT id, COUNT(*) FROM temp_data GROUP BY id HAVING COUNT(*) < 1 UNION ALL SELECT id, txn_error(6) FROM temp_data WHERE id IS NULL;",
+        "SELECT value, datatype(value) FROM temp_data WHERE id IN (SELECT id FROM test_data WHERE id < 3 AND value IS NOT NULL AND txn_error(6) < 50) ORDER BY value;",
+        "UPDATE temp_data SET value = 'updated value' WHERE id = (SELECT id FROM test_data WHERE RAND() < 0.5);",
+        "SELECT MIN(id), MAX(value) AS max_value FROM temp_data WHERE value IS NOT NULL GROUP BY value HAVING COUNT(*) >= 1;"
+    ]
+}

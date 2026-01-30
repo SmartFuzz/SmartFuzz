@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/1055",
+  "title": "Delete data and Language-tagged strings",
+  "description": "We're having problems with DELETE DATA queries and language-tagged strings.\nIt seems batching statements doesn't work as expected.\nSample data set:\nINSERT DATA\n{\n  GRAPH <http://example.com/graphs/1>\n  {\n    <http://example.com/foo/bar/test/1> <http://purl.org/dc/terms/title> \"hello 1\"@nl.\n  }\n  GRAPH <http://example.com/graphs/1>\n  {\n    <http://example.com/foo/bar/test/1> <http://purl.org/dc/terms/title> \"hello 2\"@nl.\n  }\n  GRAPH <http://example.com/graphs/1>\n  {\n    <http://example.com/foo/bar/test/1> <http://purl.org/dc/terms/title> \"hello 3\"@nl.\n  }\n}\n\nExecuting delete\nDELETE DATA\n{\n  GRAPH <http://example.com/graphs/1>\n  {\n    <http://example.com/foo/bar/test/1> <http://purl.org/dc/terms/title> \"hello 1\"@nl.\n  }\n  GRAPH <http://example.com/graphs/1>\n  {\n    <http://example.com/foo/bar/test/1> <http://purl.org/dc/terms/title> \"hello 2\"@nl.\n  }\n  GRAPH <http://example.com/graphs/1>\n  {\n    <http://example.com/foo/bar/test/1> <http://purl.org/dc/terms/title> \"hello 3\"@nl.\n  }\n}\n\nChecking the result:\nSELECT DISTINCT * {\n   GRAPH ?g {\n       <http://example.com/foo/bar/test/1> ?p ?o.\n   }\n}\n\nNo triples removed\nHowever splitting the batched DELETE DATA as:\nDELETE DATA\n{\n  GRAPH <http://example.com/graphs/1>\n  {\n    <http://example.com/foo/bar/test/1> <http://purl.org/dc/terms/title> \"hello 1\"@nl.\n  }\n}\n\nRemoves the expected triple.\nVirtuoso version\n# virtuoso-t -?\nVirtuoso Open Source Edition (Column Store) (multi threaded)\nVersion 7.2.6.3233-pthreads as of Nov 24 2021 (000000)\nCompiled for Linux (x86_64-pc-linux-gnu)\nCopyright (C) 1998-2021 OpenLink Software\n\nCan anyone reproduce this issue?\nthanks!\nNote: with untyped strings everything behaves as expected",
+  "date": "2022-07-04 11:58:39",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE graph_2 (id String, predicate String, object String) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO graph_2 VALUES ('http://example.com/foo/bar/test/2', 'http://purl.org/dc/terms/title', 'test 1');",
+    "INSERT INTO graph_2 VALUES ('http://example.com/foo/bar/test/2', 'http://purl.org/dc/terms/title', 'test 2');",
+    "DELETE FROM graph_2 WHERE id = 'http://example.com/foo/bar/test/2' AND predicate = 'http://purl.org/dc/terms/title' AND object = 'test 1';",
+    "SELECT DISTINCT * FROM graph_2 WHERE id = 'http://example.com/foo/bar/test/2';"
+  ],
+  "key_bug_features": [
+    "Batched DELETE DATA queries fail with language-tagged strings"
+  ]
+}

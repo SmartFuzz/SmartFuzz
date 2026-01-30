@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=104720",
+  "title": "Ref scan with impossible where condition returns wrong result",
+  "description": "Ref scan with a impossible where condition returns wrong result, it seems to do not check the condition.\nHow to repeat:\nCREATE TABLE `t` (\r\n  `c1` double unsigned,\r\n  KEY `idx` (`c1`)\r\n);\r\ninsert into t select 0;\r\nSELECT c1, LEAST(\"-1\", 1)=c1 from t where LEAST(\"-1\", 1)=c1;\r\n\r\nmysql> explain format=tree SELECT c1, LEAST(\"-1\", 1)=c1 from t where LEAST(\"-1\", 1)=c1;\r\n+------------------------------------------------------------------------+\r\n| EXPLAIN                                                                |\r\n+------------------------------------------------------------------------+\r\n| -> Index lookup on t using idx (c1=least('-1',1))  (cost=0.35 rows=1)\r\n |\r\n+------------------------------------------------------------------------+\r\n1 row in set (0.00 sec)\r\n\r\nmysql> SELECT c1, LEAST(\"-1\", 1)=c1 from t where LEAST(\"-1\", 1)=c1;\r\n+------+-------------------+\r\n| c1   | LEAST(\"-1\", 1)=c1 |\r\n+------+-------------------+\r\n|    0 |                 0 |\r\n+------+-------------------+\r\n1 row in set (0.01 sec)\r\n\r\nthe where condition is 0, but this query returns one row.",
+  "date": "2021-08-25 13:08:00",
+  "vulnerable_version": "8.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (c1 INT, c2 VARCHAR(10), PRIMARY KEY (c1));",
+    "INSERT INTO t1 VALUES (1, 'test'), (2, 'example'), (3, 'sample');",
+    "CREATE TABLE t2 (c3 DOUBLE, c4 DATE, PRIMARY KEY (c3));",
+    "INSERT INTO t2 VALUES (0.0, DATE '2023-01-01'), (1.0, DATE '2023-01-02');",
+    "SELECT t1.c1, LEAST(t2.c3, 1) = t1.c1 FROM t1 JOIN t2 ON t1.c1 = LEAST(t2.c3, 1) WHERE t1.c1 > 3;"
+  ],
+  "key_bug_features": [
+    "Ref scan ignores impossible where condition"
+  ]
+}

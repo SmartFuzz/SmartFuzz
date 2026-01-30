@@ -1,0 +1,21 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=106286",
+  "title": "Null-safe compare works incorrectly with TIMESTAMP in a trigger",
+  "description": "https://dev.mysql.com/doc/refman/8.0/en/type-conversion.html\nclaims that \"For NULL <=> NULL, the result is true.\"\r\n\r\nBut this is not true in a trigger while comparing NULLS in new row and existing one for a column of TIMESTAMP datatype on the version 8.0.x.\r\n\r\nAt the same time, the comparison works correctly on version 5.x.\nHow to repeat:\n-- the table and initial data\r\nCREATE TABLE test (id INT, \r\n                   ts TIMESTAMP);\r\nINSERT INTO test (id, ts) VALUES (2, NULL);\r\n\r\n-- the trigger which should provide (id, ts) uniqueness\r\n-- including NULL values\r\nCREATE TRIGGER tr_bi_check_uniqueness_with_nulls\r\nBEFORE INSERT\r\nON test\r\nFOR EACH ROW\r\nBEGIN\r\n    IF EXISTS ( SELECT NULL\r\n                FROM test\r\n                WHERE test.id <=> NEW.id\r\n                  AND test.ts <=> NEW.ts ) THEN\r\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Duplicated values not allowed.';\r\n    END IF;\r\nEND\r\n\r\n-- an attempt to insert duplicated value\r\nINSERT INTO test (id, ts) VALUES (2, NULL);\r\n-- the row is errorneously inserted\r\n\r\n======\r\n\r\nThe insertion is performed. I.e. the condition 'AND test.ts <=> NEW.ts' does not detect that NULL in new row is equal to NULL value in existing row.\r\n\r\nThe online fiddle which reproduces the issue:\nhttps://dbfiddle.uk/?rdbms=mysql_8.0&rdbms2=mysql_5.7&fiddle=301f2a03906b2dbf171db554485c2...\nSuggested fix:\nPerform any additional action with NEW value. For example, CAST it to TIMESTAMP explicitly in the query, or assign to local / user-defined variable and use this variable instead of NEW column in the conditional expression.",
+  "date": "2022-01-26 06:16:00",
+  "vulnerable_version": "8.0.27",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test (id INTEGER PRIMARY KEY, ts TEXT);",
+    "INSERT INTO test (id, ts) VALUES (1, '2023-01-01 00:00:00');",
+    "CREATE TRIGGER tr_bi_check_uniqueness_with_nulls BEFORE INSERT ON test FOR EACH ROW BEGIN SELECT CASE WHEN (SELECT 1 FROM test WHERE test.id = NEW.id AND test.ts = NEW.ts) IS NOT NULL THEN RAISE(ABORT, 'Duplicated values not allowed.');",
+    "END;",
+    "END;",
+    "INSERT INTO test (id, ts) VALUES (1, NULL);"
+  ],
+  "key_bug_features": [
+    "NULL comparison in TIMESTAMP trigger fails in version 8.0.x"
+  ]
+}

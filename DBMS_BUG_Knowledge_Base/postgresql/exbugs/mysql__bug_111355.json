@@ -1,0 +1,19 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=111355",
+  "title": "Derived condition pushdown return wrong results",
+  "description": "Derived condition pushdown return wrong results with view.\nHow to repeat:\nCREATE TABLE `t1` (\r\n  `c_id` int(255) unsigned zerofill NOT NULL\r\n) ENGINE=InnoDB;\r\nINSERT INTO `t1` VALUES (298);\r\n\r\nCREATE TABLE `t2` (\r\n  `c_id` int(255) unsigned zerofill NOT NULL,\r\n  `c_first` varchar(255) DEFAULT NULL,\r\n  `c_discount` decimal(62,4) DEFAULT NULL,\r\n  `c_ytd_payment` decimal(62,2) DEFAULT NULL,\r\n  PRIMARY KEY (`c_id`)\r\n) ENGINE=InnoDB;\r\n\r\nCREATE TABLE `t3` (\r\n  `C_BIT` bit(1) DEFAULT NULL\r\n) ENGINE=InnoDB;\r\n\r\nINSERT INTO `t3` VALUES (NULL);\r\n\r\ncreate view tx_cmplx_003 as select subq_1.c1 as c0, subq_1.c0 as c1, subq_1.c0 as c2, subq_1.c0 as c3, subq_1.c0 as c4, subq_1.c0 as c5, subq_1.c1 as c6, subq_1.c1 as c7, subq_1.c0 as c8, subq_1.c1 as c9, subq_1.c0 as c10, subq_1.c0 as c11 from (select pi() as c0, subq_0.c1 as c1 from t3 as ref_0 left join (select ref_1.c_ytd_payment as c0, pi() as c1, ref_1.c_discount as c2 from t2 as ref_1 where ref_1.c_first is NULL ) as subq_0 on (subq_0.c0 is not NULL) where true ) as subq_1 where true group by 1,2,3,4,5,6,7,8,9,10,11,12 order by 1,2,3,4,5,6,7,8,9,10,11,12;\r\n\r\nmysql> set optimizer_switch=\"derived_condition_pushdown=on\";\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nmysql> select 1 as c0 from t1 as ref_4 inner join tx_cmplx_003 as ref_5 where (ref_5.c6 is not NULL);\r\n+----+\r\n| c0 |\r\n+----+\r\n|  1 |\r\n+----+\r\n1 row in set, 12 warnings (0.00 sec)\r\n\r\nmysql> set optimizer_switch=\"derived_condition_pushdown=off\";\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nmysql> select 1 as c0 from t1 as ref_4 inner join tx_cmplx_003 as ref_5 where (ref_5.c6 is not NULL);\r\nEmpty set, 12 warnings (0.00 sec)",
+  "date": "2023-06-12 02:44:00",
+  "vulnerable_version": "8.0.29+",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t4 (c_id integer NOT NULL, c_name varchar(100) NOT NULL, c_active boolean DEFAULT NULL);",
+    "INSERT INTO t4 VALUES (1, 'Test', NULL);",
+    "CREATE VIEW tx_cmplx_004 AS SELECT t4.c_name, t2.c_discount FROM t4 LEFT JOIN t2 ON t4.c_id = t2.c_id WHERE t4.c_active IS NULL;",
+    "SELECT * FROM tx_cmplx_004 WHERE c_discount IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Derived condition pushdown with view returns incorrect results"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/18933",
+  "title": "`atttypid` in `pg_attribute` table contains ID that does not exist on `pg_type` table",
+  "vulnerable_database": "DuckDB",
+  "date": "2025-09-09 07:50:06",
+  "vulnerable_version": "",
+  "description": "### What happens?\n\nCreating a column that is `text` or `varchar` always has 25 in its `atttypid`, but that's not the one on `pg_type` records.\n\n<img width=\"1311\" height=\"900\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/8dc02d45-dc3a-4c02-bfde-719737dc6b5a\" />\n\n### To Reproduce\n\n1. Create a table\n\n```sql\ncreate table testtable (\n  textColumn text,\n  varcharColumn varchar\n);\n```\n\n2. See `atttypid` in the table\n\n```sql\nselect c.relname, a.attname, a.atttypid\nfrom pg_class c\njoin pg_namespace n on n.oid = c.relnamespace\njoin pg_attribute a on a.attrelid = c.oid;\n```\n\n3. Look up `oid`s in `pg_class`\n\n```sql\nselect oid, typname from pg_type where oid < 30\n```\n\nNo record found that has 25 in its `oid`.\n\n### OS:\n\nMacOS\n\n### DuckDB Version:\n\n1.3.2\n\n### DuckDB Client:\n\nDuckDB UI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nSeiya Izumi\n\n### Affiliation:\n\nTailor\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a stable release\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "poc": [
+    "create table testtable (\n  textColumn text,\n  varcharColumn varchar\n);",
+    "select c.relname, a.attname, a.atttypid\nfrom pg_class c\njoin pg_namespace n on n.oid = c.relnamespace\njoin pg_attribute a on a.attrelid = c.oid;"
+  ],
+  "key_bug_features": [
+    "Creating text or varchar columns with incorrect atttypid"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE testtable (id INTEGER PRIMARY KEY, textColumn TEXT, varcharColumn VARCHAR(255), nullableColumn VARCHAR);",
+    "INSERT INTO testtable (id, textColumn, varcharColumn, nullableColumn) VALUES (1, 'Sample text', 'Sample varchar', NULL);",
+    "SELECT c.relname, a.attname, a.atttypid FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace JOIN pg_attribute a ON a.attrelid = c.oid WHERE a.attname = 'textColumn';",
+    "CREATE TABLE another_table (ref_id INTEGER REFERENCES testtable(id), description TEXT NOT NULL);",
+    "INSERT INTO another_table (ref_id, description) VALUES (1, 'Reference to testtable');"
+  ]
+}

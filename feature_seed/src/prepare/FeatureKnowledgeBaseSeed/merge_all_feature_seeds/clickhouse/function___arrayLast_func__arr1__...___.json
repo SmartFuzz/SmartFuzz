@@ -1,0 +1,18 @@
+CREATE TABLE test_array (id UInt32, values Array(Int32));
+INSERT INTO test_array VALUES (1, [2, 0, 4]), (2, [0, 0, 0]), (3, [1, 2, 3, 0, 4]);
+SELECT arrayLast(x -> x > 0, values) FROM test_array;
+SELECT id, arrayLast(x -> x % 2 = 0, values) AS last_even FROM test_array;
+SELECT arrayLast(x -> x < 3, values) FROM test_array WHERE id = 3;
+SELECT id, arrayLast(x -> x = 0, values) AS last_zero FROM test_array WHERE id IN (1, 2);
+CREATE TABLE test_array_nested (id UInt32, arrs Array(Array(Int32)));
+INSERT INTO test_array_nested VALUES (1, [[2, 3], [0, 4], [1, 0]]), (2, [[0, 0], [0, 0]]);
+SELECT id, arrayLast(arr -> arrayLast(x -> x > 0, arr), arrs) AS last_non_zero FROM test_array_nested;
+SELECT id, arrayLast(arr -> arrayLast(x -> x < 1, arr), arrs) AS last_below_one FROM test_array_nested WHERE id = 1;
+CREATE TABLE conditions (id UInt32, values Array(Int32));
+INSERT INTO conditions VALUES (1, [5, 6, 7]), (2, [0, 2, 0]);
+SELECT id, arrayLast(x -> x != 0, values) AS last_non_zero FROM conditions WHERE id = 2;
+SELECT id, arrayLast(x -> x = 7, values) AS last_equal_seven FROM conditions;
+CREATE TABLE complex_join (id UInt32, values Array(Int32), group_id UInt32);
+INSERT INTO complex_join VALUES (1, [1, 2, 3], 1), (2, [0, 2, 6], 1), (3, [5, 0, 3], 2);
+SELECT c.id, arrayLast(x -> x > 2, c.values) AS last_greater_than_two FROM complex_join AS c JOIN conditions AS cond ON c.group_id = cond.id;
+SELECT c.id, arrayLast(x -> x <> 0, c.values) AS last_non_zero FROM complex_join AS c WHERE EXISTS (SELECT 1 FROM conditions WHERE id = c.group_id);

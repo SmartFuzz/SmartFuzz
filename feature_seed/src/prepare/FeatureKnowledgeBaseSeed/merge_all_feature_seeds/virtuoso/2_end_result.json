@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, data XML, numeric_field DECIMAL(10,5), str_field VARCHAR(255));
+INSERT INTO test_table (id, data, numeric_field, str_field) VALUES (1, '<root><child>A</child><child>B</child></root>', 12345.67890, 'Sample');
+INSERT INTO test_table (id, data, numeric_field, str_field) VALUES (2, '<root><child>C</child><child>D</child></root>', NULL, 'Another Sample');
+SELECT id, xpath_split(data, '/root/child') AS xml_children, end_result() FROM test_table WHERE numeric_field > 10000;
+SELECT id, result_names('id', 'data', 'xml_children') FROM (SELECT id, xpath_split(data, '/root/child') AS xml_children FROM test_table) AS sub_query HAVING COUNT(xml_children) > 1;
+SELECT str_field, end_result() FROM (SELECT str_field, numeric_field FROM test_table WHERE numeric_field IS NULL OR numeric_field < 0) AS inner_query GROUP BY str_field HAVING COUNT(str_field) > 1;
+SELECT end_result() FROM (SELECT id, data, xpath_split(data, '/root/child') AS xml_children FROM test_table) AS derived WHERE xml_children IS NOT NULL;
+SELECT id, xpath_split(data, '/root/child') AS xml_children, end_result() FROM test_table WHERE id IN (SELECT id FROM test_table WHERE str_field IS NOT NULL AND LENGTH(str_field) > 5);
+CREATE TEMPORARY TABLE temp_table AS SELECT end_result() FROM test_table WHERE numeric_field > 50000;
+INSERT INTO test_table (id, data, numeric_field, str_field) SELECT 3, '<root><child>E</child></root>', 0.00000, '';
+CREATE TABLE test_join AS SELECT tt1.id, tt1.data, tt2.numeric_field FROM test_table tt1 JOIN test_table tt2 ON tt1.id <> tt2.id WHERE xpath_split(tt1.data, '/root/child') IS NOT NULL GROUP BY tt1.id, tt2.numeric_field HAVING COUNT(*) > 0;

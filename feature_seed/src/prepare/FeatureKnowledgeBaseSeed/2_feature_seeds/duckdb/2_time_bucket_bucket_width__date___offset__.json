@@ -1,0 +1,14 @@
+CREATE TABLE test_dates (id INT, event_date DATE, event_type VARCHAR(50));
+INSERT INTO test_dates VALUES (1, DATE '1992-04-20', 'start'), (2, DATE '1992-06-10', 'middle'), (3, DATE '1993-01-15', 'end');
+SELECT id, time_bucket(INTERVAL '2 months', event_date, INTERVAL '1 month') AS bucketed_date, (SELECT COUNT(*) FROM test_dates WHERE event_date < t.event_date) AS count_before FROM test_dates t GROUP BY id, bucketed_date ORDER BY bucketed_date;
+CREATE TABLE bit_test (binary_data BITSTRING, event_id INT);
+INSERT INTO bit_test VALUES ('101'::BITSTRING, 1), ('1101'::BITSTRING, 2), (NULL, 3);
+SELECT b.event_id, ~b.binary_data AS inverted_binary, time_bucket(INTERVAL '1 month', t.event_date) AS bucketed_date FROM bit_test b JOIN test_dates t ON t.id = b.event_id WHERE t.event_type IS NOT NULL;
+SELECT bucketed_date, COUNT(*) FROM (SELECT time_bucket(INTERVAL '3 months', event_date) AS bucketed_date FROM test_dates WHERE event_date IS NOT NULL) subquery GROUP BY bucketed_date HAVING COUNT(*) > 1;
+SELECT event_date, (SELECT COUNT(*) FROM bit_test WHERE binary_data IS NOT NULL) AS bit_count, (SELECT time_bucket(INTERVAL '2 months', event_date)) AS date_bucket FROM test_dates WHERE event_date >= DATE '1992-01-01' AND event_date <= DATE '1993-12-31' ORDER BY event_date;
+CREATE TABLE mixed_types (num_col INT, str_col VARCHAR(50), date_col DATE);
+INSERT INTO mixed_types VALUES (1, '2022-01-01', DATE '2022-01-01'), (NULL, '', DATE '2022-07-01'), (2, '1999-12-31', NULL);
+SELECT m.num_col, m.str_col, time_bucket(INTERVAL '1 year', m.date_col, INTERVAL '6 months') AS yearly_bucket, ~('1'::BITSTRING || '0'::BITSTRING) AS combined_bin FROM mixed_types m WHERE m.str_col IS NOT NULL;
+CREATE TABLE join_test (reference_id INT, join_date DATE);
+INSERT INTO join_test VALUES (1, DATE '1992-04-20'), (2, DATE '1992-06-15'), (3, DATE '1993-03-01');
+SELECT j.reference_id, time_bucket(INTERVAL '1 month', j.join_date) AS join_bucket, (SELECT COUNT(*) FROM join_test WHERE join_date < j.join_date) AS count_earlier FROM join_test j JOIN test_dates t ON j.reference_id = t.id ORDER BY join_bucket DESC;

@@ -1,0 +1,14 @@
+CREATE TABLE spark_bar_data (`value` Int64, `event_date` Date) ENGINE = MergeTree ORDER BY event_date;
+INSERT INTO spark_bar_data VALUES (1,'2020-01-01'), (3,'2020-01-02'), (4,'2020-01-02'), (-3,'2020-01-02'), (5,'2020-01-03'), (2,'2020-01-04'), (3,'2020-01-05'), (7,'2020-01-06'), (6,'2020-01-07'), (8,'2020-01-08'), (2,'2020-01-11');
+SELECT sparkbar(5)(event_date, cnt) FROM (SELECT sum(value) as cnt, event_date FROM spark_bar_data GROUP BY event_date);
+SELECT sparkbar(10, toDate('2020-01-01'), toDate('2020-01-10'))(event_date, cnt) FROM (SELECT sum(value) as cnt, event_date FROM spark_bar_data GROUP BY event_date);
+CREATE TABLE spark_bar_data_v2 (`value` Int64, `event_date` Date) ENGINE = MergeTree ORDER BY event_date;
+INSERT INTO spark_bar_data_v2 VALUES (2,'2020-01-01'), (1,'2020-01-02'), (3,'2020-01-02'), (5,'2020-01-02'), (-1,'2020-01-03'), (4,'2020-01-04'), (6,'2020-01-05'), (8,'2020-01-06'), (1,'2020-01-06'), (2,'2020-01-11');
+SELECT sparkbar(7)(event_date, cnt) FROM (SELECT sum(value) as cnt, event_date FROM spark_bar_data_v2 GROUP BY event_date);
+SELECT sparkbar(8, toDate('2020-01-01'), toDate('2020-01-06'))(event_date, cnt) FROM (SELECT sum(value) as cnt, event_date FROM spark_bar_data_v2 GROUP BY event_date);
+WITH (SELECT sum(value) AS cnt FROM spark_bar_data) AS total_value SELECT sparkbar(6)(currentEvent.date, cnt) FROM (SELECT event_date as currentEvent.date, cnt FROM (SELECT event_date, sum(value) AS cnt FROM spark_bar_data GROUP BY event_date) tmp) WHERE cnt > 0;
+SELECT sparkbar(12)(event_date, cnt) FROM (SELECT event_date, sum(value) as cnt FROM (SELECT value, event_date FROM spark_bar_data UNION ALL SELECT value, event_date FROM spark_bar_data_v2) GROUP BY event_date);
+SELECT sparkbar(4, toDate('2020-01-02'), toDate('2020-01-05'))(event_date, cnt) FROM (SELECT event_date, avg(value) as cnt FROM spark_bar_data GROUP BY event_date);
+CREATE TABLE spark_bar_extra_data (`value` Int64, `event_date` Date) ENGINE = MergeTree ORDER BY event_date;
+INSERT INTO spark_bar_extra_data VALUES (0,'2020-01-01'), (1,'2020-01-05'), (3,'2020-01-02');
+SELECT sparkbar(5)(event_date, cnt) FROM (SELECT event_date, sum(value) AS cnt FROM (SELECT * FROM spark_bar_data UNION ALL SELECT * FROM spark_bar_extra_data) GROUP BY event_date);

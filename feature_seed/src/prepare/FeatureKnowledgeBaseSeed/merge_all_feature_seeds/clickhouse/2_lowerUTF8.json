@@ -1,0 +1,18 @@
+CREATE TABLE test_strings (id UInt32, value String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_strings VALUES (1, 'MÜNCHEN'), (2, 'Istanbul'), (3, NULL), (4, '123'), (5, 'MixedCase123');
+SELECT lowerUTF8(value) AS LowerValue, id + 1 AS IncrementedID FROM test_strings WHERE value IS NOT NULL HAVING length(LowerValue) > 5;
+SELECT id, lowerUTF8(CONCAT(value, ' Test')) AS LoweredWithConcat, (id + 1) * 2 AS DoubleIncrement FROM test_strings WHERE value IS NOT NULL;
+WITH (SELECT lowerUTF8(value) FROM test_strings WHERE id = 1) AS subquery_lowered SELECT id, (subquery_lowered || ' Check') AS LoweredCheck FROM test_strings;
+CREATE TABLE test_aggregates (id UInt32, value String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_aggregates VALUES (1, 'upper_case'), (2, 'LOWER_CASE'), (3, 'MiXeD_CasE');
+SELECT lowerUTF8(value) AS LoweredValue, SUM(id) + COUNT(value) AS AggregateResult FROM test_aggregates GROUP BY LoweredValue HAVING AggregateResult > 2;
+WITH (SELECT lowerUTF8(value) FROM test_strings WHERE id = 2) AS subquery_lower SELECT id + (SELECT COUNT(*) FROM test_strings) AS AdjustedID FROM test_strings WHERE value IS NOT NULL;
+CREATE TABLE test_numbers (num UInt32, str_rep String) ENGINE = MergeTree() ORDER BY num;
+INSERT INTO test_numbers VALUES (1, 'One'), (2, 'Two'), (3, 'NULL'), (4, '');
+SELECT lowerUTF8(str_rep + ' Number') AS LoweredStr, num + CAST(num AS UInt32) AS DoubleValue FROM test_numbers;
+SELECT id, lowerUTF8(IF(value IS NULL, 'NULL_VALUE', value)) AS HandledValue FROM test_strings WHERE value != 'MÜNCHEN' ORDER BY HandledValue;
+SELECT id + 1 AS IncrementedID, lowerUTF8(value) AS LoweredValue FROM test_strings WHERE NULLIF(value, '') IS NOT NULL;
+CREATE TABLE test_complex (id UInt32, str_val String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_complex VALUES (1, 'Hello'), (2, 'WORLD'), (3, NULL), (4, 'Test123');
+SELECT lowerUTF8(CONCAT(str_val, '!', ' ')) AS CompleteString, id + (SELECT COUNT(*) FROM test_complex) AS ComplexID FROM test_complex;
+SELECT id, lowerUTF8(str_val || ' next') AS NextString FROM test_complex WHERE str_val IS NOT NULL HAVING id + 5 > 5;

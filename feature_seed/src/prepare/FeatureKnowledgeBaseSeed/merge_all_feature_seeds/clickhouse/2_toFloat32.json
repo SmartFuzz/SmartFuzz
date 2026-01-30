@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id UInt32, value String, float_value Float32, nullable_value Nullable(Float32));
+INSERT INTO test_table (id, value, float_value, nullable_value) VALUES (1, '42.7', 42.0, NULL), (2, 'NaN', toFloat32('3.14'), 4.2), (3, '0', toFloat32('0'), toFloat32(NULL));
+SELECT id, value, toFloat32(value) <> float_value AS is_different FROM test_table WHERE toFloat32(value) IS NOT NULL;
+SELECT id, SUM(float_value) AS total, toFloat32(NULL) <> total AS is_total_na FROM (SELECT float_value FROM test_table) GROUP BY id HAVING is_total_na = 0;
+SELECT id, COUNT(*) AS count_unequal FROM (SELECT id, toFloat32('42.7') <> toFloat32(value) AS is_unequal FROM test_table) GROUP BY id HAVING count_unequal > 0;
+SELECT id, AVG(float_value) AS average FROM test_table GROUP BY id HAVING average > toFloat32('NaN');
+SELECT A.id, A.value, toFloat32(A.value) AS converted_value, B.float_value FROM (SELECT id, value FROM test_table) AS A JOIN (SELECT id, float_value FROM test_table WHERE nullable_value IS NULL) AS B ON A.id = B.id;
+SELECT id, CASE WHEN toFloat32(value) <> 42.0 THEN 'Not Equal' ELSE 'Equal' END AS comparison_result FROM test_table;
+SELECT id, toFloat32(value) AS converted_value, nullable_value <> toFloat32(value) AS null_check FROM test_table WHERE nullable_value IS NOT NULL;
+SELECT toFloat32(CAST(NULL AS String)) <> toFloat32('') AS is_null_empty_check;

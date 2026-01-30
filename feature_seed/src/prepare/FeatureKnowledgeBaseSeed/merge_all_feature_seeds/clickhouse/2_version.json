@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id UInt32, value String, created_at DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, 'test1', now()), (2, 'test2', now()), (3, NULL, now()), (4, 'test4', now());
+SELECT id, value FROM test_table WHERE id != ALL (SELECT id FROM test_table WHERE value IS NOT NULL);
+SELECT version() AS clickhouse_version, (SELECT count() FROM test_table WHERE created_at > now() - INTERVAL 1 DAY) AS daily_count WHERE clickhouse_version NOT LIKE '%0.1%';
+CREATE TABLE test_table_2 (id UInt32, primary_key String, value Nullable(Int32)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table_2 VALUES (1, 'key1', 100), (2, 'key2', NULL), (3, 'key3', 200);
+SELECT id, primary_key FROM test_table_2 WHERE value != ALL (SELECT value FROM test_table_2 WHERE value IS NOT NULL);
+SELECT version(), (SELECT avg(value) FROM test_table_2 WHERE value IS NOT NULL) AS average_value HAVING average_value > 50;
+SELECT id FROM test_table WHERE value IS NULL AND id != ALL (SELECT id FROM test_table_2 WHERE primary_key LIKE '%key%');
+SELECT count(*) AS cnt FROM (SELECT id, version() AS ver FROM test_table GROUP BY id, ver HAVING count(value) > 1) AS derived HAVING cnt != ALL (SELECT cnt FROM (SELECT count() AS cnt FROM test_table GROUP BY value));

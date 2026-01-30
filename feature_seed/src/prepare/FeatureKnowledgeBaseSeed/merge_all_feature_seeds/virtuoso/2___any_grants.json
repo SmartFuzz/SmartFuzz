@@ -1,0 +1,10 @@
+CREATE TABLE demo.Products (id INT PRIMARY KEY, name VARCHAR(255), price DECIMAL(10, 2), xml_data XML);
+INSERT INTO demo.Products (id, name, price, xml_data) VALUES (1, 'Product A', 10.00, '<root id="1">Data A</root>'), (2, 'Product B', 20.00, '<root id="2">Data B</root>'), (3, 'Product C', 30.00, NULL);
+SELECT id, name FROM demo.Products WHERE __any_grants('Demo.demo.Products') = 1 AND xpath_string('/root/@id', xml_data) IS NOT NULL;
+SELECT p.id, p.name, (SELECT COUNT(*) FROM demo.Orders o WHERE o.product_id = p.id) AS order_count FROM demo.Products p WHERE __any_grants('Demo.demo.Products') = 1;
+SELECT SUM(price) AS total_price FROM demo.Products WHERE price IS NOT NULL GROUP BY name HAVING total_price > (SELECT AVG(price) FROM demo.Products) ORDER BY total_price DESC;
+SELECT p.name, COUNT(o.id) AS orders_count FROM demo.Products p LEFT JOIN demo.Orders o ON o.product_id = p.id GROUP BY p.name HAVING __any_grants('Demo.demo.Orders') = 1 AND orders_count > 0;
+CREATE TABLE demo.Orders (id INT PRIMARY KEY, product_id INT, order_date TIMESTAMP, FOREIGN KEY (product_id) REFERENCES demo.Products(id));
+INSERT INTO demo.Orders (id, product_id, order_date) VALUES (1, 1, '2023-01-01 10:00:00'), (2, 2, '2023-01-02 10:00:00'), (3, 3, NULL);
+SELECT p.name, o.order_date FROM demo.Products p JOIN demo.Orders o ON o.product_id = p.id WHERE __any_grants('Demo.demo.Orders') = 1 AND o.order_date IS NOT NULL;
+SELECT p.name, COALESCE(MAX(o.order_date), '2023-01-01') AS last_order_date FROM demo.Products p LEFT JOIN demo.Orders o ON o.product_id = p.id GROUP BY p.name HAVING last_order_date >= '2023-01-01' AND __any_grants('Demo.demo.Orders') = 1;

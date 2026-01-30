@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/19211",
+  "title": "INSERT OR IGNORE does not gracefully drop records violating UNIQUE constraints in version 1.4.0",
+  "description": "### What happens?\n\nThe following script inserts two tuples containing duplicate values into a table with a `UNIQUE` constraint on the column the duplicates are inserted into.  This statement will execute successfully in versions up to `1.3.2`, but now fails as of `1.4.0` with the error\n> Constraint Error: PRIMARY KEY or UNIQUE constraint violation: duplicate key \"1\"\n\n<img width=\"1420\" height=\"478\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/d4118be6-47f3-4557-973b-5fe7b641b8e0\" />\n\nThe previous behavior, as well as the behavior observed in other db engines such as postgres, would be that the first tuple `(1, 1)` would be inserted, and the second tuple which now violates the `UNIQUE` constraint `(2, 1)` would be \"ignored\".\n\nThe same violation is raised if it is the `PRIMARY KEY` duplicated instead of the `UNIQUE` key (i.e. `VALUES (1, 1), (1, 2)`)\n\nI didn't see the change of behavior noted the release notes.\n\n### To Reproduce\n\n```\nCREATE TABLE IF NOT EXISTS tbl (id INTEGER PRIMARY KEY, uniq INTEGER, UNIQUE(uniq));\nINSERT OR IGNORE INTO tbl VALUES (1, 1), (2, 1);\n-- Also fails:\n--INSERT INTO tbl VALUES (1, 1), (2, 1) ON CONFLICT DO NOTHING;\n```\n\n### OS:\n\nMac Os ARM\n\n### DuckDB Version:\n\n1.4.0\n\n### DuckDB Client:\n\ncli\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nStephen Williams\n\n### Affiliation:\n\nAppOmni\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a stable release\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "date": "2025-09-30 18:30:59",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE IF NOT EXISTS tbl1 (id SERIAL PRIMARY KEY, uniq INTEGER UNIQUE);",
+    "INSERT INTO tbl1 (id, uniq) VALUES (1, 1) ON CONFLICT (uniq) DO NOTHING;",
+    "CREATE TABLE IF NOT EXISTS tbl2 (id SERIAL, value TEXT UNIQUE);",
+    "INSERT INTO tbl2 (id, value) VALUES (1, 'duplicate'), (2, 'duplicate') ON CONFLICT (value) DO NOTHING;",
+    "CREATE TABLE IF NOT EXISTS tbl3 (id SERIAL, num FLOAT UNIQUE);"
+  ],
+  "key_bug_features": [
+    "INSERT OR IGNORE fails on UNIQUE constraint violations"
+  ]
+}

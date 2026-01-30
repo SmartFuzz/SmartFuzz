@@ -1,0 +1,12 @@
+CREATE TABLE geo_shapes (id SERIAL PRIMARY KEY, shape GEOMETRY, description VARCHAR(255));
+INSERT INTO geo_shapes (shape, description) VALUES (ST_GeomFromText('POINT(1 3)', 4326), 'Point Shape 1');
+INSERT INTO geo_shapes (shape, description) VALUES (ST_GeomFromText('BOX(0 0, 2 3)', 4326), 'Bounding Box');
+INSERT INTO geo_shapes (shape, description) VALUES (ST_GeomFromText('POLYGON((1 3, 2 4, 1 5, 0 4, 1 3))', 4326), 'Polygon Shape');
+INSERT INTO geo_shapes (shape, description) VALUES (ST_GeomFromText('MULTIPOLYGON(((1 3, 2 4, 1 5, 0 4, 1 3)),((3 3, 4 4, 3 5, 2 4, 3 3)))', 4326), 'MultiPolygon Shape');
+SELECT id, bif:crc64(ST_YMin(shape)) as crc_ymin FROM geo_shapes WHERE ST_YMin(shape) IS NOT NULL GROUP BY id HAVING crc_ymin IS NOT NULL;
+SELECT id, bif:crc64(ST_YMin(ST_GeomFromText('LINESTRING(10 21, 12 23, 10 25)', 4326))) as crc_ymin FROM geo_shapes WHERE id IN (SELECT id FROM geo_shapes WHERE description LIKE 'Point%') ORDER BY crc_ymin;
+SELECT id, bif:crc64(ST_YMin(shape)) as crc_ymin FROM geo_shapes WHERE ST_YMin(shape) < 5 GROUP BY description HAVING COUNT(*) > 0;
+SELECT id, bif:crc64(ST_YMin(ST_GeomFromText(CONCAT('POLYGON((', shape, '))'), 4326))) as crc_ymin FROM geo_shapes WHERE shape IS NOT NULL;
+SELECT id, ST_YMin(shape) as ymin FROM geo_shapes WHERE ST_YMin(shape) IS NOT NULL ORDER BY ymin, bif:crc64(ymin) DESC;
+CREATE TABLE tmp_geo_shapes AS SELECT *, ST_YMin(shape) as ymin FROM geo_shapes WHERE shape IS NOT NULL;
+SELECT * FROM tmp_geo_shapes WHERE bif:crc64(ymin) IS NOT NULL ORDER BY ymin ASC;

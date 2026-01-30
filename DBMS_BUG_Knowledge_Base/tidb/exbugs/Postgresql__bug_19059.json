@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/19059-c751eed385314309%40postgresql.org",
+  "title": "BUG #19059: PostgreSQL fails to evaluate the cheaper expression first, leading to 45X performance degradation",
+  "description": "The following bug has been logged on the website:\nBug reference:      19059\nLogged by:          Jinhui Lai\nEmail address:      jinhui(dot)lai(at)qq(dot)com\nPostgreSQL version: 17.6\nOperating system:   ubuntu 22.04\nDescription:\nDear PG developers,\nThanks for reading my report. You can reproduce it as follows, please.\nPG has applied short-circuit evaluation for the following queries, which\ncontain an OR expression in their WHERE clause. When \"t0.c0 > 0\" is true, PG\nwill skip to evaluate \"EXISTS (SELECT 1 FROM t1 WHERE t1.c1 = t0.c0)\",\nsince true and any boolean expression is true.\nHowever, the optimizer fails to reorder the expressions in the WHERE clause\nfor the second query. You can observe this from the second row in the plan:\n\"Filter: (EXISTS(SubPlan 1) OR (c0 > 0))\"\nA more optimal strategy would be for PG to use its cost model to reorder\nexpressions, prioritizing the evaluation of less expensive operations first.\nCREATE TABLE t0(c0 INT8);\nINSERT INTO t1 VALUES(1);\nCREATE TABLE t1(c1 INT8);\nINSERT INTO t1 SELECT * FROM generate_series(1, 1000000);\nSELECT t0.c0 FROM t0 WHERE  t0.c0 > 0 OR EXISTS (SELECT 1 FROM t1 WHERE\nt1.c1 = t0.c0);\nTime: 139.416 ms\nSELECT t0.c0 FROM t0 WHERE EXISTS (SELECT 1 FROM t1 WHERE t1.c1 = t0.c0) OR\nt0.c0 > 0;\nTime: 6221.886 ms (00:06.222)\nexplain SELECT t0.c0 FROM t0 WHERE EXISTS (SELECT 1 FROM t1 WHERE t1.c1 =\nt0.c0) OR t0.c0 > 0;\nQUERY PLAN\n-------------------------------------------------------------------------------\nSeq Scan on t0  (cost=0.00..893306001.25 rows=1700 width=4)\nFilter: (EXISTS(SubPlan 1) OR (c0 > 0))\nSubPlan 1\n->  Seq Scan on t1  (cost=0.00..350316.06 rows=1 width=0)\nFilter: (c1 = t0.c0)\nJIT:\nFunctions: 7\nOptions: Inlining true, Optimization true, Expressions true, Deforming\ntrue\nThanks you once again. I look forward to your reply.\nBest regard,\nJinhui",
+  "date": "2025-09-20 16:08:11",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE t0(c0 INT NOT NULL CHECK (c0 >= 0));",
+    "CREATE TABLE t1(c1 INT NOT NULL);",
+    "INSERT INTO t1 SELECT * FROM (SELECT seq AS c1 FROM (SELECT 1 + ROW_NUMBER() OVER () AS seq FROM information_schema.columns LIMIT 1000000) AS temp) AS sub;",
+    "INSERT INTO t0(c0) VALUES (NULL), (1), (2), (3), (4);",
+    "SELECT t0.c0 FROM t0 WHERE t0.c0 > 0 OR EXISTS (SELECT 1 FROM t1 WHERE t1.c1 = t0.c0);"
+  ],
+  "key_bug_features": [
+    "Optimizer fails to reorder WHERE clause expressions"
+  ]
+}

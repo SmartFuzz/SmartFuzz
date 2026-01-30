@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/1315",
+  "title": "`FILTER EXISTS` breaks `LIMIT`",
+  "description": "When running the following query, I get 10000 results (the result limit) while I expected 1.\nprefix premis: <http://www.loc.gov/premis/rdf/v3/>\nselect distinct * where {\n  ?id a premis:File .\n  filter exists {\n    ?id a premis:File .\n  }\n} limit 1\n\nUnfortunately, I can't share the dataset, which makes reproducing the issue difficult, but the limit should work in any case. I'm not sure, but it only seems to happen when the result size is larger or equal to the configured limit of 10000. We're using version 7.2.6-7. Furthermore, this also breaks the use of OFFSET, which no longer has any effect.\nI tried a similar query\nselect distinct * where {\n?p a schema:Person.\nfilter exists {\n?p a schema:Person.\n}\n} limit 1\n\non https://dbpedia.org/sparql, but that works fine.",
+  "date": "2024-08-23 07:50:28",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE test_files (id INTEGER PRIMARY KEY, name TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_files (id, name) VALUES (1, 'File A'), (2, 'File B'), (3, 'File C'), (4, 'File D'), (5, 'File E');",
+    "CREATE TABLE test_people (id INTEGER PRIMARY KEY, name TEXT, age INTEGER CHECK (age >= 0));",
+    "INSERT INTO test_people (id, name, age) VALUES (1, 'Alice', 30), (2, 'Bob', 25), (3, 'Charlie', NULL);",
+    "SELECT DISTINCT * FROM test_files WHERE id IN (SELECT test_people.id FROM test_people) LIMIT 1;"
+  ],
+  "key_bug_features": [
+    "`FILTER EXISTS` with `LIMIT` causes incorrect result count"
+  ]
+}

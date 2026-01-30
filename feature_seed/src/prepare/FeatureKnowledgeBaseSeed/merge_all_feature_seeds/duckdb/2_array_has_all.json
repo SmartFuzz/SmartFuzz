@@ -1,0 +1,12 @@
+CREATE TABLE test_data (id INTEGER, nums LIST INTEGER, more_nums LIST INTEGER);
+INSERT INTO test_data VALUES (1, [1, 2, 3], [2, 3]), (2, [3, 4, 5], [1, 4]), (3, [5, 6, 7], [5, 6, 8]), (4, [1, 2, NULL], []);
+SELECT id FROM test_data WHERE array_has_all(more_nums, nums);
+SELECT id FROM test_data WHERE [2, NULL] <@ nums OR (array_has_all(nums, more_nums) AND id > 2);
+SELECT id, COUNT(*) OVER (PARTITION BY nums) AS count FROM test_data WHERE array_has_all(nums, [1, 2]) HAVING count > 1;
+SELECT id FROM (SELECT id, array_has_all(more_nums, nums) AS all_exist FROM test_data) AS sub WHERE all_exist = TRUE;
+CREATE TABLE additional_data (ref_id INTEGER, extra_nums LIST INTEGER);
+INSERT INTO additional_data VALUES (1, [2, 3]), (2, [4, 5]), (3, [1]), (NULL, [7]);
+SELECT t1.id FROM test_data t1 JOIN additional_data t2 ON array_has_all(t2.extra_nums, t1.nums) WHERE t1.id IS NOT NULL;
+CREATE TEMP TABLE temp_data AS SELECT id, NULLIF(nums, NULL) AS nums_filtered FROM test_data;
+SELECT id FROM temp_data WHERE NOT (nums_filtered <@ more_nums) AND nums_filtered IS NOT NULL;
+SELECT id FROM additional_data WHERE (NULL <@ extra_nums) OR array_has_all(extra_nums, ['a', 'b']);

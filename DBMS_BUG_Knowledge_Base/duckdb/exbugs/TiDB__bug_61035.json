@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/61035",
+  "title": "The behavior of alias usage in SELECT statements is inconsistent with MySQL",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n```\ndrop table chqin ;\ncreate table chqin(id int);\n\ninsert into chqin values(1);\n\nselect id,(select id from chqin) as id_new, sum(id)-(select id_new) as id2 from chqin group by id;\n\n```\n\n\n### 2. What did you expect to see? (Required)\nresults from mysql:\n```\nMySQL [chqin]> select id,(select id from chqin) as id_new, sum(id)-(select id_new) as id2 from chqin group by id;\n+------+--------+------+\n| id   | id_new | id2  |\n+------+--------+------+\n|    1 |      1 |    0 |\n+------+--------+------+\n1 row in set (0.00 sec)\n```\n\n### 3. What did you see instead (Required)\nresults from tidb:\n```\nMySQL [test1]> select id,(select id from chqin) as id_new, sum(id)-(select id_new) as id2 from chqin group by id;\nERROR 1054 (42S22): Unknown column 'id_new' in 'field list'\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "date": "2025-05-08T12:58:35Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS test_table;",
+    "CREATE TABLE test_table(id INT, value VARCHAR(50), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table VALUES (1, 'test1', NOW()), (2, 'test2', NOW());",
+    "SELECT id, (SELECT MAX(value) FROM test_table) AS max_value, COUNT(value) - (SELECT COUNT(value) FROM test_table WHERE value IS NULL) AS count_diff FROM test_table GROUP BY id;",
+    "SELECT id, (SELECT id FROM test_table WHERE id = 1) AS id_ref, SUM(id) - (SELECT id_ref FROM (SELECT id AS id_ref FROM test_table WHERE id = 1) AS subquery) AS id_calculation FROM test_table GROUP BY id;"
+  ],
+  "key_bug_features": [
+    "Inconsistent alias resolution in SELECT statements"
+  ]
+}

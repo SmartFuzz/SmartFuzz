@@ -1,0 +1,15 @@
+CREATE TABLE dict_example (id UInt32, value String) ENGINE = Memory;
+INSERT INTO dict_example VALUES (1, 'value1'), (2, 'value2'), (3, 'value3');
+CREATE DICTIONARY dict_name (id UInt32 DEFAULT 0, value String DEFAULT '') PRIMARY KEY id SOURCE(CLICKHOUSE(table='dict_example')) LAYOUT(FLAT());
+SELECT dictHas('dict_name', 1) AS key_exists_1;
+SELECT dictHas('dict_name', 4) AS key_exists_4;
+SELECT dictHas('dict_name', id) FROM (SELECT 1 AS id UNION ALL SELECT 2 UNION ALL SELECT 4) AS temp;
+SELECT d.id, dictHas('dict_name', d.id) AS has_key FROM (SELECT number AS id FROM numbers(5)) AS d;
+WITH (SELECT dictHas('dict_name', 1) AS exists_1, dictHas('dict_name', 2) AS exists_2) AS checks SELECT exists_1, exists_2;
+CREATE TABLE t1 (id UInt32, id_dict UInt32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO t1 VALUES (1, 1), (2, 2), (3, 4);
+SELECT t.id, dictHas('dict_name', t.id_dict) AS dict_exists FROM t1 AS t WHERE dictExists('dict_name') = 1;
+SELECT id_dict, dictHas('dict_name', id_dict) AS key_check FROM (SELECT distinct id_dict FROM t1) AS temp;
+SELECT (SELECT dictHas('dict_name', id) FROM (SELECT id FROM t1) AS ids) AS key_status;
+SELECT t1.id, dictHas('dict_name', t1.id_dict) FROM t1 LEFT JOIN dict_example ON t1.id_dict = dict_example.id;
+SELECT id, (dictHas('dict_name', id) + dictHas('dict_name', id + 1)) AS result FROM (SELECT number AS id FROM numbers(3)) AS temp;

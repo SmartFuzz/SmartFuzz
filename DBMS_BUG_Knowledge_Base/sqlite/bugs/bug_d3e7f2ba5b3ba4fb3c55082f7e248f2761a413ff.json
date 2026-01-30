@@ -1,0 +1,31 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/d3e7f2ba5b",
+  "title": "Nested boolean formula with IN operator computes an incorrect result",
+  "vulnerable_version": "3.28",
+  "date": "2019-05-19 18:23:346.23 years ago",
+  "path": "/home/crawl_bugs/sqlite/ticket_output/ticket_info_d3e7f2ba5b.json",
+  "poc": [
+    "CREATE TABLE t0(c0);",
+    "INSERT INTO t0(c0) VALUES ('val');",
+    "SELECT * FROM t0 WHERE (\n (\n \t\t(0 IS NOT FALSE) \n\tOR \n\t\tNOT (0 IS FALSE OR (t0.c0 IN (-1))) \n\n ) \n IS 0\n);",
+    "SELECT (0 IS NOT FALSE);",
+    "CREATE TABLE t1(x, y);",
+    "INSERT INTO t1 VALUES(1, 1);",
+    "INSERT INTO t1 VALUES(0, 0);",
+    "SELECT * FROM t1 WHERE y IS TRUE ORDER BY x;",
+    "CREATE INDEX i1 ON t1(x) WHERE y IS NOT TRUE;",
+    "SELECT * FROM t1 WHERE y IS TRUE ORDER BY x;"
+  ],
+  "vulnerable_database": "sqlite",
+  "description": "mrigger added on 2019-05-19 18:23:34:\nConsider the example below:\nCREATE TABLE t0(c0);\nINSERT INTO t0(c0) VALUES ('val');\nSELECT * FROM t0 WHERE (\n (\n \t\t(0 IS NOT FALSE) -- 0\n\tOR -- 0 \n\t\tNOT (0 IS FALSE OR (t0.c0 IN (-1))) -- 0\n\n ) -- should be 0 (but is 1)\n IS 0\n); -- fetches no row\nI expect the query to fetch 'val', but it is not fetched. This is due to an incorrect result being computed by the expression. This can be verified by replacing subexpressions by their results. For example, consider the left side of the OR expression:\nSELECT (0 IS NOT FALSE); -- 0\nWhen replacing this subexpression above by 0, which should be equivalent, the query fetches the row.\ndan added on 2019-05-20 10:23:36:\nSame problem demonstrated here:\nCREATE TABLE t1(x, y);\nINSERT INTO t1 VALUES(1, 1);\nINSERT INTO t1 VALUES(0, 0);\n.print -- before index\nSELECT * FROM t1 WHERE y IS TRUE ORDER BY x;\n\n.print -- after index\nCREATE INDEX i1 ON t1(x) WHERE y IS NOT TRUE;\nSELECT * FROM t1 WHERE y IS TRUE ORDER BY x;\nFirst query above works, second query returns the wrong row.\nThe problem is that the compiler sometimes thinks the expressions \"x IS TRUE/FALSE\" is the same as \"x IS NOT TRUE/FALSE\".\nmrigger added on 2019-05-20 11:07:05:\nThanks for the explanation and the fix! I've started assigning a severity level of \"cosmetic\" to new bug reports, so feel free to adjust it.\ndrh added on 2019-05-20 12:35:18:\nThis problem goes back to the introduction of the IS TRUE and IS FALSE\noperators in SQLite version 3.23.0 (2018-04-02).",
+  "key_bug_features": [
+    "Nested boolean formula with IN operator produces incorrect results"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t2(a INTEGER, b TEXT, c REAL, d BOOLEAN);",
+    "INSERT INTO t2(a, b, c, d) VALUES(1, 'test', 3.14, TRUE);",
+    "INSERT INTO t2(a, b, c, d) VALUES(0, 'example', 2.71, FALSE);",
+    "SELECT * FROM t2 WHERE (a IN (1, 0) OR (b IS NOT NULL AND c > 2));",
+    "SELECT * FROM t2 WHERE (d IS TRUE AND (a IS NOT NULL OR b IN ('test', 'example')));"
+  ]
+}

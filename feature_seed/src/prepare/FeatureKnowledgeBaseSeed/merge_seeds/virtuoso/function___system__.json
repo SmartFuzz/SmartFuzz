@@ -1,0 +1,16 @@
+CREATE TABLE test_commands (id INT PRIMARY KEY, command VARCHAR(255));
+INSERT INTO test_commands (id, command) VALUES (1, 'echo Test command 1');
+INSERT INTO test_commands (id, command) VALUES (2, 'ls -la');
+SELECT * FROM test_commands WHERE id = (SELECT MAX(id) FROM test_commands);
+SELECT command FROM test_commands WHERE command LIKE 'echo%' OR id IN (SELECT id FROM test_commands WHERE command IS NOT NULL);
+SELECT command FROM test_commands WHERE id = 1 AND command = (SELECT command FROM test_commands WHERE id = 2);
+CREATE TABLE shell_output (output TEXT);
+INSERT INTO shell_output (output) SELECT system(command) FROM test_commands WHERE id = 1;
+INSERT INTO shell_output (output) SELECT system(command) FROM test_commands WHERE id IN (SELECT id FROM test_commands WHERE command LIKE 'ls%');
+SELECT output FROM shell_output WHERE output IS NOT NULL AND output LIKE '%Test%';
+CREATE VIEW command_results AS SELECT id, system(command) AS result FROM test_commands;
+SELECT * FROM command_results WHERE result IS NOT NULL ORDER BY id DESC LIMIT 5;
+CREATE TABLE test_results AS SELECT id, command, system(command) AS result FROM test_commands;
+SELECT DISTINCT result FROM test_results WHERE id IN (SELECT id FROM test_commands WHERE command LIKE 'echo%');
+INSERT INTO shell_output (output) SELECT system(command) FROM test_commands WHERE id BETWEEN 1 AND 2;
+SELECT COUNT(*) FROM test_results WHERE result IS NULL;

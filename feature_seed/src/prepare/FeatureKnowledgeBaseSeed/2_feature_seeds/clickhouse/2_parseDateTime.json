@@ -1,0 +1,10 @@
+CREATE TABLE test_dates (str_date String, num_value Int32) ENGINE = Memory;
+INSERT INTO test_dates VALUES ('2021-01-04+23:00:00', 5), ('2016-07-30+15:30:00', 10), ('2023-12-31+12:59:59', 15), ('invalid_date', 20);
+SELECT EXISTS(SELECT * FROM test_dates WHERE parseDateTime(str_date, '%Y-%m-%d+%H:%i:%s') IS NOT NULL) AS valid_dates_exist;
+SELECT count() FROM test_dates WHERE EXISTS(SELECT number FROM numbers(10) WHERE number > CAST(parseDateTime(str_date, '%Y-%m-%d+%H:%i:%s') AS Int32) AND num_value > 0);
+SELECT parseDateTime(str_date, '%Y-%m-%d+%H:%i:%s'), num_value FROM test_dates WHERE EXISTS(SELECT 1 FROM test_dates WHERE num_value < 10) GROUP BY str_date, num_value HAVING num_value > 5;
+CREATE TABLE temp_numbers AS SELECT number FROM numbers(10) WHERE number < 5;
+SELECT EXISTS(SELECT * FROM temp_numbers WHERE num_value = 10) AS exists_check, parseDateTime('2021-12-31+23:59:59', '%Y-%m-%d+%H:%i:%s') + toIntervalMinute(num_value) AS new_time FROM test_dates;
+SELECT parseDateTime(str_date, '%Y-%m-%d+%H:%i:%s'), COUNT(*) OVER(PARTITION BY num_value) FROM test_dates WHERE EXISTS(SELECT number FROM temp_numbers HAVING COUNT(*) > 2) GROUP BY str_date, num_value;
+SELECT EXISTS(SELECT parseDateTime('invalid_string', '%Y-%m-%d+%H:%i:%s')), parseDateTime(str_date, '%Y-%m-%d+%H:%i:%s') FROM test_dates WHERE num_value IS NULL;
+DROP TABLE IF EXISTS temp_numbers;

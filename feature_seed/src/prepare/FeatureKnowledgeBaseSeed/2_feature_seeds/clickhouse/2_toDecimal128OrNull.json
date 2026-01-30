@@ -1,0 +1,18 @@
+CREATE TABLE test_edge_cases (id UInt32, value String, decimal_value Nullable(Decimal(38, 10))) ENGINE = Memory;
+INSERT INTO test_edge_cases VALUES (1, '123.456'), (2, '99999999999999999999'), (3, '0.0000000000000001234');
+SELECT id, toDecimal128OrNull(value, 10) AS decimal_conv, decimal_value, (toDecimal128OrNull(value, 10) IS NOT NULL) OR (decimal_value IS NULL) AS value_check FROM test_edge_cases;
+SELECT id, value, toDecimal128OrNull(toString(value) , 10) AS decimal1, decimal_value, (toDecimal128OrNull(decimal_value, 10) IS NOT NULL OR toDecimal128OrNull(value, 10) IS NULL) AS comparison FROM test_edge_cases WHERE (toDecimal128OrNull(value, 10) IS NOT NULL AND decimal_value IS NULL) OR (toDecimal128OrNull(value, 10) IS NULL AND decimal_value IS NOT NULL);
+CREATE TABLE test_joins (id UInt32, join_value String) ENGINE = Memory;
+INSERT INTO test_joins VALUES (1, '42.1'), (2, 'NaN'), (3, 'Inf');
+SELECT a.id, a.value, a.decimal_value, (toDecimal128OrNull(b.join_value, 10) OR a.decimal_value) AS combined_value FROM test_edge_cases AS a JOIN test_joins AS b ON a.id = b.id WHERE (toDecimal128OrNull(a.value, 10) IS NOT NULL) OR (b.join_value = 'NaN') HAVING combined_value IS NOT NULL;
+SELECT id, COUNT(*) AS count, MAX(toDecimal128OrNull(value, 10)) AS max_decimal FROM test_edge_cases GROUP BY id HAVING count = 1 OR max_decimal > 100;
+WITH (SELECT SUM(toDecimal128OrNull(value, 5)) AS total FROM test_edge_cases) AS total_sum SELECT id, value, (total_sum > 0 OR toDecimal128OrNull(value, 5) IS NOT NULL) AS sum_check FROM test_edge_cases;
+SELECT id, toDecimal128OrNull('99999999999999999999999999999999999999999999.9999999999', 10) AS overflow_test;
+CREATE TABLE test_nulls (id UInt32, nullable_value Nullable(String)) ENGINE = Memory;
+INSERT INTO test_nulls VALUES (1, NULL), (2, '100'), (3, '300.4567');
+SELECT id, toDecimal128OrNull(nullable_value, 3) AS decimal_null_check, (nullable_value IS NULL) OR (toDecimal128OrNull(nullable_value, 3) IS NOT NULL) AS null_condition FROM test_nulls;
+SELECT id, (toDecimal128OrNull(value, 2) + toDecimal128OrNull('0.1', 2)) OR (toDecimal128OrNull(value, 2 IS NULL)) AS complex_condition FROM test_edge_cases;
+SELECT id, toDecimal128OrNull('1234567890123456789012345678901234567890', 10) AS large_number_test;
+CREATE TABLE temp_table (temp_value String) ENGINE = Memory;
+INSERT INTO temp_table VALUES ('100.23'), ('abc'), ('0'), (NULL);
+SELECT toDecimal128OrNull(temp_value, 2) AS temp_decimal FROM temp_table WHERE (temp_value IS NOT NULL) OR (temp_value = '0') ORDER BY temp_decimal DESC;

@@ -1,0 +1,16 @@
+{
+    "function": "CRC64",
+    "operator": "x -> expr",
+    "sql_array": [
+        "CREATE TABLE test_table (id Int32, data String, checksum UInt64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table (id, data) VALUES (1, ''), (2, 'Hello'), (3, 'World'), (4, NULL);",
+        "SELECT id, data, CRC64(data) AS crc FROM test_table WHERE CRC64(data) = 0 AND data IS NOT NULL;",
+        "SELECT id, data, (x -> CRC64(data || x))('ExtraData') AS computed_crc FROM test_table;",
+        "SELECT id, data, (x -> CRC64(x))(data) AS crc_check FROM test_table WHERE id IN (SELECT id FROM test_table WHERE data IS NOT NULL);",
+        "SELECT id, (x -> CRC64(data || x))('Alpha') AS crc_value FROM test_table WHERE id < 3 HAVING crc_value = 0;",
+        "CREATE TEMPORARY TABLE temp_table AS SELECT id, 'static_data' as static_col FROM test_table WHERE data IS NOT NULL;",
+        "INSERT INTO temp_table (id, static_col) VALUES (5, 'NewData');",
+        "SELECT a.id, b.static_col, (x -> CRC64(a.data || b.static_col))(static_col) AS combined_crc FROM test_table a JOIN temp_table b ON a.id = b.id;",
+        "SELECT id, (x -> CRC64(NULLIF(data, ''))) AS adjusted_crc FROM test_table GROUP BY id HAVING adjusted_crc IS NOT NULL;"
+    ]
+}

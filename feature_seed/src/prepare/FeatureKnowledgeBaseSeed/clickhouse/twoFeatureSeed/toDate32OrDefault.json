@@ -1,0 +1,16 @@
+{
+    "function": "toDate32OrDefault",
+    "operator": "[x1, ...]",
+    "sql_array": [
+        "CREATE TABLE test_dates (id UInt32, date_col DateTime, array_col Array(Int32)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_dates (id, date_col, array_col) VALUES (1, '2000-01-01 00:00:00', [1, 2, 3]), (2, '1900-01-01 00:00:00', [4, 5, 6]), (3, '2025-01-01 00:00:00', [7, 8, 9]);",
+        "SELECT id, toDate32OrDefault(date_col, toDate32('2020-01-01')) AS converted_date, arrayResize(array_col, 5) AS extended_array FROM test_dates WHERE toDate32OrDefault(date_col, toDate32('2020-01-01')) <= toDate32('2025-01-01') GROUP BY id HAVING converted_date < toDate32('2023-01-01');",
+        "SELECT id, arrayFilter(x -> x < 5, array_col) AS filtered_array FROM test_dates WHERE toDate32OrDefault(date_col, toDate32('2020-01-01')) IS NOT NULL AND arrayExists(x -> x = NULL, array_col);",
+        "SELECT id, arrayMap(x -> toDate32OrDefault(toString(x), toDate32('2020-01-01')), array_col) AS date_mapped_array FROM test_dates WHERE EXISTS (SELECT 1 FROM test_dates AS inner WHERE inner.id = test_dates.id AND inner.date_col IS NOT NULL);",
+        "SELECT id, toDate32OrDefault((arrayJoin(array_col) + 10)::String, toDate32('2020-01-01')) AS coerced_date FROM test_dates GROUP BY id ORDER BY coerced_date DESC;",
+        "INSERT INTO test_dates (id, date_col, array_col) VALUES (4, '', [NULL, 0, NULL]);",
+        "SELECT id, toDate32OrDefault(date_col, toDate32('2020-01-01')) AS date_check FROM test_dates WHERE date_col IS NOT NULL OR arrayExists(x -> x IS NULL, array_col);",
+        "CREATE TABLE complex_dates AS SELECT id, toDate32OrDefault(date_col, toDate32('2010-01-01')) AS date_default, arrayReduce('sum', array_col) AS total_value FROM test_dates GROUP BY id;",
+        "DROP TABLE IF EXISTS test_dates;"
+    ]
+}

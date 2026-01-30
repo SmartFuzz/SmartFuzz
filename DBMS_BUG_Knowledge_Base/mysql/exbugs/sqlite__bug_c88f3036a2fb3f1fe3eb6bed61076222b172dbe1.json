@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/c88f3036a2",
+  "title": "ALTER TABLE DROP COLUMN may corrupt data",
+  "description": "dan added on 2021-04-18 05:42:04:\nSee forum post from Vladimir Panteleev here: \nhttps://sqlite.org/forum/forumpost/96896f825d\n\nReproduce with:\n    CREATE TABLE t1(a INTEGER PRIMARY KEY, b, c)\n    WITH s(i) AS (\n      SELECT 1 UNION ALL SELECT i+1 FROM s WHERE i<50000\n    )\n    INSERT INTO t1(a, b, c) SELECT i, 123, 456 FROM s;\n    ALTER TABLE t1 DROP COLUMN b;\n\n    SELECT count(*), c FROM t1 GROUP BY c;\n\nThe result of the final query should be (50000, 456) - the value of \"c\" for all rows is 456 - but instead shows that for some rows \"c\" has the value 123.",
+  "date": "2021-04-18 05:42:044.31 years ago",
+  "vulnerable_version": "3.35.*",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t2(a INT PRIMARY KEY, b VARCHAR(255), c FLOAT NOT NULL DEFAULT 0.0);",
+    "INSERT INTO t2(a, b, c) VALUES (1, 'test', 1.1), (2, NULL, 2.2), (3, 'example', NULL);",
+    "CREATE TABLE t3(x INT, y INT, FOREIGN KEY(x) REFERENCES t2(a));",
+    "INSERT INTO t3(x, y) SELECT a, c FROM t2 WHERE b IS NOT NULL;",
+    "ALTER TABLE t2 DROP COLUMN b;"
+  ],
+  "key_bug_features": [
+    "ALTER TABLE DROP COLUMN b affects data integrity"
+  ]
+}

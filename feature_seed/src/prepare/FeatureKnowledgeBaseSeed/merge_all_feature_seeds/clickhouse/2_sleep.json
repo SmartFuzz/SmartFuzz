@@ -1,0 +1,9 @@
+CREATE TABLE test_sleep_in_operator (id UInt32, value Float64, timestamp DateTime);
+INSERT INTO test_sleep_in_operator VALUES (1, 1.5, now()), (2, 2.5, now()), (3, NULL, now());
+SELECT id, value, sleep(1) AS delay FROM test_sleep_in_operator WHERE value GLOBAL NOT IN (SELECT value FROM test_sleep_in_operator WHERE value IS NOT NULL) ORDER BY timestamp;
+SELECT id, sleep(2) AS delay, (CASE WHEN value IS NULL THEN 'NULL Value' ELSE CAST(value AS String) END) AS value_status FROM test_sleep_in_operator GROUP BY id, value_status HAVING value_status GLOBAL NOT IN (SELECT value_status FROM (SELECT id, CASE WHEN value IS NULL THEN 'NULL' ELSE CAST(value AS String) END AS value_status FROM test_sleep_in_operator) WHERE value_status IS NOT NULL);
+CREATE TABLE temp_test (num Int32, decimal_value Decimal(10, 5));
+INSERT INTO temp_test VALUES (1, 1.12345), (2, NULL), (3, 2.5);
+SELECT num, sleep(0.5) AS pause, decimal_value FROM temp_test WHERE decimal_value GLOBAL NOT IN (SELECT decimal_value FROM temp_test WHERE decimal_value IS NOT NULL) AND num < (SELECT MAX(num) FROM temp_test) + sleep(1) HAVING COUNT(*) > 0;
+DROP TABLE IF EXISTS test_sleep_in_operator;
+DROP TABLE IF EXISTS temp_test;

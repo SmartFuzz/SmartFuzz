@@ -1,0 +1,17 @@
+{
+    "function": "xenc_key_AES_rand_create",
+    "operator": "bif:st_distance",
+    "sql_array": [
+        "CREATE TABLE test_geometries (id INT PRIMARY KEY, geom GEOMETRY, session_key VARCHAR(256));",
+        "INSERT INTO test_geometries (id, geom, session_key) VALUES (1, ST_GeomFromText('POINT(1 1)', 0), xenc_key_AES_rand_create ('ses_key', 128));",
+        "INSERT INTO test_geometries (id, geom, session_key) VALUES (2, ST_GeomFromText('POINT(2 2)', 0), xenc_key_AES_rand_create ('ses_key', 256));",
+        "SELECT id, ST_Distance(geom, (SELECT geom FROM test_geometries WHERE id = 1)) AS distance, xenc_key_AES_rand_create('generated_key', 192) AS new_key FROM test_geometries WHERE ST_Distance(geom, (SELECT geom FROM test_geometries WHERE id = 1)) < 50 ORDER BY distance;",
+        "SELECT id, COUNT(*) OVER (PARTITION BY session_key) AS key_count, MAX(ST_Distance(geom, ST_GeomFromText('POINT(0 0)', 0))) AS max_distance FROM test_geometries GROUP BY id, session_key HAVING MAX(ST_Distance(geom, ST_GeomFromText('POINT(0 0)', 0))) IS NOT NULL;",
+        "SELECT id, ST_Distance(geom, (SELECT MIN(geom) FROM test_geometries WHERE session_key IS NOT NULL)) FROM test_geometries WHERE session_key IS NULL;",
+        "SELECT id, xenc_key_AES_rand_create('failed_key', 192) AS failed_key FROM test_geometries WHERE ST_Distance(geom, ST_GeomFromText('POINT(3 3)', 0)) = 0;",
+        "DROP TABLE IF EXISTS temp_test_geometries;",
+        "CREATE TEMP TABLE temp_test_geometries AS SELECT id, geom FROM test_geometries WHERE session_key IS NOT NULL;",
+        "SELECT xenc_key_AES_rand_create('null_key', 192) AS null_key, ST_Distance(ST_GeomFromText('POINT(NULL NULL)', 0), geom) AS error_distance FROM temp_test_geometries;",
+        "SELECT id, session_key, ST_Distance(geom, (SELECT MAX(geom) FROM temp_test_geometries)) AS distance FROM temp_test_geometries WHERE ST_Distance(geom, (SELECT MIN(geom) FROM test_geometries) + 1) > 10;"
+    ]
+}

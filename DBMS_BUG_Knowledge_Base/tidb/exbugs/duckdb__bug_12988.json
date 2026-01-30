@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/12988",
+  "title": "Improper error message: LATERAL join cannot contain window functions",
+  "description": "### What happens?\r\n\r\n```sql\r\n  create table customers (name varchar, age integer, something_easy_to_type_wrong integer, city varchar);\r\n  create table zipcodes (city varchar, zipcode varchar);\r\n  insert into customers values ('Alice', 24, 7, 'Seattle'),\r\n                              ('Bob', 34, 2, 'Portland'),\r\n                              ('Charlie', 23, 3, 'Seattle'),\r\n                              ('David', 36, 9, 'Portland'),\r\n                              ('Sam', 35, 5, 'Seattle');\r\n\r\n  insert into zipcodes values ('Seattle', '98101'), \r\n                              ('Portland', '97201');\r\n\r\n  with cte as (\r\n      select *,\r\n          rank() over (order by something_easy_to_typo_wrong) as rk\r\n      from customers\r\n      where age <= 42\r\n  )\r\n  select *\r\n  from zipcodes\r\n  join cte\r\n  using (city)\r\n```\r\nThe above SQL query emits the following error message:\r\n```\r\n Binder Error: LATERAL join cannot contain window functions!\r\n```\r\nIf we switch the join order as `from cte join zipcodes` (i.e., put the subquery `cte` on the LHS of the join), a super-friendly error message is produced:\r\n```\r\nBinder Error: Referenced column \"something_easy_to_typo_wrong\" not found in FROM clause!\r\nCandidate bindings: \"customers.something_easy_to_type_wrong\"\r\nLINE 15:             rank() over (order by something_easy_to_typo_wrong) as rk\r\n                                           ^\r\n```\r\nThe latter is exactly what everybody wants. Super helpful (thanks to the AMAZING effort the DuckDB team has done)! For the former case, however, if there are tons of (aggregate) window expressions in the subquery, we will have a poor chance of recognizing the problem.\r\n\r\n### To Reproduce\r\n\r\nSee the description above.\r\n\r\n### OS:\r\n\r\nUbuntu 22.04.2 LTS, aarch64\r\n\r\n### DuckDB Version:\r\n\r\n1.0.0\r\n\r\n### DuckDB Client:\r\n\r\nPython\r\n\r\n### Full Name:\r\n\r\nMark\r\n\r\n### Affiliation:\r\n\r\nbq\r\n\r\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\r\n\r\nI have not tested with any build\r\n\r\n### Did you include all relevant data sets for reproducing the issue?\r\n\r\nNo - Other reason (please specify in the issue body)\r\n\r\n### Did you include all code required to reproduce the issue?\r\n\r\n- [X] Yes, I have\r\n\r\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\r\n\r\n- [ ] Yes, I have",
+  "date": "2024-07-15 03:15:48",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE employees (id INT PRIMARY KEY, name VARCHAR(255), salary DECIMAL(10, 2), department_id INT);",
+    "CREATE TABLE departments (id INT PRIMARY KEY, name VARCHAR(255) NOT NULL);",
+    "INSERT INTO employees VALUES (1, 'John Doe', 50000.00, 1), (2, 'Jane Smith', 60000.00, 2), (3, 'Alice Johnson', 55000.00, 1);",
+    "INSERT INTO departments VALUES (1, 'Engineering'), (2, 'Marketing');",
+    "SELECT * FROM departments d JOIN (SELECT *, RANK() OVER (ORDER BY salary) AS salary_rank FROM employees) AS ranked_employees ON d.id = ranked_employees.department_id;"
+  ],
+  "key_bug_features": [
+    "LATERAL join cannot contain window functions"
+  ]
+}

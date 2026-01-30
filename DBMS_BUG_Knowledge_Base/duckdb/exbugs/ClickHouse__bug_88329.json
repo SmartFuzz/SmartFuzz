@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/88329",
+  "title": "Refreshable MV does not save local data on shards. Possible bug in documentation or CH",
+  "description": "### Company or project name\n_No response_\n### Describe the unexpected behaviour\nI have a dev cluster in docker with 3 shards + 1 zookeeper. Version 25.8.10.7-lts\nFor some reason when I create Refreshable MV on Replicated database it updates data on one shard and remove the data on other 2 shards (shard with data is take randomly)\nI see in logs that each shard executes the refreshable MV each minute, but the data appears only on one of them, local data, from local table for that shard, two other shards have data in source table, but no data in target table\n### Which ClickHouse versions are affected?\n25.8.10.7\n25.5.2.47\n### How to reproduce\nHere is full sql log to reproduce my behavior\n```sql\ncreate database test on cluster '{cluster}' ENGINE=Replicated('/clickhouse/tables/test','{shard}','{replica}')\ncreate table test.raw_source_local\n(\nid Int32,\ntime DateTime\n)ENGINE=ReplicatedMergeTree()\nPrimary KEY id\nORDER BY id;\n-- execute this on each shard separately, manually, change numbers from 1000 to 2000, from 2000 to 3000\nINSERT INTO test.raw_source_local (id, time)\nSELECT\nnumber AS id,\n-- Generate a random timestamp between the start and end date and convert it to DateTime\ntoDateTime(\ntoUnixTimestamp('2024-01-01 00:00:00') +\n(rand() % (toUnixTimestamp('2024-12-31 23:59:59') - toUnixTimestamp('2024-01-01 00:00:00')))\n) AS time\nFROM\nnumbers(1, 1000);\ncreate table test.table_for_mv\n(\nsum Int32,\ndate Date\n)ENGINE=ReplicatedMergeTree()\nPrimary KEY date\nORDER BY date;\ncreate materialized view test.mv_from_raw_source_local_to_table\nrefresh every 1 minute\nTO test.table_for_mv\nAS\nSELECT sum(id) as sum, toDate(time) as date from test.raw_source_local group by toDate(time);\n```\n### Expected behavior\nEach shard updates its own local target table with data from local source table\n### Error message and/or stacktrace\nlog is too long, adding it via pastebin https://pastebin.com/2uZZuT9G\n### Additional context\n_No response_",
+  "date": "2025-10-10T08:22:00Z",
+  "vulnerable_version": "25.8.10.7",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test2.raw_source_local (id INT, time TIMESTAMP, value DOUBLE DEFAULT 0.0);",
+    "INSERT INTO test2.raw_source_local (id, time, value) SELECT number AS id, TIMESTAMP '2024-01-01 00:00:00' + INTERVAL number SECOND AS time, RANDOM() * 100 AS value FROM range(1, 1000);",
+    "CREATE TABLE test2.table_for_mv (sum_value DOUBLE, date DATE, count_id INT);",
+    "CREATE VIEW test2.mv_from_raw_source_local_to_table AS SELECT SUM(value) AS sum_value, DATE(time) AS date, COUNT(*) AS count_id FROM test2.raw_source_local GROUP BY DATE(time);",
+    "INSERT INTO test2.table_for_mv SELECT sum_value, date, count_id FROM test2.mv_from_raw_source_local_to_table;"
+  ],
+  "key_bug_features": [
+    "Refreshable MV updates data on only one shard"
+  ]
+}

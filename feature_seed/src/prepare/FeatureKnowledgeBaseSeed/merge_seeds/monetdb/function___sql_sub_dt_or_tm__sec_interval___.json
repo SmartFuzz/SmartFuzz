@@ -1,0 +1,16 @@
+CREATE TABLE test_times (id SERIAL PRIMARY KEY, event_time TIMESTAMP);
+INSERT INTO test_times (event_time) VALUES (TIMESTAMP '2023-10-01 15:35:50');
+INSERT INTO test_times (event_time) VALUES (TIMESTAMP '2023-10-01 00:00:00');
+INSERT INTO test_times (event_time) VALUES (TIMESTAMP '2023-10-01 23:59:59');
+SELECT sql_sub(event_time, INTERVAL '3:25' MINUTE TO SECOND) FROM test_times;
+SELECT sql_sub(event_time, INTERVAL '0:05' MINUTE TO SECOND) AS new_time FROM test_times WHERE id = 1;
+SELECT id, sql_sub(event_time, INTERVAL '1:00' HOUR TO SECOND) AS adjusted_time FROM test_times WHERE event_time < TIMESTAMP '2023-10-01 12:00:00';
+CREATE TABLE time_offsets (id SERIAL PRIMARY KEY, offset INTERVAL);
+INSERT INTO time_offsets (offset) VALUES (INTERVAL '1:30' HOUR TO MINUTE);
+SELECT id, sql_sub(t.event_time, to_seconds(offset)) AS adjusted_time FROM test_times t JOIN time_offsets o ON t.id = o.id;
+SELECT sql_sub(sql_sub(event_time, INTERVAL '1:00' HOUR TO SECOND), INTERVAL '30:15' MINUTE TO SECOND) AS double_adjusted_time FROM test_times WHERE event_time > TIMESTAMP '2023-10-01 12:00:00';
+SELECT sql_sub(TIMESTAMP '2023-10-01 15:35:50', INTERVAL '15:00' MINUTE TO SECOND) AS final_time;
+SELECT event_time, sql_sub(event_time, INTERVAL '0:00' MINUTE TO SECOND) AS unchanged_time FROM test_times;
+CREATE TABLE aggregate_test (id SERIAL PRIMARY KEY, timestamp_col TIMESTAMP, some_value INT);
+INSERT INTO aggregate_test (timestamp_col, some_value) VALUES (TIMESTAMP '2023-10-01 10:10:10', 100), (TIMESTAMP '2023-10-01 11:11:11', 200);
+SELECT AVG(some_value) FROM aggregate_test WHERE timestamp_col > sql_sub(TIMESTAMP '2023-10-01 12:00:00', INTERVAL '2:00' HOUR TO MINUTE);

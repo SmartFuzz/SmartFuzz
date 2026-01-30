@@ -1,0 +1,21 @@
+{
+  "url": "https://www.postgresql.org/message-id/18468-f5add190e3fa5902%40postgresql.org",
+  "title": "BUG #18468: CREATE TABLE ... LIKE leaves orphaned column reference in extended statistics",
+  "description": "The following bug has been logged on the website:\nBug reference:      18468\nLogged by:          Alexander Lakhin\nEmail address:      exclusion(at)gmail(dot)com\nPostgreSQL version: 16.3\nOperating system:   Ubuntu 22.04\nDescription:\nThe following script:\nCREATE TABLE t0 (a int, c text, b text);\nCREATE STATISTICS ext_stat ON (a || b) FROM t0;\nALTER TABLE t0 DROP COLUMN c;\nCREATE TABLE t1 (LIKE t0 INCLUDING ALL);\nproduces an invalid statistics definition:\n\\d+ t1\nERROR:  invalid attnum 3 for relation \"t1\"\nSELECT stxname, stxexprs FROM pg_statistic_ext;\next_stat     | ({OPEXPR :opno 2780 ... {VAR :varno 1 :varattno 3 ...\nt1_expr_stat | ({OPEXPR :opno 2780 ... {VAR :varno 1 :varattno 3 ...\nThough an index definition transferred correctly:\nCREATE TABLE t0 (a int, c text, b text);\nCREATE INDEX t_idx ON t0((a || b));\nALTER TABLE t0 DROP COLUMN c;\nCREATE TABLE t1 (LIKE t0 INCLUDING ALL);\n\\d+ t1\n...\nIndexes:\n\"t1_expr_idx\" btree ((a || b))\nSELECT relname, indexprs FROM pg_index, pg_class WHERE indexrelid = oid\nAND relname = 't1_expr_idx';\nt1_expr_idx | ({OPEXPR :opno 2780 ... {VAR :varno 1 :varattno 2 ...",
+  "date": "2024-05-15 11:00:01",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE t0 (a INTEGER, c VARCHAR, b VARCHAR, d BOOLEAN DEFAULT TRUE);",
+    "CREATE STATISTICS ext_stat ON (a || b || d) FROM t0;",
+    "ALTER TABLE t0 DROP COLUMN c;",
+    "CREATE TABLE t1 (a INTEGER, b VARCHAR, d BOOLEAN DEFAULT TRUE);",
+    "INSERT INTO t0 (a, b) VALUES (1, 'test'), (2, NULL), (3, 'example');",
+    "SELECT * FROM t1;"
+  ],
+  "key_bug_features": [
+    "CREATE TABLE ... LIKE with dropped column causes invalid statistics"
+  ]
+}

@@ -1,0 +1,10 @@
+CREATE TABLE test_table (column1 String, column2 UInt32, column3 Array(String));
+INSERT INTO test_table VALUES ('test1', 1, ['val1', 'val2']), ('test2', 2, ['val3', 'val4']), (NULL, 3, NULL);
+CREATE TABLE nested_table (column1 Nullable(String), column2 UInt32) ENGINE = MergeTree() ORDER BY column2;
+INSERT INTO nested_table VALUES (NULL, 1), ('value', 2);
+SELECT structureToProtobufSchema('column1 String, column2 UInt32, column3 Array(String)') WHERE column1 NOT LIKE 'test%' FORMAT RawBLOB;
+SELECT structureToProtobufSchema('column1 Nullable(String), column2 UInt32') NOT LIKE structureToProtobufSchema('column1 String, column2 Array(UInt32)') FORMAT RawBLOB;
+SELECT structureToProtobufSchema('column1 String, column2 UInt32') AS protobuf_schema, COUNT(*) FROM test_table GROUP BY protobuf_schema HAVING protobuf_schema NOT LIKE 'Message%';
+SELECT structureToProtobufSchema('column1 String, column2 Int32') AS schema FROM (SELECT column1 NOT LIKE 'test' AS filter FROM test_table) WHERE filter;
+SELECT structureToProtobufSchema('column1 Nullable(String), column2 Tuple(e1 UInt64, e2 Array(String))') WHERE (SELECT COUNT(*) FROM nested_table) NOT LIKE 0 FORMAT RawBLOB;
+SELECT structureToProtobufSchema('column1 String, column2 UInt32') AS s, COUNT(*) FROM (SELECT DISTINCT column1 FROM test_table) WHERE s NOT LIKE 'Message%' GROUP BY s HAVING COUNT(*) < 10;

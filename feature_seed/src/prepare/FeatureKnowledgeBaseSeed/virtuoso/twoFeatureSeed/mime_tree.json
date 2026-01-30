@@ -1,0 +1,17 @@
+{
+    "function": "mime_tree",
+    "operator": "bif:md5",
+    "sql_array": [
+        "CREATE TABLE mime_messages (id INT PRIMARY KEY, message TEXT, flag INT);",
+        "INSERT INTO mime_messages VALUES (1, 'Form: Somebody <someuser@somehost>\\nMime-Version: 1.0\\nContent-Type: \"multipart/mixed\";\\n\\tboundary=\"--the boundary\"\\nTo: self@localhost\\nThis is a multipart MIME message\\n----the boundary\\nContent-Type: image/gif; filename=\"the_big_picture.gif\"\\nGIF........\\n----the boundary\\nContent-Type: message/rfc822\\nFrom: Ford@Perfect\\nTo: vogon\\nMime-Version: 1.0\\nContent-Type: multipart/alternate; boundary=\"--sub-boundary\"\\nThis is some Message\\n----sub-boundary\\nContent-Type: text/plain\\nHi\\n----sub-boundary\\nContent-Type: text/html\\n<P>Hi</P>\\n----sub-boundary--\\nSome garbage\\n----the boundary\\nContent-Type: text/plain\\nSome additional text\\n----the boundary--\\nSome additional garbage', 1);",
+        "SELECT bif:md5(mime_tree(message, 1)::text) AS mime_hash FROM mime_messages WHERE flag IS NOT NULL;",
+        "CREATE TABLE parsed_mime (id INT PRIMARY KEY, mime_structure JSON, mime_hash TEXT);",
+        "INSERT INTO parsed_mime (id, mime_structure, mime_hash) SELECT 1, mime_tree(message, 1), bif:md5(mime_tree(message, 1)::text) FROM mime_messages WHERE flag = 1;",
+        "SELECT id, mime_structure->'Content-Type' AS content_type FROM parsed_mime WHERE mime_hash IS NOT NULL;",
+        "SELECT id, bif:md5(subseq(mime_structure, 0, 20)::text) AS sub_hash FROM parsed_mime WHERE content_type IS NOT NULL;",
+        "CREATE TABLE mime_parts (part_id INT PRIMARY KEY, content_type TEXT, part_json JSON);",
+        "INSERT INTO mime_parts (part_id, content_type, part_json) SELECT 1, mime_structure->'Content-Type', mime_structure FROM parsed_mime WHERE mime_structure IS NOT NULL;",
+        "SELECT MAX(length(content_type)) FROM mime_parts HAVING MAX(length(content_type)) > 10;",
+        "SELECT bif:md5(part_json::text) FROM mime_parts WHERE content_type LIKE '%text/%' AND part_json IS NOT NULL;"
+    ]
+}

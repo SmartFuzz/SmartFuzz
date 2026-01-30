@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/20006",
+  "title": "Potential Unexpected Result when Using `TRY` Expression",
+  "description": "### What happens?\n\nConsider the test case below; the result of the second query is unexpected: `c1` becomes `NULL` in the query output, though the `TRY` expression only appears in the filter condition and should not mutate column data.\n\n### To Reproduce\n\n```sql\nCREATE  TABLE  t0(c0 INT , c1 INT);\nINSERT INTO t0(c0, c1) VALUES (1819832341, -2039202523);\nINSERT INTO t0(c0) VALUES (517438920);\n\nSELECT t0.c1, t0.c0 FROM t0;\n```\n```text\n┌─────────────┬────────────┐\n│     c1      │     c0     │\n│    int32    │   int32    │\n├─────────────┼────────────┤\n│ -2039202523 │ 1819832341 │\n│        NULL │  517438920 │\n└─────────────┴────────────┘\n```\n```sql\nSELECT t0.c1, t0.c0 FROM t0 WHERE (TRY((t0.c1)-(t0.c0)) IS NULL);\n```\n```\n┌───────┬────────────┐\n│  c1   │     c0     │\n│ int32 │   int32    │\n├───────┼────────────┤\n│  NULL │ 1819832341 │\n│  NULL │  517438920 │\n└───────┴────────────┘\n```\n\n### OS:\n\nUbuntu 22.04\n\n### DuckDB Version:\n\nDuckDB v1.4.2 (Andium) 68d7555f68\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nSuyang Zhong\n\n### Affiliation:\n\nNUS\n\n### Did you include all relevant configuration (e.g., CPU architecture, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant data sets for reproducing the issue?\n\nNot applicable - the reproduction does not require a data set",
+  "date": "2025-12-01 14:44:42",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE t1(c0 INT, c1 REAL, c2 TEXT);",
+    "INSERT INTO t1(c0, c1, c2) VALUES (100, 200.5, 'test1');",
+    "INSERT INTO t1(c0, c1) VALUES (NULL, 300.0);",
+    "SELECT t1.c1, t1.c2 FROM t1 WHERE (t1.c0 + t1.c1 IS NULL);",
+    "SELECT t1.c0, CASE WHEN t1.c0 IS NOT NULL THEN t1.c1 / t1.c0 ELSE NULL END AS result FROM t1;"
+  ],
+  "key_bug_features": [
+    "TRY expression in filter condition mutates column data"
+  ]
+}

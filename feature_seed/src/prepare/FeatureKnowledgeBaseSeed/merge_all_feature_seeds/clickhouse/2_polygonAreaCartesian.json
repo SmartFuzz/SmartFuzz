@@ -1,0 +1,10 @@
+CREATE TABLE test_polygons (id UInt32, coordinates Array(Array(Array(Float64)))) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_polygons VALUES (1, [[[(0., 0.), (0., 5.), (5., 5.), (5., 0.)]]]), (2, [[[(1., 1.), (1., 3.), (3., 3.), (3., 1.)]]]), (3, NULL);
+SELECT id, polygonAreaCartesian(coordinates) AS area FROM test_polygons WHERE area != 0.0;
+SELECT id, polygonAreaCartesian(coordinates) AS area FROM test_polygons WHERE area != (SELECT COUNT(*) FROM test_polygons WHERE coordinates IS NOT NULL) AS count_area;
+SELECT id, polygonAreaCartesian(coordinates) AS area FROM test_polygons WHERE area != (SELECT polygonAreaCartesian([[(0., 0.), (0., 4.), (4., 4.), (4., 0.)]]));
+CREATE TABLE test_join (id UInt32, poly_id UInt32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_join VALUES (1, 1), (2, 2), (3, 3);
+SELECT tj.id, polygonAreaCartesian(tp.coordinates) AS area FROM test_join tj JOIN test_polygons tp ON tj.poly_id = tp.id WHERE area != 20.0;
+SELECT id, SUM(CASE WHEN polygonAreaCartesian(coordinates) IS NULL THEN 0 ELSE polygonAreaCartesian(coordinates) END) AS total_area FROM test_polygons GROUP BY id HAVING total_area != (SELECT MAX(area) FROM (SELECT polygonAreaCartesian(coordinates) AS area FROM test_polygons));
+SELECT id, polygonAreaCartesian(coordinates) AS area FROM test_polygons WHERE coordinates != [[[(2., 2.), (2., 2.), (2., 2.), (2., 2.)]]];

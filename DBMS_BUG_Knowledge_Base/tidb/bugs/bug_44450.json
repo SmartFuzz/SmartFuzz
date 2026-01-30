@@ -1,0 +1,26 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/44450",
+  "title": "Semi join error result when runtime filter mode is LOCAL",
+  "vulnerable_database": "tidb",
+  "date": "2023-06-06T09:43:45Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\r\nQuery:\r\n```select xxx from xxx where xxx in (xxx) ```\r\nResult error when ```set tidb_runtime_filter_mode=LOCAL;```\r\n\r\n### 1. Minimal reproduce step (Required)\r\n1. create table and insert values\r\n```\r\ncreate table t1(k1 int, t1_tinyint tinyint, t1_smallint smallint, t2_mediumint mediumint, t1_bigint bigint, t1_int int, t1_bit bit,  t1_bool bool, t1_float float, t1_double DOUBLE, t1_decimal decimal(10, 2));\r\ninsert into t1 values (1,1,1,1,1111111,1, 1, 1, 1.0, 1.00, 1.0);\r\ninsert into t1 values (1,1,1,1,1111111,1, 1, 1, 1.0, 1.00, 1.0);\r\ncreate table t2(k1 int, t2_tinyint tinyint, t2_smallint smallint, t2_mediumint mediumint, t2_bigint bigint, t2_int int, t2_bit bit,  t2_bool bool, t2_float float, t2_double DOUBLE, t2_decimal decimal(10, 2));\r\ninsert into t2 values (1,1,1,1,1111111,1, 1, 1, 1.0, 1.00, 1.0);\r\ninsert into t2 values (1,1,1,1,1111111,1, 1, 1, 1.0, 1.00, 1.0);\r\n```\r\n\r\n2. enable runtime filter and mpp\r\n```\r\nalter table t1 set tiflash replica 1;\r\nalter table t2 set tiflash replica 1;\r\nset tidb_isolation_read_engines=\"tidb,tiflash\";\r\nset tidb_runtime_filter_mode=\"LOCAL\";\r\n```\r\n\r\n3. query semi join or in subquery\r\n```\r\nselect t1_tinyint from t1 where t1.t1_tinyint in (select t2_tinyint from t2 where t1_bigint=t2_bigint); \r\n```\r\n\r\n4. error result\r\n```\r\nEmpty set (0.03 sec)\r\n```\r\n\r\n\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\n```\r\nmysql> select t1_tinyint from t1 where t1.t1_tinyint in (select t2_tinyint from t2 where t1_bigint=t2_bigint);\r\n+------------+\r\n| t1_tinyint |\r\n+------------+\r\n|          1 |\r\n|          1 |\r\n+------------+\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n```\r\nmysql> select t1_tinyint from t1 where t1.t1_tinyint in (select t2_tinyint from\r\nt2 where t1_bigint=t2_bigint);\r\nEmpty set (39.41 sec)\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\nAfter v7.1 \r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "poc": [
+    "create table t1(k1 int, t1_tinyint tinyint, t1_smallint smallint, t2_mediumint mediumint, t1_bigint bigint, t1_int int, t1_bit bit,  t1_bool bool, t1_float float, t1_double DOUBLE, t1_decimal decimal(10, 2));",
+    "insert into t1 values (1,1,1,1,1111111,1, 1, 1, 1.0, 1.00, 1.0);",
+    "create table t2(k1 int, t2_tinyint tinyint, t2_smallint smallint, t2_mediumint mediumint, t2_bigint bigint, t2_int int, t2_bit bit,  t2_bool bool, t2_float float, t2_double DOUBLE, t2_decimal decimal(10, 2));",
+    "insert into t2 values (1,1,1,1,1111111,1, 1, 1, 1.0, 1.00, 1.0);"
+  ],
+  "poc_type": "sql_text",
+  "state": "closed",
+  "key_bug_features": [
+    "Error in semi join with LOCAL runtime filter mode"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t3(k1 int, t3_tinyint tinyint, t3_smallint smallint, t3_bigint bigint, t3_float float, t3_double DOUBLE, t3_decimal decimal(10, 2));",
+    "INSERT INTO t3 VALUES (1, 2, 3, 4, 5.0, 6.0, 7.00);",
+    "CREATE TABLE t4(k1 int, t4_tinyint tinyint, t4_smallint smallint, t4_bigint bigint, t4_float float, t4_double DOUBLE, t4_decimal decimal(10, 2));",
+    "INSERT INTO t4 VALUES (1, 2, 3, 4, 5.0, 6.0, 7.00);",
+    "SELECT t3_tinyint FROM t3 WHERE t3.t3_tinyint IN (SELECT t4_tinyint FROM t4 WHERE t3_bigint = t4_bigint);"
+  ]
+}

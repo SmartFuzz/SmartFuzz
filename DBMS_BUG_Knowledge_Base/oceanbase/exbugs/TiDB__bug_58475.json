@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/58475",
+  "title": "select failed for partition table with generated column with error `needPartitionHandle != ret, tp(1)`",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n```sql\ndrop table tp;\n\nCREATE TABLE tp (\n  id int, c1 json, c2 json GENERATED ALWAYS AS (c1) VIRTUAL, KEY `idx_31` (id)\n) PARTITION BY RANGE (id)\n(PARTITION `p0` VALUES LESS THAN (2),\n PARTITION `p1` VALUES LESS THAN (4532022));\n\nINSERT INTO tp (id, c1) VALUES (0, \"[1]\");\n\nselect id from tp where json_contains(c2, \"1\") group by id having id in (0);\n```\n\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\n\n```sql\n+------+                                                                                                                                                                                                         \n| id   |                                                                                                                                                                                                         \n+------+                                                                                                                                                                                                         \n|    0 |                                                                                                                                                                                                         \n+------+ \n```\n\n### 3. What did you see instead (Required)\n\n```\nERROR 1105 (HY000): Internal error, needPartitionHandle != ret, tp(1)\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "date": "2024-12-23T08:54:42Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS tp;",
+    "CREATE TABLE tp (id INT, c1 JSON, c2 JSON GENERATED ALWAYS AS (c1), c3 INT NOT NULL DEFAULT 0, KEY idx_31 (id)) PARTITION BY RANGE (id) (PARTITION p0 VALUES LESS THAN (2), PARTITION p1 VALUES LESS THAN (4532022));",
+    "INSERT INTO tp (id, c1, c3) VALUES (1, '[1]', 10);",
+    "INSERT INTO tp (id, c1) VALUES (0, '[2]');",
+    "SELECT id FROM tp WHERE json_contains(c2, '1') OR c3 IS NOT NULL GROUP BY id HAVING id IN (0, 1);"
+  ],
+  "key_bug_features": [
+    "select on partition table with generated column"
+  ]
+}

@@ -1,0 +1,11 @@
+CREATE TABLE test_dates (id Int32, year Float64, month Float64, day Float64);
+INSERT INTO test_dates VALUES (1, 2024, 1, 1), (2, 2024, 100, NULL), (3, 2100, 5, 15);
+SELECT id, makeDate32(year, month, day) AS date_creation FROM test_dates WHERE makeDate32(year, month, day) = ALL (SELECT makeDate32(2100, 5, 15));
+SELECT id, makeDate32(year, 1, day) AS date_creation FROM test_dates WHERE date_creation IS NOT NULL AND date_creation = ALL (SELECT makeDate32(year, 100) FROM test_dates WHERE day IS NOT NULL);
+SELECT id FROM test_dates WHERE makeDate32(year, month, day) = ALL (SELECT NULL) AND id IS NOT NULL;
+SELECT id, makeDate32(year, IF(month IS NULL, 1, month), day) AS date_creation FROM test_dates WHERE date_creation = ALL (SELECT makeDate32(2024, 1, day) FROM test_dates);
+SELECT id FROM test_dates GROUP BY makeDate32(year, month, day) HAVING makeDate32(year, month, day) = ALL (SELECT makeDate32(2100, 5, 15) FROM test_dates);
+WITH (SELECT makeDate32(2024, 1, day) AS valid_dates FROM test_dates) AS subquery SELECT id FROM test_dates WHERE makeDate32(year, month, day) = ALL (SELECT valid_dates FROM subquery);
+CREATE TABLE test_dates_ext (id Int32, create_date Date32 DEFAULT makeDate32(year, month, day));
+INSERT INTO test_dates_ext VALUES (1, makeDate32(2024, 1, 1)), (2, makeDate32(2024, 100)), (3, makeDate32(2100, 5, 15));
+SELECT id FROM test_dates_ext WHERE create_date = ALL (SELECT create_date FROM test_dates_ext WHERE id < 3);

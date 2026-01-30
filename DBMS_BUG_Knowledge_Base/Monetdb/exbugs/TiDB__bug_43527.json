@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/43527",
+  "title": "Got interface conversion error when there are get_sys_var expr",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n```\r\ncreate table test (a datetime , b bigint,c bigint);\r\ninsert into test values('2010-10-10 10:10:10', 100, 100);\r\nselect a,b as 'asd',@total:=@total+b from (select date(a) as a,sum(c) as b from test group by date(a)) as temp,(select @total:=0) as T1 order by a;\r\n```\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\nruns ok\r\n### 3. What did you see instead (Required)\r\n```\r\nERROR 1105 (HY000): interface conversion: interface {} is nil, not *types.MyDecimal\r\n```\r\n### 4. What is your TiDB version? (Required)\r\n```\r\nMySQL [test]> select tidb_version();\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| tidb_version()                                                                                                                                                                                                                                                                                           |\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| Release Version: v7.2.0-alpha\r\nEdition: Community\r\nGit Commit Hash: 7eff8ce629d00cf4ab1eeda82a1ecd5a4e394b02\r\nGit Branch: heads/refs/tags/v7.2.0-alpha\r\nUTC Build Time: 2023-05-03 14:33:44\r\nGoVersion: go1.20.3\r\nRace Enabled: false\r\nTiKV Min Version: 6.2.0-alpha\r\nCheck Table Before Drop: false\r\nStore: tikv |\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n1 row in set (0.009 sec)\r\n```\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2023-05-04T08:24:41Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE test2 (id INT PRIMARY KEY, name VARCHAR(50), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test2 VALUES (1, 'Alice', '2021-01-01 10:00:00');",
+    "INSERT INTO test2 VALUES (2, 'Bob', NULL);",
+    "SELECT id, name, COALESCE(@total, 0) + 1 AS total FROM test2, (SELECT @total := 0) AS init ORDER BY created_at;",
+    "SELECT id, name, @total := @total + COALESCE(created_at, '1970-01-01 00:00:00') AS total FROM test2, (SELECT @total := 0) AS init ORDER BY created_at;"
+  ],
+  "key_bug_features": [
+    "interface conversion error with get_sys_var expression"
+  ]
+}

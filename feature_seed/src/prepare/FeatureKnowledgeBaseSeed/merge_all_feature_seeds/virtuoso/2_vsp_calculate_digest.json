@@ -1,0 +1,13 @@
+CREATE TABLE users (id INT PRIMARY KEY, username VARCHAR(100), password VARCHAR(100), created_at TIMESTAMP);
+INSERT INTO users (id, username, password, created_at) VALUES (1, 'user1', 'secret1', NOW()), (2, 'user2', 'secret2', NOW());
+CREATE TABLE logs (user_id INT REFERENCES users(id), action VARCHAR(200), timestamp TIMESTAMP);
+INSERT INTO logs (user_id, action, timestamp) VALUES (1, 'login', NOW()), (2, 'logout', NOW());
+SELECT ((vsp_calculate_digest('user1', 'secret1', app_auth_vec('Authorization: Digest ...'))) || ' completed') AS digest_result FROM users WHERE id = 1;
+SELECT id, username, vsp_calculate_digest(username, 'secret1', app_auth_vec('Authorization: Digest ...')) || ' ' || timestamp AS auth_info FROM users JOIN logs ON users.id = logs.user_id WHERE action = 'login';
+SELECT vsp_calculate_digest('user2', 'secret2', app_auth_vec('Authorization: Digest ...')) FROM (SELECT username FROM users WHERE id = 2) as derived WHERE username IS NOT NULL;
+SELECT 'Digest check: ' || vsp_calculate_digest(users.username, users.password, app_auth_vec('Authorization: Digest ...')) AS checksum_result FROM users GROUP BY username, password HAVING COUNT(*) > 0;
+SELECT users.username, COUNT(logs.action) as action_count FROM users LEFT JOIN logs ON users.id = logs.user_id WHERE vsp_calculate_digest(users.username, users.password, app_auth_vec('Authorization: Digest ...')) IS NOT NULL GROUP BY users.username HAVING action_count > 1;
+CREATE TEMPORARY TABLE temp_auth (id INT, response VARCHAR(200));
+INSERT INTO temp_auth (id, response) VALUES (1, vsp_calculate_digest('user1', 'secret1', app_auth_vec('Authorization: Digest ...'))), (2, NULL);
+SELECT id, response FROM temp_auth WHERE response IS NULL OR response LIKE 'a%';
+SELECT DISTINCT vsp_calculate_digest('user2', 'secret2', app_auth_vec('Authorization: Digest ...')) AS response_digest FROM users CROSS JOIN (SELECT NOW() AS current_time) AS time WHERE current_time IS NOT NULL;

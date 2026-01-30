@@ -1,0 +1,16 @@
+{
+    "function": "murmurHash3_128",
+    "operator": "a = ANY (subquery)",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, name String, value Float64, created_at DateTime);",
+        "INSERT INTO test_table VALUES (1, 'a', 1.2345, '2023-01-01 00:00:00');",
+        "INSERT INTO test_table VALUES (2, NULL, 2.3456, '2023-01-02 00:00:00');",
+        "INSERT INTO test_table VALUES (3, 'b', NULL, '2023-01-03 00:00:00');",
+        "INSERT INTO test_table VALUES (4, 'c', 0.0, '2022-12-31 00:00:00');",
+        "SELECT murmurHash3_128(name, CAST(value AS String)) AS hash_val FROM test_table WHERE value = ANY (SELECT DISTINCT value FROM test_table WHERE created_at > '2023-01-01 00:00:00') GROUP BY hash_val HAVING hash_val IS NOT NULL;",
+        "SELECT DISTINCT hex(murmurHash3_128(name)) FROM (SELECT name, created_at FROM test_table WHERE id IN (SELECT id FROM test_table WHERE value IS NULL)) AS temp_table;",
+        "SELECT murmurHash3_128(name) FROM test_table WHERE created_at < '2023-01-01 00:00:00' AND name = ANY (SELECT name FROM test_table WHERE value > 1.5);",
+        "CREATE TABLE temp_table AS SELECT murmurHash3_128(name) AS hash_val, id FROM test_table;",
+        "SELECT count(*) FROM temp_table WHERE hash_val = ANY (SELECT hash_val FROM temp_table WHERE id > 2) HAVING count(*) >= 1;"
+    ]
+}

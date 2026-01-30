@@ -1,0 +1,21 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/6bfb98dfc0",
+  "title": "False report of database corruption on an INSERT",
+  "description": "drh added on 2013-03-27 02:54:09:\nThe final INSERT in the script below reports that the database\nis corrupt (SQLITE_CORRUPT) and aborts.  Subsequent analysis shows\nno database corruption.\nPRAGMA page_size=512;\nCREATE TABLE t1(x INTEGER PRIMARY KEY, y);\nINSERT INTO t1 VALUES(1,randomblob(400));\nINSERT INTO t1 VALUES(2,randomblob(400));\nINSERT INTO t1 SELECT x+2, randomblob(400) FROM t1;\nINSERT INTO t1 SELECT x+4, randomblob(400) FROM t1;\nINSERT INTO t1 SELECT x+8, randomblob(400) FROM t1;\nINSERT INTO t1 SELECT x+16, randomblob(400) FROM t1;\nINSERT INTO t1 SELECT x+32, randomblob(400) FROM t1;\nINSERT INTO t1 SELECT x+64, randomblob(400) FROM t1 WHERE x<10;\nCREATE TRIGGER r1 AFTER INSERT ON t1 WHEN new.x=74 BEGIN\n  DELETE FROM t1;\n  INSERT INTO t1 VALUES(75, randomblob(400));\n  INSERT INTO t1 VALUES(76, randomblob(400));\nEND;\nINSERT INTO t1 VALUES(74, randomblob(400));\nThe problem occurs because the INSERT operation leaves its cursor open, though\nmarked CURSOR_INVALID, while holding a reference to a second-level page of the\nbtree.  When the trigger fires it deletes content out from under this cursor,\nwhich is normally OK since the cursor is invalid.  However, during the second\nINSERT inside the trigger, when a page is removed from the freelist to hold\nthe new content, that page is checked to make sure it is unreferenced.  This\ncheck fails since the invalid INSERT cursor is still holding a reference to\nthe page.  That reference makes it appear as if the page was on the freelist\nand in a btree at the same time and so an SQLITE_CORRUPT error is thrown.\nHowever, the page is not really on the btree since the cursor that is \nreferencing it is marked CURSOR_INVALID.\nThis problem has existing in the code since late 2009.  It is very difficult\nto hit, however (which helps to explain why it has gone undetected until now).\nThe problem is very sensitive to the specific constants used in the script\nshown above.",
+  "date": "2013-03-27 02:54:0912.38 years ago",
+  "vulnerable_version": "3.7.16",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t2(a INTEGER PRIMARY KEY, b VARCHAR(255), c BLOB);",
+    "INSERT INTO t2 VALUES(1, 'test', DBMS_RANDOM.VALUE(400));",
+    "INSERT INTO t2 SELECT a+1, 'example', DBMS_RANDOM.VALUE(400) FROM t2;",
+    "CREATE TRIGGER r2 AFTER INSERT ON t2 FOR EACH ROW WHEN (NEW.a=2) BEGIN DELETE FROM t2 WHERE a=1;",
+    "END;",
+    "INSERT INTO t2 VALUES(2, 'sample', DBMS_RANDOM.VALUE(400));"
+  ],
+  "key_bug_features": [
+    "Trigger deletes while cursor is marked CURSOR_INVALID"
+  ]
+}

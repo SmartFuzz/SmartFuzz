@@ -1,0 +1,12 @@
+CREATE TABLE test_strings (id UInt32, haystack String, needle String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_strings VALUES (1, 'ClickHouse - столбцовая система управления базами данных', 'система'), (2, 'This is an empty string test', ''), (3, '', 'empty');
+SELECT id, hasSubsequenceUTF8(haystack, needle) AS subsequence_found FROM test_strings WHERE hasSubsequenceUTF8(haystack, needle) = 1;
+SELECT id FROM test_strings WHERE hasSubsequenceUTF8(haystack, needle) = 1 AND needle NOT LIKE '';
+SELECT id, haystack FROM test_strings WHERE hasSubsequenceUTF8(haystack, 'ClickHouse') = 1 AND haystack NOT LIKE 'This is not the haystack';
+SELECT id, hasSubsequenceUTF8(haystack, needle) AS subsequence_found FROM (SELECT id, haystack, needle FROM test_strings WHERE haystack NOT LIKE '%test%') AS subquery HAVING subsequence_found = 1;
+SELECT COUNT(*), MIN(id) FROM test_strings WHERE hasSubsequenceUTF8(haystack, needle) = 1 GROUP BY haystack HAVING COUNT(*) > 1;
+CREATE TABLE temp_table AS (SELECT id, hasSubsequenceUTF8(haystack, needle) AS subsequence_found FROM test_strings) ENGINE = Memory;
+SELECT COUNT(*) FROM temp_table WHERE subsequence_found = 1 AND subsequence_found NOT LIKE 0;
+ALTER TABLE test_strings ADD COLUMN additional_data String;
+UPDATE test_strings SET additional_data = 'NULL check' WHERE haystack IS NULL;
+SELECT id, hasSubsequenceUTF8(haystack, NULLIF(needle, '')) AS subsequence_found FROM test_strings WHERE haystack NOT LIKE '';

@@ -1,0 +1,11 @@
+CREATE TABLE test_data (id INTEGER, created_at TIMESTAMP, value FLOAT, label VARCHAR);
+INSERT INTO test_data VALUES (1, '2023-01-01 10:00:00', 0.25, 'A'), (2, '2023-01-01 12:00:00', 0.75, 'B'), (3, '2023-01-01 14:00:00', 0.5, NULL), (4, '2023-01-01 16:00:00', 0.1, 'C');
+SELECT entropy(value + 1.0) AS entropy_value FROM test_data GROUP BY created_at;
+SELECT entropy(value) + INTERVAL 2 HOUR AS result FROM (SELECT id, MAX(value) AS value FROM test_data GROUP BY id) AS subquery WHERE value IS NOT NULL;
+SELECT id FROM test_data WHERE created_at > (SELECT MIN(created_at) FROM test_data) + INTERVAL 1 HOUR;
+SELECT label, entropy(value + COALESCE(NULLIF(value, 0), 1)) AS label_entropy FROM test_data GROUP BY label HAVING entropy(value) IS NOT NULL;
+WITH numbered_rows AS (SELECT id, value, ROW_NUMBER() OVER (PARTITION BY label ORDER BY created_at) AS rn FROM test_data) SELECT entropy(value) + INTERVAL rn HOUR AS adjusted_entropy FROM numbered_rows WHERE rn <= 2;
+CREATE TABLE additional_data (entry_id INTEGER, more_value FLOAT);
+INSERT INTO additional_data VALUES (1, 0.0), (2, NULL), (3, 1.5);
+SELECT ed.entry_id, ad.more_value + INTERVAL (SELECT COUNT(*) FROM additional_data) HOUR AS adjusted_time FROM additional_data AS ad LEFT JOIN test_data AS ed ON ed.id = ad.entry_id WHERE ad.more_value IS NOT NULL OR ed.value IS NOT NULL;
+SELECT id, entropy(value) + (CASE WHEN value IS NOT NULL THEN INTERVAL 1 HOUR ELSE INTERVAL 2 HOUR END) AS conditional_entropy FROM test_data;

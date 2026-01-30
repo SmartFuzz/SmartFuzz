@@ -1,0 +1,14 @@
+{
+    "function": "toDecimal64OrDefault",
+    "operator": "a = ALL (subquery)",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, value String, scale UInt8);",
+        "INSERT INTO test_table VALUES (1, '123.4567', 4), (2, 'NaN', 2), (3, 'Inf', 1), (4, '0.0001', 18), (5, '9999999999999999999', 2);",
+        "SELECT toDecimal64OrDefault(value, scale, CAST('-1', 'Decimal64(0)')) AS converted_value, id FROM test_table WHERE converted_value = ALL (SELECT id FROM test_table WHERE scale > 2) ORDER BY id;",
+        "SELECT id, value, toDecimal64OrDefault(value, 2) AS decimal_value FROM test_table WHERE toDecimal64OrDefault(value, 2) IS NOT NULL GROUP BY id, value HAVING decimal_value > 100.00;",
+        "SELECT id, value, toDecimal64OrDefault(value, 5) AS decimal_value FROM test_table WHERE id IN (SELECT id FROM test_table WHERE toDecimal64OrDefault(value, scale) != 0) ORDER BY toDecimal64OrDefault(value, 3);",
+        "WITH (SELECT AVG(toDecimal64OrDefault(value, scale)) AS avg_value FROM test_table) AS agg_value SELECT id, value FROM test_table WHERE toDecimal64OrDefault(value, 2) > agg_value;",
+        "SELECT id, toDecimal64OrDefault(NULLIF(value, ''), 2, CAST('0', 'Decimal64(2)')) AS safe_decimal_value FROM test_table WHERE id = ALL (SELECT id FROM test_table WHERE scale < 5);",
+        "CREATE TABLE temp_table AS SELECT id, toDecimal64OrDefault(value, 10, CAST('0', 'Decimal64(10)')) AS processed_value FROM test_table WHERE value NOT IN ('NaN', 'Inf') ORDER BY processed_value;"
+    ]
+}

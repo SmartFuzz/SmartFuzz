@@ -1,0 +1,18 @@
+{
+    "function": "bitmapMin",
+    "operator": "SELECT a OR b",
+    "sql_array": [
+        "CREATE TABLE test_bitmap (id UInt32, bmap AggregateFunction(bitmap, UInt32)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_bitmap VALUES (1, bitmapBuild([NULL])), (2, bitmapBuild([1, 2, 3])), (3, bitmapBuild([]));",
+        "SELECT id, bitmapMin(bmap) AS min_val FROM test_bitmap GROUP BY id HAVING min_val OR min_val IS NULL;",
+        "SELECT id, bitmapMin(bitmapBuild([1, 2, 3, 4])) AS min_val FROM test_bitmap WHERE bmap OR min_val = UINT32_MAX;",
+        "SELECT id, bmap, bitmapMin(bmap) AS min_val FROM (SELECT id, bitmapBuild([bmap.id]) AS bmap FROM test_bitmap WHERE id <= 2) AS sub_query;",
+        "CREATE TABLE test_edge_cases (col1 String, col2 Float64) ENGINE = MergeTree() ORDER BY col1;",
+        "INSERT INTO test_edge_cases VALUES ('a', 1.5), ('b', NULL), ('c', 2.5), (NULL, 3.0);",
+        "SELECT col1, bitmapMin(bitmapBuild([col2 > 0 OR col1 IS NULL])) AS min_val FROM test_edge_cases GROUP BY col1 HAVING min_val >= 1;",
+        "SELECT col1, bitmapMin(bmap) AS min_val FROM (SELECT col1, bitmapBuild([COLLATE('utf8', col1)]) AS bmap FROM test_edge_cases) AS nested_query WHERE min_val OR col1 IS NOT NULL;",
+        "CREATE TEMPORARY TABLE temp_bitmap (num UInt32) ENGINE = Memory;",
+        "INSERT INTO temp_bitmap VALUES (1), (2), (NULL), (UINT32_MAX);",
+        "SELECT bitmapMin(bitmapBuild([num])) AS smallest_num FROM temp_bitmap WHERE num OR smallest_num IS NULL;"
+    ]
+}

@@ -1,0 +1,24 @@
+{
+    "function": "RDF_REPL_START",
+    "operator": "XPath //",
+    "sql_array": [
+        "CREATE TABLE rdf_data (id INT PRIMARY KEY, data XML);",
+        "INSERT INTO rdf_data (id, data) VALUES (1, '<item><value>10</value></item>');",
+        "INSERT INTO rdf_data (id, data) VALUES (2, '<item><value>NULL</value></item>');",
+        "INSERT INTO rdf_data (id, data) VALUES (3, '<item><value>20</value></item>');",
+        "INSERT INTO rdf_data (id, data) VALUES (4, '<item><value>30</value></item>');",
+        "INSERT INTO rdf_data (id, data) VALUES (5, '<item><value></value></item>');",
+        "INSERT INTO rdf_data (id, data) VALUES (6, '<item><value>-5</value></item>');",
+        "INSERT INTO rdf_data (id, data) VALUES (7, '<item><value>1000000000</value></item>');",
+        "SELECT id, xpath_string('//item', data) AS item_value FROM rdf_data WHERE data IS NOT NULL;",
+        "SELECT X.value FROM rdf_data AS R JOIN (SELECT id, xpath_string('//item/value', data) AS value FROM rdf_data) AS X ON R.id = X.id WHERE X.value::int > 20;",
+        "SELECT id, COUNT(*) OVER (PARTITION BY xpath_string('//item/value', data)) AS item_count FROM rdf_data;",
+        "SELECT id, COALESCE(NULLIF(xpath_string('//item/value', data), ''), 'default') as value FROM rdf_data;",
+        "SELECT id, SUM(NULLIF(xpath_string('//item/value', data), 'NULL')::int) AS total_value FROM rdf_data;",
+        "SELECT id, AVG(CAST(xpath_string('//item/value', data) AS INT)) AS average_value FROM rdf_data GROUP BY id HAVING average_value > 5;",
+        "CREATE TABLE temp_rdf (id INT, foreign_key INT REFERENCES rdf_data(id));",
+        "INSERT INTO temp_rdf (id, foreign_key) SELECT id, id FROM rdf_data WHERE id % 2 = 0;",
+        "SELECT R.id, T.foreign_key FROM rdf_data R JOIN temp_rdf T ON R.id = T.foreign_key WHERE xpath_string('//item/value', R.data) IS NOT NULL;",
+        "SELECT id, RDF_REPL_START() FROM rdf_data WHERE id = (SELECT id FROM rdf_data LIMIT 1);"
+    ]
+}

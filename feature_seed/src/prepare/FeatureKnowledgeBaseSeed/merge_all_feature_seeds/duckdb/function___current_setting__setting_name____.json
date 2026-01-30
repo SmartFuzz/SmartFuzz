@@ -1,0 +1,13 @@
+CREATE TABLE settings (setting_name VARCHAR, setting_value VARCHAR);
+INSERT INTO settings VALUES ('access_mode', 'read_only'), ('log_level', 'debug');
+SELECT current_setting('access_mode');
+SELECT current_setting('log_level') AS log_level FROM (SELECT setting_value FROM settings WHERE setting_name = 'log_level') AS inner_query;
+SELECT CASE WHEN current_setting('access_mode') = 'read_only' THEN 'Access is restricted' ELSE 'Access is allowed' END AS access_status;
+WITH current_configs AS (SELECT setting_name, setting_value FROM settings) SELECT current_setting('access_mode'), (SELECT setting_value FROM current_configs WHERE setting_name = 'log_level') AS log_level;
+SELECT COUNT(*) FROM settings WHERE current_setting(setting_name) = setting_value;
+CREATE TABLE user_settings (user_id INT, setting_name VARCHAR, setting_value VARCHAR);
+INSERT INTO user_settings VALUES (1, 'access_mode', 'read_only'), (1, 'log_level', 'info'), (2, 'access_mode', 'full_access');
+SELECT u.user_id, current_setting('access_mode') AS user_access FROM user_settings u JOIN settings s ON u.setting_name = s.setting_name WHERE u.user_id = 1;
+SELECT DISTINCT current_setting(setting_name) FROM (SELECT setting_name FROM settings UNION SELECT setting_name FROM user_settings) AS combined_settings;
+CREATE TABLE app_settings AS SELECT setting_name, current_setting(setting_name) AS current_value FROM settings;
+SELECT a.setting_name, COALESCE(b.current_value, 'not set') FROM settings a LEFT JOIN app_settings b ON a.setting_name = b.setting_name WHERE a.setting_name = 'access_mode';

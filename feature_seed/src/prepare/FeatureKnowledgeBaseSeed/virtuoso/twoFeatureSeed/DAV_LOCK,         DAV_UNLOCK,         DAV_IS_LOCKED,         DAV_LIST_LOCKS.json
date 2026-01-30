@@ -1,0 +1,27 @@
+{
+    "function": "DAV_LOCK\n, \n        DAV_UNLOCK\n, \n        DAV_IS_LOCKED\n, \n        DAV_LIST_LOCKS",
+    "operator": "ILIKE",
+    "sql_array": [
+        "CREATE TABLE dav_resources (id SERIAL PRIMARY KEY, resource_name VARCHAR(255) NOT NULL, locked BOOLEAN DEFAULT FALSE, lock_token VARCHAR(255));",
+        "INSERT INTO dav_resources (resource_name, locked, lock_token) VALUES ('/DAV/resource1', FALSE, NULL), ('/DAV/resource2', TRUE, 'token123');",
+        "SELECT resource_name, DAV_IS_LOCKED(resource_name) AS is_locked FROM dav_resources WHERE DAV_IS_LOCKED(resource_name) ILIKE 't%';",
+        "SELECT resource_name FROM dav_resources WHERE id IN (SELECT id FROM dav_resources WHERE locked OR DAV_LIST_LOCKS(resource_name) ILIKE '%token_list%');",
+        "SELECT COUNT(*) FROM dav_resources WHERE DAV_IS_LOCKED(resource_name) AND lock_token ILIKE 'token%';",
+        "SELECT resource_name, lock_token FROM dav_resources WHERE lock_token IS NOT NULL AND DAV_LOCK(resource_name, '', 'X', NULL, 'user1@example.com', NULL, '0', NULL, 'lock_u1', 'lock_u1_pwd') IS NULL;",
+        "CREATE TABLE dav_users (user_id SERIAL PRIMARY KEY, username VARCHAR(100) NOT NULL, password VARCHAR(100) NOT NULL, group_id INT REFERENCES dav_groups(id));",
+        "INSERT INTO dav_users (username, password, group_id) VALUES ('user1', 'pass1', 1), ('user2', 'pass2', 1);",
+        "SELECT username FROM dav_users WHERE group_id IN (SELECT id FROM dav_groups WHERE group_name ILIKE 'admin%') AND DAV_IS_LOCKED(username);",
+        "CREATE TABLE dav_groups (id SERIAL PRIMARY KEY, group_name VARCHAR(100) NOT NULL);",
+        "INSERT INTO dav_groups (group_name) VALUES ('admin_group'), ('editor_group');",
+        "SELECT group_name, (SELECT COUNT(*) FROM dav_users WHERE group_id = dav_groups.id) as user_count FROM dav_groups HAVING user_count > 0 ORDER BY user_count DESC;",
+        "CREATE TABLE dav_locks (lock_id SERIAL PRIMARY KEY, resource_id INT REFERENCES dav_resources(id), lock_token VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO dav_locks (resource_id, lock_token) VALUES (1, 'lock1'), (2, 'lock2');",
+        "SELECT lock_token FROM dav_locks WHERE created_at > (NOW() - INTERVAL '1 day') AND lock_token ILIKE 'lock%';",
+        "SELECT resource_name, LOCK(lock_token), DAV_LIST_LOCKS(resource_name) FROM dav_resources WHERE DAV_LOCK(resource_name, '', 'S', NULL, 'user1@example.com', '', '0', NULL, 'lock_u1', 'lock_u1_pwd') IS NOT NULL;",
+        "SELECT * FROM dav_resources WHERE resource_name ILIKE 'resource%' AND locked IS NOT NULL;",
+        "SELECT DAV_UNLOCK('/DAV/resource1', NULL, 'lock_u1', 'lock_u1_pwd') AS unlock_status WHERE lock_token ILIKE '%token%';",
+        "CREATE TABLE dav_properties (property_id SERIAL PRIMARY KEY, resource_id INT REFERENCES dav_resources(id), property_name VARCHAR(255), property_value TEXT);",
+        "INSERT INTO dav_properties (resource_id, property_name, property_value) VALUES (1, 'color', 'red'), (1, 'size', 'medium');",
+        "SELECT property_name FROM dav_properties WHERE property_name ILIKE 'color' AND resource_id IN (SELECT id FROM dav_resources WHERE locked = TRUE);"
+    ]
+}

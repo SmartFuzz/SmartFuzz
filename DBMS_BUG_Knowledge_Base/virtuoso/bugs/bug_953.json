@@ -1,0 +1,34 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/953",
+  "title": "select distinct ?g where {graph ?g {?s ?p ?o}}",
+  "vulnerable_database": "Virtuoso",
+  "date": "2021-03-24 13:32:27",
+  "vulnerable_version": "",
+  "description": "The query:\nselect distinct ?g where {graph ?g {?s ?p ?o}}\non a triple store with about 600GB RAM (64 cores/ubuntu 18) and a 15 billion triple store with about two dozen graphs never completes >24 hours and still running.  However, this query:\nselect distinct ?g count(*) where {graph ?g {?s ?p ?o}} group by ?g order by ?g\nruns in about 10 minutes\nselect count(*) where {graph ?g {?s ?p ?o}}  -->> runs in 1 minutes\nRunning develop branch:\n09:32:06 OpenLink Virtuoso Universal Server\n09:32:06 Version 07.20.3231-pthreads for Linux as of Mar 22 2021\n09:32:06 uses OpenSSL 1.0.2n  7 Dec 2017",
+  "poc": [
+    "select count (*) from rdf_quad table option (index rdf_quad);\nselect count (*) from rdf_quad table option (index rdf_quad_pogs)",
+    "drop index rdf_quad_sp;\nCREATE DISTINCT NO PRIMARY KEY REF COLUMN INDEX RDF_QUAD_SP  ON DB.DBA.RDF_QUAD (S, P) PARTITION (S int (0hexffff00));"
+  ],
+  "key_bug_features": [
+    "select distinct ?g query on large triple store"
+  ],
+  "bug_feature_seed": [
+    "SPARQL SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } };",
+    "SPARQL SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } } LIMIT 10;",
+    "SPARQL SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } } OFFSET 0;",
+    "SPARQL SELECT ?g (COUNT(*) AS ?cnt) WHERE { GRAPH ?g { ?s ?p ?o } } GROUP BY ?g;",
+    "SPARQL SELECT ?g (COUNT(?s) AS ?cnt) WHERE { GRAPH ?g { ?s ?p ?o } } GROUP BY ?g ORDER BY ?g;",
+    "SPARQL SELECT (COUNT(*) AS ?cnt) WHERE { GRAPH ?g { ?s ?p ?o } };",
+    "SPARQL SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } FILTER (?s != ?o) };",
+    "SPARQL SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } FILTER EXISTS { ?s ?p ?o } };",
+    "SPARQL SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } } ORDER BY ?g;",
+    "SPARQL SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } } LIMIT 100 OFFSET 0;"
+  ],
+  "bug_features_seed": [
+    "CREATE GRAPH <http://example.org/graph1>;",
+    "INSERT DATA { GRAPH <http://example.org/graph1> { <http://example.org/s1> <http://example.org/p1> <http://example.org/o1> } };",
+    "CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR(255), value FLOAT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table (id, name, value) VALUES (1, 'test1', 10.5);",
+    "SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } };"
+  ]
+}

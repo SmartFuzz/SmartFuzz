@@ -1,0 +1,10 @@
+CREATE TABLE timestamps (id INT, ts TIMESTAMPTZ, value DOUBLE);
+INSERT INTO timestamps VALUES (1, TIMESTAMPTZ '1992-04-20 15:26:00-07', 100.0), (2, TIMESTAMPTZ '1992-04-21 15:26:00-07', 200.0);
+CREATE TABLE buckets (bucket_id INT, bucket_start TIMESTAMPTZ, bucket_end TIMESTAMPTZ);
+INSERT INTO buckets SELECT id, time_bucket(INTERVAL '2 weeks', ts), time_bucket(INTERVAL '2 weeks', ts) + INTERVAL '2 weeks' FROM timestamps;
+SELECT b.bucket_id, COUNT(t.value) AS total_values FROM buckets b JOIN timestamps t ON t.ts >= b.bucket_start AND t.ts < b.bucket_end GROUP BY b.bucket_id HAVING COUNT(t.value) > (SELECT AVG(value) FROM timestamps)/2;
+SELECT t1.id, t1.value, time_bucket(INTERVAL '1 month', t1.ts) AS month_bucket, (SELECT SUM(value) FROM timestamps t2 WHERE t2.value < t1.value) AS cumulative_sum FROM timestamps t1 WHERE t1.value !> 150;
+SELECT time_bucket(INTERVAL '1 day', ts, TIMESTAMPTZ '2000-01-01 00:00:00+00'::TIMESTAMPTZ) AS aligned_bucket, COUNT(*) FROM timestamps GROUP BY aligned_bucket HAVING COUNT(*) < 5;
+SELECT t.ts, t.value, (SELECT COUNT(*) FROM timestamps WHERE value >= (t.value !)) AS greater_count FROM timestamps t WHERE t.ts IS NOT NULL ORDER BY t.ts DESC LIMIT 10;
+WITH filtered AS (SELECT ts, value FROM timestamps WHERE value IS NOT NULL) SELECT time_bucket(INTERVAL '1 week', ts) AS week_bucket, SUM(value) AS total_value FROM filtered GROUP BY week_bucket;
+SELECT b.bucket_id, SUM(t.value * (4!)) AS scaled_value FROM buckets b LEFT JOIN timestamps t ON t.ts >= b.bucket_start AND t.ts < b.bucket_end GROUP BY b.bucket_id HAVING SUM(t.value * (4!)) < 1000;

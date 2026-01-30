@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/60488",
+  "title": "unexpected other error using hash join",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n``` SQL\nCREATE TABLE `t69724e20` (\n  `col_19` date NOT NULL,\n  PRIMARY KEY (`col_19`) /*T![clustered_index] CLUSTERED */,\n  KEY `idx_6` (`col_19`),\n  UNIQUE KEY `idx_7` (`col_19`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin;\n\nINSERT INTO `t69724e20` VALUES('1972-04-13'),('1973-07-16'),('1975-11-22'),('1987-02-25'),('1989-09-11'),('1989-12-23'),('1991-04-15'),('1994-05-01'),('1995-03-05'),('2003-02-04'),('2008-09-08'),('2011-08-06'),('2016-02-04'),('2016-02-07'),('2018-01-27'),('2023-07-29'),('2024-11-05'),('2025-11-17'),('2028-08-04'),('2030-01-27'),('2030-03-06');\n\nselect * FROM `t69724e20` JOIN (SELECT  COUNT(DISTINCT `t69724e20`.`col_19`) AS `r0`,SUBSTR(`t69724e20`.`col_19`, 3) AS `r1`,CHARACTER_LENGTH(`t69724e20`.`col_19`) AS `r2`,`t69724e20`.`col_19` AS `r3`,BIT_XOR(`t69724e20`.`col_19`) AS `r4` FROM `t69724e20` GROUP BY `t69724e20`.`col_19` ORDER BY `r0`,`r1`,`r2`,`r3`,`r4`) AS `st_518` ON `t69724e20`.`col_19`=`st_518`.`r4` WHERE NOT (`st_518`.`r0`=5103557308169336446) AND `t69724e20`.`col_19` IN ('2016-02-07');\n\n```\n\n### 2. What did you expect to see? (Required)\none row\nRefer to \n\n``` SQL\nmysql> SELECT SUM((NOT (`st_518`.`r0`=5103557308169336446) AND `t69724e20`.`col_19` IN ('2016-02-07')) IS TRUE) FROM `t69724e20` JOIN (SELECT /*+ USE_INDEX_MERGE(`t69724e20` )*/ COUNT(DISTINCT `t69724e20`.`col_19`) AS `r0`,SUBSTR(`t69724e20`.`col_19`, 3) AS `r1`,CHARACTER_LENGTH(`t69724e20`.`col_19`) AS `r2`,`t69724e20`.`col_19` AS `r3`,BIT_XOR(`t69724e20`.`col_19`) AS `r4` FROM `t69724e20` GROUP BY `t69724e20`.`col_19` ORDER BY `r0`,`r1`,`r2`,`r3`,`r4`) AS `st_518` ON `t69724e20`.`col_19`=`st_518`.`r4`;\n+---------------------------------------------------------------------------------------------------+\n| SUM((NOT (`st_518`.`r0`=5103557308169336446) AND `t69724e20`.`col_19` IN ('2016-02-07')) IS TRUE) |\n+---------------------------------------------------------------------------------------------------+\n|                                                                                                 1 |\n+---------------------------------------------------------------------------------------------------+\n1 row in set, 1 warning (0.02 sec)\n```\n### 3. What did you see instead (Required)\n``` SQL\n\nmysql> select * FROM `t69724e20` JOIN (SELECT  COUNT(DISTINCT `t69724e20`.`col_19`) AS `r0`,SUBSTR(`t69724e20`.`col_19`, 3) AS `r1`,CHARACTER_LENGTH(`t69724e20`.`col_19`) AS `r2`,`t69724e20`.`col_19` AS `r3`,BIT_XOR(`t69724e20`.`col_19`) AS `r4` FROM `t69724e20` GROUP BY `t69724e20`.`col_19` ORDER BY `r0`,`r1`,`r2`,`r3`,`r4`) AS `st_518` ON `t69724e20`.`col_19`=`st_518`.`r4` WHERE NOT (`st_518`.`r0`=5103557308169336446) AND `t69724e20`.`col_19` IN ('2016-02-07');\nEmpty set (0.01 sec)\n```\n### 4. What is your TiDB version? (Required)\n671534a755e5ac3fbb5b515cc15f4d54142e6810\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "date": "2025-04-10T09:55:14Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE test_table ( id SERIAL PRIMARY KEY, date_col DATE NOT NULL, value_col INT, UNIQUE (date_col));",
+    "INSERT INTO test_table (date_col, value_col) VALUES ('2020-01-01', 10), ('2020-01-02', 20), ('2020-01-03', 30), ('2020-01-04', 40);",
+    "SELECT COUNT(DISTINCT date_col), BIT_OR(value_col) FROM test_table WHERE date_col >= '2020-01-01' GROUP BY date_col HAVING COUNT(value_col) > 1;",
+    "CREATE TABLE another_table ( date_col DATE NOT NULL PRIMARY KEY, description VARCHAR(255));",
+    "INSERT INTO another_table (date_col, description) VALUES ('2020-01-01', 'Start'), ('2020-01-02', 'Middle'), ('2020-01-03', 'End');"
+  ],
+  "key_bug_features": [
+    "JOIN with COUNT and BIT_XOR on date column"
+  ]
+}

@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id INTEGER, value BITSTRING, notes VARCHAR);
+INSERT INTO test_table (id, value, notes) VALUES (1, '101'::BITSTRING, NULL), (2, '110'::BITSTRING, 'test note'), (3, NULL, 'another note');
+SELECT current_catalog(), (~(value) ~ '001'::BITSTRING) AS result FROM test_table WHERE id = (SELECT MAX(id) FROM test_table WHERE notes IS NOT NULL);
+SELECT id, current_catalog(), value, (~(value)) AS negated_value FROM test_table WHERE value IS NOT NULL GROUP BY id, value HAVING negated_value = '010'::BITSTRING;
+SELECT current_catalog(), COUNT(*) OVER (PARTITION BY (~(value))) AS count_per_negated_value FROM test_table WHERE value IS NOT NULL ORDER BY count_per_negated_value DESC;
+CREATE TABLE another_test (ref_id INTEGER, bit_col BITSTRING);
+INSERT INTO another_test (ref_id, bit_col) VALUES (1, '111'::BITSTRING), (2, '000'::BITSTRING);
+SELECT tt.id, current_catalog(), (~(tt.value) ~ at.bit_col) AS combined_bit FROM test_table tt JOIN another_test at ON tt.id = at.ref_id WHERE tt.value IS NOT NULL;
+SELECT current_catalog(), value FROM test_table WHERE (~(value)) IS NULL;
+UPDATE test_table SET value = (~(value)) WHERE notes IS NOT NULL;

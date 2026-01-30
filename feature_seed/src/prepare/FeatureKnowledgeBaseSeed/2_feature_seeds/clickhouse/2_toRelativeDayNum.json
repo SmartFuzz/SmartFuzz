@@ -1,0 +1,9 @@
+CREATE TABLE test_dates (id UInt32, event_date DateTime, event_description String);
+INSERT INTO test_dates VALUES (1, toDateTime('1993-10-05 00:00:00'), 'Event A'), (2, toDateTime('2023-10-05 12:00:00'), NULL), (3, toDateTime('2023-01-01 10:00:00'), 'Event C');
+SELECT event_description, toRelativeDayNum(event_date) AS relative_day FROM test_dates WHERE event_description NOT IN (SELECT DISTINCT event_description FROM test_dates WHERE event_description IS NOT NULL) AND toRelativeDayNum(event_date) NOT IN (SELECT toRelativeDayNum(toDateTime('2023-10-05')));
+SELECT id, event_description, toRelativeDayNum(toDate(event_date)) AS relative_day FROM test_dates WHERE event_date NOT IN (SELECT event_date FROM test_dates WHERE event_description IS NULL) GROUP BY id, event_description HAVING toRelativeDayNum(toDate(event_date)) < (SELECT COUNT(*) FROM test_dates) ORDER BY relative_day;
+CREATE TABLE test_edge_cases (id UInt32, edge_date DateTime64(3), value String);
+INSERT INTO test_edge_cases VALUES (1, toDateTime64('2023-01-01 00:00:01.123', 3), 'Extreme Precision'), (2, toDateTime64('2023-01-01 00:00:01.456', 3), 'Another Value'), (3, NULL, 'Null Value');
+SELECT id, toRelativeDayNum(edge_date) AS relative_day FROM test_edge_cases WHERE edge_date NOT IN (SELECT edge_date FROM test_edge_cases WHERE edge_date IS NULL) OR edge_date IS NULL;
+SELECT COUNT(*) AS cnt FROM test_edge_cases WHERE id NOT IN (SELECT id FROM test_edge_cases WHERE edge_date IS NOT NULL) AND toRelativeDayNum(edge_date) < 30;
+SELECT DISTINCT event_description, toRelativeDayNum(toDateTime('2000-09-20')) AS ref_day FROM test_dates WHERE id NOT IN (SELECT id FROM test_dates WHERE event_description IS NOT NULL) GROUP BY event_description HAVING ref_day > (SELECT MAX(toRelativeDayNum(event_date)) FROM test_dates) ORDER BY ref_day DESC;

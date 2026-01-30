@@ -1,0 +1,17 @@
+CREATE TABLE test_table (value String, count UInt64);
+INSERT INTO test_table VALUES ('a', 1), ('a', 1), ('b', 2), ('c', 3), ('d', 4), ('e', 5), ('f', 6);
+SELECT approx_top_k(3, 6)(value) FROM test_table;
+SELECT approx_top_k(5)(value) AS frequent_values, count FROM (SELECT value, count FROM test_table WHERE count > 1);
+SELECT approx_top_k(10)(value) FROM (SELECT value FROM test_table WHERE count <= 3 UNION ALL SELECT value FROM test_table WHERE count > 3) AS combined;
+CREATE TABLE additional_table (category String, value String);
+INSERT INTO additional_table VALUES ('X', 'a'), ('Y', 'b'), ('X', 'b'), ('Y', 'c'), ('X', 'c'), ('Y', 'd');
+SELECT approx_top_k(4)(value) FROM (SELECT value FROM test_table UNION ALL SELECT value FROM additional_table);
+WITH (SELECT approx_top_k(3)(value) FROM test_table) AS top_values SELECT top_values;
+SELECT approx_top_k(5, 15)(value) FROM (SELECT value FROM test_table WHERE count > 2 ORDER BY count DESC);
+SELECT approx_top_k(1)(value) FROM (SELECT DISTINCT value FROM test_table JOIN additional_table ON test_table.value = additional_table.value);
+CREATE TABLE complex_table (date Date, event String);
+INSERT INTO complex_table VALUES (today(), 'start'), (today(), 'stop'), (today() - 1, 'start'), (today() - 1, 'start'), (today() - 2, 'stop');
+SELECT approx_top_k(3)(event) FROM complex_table WHERE date >= today() - 2;
+SELECT approx_top_k(2)(event) FROM complex_table WHERE (date = today() AND event LIKE 's%') OR (date = today() - 1 AND event LIKE 's%');
+WITH (SELECT approx_top_k(4)(event) FROM complex_table) AS frequent_events SELECT COUNT(*) FROM (SELECT DISTINCT event FROM complex_table) WHERE event IN (SELECT arrayJoin(frequent_events));
+SELECT approx_top_k(10)(event) FROM (SELECT event FROM complex_table ORDER BY date LIMIT 100);

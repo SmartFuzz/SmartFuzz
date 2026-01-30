@@ -1,0 +1,17 @@
+CREATE TABLE timestamps (id INT PRIMARY KEY, event_time TIMESTAMP, description TEXT);
+INSERT INTO timestamps (id, event_time, description) VALUES (1, timestamp '2020-03-22 13:16:57.734639', 'Initial Event');
+INSERT INTO timestamps (id, event_time, description) VALUES (2, timestamp '2020-03-22 14:16:57.734639', 'Second Event');
+INSERT INTO timestamps (id, event_time, description) VALUES (3, timestamp '2020-03-22 15:16:57.734639', 'Third Event');
+SELECT id, sys.date_trunc('hour', event_time + (interval '1' second * 3600)) AS truncated_time FROM timestamps WHERE event_time > timestamp '2020-03-22 00:00:00';
+SELECT id, sys.date_trunc('day', event_time - (interval '1' second * 86400)) AS previous_day FROM timestamps WHERE event_time IS NOT NULL;
+SELECT id, sys.date_trunc('month', event_time + (interval '1' second * (7 * 24 * 60 * 60))) AS next_month FROM timestamps WHERE event_time IS NOT NULL GROUP BY next_month HAVING COUNT(id) > 1;
+SELECT id, event_time, sys.date_trunc('quarter', event_time) + (interval '1' second * 86400) AS incremented_quarter FROM timestamps WHERE event_time IS NOT NULL ORDER BY incremented_quarter;
+SELECT t1.id, t1.event_time, t2.event_time FROM timestamps t1 JOIN timestamps t2 ON sys.date_trunc('minute', t1.event_time) = sys.date_trunc('minute', t2.event_time + (interval '1' second * -60));
+SELECT id, description FROM timestamps WHERE event_time IS NULL OR event_time < sys.date_trunc('year', event_time + (interval '1' second * 31557600)) ORDER BY event_time;
+CREATE TABLE event_logs (log_id INT PRIMARY KEY, log_time TIMESTAMP, log_description TEXT);
+INSERT INTO event_logs (log_id, log_time, log_description) VALUES (1, timestamp '2019-01-01 00:00:00', 'Log Event 1');
+INSERT INTO event_logs (log_id, log_time, log_description) VALUES (2, timestamp '2021-12-31 23:59:59', 'Log Event 2');
+SELECT e.log_id, sys.date_trunc('year', e.log_time) + (interval '1' second * (365 * 24 * 60 * 60)) AS next_year FROM event_logs e WHERE e.log_time IS NOT NULL;
+SELECT e.log_id, e.log_time, e.log_description FROM event_logs e WHERE e.log_time = (SELECT MAX(log_time) FROM event_logs) OR e.log_description IS NULL;
+SELECT DISTINCT e.log_id, sys.date_trunc('month', SYS_DATE_TRUNC('minute', e.log_time + (interval '1' second * 60))) AS truncated FROM event_logs e ORDER BY truncated;
+SELECT event_time, COUNT(*) AS occurrences FROM timestamps GROUP BY sys.date_trunc('week', event_time + (interval '1' second * 604800)) HAVING occurrences > 1;

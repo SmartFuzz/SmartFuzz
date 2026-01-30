@@ -1,0 +1,15 @@
+[
+    "SET allow_introspection_functions=1;",
+    "CREATE TABLE trace_log (address UInt64, event String, timestamp DateTime) ENGINE = MergeTree() ORDER BY timestamp;",
+    "INSERT INTO trace_log (address, event, timestamp) VALUES (94138803686098, 'event_1', now()), (94138803686099, 'event_2', now());",
+    "SELECT demangle(addressToSymbol(address)) FROM trace_log;",
+    "SELECT arrayStringConcat(arrayMap(x -> demangle(addressToSymbol(x)), (SELECT address FROM trace_log)), '\\n') AS trace_functions FROM trace_log LIMIT 1;",
+    "SELECT address, demangle(addressToSymbol(address)) FROM trace_log WHERE address IS NOT NULL;",
+    "WITH (SELECT arrayMap(x -> address, (SELECT address FROM trace_log)) AS addresses) SELECT arrayStringConcat(arrayMap(x -> demangle(addressToSymbol(x)), addresses), '\\n') AS trace_functions;",
+    "CREATE TABLE temp_log (id UInt32, address UInt64) ENGINE = Memory;",
+    "INSERT INTO temp_log VALUES (1, 94138803686098), (2, 94138803686099), (3, 94138803686100);",
+    "SELECT id, demangle(addressToSymbol(address)) FROM temp_log WHERE id IN (SELECT id FROM temp_log WHERE address > 94138803686097);",
+    "SELECT demangle(addressToSymbol(address)) FROM (SELECT address FROM temp_log WHERE id IN (SELECT id FROM temp_log WHERE address < 94138803686102)) AS filtered_addresses;",
+    "WITH (SELECT arrayJoin((SELECT address FROM temp_log)) AS address) SELECT demangle(addressToSymbol(address)) FROM trace_log WHERE address >= 94138803686098;",
+    "SELECT demangle(addressToSymbol(address)) AS function_name FROM (SELECT address FROM trace_log WHERE event = 'event_1') AS events;"
+]

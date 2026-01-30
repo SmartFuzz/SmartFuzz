@@ -1,0 +1,16 @@
+{
+    "function": "Accessing private and public buckets",
+    "operator": "a <> b",
+    "sql_array": [
+        "CREATE TABLE test_buckets (id UInt32, data String, created_at DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_buckets (id, data, created_at) VALUES (1, 'example_data_1', '2023-10-01 12:00:00'), (2, NULL, '2023-10-01 12:00:01'), (3, 'example_data_3', NULL);",
+        "CREATE TABLE test_s3_buckets (bucket_id UInt32, bucket_data String) ENGINE = MergeTree() ORDER BY bucket_id;",
+        "INSERT INTO test_s3_buckets (bucket_id, bucket_data) VALUES (1, 'private_bucket_1'), (2, 'public_bucket_2');",
+        "SELECT id, (SELECT bucket_data FROM test_s3_buckets WHERE bucket_id = id) AS accessed_bucket FROM test_buckets WHERE data <> 'example_data_2' OR created_at IS NULL;",
+        "SELECT COUNT(*) FROM (SELECT id, bucket_data FROM test_buckets JOIN test_s3_buckets ON id <> bucket_id) AS subquery HAVING COUNT(*) > 1;",
+        "WITH s3_access AS (SELECT bucket_id, bucket_data FROM test_s3_buckets WHERE bucket_data IS NOT NULL) SELECT id, (SELECT bucket_data FROM s3_access WHERE bucket_id <> id) AS different_bucket FROM test_buckets;",
+        "SELECT id, data, created_at, IF(data IS NULL, 'No Data', data) AS status FROM test_buckets GROUP BY id, created_at HAVING created_at <> NULL OR data <> '' ORDER BY created_at;",
+        "SELECT bucket_id, COUNT(*) AS count_data FROM (SELECT id, bucket_id FROM test_buckets JOIN test_s3_buckets ON (data <> bucket_data OR bucket_data IS NULL)) GROUP BY bucket_id HAVING count_data > 0;",
+        "SELECT DISTINCT id, bucket_data FROM test_buckets LEFT JOIN test_s3_buckets ON id <> bucket_id WHERE bucket_data IS NOT NULL OR (data IS NULL AND created_at IS NULL);"
+    ]
+}

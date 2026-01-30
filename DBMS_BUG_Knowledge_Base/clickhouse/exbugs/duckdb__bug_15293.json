@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/15293",
+  "title": "Undocumented column name collisions in multi-column PIVOT",
+  "description": "### What happens?\n\nOK, so I'm not sure this is even truly a bug, more just an annoying corner case.\r\n\r\nThe problem is: when pivoting on multiple columns, the new column names are made from joining the pivot values with '_', so pivot value `('foo', 'bar')` becomes column `foo_bar`.\r\n\r\nSo if you're pivoting a table on string columns whose values contain `_`, the new columns' names can be a bit confusing.\r\nIn the rather contrived case below, pivot values `('w', 'x_y_z')`, `('w_x', 'y_z')` and `('w_x_y', 'z')` all map to column `w_x_y_z`.\r\n\r\nDuckDB does a sensible thing here, notices the collision and renames the columns to `w_x_y_z`, `w_x_y_z_1` and `w_x_y_z_2`, but this isn't documented anywhere I can find.\r\n\r\nPossible solutions:\r\n* Allow the `_` joiner to be changed, perhaps by a \"set\" variable?\r\n* Do something to escape `_` in pivot values? \r\n* Document it as a weird and silly corner case, including what order the `_n` suffixes are applied in?\n\n### To Reproduce\n\nduckdb:\r\n```\r\ncreate table foo (a varchar, b varchar, z integer);\r\ninsert into foo values ('w', 'x_y_z', 1), ('w_x', 'y_z', 2), ('w_x_y', 'z', 4);\r\npivot foo on a, b using sum(z);\r\n```\r\n\r\noutput:\r\n```\r\n┌─────────┬────────┬────────┬───────────┬───────────┬────────┬─────────────┬───────────┬───────────┐\r\n│ w_x_y_z │ w_y_z  │  w_z   │ w_x_x_y_z │ w_x_y_z_1 │ w_x_z  │ w_x_y_x_y_z │ w_x_y_y_z │ w_x_y_z_2 │\r\n│ int128  │ int128 │ int128 │  int128   │  int128   │ int128 │   int128    │  int128   │  int128   │\r\n├─────────┼────────┼────────┼───────────┼───────────┼────────┼─────────────┼───────────┼───────────┤\r\n│    1    │  NULL  │  NULL  │   NULL    │     2     │  NULL  │    NULL     │   NULL    │     4     │\r\n└─────────┴────────┴────────┴───────────┴───────────┴────────┴─────────────┴───────────┴───────────┘\r\n```\n\n### OS:\n\nLinux 6.8.0-49-generic x86_64\n\n### DuckDB Version:\n\nv1.1.4-dev3247 04d8f995da\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nNick Moore\n\n### Affiliation:\n\nMnemote Pty Ltd\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a source build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [X] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [X] Yes, I have",
+  "date": "2024-12-12 00:29:00",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id Int32, name String, value Int32) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO test_table VALUES (1, 'alpha', 10), (2, 'beta', 20), (3, 'gamma', 30);",
+    "CREATE TABLE pivot_test AS SELECT name, SUM(value) AS total FROM test_table GROUP BY name;",
+    "CREATE TABLE foo (a String, b String, z Int32) ENGINE = MergeTree() ORDER BY a;",
+    "INSERT INTO foo VALUES ('w', 'x_y_z', 1), ('w_x', 'y_z', 2), ('w_x_y', 'z', 4);",
+    "SELECT * FROM foo GROUP BY a, b WITH TOTALS;"
+  ],
+  "key_bug_features": [
+    "Column name collisions when pivoting on string columns with underscores"
+  ]
+}

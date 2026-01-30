@@ -1,0 +1,16 @@
+{
+    "function": "VT_DROP_FTT",
+    "operator": "XPath //",
+    "sql_array": [
+        "CREATE TABLE test_data (id INT PRIMARY KEY, content XML, value VARCHAR(255) NULL);",
+        "INSERT INTO test_data (id, content, value) VALUES (1, '<item>test</item>', 'sample'), (2, '<item>example</item>', NULL), (3, '<item>edge case</item>', '');",
+        "SELECT id, VT_DROP_FTT(xpath_string('//item', content)) AS trigger_output FROM test_data WHERE value IS NOT NULL;",
+        "SELECT id, VT_DROP_FTT(xpath_string('//item', content)) AS trigger_output FROM test_data WHERE value IS NULL OR value = '';",
+        "WITH ranked_items AS (SELECT id, VT_DROP_FTT(xpath_string('//item', content)) AS trigger_output, ROW_NUMBER() OVER (PARTITION BY value ORDER BY id) AS rn FROM test_data) SELECT id, trigger_output FROM ranked_items WHERE rn = 1;",
+        "SELECT t1.id, VT_DROP_FTT(xpath_string('//item', t2.content)) AS t2_output FROM test_data t1 JOIN test_data t2 ON t1.id = t2.id WHERE t1.value = 'sample' AND t2.value IS NULL;",
+        "SELECT id, COUNT(*) OVER (PARTITION BY VT_DROP_FTT(xpath_string('//item', content))) AS item_count FROM test_data;",
+        "SELECT t.id, VT_DROP_FTT(xpath_string('//item', t.content)) AS trigger_value FROM (SELECT id, content FROM test_data WHERE value IS NOT NULL) AS t WHERE t.content IS NOT NULL;",
+        "SELECT t1.id, t1.value, VT_DROP_FTT(xpath_string('//item', t2.content)) AS trigger_output FROM test_data t1 LEFT JOIN test_data t2 ON t1.id = t2.id WHERE t1.value IS NOT NULL AND t2.value IS NULL;",
+        "SELECT VT_DROP_FTT(xpath_string('//item', content)), CASE WHEN value IS NULL THEN 'None' ELSE value END AS value_case FROM test_data;"
+    ]
+}

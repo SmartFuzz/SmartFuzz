@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=106267",
+  "title": "wrong result with COALESCE function",
+  "description": "When using an expression  NOT BETWEEN NULL AND COALESCE() MySQL is returning wrong results.\r\n\r\nThe COALESCE() function has two arguments, but the first argument is never NULL. So the results should be the same\r\n\r\nThis is a simplification/based on the testcase t/type_temporal_fractional.test listed as \"\nbug 23\n\".\nHow to repeat:\nDROP TABLE IF EXISTS t2;\r\nCREATE TABLE t2 (\r\n  col_time_6_not_null_key TIME(6) NOT NULL,\r\n  col_datetime_key DATETIME DEFAULT NULL,\r\n  col_time_not_null TIME NOT NULL,\r\n  pk TIMESTAMP(4) NOT NULL PRIMARY KEY\r\n);\r\n\r\nINSERT INTO `t2` VALUES ('03:07:29.013169','2000-06-10 19:41:30','13:56:51','2011-09-08 05:08:20.8362'),\r\n('00:20:06.000000','2004-08-23 21:05:10','00:20:06','2011-09-08 05:08:22.8362'),\r\n('00:20:03.000000','2022-01-24 11:35:37','01:04:48','2011-09-08 05:08:24.8362'),\r\n('19:48:23.009935',NULL,'21:43:24','2011-09-08 05:08:26.8362'),\r\n('00:20:01.000000','2003-01-23 14:57:31','00:20:09','2011-09-08 05:08:28.8362'),\r\n('23:09:37.056340',NULL,'05:10:32','2011-09-08 05:08:19.8362'),\r\n('09:44:10.025082','2022-01-24 11:35:37','00:20:00','2011-09-08 05:08:21.8362'),\r\n('23:02:50.013380','2003-11-18 04:32:18','00:20:06','2011-09-08 05:08:23.8362'),\r\n('00:20:01.000000','2022-01-24 11:35:37','14:48:29','2011-09-08 05:08:25.8362'),\r\n('06:00:36.034953',NULL,'23:29:59','2011-09-08 05:08:27.8362');\r\n\r\nSELECT pk, col_time_not_null, col_time_6_not_null_key, col_datetime_key\r\nFROM t2\r\nWHERE col_time_not_null NOT BETWEEN NULL AND COALESCE (col_time_6_not_null_key, col_datetime_key);\r\n\r\nSELECT pk, col_time_not_null, col_time_6_not_null_key, col_datetime_key\r\nFROM t2\r\nWHERE col_time_not_null NOT BETWEEN NULL AND col_time_6_not_null_key;",
+  "date": "2022-01-24 18:39:00",
+  "vulnerable_version": "5.7",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t3;",
+    "CREATE TABLE t3 (id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, col_time TIME(6) NOT NULL, col_date DATE NOT NULL, col_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t3 (col_time, col_date) VALUES ('12:30:00.000000', '2023-01-01'), ('15:45:30.123456', '2023-02-01'), ('08:15:45.654321', '2023-03-01');",
+    "SELECT id, col_time FROM t3 WHERE col_time NOT BETWEEN '00:00:00.000000' AND COALESCE(col_time, '12:00:00.000000');",
+    "SELECT id, col_time FROM t3 WHERE col_time NOT BETWEEN '08:00:00.000000' AND COALESCE(col_time, '15:00:00.000000');"
+  ],
+  "key_bug_features": [
+    "COALESCE function with NOT BETWEEN NULL condition"
+  ]
+}

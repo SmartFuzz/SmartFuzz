@@ -1,0 +1,15 @@
+CREATE TABLE encryption_test (comment String, secret String);
+INSERT INTO encryption_test VALUES ('Test1', encrypt('aes-256-ecb', 'plaintext1', '12345678910121314151617181920212'));
+INSERT INTO encryption_test VALUES ('Test2', encrypt('aes-256-cbc', 'plaintext2', '12345678910121314151617181920212'));
+INSERT INTO encryption_test VALUES ('Test3', encrypt('aes-256-gcm', 'plaintext3', '12345678910121314151617181920212', '1234567890123456', 'aad_data'));
+INSERT INTO encryption_test VALUES ('Test4', encrypt('aes-128-ctr', 'plaintext4', '1234567891012131'));
+SELECT comment, decrypt('aes-256-ecb', secret, '12345678910121314151617181920212') as plaintext FROM encryption_test;
+SELECT comment, decrypt('aes-128-cbc', secret, '1234567891012131') as plaintext FROM encryption_test;
+SELECT comment, decrypt('aes-256-gcm', secret, '12345678910121314151617181920212', '1234567890123456', 'aad_data') as plaintext FROM encryption_test;
+SELECT comment, decrypt('aes-192-ctr', secret, '12345678910121314151617181920212') as plaintext FROM encryption_test WHERE comment LIKE 'Test%';
+SELECT comment, (SELECT decrypt('aes-256-ecb', t.secret, '12345678910121314151617181920212') FROM encryption_test t WHERE t.comment = e.comment) as plaintext FROM encryption_test e;
+SELECT e.comment, decrypt('aes-256-cbc', e.secret, '12345678910121314151617181920212') as plaintext FROM encryption_test e JOIN encryption_test t ON e.comment != t.comment;
+SELECT comment, decrypt('aes-128-ofb', secret, '1234567891012131') as plaintext FROM encryption_test WHERE comment IN ('Test1', 'Test2');
+SELECT comment, decrypt('aes-192-gcm', secret, '12345678910121314151617181920212', '1234567890123456', 'aad_data') as plaintext FROM encryption_test WHERE comment = 'Test3';
+SELECT DISTINCT comment, decrypt('aes-256-ctr', secret, '123456789101213141515');
+SELECT comment, decrypt('aes-128-gcm', secret, '1234567891012131', '1234567890123456', 'aad_data') as plaintext FROM encryption_test UNION ALL SELECT comment, 'Decryption Failed' FROM encryption_test WHERE decrypt('aes-128-gcm', secret, 'incorrect_key', '1234567890123456', 'aad_data') IS NULL;

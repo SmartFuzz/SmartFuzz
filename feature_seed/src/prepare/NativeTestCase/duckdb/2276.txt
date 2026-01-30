@@ -1,0 +1,11 @@
+PRAGMA force_compression='roaring';
+CREATE TABLE test (a BOOL);
+INSERT INTO test SELECT case when i = 0 or (i % 512 != 0 and (i % 512) < 350 or (i % 512) > 450) then false else true end FROM range(0,10000) tbl(i); # runs: # (0,350) # (451,512) # (513,862) # (963,1024) # (1025,1374) # (1475,1536) # (1537,1886) # (1987,2048);
+checkpoint;
+SELECT compression FROM pragma_storage_info('test') WHERE segment_type ILIKE 'BOOLEAN' and compression != 'Roaring';
+select count(*) from test WHERE a IS true;
+delete from test;
+with intermediates as ( 	select i % 2048 as i 	from range(0, 10_000) t(i) ) INSERT INTO test SELECT case when (i >= 0 and i < 110) or (i >= 1500 and i < 1800) or (i >= 2000) then false else true end FROM intermediates; # (0,110) # (1500,1800) # (2000,2048);
+checkpoint;
+select count(*) from test WHERE a IS true;
+DROP TABLE test;

@@ -1,0 +1,16 @@
+{
+    "function": "s2RectIntersection",
+    "operator": "a != ALL (subquery)",
+    "sql_array": [
+        "CREATE TABLE geo_test (id UInt32, s2PointLow UInt64, s2PointHi UInt64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO geo_test (id, s2PointLow, s2PointHi) VALUES (1, 5178914411069187297, 5177056748191934217), (2, 5179062030687166815, 5177056748191934217), (3, 5179051234567891234, 5171234567890123456);",
+        "CREATE TABLE subquery_test (value UInt64) ENGINE = MergeTree() ORDER BY value;",
+        "INSERT INTO subquery_test (value) VALUES (5178900000000000000), (5178900000000000001), (5178900000000000002);",
+        "SELECT s2RectIntersection(s2PointLow, s2PointHi, (SELECT value FROM subquery_test WHERE value != ALL (SELECT value FROM subquery_test WHERE value < 5178900000000000000)), 5177056748191934217) AS rectIntersection FROM geo_test WHERE id = 1;",
+        "SELECT s2RectIntersection(5178914411069187297, (SELECT MAX(s2PointHi) FROM geo_test WHERE id != all (SELECT id FROM geo_test WHERE id = 2)), 5179062030687166815, 5177056748191934217) AS rectIntersection FROM geo_test;",
+        "SELECT COUNT(*) FROM geo_test WHERE s2PointLow != ALL (SELECT s2PointLow FROM geo_test WHERE s2PointHi IS NOT NULL);",
+        "SELECT s2RectIntersection(s2PointLow, s2PointHi, 5178914411069187297 + 1, 5177056748191934217) AS rectIntersection FROM geo_test GROUP BY s2PointLow HAVING rectIntersection IS NOT NULL;",
+        "SELECT s2RectIntersection(NULL, s2PointHi, s2PointLow, NULL) AS rectIntersection FROM geo_test WHERE s2PointLow IS NOT NULL;",
+        "SELECT ARRAY JOIN (SELECT s2RectIntersection(5178914411069187297, (SELECT s2PointHi FROM geo_test WHERE id = 1), s2PointLow, s2PointHi) AS rectIntersection FROM geo_test) AS rect UNION ALL SELECT s2RectIntersection(5178914411069187297, NULL, 5179062030687166815, 5177056748191934217) AS emptyRect FROM geo_test WHERE id = 2;"
+    ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/47513",
+  "title": "pointGet and batchPointGet for global index has wrong plan",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\nenable-global-index = true in config.\r\n\r\n```SQL\r\nuse test;\r\nCREATE TABLE t ( a int, b int, c int default 0)\r\n\t\t\t\t\t\tPARTITION BY RANGE (a) (\r\n\t\tPARTITION p0 VALUES LESS THAN (10),\r\n\t\tPARTITION p1 VALUES LESS THAN (20),\r\n\t\tPARTITION p2 VALUES LESS THAN (30),\r\n\t\tPARTITION p3 VALUES LESS THAN (40));\r\nINSERT INTO t(a, b) values(1, 1), (2, 2), (3, 3), (15, 15), (25, 25), (35, 35);\r\nALTER TABLE t ADD UNIQUE INDEX idx(b);\r\nANALYZE TABLE t;\r\nselect * from t use index(idx) where b in (15, 25, 35);  -- panic\r\nexplain select * from t use index(idx) where b = 15;\r\n```\r\n### 2. What did you expect to see? (Required)\r\n* batchPointGet for global index should not panic;\r\n* pointGet for global index should go PointGetPlan, as this is more efficient than indexReader/indexScan;\r\n<img width=\"719\" alt=\"image\" src=\"https://github.com/pingcap/tidb/assets/20724552/c2c772a7-f6d3-420a-897e-2c8df10a50a5\">\r\n\r\n\r\n### 3. What did you see instead (Required)\r\n* batchPointGet panic, meets \"unique index must include all partition columns\"\r\n* pointGet goes indexReader/indexLookUp\r\n<img width=\"959\" alt=\"image\" src=\"https://github.com/pingcap/tidb/assets/20724552/c93e713f-6c65-41af-849a-c29bb390b0c5\">\r\n\r\n\r\n### 4. What is your TiDB version? (Required)\r\nmysql> select tidb_version();\r\n+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| tidb_version()                                                                                                                                                                                                                                                        |\r\n+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| Release Version: v7.5.0-alpha-44-ga01db41bd5\r\nEdition: Community\r\nGit Commit Hash: a01db41bd51a94816de4027dc42732d1a2307b96\r\nGit Branch: HEAD\r\nUTC Build Time: 2023-10-10 07:17:08\r\nGoVersion: go1.21.0\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: unistore |\r\n+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n1 row in set (0.00 sec)\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2023-10-10T07:31:19Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2 ( id INTEGER PRIMARY KEY, name TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP );",
+    "INSERT INTO t2 (id, name) VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie');",
+    "CREATE TABLE t3 ( x INTEGER, y INTEGER, z INTEGER DEFAULT 0, UNIQUE (y) );",
+    "INSERT INTO t3 (x, y) VALUES (5, 10), (15, 20), (25, 30);",
+    "SELECT * FROM t3 WHERE y IN (SELECT y FROM t3 WHERE x < 20) ORDER BY z DESC;"
+  ],
+  "key_bug_features": [
+    "batchPointGet for global index causes panic"
+  ]
+}

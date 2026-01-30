@@ -1,0 +1,16 @@
+{
+    "function": "wordShingleMinHashArgUTF8",
+    "operator": "a BETWEEN b AND c",
+    "sql_array": [
+        "CREATE TABLE test_shingles (id UInt32, description String, value Float32, created_at DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_shingles VALUES (1, 'Example test text.', 0.1, now()), (2, 'ClickHouse database structure.', 0.2, now());",
+        "SELECT id, wordShingleMinHashArgUTF8(description, 2, 4) AS hashes FROM test_shingles WHERE value BETWEEN 0.1 AND 0.3;",
+        "SELECT description, (SELECT wordShingleMinHashArgUTF8(value, 1, 5) FROM test_shingles WHERE id = 1) AS min_hashes FROM test_shingles WHERE created_at BETWEEN now() - INTERVAL 1 DAY AND now();",
+        "SELECT id, description FROM test_shingles WHERE value BETWEEN (SELECT MIN(value) FROM test_shingles WHERE created_at > now() - INTERVAL 2 DAY) AND (SELECT MAX(value) FROM test_shingles);",
+        "SELECT wordShingleMinHashArgUTF8(CONCAT(description, ' additional text.'), 3, 6) FROM test_shingles WHERE id IN (SELECT id FROM test_shingles WHERE value < 0.15);",
+        "SELECT id, description FROM test_shingles WHERE value BETWEEN CAST(null AS Float32) AND 0.3;",
+        "CREATE TABLE temp_results AS SELECT wordShingleMinHashArgUTF8(description, 4, 3) AS hashed_values FROM test_shingles WHERE value > 0.1 GROUP BY description HAVING COUNT(*) > 1;",
+        "INSERT INTO temp_results SELECT wordShingleMinHashArgUTF8(NULL, 1, 1);",
+        "SELECT description, COUNT(*) FROM test_shingles WHERE description BETWEEN '' AND 'ClickHouse' GROUP BY description HAVING COUNT(*) > 0;"
+    ]
+}

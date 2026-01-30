@@ -1,0 +1,12 @@
+CREATE TABLE test_data (id INT, values VARCHAR(255), timestamps TIMESTAMP, data_type VARCHAR(50) DEFAULT 'text', is_active BOOLEAN);
+INSERT INTO test_data (id, values, timestamps, data_type, is_active) VALUES (1, '', '2023-01-01 00:00:00', 'string', NULL);
+INSERT INTO test_data (id, values, timestamps, data_type, is_active) VALUES (2, 'data', '2023-01-01 01:00:00', NULL, TRUE);
+INSERT INTO test_data (id, values, timestamps, data_type, is_active) VALUES (3, NULL, NULL, 'number', FALSE);
+INSERT INTO test_data (id, values, timestamps, data_type, is_active) VALUES (4, 'test', NULL, 'boolean', NULL);
+WITH selected_data AS (SELECT id, values FROM test_data WHERE values IS NULL OR is_active IS TRUE) SELECT DB.DBA.RDF_QUAD_URI_L_TYPED('g_test', 's' || id, 'p_test', NULL, NULL, 'en') FROM selected_data;
+SELECT id, CASE WHEN values IS NULL THEN 'no_value' ELSE values END AS processed_value FROM test_data WHERE is_active = TRUE GROUP BY processed_value HAVING COUNT(*) > 0;
+SELECT id, COALESCE((SELECT COUNT(*) FROM test_data WHERE id = td.id AND values IS NOT NULL), 0) AS active_count FROM test_data AS td WHERE td.is_active IS TRUE;
+SELECT id FROM test_data JOIN (SELECT MAX(id) as max_id FROM test_data WHERE values IS NOT NULL) AS max_data ON test_data.id = max_data.max_id WHERE is_active IS NOT NULL;
+SELECT DB.DBA.RDF_QUAD_URI_L_TYPED(g_uri, s_uri, p_uri, NULL, NULL, 'en') FROM test_data WHERE is_active IS TRUE AND (data_type IS NULL OR timestamps IS NULL);
+ALTER TABLE test_data ADD COLUMN extra_info JSONB;
+INSERT INTO test_data (id, values, timestamps, data_type, is_active, extra_info) VALUES (5, 'extra', '2023-01-02 12:00:00', 'json', TRUE, '{"key":"value"}');

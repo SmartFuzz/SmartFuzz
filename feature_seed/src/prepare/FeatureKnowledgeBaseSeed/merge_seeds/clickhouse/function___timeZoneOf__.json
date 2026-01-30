@@ -1,0 +1,12 @@
+CREATE TABLE datetime_test (event_time DateTime64(3));
+INSERT INTO datetime_test VALUES (now()), (now() - INTERVAL 3 HOUR), (now() + INTERVAL 4 HOUR);
+SELECT timezoneOf(event_time) FROM datetime_test;
+SELECT timezoneOf(now() + INTERVAL -1 DAY);
+SELECT timezoneOf(now() + INTERVAL 1 HOUR) AS current_hour_tz, timezoneOf(now() - INTERVAL 1 HOUR) AS previous_hour_tz FROM datetime_test;
+SELECT timezoneOf(event_time) FROM (SELECT event_time FROM datetime_test WHERE event_time < now()) AS sub;
+CREATE TABLE user_events (user_id UInt32, login_time DateTime64(3), event_action String);
+INSERT INTO user_events VALUES (1, now()), (2, now() - INTERVAL 2 HOUR), (1, now() + INTERVAL 30 MINUTE);
+SELECT user_id, timezoneOf(login_time) FROM user_events WHERE user_id = 1;
+SELECT user_id, COUNT(*) AS event_count, timezoneOf(login_time) FROM user_events GROUP BY user_id, timezoneOf(login_time);
+SELECT timezoneOf((SELECT login_time FROM user_events WHERE user_id = 2 LIMIT 1)) AS user2_tz;
+SELECT timezoneOf(zip_code) FROM (SELECT user_id, CASE WHEN login_time < now() THEN 'Old' ELSE 'New' END AS user_status, login_time FROM user_events) AS status_table WHERE user_status = 'Old';

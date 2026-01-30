@@ -1,0 +1,13 @@
+CREATE TABLE test_strings (id UInt32, text String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_strings VALUES (1, 'Example input string with special characters!'), (2, 'A test input for ClickHouse database.'), (3, 'Another example with some cases to check.'), (4, 'Text with mixed CASE for comparison.'), (5, 'A string with emoji 😊 and other data!');
+SELECT id, wordShingleMinHashCaseInsensitive(text, 4, 10) AS hashes FROM test_strings WHERE id IN (SELECT id FROM test_strings WHERE text = 'A test input for ClickHouse database.');
+SELECT id, wordShingleMinHashCaseInsensitive(text, 2, 8) AS hashes FROM test_strings WHERE (hashes.1 OR hashes.2) IS NOT NULL;
+SELECT id FROM test_strings WHERE wordShingleMinHashCaseInsensitive(NULL, 3, 6).1 > 0 OR wordShingleMinHashCaseInsensitive(text, 3, 6).2 = 11;
+CREATE TEMPORARY TABLE temp_hashes AS SELECT id, wordShingleMinHashCaseInsensitive(text, 5, 12) AS hashes FROM test_strings;
+SELECT id, hashes FROM temp_hashes WHERE (hashes.1 = (SELECT MIN(hashes.1) FROM temp_hashes) OR hashes.2 < 100);
+SELECT COUNT(*) FROM test_strings WHERE wordShingleMinHashCaseInsensitive(text, 20, 15).1 = 0 OR id IN (SELECT id FROM temp_hashes WHERE hashes.2 IS NOT NULL);
+CREATE TABLE complex_test (a UInt8, b String, c Nullable(Int32)) ENGINE = MergeTree() ORDER BY a;
+INSERT INTO complex_test VALUES (1, 'Test 1'), (2, 'Test 2'), (3, NULL);
+SELECT a, wordShingleMinHashCaseInsensitive(b, 1, 5).1 AS min_hash FROM complex_test WHERE b IS NOT NULL OR c IS NULL;
+SELECT wordShingleMinHashCaseInsensitive(b, 3, 6).1, COUNT(*) FROM complex_test GROUP BY min_hash HAVING min_hash OR c IS NULL;
+SELECT b, wordShingleMinHashCaseInsensitive(b, 3, 6).2 AS max_hash FROM test_strings WHERE EXISTS (SELECT 1 FROM complex_test WHERE a = 1 OR b = 'A test input for ClickHouse database.');

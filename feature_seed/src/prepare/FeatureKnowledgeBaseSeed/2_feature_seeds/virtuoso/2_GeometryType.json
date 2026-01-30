@@ -1,0 +1,11 @@
+CREATE TABLE geometries (id SERIAL PRIMARY KEY, shape GEOMETRY NOT NULL);
+INSERT INTO geometries (shape) VALUES ('POINT(1 1)'::GEOMETRY), ('LINESTRING(0 0, 5 5)'::GEOMETRY), ('POLYGON((0 0, 1 1, 1 0, 0 0))'::GEOMETRY);
+SELECT id, bif:GeometryType(shape) AS geom_type FROM geometries WHERE bif:GeometryType(shape) NOT LIKE 'LINE%';
+SELECT id, bif:GeometryType(shape) AS geom_type FROM geometries WHERE (SELECT COUNT(*) FROM geometries g2 WHERE g2.shape NOT LIKE 'POINT%') > 1;
+SELECT geom_type, COUNT(*) FROM (SELECT bif:GeometryType(shape) AS geom_type FROM geometries GROUP BY geom_type HAVING COUNT(*) > 1) AS geom_counts;
+SELECT g1.id, g1.shape FROM geometries g1 JOIN geometries g2 ON bif:GeometryType(g1.shape) NOT LIKE bif:GeometryType(g2.shape) WHERE g1.id <> g2.id;
+WITH FilteredGeometries AS (SELECT shape FROM geometries WHERE bif:GeometryType(shape) NOT LIKE 'POLYGON%') SELECT bif:GeometryType(shape) FROM FilteredGeometries WHERE shape IS NOT NULL ORDER BY shape;
+CREATE TABLE test_shapes (id SERIAL PRIMARY KEY, geom GEOMETRY, description VARCHAR(255));
+INSERT INTO test_shapes (geom, description) VALUES (NULL, 'Invalid Shape'), ('MULTIPOINT(0 0, 1 1)', 'Valid Shape'), ('POINT(2 3)', 'Another Valid Point');
+SELECT description FROM test_shapes WHERE geom IS NOT NULL AND bif:GeometryType(geom) NOT LIKE 'MULTIPOINT%';
+SELECT g1.id, bif:GeometryType(g1.geom) AS geom_type FROM test_shapes g1 LEFT JOIN test_shapes g2 ON bif:GeometryType(g1.geom) NOT LIKE bif:GeometryType(g2.geom) WHERE g1.id <> g2.id;

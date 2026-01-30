@@ -1,0 +1,67 @@
+CREATE TABLE nyc_taxi.trips_large (
+    trip_id             INTEGER,
+    pickup_datetime     TIMESTAMP,
+    dropoff_datetime    TIMESTAMP,
+    pickup_longitude    FLOAT8,
+    pickup_latitude     FLOAT8,
+    dropoff_longitude   FLOAT8,
+    dropoff_latitude    FLOAT8,
+    passenger_count     SMALLINT,
+    trip_distance       FLOAT4,
+    fare_amount         FLOAT4,
+    extra               FLOAT4,
+    tip_amount          FLOAT4,
+    tolls_amount        FLOAT4,
+    total_amount        FLOAT4,
+    payment_type        VARCHAR,
+    pickup_ntaname      VARCHAR,
+    dropoff_ntaname     VARCHAR
+);
+INSERT INTO nyc_taxi.trips_large
+SELECT
+    trip_id,
+    pickup_datetime,
+    dropoff_datetime,
+    pickup_longitude,
+    pickup_latitude,
+    dropoff_longitude,
+    dropoff_latitude,
+    passenger_count,
+    trip_distance,
+    fare_amount,
+    extra,
+    tip_amount,
+    tolls_amount,
+    total_amount,
+    payment_type,
+    pickup_ntaname,
+    dropoff_ntaname
+FROM dblink('host=your_host dbname=your_db user=your_user password=your_password',
+    'SELECT * FROM gcs(
+        ''https://storage.googleapis.com/clickhouse-public-datasets/nyc-taxi/trips_{0..2}.gz'',
+        ''TabSeparatedWithNames''
+    )') AS t(trip_id INTEGER, pickup_datetime TIMESTAMP, dropoff_datetime TIMESTAMP, pickup_longitude FLOAT8, pickup_latitude FLOAT8, dropoff_longitude FLOAT8, dropoff_latitude FLOAT8, passenger_count SMALLINT, trip_distance FLOAT4, fare_amount FLOAT4, extra FLOAT4, tip_amount FLOAT4, tolls_amount FLOAT4, total_amount FLOAT4, payment_type VARCHAR, pickup_ntaname VARCHAR, dropoff_ntaname VARCHAR);
+CREATE TABLE nyc_taxi.agg_h3_10_large (
+    pickup_latitude FLOAT8,
+    pickup_longitude FLOAT8,
+    h3_cell BIGINT,
+    cnt BIGINT,
+    pickup_ntaname_uniq TEXT[],
+    pickup_ntaname_top_app TEXT[]
+);
+INSERT INTO nyc_taxi.agg_h3_10_large
+SELECT
+    pickup_latitude,
+    pickup_longitude,
+    h3_cell,
+    COUNT(*) AS cnt,
+    ARRAY(SELECT DISTINCT pickup_ntaname FROM nyc_taxi.trips_large WHERE pickup_latitude = t.pickup_latitude AND pickup_longitude = t.pickup_longitude GROUP BY h3_cell) AS pickup_ntaname_uniq,
+    ARRAY(SELECT pickup_ntaname FROM nyc_taxi.trips_large WHERE pickup_latitude = t.pickup_latitude AND pickup_longitude = t.pickup_longitude GROUP BY pickup_ntaname ORDER BY COUNT(*) DESC LIMIT 1000) AS pickup_ntaname_top_app
+FROM nyc_taxi.trips_large t
+GROUP BY pickup_latitude, pickup_longitude, h3_cell;
+SELECT
+    pickup_latitude,
+    pickup_longitude,
+    cnt
+FROM nyc_taxi.agg_h3_10_large
+WHERE cnt > 1000;

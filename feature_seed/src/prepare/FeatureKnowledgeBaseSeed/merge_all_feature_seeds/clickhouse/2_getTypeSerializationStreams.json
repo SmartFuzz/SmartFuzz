@@ -1,0 +1,13 @@
+CREATE TABLE test_table (id Int64, data Tuple(String, Int32), nullable_data Nullable(Int32));
+INSERT INTO test_table VALUES (1, ('a', 10), 100), (2, ('b', 20), NULL), (3, ('c', NULL), 300);
+SELECT getTypeSerializationStreams(data), NOT (nullable_data IS NULL) FROM test_table WHERE id < 3;
+SELECT id, getTypeSerializationStreams(data) AS type_streams, NOT (data.2 IS NULL) FROM test_table WHERE id = 1;
+SELECT id, data, NOT (EXISTS (SELECT 1 FROM test_table t2 WHERE t2.id > test_table.id)) AS not_exists FROM test_table;
+SELECT DISTINCT id, getTypeSerializationStreams(tuple(data.1, NOT(data.2 IS NULL))) FROM test_table ORDER BY id;
+SELECT id, COUNT(*) AS total, getTypeSerializationStreams(data) FROM test_table GROUP BY id HAVING total > 1 AND NOT (nullable_data IS NULL);
+SELECT id, getTypeSerializationStreams('Map(String, Int64)'), NOT (data.1 = 'b') FROM (SELECT id, data FROM test_table WHERE nullable_data > 0) AS sub WHERE NOT (id = 2);
+SELECT getTypeSerializationStreams((SELECT min(data) FROM test_table)) FROM test_table WHERE NOT (nullable_data IS NULL);
+SELECT data, getTypeSerializationStreams(data), NOT ((SELECT COUNT(*) FROM test_table WHERE nullable_data < 200) > 1) FROM test_table WHERE id > 0;
+CREATE TEMPORARY TABLE temp_table AS SELECT id, NOT (data.2 IS NULL) AS is_nullable FROM test_table;
+INSERT INTO temp_table SELECT id, NOT (data.1 = 'a') FROM test_table WHERE id NOT IN (SELECT id FROM temp_table);
+SELECT getTypeSerializationStreams(data), NOT (COUNT(data) = 0) FROM test_table GROUP BY data HAVING NOT (id IN (SELECT DISTINCT id FROM temp_table));

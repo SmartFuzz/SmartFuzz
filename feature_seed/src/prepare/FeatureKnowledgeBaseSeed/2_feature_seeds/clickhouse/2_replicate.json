@@ -1,0 +1,8 @@
+CREATE TABLE test_table (id UInt32, value String, array_col Array(String));
+INSERT INTO test_table VALUES (1, 'example', ['a', 'b']), (2, 'test', ['c', 'd']), (3, NULL, ['e', 'f']);
+SELECT id, replicate(value, [value]) FROM test_table WHERE id NOT IN (SELECT id FROM test_table WHERE value IS NOT NULL) AND replicate(value, ['X']) IS NOT NULL;
+SELECT id, value FROM test_table WHERE NOT (value NOT IN (SELECT arrayJoin(replicate('X', array_col)) FROM test_table WHERE id = 1));
+SELECT id, COUNT(*) FROM test_table GROUP BY id HAVING COUNT(*) NOT IN replicate(0, [3, 1, 2]) ORDER BY id;
+SELECT id, replicate(nil, [value]) FROM test_table WHERE value NOT IN (SELECT arrayJoin(replicate('test', ['a', 'b', 'c']))) ORDER BY id;
+WITH (SELECT id FROM test_table WHERE value NOT IN ['a', 'b', 'c']) AS subquery SELECT id, replicate(NULL, [value]) FROM test_table WHERE id IN subquery;
+SELECT DISTINCT id, replicate(value, [value]) AS new_array FROM test_table WHERE NOT value IN (SELECT DISTINCT value FROM test_table WHERE array_col[1] IS NOT NULL) GROUP BY id HAVING new_array NOT IN (SELECT arrayJoin(replicate('test', array_col)) FROM test_table);

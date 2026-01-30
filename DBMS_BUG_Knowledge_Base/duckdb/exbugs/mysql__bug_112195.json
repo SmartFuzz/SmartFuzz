@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=112195",
+  "title": "getWarnings() of StatementImpl contains all warnings",
+  "description": "The doc of getWarings method in StatementImpl says that \"The warning chain is automatically cleared each time a statement is (re)executed\". But it's not actually. I don't know it's a bug or ducument wrong.\nHow to repeat:\nHere is the test case, it will create two tables fist run without log, but second time it will print duplicate log as below, the table1 warning log twice.\r\n\r\nSQLWarning ignored: SQL state '42S01', error code '1050', message [Table 'table1' already exists]\r\nSQLWarning ignored: SQL state '42S01', error code '1050', message [Table 'table1' already exists]\r\nSQLWarning ignored: SQL state '42S01', error code '1050', message [Table 'table2' already exists]\n\n        String sql1 = \"CREATE TABLE IF NOT EXISTS `table1`(`id` bigint unsigned);\";\r\n        String sql2 = \"CREATE TABLE IF NOT EXISTS `table2`(`id` bigint unsigned);\";\r\n        Class.forName(\"com.mysql.cj.jdbc.Driver\");\r\n        Connection connection = DriverManager.getConnection(\"jdbc:mysql://127.0.0.1:3306/lfz\", \"root\", \"root\");\r\n        Statement statement = connection.createStatement();\r\n        statement.execute(sql1);\r\n        SQLWarning warningToLog = statement.getWarnings();\r\n        while (warningToLog != null) {\r\n            System.out.println((\"SQLWarning ignored: SQL state '\" + warningToLog.getSQLState() +\r\n                    \"', error code '\" + warningToLog.getErrorCode() +\r\n                    \"', message [\" + warningToLog.getMessage() + \"]\"));\r\n            warningToLog = warningToLog.getNextWarning();\r\n        }\r\n        statement.execute(sql2);\r\n        warningToLog = statement.getWarnings();\r\n        while (warningToLog != null) {\r\n            System.out.println((\"SQLWarning ignored: SQL state '\" + warningToLog.getSQLState() +\r\n                    \"', error code '\" + warningToLog.getErrorCode() +\r\n                    \"', message [\" + warningToLog.getMessage() + \"]\"));\r\n            warningToLog = warningToLog.getNextWarning();\r\n        }",
+  "date": "2023-08-28 06:58:00",
+  "vulnerable_version": "8.1.0, 8.0.33",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE IF NOT EXISTS table1(id BIGINT NOT NULL, name VARCHAR(255));",
+    "CREATE TABLE IF NOT EXISTS table2(id INTEGER NOT NULL, description TEXT, table1_id BIGINT, FOREIGN KEY (table1_id) REFERENCES table1(id));",
+    "INSERT INTO table1(id, name) VALUES (1, 'First Entry');",
+    "INSERT INTO table2(id, description, table1_id) VALUES (1, 'Related to First Entry', 1);",
+    "SELECT t1.name, t2.description FROM table1 t1 LEFT JOIN table2 t2 ON t1.id = t2.table1_id WHERE t1.id IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "getWarnings() does not clear warnings on statement execution"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/138",
+  "title": "Error SR596: Unable to place abnormally long XML tree",
+  "vulnerable_database": "Virtuoso",
+  "date": "2014-02-14 08:20:08",
+  "vulnerable_version": "",
+  "description": "Federated query:\nVirtuoso 42000 Error SR596: Unable to place abnormally long XML tree, 2097151 elements are above 2097151 limit\n\nSPARQL query:\n\n#output-format:text/html\ndefine sql:signal-void-variables 1 PREFIX gr: <http://purl.org/goodrelations/v1#>\nPREFIX ruian: <http://ruian.linked.opendata.cz/ontology/>\nPREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\nPREFIX ec: <http://ec.europa.eu/eurostat/ramon/ontologies/geographic.rdf#>\nPREFIX s: <http://schema.org/>\nPREFIX dcterms: <http://purl.org/dc/terms/>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nselect ?region ?s ?t\nwhere\n{\n?check a s:CheckAction;\ns:location/s:location ?region.\nfilter not exists {?region a ec:LAURegion;\nec:level 2;\ndcterms:title ?l2label ;\nec:hasParentRegion ?lau1.\n?lau1 dcterms:title ?l1label ;\nec:hasParentRegion ?nuts3 .\n?nuts3 rdfs:label ?n3label ;\nec:hasParentRegion ?nuts2 .\n?nuts2 rdfs:label ?n2label ;\nec:hasParentRegion ?nuts1 .\n?nuts1 rdfs:label ?n1label.}\nfilter (regex(str(?region), \"[0-9]{6}\"))\nbind (replace(str(?region), \".*([0-9]{6}).*\", \"$1\") as ?notation)\nservice <http://ruian.linked.opendata.cz:8890/sparql> {\nselect ?s ?t where {?s a ?t; skos:notation ?notation .}\n}\n}",
+  "poc": [
+    "PREFIX gr: <http://purl.org/goodrelations/v1#>\nPREFIX ruian: <http://ruian.linked.opendata.cz/ontology/>\nPREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\nPREFIX ec: <http://ec.europa.eu/eurostat/ramon/ontologies/geographic.rdf#>\nPREFIX s: <http://schema.org/>\nPREFIX dcterms: <http://purl.org/dc/terms/>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n\nSELECT ?region ?s ?t\nWHERE {\n  ?check a s:CheckAction ;\n         s:location / s:location ?region .\n\n  FILTER NOT EXISTS {\n    ?region a ec:LAURegion ;\n            ec:level 2 ;\n            dcterms:title ?l2label ;\n            ec:hasParentRegion ?lau1 .\n    ?lau1 dcterms:title ?l1label ;\n          ec:hasParentRegion ?nuts3 .\n    ?nuts3 rdfs:label ?n3label ;\n            ec:hasParentRegion ?nuts2 .\n    ?nuts2 rdfs:label ?n2label ;\n            ec:hasParentRegion ?nuts1 .\n    ?nuts1 rdfs:label ?n1label .\n  }\n\n  FILTER (regex(str(?region), \"[0-9]{6}\"))\n  BIND (replace(str(?region), \".*([0-9]{6}).*\", \"$1\") AS ?notation)\n\n  SERVICE <http://ruian.linked.opendata.cz:8890/sparql> {\n    SELECT ?s ?t\n    WHERE {\n      ?s a ?t ;\n         skos:notation ?notation .\n    }\n  }\n}"
+  ],
+  "key_bug_features": [
+    "Placing XML tree exceeding 2097151 element limit"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE test_xml_data (id INT PRIMARY KEY, xml_data XML NOT NULL);",
+    "INSERT INTO test_xml_data (id, xml_data) VALUES (1, '<root>' || repeat('<element></element>', 2097152) || '</root>');",
+    "SELECT id, xml_data FROM test_xml_data WHERE id = 1;",
+    "UPDATE test_xml_data SET xml_data = NULL WHERE id = 1;",
+    "SELECT COUNT(*) FROM test_xml_data WHERE xml_data IS NULL;"
+  ]
+}

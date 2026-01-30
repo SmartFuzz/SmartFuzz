@@ -1,0 +1,14 @@
+CREATE TABLE test_random (id UInt64, random_string FixedString(20));
+INSERT INTO test_random VALUES (1, randomFixedString(20));
+INSERT INTO test_random VALUES (2, randomFixedString(0));
+INSERT INTO test_random VALUES (3, randomFixedString(100));
+SELECT id, random_string, toTypeName(random_string) FROM test_random WHERE id = 1;
+SELECT id, random_string, toTypeName(random_string) FROM test_random WHERE random_string LIKE '%' || randomFixedString(5) || '%';
+WITH (SELECT AVG(length(random_string)) FROM test_random) AS avg_length SELECT id, random_string FROM test_random WHERE length(random_string) > avg_length;
+SELECT id, random_string FROM test_random UNION SELECT id, randomFixedString(20) FROM (SELECT number AS id FROM system.numbers LIMIT 5);
+CREATE TABLE random_join_test (id UInt64, random_string FixedString(30));
+INSERT INTO random_join_test SELECT number, randomFixedString(30) FROM system.numbers LIMIT 10;
+SELECT a.id, a.random_string, b.random_string FROM test_random a JOIN random_join_test b ON a.id = b.id WHERE a.id < 10;
+SELECT a.id, a.random_string FROM test_random a WHERE EXISTS (SELECT 1 FROM random_join_test b WHERE b.random_string LIKE '%' || randomFixedString(5) || '%');
+WITH (SELECT COUNT(*) FROM random_join_test) AS total_records SELECT id, random_string FROM test_random WHERE id < total_records;
+SELECT randomFixedString(1) AS rnd1, randomFixedString(255) AS rnd2, toTypeName(rnd1), toTypeName(rnd2) FROM test_random LIMIT 1;

@@ -1,0 +1,18 @@
+{
+    "function": "toUInt64OrZero",
+    "operator": "a[N]",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt64, value Nullable(String), arr Array(UInt64));",
+        "INSERT INTO test_table (id, value, arr) VALUES (1, '100', [1, 2, 3]), (2, 'invalid', [4, 5, 6]), (3, NULL, [7, 8, 9]);",
+        "SELECT id, toUInt64OrZero(value) AS converted_value, arr[1] AS first_element FROM test_table WHERE toUInt64OrZero(value) > 0;",
+        "SELECT id, toUInt64OrZero(arr[2]), value FROM test_table WHERE toUInt64OrZero(value) = 0 ORDER BY arr[3];",
+        "SELECT id, AVG(toUInt64OrZero(value)) AS avg_value FROM (SELECT id, value FROM test_table) GROUP BY id HAVING avg_value > 0;",
+        "SELECT id, arrayJoin(arr) AS element FROM test_table WHERE toUInt64OrZero(value) <= 100;",
+        "CREATE TABLE test_table2 (id UInt64, num String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table2 (id, num) VALUES (1, '255.99'), (2, 'NaN'), (3, '400'), (4, '0xc0fe');",
+        "SELECT id, toUInt64OrZero(num) AS num_converted, arrayJoin([toUInt64OrZero(num), toUInt64OrZero('123'), NULL]) AS combined FROM test_table2;",
+        "SELECT id, SUM(toUInt64OrZero(num)) AS total FROM (SELECT num FROM test_table2) GROUP BY id HAVING total > 200;",
+        "SELECT id, toUInt64OrZero(NULLIF(value, '')) AS converted_value FROM test_table WHERE value IS NOT NULL;",
+        "SELECT a.id, toUInt64OrZero(a.value) + a.arr[2] AS mixed_result FROM test_table AS a WHERE a.value IS NOT NULL AND a.id IN (SELECT id FROM test_table WHERE value LIKE '1%') ORDER BY mixed_result DESC;"
+    ]
+}

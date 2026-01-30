@@ -1,0 +1,10 @@
+CREATE TABLE fuzz_test (id INT PRIMARY KEY, ini_key VARCHAR(255), ini_value VARCHAR(255));
+INSERT INTO fuzz_test (id, ini_key, ini_value) VALUES (1, 'Parameters', 'ServerPort'), (2, 'Parameters', NULL), (3, 'Parameters', '0'), (4, 'Parameters', '65535');
+SELECT cfg_write(virtuoso_ini_path(), ini_key, 'ServerPort', ini_value) FROM fuzz_test WHERE ini_value IS NOT NULL;
+SELECT cfg_item_value(virtuoso_ini_path(), ini_key, 'ServerPort'), datatype(ini_value) FROM fuzz_test;
+SELECT cfg_write(virtuoso_ini_path(), ini_key, 'ServerPort', CASE WHEN ini_value IS NULL THEN 'default' ELSE ini_value END) FROM fuzz_test WHERE id IN (SELECT id FROM fuzz_test WHERE ini_value IS NOT NULL);
+SELECT cfg_write(virtuoso_ini_path(), 'Parameters', 'ServerPort', CAST(NULL AS VARCHAR)) FROM fuzz_test;
+SELECT cfg_write(virtuoso_ini_path(), 'Parameters', 'ServerPort', '9999.99') FROM fuzz_test WHERE datatype(ini_value) = 'xs:integer';
+SELECT COUNT(*) FROM fuzz_test GROUP BY datatype(ini_value) HAVING COUNT(*) > 1;
+SELECT DISTINCT datatype(ini_value) FROM fuzz_test WHERE ini_value <> '0' UNION SELECT CAST(MAX(ini_value) AS VARCHAR) FROM fuzz_test WHERE ini_value IS NOT NULL;
+SELECT cfg_write(virtuoso_ini_path(), 'Parameters', 'ServerPort', CAST(255 AS VARCHAR)) FROM fuzz_test WHERE ini_value NOT LIKE 'invalid%';

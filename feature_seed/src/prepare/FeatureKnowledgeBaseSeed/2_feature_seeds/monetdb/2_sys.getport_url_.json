@@ -1,0 +1,16 @@
+CREATE TABLE test_urls (id INT PRIMARY KEY, url CLOB);
+INSERT INTO test_urls (id, url) VALUES (1, 'http://example.com:8080'), (2, 'https://example.org:3000'), (3, 'ftp://ftp.example.net:21'), (4, NULL);
+CREATE TABLE test_numbers (id INT PRIMARY KEY, value INT);
+INSERT INTO test_numbers (id, value) VALUES (1, 255), (2, 128), (3, NULL), (4, -1);
+SELECT sys.getport(url) | 256 AS port_value FROM test_urls WHERE url IS NOT NULL;
+SELECT (sys.getport(url) | (SELECT value FROM test_numbers WHERE id = 1)) AS compounded_port FROM test_urls WHERE url IS NOT NULL;
+SELECT MAX(sys.getport(url) | 1) AS max_port FROM test_urls GROUP BY url HAVING max_port IS NOT NULL;
+SELECT t1.url, (sys.getport(t1.url) | COALESCE(t2.value, 0)) AS port_with_value FROM test_urls t1 JOIN test_numbers t2 ON t1.id = t2.id;
+SELECT url, (sys.getport(url) IS NULL) AS is_null_port FROM test_urls WHERE url IS NOT NULL AND (sys.getport(url) | -1) < 500;
+SELECT sys.getport(url) + (SELECT COUNT(*) FROM test_numbers WHERE value > 100) AS combined_value FROM test_urls WHERE url IS NOT NULL GROUP BY url HAVING combined_value < 2000;
+SELECT t.url, (sys.getport(t.url) | (SELECT MAX(value) FROM test_numbers WHERE value IS NOT NULL)) AS final_port FROM test_urls t JOIN test_numbers tn ON sys.getport(t.url) IS NOT NULL WHERE tn.value IS NOT NULL;
+CREATE TEMP TABLE temp_test AS SELECT id, sys.getport(url) AS port FROM test_urls WHERE url IS NOT NULL;
+SELECT port, (port | (SELECT MIN(value) FROM test_numbers)) AS modified_port FROM temp_test;
+ALTER TABLE test_urls ADD COLUMN status VARCHAR(10) NOT NULL DEFAULT 'active';
+SELECT url, (sys.getport(url) | NULLIF((SELECT value FROM test_numbers WHERE id = 2), 0)) AS adjusted_port FROM test_urls WHERE url IS NOT NULL;
+SELECT (SELECT COUNT(*) FROM test_numbers) + (SELECT COUNT(*) FROM test_urls WHERE sys.getport(url) IS NOT NULL) AS total_count;

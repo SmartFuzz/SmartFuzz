@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/121",
+  "title": "segfault when using md5 on unbound variable in conductor sparql",
+  "description": "We experienced a segfault when executing the following query from the conductor sparql and isql interface. It was handled correctly on the public sparql endpoint.\nPREFIX dcat: <http://www.w3.org/ns/dcat#>\nPREFIX dct: <http://purl.org/dc/terms/>\nINSERT INTO <http://my-url/distributions/> {\n?distribution a dcat:Distribution.\n?distribution dct:title ?title.\n}\nWHERE {\n?ds a dcat:Distribution .\n?ds dct:title ?title .\nBIND (IRI(CONCAT(\"http://my-url/distributions/\",md5(?id))) AS ?distribution). }\n\nExpected result (returned on public /sparql)\nVirtuoso 37000 Error SP031: SPARQL compiler: Variable 'id' is used in the query result set but not assigned\n\nReturned result\nvirtuoso-t[17175]: segfault at 7fcb10279000 ip 00007fcb9ae6ca6b sp 00007fcb278628d0 error 4 in libcrypto.so.1.0.1e[7fcb9adfe000+1b5000]\n\nVirtuoso version: 6.1.8 stable",
+  "date": "2013-12-17 16:16:07",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE distributions (id INT PRIMARY KEY, title VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO distributions (id, title) VALUES (1, 'Distribution One');",
+    "INSERT INTO distributions (id, title) VALUES (2, NULL);",
+    "SELECT id, title, md5(COALESCE(title, 'default')) AS title_hash FROM distributions WHERE id = 1;",
+    "INSERT INTO distributions (id, title) SELECT 3, CONCAT('Distribution ', id) FROM distributions WHERE id < 3;"
+  ],
+  "key_bug_features": [
+    "segfault using md5 on unbound variable in query"
+  ]
+}

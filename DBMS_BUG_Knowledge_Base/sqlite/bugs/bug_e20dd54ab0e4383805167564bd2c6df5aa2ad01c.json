@@ -1,0 +1,24 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/e20dd54ab0",
+  "title": "COLLATE sequence for ORDER/GROUP BY ignored when using an index-on-expression",
+  "vulnerable_version": "",
+  "date": "2017-08-18 07:14:457.98 years ago",
+  "path": "/home/crawl_bugs/sqlite/ticket_output/ticket_info_e20dd54ab0.json",
+  "poc": [
+    "With 3.20.0, this script:\nCREATE TABLE t2(x);\n  INSERT INTO t2 VALUES('.ABC');\n  INSERT INTO t2 VALUES('.abcd');\n  INSERT INTO t2 VALUES('.DEF');\n\n  SELECT substr(x, 2) FROM t2 ORDER BY substr(x, 2) COLLATE nocase;",
+    "CREATE INDEX i2 ON t2( substr(x, 2) );",
+    "SELECT substr(x, 2) FROM t2 ORDER BY substr(x, 2) COLLATE nocase;"
+  ],
+  "vulnerable_database": "sqlite",
+  "description": "dan added on 2017-08-18 07:14:45:\nWith 3.20.0, this script:\nCREATE TABLE t2(x);\n  INSERT INTO t2 VALUES('.ABC');\n  INSERT INTO t2 VALUES('.abcd');\n  INSERT INTO t2 VALUES('.DEF');\n\n  SELECT substr(x, 2) FROM t2 ORDER BY substr(x, 2) COLLATE nocase;\n  .print ------\n  CREATE INDEX i2 ON t2( substr(x, 2) );\n  SELECT substr(x, 2) FROM t2 ORDER BY substr(x, 2) COLLATE nocase;\nreturns:\nABC\n  abcd\n  DEF\n  ------\n  ABC\n  DEF\n  abcd\nThe problem is that in the second query SQLite uses the index to optimize the ORDER BY clause, even though the collation sequence of the index does not match that of the ORDER BY expression.\ndan added on 2017-08-18 10:27:01:\nThis problem has been present since 3.9.0 - when the indexes-on-expressions feature was added to SQLite.",
+  "key_bug_features": [
+    "COLLATE sequence ignored with index-on-expression in ORDER BY"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t3(id INTEGER PRIMARY KEY, name TEXT COLLATE nocase, value INTEGER);",
+    "INSERT INTO t3(name, value) VALUES('Alpha', 10);",
+    "INSERT INTO t3(name, value) VALUES('beta', 20);",
+    "CREATE INDEX idx_name ON t3(name);",
+    "SELECT name FROM t3 ORDER BY name COLLATE RTRIM;"
+  ]
+}

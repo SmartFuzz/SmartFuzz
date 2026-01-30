@@ -1,0 +1,10 @@
+CREATE TABLE test_timestamps (id UInt32, ts String, dt DateTime, dt_null Nullable(DateTime)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_timestamps (id, ts, dt, dt_null) VALUES (1, '2017-11-05 08:07:47', '2017-11-05 08:07:47', NULL), (2, '2023-09-30', '2023-09-30 12:00:00', NULL), (3, '', NULL, NULL), (4, '2022-01-01 00:00:00', '2022-01-01 00:00:00', '2022-01-01 00:00:00');
+SELECT id, toUnixTimestamp(ts) AS timestamp_sec, toUnixTimestamp(ts, 'UTC') AS timestamp_utc, toUnixTimestamp(dt) AS timestamp_dt, toUnixTimestamp(dt_null) AS timestamp_null FROM test_timestamps WHERE toUnixTimestamp(ts) OR toUnixTimestamp(dt) = 1588291200;
+SELECT id FROM test_timestamps WHERE (toUnixTimestamp(ts) > 1509828000) OR (toUnixTimestamp(dt_null) IS NULL);
+SELECT id, COUNT(*) FROM (SELECT id, toUnixTimestamp(ts) AS timestamp_sec FROM test_timestamps) GROUP BY id HAVING timestamp_sec OR timestamp_sec IS NULL;
+SELECT id, COUNT(toUnixTimestamp(ts)) AS cnt FROM test_timestamps GROUP BY id HAVING cnt > 0 OR (toUnixTimestamp(dt) IS NULL) ORDER BY cnt DESC;
+SELECT id, toUnixTimestamp(dt), IF(toUnixTimestamp(dt) IS NULL, 0, toUnixTimestamp(dt)) AS safe_timestamp FROM test_timestamps WHERE (toUnixTimestamp(ts) OR toUnixTimestamp(dt_null));
+SELECT id FROM (SELECT id, toUnixTimestamp(toDate(ts)) AS date_ts, toUnixTimestamp(dt) AS dt_ts FROM test_timestamps) WHERE date_ts OR dt_ts = 1609459200;
+CREATE TABLE complex_join AS SELECT a.id, a.ts, b.dt FROM test_timestamps AS a JOIN test_timestamps AS b ON (toUnixTimestamp(a.ts) > toUnixTimestamp(b.ts)) WHERE (toUnixTimestamp(a.dt) IS NOT NULL) OR (toUnixTimestamp(b.dt) IS NULL) ORDER BY a.id;
+SELECT * FROM (SELECT id, toUnixTimestamp(ts) AS ts_unix FROM test_timestamps) AS subquery WHERE ts_unix > 0 OR ts_unix IS NULL;

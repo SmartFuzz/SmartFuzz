@@ -1,0 +1,8 @@
+CREATE TABLE test_dates (id Int32, event_time DateTime64(3), event_description String);
+INSERT INTO test_dates VALUES (1, toDateTime64('2024-01-01 00:00:00', 3), 'Event A'), (2, toDateTime64('2024-01-01 00:00:01', 3), 'Event B'), (3, NULL, 'Event C');
+SELECT id, addNanoseconds(event_time, 10000) AS updated_time, updated_time NOT IN (SELECT event_time FROM test_dates WHERE event_time IS NOT NULL) AS is_not_in FROM test_dates;
+SELECT id, event_time, addNanoseconds(event_time, CAST('1000000' AS Int64)) AS nanosecond_added FROM test_dates WHERE event_time NOT IN (SELECT event_time FROM test_dates WHERE event_description = 'Event B') AND event_time IS NOT NULL;
+SELECT id, event_time, addNanoseconds(event_time, 5000) AS future_time FROM test_dates WHERE future_time NOT IN (SELECT addNanoseconds(event_time, 6000) AS compare_time FROM test_dates WHERE compare_time IS NOT NULL) HAVING future_time IS NOT NULL ORDER BY future_time DESC;
+SELECT id, event_time, addNanoseconds(event_time, CAST('1000000000000' AS Int64)) AS far_future_time FROM test_dates WHERE far_future_time NOT IN (SELECT addNanoseconds(event_time, 10000000) FROM test_dates WHERE event_time IS NOT NULL) GROUP BY id ORDER BY id;
+SELECT t1.id, addNanoseconds(t1.event_time, 1000000) AS added_time FROM test_dates AS t1 JOIN test_dates AS t2 ON t1.id <> t2.id WHERE addNanoseconds(t1.event_time, 1000000) NOT IN (SELECT event_time FROM test_dates WHERE event_time IS NOT NULL) ORDER BY added_time;
+SELECT id, event_time, addNanoseconds(event_time, -1000000) AS negative_added_time FROM test_dates WHERE negative_added_time IS NOT NULL HAVING negative_added_time NOT IN (SELECT addNanoseconds(event_time, -500000) FROM test_dates) ORDER BY negative_added_time ASC;

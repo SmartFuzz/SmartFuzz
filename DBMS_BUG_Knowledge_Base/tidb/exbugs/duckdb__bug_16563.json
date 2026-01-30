@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/16563",
+  "title": "Loss of precision and wrong rounding (PostgreSQL incompatible) in float to decimal conversion",
+  "description": "### What happens?\n\n(This is part 1/3 of breaking down https://github.com/duckdb/duckdb/issues/14779 into independent and suriviving problems)\n\n```sql\nselect 200_000_000_000_000::float8::decimal(38, 9), 1.45::float8::decimal(3, 1);\n```\nreturns\n```\n┌────────────────────────────────────────────────────────┬────────────────────────────────────────────┐\n│ CAST(CAST(200000000000000 AS DOUBLE) AS DECIMAL(38,9)) ┆ CAST(CAST(1.45 AS DOUBLE) AS DECIMAL(3,1)) │\n╞════════════════════════════════════════════════════════╪════════════════════════════════════════════╡\n│                              199999999999999.983222784 ┆                                        1.4 │\n└────────────────────────────────────────────────────────┴────────────────────────────────────────────┘\n```\nbut should return `200000000000000.000000000, 1.5`, like PostgreSQL does.\n\n\n### To Reproduce\n\nDuckDB: https://shell.duckdb.org/#queries=v0,select-200_000_000_000_000%3A%3Afloat8%3A%3Adecimal(38%2C-9)%2C-1.45%3A%3Afloat8%3A%3Adecimal(3%2C-1)~\nPG: https://www.db-fiddle.com/f/xzn39x6udTmfKKn9KpuiFz/4\n\n### OS:\n\n.\n\n### DuckDB Version:\n\n'1.2.2-dev15'\n\n### DuckDB Client:\n\n.\n\n### Hardware:\n\n.\n\n### Full Name:\n\nSoeren Wolfers\n\n### Affiliation:\n\nG-Research\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a nightly build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nNot applicable - the reproduction does not require a data set\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "date": "2025-03-08 17:55:22",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_floats (id INT, value DOUBLE);",
+    "INSERT INTO test_floats VALUES (1, 200000000000000), (2, 1.45);",
+    "SELECT id, CAST(value AS DECIMAL(38, 9)) FROM test_floats;",
+    "SELECT id, CAST(value AS DECIMAL(3, 1)) FROM test_floats WHERE value IS NOT NULL;",
+    "SELECT id, CAST(value AS DECIMAL(38, 9)) + 0.000000001 FROM test_floats;"
+  ],
+  "key_bug_features": [
+    "float to decimal conversion precision loss"
+  ]
+}

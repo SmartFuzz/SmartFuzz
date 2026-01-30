@@ -1,0 +1,18 @@
+{
+    "function": "sql_transact",
+    "operator": "BETWEEN",
+    "sql_array": [
+        "CREATE TABLE mydsn..rb_test (ID INT PRIMARY KEY, Value VARCHAR(255), CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO mydsn..rb_test (ID, Value) VALUES (1, 'Value1'), (2, 'Value2'), (3, NULL), (4, 'Value4');",
+        "CREATE PROCEDURE TEST_COMPLEX_FUZZ () { COMMIT WORK; INSERT INTO mydsn..rb_test (ID, Value) VALUES (5, 'Value5'); sql_transact('mydsn', 0); SELECT ID, COUNT(*) FROM mydsn..rb_test WHERE Value BETWEEN 'Value1' AND 'Value5' GROUP BY ID HAVING COUNT(*) > 1; ROLLBACK WORK; };",
+        "SELECT T.ID FROM (SELECT ID, Min(Value) AS MinValue FROM mydsn..rb_test GROUP BY ID HAVING COUNT(Value) BETWEEN 1 AND 5) AS T INNER JOIN mydsn..rb_test AS R ON T.MinValue = R.Value;",
+        "CREATE TABLE mydsn..rb_secondary (ID INT PRIMARY KEY, RefID INT, CONSTRAINT fk_ref FOREIGN KEY (RefID) REFERENCES mydsn..rb_test(ID));",
+        "INSERT INTO mydsn..rb_secondary (ID, RefID) VALUES (1, 1), (2, NULL), (3, 3);",
+        "SELECT S.ID FROM mydsn..rb_secondary S WHERE EXISTS (SELECT 1 FROM mydsn..rb_test R WHERE R.ID BETWEEN S.RefID AND 3);",
+        "CREATE PROCEDURE TEST_NULL_HANDLING () { COMMIT WORK; sql_transact('mydsn'); INSERT INTO mydsn..rb_test (ID, Value) VALUES (6, NULL); sql_transact('mydsn', 0); SELECT COUNT(*) FROM mydsn..rb_test WHERE Value IS NULL; ROLLBACK WORK; };",
+        "INSERT INTO mydsn..rb_test (ID, Value) VALUES (7, 'Value7'), (8, 'Value8');",
+        "SELECT * FROM mydsn..rb_test WHERE ID + 3 BETWEEN 5 AND 10;",
+        "SELECT CASE WHEN NULL BETWEEN 1 AND 5 THEN 'In Range' ELSE 'Out of Range' END AS RangeStatus;",
+        "DROP TABLE mydsn..rb_secondary;"
+    ]
+}

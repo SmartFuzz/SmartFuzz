@@ -1,0 +1,32 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/679ed6a282",
+  "title": "Different affinities in CREATE VIEW depending if column names declared",
+  "vulnerable_version": "",
+  "date": "2022-12-06 19:58:432.68 years ago",
+  "path": "/home/crawl_bugs/sqlite/ticket_output/ticket_info_679ed6a282.json",
+  "poc": [
+    "CREATE VIEW dual(dummy) AS SELECT 'X';",
+    "CREATE TABLE t0(a INT, b TEXT);",
+    "INSERT INTO t0 VALUES(1,'one');",
+    "CREATE VIEW t1      AS SELECT a, b FROM t0 UNION ALL SELECT 2, 2;",
+    "CREATE VIEW t2(a,b) AS SELECT a, b FROM t0 UNION ALL SELECT 2, 2;",
+    "PRAGMA table_info(t1);",
+    "PRAGMA table_info(t2);",
+    "SELECT *, typeof(b) FROM t1;",
+    "SELECT *, typeof(b) FROM t2;",
+    "SELECT *, typeof(b) FROM dual, t1;",
+    "SELECT *, typeof(b) FROM dual, t2;"
+  ],
+  "vulnerable_database": "sqlite",
+  "description": "drh added on 2022-12-06 19:58:43:\nConsider the following SQL:\n\n.echo on\n.mode qbox\nCREATE VIEW dual(dummy) AS SELECT 'X';\nCREATE TABLE t0(a INT, b TEXT);\nINSERT INTO t0 VALUES(1,'one');\nCREATE VIEW t1      AS SELECT a, b FROM t0 UNION ALL SELECT 2, 2;\nCREATE VIEW t2(a,b) AS SELECT a, b FROM t0 UNION ALL SELECT 2, 2;\nPRAGMA table_info(t1);\nPRAGMA table_info(t2);\nSELECT *, typeof(b) FROM t1;\nSELECT *, typeof(b) FROM t2;\nSELECT *, typeof(b) FROM dual, t1;\nSELECT *, typeof(b) FROM dual, t2;\n\nThe two views t1 and t2 have different column affinities, as can\nbe seen in the output of the PRAGMA table_info statements.  The\nt1 view has affinities taken from the SELECT statement that defines\nthe view.  The t2 view has numeric affinity on all columns.  This\ncan make a difference in results as is shown by the\nfinal two queries - the joins against dual.\nThis issue appears to go back to version 3.9.0 when the ability to\nassign names to the columns of views was first added.",
+  "key_bug_features": [
+    "Different column affinities in views with named columns"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t3(x REAL, y INTEGER, z TEXT NOT NULL DEFAULT 'default');",
+    "INSERT INTO t3 VALUES(3.14, NULL, 'text');",
+    "CREATE VIEW v1 AS SELECT x, y FROM t3 WHERE y IS NOT NULL UNION ALL SELECT 1.5, 2;",
+    "CREATE VIEW v2(a, b) AS SELECT x, y FROM t3 UNION ALL SELECT 'string', 3;",
+    "SELECT *, typeof(b) FROM v1 JOIN v2 ON v1.y = v2.b;"
+  ]
+}

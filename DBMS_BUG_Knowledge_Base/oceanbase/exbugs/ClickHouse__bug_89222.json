@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/89222",
+  "title": "`WHERE field` does not use PK or data skipping indices",
+  "description": "### Use case\nA query like `SELECT * FROM t WHERE id` will not use existing PK or data skipping indices on the `id` column. The equivalent query `SELECT * FROM t WHERE id != 0` will use them.\nhttps://fiddle.clickhouse.com/23c280d1-8898-436c-9081-1ae593b14c3d\n```sql\nCREATE TABLE t (\nid UInt16,\nINDEX id_index id TYPE minmax\n) ORDER BY id;\nINSERT INTO t VALUES (1);\n-- Does not use PK/indexes\nEXPLAIN indexes = 1 SELECT * FROM t WHERE id;\n/*\nExpression ((Project names + Projection))\nFilter ((WHERE + Change column names to column identifiers))\nReadFromMergeTree (default.t)\nIndexes:\nPrimaryKey\nCondition: true\nParts: 1/1\nGranules: 1/1\nRanges: 1\n*/\n-- Uses PK/indexes\nEXPLAIN indexes = 1 SELECT * FROM t WHERE id != 0;\n/*\nExpression ((Project names + Projection))\nFilter ((WHERE + Change column names to column identifiers))\nReadFromMergeTree (default.t)\nIndexes:\nPrimaryKey\nKeys:\nid\nCondition: (id not in [0, 0])\nParts: 1/1\nGranules: 1/1\nSearch Algorithm: generic exclusion search\nSkip\nName: id_index\nDescription: minmax GRANULARITY 1\nParts: 1/1\nGranules: 1/1\nRanges: 1\n*/\n```\nThis is particularly noticeable when accessing boolean fields, as it is common to reference them by name like `WHERE field` and `WHERE NOT field`.\nIt would be nice to make those constructs able to use indices.",
+  "date": "2025-10-30T13:00:56Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (id UInt16, value VARCHAR(255), INDEX value_index(value) USING BTREE);",
+    "INSERT INTO t1 VALUES (1, 'test1'), (2, 'test2'), (3, 'test3');",
+    "EXPLAIN SELECT * FROM t1 WHERE value IS NOT NULL;",
+    "CREATE TABLE t2 (id UInt16, is_active UInt8, INDEX active_index(is_active) USING BTREE);",
+    "INSERT INTO t2 VALUES (1, 1), (2, 0), (3, 1);"
+  ],
+  "key_bug_features": [
+    "WHERE clause does not utilize primary key or indices"
+  ]
+}

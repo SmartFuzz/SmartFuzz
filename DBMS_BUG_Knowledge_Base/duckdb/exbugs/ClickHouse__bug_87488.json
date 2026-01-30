@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/87488",
+  "title": "Better equality comparison for values of Dynamic data type",
+  "description": "Right now we throw an exception if Dynamic type has values that are not comparable with the second argument value:\n```sql\nCREATE TABLE test (d Dynamic) ENGINE=Memory;\nINSERT INTO test VALUES (42::Int64), ([1, 2, 3]);\nSELECT * FROM test WHERE d = 42;\nReceived exception from server (version 25.8.4):\nCode: 43. DB::Exception: Received from localhost:9000. DB::Exception: Illegal types of arguments (Array(Int64), UInt8) of function equals: while executing 'FUNCTION equals(d :: 0, 42_UInt8 :: 1) -> equals(__table1.d, 42_UInt8) Nullable(UInt8) : 3'. (ILLEGAL_TYPE_OF_ARGUMENT)\n(query: SELECT * FROM test WHERE d = 42;)\n```\nIt happens because by default we execute function on all types inside Dynamic separately and then combine the result. But for `equals` function we can just return 0 for rows with not comparable types.",
+  "date": "2025-09-23T12:31:14Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test_dynamic (d VARCHAR);",
+    "INSERT INTO test_dynamic VALUES ('42'), (NULL), ('[1, 2, 3]'), ('3.14');",
+    "CREATE TABLE test_numbers (num UINT8);",
+    "INSERT INTO test_numbers VALUES (1), (2), (3);",
+    "SELECT * FROM test_dynamic WHERE d = (SELECT CAST(num AS VARCHAR) FROM test_numbers WHERE num = 2);"
+  ],
+  "key_bug_features": [
+    "Dynamic type equality comparison with incompatible types"
+  ]
+}

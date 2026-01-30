@@ -1,0 +1,10 @@
+CREATE TABLE geo_test (id UInt64, h3_index UInt64, description String);
+INSERT INTO geo_test VALUES (1, 1310277011704381439, 'First index'), (2, 1310277011704381440, 'Second index');
+SELECT id, h3ExactEdgeLengthKm(h3_index) AS edgeLength, description FROM geo_test WHERE edgeLength NOT LIKE '10.0';
+SELECT id, h3ExactEdgeLengthKm(h3_index) AS edgeLength FROM geo_test WHERE h3_index = 1310277011704381439 AND edgeLength NOT LIKE CAST(NULL AS String);
+SELECT id, h3ExactEdgeLengthKm(h3_index) AS edgeLength FROM geo_test WHERE h3_index NOT IN (SELECT h3_index FROM geo_test WHERE description NOT LIKE '%index%');
+SELECT h3_index, COUNT(*) FROM geo_test GROUP BY h3_index HAVING h3ExactEdgeLengthKm(h3_index) NOT LIKE '0.0';
+SELECT h3_index, AVG(h3ExactEdgeLengthKm(h3_index)) AS avgEdgeLength FROM geo_test GROUP BY h3_index HAVING AVG(h3ExactEdgeLengthKm(h3_index)) NOT LIKE '5.0' OR AVG(h3ExactEdgeLengthKm(h3_index)) IS NULL;
+SELECT id, (SELECT h3ExactEdgeLengthKm(h3_index) FROM geo_test WHERE id = 1) AS edgeLength FROM geo_test WHERE (edgeLength NOT LIKE CAST(NULL AS String)) AND id > 0;
+CREATE TABLE geo_test_temp AS SELECT id, h3ExactEdgeLengthKm(h3_index) AS edgeLength FROM geo_test WHERE description NOT LIKE '%index%';
+INSERT INTO geo_test_temp (id, edgeLength) SELECT id, h3ExactEdgeLengthKm(h3_index) * 1000 FROM geo_test WHERE h3_index NOT LIKE 1310277011704381440;

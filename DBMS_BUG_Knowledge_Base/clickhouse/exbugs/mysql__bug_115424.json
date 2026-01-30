@@ -1,0 +1,19 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=115424",
+  "title": "Table created by the CREATE TABLE statement does not match the table definition",
+  "description": "When sql_mode is 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION', the first timestamp field's definition will be different from the definition in the CREATE TABLE statement.\nHow to repeat:\nset sql_mode = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';\r\n\r\nCREATE TABLE `t1` (\r\n`time1` timestamp,\r\n`time2` timestamp,\r\n`time3` timestamp\r\n) ENGINE=InnoDB;\r\n\r\nshow create table t1\\G\r\n*************************** 1. row ***************************\r\n       Table: t1\r\nCreate Table: CREATE TABLE `t1` (\r\n  `time1` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\r\n  `time2` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',\r\n  `time3` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00'\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3\r\n1 row in set (0.00 sec)\r\n\r\nYou can see that the definition of the field time1 has become:\r\n`time1` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\r\nwhich I think is not correct.",
+  "date": "2024-06-25 07:55:00",
+  "vulnerable_version": "8.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (id UInt32 DEFAULT 0, created_at DateTime, updated_at DateTime DEFAULT now()) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO t2 (created_at) VALUES (NULL);",
+    "SELECT id, created_at, updated_at FROM t2 WHERE created_at IS NULL;",
+    "CREATE TABLE t3 (event_time DateTime DEFAULT '1970-01-01 00:00:01', description String) ENGINE = MergeTree() ORDER BY event_time;"
+  ],
+  "key_bug_features": [
+    "sql_mode affects timestamp field definitions in CREATE TABLE"
+  ]
+}

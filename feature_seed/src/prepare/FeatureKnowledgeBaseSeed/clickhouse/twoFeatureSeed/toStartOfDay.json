@@ -1,0 +1,17 @@
+{
+    "function": "toStartOfDay",
+    "operator": "a != ANY (subquery)",
+    "sql_array": [
+        "CREATE TABLE dates_test (id Int32, event_time DateTime, category String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO dates_test VALUES (1, '2023-04-21 10:20:30', 'A'), (2, '2023-04-21 12:00:00', 'B'), (3, NULL, 'C'), (4, '2023-05-01 23:59:59', 'A'), (5, '2023-04-21 00:00:00', 'D');",
+        "SELECT id FROM dates_test WHERE toStartOfDay(event_time) != ANY (SELECT toStartOfDay(event_time) FROM dates_test WHERE category = 'B');",
+        "SELECT id, category FROM dates_test GROUP BY category HAVING toStartOfDay(event_time) != ANY (SELECT toStartOfDay(event_time) FROM dates_test WHERE event_time IS NOT NULL);",
+        "CREATE TABLE temp_dates AS SELECT *, toStartOfDay(event_time) AS day_start FROM dates_test WHERE event_time IS NOT NULL;",
+        "SELECT day_start FROM temp_dates WHERE day_start != ANY (SELECT toStartOfDay(NULL) FROM dates_test WHERE event_time IS NULL);",
+        "SELECT COUNT(*) FROM dates_test WHERE toStartOfDay(event_time) != ANY (SELECT toStartOfDay(event_time) FROM dates_test WHERE category = 'A') AND event_time IS NOT NULL;",
+        "CREATE TABLE edge_cases (id Int32, start_date DateTime64(3), numeric_value Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO edge_cases VALUES (1, '2023-04-21 10:20:30.123', -1.0), (2, '2023-04-21 00:00:00.000', 0.0), (3, NULL, 1.0);",
+        "SELECT * FROM edge_cases WHERE toStartOfDay(start_date) IS NULL OR numeric_value != ANY (SELECT numeric_value FROM edge_cases WHERE start_date IS NOT NULL);",
+        "SELECT id FROM edge_cases WHERE toStartOfDay(start_date) = toStartOfDay('2023-04-21 00:00:00') AND numeric_value != ANY (SELECT -1.0);"
+    ]
+}

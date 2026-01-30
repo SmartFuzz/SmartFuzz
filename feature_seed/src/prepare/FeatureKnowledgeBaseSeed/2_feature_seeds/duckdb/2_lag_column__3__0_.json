@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id INT, value DATE, description VARCHAR(100));
+INSERT INTO test_table VALUES (1, DATE '2023-01-01', 'First entry'), (2, DATE '2023-01-02', 'Second entry'), (3, DATE '2023-01-03', NULL), (4, DATE '2023-01-05', 'Fourth entry');
+CREATE TABLE reference_table (ref_id INT, ref_date DATE);
+INSERT INTO reference_table VALUES (1, DATE '2022-12-29'), (2, DATE '2023-01-06');
+SELECT id, value, lag(value, 2, DATE '1970-01-01') OVER (ORDER BY value) AS lagged_value FROM test_table WHERE value IS NOT NULL;
+SELECT tt.id, DATE '2023-02-01' - tt.value AS days_difference FROM test_table tt WHERE tt.value <> DATE '2023-01-01' AND tt.value IS NOT NULL;
+SELECT COUNT(*) FROM (SELECT id, lag(value, 1, DATE '1970-01-01') OVER (PARTITION BY description ORDER BY value) AS lagged_value FROM test_table) AS lagged_table GROUP BY lagged_value HAVING lagged_value IS NOT NULL;
+SELECT tt.id, tt.value, (SELECT DATE '2023-01-10' - MIN(rt.ref_date) FROM reference_table rt WHERE rt.ref_id = tt.id GROUP BY rt.ref_id) AS diff_days FROM test_table tt WHERE tt.id IN (SELECT DISTINCT ref_id FROM reference_table);
+SELECT tt.id, DATE '2023-03-01' - COALESCE(lag(tt.value, 3, NULL) OVER (ORDER BY tt.value), DATE '1970-01-01') AS lagged_difference FROM test_table tt LEFT JOIN reference_table rt ON rt.ref_id = tt.id ORDER BY lagged_difference;
+SELECT DISTINCT tt.id, tt.value, DATE '2023-03-01' - CASE WHEN lag_value IS NOT NULL THEN lag_value ELSE DATE '1970-01-01' END AS date_adjusted FROM (SELECT id, value, lag(value, 1) OVER (ORDER BY value) AS lag_value FROM test_table WHERE description IS NOT NULL) AS subquery;

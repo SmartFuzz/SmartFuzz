@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/78588b938a",
+  "title": "Virtual Table Sync frees pVtab->zErrMsg without zeroing",
+  "description": "nobody added on 2013-07-17 04:15:54:\nIn the src/vtab.c and the sqlite3VtabSync function, pVtab->zErrMsg is freed without then being zeroed.  This leads to a double-free error condition when pVtab->zErrMsg is later examined, found non-zero and freed (again).\nThe simplest way to reproduce the problem is to create a virtual table implementation that implements xSync.  In xSync, set pVtab->zErrMsg to an allocated string and return an error result.  At the next callback opportunity (mine was in xRollback), pVtab->zErrMsg will still be set, when it should be zero.",
+  "date": "2013-07-17 04:15:5412.07 years ago",
+  "vulnerable_version": "3.7.17",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE test_vtab (id INT PRIMARY KEY, name VARCHAR(255));",
+    "INSERT INTO test_vtab (id, name) VALUES (1, 'test1');",
+    "INSERT INTO test_vtab (id, name) VALUES (2, NULL);",
+    "UPDATE test_vtab SET name = 'updated' WHERE id = 1;",
+    "SELECT * FROM test_vtab WHERE id IN (SELECT id FROM test_vtab WHERE name IS NOT NULL);"
+  ],
+  "key_bug_features": [
+    "Freeing pVtab->zErrMsg without zeroing it"
+  ]
+}

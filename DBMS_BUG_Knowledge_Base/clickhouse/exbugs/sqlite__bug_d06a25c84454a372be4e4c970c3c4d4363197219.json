@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/d06a25c844",
+  "title": "Incorrect result from a UNION with an ORDER BY",
+  "description": "drh added on 2016-02-08 22:22:47:\nThe following SQL code generates an incorrect answer of three rows instead of two:\nCREATE TABLE tx(id INTEGER PRIMARY KEY, a, b);\nINSERT INTO tx(a,b) VALUES(33,456);\nINSERT INTO tx(a,b) VALUES(33,789);\n\nSELECT DISTINCT t0.id, t0.a, t0.b\n  FROM tx AS t0, tx AS t1\n WHERE t0.a=t1.a AND t1.a=33 AND t0.b=456\nUNION\nSELECT DISTINCT t0.id, t0.a, t0.b\n  FROM tx AS t0, tx AS t1\n WHERE t0.a=t1.a AND t1.a=33 AND t0.b=789\n ORDER BY 1;\nPrior to and including check-in [93121d3097a43997] (version 3.8.3, 2013-12-17) \nthe correct answer was obtained.  After that, the test script above generates\nan assertion fault.  At check-in [c0fa0c0e2de50d7e] (version 3.8.4, 2014-03-03)\nthe assertion faults go away, but the incorrect answer is returned.\ndrh added on 2016-02-09 14:12:17:\nThe problem was two co-routines using the same temporary registers and\nexpecting those temporary registers to be preserved across a Yield.  The\nsolution is to ensure that every co-routine has its own set of temporary\nregisters that are not shared with the main thread or other co-routines.\nIn the demonstration query shown in the problem description, each SELECT\nstatement is evaluated by a separate co-routine that includes an ORDER BY.\nThe main thread handles the UNION by running each co-routine long enough\nto generate a single row, then choosing the smaller of the two\nrows to output and running the corresponding co-routine to generate the\nnext row for that SELECT.  Each co-routine evaluates its query as a nested\nloop with t0 being the outer loop and t1 being the inner loop.  The t0.a\nand t0.b values are stored in temporary registers in the outer loop, and\nthose value are expected to remain intact even though a Yield occurs after\neach iteration of the inner loop.  Prior to the fix of\ncheck-in [ca72be8618e5d466] both co-routines were using the same temporary\nregisters for their t0.a and t0.b values, which means that running one\nco-routine would disrupt the other.  After check-in [ca72be8618e5d466] the\ntwo co-routines use different temporary registers for holding t0.a and\nt0.b so they no longer interfere with one another.",
+  "date": "2016-02-08 22:22:479.50 years ago",
+  "vulnerable_version": "3.10.2",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE tx(id UInt32, a UInt32, b String, c Float64 DEFAULT 0.0);",
+    "INSERT INTO tx(a, b, c) VALUES(33, '456', 1.1);",
+    "INSERT INTO tx(a, b, c) VALUES(33, '789', NULL);",
+    "SELECT DISTINCT t0.id, t0.a, t0.b, t0.c FROM tx AS t0 JOIN tx AS t1 ON t0.a = t1.a WHERE t1.a = 33 AND t0.b = '456' UNION SELECT DISTINCT t0.id, t0.a, t0.b, t0.c FROM tx AS t0 JOIN tx AS t1 ON t0.a = t1.a WHERE t1.a = 33 AND t0.b = '789' ORDER BY t0.id;",
+    "SELECT COUNT(*) FROM tx WHERE c IS NULL;"
+  ],
+  "key_bug_features": [
+    "UNION with ORDER BY using shared temporary registers"
+  ]
+}

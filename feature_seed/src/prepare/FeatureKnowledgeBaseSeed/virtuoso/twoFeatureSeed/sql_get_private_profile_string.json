@@ -1,0 +1,20 @@
+{
+    "function": "sql_get_private_profile_string",
+    "operator": "bif:st_intersects",
+    "sql_array": [
+        "CREATE TABLE profiles (id INT PRIMARY KEY, user_id INT, profile_data VARCHAR(255), geom GEOMETRY);",
+        "INSERT INTO profiles (id, user_id, profile_data, geom) VALUES (1, 101, 'Profile 1', ST_GeomFromText('POINT(1 1)', 4326));",
+        "INSERT INTO profiles (id, user_id, profile_data, geom) VALUES (2, 102, 'Profile 2', ST_GeomFromText('POINT(2 2)', 4326));",
+        "INSERT INTO profiles (id, user_id, profile_data, geom) VALUES (3, 103, NULL, ST_GeomFromText('POLYGON((0 0, 0 4, 4 4, 4 0, 0 0))', 4326));",
+        "SELECT sql_get_private_profile_string('user'), bif:st_intersects(geom, ST_GeomFromText('POINT(1 1)', 4326)) FROM profiles WHERE user_id = 101 AND profile_data IS NOT NULL;",
+        "SELECT user_id, COUNT(*) AS total FROM profiles WHERE bif:st_intersects(geom, ST_GeomFromText('POINT(2 2)', 4326)) GROUP BY user_id HAVING total > 0;",
+        "SELECT sql_get_private_profile_string('system'), bif:st_intersects( (SELECT geom FROM profiles WHERE user_id = 102), ST_GeomFromText('POINT(3 3)', 4326)) AS intersection FROM profiles WHERE profile_data IS NOT NULL;",
+        "SELECT sql_get_private_profile_string('user') AS user_profile, COUNT(*) FROM profiles WHERE profile_data IS NOT NULL AND bif:st_intersects(geom, (SELECT ST_GeomFromText('POINT(1 1)', 4326))) GROUP BY user_profile HAVING COUNT(*) > 0;",
+        "SELECT sql_get_private_profile_string('system'), geom FROM profiles WHERE NOT EXISTS (SELECT * FROM profiles a WHERE a.user_id > 100 AND bif:st_intersects(a.geom, profiles.geom));",
+        "CREATE TABLE spatial_test (id INT PRIMARY KEY, point GEOMETRY);",
+        "INSERT INTO spatial_test (id, point) VALUES (1, ST_GeomFromText('POINT(0 0)', 4326));",
+        "SELECT sql_get_private_profile_string('user'), bif:st_intersects(point, (SELECT geom FROM profiles WHERE id = 1)) FROM spatial_test WHERE id = (SELECT MAX(id) FROM spatial_test);",
+        "ALTER TABLE profiles ADD COLUMN is_active BOOLEAN DEFAULT TRUE;",
+        "SELECT sql_get_private_profile_string('user'), COUNT(*) FROM profiles WHERE is_active IS TRUE AND bif:st_intersects(geom, ST_GeomFromText('POINT(1.5 1.5)', 4326));"
+    ]
+}

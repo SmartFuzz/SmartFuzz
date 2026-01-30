@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/60370",
+  "title": "Incorrect Filtering Behavior When Using COALESCE in WHERE Clause in TiDB",
+  "description": "## Bug Report\n### 1. Minimal reproduce step (Required)\nThe following SQL statements create tables, insert sample data, and execute queries that demonstrate unexpected behavior:\n```\nCREATE TABLE `t1` (\n  `c1` int\n);\n\nINSERT INTO `t1` VALUES (1);\n\nCREATE TABLE `t2` (\n  `c2` int\n);\n\nINSERT INTO `t2` VALUES (-71);\n```\n\nQuery1:\n```\nselect  \n  coalesce(NULL | (SIGN(STRCMP(case when ( (ref_0.c1) is null) then ('b') else ('b') end, 'a'))), \n                         length(nullif(CHAR(ref_1.c2), 'KV')))    as w_1\nfrom \n  (t1 as ref_0\n    right join t2 as ref_1\n    on (ref_0.c1 = ref_1.c2))\nwhere coalesce(NULL | (SIGN(STRCMP(case when ( (ref_0.c1) is null) then ('b') else ('b') end, 'a'))), \n                         length(nullif(CHAR(ref_1.c2), 'KV'))) > 0;\n```\n\nOutput:\n```\n+------+\n| w_1  |\n+------+\n|    4 |\n+------+\n1 row in set, 2 warnings (0.00 sec)\n```\n\nQuery2:\n```\nselect  \n  coalesce(NULL | (SIGN(STRCMP(case when ( (ref_0.c1) is null) then ('b') else ('b') end, 'a'))), \n                         length(nullif(CHAR(ref_1.c2), 'KV')))    as w_1\nfrom \n  (t1 as ref_0\n    right join t2 as ref_1\n    on (ref_0.c1 = ref_1.c2))\nwhere coalesce(NULL | (SIGN(STRCMP(case when ( (ref_0.c1) is null) then ('b') else ('b') end, 'a'))), \n                         length(nullif(CHAR(ref_1.c2), 'KV'))) > 1;\n```\n\nOutput:\n`Empty set, 2 warnings (0.01 sec)`\n\n### 2. What did you expect to see? (Required)\nSince the first query returns w_1 = 4, and 4 > 0 and 4 > 1 are both TRUE, the second query should also return at least the same row.\n\nThe filtering condition w_1 > 1 should not remove all results, given that w_1 = 4 is valid.\n\n### 3. What did you see instead (Required)\nThe second query unexpectedly returns an empty set, even though the computed w_1 value (4) satisfies the filtering condition > 1.\n\n### 4. What is your TiDB version? (Required)\n8.0.11-TiDB\nmaster https://github.com/pingcap/tidb/commit/b6141ec589ed8e73176692dc982a210ad7cf070b\n\nGoVersion: go1.23.4\nRace Enabled: false\nCheck Table Before Drop: false\nStore: unistore |\n\n",
+  "date": "2025-04-02T08:55:46Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t3 ( c3 varchar(10) DEFAULT NULL, c4 int NOT NULL );",
+    "INSERT INTO t3 VALUES (NULL, 5), ('test', 10);",
+    "CREATE TABLE t4 ( c5 int, c6 float DEFAULT NULL );",
+    "INSERT INTO t4 VALUES (NULL, 3.14), (2, NULL);",
+    "SELECT COALESCE(SUM(c4), 0) AS total FROM t3 WHERE COALESCE(c3, 'default') = 'default';"
+  ],
+  "key_bug_features": [
+    "Incorrect filtering with COALESCE in WHERE clause"
+  ]
+}

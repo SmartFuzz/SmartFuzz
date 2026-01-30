@@ -1,0 +1,11 @@
+CREATE TABLE subscriptions (id INT PRIMARY KEY, name VARCHAR(255), status VARCHAR(10));
+INSERT INTO subscriptions VALUES (1, 'sub1', 'active'), (2, 'sub2', 'inactive'), (3, 'sub3', NULL);
+CREATE TABLE publishers (id INT PRIMARY KEY, name VARCHAR(255));
+INSERT INTO publishers VALUES (1, 'pub1'), (2, 'pub2');
+CREATE TABLE sync_logs (log_id INT PRIMARY KEY, sub_id INT, sync_time TIMESTAMP);
+INSERT INTO sync_logs VALUES (1, 1, '2023-10-01 10:00:00'), (2, 2, NULL), (3, 3, '2023-10-02 11:00:00');
+SELECT repl_sync_all() WHERE 1 NOT IN (SELECT COUNT(*) FROM sync_logs WHERE sync_time IS NOT NULL) AND id NOT IN (SELECT id FROM subscriptions WHERE status = 'inactive');
+SELECT name FROM publishers WHERE id NOT IN (SELECT DISTINCT sub_id FROM sync_logs);
+SELECT COUNT(*) FROM subscriptions WHERE status IS NULL HAVING COUNT(id) NOT IN (SELECT id FROM publishers);
+SELECT id, name FROM subscriptions WHERE NOT EXISTS (SELECT * FROM publishers WHERE id = subscriptions.id) AND status NOT LIKE 'active';
+SELECT repl_sync_all() WHERE EXISTS (SELECT 1 FROM sync_logs WHERE sub_id NOT IN (SELECT id FROM subscriptions WHERE status IS NOT NULL));

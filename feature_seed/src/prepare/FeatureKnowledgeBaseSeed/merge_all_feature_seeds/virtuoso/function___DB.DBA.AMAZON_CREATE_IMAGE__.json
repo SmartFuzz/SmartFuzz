@@ -1,0 +1,27 @@
+CREATE TABLE test_instances (instance_id VARCHAR, instance_name VARCHAR, status VARCHAR);
+INSERT INTO test_instances (instance_id, instance_name, status) VALUES ('i-1234567890abcdef0', 'my_instance_of_linux', 'running');
+INSERT INTO test_instances (instance_id, instance_name, status) VALUES ('i-abcdef1234567890', 'my_instance_of_windows', 'stopped');
+CREATE PROCEDURE test_create_image_running()
+{
+  DECLARE access_key, sec_token, p_name, image_id VARCHAR;
+access_key := 'AKIAJI7ZL427TI5EDF5A';
+sec_token := 'CGI/UMaXf2LRUctaj/HGJ57UNy/t7fNCshh8wpJg';
+image_id := 'my_new_image_running';
+p_name := (SELECT instance_name FROM test_instances WHERE status = 'running' LIMIT 1);
+DB.DBA.AMAZON_CREATE_IMAGE(access_key, p_name, image_id, sec_token);
+};
+CREATE PROCEDURE test_create_image_stopped()
+{
+  DECLARE access_key, sec_token, p_name, image_id VARCHAR;
+access_key := 'AKIAJI7ZL427TI5EDF5A';
+sec_token := 'CGI/UMaXf2LRUctaj/HGJ57UNy/t7fNCshh8wpJg';
+image_id := 'my_new_image_stopped';
+p_name := (SELECT instance_name FROM test_instances WHERE status = 'stopped' LIMIT 1);
+DB.DBA.AMAZON_CREATE_IMAGE(access_key, p_name, image_id, sec_token);
+};
+CREATE TABLE test_images (image_id VARCHAR, instance_id VARCHAR, creation_date TIMESTAMP);
+INSERT INTO test_images (image_id, instance_id, creation_date) VALUES ('my_new_image', 'i-1234567890abcdef0', NOW());
+CALL test_create_image_running();
+CALL test_create_image_stopped();
+SELECT * FROM test_images WHERE creation_date > NOW() - INTERVAL '1 DAY';
+SELECT COUNT(*) FROM test_images WHERE image_id = 'my_new_image_running' OR image_id = 'my_new_image_stopped';

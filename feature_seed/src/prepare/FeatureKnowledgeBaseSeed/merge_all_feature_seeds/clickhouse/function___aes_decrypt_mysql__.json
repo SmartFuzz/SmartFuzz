@@ -1,0 +1,15 @@
+CREATE TABLE test_decrypt (id UInt32, ciphertext String, key String, iv String);
+INSERT INTO test_decrypt VALUES (1, unhex('24E9E4966469'), '123456789101213141516171819202122', 'iviviviviviviviv123456');
+SELECT aes_decrypt_mysql('aes-256-ofb', ciphertext, key, iv) AS plaintext FROM test_decrypt WHERE id = 1;
+CREATE TABLE test_keys (decryption_mode String, key_length UInt8);
+INSERT INTO test_keys VALUES ('aes-128-ecb', 16), ('aes-192-ecb', 24), ('aes-256-ecb', 32);
+SELECT aes_decrypt_mysql(decryption_mode, ciphertext, key, iv) AS plaintext FROM test_decrypt JOIN test_keys ON length(key) = key_length WHERE id = 1;
+SELECT aes_decrypt_mysql('aes-128-cbc', unhex('24E9E4966469'), 'short-key', 'iviviviviviviviv123456') AS plaintext WHERE LENGTH(key) <= 16;
+SELECT aes_decrypt_mysql('aes-128-cfb128', unhex('24E9E4966469'), CONCAT(key, 'extra-bytes'), iv) AS plaintext FROM test_decrypt WHERE id = 1;
+SELECT aes_decrypt_mysql('aes-256-ofb', unhex('24E9E4966469'), '123456789101213141516171819202122longer-than-expected-key', iv) AS plaintext;
+CREATE TABLE complex_decrypt (data String);
+INSERT INTO complex_decrypt VALUES (unhex('24E9E4966469'));
+SELECT aes_decrypt_mysql('aes-256-cbc', data, '123456789101213141516171819202122', 'iviviviviviviviv123456') AS decrypted_data FROM complex_decrypt WHERE data IS NOT NULL;
+SELECT aes_decrypt_mysql('aes-128-ecb', unhex('24E9E4966469'), 'key1234567890123', 'iviviviv') AS plaintext, 'Decrypted' AS status FROM complex_decrypt;
+WITH (SELECT unhex('24E9E4966469') AS cipher) AS c SELECT aes_decrypt_mysql('aes-256-cbc', c.cipher, '123456789101213141516171819202122', 'iviviviviviviviv123456') AS plaintext;
+SELECT aes_decrypt_mysql('aes-128-ofb', unhex('24E9E4966469'), 'valid_key_1234', iv) AS plaintext FROM (SELECT 'iviviviviviviviv123456' AS iv) AS tbl;

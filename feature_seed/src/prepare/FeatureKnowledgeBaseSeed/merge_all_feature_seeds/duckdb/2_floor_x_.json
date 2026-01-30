@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id INTEGER, value FLOAT, created_at DATE);
+INSERT INTO test_data VALUES (1, 17.4, DATE '2023-10-10'), (2, NULL, DATE '2023-10-11'), (3, 0.1, DATE '2023-10-12');
+CREATE TABLE updates (days INTEGER);
+INSERT INTO updates VALUES (5), (10);
+SELECT id, floor(value) AS floored_value, DATE '2023-10-01' + INTERVAL (d.days) DAY AS adjusted_date FROM test_data AS t JOIN updates AS d ON t.id = d.days % 3 WHERE value IS NOT NULL HAVING floored_value > 0;
+SELECT id, floor(value) AS floored_value, DATE '2023-10-01' + INTERVAL (SELECT COUNT(*) FROM updates) DAY AS adjusted_date FROM test_data GROUP BY id, value HAVING floored_value <= 17 ORDER BY adjusted_date DESC;
+SELECT id, floor(COALESCE(NULLIF(value, 0), 1.5)) AS floored_value, DATE '2023-10-01' + INTERVAL (SELECT MAX(days) FROM updates WHERE days < 10) DAY AS adjusted_date FROM test_data WHERE created_at > DATE '2023-10-09' GROUP BY id, value ORDER BY floored_value ASC;
+SELECT t.id, floor(value + CAST(NULL AS FLOAT)) AS result_value FROM test_data AS t LEFT JOIN updates AS d ON d.days = 10 WHERE d.days IS NULL;
+CREATE TEMPORARY TABLE temp_results AS SELECT id, floor(value) AS floored_value FROM test_data WHERE created_at <= CURRENT_DATE GROUP BY id HAVING floored_value IS NOT NULL;
+SELECT COUNT(*) FROM temp_results HAVING COUNT(*) > FLOOR(SELECT AVG(value) FROM test_data WHERE value IS NOT NULL) + 1;

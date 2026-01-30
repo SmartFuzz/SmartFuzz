@@ -1,0 +1,9 @@
+CREATE TABLE test_dates (id UInt32, event_time String, precision UInt8, time_zone String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_dates VALUES (1, '2021-01-01 01:01:00.123456', 6, 'UTC'), (2, '2021-01-01 01:01:00.123', 3, 'America/New_York'), (3, '2021-01-01', 3, 'Europe/London'), (4, '', 3, 'Asia/Tokyo');
+SELECT id, parseDateTime64BestEffort(event_time, precision, time_zone) AS parsed_time FROM test_dates WHERE parsed_time = ANY (SELECT parseDateTime64BestEffort('2021-01-01 01:01:00.123456', 6, 'UTC') UNION ALL SELECT parseDateTime64BestEffort('2021-01-01 01:01:01', 3, 'UTC'));
+SELECT id, parseDateTime64BestEffort(event_time, precision, time_zone) AS parsed_time FROM test_dates GROUP BY id HAVING parsed_time is NOT NULL;
+SELECT id, parseDateTime64BestEffort(event_time, 3) AS parsed_time FROM test_dates WHERE parsed_time = ANY (SELECT parseDateTime64BestEffort(event_time, 3) AS sub_parsed_time FROM test_dates WHERE event_time != '');
+CREATE TABLE test_fuzzy (val UInt32, date_val String, time_zone String) ENGINE = MergeTree() ORDER BY val;
+INSERT INTO test_fuzzy VALUES (1, '2021-01-01 01:00:00', 'UTC'), (2, '2021-01-01 01:00:00.999', 'UTC'), (3, '', NULL), (4, 'invalid_date', 'America/New_York');
+SELECT val, parseDateTime64BestEffort(date_val, 6) AS fuzzy_parsed_time FROM test_fuzzy WHERE fuzzy_parsed_time = ANY (SELECT parseDateTime64BestEffort('2021-01-01 01:00:00.000', 3));
+SELECT val, parseDateTime64BestEffort(date_val, precision, time_zone) AS parsed_time FROM test_dates AS t1 WHERE parsed_time = ANY (SELECT parsed_time FROM (SELECT parseDateTime64BestEffort('2021-01-01 01:01:00.123456', 6, 'UTC') AS parsed_time) AS t2);

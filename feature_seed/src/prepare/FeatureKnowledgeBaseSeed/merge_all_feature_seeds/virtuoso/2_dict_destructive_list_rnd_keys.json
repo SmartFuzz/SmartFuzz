@@ -1,0 +1,15 @@
+CREATE TABLE test_dict (id INTEGER PRIMARY KEY, data_dict ANY);
+INSERT INTO test_dict (id, data_dict) VALUES (1, dict(1, 'one', 2, 'two', 3, 'three'));
+CREATE TABLE test_graph (graph_iri VARCHAR UNIQUE);
+INSERT INTO test_graph (graph_iri) VALUES ('http://example.org/graph1');
+SELECT dict_destructive_list_rnd_keys(data_dict, 2) AS keys FROM test_dict WHERE keys LIKE '1%' OR keys LIKE '3%';
+CREATE TABLE test_join (id1 INTEGER, id2 INTEGER, data_val VARCHAR);
+INSERT INTO test_join (id1, id2, data_val) VALUES (1, 1, 'match1'), (1, 2, 'match2'), (2, 1, 'no match'), (2, 3, 'match3');
+SELECT j.id1, j.data_val FROM test_join j JOIN test_dict d ON d.id = j.id1 WHERE dict_destructive_list_rnd_keys(d.data_dict, 1) LIKE 'match%';
+SELECT COUNT(*) FROM test_dict WHERE dict_destructive_list_rnd_keys(data_dict, 1) HAVING keys IS NOT NULL;
+CREATE TABLE temp_alpha (alpha VARCHAR, beta INTEGER);
+INSERT INTO temp_alpha (alpha, beta) VALUES ('test', 10), (NULL, 20), ('example', NULL);
+SELECT a.alpha, dict_destructive_list_rnd_keys(d.data_dict, 1) FROM temp_alpha a LEFT JOIN test_dict d ON a.beta = d.id WHERE a.alpha LIKE 't%';
+SELECT SUM(CASE WHEN dict_destructive_list_rnd_keys(data_dict, 1) IS NULL THEN 1 ELSE 0 END) AS null_count FROM test_dict;
+UPDATE test_dict SET data_dict = dict_destructive_list_rnd_keys(data_dict, 1) WHERE id = 1 AND data_dict LIKE '%one%';
+SELECT a.alpha, dict_destructive_list_rnd_keys(d.data_dict, 2) AS keys FROM temp_alpha a JOIN test_join j ON a.beta = j.id1 GROUP BY a.alpha HAVING COUNT(keys) > 0;

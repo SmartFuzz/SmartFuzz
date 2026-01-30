@@ -1,0 +1,10 @@
+CREATE TABLE test_iri (id INT PRIMARY KEY, qualified_name VARCHAR(255), value INT NULL);
+INSERT INTO test_iri (id, qualified_name, value) VALUES (1, 'http://example.org/prefix1:localPart', 10);
+INSERT INTO test_iri (id, qualified_name, value) VALUES (2, 'http://example.org/prefix2:anotherPart', NULL);
+SELECT iri_split(qualified_name, NULL) AS prefix FROM test_iri WHERE value IS NOT NULL AND iri_split(qualified_name) && iri_split('http://example.org/prefix1:localPart') IS TRUE;
+SELECT id, iri_split(qualified_name) AS prefix, COUNT(value) OVER (PARTITION BY iri_split(qualified_name)) AS count_per_prefix FROM test_iri WHERE value IS NOT NULL GROUP BY id, qualified_name HAVING COUNT(value) > 0;
+SELECT iri_split(qualified_name, 'localPart') AS local_part FROM test_iri WHERE (value IS NULL) && (id = 1);
+SELECT prefix, COUNT(*) FROM (SELECT iri_split(qualified_name) AS prefix FROM test_iri WHERE value IS NULL UNION ALL SELECT iri_split(qualified_name) FROM test_iri WHERE value IS NOT NULL) sub GROUP BY prefix;
+CREATE TEMPORARY TABLE temp_test AS SELECT id, iri_split(qualified_name, NULL) AS prefix FROM test_iri WHERE qualified_name IS NOT NULL;
+SELECT prefix, COUNT(value) AS value_count FROM temp_test WHERE prefix IS NOT NULL GROUP BY prefix HAVING COUNT(value) > 0;
+DROP TABLE IF EXISTS temp_test;

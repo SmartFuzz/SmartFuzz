@@ -1,0 +1,23 @@
+{
+    "function": "REPL_ADD_SNAPSHOT_CR",
+    "operator": "bif:st_within",
+    "sql_array": [
+        "CREATE TABLE items(item_id integer primary key, name varchar, price decimal);",
+        "INSERT INTO items(item_id, name, price) VALUES (1, 'item1', 19.99), (2, 'item2', NULL), (3, 'item3', 29.99), (4, 'item4', 15.00);",
+        "CREATE TABLE locations(location_id integer primary key, geom geometry);",
+        "INSERT INTO locations(location_id, geom) VALUES (1, ST_GeomFromText('POINT(1 1)', 0)), (2, ST_GeomFromText('POLYGON((0 0, 0 2, 2 2, 2 0, 0 0))', 0));",
+        "SELECT REPL_ADD_SNAPSHOT_CR('DB.DBA.items', 'count', 'U', (SELECT COUNT(*) FROM items WHERE price IS NOT NULL), 'ave', 'price') AS conflict_resolver;",
+        "SELECT location_id FROM locations WHERE bif:st_within(geom, (SELECT ST_GeomFromText('POINT(1.5 1.5)', 0)));",
+        "INSERT INTO items(item_id, name, price) SELECT item_id, name, NULLIF(price, 0) FROM items WHERE item_id < 3;",
+        "SELECT item_id, price, name FROM items WHERE bif:st_within(ST_GeomFromText('POINT(price 9.99)', 0), (SELECT geom FROM locations WHERE location_id = 1));",
+        "SELECT item_id, AVG(price) as average_price FROM items GROUP BY item_id HAVING average_price > 10;",
+        "SELECT item_id, COUNT(*) FROM items WHERE bif:st_within(ST_GeomFromText(CONCAT('POINT(', item_id, ' ', price, ')', 0)), (SELECT geom FROM locations) ) GROUP BY item_id HAVING COUNT(*) > 1;",
+        "CREATE TABLE orders(order_id integer primary key, item_id integer, quantity integer, status varchar DEFAULT 'pending');",
+        "INSERT INTO orders(order_id, item_id, quantity) VALUES (1, 1, 2), (2, 2, 0), (3, 1, 5), (4, 4, 1);",
+        "SELECT REPL_ADD_SNAPSHOT_CR('DB.DBA.orders', 'count', 'U', (SELECT SUM(quantity) FROM orders WHERE status = 'pending'), 'sum', 'quantity') AS order_conflict_resolver;",
+        "SELECT o.order_id, i.name, o.quantity FROM orders o JOIN items i ON o.item_id = i.item_id WHERE o.quantity IS NOT NULL AND i.price > (SELECT AVG(price) FROM items WHERE price IS NOT NULL);",
+        "SELECT item_id, COUNT(*) AS occurrences FROM items GROUP BY item_id HAVING occurrences > (SELECT COUNT(DISTINCT order_id) FROM orders WHERE order_id < 3);",
+        "ALTER TABLE items ADD COLUMN category varchar;",
+        "UPDATE items SET category = 'A' WHERE price < 20.00;"
+    ]
+}

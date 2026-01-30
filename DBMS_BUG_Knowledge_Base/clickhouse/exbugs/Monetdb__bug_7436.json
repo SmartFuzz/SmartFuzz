@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7436",
+  "title": "MonetDB server crashes in `exp_ref`",
+  "description": "MonetDB server crashes in `exp_ref`.\n\n**To Reproduce**\n```sql\nCREATE TABLE v0 ( v1 DOUBLE );\n DELETE FROM v0 WHERE ( v1 ) IS NULL OR ( SELECT DENSE_RANK ( ) OVER ( PARTITION BY count ( * ) ORDER BY v1 % 10 ) WHERE 0 BETWEEN v1 AND v1 ) < 4;\n```\n\n**Backtrace of the Crash**\n```c\n#0 0x7f71aba63ccf (exp_ref+0x3f)\n#1 0x7f71abaa0211 (rel_unnest_dependent+0x4941)\n#2 0x7f71aba9bcba (rel_unnest_dependent+0x3ea)\n#3 0x7f71aba9cc6c (rel_unnest_dependent+0x139c)\n#4 0x7f71aba9bcba (rel_unnest_dependent+0x3ea)\n#5 0x7f71aba9cc6c (rel_unnest_dependent+0x139c)\n#6 0x7f71aba9bcba (rel_unnest_dependent+0x3ea)\n#7 0x7f71aba9cc6c (rel_unnest_dependent+0x139c)\n#8 0x7f71aba9bcba (rel_unnest_dependent+0x3ea)\n#9 0x7f71aba9cc6c (rel_unnest_dependent+0x139c)\n#10 0x7f71aba9bcba (rel_unnest_dependent+0x3ea)\n#11 0x7f71aba9d3e7 (rel_unnest_dependent+0x1b17)\n#12 0x7f71aba9bcba (rel_unnest_dependent+0x3ea)\n#13 0x7f71aba9cc6c (rel_unnest_dependent+0x139c)\n#14 0x7f71aba92ab7 (_rel_unnest+0x4d7)\n#15 0x7f71aba80c97 (rel_visitor_bottomup+0x3e7)\n#16 0x7f71aba80b87 (rel_visitor_bottomup+0x2d7)\n#17 0x7f71aba80b87 (rel_visitor_bottomup+0x2d7)\n#18 0x7f71aba80b28 (rel_visitor_bottomup+0x278)\n#19 0x7f71aba8bb16 (rel_unnest+0xd6)\n#20 0x7f71aba07eef (sql_processrelation+0x4f)\n#21 0x7f71ab811e1b (sql_symbol2relation+0x1bb)\n#22 0x7f71ab83eb84 (SQLparser+0x624)\n#23 0x7f71ab83dcbc (SQLengine_+0xa5c)\n#24 0x7f71ab83b4fe (SQLengine+0x3e)\n#25 0x7f71abdb92cf (runScenario+0x6f)\n#26 0x7f71abdba4de (MSscheduleClient+0xb6e)\n#27 0x7f71abef1182 (doChallenge+0x132)\n#28 0x7f71acc1a8a7 (thread_starter+0xc7)\n#29 0x7f71ab735609 (start_thread+0xd9)\n#30 0x7f71ab658133 (clone+0x43)\n```\n\n**Software versions**\n - MonetDB version number: v11.49.1 (Dec2023)\n - OS and version: Ubuntu 20.04\n - From docker image monetdb/monetdb:Dec2023\n\nAn example of steps to reproduce in docker container (**write the poc into /tmp/test.sql first**):\n```bash\ndocker container rm monetdb_test -f\ndocker run -e MDB_DB_ADMIN_PASS=monetdb --name monetdb_test -itd monetdb/monetdb:Dec2023\ndocker exec monetdb_test bash -c 'echo -n -e \"user=monetdb\\npassword=monetdb\\n\" > /root/.monetdb'\n\nsleep 10\ncat /tmp/test.sql | timeout 5s docker exec -i monetdb_test mclient monetdb     # run test case\n\nif docker exec monetdb_test bash -c \"grep '[m]server5' /proc/*/cmdline -lR\"; then\n    echo \"[INFO] Server normal.\"\nelse\n    echo \"[CRASH] Mserver5 process does NOT exist.\"\nfi\n```\n\nIt can also be reproduced on the docker image `monetdb/dev-builds:default`.\n\n**Issue labeling**\nbug",
+  "date": "2024-01-17T06:49:55Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE TABLE v1 ( id Int32, value String NOT NULL ) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO v1 (id, value) VALUES (1, 'test'), (2, NULL), (3, 'example');",
+    "CREATE TABLE v2 ( a Float64, b Int32 DEFAULT 0, c Date );",
+    "INSERT INTO v2 (a, b, c) VALUES (NULL, 1, '2023-01-01'), (5.5, 2, NULL), (3.14, NULL, '2023-01-03');",
+    "DELETE FROM v2 WHERE ( a IS NULL OR ( SELECT COUNT() FROM ( SELECT a, DENSE_RANK() OVER ( PARTITION BY b ORDER BY a ) AS rank FROM v2 ) WHERE rank < 2 ) > 0 );"
+  ],
+  "key_bug_features": [
+    "DELETE FROM v0 with DENSE_RANK subquery condition"
+  ]
+}

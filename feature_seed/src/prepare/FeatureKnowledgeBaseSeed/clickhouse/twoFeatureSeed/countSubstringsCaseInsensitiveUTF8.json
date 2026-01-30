@@ -1,0 +1,16 @@
+{
+    "function": "countSubstringsCaseInsensitiveUTF8",
+    "operator": "a > b",
+    "sql_array": [
+        "CREATE TABLE test_strings (id UInt64, haystack String, needle String, start_pos UInt64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_strings VALUES (1, '\u043b\u043e\u0436\u043a\u0430, \u043a\u043e\u0448\u043a\u0430, \u043a\u0430\u0440\u0442\u043e\u0448\u043a\u0430', '\u041a\u0410', 1), (2, ' \u0442\u0435\u0441\u0442', 'e', 1), (3, '', 'A', 1), (4, 'Hello World', 'world', 1);",
+        "SELECT id, countSubstringsCaseInsensitiveUTF8(haystack, needle) AS count FROM test_strings WHERE count > 0;",
+        "SELECT id, haystack, COUNT(*) FROM test_strings WHERE COUNT(countSubstringsCaseInsensitiveUTF8(haystack, needle)) > 0 GROUP BY id, haystack HAVING COUNT(haystack) > 1;",
+        "SELECT id, countSubstringsCaseInsensitiveUTF8(haystack, '\u0430\u043d\u0435', 1) AS count, (SELECT COUNT(*) FROM test_strings WHERE countSubstringsCaseInsensitiveUTF8(haystack, needle) > 0) AS total FROM test_strings WHERE start_pos > 0 ORDER BY count DESC;",
+        "SELECT id, haystack, needle, countSubstringsCaseInsensitiveUTF8(haystack, needle, start_pos) FROM test_strings WHERE countSubstringsCaseInsensitiveUTF8(haystack, 'Lo', start_pos + 1) > 0;",
+        "CREATE TABLE another_test_strings AS SELECT id, haystack, NULL AS needle, start_pos FROM test_strings;",
+        "INSERT INTO another_test_strings SELECT id, NULLIF(haystack, ''), NULL AS needle, start_pos FROM test_strings;",
+        "SELECT id, countSubstringsCaseInsensitiveUTF8(IFNULL(haystack, ''), '\u043a\u0430', start_pos) FROM another_test_strings WHERE start_pos < 10;",
+        "SELECT id, countSubstringsCaseInsensitiveUTF8(COALESCE(haystack, ''), 'test') > 0 AS has_test FROM test_strings WHERE haystack IS NOT NULL;"
+    ]
+}

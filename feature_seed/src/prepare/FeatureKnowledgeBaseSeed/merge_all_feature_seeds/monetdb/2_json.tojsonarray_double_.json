@@ -1,0 +1,11 @@
+CREATE TABLE test_json (id INT PRIMARY KEY, value DOUBLE, extra_value DOUBLE);
+INSERT INTO test_json (id, value, extra_value) VALUES (1, 10.5, 2.3), (2, NULL, 3.0), (3, 0.0, -1.5), (4, -4.5, NULL);
+CREATE TABLE other_data (id INT PRIMARY KEY, ref_id INT, num_value DOUBLE);
+INSERT INTO other_data (id, ref_id, num_value) VALUES (1, 1, 5.0), (2, 2, NULL), (3, 1, -10.0);
+SELECT json.tojsonarray(SELECT value FROM test_json WHERE value <> (SELECT MAX(value) FROM test_json WHERE value IS NOT NULL)) AS json_result;
+SELECT id, json.tojsonarray(value) FROM test_json GROUP BY id HAVING COUNT(value) <> COUNT(extra_value);
+SELECT A.id, A.value, json.tojsonarray(A.extra_value) FROM test_json A JOIN other_data B ON A.id = B.ref_id WHERE A.value <> -4.5;
+SELECT json.tojsonarray(AVG(value)) FROM (SELECT value FROM test_json UNION SELECT extra_value FROM test_json WHERE extra_value IS NOT NULL) AS combined WHERE combined.value IS NOT NULL;
+SELECT json.tojsonarray(value) FROM test_json WHERE (value <> 0.0 AND extra_value IS NULL) OR (extra_value <> 3.0);
+SELECT json.tojsonarray(COALESCE(value, 0.0)) FROM test_json WHERE extra_value <> (SELECT MAX(num_value) FROM other_data WHERE num_value IS NOT NULL);
+SELECT json.tojsonarray(ROUND(value, 2)) FROM test_json WHERE ROUND(value, 2) <> ROUND(extra_value, 2) ORDER BY value DESC;

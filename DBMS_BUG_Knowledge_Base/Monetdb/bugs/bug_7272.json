@@ -1,0 +1,23 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7272",
+  "title": "Missed rewrite to bulk operators in simple SQL UDF ",
+  "vulnerable_database": "monetdb",
+  "date": "2022-03-20T12:07:40Z",
+  "vulnerable_version": "Unknown",
+  "description": "A simple SQL UDF involving function `epoch_ms` translates to a MAL loop.\n\n**To Reproduce**\nThe following baseline works as expected:\n```\nstart transaction;\n\ncreate table t(d date);\ninsert into t values (curdate());\ninsert into t values (curdate());\n\nCREATE OR REPLACE FUNCTION test(d1 date, d2 date) RETURNS decimal\nBEGIN\n  return epoch_ms(d1 - d2);\nEND;\n\nexplain select test(d, curdate()) from t;\n\n|     X_66:bat[:lng] := batmtime.diff(X_11:bat[:date], \"2022-03-20\":date, nil:BAT);\n|     X_67:bat[:lng] := batmtime.epoch_ms(X_66:bat[:lng]);\n```\n\nThe following (only `* 1000` was added) translates to a MAL loop:\n```\nCREATE OR REPLACE FUNCTION test(d1 date, d2 date) RETURNS decimal\nBEGIN\n  return epoch_ms(d1 - d2) * 1000;\nEND;\n\nexplain select test(d, curdate()) from t;\n\n|     X_77:bat[:lng] := bat.new(nil:lng, X_11:bat[:date]);\n| barrier (X_80:oid, X_81:date) := iterator.new(X_11:bat[:date]);\n|     X_83:lng := sql.f_23(X_81:date, \"2022-03-20\":date);\n|     X_77:bat[:lng] := bat.append(X_77:bat[:lng], X_83:lng);\n|     redo (X_80:oid, X_81:date) := iterator.next(X_11:bat[:date]);\n| exit (X_80:oid, X_81:date);\n```\n\nThe same happens leaving the same body as the original, but returning an `int`:\n```\nCREATE OR REPLACE FUNCTION test(d1 date, d2 date) RETURNS int\nBEGIN\n  return epoch_ms(d1 - d2);\nEND;\n```\n\n**Expected behavior**\nAll these variations should translate to a sequence of bulk operators.\nThis is 11.39:\n```\n|     X_61:bat[:lng] := batmtime.diff(X_11:bat[:date], \"2022-03-20\":date);\n|     X_62:bat[:lng] := batmtime.epoch_ms(X_61:bat[:lng]);\n|     X_63:bat[:int] := batcalc.int(X_62:bat[:lng]);\n|     X_66:bat[:lng] := batcalc.*(X_63:bat[:int], 1000:sht, nil:BAT);\n```\n\nI am not sure if this happens with different functions as well - I didn't find any.\nMy guess: because this function was changed in 11.43, some signatures may have slipped away.\n\n**Software versions**\n - MonetDB version number 11.43.10\n - OS and version: Fedora 35\n - self-installed and compiled",
+  "poc": [
+    "create table t(d date);",
+    "insert into t values (curdate());"
+  ],
+  "key_bug_features": [
+    "Returning multiplied value from SQL UDF triggers MAL loop"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t1(d date, value decimal);",
+    "INSERT INTO t1 VALUES (curdate(), 1.5);",
+    "INSERT INTO t1 VALUES (curdate() - INTERVAL 1 DAY, 2.5);",
+    "CREATE OR REPLACE FUNCTION test(d1 date, d2 date) RETURNS decimal BEGIN return epoch_ms(d1 - d2) * 1000;",
+    "END;",
+    "SELECT test(d, curdate()) FROM t1;"
+  ]
+}

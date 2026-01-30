@@ -1,0 +1,13 @@
+{
+    "function": "sipHash128ReferenceKeyed",
+    "operator": "a GLOBAL NOT IN ...",
+    "sql_array": [
+        "CREATE TABLE test_sipHash (id UInt32, data String, key Tuple(UInt64, UInt64));",
+        "INSERT INTO test_sipHash VALUES (1, 'test string', (506097522914230528, 1084818905618843912)), (2, NULL, (0, 0)), (3, '', (123456789012345678, 987654321098765432));",
+        "SELECT id, hex(sipHash128ReferenceKeyed(key, data, '\\x01', 3)) AS hashed_value FROM test_sipHash WHERE id GLOBAL NOT IN (SELECT id FROM test_sipHash WHERE data IS NULL);",
+        "SELECT T1.id, hex(sipHash128ReferenceKeyed(T2.key, T1.data, '\\x01', 3)) AS hashed_value FROM test_sipHash AS T1 JOIN test_sipHash AS T2 ON T1.id GLOBAL NOT IN (SELECT id FROM test_sipHash WHERE data = T2.data) GROUP BY T1.id, hashed_value HAVING COUNT(*) > 1;",
+        "SELECT rank() OVER (PARTITION BY data ORDER BY id) AS data_rank FROM (SELECT id, data, hex(sipHash128ReferenceKeyed((506097522914230528, 1084818905618843912), data, '\\x02')) AS hashed_value FROM test_sipHash) AS subquery WHERE data_rank < 5;",
+        "SELECT id FROM test_sipHash WHERE hex(sipHash128ReferenceKeyed(key, COALESCE(data, 'fallback'), '\\x03')) GLOBAL NOT IN (SELECT hex(sipHash128ReferenceKeyed(key, '', '\\x04')) FROM test_sipHash WHERE length(data) = 0) AND data IS NOT NULL;",
+        "DROP TABLE IF EXISTS test_sipHash;"
+    ]
+}

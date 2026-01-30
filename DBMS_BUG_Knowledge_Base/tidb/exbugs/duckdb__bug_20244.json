@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/20244",
+  "title": "Incorrect conversion of 128bit ipv6 inet addresses from DuckDB to 64bit `double` in Parquet",
+  "description": "### What happens?\n\nWhen exporting an IPV6 ( Inet) address from DuckDB to Parquet, it’s incorrectly encoded as double.  IPV6 is 128 bit and Double is 64bit - this results in data loss.\n\nAside: I see that ipv4 is also exported as `double` which I think is quite unusual. ipv4 can be expressed as a 32bit integer, which there is a type for in Parquet.  I’m happy to log a bug / feature request for this if requested.\n\n### To Reproduce\n\nExample 1\n```\ncopy (select '2001:db8:1234:5678:9abc:def0:1234:5678/64'::INET as ipv6) to 'file.parquet';\nfrom 'file.parquet' select ipv6::inet;\n```\n\nOutput:\n```\n┌─────────────────────────┐\n│   CAST(ipv6 AS inet)    │\n│          inet           │\n├─────────────────────────┤\n│ 2001:db8:1234:5800::/64 │\n└─────────────────────────┘\n```\n\nExample 2: \n```\ncopy (select '2001:db8:cafe:babe::1/128'::INET as ipv6) to 'file.parquet';\nfrom 'file.parquet' select ipv6::inet;\n```\n\nOutput:\n```\n┌──────────────────────┐\n│  CAST(ipv6 AS inet)  │\n│         inet         │\n├──────────────────────┤\n│ 2001:db8:cafe:bc00:: │\n└──────────────────────┘\n```\n\nExample 3:\n\n```\ncopy (select '2001:db8:dead:beef::/64'::INET as ipv6) to 'file.parquet';\nfrom 'file.parquet' select ipv6::inet;\n```\n\nOutput: \n```\n┌─────────────────────────┐\n│   CAST(ipv6 AS inet)    │\n│          inet           │\n├─────────────────────────┤\n│ 2001:db8:dead:c000::/64 │\n└─────────────────────────┘\n```\n\nAs you can see, the exported IP address in the Parquet file is not the same as the IP Address in DuckDB. \n\n### OS:\n\nMacOS 15.7.1, aarch64\n\n### DuckDB Version:\n\n1.4.3\n\n### DuckDB Client:\n\nduckdb\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nDan Milne\n\n### Affiliation:\n\nNo Affliiation\n\n### Did you include all relevant configuration (e.g., CPU architecture, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes",
+  "date": "2025-12-18 01:28:49",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE ipv6_test (id INT PRIMARY KEY, address VARCHAR(39) NOT NULL);",
+    "INSERT INTO ipv6_test VALUES (1, '2001:db8:1234:5678:9abc:def0:1234:5678/64');",
+    "INSERT INTO ipv6_test VALUES (2, '2001:db8:cafe:babe::1/128');",
+    "SELECT address FROM ipv6_test INTO OUTFILE 'ipv6_addresses.parquet';",
+    "SELECT address FROM ipv6_test;"
+  ],
+  "key_bug_features": [
+    "Incorrectly encoding IPV6 addresses as double in Parquet"
+  ]
+}

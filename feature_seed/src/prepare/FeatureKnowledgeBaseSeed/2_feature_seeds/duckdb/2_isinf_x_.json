@@ -1,0 +1,11 @@
+CREATE TABLE test_fuzzing (id INTEGER, value FLOAT, remark VARCHAR, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO test_fuzzing (id, value, remark) VALUES (1, 'Infinity'::float, 'Start'), (2, 0.0, 'Zero'), (3, NULL, 'NULL Value');
+SELECT id, value + isinf(value) AS adjusted_value FROM test_fuzzing WHERE value IS NOT NULL;
+SELECT id, value + (SELECT MAX(value) FROM test_fuzzing WHERE value IS NOT NULL) AS total FROM test_fuzzing;
+SELECT id, remark, isinf(value) FROM test_fuzzing GROUP BY id, remark HAVING MAX(value) + 1 < 10;
+CREATE TABLE additional (id INTEGER, foreign_id INTEGER, relation FLOAT);
+INSERT INTO additional (id, foreign_id, relation) VALUES (1, 1, 'Infinity'::float), (2, 1, 5.5), (3, 2, -10.0);
+SELECT a.id, a.value + COALESCE((SELECT relation FROM additional WHERE foreign_id = a.id), 0) AS combined_value FROM test_fuzzing a WHERE isinf(a.value) = TRUE;
+WITH subquery AS (SELECT id, value FROM test_fuzzing WHERE value IS NOT NULL) SELECT s.id, s.value + isinf(s.value) AS result FROM subquery s WHERE s.value <> '';
+SELECT a.id, a.value, (a.value + isinf(a.value) * 10) AS modified_value FROM test_fuzzing a JOIN additional b ON a.id = b.foreign_id WHERE NOT isinf(b.relation);
+SELECT id, SUM(value + isinf(value)) AS total_value FROM test_fuzzing GROUP BY id HAVING total_value > 0;

@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=107996",
+  "title": "Contribution by Tencent: wrong default value of geometry column",
+  "description": "The following statement generates wrong default value for geometry column when binlog_format=row:\r\nCREATE TABLE t1 AS SELECT ST_POINTFROMGEOHASH(\"0123\", 4326), which may cause replication error.\nHow to repeat:\nsource include/have_binlog_format_row.inc;\r\nsource include/master-slave.inc;\r\nconnection master;\r\nCREATE TABLE t1 AS SELECT ST_POINTFROMGEOHASH(\"0123\", 4326);\r\nshow create table t1;\r\nshow binlog events;\r\nsource include/sync_slave_sql_with_master.inc;\r\nconnection slave;\r\nshow create table t1;\r\nconnection master;\r\ndrop table t1;\r\nsource include/sync_slave_sql_with_master.inc;\r\nsource include/rpl_end.inc;",
+  "date": "2022-07-27 06:38:00",
+  "vulnerable_version": "8.0.29",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (id SERIAL PRIMARY KEY, geom GEOMETRY DEFAULT ST_PointFromText('POINT(0 0)', 4326));",
+    "INSERT INTO t2 (id) VALUES (1);",
+    "SELECT id, ST_AsText(geom) FROM t2 WHERE geom IS NOT NULL;",
+    "CREATE TABLE t3 AS SELECT ST_SetSRID(ST_MakePoint(1, 1), 4326) AS geom;",
+    "DROP TABLE t2;"
+  ],
+  "key_bug_features": [
+    "Wrong default value for geometry column with binlog_format=row"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+    "function": "h3PointDistKm",
+    "operator": "a LIKE s",
+    "sql_array": [
+        "CREATE TABLE geo_points (id UInt64, lat Float64, lon Float64, location String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO geo_points VALUES (1, -10.0, 0.0, 'Point A'), (2, 10.0, 0.0, 'Point B');",
+        "SELECT id, h3PointDistKm(lat, lon, lat+1, lon+1) AS distance FROM geo_points WHERE location LIKE 'Point%';",
+        "CREATE TABLE temp_distances AS SELECT id, h3PointDistKm(lat, lon, lat + 0.5, CASE WHEN lon < 0 THEN lon + 2 ELSE lon - 2 END) AS distance FROM geo_points;",
+        "SELECT id, AVG(distance) AS avg_distance FROM temp_distances GROUP BY id HAVING avg_distance > 100;",
+        "SELECT id, MAX(h3PointDistKm(lat, lon, lat + 0.1, lon)) AS max_distance FROM geo_points WHERE location LIKE '%B' GROUP BY id;",
+        "SELECT id, h3PointDistKm(lat, lon, lat + (NULLIF(lon, 0.0) / 2), lon) AS distance_nulled FROM geo_points WHERE lat LIKE '%0%';",
+        "SELECT id, h3PointDistKm(lat, lon, lat + 90, lon + 90) AS dist_max FROM geo_points WHERE location LIKE 'Point _' ORDER BY dist_max DESC;",
+        "CREATE TEMPORARY TABLE boundary_tests (lat Float64, lon Float64) ENGINE = Memory;",
+        "INSERT INTO boundary_tests VALUES (90.0, 180.0), (-90.0, -180.0), (0.0, 0.0);",
+        "SELECT h3PointDistKm(lat, lon, (SELECT lat FROM boundary_tests WHERE lon = 180.0), (SELECT lon FROM boundary_tests WHERE lat = -90.0)) AS distance_cross FROM boundary_tests;",
+        "SELECT h3PointDistKm(lat, lon, lat, lon) AS zero_distance FROM geo_points WHERE lat LIKE '%0' ORDER BY zero_distance ASC;"
+    ]
+}

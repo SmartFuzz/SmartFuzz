@@ -1,0 +1,15 @@
+CREATE TABLE test_factorial (id Int32, value Int32, created_at DateTime DEFAULT now());
+INSERT INTO test_factorial VALUES (1, 10), (2, 5), (3, -1), (4, 20), (5, 21);
+SELECT id, factorial(value) AS fact_value FROM test_factorial WHERE value >= 0;
+SELECT id, value, factorial(value) - 1 AS adjusted_fact FROM test_factorial WHERE id IN (SELECT id FROM test_factorial WHERE created_at < now() - INTERVAL 1 DAY);
+SELECT id, factorial(value) - (CASE WHEN value < 0 THEN 0 ELSE factorial(value) END) AS fact_diff FROM test_factorial GROUP BY id, value HAVING fact_diff > 0;
+CREATE TABLE test_join (id Int32, description String);
+INSERT INTO test_join VALUES (1, 'Test1'), (2, 'Test2');
+SELECT a.id, a.value, factorial(a.value) - b.id AS result_diff FROM test_factorial AS a JOIN test_join AS b ON a.id = b.id;
+SELECT a.id, factorial(b.id) AS fact_value FROM test_factorial AS a LEFT JOIN test_join AS b ON a.id = b.id WHERE factorial(b.id) IS NOT NULL;
+SELECT COUNT(*) FROM (SELECT id, factorial(value) AS fact_value FROM test_factorial GROUP BY id HAVING fact_value < factorial(21));
+CREATE TABLE test_null (id Int32, nullable_value Nullable(Int32));
+INSERT INTO test_null VALUES (1, NULL), (2, 2), (3, 0);
+SELECT id, factorial(ifNullable(nullable_value, 0)) AS fact_value FROM test_null WHERE nullable_value IS NULL OR nullable_value > 0;
+SELECT a.id, factorial(a.value - b.id) AS fact_diff FROM test_factorial AS a JOIN test_join AS b ON a.value > b.id;
+SELECT id, factorial(value) AS fact_value, (SELECT COUNT(*) FROM test_factorial) - factorial(value) AS subquery_relation FROM test_factorial WHERE value BETWEEN 0 AND 20 HAVING fact_value > 0;

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/151",
+  "title": "Wrong evaluation of multiple OPTIONALs with the same object variable",
+  "description": "This bug has been thoroughly described on StackOverflow: http://stackoverflow.com/questions/22478183/why-is-this-sparql-query-not-returning-any-results/22479192\nIn summary, in a query containing (notice different predicates and same objects):\nOPTIONAL { ?person dbpprop:workInstitution ?institution . }\nOPTIONAL { ?person dbpprop:workInstitutions ?institution .}\nFILTER(BOUND(?institution))\n\nthe variable ?institution is always evaluated as unbound even though always exactly one of the patterns matches and the other one does not.\nIt can be tested with the following query on DbPedia:\nselect ?person ?field ?institution where\n{\n  ?person a dbpedia-owl:Agent .\n  OPTIONAL { ?person dbpprop:workInstitution ?institution . }\n  OPTIONAL { ?person dbpprop:workInstitutions ?institution .}\n  ?person dbpprop:field ?field .\n  FILTER(BOUND(?institution))\n}",
+  "date": "2014-03-24 14:33:19",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE agents (id INT PRIMARY KEY, name VARCHAR(100), field VARCHAR(100), work_institution VARCHAR(100), work_institutions VARCHAR(100));",
+    "INSERT INTO agents (id, name, field, work_institution, work_institutions) VALUES (1, 'Alice', 'Research', 'Institution A', NULL);",
+    "INSERT INTO agents (id, name, field, work_institution, work_institutions) VALUES (2, 'Bob', 'Development', NULL, 'Institution B');",
+    "SELECT name, field, work_institution, work_institutions FROM agents WHERE work_institution IS NOT NULL OR work_institutions IS NOT NULL;",
+    "SELECT name, field FROM agents WHERE (work_institution IS NOT NULL AND work_institutions IS NULL) OR (work_institution IS NULL AND work_institutions IS NOT NULL);"
+  ],
+  "key_bug_features": [
+    "Evaluation of multiple OPTIONALs with same object variable"
+  ]
+}

@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id INTEGER, value BITSTRING, category VARCHAR(255), created_at TIMESTAMP);
+INSERT INTO test_data (id, value, category, created_at) VALUES (1, '1010'::BITSTRING, 'A', '2022-01-01 10:00:00'), (2, '1100'::BITSTRING, 'B', '2022-01-01 10:05:00'), (3, '0011'::BITSTRING, 'A', '2022-01-01 10:10:00'), (4, '0000'::BITSTRING, 'B', NULL), (5, '1111'::BITSTRING, 'C', '2022-01-01 10:20:00');
+SELECT category, histogram(value | '0001'::BITSTRING) AS bucket_counts FROM test_data WHERE created_at IS NOT NULL GROUP BY category HAVING COUNT(*) > 1;
+SELECT category, histogram(value | (SELECT MAX(value) FROM test_data WHERE category = 'A')) AS bucket_counts FROM test_data GROUP BY category;
+SELECT histogram(COALESCE(value | '0001'::BITSTRING, '0000'::BITSTRING)) AS result FROM test_data WHERE id IN (SELECT id FROM test_data WHERE category IS NOT NULL) ORDER BY id;
+WITH value_counts AS (SELECT category, histogram(value) AS counts FROM test_data GROUP BY category) SELECT *, counts | '1111'::BITSTRING AS combined_counts FROM value_counts WHERE category LIKE 'A%';
+SELECT histogram(value | (SELECT '1010'::BITSTRING FROM test_data LIMIT 1)) AS combined_bucket FROM test_data WHERE value IS NOT NULL AND id > 0;
+CREATE TABLE temp_data AS SELECT id, category, value | '0001'::BITSTRING AS modified_value FROM test_data WHERE created_at < '2022-01-01 10:15:00';
+SELECT category, histogram(modified_value) FROM temp_data GROUP BY category HAVING histogram(modified_value) IS NOT NULL;
+INSERT INTO temp_data (id, category, modified_value) VALUES (6, 'D', '1111'::BITSTRING), (7, 'E', '1010'::BITSTRING);

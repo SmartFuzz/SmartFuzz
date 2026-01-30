@@ -1,0 +1,5 @@
+CREATE TABLE `cache_test` ( `cache_key` varchar(512) NOT NULL, `cache_value` json NOT NULL, `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, `expires` int(11) DEFAULT '-1', `expired_at` datetime GENERATED ALWAYS AS (if(`expires` > 0, date_add(`updated_at`, interval `expires` second), date_add(`updated_at`, interval 99 year))) VIRTUAL, PRIMARY KEY (`cache_key`), KEY `idx_created_at` (`created_at`), KEY `idx_expired_at` (`expired_at`) ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+INSERT INTO `cache_test` (`cache_key`, `cache_value`, `created_at`, `updated_at`, `expires`) VALUES ('key1', '{"value": "data1"}', NOW(), NOW(), 60);
+INSERT INTO `cache_test` (`cache_key`, `cache_value`, `created_at`, `updated_at`, `expires`) VALUES ('key2', '{"value": "data2"}', NOW(), NOW(), -1) ON DUPLICATE KEY UPDATE `expires` = 120;
+UPDATE `cache_test` SET `updated_at` = NOW() WHERE `cache_key` = 'key1';
+SELECT * FROM `cache_test` WHERE `expires` > 0 AND `expired_at` < NOW();

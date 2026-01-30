@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=110076",
+  "title": "VALUES Statement with dependent subquery is wrong",
+  "description": "I try to use the values statement to find the max value of a row, but it seems not to work on MySQL 8.\nHow to repeat:\nhttps://dbfiddle.uk/cge2e2P-\nCREATE TABLE mytable(\r\n   ID INTEGER  NOT NULL\r\n  ,a  VARCHAR(4) NOT NULL\r\n  ,b  VARCHAR(4) NOT NULL\r\n  ,c  VARCHAR(3) NOT NULL\r\n);\r\nINSERT INTO mytable(ID,a,b,c) VALUES (1,'a1','b1','c1');\r\nINSERT INTO mytable(ID,a,b,c) VALUES (2,'a2','b2','c2');\n\nmysql> select ID, (select max(col1)    from (values row(a), row(b), row(c)) as x(col1)) as max from mytable;\r\n+----+------+\r\n| ID | max  |\r\n+----+------+\r\n|  1 | c1   |\r\n|  2 | NULL |\r\n+----+------+\r\n2 rows in set (0.00 sec)\n\nThe 'max' column of second row should be 'c2'\r\n\r\nI test it in postgres it works fine:\nhttps://dbfiddle.uk/nbpDA-Tc",
+  "date": "2023-02-15 10:58:00",
+  "vulnerable_version": "8.0.32",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE mytable2(ID INTEGER NOT NULL, a VARCHAR(4) NOT NULL, b VARCHAR(4) NOT NULL, c VARCHAR(3) NOT NULL, d DATE NOT NULL);",
+    "INSERT INTO mytable2(ID, a, b, c, d) VALUES (1, 'a1', 'b1', 'c1', '2023-01-01');",
+    "INSERT INTO mytable2(ID, a, b, c, d) VALUES (2, 'a2', 'b2', 'c2', '2023-01-02');",
+    "SELECT ID, (SELECT MAX(val) FROM (SELECT a AS val UNION ALL SELECT b UNION ALL SELECT c) AS x) AS max FROM mytable2;",
+    "SELECT ID, (SELECT COUNT(*) FROM mytable2 WHERE d > '2023-01-01') AS count_after FROM mytable2;"
+  ],
+  "key_bug_features": [
+    "VALUES statement with dependent subquery fails in MySQL 8"
+  ]
+}

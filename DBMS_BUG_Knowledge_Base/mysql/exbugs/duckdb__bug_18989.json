@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/18989",
+  "title": "BETWEEN and equivalent comparison operators produce inconsistent results with COLLATE NOCASE",
+  "description": "### What happens?\n\nDuckDB's `BETWEEN` operator and its logically equivalent comparison operators (`<` and `>`) produce inconsistent results when one operand uses `COLLATE NOCASE`. The `BETWEEN` expression returns `true` while the equivalent `OR` comparison returns `false`, violating the expected logical equivalence.\n\nAccording to the [DuckDB documentation](https://duckdb.org/docs/stable/sql/expressions/comparison_operators#between-and-is-not-null): *\"Note that `BETWEEN` and `NOT BETWEEN` are only equivalent to the examples below in the cases where both `a`, `x` and `y` are of the same type, as `BETWEEN` will cast all of its inputs to the same type.\"* However, `typeof()` shows that all operands have the same base type (`VARCHAR`), suggesting the issue lies in collation handling rather than type differences.\n\nThis issue does not occur in SQLite with the same queries, indicating it's specific to DuckDB's implementation.\n\n\n### To Reproduce\n\n```sql\n\nSELECT 'B' NOT BETWEEN ('A' COLLATE NOCASE) AND 'a'; -- true\nSELECT 'B' < ('A' COLLATE NOCASE) OR 'B' > 'a'; --false\n\n\nSELECT typeof('B'), typeof('A' COLLATE NOCASE), typeof('a');\n--┌─────────────┬────────────────────────────┬─────────────┐\n--│ typeof('B') │ typeof('A' COLLATE NOCASE) │ typeof('a') │\n--│   varchar   │          varchar           │   varchar   │\n--├─────────────┼────────────────────────────┼─────────────┤\n--│ VARCHAR     │ VARCHAR                    │ VARCHAR     │\n--└─────────────┴────────────────────────────┴─────────────┘\n```\n\n\n\n### OS:\n\nUbuntu 24.04.1 LTS, x86_64, Linux 6.14.0-1010-aws (AWS EC2)\n\n### DuckDB Version:\n\nv1.4.0-dev4117 (Development Version) 15fba9f47c\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\nAWS EC2 instance\n\n### Full Name:\n\nRunyuan He\n\n### Affiliation:\n\nThe Chinese University of Hong Kong, Shenzhen\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a nightly build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "date": "2025-09-15 00:05:20",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR(255));",
+    "INSERT INTO test_table (id, name) VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie');",
+    "SELECT name FROM test_table WHERE name NOT BETWEEN 'A' AND 'B';",
+    "SELECT name FROM test_table WHERE name < 'A' OR name > 'B';",
+    "SELECT CAST(name AS CHAR), CAST('A' AS CHAR), CAST('B' AS CHAR);"
+  ],
+  "key_bug_features": [
+    "BETWEEN operator inconsistent with COLLATE NOCASE"
+  ]
+}

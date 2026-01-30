@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=105754",
+  "title": "Selecting from column with type \"date\" returns weird results when joining",
+  "description": "When a column having type \"date\" is selected in a query which joins another table using comparison operators \"<\" or \">\", the query returns weird results, like \"0000-00-00\". This issue affects all the MySQL versions starting from 8.0.20.\nHow to repeat:\nHere is the database dump which could help reproducing the issue:\r\n\r\nCREATE DATABASE `date_bug`;\r\n\r\nINSERT INTO `dates` (`currentdate`) VALUES\r\n\t('2021-11-27'),\r\n\t('2021-11-28'),\r\n\t('2021-11-29'),\r\n\t('2021-11-30');\r\n/*!40000 ALTER TABLE `dates` ENABLE KEYS */;\r\n\r\n-- Dumping data for table date_bug.test: ~2 rows (approximately)\r\n/*!40000 ALTER TABLE `test` DISABLE KEYS */;\r\nINSERT INTO `test` (`from1`, `dateto`) VALUES\r\n\t('2021-11-28 00:00:00', '2021-11-29 00:00:00'),\r\n\t('2021-11-27 00:00:00', '2021-11-30 00:00:00');\r\n/*!40000 ALTER TABLE `test` ENABLE KEYS */;\r\n\r\n/*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;\r\n/*!40014 SET FOREIGN_KEY_CHECKS=IFNULL(@OLD_FOREIGN_KEY_CHECKS, 1) */;\r\n/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;\r\n/*!40111 SET SQL_NOTES=IF\r\nNULL(@OLD_SQL_NOTES, 1) */;\n\nThe query which reproduces the bug looks like this:\r\n\r\nSELECT * FROM dates JOIN test ON datestart < dateto;\r\n\r\nwhich results in `currentdate` column returning '0000-00-00' result.",
+  "date": "2021-11-30 15:54:00",
+  "vulnerable_version": "8.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE dates (currentdate Date NOT NULL, id UInt32 DEFAULT 0) ENGINE = MergeTree() ORDER BY id;",
+    "CREATE TABLE test (datestart DateTime NOT NULL, dateto DateTime NOT NULL, description String) ENGINE = MergeTree() ORDER BY datestart;",
+    "INSERT INTO dates (currentdate) VALUES ('2021-11-27'), ('2021-11-28'), ('2021-11-29'), ('2021-11-30');",
+    "INSERT INTO test (datestart, dateto, description) VALUES ('2021-11-28 00:00:00', '2021-11-29 00:00:00', 'Test 1'), ('2021-11-27 00:00:00', '2021-11-30 00:00:00', 'Test 2');",
+    "SELECT * FROM dates JOIN test ON currentdate < dateto;"
+  ],
+  "key_bug_features": [
+    "Joining on date column with comparison operators returns invalid results"
+  ]
+}

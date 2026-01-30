@@ -1,0 +1,17 @@
+CREATE TABLE test_data (id INT PRIMARY KEY, str_data VARCHAR(255), num_data INT);
+INSERT INTO test_data (id, str_data, num_data) VALUES (1, '€2', NULL), (2, '', 5), (3, 'test', 10);
+SELECT id, octet_length(str_data) - num_data AS computed_value FROM test_data WHERE str_data IS NOT NULL;
+SELECT id, octet_length(str_data) - (SELECT MAX(num_data) FROM test_data WHERE num_data IS NOT NULL) AS boundary_value FROM test_data;
+SELECT id, octet_length(str_data) - 3 AS weight FROM test_data WHERE octet_length(str_data) > 2 GROUP BY id HAVING weight < 100;
+SELECT id, octet_length(str_data) + (SELECT COUNT(*) FROM test_data WHERE num_data IS NOT NULL) FROM test_data;
+CREATE TABLE temp_data (temp_id INT, temp_str VARCHAR(255), temp_num INT);
+INSERT INTO temp_data (temp_id, temp_str, temp_num) SELECT id, str_data, num_data FROM test_data WHERE str_data IS NOT NULL;
+SELECT temp_id, octet_length(temp_str) - COALESCE(temp_num, 0) AS differencing_value FROM temp_data WHERE temp_str <> '';
+SELECT id, octet_length(str_data) - octet_length(NULLIF(str_data, '')) AS null_check FROM test_data;
+SELECT a.id, octet_length(a.str_data) - COALESCE(b.max_num, 0) AS adjusted_value FROM test_data a LEFT JOIN (SELECT MAX(num_data) AS max_num FROM test_data) b ON a.id = 1;
+SELECT a.id, (octet_length(a.str_data) - 2) AS length_adjusted, a.str_data FROM test_data a WHERE (octet_length(a.str_data) - 1) > 1;
+CREATE TABLE join_test (join_id INT PRIMARY KEY, join_str VARCHAR(255), join_num INT);
+INSERT INTO join_test (join_id, join_str, join_num) VALUES (1, 'JoinString', NULL), (2, 'JoinData', 3);
+SELECT a.id, octet_length(a.str_data) - b.join_num AS difference FROM test_data a JOIN join_test b ON octet_length(a.str_data) = 10;
+WITH max_length AS (SELECT MAX(octet_length(str_data)) AS max_len FROM test_data) SELECT id, octet_length(str_data) - (SELECT max_len FROM max_length) AS adjusted_length FROM test_data;
+SELECT id, CASE WHEN octet_length(str_data) > 5 THEN octet_length(str_data) - 5 ELSE octet_length(str_data) END AS edge_case FROM test_data;

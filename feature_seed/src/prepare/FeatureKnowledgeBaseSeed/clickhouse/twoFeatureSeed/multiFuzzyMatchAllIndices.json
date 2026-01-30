@@ -1,0 +1,16 @@
+{
+    "function": "multiFuzzyMatchAllIndices",
+    "operator": "a % b",
+    "sql_array": [
+        "CREATE TABLE test_strings (id UInt32, text String, pattern String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_strings VALUES (1, 'Clickhouse database', 'Clickhouse'), (2, 'Fuzzy matching test', 'fuzzy'), (3, 'SQL testing examples', 'test'), (4, '', NULL);",
+        "SELECT id, multiFuzzyMatchAllIndices(text, 1, [pattern]) AS indices FROM test_strings WHERE text != '' GROUP BY id HAVING indices[1] % 2 = 0;",
+        "SELECT id, text, multiFuzzyMatchAllIndices(text, 2, [pattern]) AS indices FROM test_strings WHERE multiFuzzyMatchAllIndices(text, 2, [pattern]) != [] ORDER BY indices[1] % 5;",
+        "CREATE TABLE patterns (pattern String) ENGINE = MergeTree() ORDER BY pattern;",
+        "INSERT INTO patterns VALUES ('Clickhouse'), ('Fuzzy'), (''), (NULL);",
+        "SELECT t.id, multiFuzzyMatchAllIndices(t.text, 1, [p.pattern]) AS indices FROM test_strings t JOIN patterns p ON (length(t.text) % 10 = 0 OR p.pattern IS NULL) GROUP BY t.id, p.pattern HAVING arrayLength(indices) > 0;",
+        "CREATE TABLE numeric_test (id UInt32, num_value Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO numeric_test VALUES (1, 2.5), (2, 5.5), (3, NULL);",
+        "SELECT nt.id, nt.num_value, multiFuzzyMatchAllIndices(CAST(nt.num_value AS String), 1, ['5.5', '2.5']) AS indices FROM numeric_test nt WHERE nt.num_value IS NOT NULL HAVING indices[1] % 3 = 0;"
+    ]
+}

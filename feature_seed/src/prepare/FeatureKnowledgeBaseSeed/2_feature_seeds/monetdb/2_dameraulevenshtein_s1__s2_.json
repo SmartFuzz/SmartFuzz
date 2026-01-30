@@ -1,0 +1,12 @@
+CREATE TABLE test_strings (id SERIAL PRIMARY KEY, str1 VARCHAR(255), str2 VARCHAR(255));
+INSERT INTO test_strings (str1, str2) VALUES ('', 'test'), ('abcd', NULL), ('test', 'test'), ('a', 'b'), ('MonetDB', 'DB3');
+SELECT id, str1, str2, dameraulevenshtein(str1, str2) AS distance FROM test_strings WHERE distance >= 1;
+SELECT id, str1, str2, (SELECT COUNT(*) FROM test_strings AS t2 WHERE dameraulevenshtein(t1.str1, t2.str2) >= 2) AS similar_count FROM test_strings AS t1;
+CREATE TABLE ip_addresses (id SERIAL PRIMARY KEY, ip_addr INET);
+INSERT INTO ip_addresses (ip_addr) VALUES (inet '192.168.1.1'), (inet '192.168.1.2'), (inet '192.168.1.5');
+SELECT ip_addr FROM ip_addresses WHERE ip_addr >= (SELECT inet '192.168.1.1' WHERE NULL IS NOT NULL);
+SELECT id, (dameraulevenshtein(str1, str2) + 1) AS adjusted_distance FROM test_strings WHERE adjusted_distance >= 1;
+SELECT t1.str1, t1.str2, t2.ip_addr FROM test_strings AS t1 JOIN ip_addresses AS t2 ON dameraulevenshtein(t1.str1, t1.str2) >= 1 ORDER BY t1.str1;
+SELECT id, COUNT(*) FROM test_strings GROUP BY dameraulevenshtein(str1, str2) HAVING COUNT(*) > 1;
+CREATE TEMP TABLE temp_data AS SELECT id, dameraulevenshtein(str1, str2) AS distance FROM test_strings WHERE str1 IS NOT NULL;
+SELECT distance FROM temp_data WHERE distance <= (SELECT MAX(distance) FROM temp_data) AND distance IS NOT NULL;

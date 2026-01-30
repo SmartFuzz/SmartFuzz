@@ -1,0 +1,18 @@
+{
+    "function": "quantileTiming",
+    "operator": "a.N",
+    "sql_array": [
+        "CREATE TABLE test_data (id UInt32, response_time Float32, category String, nested Tuple(user_id UInt32, timestamp DateTime));",
+        "INSERT INTO test_data VALUES (1, 200.5, 'A', (1, '2023-10-01 12:00:00')), (2, 150.3, 'B', (2, '2023-10-02 12:30:00')), (3, 0.0, 'A', (3, '2023-10-03 13:00:00')), (4, 30000.0, 'C', (4, '2023-10-04 13:30:00'));",
+        "SELECT quantileTiming(0.5)(response_time) AS median_response_time, arrayJoin(nested) AS user FROM test_data GROUP BY category HAVING median_response_time > 150;",
+        "SELECT t.category, quantileTiming(0.9)(t.response_time) AS high_response_time FROM test_data t JOIN (SELECT id, nested.1 AS user_time FROM test_data) s ON t.id = s.id GROUP BY t.category HAVING high_response_time IS NOT NULL;",
+        "SELECT quantileTiming(0.01)(CAST(response_time AS Float32)) AS low_response_time, COUNT(*) FROM test_data WHERE response_time > CAST('100.0' AS Float32) GROUP BY category;",
+        "SELECT quantileTiming(0.997)(response_time) AS percentile_response_time FROM test_data WHERE response_time IS NOT NULL GROUP BY category ORDER BY percentile_response_time DESC;",
+        "SELECT t.category, quantileTiming(0.5)(1.0 * response_time + (0.5 - NULLIF(response_time, 0))) AS adjusted_median FROM test_data t WHERE response_time < 30000 GROUP BY t.category;",
+        "SELECT quantileTiming(0.9)(response_time), tupleElement(nested, 1) FROM test_data WHERE nested.1 IS NOT NULL GROUP BY response_time;",
+        "SELECT quantileTiming(0.5)(response_time) AS median_response_time FROM (SELECT response_time FROM test_data WHERE category = 'A' AND response_time IS NOT NULL) subquery;",
+        "ALTER TABLE test_data ADD COLUMN extra_time Float32 DEFAULT 0.0;",
+        "UPDATE test_data SET extra_time = 0.5 WHERE category = 'B';",
+        "SELECT COUNT(*), quantileTiming(0.5)(response_time) FROM test_data WHERE response_time IN (SELECT response_time FROM test_data WHERE category = 'A') GROUP BY category HAVING COUNT(*) > 1;"
+    ]
+}

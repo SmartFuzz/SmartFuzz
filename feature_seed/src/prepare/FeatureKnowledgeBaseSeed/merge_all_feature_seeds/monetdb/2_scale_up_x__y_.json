@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, value NUMERIC, timestamp_col TIMESTAMP(6));
+INSERT INTO test_table (id, value, timestamp_col) VALUES (1, 13, timestamp(6) '2020-09-28 18:40:05.123456'), (2, NULL, timestamp(6) '2020-01-01 00:00:00.000000'), (3, 2147483647, timestamp(6) '2023-01-01 23:59:59.999999');
+SELECT id, scale_up(value, 2) AS scaled_value FROM test_table WHERE scale_up(value, 0) IS NULL;
+SELECT id, timestamp(6) CONCAT('2020-09-28 ', LPAD(value::TEXT, 2, '0')) AS generated_time FROM test_table WHERE id = (SELECT MAX(id) FROM test_table WHERE value > 0);
+SELECT id, scale_up(value, 1.5) AS scaled_value FROM test_table GROUP BY id HAVING scale_up(value, 2) > 26;
+SELECT t1.id, scale_up(t1.value, t2.value) AS combined_scale FROM test_table t1 JOIN test_table t2 ON t1.id != t2.id WHERE t1.timestamp_col < timestamp(6) '2020-12-31 23:59:59.999999' AND t2.value IS NOT NULL;
+SELECT id, scale_up(value, 1) AS scaled_value, timestamp(6) '2023-03-01 12:00:00.000000' + INTERVAL scale_up(value, 1) DAY AS future_time FROM test_table WHERE value IS NOT NULL ORDER BY future_time DESC;
+UPDATE test_table SET value = NULL WHERE id = (SELECT MIN(id) FROM test_table WHERE value < 10);
+CREATE TABLE temp_table AS SELECT id, scale_up(value, value::FLOAT/3) AS derived_value FROM test_table WHERE value IS NOT NULL;
+SELECT * FROM temp_table WHERE derived_value = (SELECT MAX(derived_value) FROM temp_table);

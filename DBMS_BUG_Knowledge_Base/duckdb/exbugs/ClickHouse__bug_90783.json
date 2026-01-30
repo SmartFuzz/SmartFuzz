@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/90783",
+  "title": "Distributed table with cityHash64(vin) incorrectly skips the shard when optimize_skip_unused_shards is enabled",
+  "description": "### Company or project name\nVinAssessment\n### Describe the unexpected behaviour\nWhen querying a Distributed table sharded by cityHash64(vin), ClickHouse incorrectly skips the shard that contains the data for certain VIN values. As a result, the query returns 0 rows, although the rows exist in the underlying ReplicatedMergeTree tables.\nThe issue disappears when disabling optimize_skip_unused_shards.\nThis appears to be a shard routing bug in the shard skipping optimizer.\n### Which ClickHouse versions are affected?\n🧭 Environment\nClickHouse version: 25.10.2.65\nCluster: 3 shards × 2 replicas\nAll nodes have identical schemas, configs, macros {shard}, {replica}, and cluster definitions.\n### How to reproduce\nTable Definitions\nLocal table\n```\nCREATE TABLE fact_shards.vehicle_vins_view\n(\n`vehicle_id` UUID,\n`vin` String,\n`zip_code` UInt32,\n`window_sticker` String,\n`auction_vehicle` UInt8,\n`vehicle_updated_at` DateTime,\n`vehicle_created_at` DateTime\n)\nENGINE = ReplicatedMergeTree('/clickhouse/tables/{shard}/fact_shards/vehicle_vins_view', '{replica}')\nPARTITION BY cityHash64(vin) % 1000\nORDER BY (vin, vehicle_id)\nSETTINGS index_granularity = 8192;\n```\nDistributed table\n```\nCREATE TABLE fact_shards.vehicle_vins_view_distr\n(\n`vehicle_id` UUID,\n`vin` String,\n`zip_code` UInt32,\n`window_sticker` String,\n`auction_vehicle` UInt8,\n`vehicle_updated_at` DateTime,\n`vehicle_created_at` DateTime\n)\nENGINE = Distributed('fact', 'fact_shards', 'vehicle_vins_view', cityHash64(vin));\n```\n### Expected behavior\n❗ Problem Description\nFor some VIN values, the Distributed table returns no rows, even though data exists in the underlying local table.\nExample VIN: KL7CJPSB2JB613659\n❌ Wrong Result From Distributed Table\n```",
+  "date": "2025-11-25T04:19:31Z",
+  "vulnerable_version": "25.10.2.65",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE fact_shards.vehicle_vins_view_test (vehicle_id UUID, vin VARCHAR, zip_code INTEGER, window_sticker VARCHAR, auction_vehicle BOOLEAN, vehicle_updated_at TIMESTAMP, vehicle_created_at TIMESTAMP);",
+    "INSERT INTO fact_shards.vehicle_vins_view_test (vehicle_id, vin, zip_code, window_sticker, auction_vehicle, vehicle_updated_at, vehicle_created_at) VALUES (generate_uuid(), 'KL7CJPSB2JB613659', 12345, 'Sticker1', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);",
+    "INSERT INTO fact_shards.vehicle_vins_view_test (vehicle_id, vin, zip_code, window_sticker, auction_vehicle, vehicle_updated_at, vehicle_created_at) VALUES (generate_uuid(), 'INVALID_VIN', 54321, 'Sticker2', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);",
+    "SELECT * FROM fact_shards.vehicle_vins_view_test WHERE vin = 'KL7CJPSB2JB613659';",
+    "SELECT * FROM fact_shards.vehicle_vins_view_test WHERE vin = 'INVALID_VIN';"
+  ],
+  "key_bug_features": [
+    "Shard skipping optimizer with cityHash64(vin) routing"
+  ]
+}

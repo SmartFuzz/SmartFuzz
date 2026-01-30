@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/43622",
+  "title": "plan replayer can't capture the same sql + plan digest multiple times",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```sql\r\nuse test;\r\ncreate table t(a int, b int, c int, index ib(b));\r\ninsert into t value(1,1,1);\r\nplan replayer capture \"0c1e64c3fa10874b0563e407998dc1c5971c91d81a222521b8059069b3ea5024\" \"*\";\r\nprepare stmt from \"select * from t where sleep(1) and a = ?\";\r\nset @a=1;\r\nexecute stmt using @a;\r\nplan replayer capture remove \"0c1e64c3fa10874b0563e407998dc1c5971c91d81a222521b8059069b3ea5024\" \"*\";\r\n```\r\nNow a replayer zip file should have been successfully generated and recorded in `mysql.plan_replayer_status`.\r\nNow wait for 1 hour for it to be GCed (the file is removed).\r\nIn a new session:\r\n``` SQL\r\nprepare stmt from \"select * from t where sleep(1) and a = ?\";\r\nset @a=1;\r\nplan replayer capture \"0c1e64c3fa10874b0563e407998dc1c5971c91d81a222521b8059069b3ea5024\" \"*\";\r\nexecute stmt using @a;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nAgain, a replayer zip file should be generated and recorded in `mysql.plan_replayer_status`.\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nNo replayer zip file is generated.\r\n\r\nThis can be found in the log:\r\n```\r\n[WARN] [session.go:1744] [\"parse SQL failed\"] [error=\"line 1 column 86 near \\\"=_1683547469554001280.zip\\\" \"] [SQL=\"delete from mysql.plan_replayer_status where token = replayer_guSDUEscKWJRWjQlii9Lyg==_1683547469554001280.zip\"]\r\n[WARN] [plan_replayer.go:126] [\"delete mysql.plan_replayer_status record failed\"] [token=\"replayer_guSDUEscKWJRWjQlii9Lyg==_1683547469554001280.zip\"] [error=\"[parser:1064]You have an error in your SQL syntax; check the manual that corresponds to your TiDB version for the right syntax to use line 1 column 86 near \\\"=_1683547469554001280.zip\\\" \"]\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\nmaster\r\n\r\n",
+  "date": "2023-05-08T14:10:04Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE users(id INTEGER PRIMARY KEY, name VARCHAR(100), age INTEGER, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO users(id, name, age) VALUES (1, 'Alice', 30);",
+    "INSERT INTO users(id, name, age) VALUES (2, 'Bob', NULL);",
+    "SELECT * FROM users WHERE age IS NULL;",
+    "UPDATE users SET age = 25 WHERE name = 'Alice';"
+  ],
+  "key_bug_features": [
+    "plan replayer can't capture same SQL multiple times"
+  ]
+}

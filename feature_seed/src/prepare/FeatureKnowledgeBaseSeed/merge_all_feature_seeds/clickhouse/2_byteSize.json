@@ -1,0 +1,11 @@
+CREATE TABLE test_data (key Int32, value String, number UInt32, created_at DateTime) ENGINE = MergeTree() ORDER BY key;
+INSERT INTO test_data VALUES (1, 'test1', 10, now()), (2, NULL, 20, now()), (3, 'test3', 30, now());
+SELECT key, byteSize(value) AS sizeValue, byteSize(number) AS sizeNumber FROM test_data WHERE number GLOBAL IN (SELECT number FROM test_data WHERE number > 15) ORDER BY sizeValue DESC;
+SELECT key, byteSize(value) AS sizeValue FROM (SELECT key, value FROM test_data WHERE value IS NOT NULL) AS subquery GROUP BY key HAVING sizeValue > byteSize('') ORDER BY sizeValue ASC;
+CREATE TABLE joins_test (id Int32, category String, amount Float64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO joins_test VALUES (1, 'A', 12.34), (2, 'B', NULL), (3, 'C', 56.78);
+SELECT j.id, byteSize(NULL) AS sizeNull FROM joins_test j LEFT JOIN test_data t ON j.id = t.key WHERE j.amount GLOBAL IN (SELECT amount FROM joins_test WHERE amount IS NOT NULL) ORDER BY j.id;
+SELECT j.id, byteSize(j.category) AS sizeCategory, byteSize(j.amount) AS sizeAmount FROM joins_test j GROUP BY j.id HAVING sizeCategory > 0 OR sizeAmount = byteSize(NULL) ORDER BY j.id;
+CREATE TEMPORARY TABLE temp_test (temp_id Int32, temp_amount Float32) ENGINE = Memory;
+INSERT INTO temp_test VALUES (1, 3.14), (2, -0.1), (3, NULL);
+SELECT t.temp_id, byteSize(t.temp_amount) AS sizeAmount FROM temp_test t WHERE t.temp_amount GLOBAL IN (SELECT amount FROM joins_test) ORDER BY t.temp_id DESC;

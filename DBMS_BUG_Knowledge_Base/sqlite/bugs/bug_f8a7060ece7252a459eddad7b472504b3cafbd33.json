@@ -1,0 +1,33 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/f8a7060ece",
+  "title": "Incorrect result for query that uses MIN() and a CAST on rowid",
+  "vulnerable_version": "3.29.0",
+  "date": "2019-08-07 20:20:226.01 years ago",
+  "path": "/home/crawl_bugs/sqlite/ticket_output/ticket_info_f8a7060ece.json",
+  "poc": [
+    "CREATE TABLE t0(c0 UNIQUE, c1);",
+    "INSERT INTO t0(c1) VALUES (0);",
+    "INSERT INTO t0(c0) VALUES (0);",
+    "CREATE VIEW v0(c0, c1) AS SELECT t0.c1, t0.c0 FROM t0 WHERE CAST(t0.rowid AS INT) = 1;",
+    "SELECT v0.c0, MIN(v0.c1) FROM v0;",
+    "with the values 0|:\nSELECT c0, c1 FROM v0;",
+    "release 3.7.16 on 2013-03-18\ndan added on 2019-08-08 08:31:39:\nAnother example:\nCREATE TABLE t1(a, b, c);",
+    "INSERT INTO t1 VALUES(NULL, 1, 'x');",
+    "CREATE INDEX i1 ON t1(a);",
+    "SELECT min(a), b, c FROM t1 WHERE c='x';",
+    "INSERT INTO t1 VALUES(1,    2, 'y');",
+    "SELECT min(a), b, c FROM t1 WHERE c='x';"
+  ],
+  "vulnerable_database": "sqlite",
+  "description": "mrigger added on 2019-08-07 20:20:22:\nConsider the following test case:\nCREATE TABLE t0(c0 UNIQUE, c1);\nINSERT INTO t0(c1) VALUES (0);\nINSERT INTO t0(c0) VALUES (0);\nCREATE VIEW v0(c0, c1) AS SELECT t0.c1, t0.c0 FROM t0 WHERE CAST(t0.rowid AS INT) = 1;\nSELECT v0.c0, MIN(v0.c1) FROM v0; -- expected: 0|, actual: |\nThe view holds a row with the values 0|:\nSELECT c0, c1 FROM v0; -- 0|\nThus, it is unexpected that fetching from it returns |.\ndrh added on 2019-08-07 21:30:38:\nThis problem was introduced on 2012-12-13 by check-in [52e755943f87354f]\nand first appeared in release 3.7.16 on 2013-03-18\ndan added on 2019-08-08 08:31:39:\nAnother example:\nCREATE TABLE t1(a, b, c);\nINSERT INTO t1 VALUES(NULL, 1, 'x');\nCREATE INDEX i1 ON t1(a);\n\nSELECT min(a), b, c FROM t1 WHERE c='x';  -- returns NULL|1|x\n\nINSERT INTO t1 VALUES(1,    2, 'y');\n\nSELECT min(a), b, c FROM t1 WHERE c='x';  -- returns NULL|NULL|NULL\ndan added on 2019-08-27 20:00:48:\nFixed by [94085fb3].",
+  "key_bug_features": [
+    "MIN() function with CAST on rowid in view"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t2(x INTEGER, y TEXT, z REAL, UNIQUE(x));",
+    "INSERT INTO t2(x, y, z) VALUES (NULL, 'test', 1.5);",
+    "CREATE VIEW v1 AS SELECT y, CAST(z AS INTEGER) AS z_int FROM t2 WHERE x IS NULL;",
+    "SELECT MIN(z_int), y FROM v1;",
+    "INSERT INTO t2(x, y, z) VALUES (1, 'example', NULL);"
+  ]
+}

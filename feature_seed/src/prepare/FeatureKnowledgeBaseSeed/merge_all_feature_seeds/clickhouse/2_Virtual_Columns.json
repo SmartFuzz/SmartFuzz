@@ -1,0 +1,10 @@
+CREATE TABLE test_files (id UInt32, path LowCardinality(String), file_name LowCardinality(String), size Nullable(UInt64), last_modified Nullable(DateTime));
+INSERT INTO test_files VALUES (1, '/data/files/file1.txt', 'file1.txt', 1234, '2023-01-01 12:00:00'), (2, '/data/files/nofile.txt', 'nofile.txt', NULL, NULL), (3, '/data/files/archive.zip::inner_file.txt', 'inner_file.txt', 5678, '2023-01-02 12:00:00');
+SELECT * FROM test_files WHERE path LIKE CONCAT('%', IFNULL(file_name, 'empty'), '%') AND IFNULL(size, 0) > 1000;
+SELECT id, path, file_name, size FROM test_files WHERE last_modified IS NULL OR last_modified < now() - INTERVAL 7 DAY;
+SELECT id, path, _file, _size FROM (SELECT path, file_name AS _file, size AS _size FROM test_files WHERE size IS NOT NULL) WHERE _file LIKE '%file%' AND _size >= (SELECT AVG(size) FROM test_files WHERE size IS NOT NULL);
+SELECT id, COUNT(*) as file_count FROM test_files GROUP BY path HAVING file_count > (SELECT COUNT(*) FROM test_files WHERE size IS NULL);
+SELECT DISTINCT path, file_name FROM test_files WHERE path LIKE '/data/files/%' AND (size IS NULL OR size = 0);
+CREATE TABLE temp_files AS SELECT * FROM test_files WHERE last_modified IS NOT NULL;
+SELECT COUNT(*) FROM temp_files WHERE file_name LIKE '%txt' AND size IS NOT NULL AND last_modified > '2023-01-01 00:00:00';
+SELECT path, _time FROM (SELECT path, last_modified AS _time FROM test_files WHERE path IS NOT NULL) WHERE path LIKE '/data/files/file%' AND (_time IS NULL OR _time < now() - INTERVAL 30 DAY);

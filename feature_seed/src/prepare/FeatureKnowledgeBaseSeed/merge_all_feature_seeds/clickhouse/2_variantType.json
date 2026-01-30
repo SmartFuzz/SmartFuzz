@@ -1,0 +1,12 @@
+CREATE TABLE test1 (id UInt64, v Variant(UInt64, String, Array(UInt64))) ENGINE = Memory;
+INSERT INTO test1 VALUES (1, NULL), (2, 42), (3, 'Hello, World!'), (4, [1, 2, 3]), (5, '');
+CREATE TABLE test2 (id UInt64, exclusion UInt64) ENGINE = Memory;
+INSERT INTO test2 VALUES (1, 42), (2, 3), (3, 100), (4, NULL);
+SELECT id, variantType(v) FROM test1 WHERE variantType(v) NOT IN (SELECT exclusion FROM test2 WHERE exclusion IS NOT NULL);
+SELECT id FROM test1 WHERE variantType(v) NOT IN (SELECT exclusion FROM test2) AND v IS NOT NULL;
+SELECT count(*) FROM test1 WHERE variantType(v) NOT IN (SELECT exclusion FROM test2 WHERE exclusion IS NOT NULL) HAVING count(*) > 0;
+SELECT id, COUNT(*) OVER (PARTITION BY variantType(v)) AS variant_counts FROM test1 WHERE variantType(v) NOT IN (SELECT exclusion FROM test2) GROUP BY id, variantType(v) ORDER BY variant_counts DESC;
+CREATE TABLE test3 (a String, b Array(String)) ENGINE = Memory;
+INSERT INTO test3 VALUES ('test', ['example', 'sample']), ('', ['']);
+SELECT a, variantType(v) FROM test1 CROSS JOIN test3 WHERE variantType(v) NOT IN (SELECT toUInt64(exclusion) FROM test2 WHERE toUInt64(exclusion) IS NOT NULL) AND a = '';
+SELECT variantType(v) AS var_type, count(*) AS cnt FROM test1 GROUP BY var_type HAVING var_type NOT IN (SELECT variantType(arrayJoin(b)) FROM test3) ORDER BY cnt DESC;

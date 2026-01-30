@@ -1,0 +1,13 @@
+[
+    "CREATE TABLE LEADS_TEST (\n  ORG_ID      integer not null,\n  LEAD_ID     integer not null,\n  FREETEXT_ID integer not null,\n  SUBJECT     varchar (255),\n  NAME_FIRST  varchar (30),\n  NAME_LAST   varchar (30),\n  TITLE       varchar (255),\n  primary key (ORG_ID, LEAD_ID));",
+    "CREATE PROCEDURE LEADS_TEST_SUBJECT_INDEX_HOOK (inout vtb any, inout pkeyid integer)\n{\n  DECLARE text_to_index varchar;\n  DECLARE oid any;\n  text_to_index := COALESCE (\n    (SELECT CONCAT (\n      COALESCE (SUBJECT, ''), ' ',\n      COALESCE (TITLE, ''), ' ',\n      COALESCE (NAME_FIRST, '') ) FROM LEADS_TEST\n    WHERE FREETEXT_ID = pkeyid), null);\n  IF (text_to_index IS NULL)\n    RETURN 0;\n  oid := COALESCE ((SELECT ORG_ID FROM LEADS_TEST WHERE FREETEXT_ID = pkeyid), null);\n  vt_batch_feed (vtb, text_to_index, 0);\n  vt_batch_feed_offband (vtb, serialize (vector (oid)), 0);\n  RETURN 1;\n};",
+    "CREATE PROCEDURE LEADS_TEST_SUBJECT_UNINDEX_HOOK (inout vtb any, inout pkeyid integer)\n{\n  DECLARE text_to_index varchar;\n  DECLARE oid any;\n  text_to_index := COALESCE (\n    (SELECT CONCAT (\n      COALESCE (SUBJECT, ''), ' ',\n      COALESCE (TITLE, ''), ' ',\n      COALESCE (NAME_FIRST, '') ) FROM LEADS_TEST\n    WHERE FREETEXT_ID = pkeyid), null);\n  IF (text_to_index IS NULL)\n    RETURN 0;\n  oid := COALESCE ((SELECT ORG_ID FROM LEADS_TEST WHERE FREETEXT_ID = pkeyid), null);\n  vt_batch_feed (vtb, text_to_index, 1);\n  vt_batch_feed_offband (vtb, serialize (vector (oid)), 1);\n  RETURN 1;\n};",
+    "INSERT INTO LEADS_TEST (ORG_ID, LEAD_ID, FREETEXT_ID, SUBJECT, NAME_FIRST, NAME_LAST, TITLE) VALUES (1, 1, 1000, 'Breaking News', 'John', 'Doe', 'Latest Update');",
+    "INSERT INTO LEADS_TEST (ORG_ID, LEAD_ID, FREETEXT_ID, SUBJECT, NAME_FIRST, NAME_LAST, TITLE) VALUES (1, 2, 1001, 'Sports Event', 'Jane', 'Smith', 'Game Highlights');",
+    "INSERT INTO LEADS_TEST (ORG_ID, LEAD_ID, FREETEXT_ID, SUBJECT, NAME_FIRST, NAME_LAST, TITLE) VALUES (1, 3, 1002, NULL, 'Alice', 'Johnson', 'Opinion Piece');",
+    "SELECT vtb, FREETEXT_ID FROM LEADS_TEST WHERE FREETEXT_ID IN (SELECT FREETEXT_ID FROM LEADS_TEST WHERE ORG_ID = 1);",
+    "CALL LEADS_TEST_SUBJECT_INDEX_HOOK(?, 1000);",
+    "CALL LEADS_TEST_SUBJECT_UNINDEX_HOOK(?, 1001);",
+    "WITH indexed_data AS (SELECT FREETEXT_ID FROM LEADS_TEST WHERE SUBJECT IS NOT NULL) SELECT COUNT(*) FROM indexed_data;",
+    "SELECT (SELECT COALESCE(COUNT(*), 0) FROM LEADS_TEST WHERE ORG_ID = 1) AS ORGANIZATION_COUNT;"
+]

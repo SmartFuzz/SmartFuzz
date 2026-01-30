@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id UInt32, value Float64, text String, created_at DateTime DEFAULT now());
+INSERT INTO test_table (id, value, text) VALUES (1, 42.0, 'constant'), (2, NULL, 'null_value'), (3, 0.0, 'zero_value'), (4, 3.14, 'pi_value');
+SELECT isConstant(value * 2) FROM (SELECT value FROM test_table WHERE id IN (1, 2));
+SELECT isConstant(NULLIF(value, 0) * 10) FROM test_table WHERE text <> 'undefined';
+SELECT id, isConstant(value + 1.0) AS is_const FROM test_table GROUP BY id HAVING is_const = 1;
+SELECT id, value, isConstant(cos(value) * value) AS is_const FROM test_table;
+WITH (SELECT MAX(value) AS max_val FROM test_table) AS max_table SELECT isConstant(max_val * 2) FROM max_table;
+CREATE TABLE test_table2 (id UInt32, description String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table2 (id, description) VALUES (1, 'a'), (2, 'b'), (3, NULL);
+SELECT tt1.id, isConstant(tt2.description) FROM test_table AS tt1 JOIN test_table2 AS tt2 ON tt1.id = tt2.id WHERE tt1.value IS NOT NULL;
+SELECT COUNT(*) AS non_const_count, isConstant(text) FROM test_table GROUP BY text HAVING non_const_count > 0;

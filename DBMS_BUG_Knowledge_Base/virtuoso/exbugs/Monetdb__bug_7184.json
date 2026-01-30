@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7184",
+  "title": "Insert into query blocks all other queries",
+  "description": "An insert into will block any other query executed afterwards. The query will use only 1 core from the CPU.\n\n**To Reproduce**\n* Create a database and open mclient two times \n* Create a table as: `CREATE TABLE IF NOT EXISTS alpha (id bigint PRIMARY KEY AUTO_INCREMENT, data bigint); ` \n* In the first mclient execute `INSERT INTO sys.alpha (data) select * from generate_series(0,100000000,cast (1 as bigint));` and **immediately** in the second mclient execute `SELECT 1;`\n\n**Expected behavior**\nAnother query can be executed in parallel with an insert into query.\n\n\n**Software versions**\n - MonetDB Jul2021 v11.41.5\n - OS and version: Ubuntu 20.04",
+  "date": "2021-10-12T07:40:50Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE TABLE IF NOT EXISTS beta (id bigint IDENTITY PRIMARY KEY, value varchar(255) NOT NULL, created_at timestamp DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO beta (value) VALUES ('test1'), ('test2'), (NULL), ('test3');",
+    "CREATE TABLE IF NOT EXISTS gamma (id bigint PRIMARY KEY, ref_id bigint REFERENCES beta(id), amount decimal(10,2) CHECK (amount >= 0));",
+    "INSERT INTO gamma (id, ref_id, amount) SELECT ROW_NUMBER() OVER (ORDER BY (SELECT NULL)), id, CAST(RAND() * 100 AS decimal(10,2)) FROM beta;",
+    "SELECT * FROM gamma WHERE amount > (SELECT AVG(amount) FROM gamma);"
+  ],
+  "key_bug_features": [
+    "Insert blocks other queries during execution"
+  ]
+}

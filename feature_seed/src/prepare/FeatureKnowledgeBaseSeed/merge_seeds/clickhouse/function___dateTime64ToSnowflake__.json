@@ -1,0 +1,11 @@
+CREATE TABLE test_datetime (event_time DateTime64(3)) ENGINE = MergeTree() ORDER BY event_time;
+INSERT INTO test_datetime VALUES (toDateTime64('2021-08-15 18:57:56.492', 3, 'Asia/Shanghai'));
+WITH (SELECT max(event_time) FROM test_datetime) AS max_dt64 SELECT dateTime64ToSnowflake(max_dt64) AS snowflake_id FROM test_datetime;
+WITH toDateTime64('2021-01-01 00:00:00.000', 3, 'UTC') AS dt_start, toDateTime64('2021-12-31 23:59:59.999', 3, 'UTC') AS dt_end SELECT dateTime64ToSnowflake(dt_start) AS start_snowflake_id, dateTime64ToSnowflake(dt_end) AS end_snowflake_id;
+CREATE TABLE test_events (id Int32, event_time DateTime64(3)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_events VALUES (1, toDateTime64('2022-06-01 12:00:00.123', 3, 'Europe/London')), (2, toDateTime64('2022-06-02 12:00:00.456', 3, 'Europe/London'));
+SELECT id, dateTime64ToSnowflake(event_time) AS snowflake_id FROM test_events WHERE event_time >= toDateTime64('2022-06-01 00:00:00.000', 3, 'Europe/London');
+WITH (SELECT event_time FROM test_events ORDER BY event_time DESC LIMIT 1) AS last_event SELECT dateTime64ToSnowflake(last_event) AS last_snowflake_id;
+WITH toDateTime64('2022-03-15 15:45:00.000', 3, 'America/New_York') AS dt32 SELECT dateTime64ToSnowflake(dt32) AS snowflake_id, (SELECT count(*) FROM test_events WHERE event_time < dt32) AS prior_events_count;
+CREATE TABLE temp_table AS SELECT toDateTime64('2021-07-15 15:20:30.123', 3, 'Asia/Tokyo') AS event_time;
+SELECT dateTime64ToSnowflake(event_time) FROM temp_table;

@@ -1,0 +1,12 @@
+CREATE TABLE test1 (id UInt64, values LowCardinality(String), score Float64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test1 VALUES (1, 'alpha'), (2, 'beta'), (3, 'alpha'), (4, 'delta'), (5, 'beta');
+CREATE TABLE test2 (val1 LowCardinality(String), val2 Int32) ENGINE = Memory;
+INSERT INTO test2 VALUES ('ALPHA', 100), ('beta', 200), ('Gamma', 300), ('DELTA', 400);
+SELECT t1.id, lowCardinalityKeys(t1.values), lowCardinalityKeys(t2.val1) FROM test1 t1 JOIN test2 t2 ON (LOWER(t1.values) ILIKE LOWER(t2.val1)) GROUP BY t1.id, t1.values, t2.val1 HAVING AVG(t1.score) > 150;
+SELECT lowCardinalityKeys(t1.values), (SELECT COUNT(*) FROM test1 WHERE id > 2) AS count_above FROM test1 t1 WHERE LOW_CARDINALITY_KEYS(t1.values) ILIKE '%beta%' GROUP BY t1.values;
+CREATE TEMPORARY TABLE test3 AS SELECT id, values FROM test1 WHERE score IS NULL;
+INSERT INTO test3 (id, values) VALUES (6, 'epsilon'), (7, NULL), (8, 'zeta');
+SELECT COUNT(*) FROM test3 WHERE values ILIKE 'e%' OR values IS NULL;
+SELECT lowCardinalityKeys(values) FROM test1 WHERE id IN (SELECT id FROM test2 WHERE val2 > (SELECT AVG(val2) FROM test2)) ORDER BY id;
+SELECT t1.id, lowCardinalityKeys(t1.values) FROM test1 t1 WHERE EXISTS (SELECT 1 FROM test2 t2 WHERE t2.val1 ILIKE CONCAT('%', SUBSTRING(t1.values, 1, 3), '%'));
+SELECT lowCardinalityKeys(CONCAT(values, '_suffix')) AS keyed_values FROM test1 GROUP BY keyed_values HAVING COUNT(*) < 3;

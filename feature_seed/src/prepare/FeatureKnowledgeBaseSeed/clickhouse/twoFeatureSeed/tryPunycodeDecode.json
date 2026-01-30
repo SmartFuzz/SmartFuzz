@@ -1,0 +1,16 @@
+{
+    "function": "tryPunycodeDecode",
+    "operator": "a GLOBAL IN ...",
+    "sql_array": [
+        "CREATE TABLE test_unicode (id Int32, punycode_string String, value Float32, created_at DateTime DEFAULT now());",
+        "INSERT INTO test_unicode (id, punycode_string, value) VALUES (1, 'xn--bcher-kva', 3.14), (2, 'xn--tst-sna', NULL), (3, '', 0.0), (4, NULL, 100.0);",
+        "SELECT id, tryPunycodeDecode(punycode_string) AS decoded_string, value FROM test_unicode WHERE value IS NOT NULL;",
+        "SELECT id, tryPunycodeDecode(punycode_string) AS decoded_string FROM test_unicode WHERE value GLOBAL IN (SELECT value FROM test_unicode WHERE punycode_string IS NOT NULL);",
+        "SELECT id, COUNT(*) OVER (PARTITION BY tryPunycodeDecode(punycode_string) ORDER BY value) AS count_per_decoded FROM test_unicode HAVING count_per_decoded > 1;",
+        "SELECT DISTINCT punycode_string FROM (SELECT id, tryPunycodeDecode(punycode_string) AS decoded_string FROM test_unicode WHERE decoded_string GLOBAL IN ('example1', 'example2'));",
+        "SELECT id, tryPunycodeDecode(punycode_string) AS decoded_string FROM test_unicode WHERE decoded_string NOT IN ('');",
+        "SELECT a.id, a.punycode_string, a.value FROM test_unicode a JOIN test_unicode b ON tryPunycodeDecode(a.punycode_string) = tryPunycodeDecode(b.punycode_string) WHERE a.value IS NOT NULL ORDER BY a.value;",
+        "SELECT id, tryPunycodeDecode(COALESCE(punycode_string, '')) AS decoded FROM test_unicode WHERE value GLOBAL IN (SELECT DISTINCT value FROM test_unicode) AND decoded <> '';",
+        "DROP TABLE IF EXISTS test_unicode;"
+    ]
+}

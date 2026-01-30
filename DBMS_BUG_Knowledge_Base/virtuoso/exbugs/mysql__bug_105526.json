@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=105526",
+  "title": "Query result is incompatible with the SQL standard",
+  "description": "In SQL standard, the execution order of query should be:\r\n1. from clause\r\n2. joined table\r\n3. where clause\r\n4. group by clause\r\n5. having clause\r\n6. query specification (ie. SELECT)\r\n\r\nbut in MySQL server 8.0.18, when I execute\r\n\"explain format=tree select distinct sum(c)*sum(b) from t1 group by a having sum(a) > 1;\"\r\nI got the result:\r\n-> Filter: (sum(t1.a) > 1)\r\n    -> Table scan on <temporary>\r\n        -> Temporary table with deduplication # process DISTINCT here\r\n            -> Table scan on <temporary>\r\n                -> Aggregate using temporary table\r\n                    -> Table scan on t1  (cost=0.65 rows=4)\r\nseems MySQL apply filter after SELECT DISTINCT\nHow to repeat:\ncreate table t1 (a int, b int, c int);\r\ninsert into t1 values(1, 7, 101);\r\ninsert into t1 values(2, 7, 101);\r\ninsert into t1 values(3, 11, 102);\r\ninsert into t1 values(4, 11, 102);\r\nselect distinct sum(c)*sum(b) from t1 group by a having sum(a) > 1;\r\n\r\nResult is:\r\n+---------------+\r\n| sum(c)*sum(b) |\r\n+---------------+\r\n|          1122 |\r\n+---------------+\r\n\r\nIf we rewrite query to:\r\n\"select distinct col from (select sum(c)*sum(b) as col from t1 group by a having sum(a) > 1) tmp;\r\n\r\nThe result is:\r\n+------+\r\n| col  |\r\n+------+\r\n|  707 |\r\n| 1122 |\r\n+------+\r\n\"\nSuggested fix:\nChange plan to:\r\n-> Table scan on <temporary>\r\n    -> Temporary table with deduplication\r\n        -> Filter: (sum(t1.a) > 1) # Move filter to here\r\n            -> Table scan on <temporary>\r\n                -> Aggregate using temporary table\r\n                    -> Table scan on t1  (cost=0.65 rows=4)",
+  "date": "2021-11-11 09:00:00",
+  "vulnerable_version": "5.7",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (a INT NOT NULL, b FLOAT, c VARCHAR(255), d DATE DEFAULT CURRENT_DATE);",
+    "INSERT INTO t2 (a, b, c) VALUES (1, 7.5, 'test1'), (2, NULL, 'test2'), (3, 11.0, 'test3'), (4, 11.0, 'test4');",
+    "SELECT DISTINCT SUM(b) * COUNT(c) FROM t2 GROUP BY a HAVING COUNT(d) > 0;",
+    "SELECT DISTINCT col FROM (SELECT SUM(b) * COUNT(c) AS col FROM t2 GROUP BY a HAVING COUNT(a) > 1) AS tmp;",
+    "CREATE TABLE t3 (x INT, y INT, z INT DEFAULT NULL);"
+  ],
+  "key_bug_features": [
+    "Filter applied after SELECT DISTINCT in query execution"
+  ]
+}

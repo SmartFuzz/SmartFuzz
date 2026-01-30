@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id INTEGER, value BIGINT, category TEXT);
+INSERT INTO test_data (id, value, category) VALUES (1, 10, 'A'), (2, 20, 'B'), (3, NULL, 'A'), (4, 30, 'B'), (5, 30, 'C');
+SELECT category, dense_rank() OVER (PARTITION BY category ORDER BY value) AS rank_value FROM test_data WHERE value IS NOT NULL;
+CREATE TABLE temp_data AS SELECT id, value << 1 AS shifted_value FROM test_data WHERE value IS NOT NULL;
+SELECT t1.category, COUNT(*) AS count_per_category, dense_rank() OVER (ORDER BY COUNT(*)) as category_rank FROM test_data t1 JOIN temp_data t2 ON t1.id = t2.id GROUP BY t1.category HAVING count_per_category > 1;
+SELECT t.id, (dense_rank() OVER (ORDER BY value) << 2) AS shifted_rank FROM test_data t WHERE value IS NOT NULL;
+SELECT id, (value << (CASE WHEN value IS NULL THEN 0 ELSE 2 END)) AS manipulated_value FROM test_data;
+SELECT *, (SELECT COUNT(*) FROM temp_data t2 WHERE t2.shifted_value = (value << 1)) AS related_count FROM test_data;
+SELECT category, SUM(value) AS total_value, dense_rank() OVER (ORDER BY SUM(value)) AS dense_rank_sum FROM test_data GROUP BY category HAVING total_value > (SELECT AVG(value) FROM test_data);
+SELECT id, value << 1 AS shifted_value, dense_rank() OVER (ORDER BY shifted_value) AS rank_shifted FROM (SELECT id, value << 1 AS shifted_value FROM test_data) AS sub_query WHERE shifted_value IS NOT NULL;

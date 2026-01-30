@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=102444",
+  "title": "Dependent subquery with ORDER BY return NULL value",
+  "description": "In certain cases, use of ORDER BY in a subselect did not produce the expected result (does not return result, return NULL).\nHow to repeat:\nShema / data:\r\n\r\nCREATE TABLE IF NOT EXISTS `ttable_1` (\r\n  `tt1_id` int(11) unsigned NOT NULL AUTO_INCREMENT,\r\n  `tt1_param` int(11) unsigned DEFAULT NULL,\r\n  `tt1_name` varchar(255) DEFAULT NULL,\r\n  PRIMARY KEY (`tt1_id`) USING BTREE\r\n) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8;\r\n\r\nINSERT INTO `ttable_1` (`tt1_id`, `tt1_param`, `tt1_name`) VALUES\r\n\t(1, 514, '321'),\r\n\t(2, 792, '456');\r\n\r\nCREATE TABLE IF NOT EXISTS `ttable_2` (\r\n  `tt2_id` int(10) unsigned NOT NULL AUTO_INCREMENT,\r\n  `tt2_param` int(11) DEFAULT NULL,\r\n  `tt2_name` varchar(255) NOT NULL DEFAULT '',\r\n  `tt2_rm` tinyint(1) unsigned NOT NULL DEFAULT '0',\r\n  PRIMARY KEY (`tt2_id`) USING BTREE,\r\n  KEY `i1` (`tt2_param`) USING BTREE,\r\n  KEY `i2` (`tt2_name`,`tt2_rm`,`tt2_param`) USING BTREE\r\n) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8;\r\n\r\nINSERT INTO `ttable_2` (`tt2_id`, `tt2_param`, `tt2_name`, `tt2_rm`) VALUES\r\n\t(1, 792, 'KK', 1);\n\nQuery:\r\n\r\nSELECT \r\n(\r\n\tSELECT tt2_id\r\n\tFROM ttable_2\r\n\tWHERE (tt1_name = tt2_name OR (tt2_rm = 1)) AND (tt1_param = tt2_param OR tt2_param IS NULL)\r\n\tORDER BY tt2_id DESC\r\n\tLIMIT 1\r\n) as id\r\n\t\r\nFROM ttable_1 \r\n#WHERE tt1_id = 2\n\nResult (5.7.22-5.7.32; 8.0.12): NULL, NULL \r\nExcepted/correct result (5.6.x; 8.0.18): NULL, 1\n\nAlso: If I delete indexes or delete ORDER BY or add WHERE to main query it start return correct result.\r\n\r\nLooks like it fixed in last 8.0.x versions, but not fixed in 5.7",
+  "date": "2021-02-02 01:10:00",
+  "vulnerable_version": "5.7.22 - 5.7.32; 8.0.12, 5.7.33",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE IF NOT EXISTS ttable_3 (tt3_id UInt32, tt3_param Nullable(UInt32), tt3_name Nullable(String), tt3_status UInt8 DEFAULT 0, PRIMARY KEY (tt3_id));",
+    "INSERT INTO ttable_3 (tt3_id, tt3_param, tt3_name, tt3_status) VALUES (1, 514, 'AAA', 1), (2, NULL, 'BBB', 0);",
+    "SELECT (SELECT tt3_id FROM ttable_3 WHERE (tt3_name = 'AAA' OR tt3_status = 1) AND (tt3_param = 514 OR tt3_param IS NULL) ORDER BY tt3_id DESC LIMIT 1) as id FROM ttable_1;",
+    "CREATE TABLE IF NOT EXISTS ttable_4 (tt4_id UInt32, tt4_param Nullable(String), PRIMARY KEY (tt4_id));",
+    "INSERT INTO ttable_4 (tt4_id, tt4_param) VALUES (1, 'XYZ'), (2, NULL);"
+  ],
+  "key_bug_features": [
+    "ORDER BY in subquery returns NULL instead of expected result"
+  ]
+}

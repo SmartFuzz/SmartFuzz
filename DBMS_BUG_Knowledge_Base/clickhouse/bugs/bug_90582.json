@@ -1,0 +1,25 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/90582",
+  "title": "REPLACE PARTITION silently fails when one of the partition keys is of type Bool",
+  "vulnerable_database": "ClickHouse",
+  "date": "2025-11-21T14:37:56Z",
+  "vulnerable_version": "",
+  "description": "### Company or project name\nCloudQuery\n### Describe the unexpected behaviour\nWhen using `REPLACE PARTITION` on two tables that have a Bool-type column as part of the partition key, the operation succeeds but actually does not do a replacement. The target table's data stays the same as before.\n### Which ClickHouse versions are affected?\nTested with ClickHouse Server 25.6.13 and 25.10.2, both show this behavior.\n### How to reproduce\nUsing 25.10.2.\n### 1. Create tables\n```sql\nCREATE TABLE target_table\n(\nid UInt32,\ncountry String,\nactive Bool\n)\nENGINE = MergeTree()\nPARTITION BY (country, active)\nORDER BY id;\nCREATE TABLE source_table\n(\nid UInt32,\ncountry String,\nactive Bool\n)\nENGINE = MergeTree()\nPARTITION BY (country, active)\nORDER BY id;\n```\n### 2. Insert initial data\nOld data in `target_table`:\n```sql\nINSERT INTO target_table VALUES\n(1, 'US', 1),\n(2, 'US', 1),\n(3, 'UK', 0);\n```\nNew data in `source_table`:\n```sql\nINSERT INTO source_table VALUES\n(10, 'US', 1),\n(20, 'US', 1);\n```\n### 3a. Verify initial target contents\n```\nSELECT *, _partition_id\nFROM target_table\nORDER BY id, country, active;\n```\nShould see:",
+  "poc": [
+    "CREATE TABLE target_table\n(\n    id UInt32,\n    country String,\n    active Bool\n)\nENGINE = MergeTree()\nPARTITION BY (country, active)\nORDER BY id;",
+    "CREATE TABLE source_table\n(\n    id UInt32,\n    country String,\n    active Bool\n)\nENGINE = MergeTree()\nPARTITION BY (country, active)\nORDER BY id;",
+    "INSERT INTO target_table VALUES\n    (1, 'US', 1),\n    (2, 'US', 1),\n    (3, 'UK', 0);",
+    "INSERT INTO source_table VALUES\n    (10, 'US', 1),\n    (20, 'US', 1);",
+    "ALTER TABLE target_table\nREPLACE PARTITION ('US', true)\nFROM source_table;"
+  ],
+  "key_bug_features": [
+    "REPLACE PARTITION with Bool-type column fails silently"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE target_table_2 (id UInt32, country String, active Bool, created_at DateTime) ENGINE = MergeTree() PARTITION BY (country, active) ORDER BY id;",
+    "CREATE TABLE source_table_2 (id UInt32, country String, active Bool, created_at DateTime) ENGINE = MergeTree() PARTITION BY (country, active) ORDER BY id;",
+    "INSERT INTO target_table_2 VALUES (1, 'US', 1, now()), (2, 'US', 1, now()), (3, 'UK', 0, now());",
+    "INSERT INTO source_table_2 VALUES (10, 'US', 1, now()), (20, 'US', 1, now()), (30, 'UK', 0, now());",
+    "ALTER TABLE target_table_2 REPLACE PARTITION ('US', 1) FROM source_table_2;"
+  ]
+}

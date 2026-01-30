@@ -1,0 +1,20 @@
+CREATE TABLE rdf_data (subject VARCHAR(255), predicate VARCHAR(255), object VARCHAR(255) NOT NULL,) WITH (PRIMARY KEY (subject, predicate));
+INSERT INTO rdf_data (subject, predicate, object) VALUES (NULL, 'type', 'Person'), ('John', 'type', NULL), ('Alice', 'knows', 'NULL'), ('Bob', 'age', '25.5');
+CREATE PROCEDURE fuzz_test_rdf(inout ses any)
+{
+  declare triples any;
+declare count int;
+triples := vector (vector ('John', 'type', 'Person'), vector (NULL, 'type', 'Animal'));
+count := length(triples);
+http_nt_triple (http(nt_serialize(triples), ses));
+IF (NOT (count = 0)) THEN
+    http ('# RDF entries exist\n', ses);
+END IF;
+};
+SELECT NOT (SELECT COUNT(*) FROM rdf_data WHERE object IS NULL) AS null_count_check;
+SELECT http_nt_triple('subject', (SELECT subject FROM rdf_data WHERE NOT (object IS NULL))) AS serialized_nt FROM rdf_data;
+SELECT http_nt_triple((SELECT subject FROM rdf_data WHERE predicate = 'type' LIMIT 1), 'type', 'Animal', ses);
+SELECT NOT (http_nt_triple(vector('test', 'predicate', 'value'), 'http://example.com/ses')) AS test_check;
+SELECT http_nt_triple('John', 'knows', (SELECT object FROM rdf_data WHERE subject = 'Alice')) AS serialized_relationship;
+SELECT subject, COUNT(*) FROM rdf_data GROUP BY subject HAVING NOT (COUNT(*) = 1);
+SELECT http_nt_triple((SELECT subject FROM rdf_data WHERE predicate = 'type' AND subject IS NOT NULL LIMIT 1), NOT TRUE, 'string') AS complex_output;

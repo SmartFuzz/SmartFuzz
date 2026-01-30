@@ -1,0 +1,7 @@
+CREATE TABLE test_table (id INTEGER, start_date DATE, interval_data INTERVAL, values_list LIST FLOAT);
+INSERT INTO test_table VALUES (1, '2020-01-01', INTERVAL '12 months', [1.0, 2.0, 3.0]), (2, '2021-01-01', INTERVAL '2 months', [1.5, NULL, 3.5]), (3, '2023-01-01', INTERVAL '14 months', [NULL, 2.0, 5.0]);
+SELECT id, date_part('year', start_date + interval_data) AS year_extracted, values_list <=> [1.0, 2.0, 5.0] AS cosine_distance FROM test_table WHERE date_part('year', start_date + interval_data) IS NOT NULL;
+SELECT id, AVG(date_part('year', start_date + interval_data)) AS average_year FROM (SELECT start_date, interval_data, id FROM test_table WHERE interval_data IS NOT NULL) AS subquery GROUP BY id HAVING AVG(date_part('year', start_date + interval_data)) <= 2023;
+WITH intermediate AS (SELECT id, date_part('year', start_date + interval_data) AS year_extracted FROM test_table) SELECT id, year_extracted <=> [NULL, 2021] AS comparison_result FROM intermediate WHERE year_extracted IS NOT NULL;
+SELECT id, start_date, interval_data, values_list <=> (SELECT MIN(values_list) FROM test_table WHERE values_list IS NOT NULL) AS min_distance FROM test_table WHERE values_list IS NOT NULL;
+CREATE TEMPORARY TABLE temp_table AS SELECT id, date_part('year', start_date + interval_data) AS year_extracted FROM test_table WHERE interval_data > INTERVAL '10 months';

@@ -1,0 +1,13 @@
+CREATE TABLE mail_log (id INT PRIMARY KEY, email_content TEXT, send_timestamp TIMESTAMP);
+INSERT INTO mail_log (id, email_content, send_timestamp) VALUES (1, 'Subject: Test Email 1\r\nFrom: <sender@example.com>\r\nTo: <recipient@example.com>\r\n\r\nThis is a test body.', NOW());
+INSERT INTO mail_log (id, email_content, send_timestamp) VALUES (2, 'Subject: Test Email 2\r\nFrom: <sender2@example.com>\r\nTo: <recipient2@example.com>\r\nCc: <cc@example.com>\r\n\r\nThis is a body for test email 2.', NOW());
+SELECT * FROM mail_log WHERE id <= (SELECT MAX(id) FROM mail_log);
+SELECT smtp_send('<sender@example.com>', '<recipient@example.com>'), id FROM mail_log WHERE email_content IS NOT NULL;
+SELECT smtp_send('<sender@example.com>', '<recipient@example.com>') FROM mail_log WHERE id <= 2 AND send_timestamp IS NOT NULL;
+SELECT smtp_send(CONCAT('<sender', id, '@example.com>'), CONCAT('<recipient', id, '@example.com>')) AS email_status FROM mail_log WHERE id <= (SELECT COUNT(*) FROM mail_log) GROUP BY id HAVING COUNT(email_content) >= 1;
+SELECT smtp_send('Subject: Sample Subject\r\nFrom: <test@example.com>\r\nTo: <target@example.com>\r\n\r\nBody for testing\r\n\r\nExtra Line', '<test@example.net>') FROM mail_log WHERE EXISTS (SELECT 1 FROM mail_log WHERE email_content LIKE '%body%' AND id <= 3) AND (SELECT COUNT(*) FROM mail_log) <= 10;
+CREATE TABLE smtp_test (test_id INT PRIMARY KEY, message TEXT, result BOOLEAN);
+INSERT INTO smtp_test (test_id, message, result) VALUES (1, 'Subject: Fuzz Test \r\nFrom: <fuzz@example.com>\r\nTo: <fuzzrecipient@example.com>\r\n\r\nTesting with NULL case', NULL);
+INSERT INTO smtp_test (test_id, message, result) VALUES (2, 'Subject: Boundary Testing\r\nFrom: <boundary@example.com>\r\nTo: <boundaryrecipient@example.com>\r\n\r\nEdge case with empty string', '');
+SELECT smtp_send(CONCAT('<sender', id, '@emaildomain.com>'), '<recipient@example.com>') FROM smtp_test WHERE message IS NOT NULL AND result IS NOT NULL ORDER BY test_id WITHIN GROUP (ORDER BY test_id DESC);
+SELECT smtp_send('Subject: Complex Example\r\nFrom: <<invalid_sender>>>\r\nTo: <recipient@example.com>\r\n\r\nThis is a message body with unexpected syntax.', '<recipient@example.com>') WHERE EXISTS (SELECT * FROM mail_log WHERE id <= 3 AND email_content IS NOT NULL) AND (SELECT COUNT(*) FROM mail_log) = 2;

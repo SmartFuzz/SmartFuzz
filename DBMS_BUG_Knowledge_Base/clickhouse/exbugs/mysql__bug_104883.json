@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=104883",
+  "title": "ResultSet is different between first and second query",
+  "description": "Hi, i met a strange behavior as when sql is first execueted in one session,\r\nthe resultset is not expected,\r\nbut when you exeucted the sql second,third, the resultset is ok.\r\nThis case can be repeated in mysql 5.6.35 and 5.7.33\r\nbut on mysql 8.0.18 can not be repeated.\nHow to repeat:\nPrepare data:\r\ndrop table if exists a1;\r\ncreate table a1(\r\n  task_id bigint unsigned not null,\r\n  oper_id varchar(64) null,\r\n  retention_time double null)\r\n  ;\r\ninsert into a1 values(17463778019812451578,'a',0);\r\ncommit;\r\ndrop table if exists b1;\r\ncreate table b1(\r\n  task_id bigint unsigned not null,\r\n  consult_oper_id varchar(64) not null\r\n  );\r\ninsert into b1 values\r\n(17463778019812451578,'a'),\r\n(17463778019812451578,'a'),\r\n(17463778019812451578,'a'),\r\n(17463778019812451578,'a')\r\n;\r\ncommit;\r\n\r\nLogin with new session, execute the sql:\r\nselect @row :=\r\n IF( @task_id = task_id, @row + 1, 1 ) num1,\r\n  aa.*,\r\n  @task_id := task_id  from (\r\nselect task_id,num from(\r\nselect a.task_id, @r := @r+1 num\r\nfrom(\r\nSELECT t.task_id\r\n  FROM\r\n   (\r\n   SELECT\r\n    task.task_id,\r\n    task.oper_id,\r\n    task.retention_time \r\n   FROM\r\n    a1 task \r\n   WHERE\r\n    1 = 1 \r\n   ) AS t\r\n   LEFT JOIN ( SELECT task_id, consult_oper_id FROM b1 WHERE 1 = 1 ) AS c ON t.task_id = c.task_id \r\n  ORDER BY\r\n    t.retention_time DESC \r\n     )a, ( SELECT  @r := 0 ) b    \r\n) gg\r\norder by task_id asc, num asc)aa, ( SELECT @row := 0 ) bb ,(select @task_id := 0) ccc\r\nlimit 0,20;\r\n\r\nthe first resultset:\r\n+------+----------------------+------+----------------------+\r\n| num1 | task_id              | num  | @task_id := task_id  |\r\n+------+----------------------+------+----------------------+\r\n|    1 | 17463778019812451578 |    1 | 17463778019812451578 |\r\n|    1 | 17463778019812451578 |    2 | 17463778019812451578 |\r\n|    1 | 17463778019812451578 |    3 | 17463778019812451578 |\r\n|    1 | 17463778019812451578 |    4 | 17463778019812451578 |\r\n+------+----------------------+------+----------------------+\r\n\r\nexecute again:\r\n+------+----------------------+------+----------------------+\r\n| num1 | task_id              | num  | @task_id := task_id  |\r\n+------+----------------------+------+----------------------+\r\n|    1 | 17463778019812451578 |    1 | 17463778019812451578 |\r\n|    2 | 17463778019812451578 |    2 | 17463778019812451578 |\r\n|    3 | 17463778019812451578 |    3 | 17463778019812451578 |\r\n|    4 | 17463778019812451578 |    4 | 17463778019812451578 |\r\n+------+----------------------+------+----------------------+\r\n\r\nnotice the first column.\r\ni tried to find the possible reason, but failed.\r\nseems bug?",
+  "date": "2021-09-09 09:54:00",
+  "vulnerable_version": "5.7.35",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS c1;",
+    "CREATE TABLE c1(task_id UInt64 NOT NULL, oper_id String, retention_time Float64, created_at DateTime DEFAULT now());",
+    "INSERT INTO c1 VALUES(18446744073709551615, 'b', NULL), (1, 'c', 1.5), (2, 'd', 2.5);",
+    "DROP TABLE IF EXISTS d1;",
+    "CREATE TABLE d1(task_id UInt64 NOT NULL, consult_oper_id String NOT NULL) ENGINE = MergeTree() ORDER BY (task_id, consult_oper_id);"
+  ],
+  "key_bug_features": [
+    "ResultSet inconsistency on first query execution"
+  ]
+}

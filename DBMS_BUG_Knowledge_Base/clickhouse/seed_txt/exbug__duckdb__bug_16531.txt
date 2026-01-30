@@ -1,0 +1,5 @@
+CREATE TABLE test_data (id Int32, download Int32, upload Int32, app String, key String);
+INSERT INTO test_data SELECT id, (rand() % 3) AS download, (rand() % 3) AS upload, concat('App_', (rand() % 100)) AS app, substring(toHex(rand()), 1, 44) AS key FROM numbers(100000);
+SELECT app, key, COUNT(*) AS count_download, COUNTIf(download = 0) AS low_count, COUNTIf(download = 1) AS average_count, COUNTIf(download = 2) AS high_count FROM test_data GROUP BY app, key;
+WITH download_summary AS (SELECT app, key, COUNTIf(download = 0) AS low_count, COUNTIf(download = 1) AS average_count, COUNTIf(download = 2) AS high_count FROM test_data GROUP BY app, key) SELECT app, key, CASE WHEN low_count = greatest(low_count, average_count, high_count) THEN 0 WHEN average_count = greatest(low_count, average_count, high_count) THEN 1 ELSE 2 END AS mode_download FROM download_summary;
+SELECT app, key, COALESCE(NULLIF(MAX(download), 0), 1) AS max_download FROM test_data GROUP BY app, key HAVING COUNT(*) > 10;

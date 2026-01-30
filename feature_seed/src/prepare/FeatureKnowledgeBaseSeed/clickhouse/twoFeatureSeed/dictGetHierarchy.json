@@ -1,0 +1,19 @@
+{
+    "function": "dictGetHierarchy",
+    "operator": "a BETWEEN b AND c",
+    "sql_array": [
+        "CREATE TABLE test_dict (id UInt64, name String, parent_id UInt64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_dict VALUES (1, 'root', NULL), (2, 'child1', 1), (3, 'child2', 1), (4, 'grandchild1', 2);",
+        "SELECT id, dictGetHierarchy('test_dict', id) AS parents FROM test_dict WHERE id BETWEEN 1 AND 3;",
+        "SELECT id, name, (dictGetHierarchy('test_dict', id) AS parents) FROM test_dict WHERE id BETWEEN 1 AND (SELECT COUNT(*) FROM test_dict);",
+        "WITH (SELECT COUNT(*) FROM test_dict) AS total_count SELECT id, dictGetHierarchy('test_dict', id) AS hierarchy, (name, total_count) FROM test_dict WHERE parents[1] IS NOT NULL;",
+        "SELECT COUNT(*) FROM (SELECT id, dictGetHierarchy('test_dict', id) AS hierarchy FROM test_dict WHERE id BETWEEN (SELECT MIN(id) FROM test_dict) AND (SELECT MAX(id) FROM test_dict));",
+        "SELECT id, name FROM test_dict WHERE id BETWEEN 1 AND 4 HAVING dictGetHierarchy('test_dict', id) IS NOT NULL;",
+        "SELECT id FROM (SELECT id, dictGetHierarchy('test_dict', id) AS hierarchy FROM test_dict) WHERE hierarchy[1] BETWEEN 1 AND 3;",
+        "CREATE TABLE temp_dict AS SELECT id, dictGetHierarchy('test_dict', id) AS parents FROM test_dict WHERE parents[1] IS NOT NULL;",
+        "ALTER TABLE test_dict ADD COLUMN description String;",
+        "INSERT INTO test_dict VALUES (5, 'greatgrandchild1', 4);",
+        "SELECT id, dictGetHierarchy('test_dict', id) AS parents, dictGetHierarchy('test_dict', id) AS parents_copy FROM test_dict WHERE id BETWEEN 2 AND 4 HAVING parents != parents_copy;",
+        "DROP TABLE IF EXISTS temp_dict;"
+    ]
+}

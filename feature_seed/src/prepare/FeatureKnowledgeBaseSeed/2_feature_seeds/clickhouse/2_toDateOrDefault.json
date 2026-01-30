@@ -1,0 +1,12 @@
+CREATE TABLE test_dates (id UInt32, date_col Date, timestamp_col DateTime, val Nullable(Int32)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_dates VALUES (1, toDateOrDefault('2023-01-01'), now(), 10), (2, toDateOrDefault('not-a-date', '2022-12-31'), now(), NULL), (3, toDateOrDefault('', '2023-01-01'), '2022-06-01 12:00:00', 5);
+SELECT id, date_col + INTERVAL (val) DAY AS adjusted_date, toDateOrDefault(timestamp_col + INTERVAL 5 HOUR, toDateOrDefault('', '2023-01-01')) AS adjusted_timestamp FROM test_dates WHERE val IS NOT NULL;
+SELECT id, COUNT(*) AS count, AVG(toDateOrDefault(date_col, '2000-01-01')) AS avg_date FROM test_dates GROUP BY id HAVING avg_date > toDateOrDefault('2020-01-01', '2000-01-01');
+SELECT id, toDateOrDefault(timestamp_col) + INTERVAL val MONTH AS month_adjusted FROM test_dates WHERE val IS NOT NULL AND toDateOrDefault(timestamp_col, '2000-01-01') < toDateOrDefault('', '2023-01-01');
+SELECT t1.id, t1.date_col, t2.timestamp_col FROM test_dates t1 JOIN test_dates t2 ON t1.id = t2.id + 1 WHERE toDateOrDefault(t1.date_col, '2000-01-01') > toDateOrDefault(t2.timestamp_col, '2000-01-01') + INTERVAL 1 DAY;
+SELECT id, date_col, toDateOrDefault(CONVERT(val, 'String'), '2000-01-01') AS date_from_string FROM test_dates WHERE date_col IS NOT NULL;
+WITH (SELECT count(*) FROM test_dates WHERE val IS NULL) AS null_count SELECT id, date_col + INTERVAL null_count DAY FROM test_dates WHERE date_col > toDateOrDefault('2023-01-01', '2000-01-01');
+SETTINGS allow_experimental_window_functions = 1;
+SELECT id, date_col, toDateOrDefault(date_col + INTERVAL (ROW_NUMBER() OVER (ORDER BY id) % 10) DAY, '2000-01-01') AS dynamic_adjusted_date FROM test_dates;
+CREATE TEMPORARY TABLE temp_dates AS SELECT id, date_col FROM test_dates WHERE val IS NOT NULL;
+SELECT id, toDateOrDefault(date_col, '1900-01-01') + INTERVAL (SELECT COUNT(*) FROM temp_dates) DAY AS total_day_adjustment FROM temp_dates;

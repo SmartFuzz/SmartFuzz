@@ -1,0 +1,16 @@
+{
+    "function": "ngramSimHashCaseInsensitive",
+    "operator": "a + b",
+    "sql_array": [
+        "CREATE TABLE test_strings (id UInt32, content String, length UInt8) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_strings (id, content, length) VALUES (1, 'Example1', length('Example1')), (2, 'ClickHouse', length('ClickHouse')), (3, NULL, 4);",
+        "SELECT ngramSimHashCaseInsensitive(content) + 10 AS SimHashPlusTen FROM test_strings WHERE content IS NOT NULL;",
+        "SELECT ngramSimHashCaseInsensitive(content) AS SimHash, length FROM test_strings WHERE length > 3 ORDER BY SimHash LIMIT 5;",
+        "SELECT id, ngramSimHashCaseInsensitive(content, 5) + ngramSimHashCaseInsensitive('AnotherExample', 5) AS CombinedHash FROM test_strings WHERE id IN (SELECT id FROM test_strings WHERE content IS NOT NULL) HAVING CombinedHash % 2 = 0;",
+        "CREATE TABLE string_pairs AS SELECT a.content, b.content FROM test_strings AS a JOIN test_strings AS b ON a.id < b.id;",
+        "INSERT INTO string_pairs SELECT 'Text1', 'Text2' UNION SELECT 'Text3', 'ClickHouse';",
+        "SELECT ngramSimHashCaseInsensitive(a.content) + ngramSimHashCaseInsensitive(b.content) AS TotalHash FROM string_pairs AS a JOIN string_pairs AS b ON a.content != b.content;",
+        "SELECT ngramSimHashCaseInsensitive(content, 1) + NULL AS HashWithNull FROM test_strings HAVING HashWithNull IS NULL;",
+        "SELECT arrayJoin(ngramSimHashCaseInsensitive(content)) + 5 AS AdjustedHash FROM test_strings WHERE content IS NOT NULL;"
+    ]
+}

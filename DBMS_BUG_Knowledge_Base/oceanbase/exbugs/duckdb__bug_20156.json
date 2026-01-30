@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/20156",
+  "title": "OVER's unexpected behavior after a union clause in a WITH clause",
+  "description": "### What happens?\n\nAfter using a UNION clause in a WITH clause, i wanna compute a cumulated sum building using OVER().\nI found that the union kind of persist in the windowing leading to two separate windows and a break of my cumulated sum.\nI used describe did not show any aggresiv optimisation that can explain this.\n\n### To Reproduce\n\n```sql\nWITH start_and_inputs AS (\n    SELECT 50 AS moves\n    UNION ALL\n    SELECT 50 AS moves\n)\nSELECT moves, sum(moves) OVER (ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS sum\nFROM start_and_inputs;\n```\nResults in :\n| moves | sum |\n| ---  | --- |\n| 50 | 50 |\n| 50 | 50 | \n\nwhile \n```sql\nCREATE OR REPLACE TABLE start_and_inputs AS (\n    SELECT 50 AS moves\n    UNION ALL\n    SELECT 50 AS moves\n);\nSELECT  moves, sum(moves) OVER (ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS sum\nFROM start_and_inputs;\n```\n\nResults in :\n| moves | sum |\n| ---  | --- |\n| 50 | 50 |\n| 50 | 100 | \n\n### OS:\n\nUnbuntu 22.04\n\n### DuckDB Version:\n\n1.4.2\n\n### DuckDB Client:\n\nPython\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nFX HENG\n\n### Affiliation:\n\nSOPRASTERIA\n\n### Did you include all relevant configuration (e.g., CPU architecture, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes",
+  "date": "2025-12-11 23:54:12",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_data (id INTEGER, value DOUBLE, category VARCHAR);",
+    "INSERT INTO test_data VALUES (1, 50.0, 'A'), (2, 50.0, 'B'), (3, NULL, 'A'), (4, 100.0, 'B');",
+    "CREATE TABLE union_data AS (SELECT value FROM test_data WHERE category = 'A' UNION ALL SELECT value FROM test_data WHERE category = 'B');",
+    "SELECT value, SUM(value) OVER (ORDER BY value ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cumulative_sum FROM union_data;",
+    "CREATE TABLE boundary_test (num INTEGER NOT NULL CHECK (num >= 0));"
+  ],
+  "key_bug_features": [
+    "UNION clause in WITH affects OVER() windowing behavior"
+  ]
+}

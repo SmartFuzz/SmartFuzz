@@ -1,0 +1,13 @@
+CREATE TABLE test_dates (id INT, event_date DATE, details VARCHAR);
+INSERT INTO test_dates VALUES (1, today(), 'Event A'), (2, today() - INTERVAL '1 day', 'Event B'), (3, today() + INTERVAL '1 day', 'Event C');
+CREATE TABLE test_lists (id INT, tags LIST<Integer>);
+INSERT INTO test_lists VALUES (1, [1, 2, 3]), (2, [3, 4, 5]);
+SELECT id FROM test_dates WHERE event_date @> [today() - INTERVAL '1 day'] AND event_date IS NOT NULL;
+SELECT id FROM test_lists WHERE tags @> [3] OR tags @> [4];
+SELECT id, (SELECT COUNT(*) FROM test_dates) AS total_events FROM test_lists WHERE tags @> (SELECT [2, 3] FROM test_lists WHERE id = 1) GROUP BY id HAVING COUNT(*) < 2;
+WITH date_check AS (SELECT id FROM test_dates WHERE event_date IS NOT NULL) SELECT * FROM date_check WHERE EXISTS (SELECT 1 FROM test_lists WHERE tags @> [3] OR id IN (SELECT id FROM date_check));
+SELECT COUNT(*) AS event_count, today() FROM test_dates GROUP BY today() HAVING event_count > 0;
+SELECT (SELECT today()) AS current_date, (SELECT details FROM test_dates WHERE id = 1) AS event_details WHERE current_date @> [event_details IS NOT NULL];
+CREATE TABLE test_fuzz (id SERIAL PRIMARY KEY, number_col FLOAT, tag_col VARCHAR);
+INSERT INTO test_fuzz (number_col, tag_col) VALUES (NULL, 'tag1'), (1.5, NULL), (2.25, 'tag2');
+SELECT id FROM test_fuzz WHERE number_col @> (SELECT CAST(NULL AS FLOAT) FROM test_fuzz WHERE tag_col LIKE '%tag%') OR tag_col IS NULL;

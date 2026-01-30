@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/86667",
+  "title": "Dictionaries querying distributed table(s) fails if allow_experimental_analyzer=1 is set explicitly in user profile configuration",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nDictionaries does not work as expected when `<allow_experimental_analyzer>1</allow_experimental_analyzer>` is set in the profile configuration. It seems like if this settings is set explicitly, dictionaries will use the old analyzer (treating `allow_experimental_analyzer` as zero) when executing selects against distributed-tables?\nNoticed this while performing tests for upgrading ClickHouse from 24.8.5 to 25.8 (the bug was introduced in 25.2, this is not an issue in 25.1).\nI am aware of that `allow_experimental_analyzer` defaults to True in the affected releases. So the fix for us was simply to drop the configuration setting.\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nTo reproduce (with `<allow_experimental_analyzer>1</allow_experimental_analyzer>` in  `users.xml`):\n```\nCREATE DATABASE test ON CLUSTER 'test_cluster';\nCREATE TABLE test.test ON CLUSTER 'test_cluster'\n(\nname    String,\nrevenue Int\n)\nENGINE ReplicatedMergeTree('/clickhouse/tables/{shard}/test/test', '{replica}')\nORDER BY name;\nCREATE OR REPLACE TABLE test.test_d ON CLUSTER 'test_cluster' AS test.test ENGINE = Distributed('test_cluster', 'test', test, rand());\nINSERT INTO test.test_d (name, revenue) VALUES ('a', 10), ('a', 100), ('a', 20), ('b', 100), ('b', 313), ('b', 200);\nCREATE DICTIONARY test.test_dictionary ON CLUSTER  'test_cluster'\n(\nname    String,\nrevenue INT,\nis_even boolean\n)\nPRIMARY KEY name\nLAYOUT(COMPLEX_KEY_HASHED())\nSOURCE (\nCLICKHOUSE(\nDB 'test'\nQUERY 'select name, revenue, case when revenue % 10 = 0 then 1 else 0 END AS is_even\nFROM test.test_d\nQUALIFY ROW_NUMBER() OVER (PARTITION BY name ORDER BY revenue DESC) = 1'\n)\n)\nLIFETIME(MIN 0 MAX 0);\n-- Verify that changed and value are both 1\nSELECT value, changed FROM clusterAllReplicas('test_cluster', system.settings) WHERE name like 'allow_experimental_analyzer';\nSYSTEM RELOAD DICTIONARY ON CLUSTER  'test_cluster' test.test_dictionary;\n[22000] Code: 48. DB::Exception: There was an error on [clickhouse-03:9000]: Received from <\\0\u00112<\\0 v\\0�^QUALIFY clause is not supported in the old analyzer. (NOT_IMPLEMENTED) (version 25.8.1.5101 (official build)):\\0#Pld))\nSELECT name, revenue from clusterAllReplicas('{cluster}', test.test_dictionary);\n```\n**NOTE:** If the Dictionary is updated to target the `test.test` table instead of `test.test_d` the error goes away.\n**NOTE:** Eventually the RELOAD will be successful if retried multiple times when targeting the `test.test_d` table.\n**NOTE:** After removing `<allow_experimental_analyzer>1</allow_experimental_analyzer>` from the configuration the bug is no longer triggered.\n**NOTE**: My test cluster has two shards with two replicas each\n### Expected behavior\nShould be OK to include the `allow_experimental_analyzer setting=1` in the profile configuration. This should not change the behavior since it is the same as the default for this setting.",
+  "date": "2025-09-04T11:36:07Z",
+  "vulnerable_version": "25.8.1.5101",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE DATABASE test_db;",
+    "CREATE TABLE test_db.test_table (id INT UNSIGNED, name VARCHAR(255), revenue DECIMAL(10,2), created_at DATETIME DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB;",
+    "INSERT INTO test_db.test_table (id, name, revenue) VALUES (1, 'Alice', 1000.50), (2, 'Bob', 2000.75), (3, 'Charlie', NULL);",
+    "CREATE TABLE test_db.test_dictionary AS SELECT id, name, (revenue > 1500) AS is_high_revenue FROM test_db.test_table WHERE revenue IS NOT NULL;",
+    "SELECT id, name FROM test_db.test_dictionary WHERE is_high_revenue = 1;"
+  ],
+  "key_bug_features": [
+    "Dictionaries fail with allow_experimental_analyzer set to 1"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/18303",
+  "title": "ASOF JOIN skips NULL values",
+  "description": "### What happens?\n\nASOF join takes last non null value instead of last value. As far as I know, other databases and tools get last value regardless if it `NULL` or not. Expected behaviour would be adding condition, if you don't want null values:\n```sql\nASOF JOIN some_table ON some_table.time <= other_table.time AND some_table.value IS NOT NULL\n```\n\n### To Reproduce\n\n```sql\nCREATE TABLE asof_test (\n\ttime TIMESTAMP,\n\tvalue FLOAT\n);\n\nINSERT INTO asof_test (time, value) VALUES ('2025-07-15 00:00:00', 42);\nINSERT INTO asof_test (time, value) VALUES ('2025-07-15 01:00:00', null);\n\nSELECT time_series.time, asof_test.value\nFROM (VALUES ('2025-07-15 02:00:00'::TIMESTAMP)) as time_series(time)\nASOF LEFT JOIN asof_test ON asof_test.time <= time_series.time; -- returns 42 but should be null\n```\n\n### OS:\n\nx86_64\n\n### DuckDB Version:\n\n1.3.1\n\n### DuckDB Client:\n\n/\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nJure Vito Srovin\n\n### Affiliation:\n\nIndividual\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a stable release\n\n### Did you include all relevant data sets for reproducing the issue?\n\nNo - Other reason (please specify in the issue body)\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "date": "2025-07-18 09:30:58",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE asof_test_2 (time TIMESTAMP, value FLOAT, category VARCHAR);",
+    "INSERT INTO asof_test_2 (time, value, category) VALUES ('2025-07-15 00:00:00', 42, 'A');",
+    "INSERT INTO asof_test_2 (time, value, category) VALUES ('2025-07-15 01:00:00', NULL, 'B');",
+    "SELECT time_series.time, asof_test_2.value FROM (VALUES (TIMESTAMP '2025-07-15 02:00:00')) AS time_series(time) LEFT JOIN asof_test_2 ON asof_test_2.time <= time_series.time;",
+    "SELECT time_series.time, asof_test_2.value FROM (VALUES (TIMESTAMP '2025-07-15 02:00:00')) AS time_series(time) LEFT JOIN asof_test_2 ON asof_test_2.time <= time_series.time AND asof_test_2.value IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "ASOF JOIN ignores NULL values in result"
+  ]
+}

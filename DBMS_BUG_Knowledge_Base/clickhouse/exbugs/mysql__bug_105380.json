@@ -1,0 +1,19 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=105380",
+  "title": "result of GROUP_CONCAT is inconsistent when group_concat_max_len becomes larger",
+  "description": "The result length of function GROUP_CONCAT is wrong even when group_concat_max_len  increase. With a small group_concat_max_len, the result is correct.\nHow to repeat:\nroot@localhost:(none) 8.0.27> SET SESSION group_concat_max_len=1024;\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nroot@localhost:(none) 8.0.27> SELECT LENGTH(t.value) FROM (   SELECT GROUP_CONCAT('32689,34068,34370,34930,37034,37638,38478,38643,38925,39889,40497,41729,43085,43115,43500,44781,46344,46411,47173,47228,47623,48576,50293,50653,51794,54177,55347,55398,59492,59598,59804,59969,60612,62024,62754,62796,64647,68679,68974,69482,69625,70162,71100000') AS value ) t;\r\n+-----------------+\r\n| LENGTH(t.value) |\r\n+-----------------+\r\n|             260 |\r\n+-----------------+\r\n1 row in set (0.00 sec)\r\n\r\nroot@localhost:(none) 8.0.27> SET SESSION group_concat_max_len=1073741832;\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nroot@localhost:(none) 8.0.27> SELECT LENGTH(t.value) FROM (   SELECT GROUP_CONCAT('32689,34068,34370,34930,37034,37638,38478,38643,38925,39889,40497,41729,43085,43115,43500,44781,46344,46411,47173,47228,47623,48576,50293,50653,51794,54177,55347,55398,59492,59598,59804,59969,60612,62024,62754,62796,64647,68679,68974,69482,69625,70162,71100000') AS value ) t;\r\n+-----------------+\r\n| LENGTH(t.value) |\r\n+-----------------+\r\n|             255 |\r\n+-----------------+\r\n1 row in set (0.00 sec)\r\n\r\nThe result of the second execution is obviously wrong.\nSuggested fix:\nThe root cause of this issue is arithmetic overflow in function `Item_func_group_concat::make_string_field()`, which use the product of `max_characters` (uint32) and `collation.collation->mbmaxlen` (uint) as parameter `len_arg` (uint32) in constructor `Field_blob::Field_blob()`.",
+  "date": "2021-10-29 09:35:00",
+  "vulnerable_version": "8.0.27",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_group_concat (id UInt32, value String);",
+    "INSERT INTO test_group_concat (id, value) VALUES (1, '32689'), (2, '34068'), (3, '34370'), (4, '34930'), (5, '37034');",
+    "SELECT LENGTH(arrayStringConcat(groupArray(value))) FROM test_group_concat;",
+    "SELECT LENGTH(arrayStringConcat(groupArray(value))) FROM test_group_concat;"
+  ],
+  "key_bug_features": [
+    "GROUP_CONCAT result length inconsistent with large group_concat_max_len"
+  ]
+}

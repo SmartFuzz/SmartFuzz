@@ -1,0 +1,15 @@
+CREATE TABLE test_macros (id UInt32, name String, value String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_macros (id, name, value) VALUES (1, 'macro1', 'value1'), (2, 'macro2', 'value2'), (3, 'macro3', NULL);
+SELECT getMacro((SELECT name FROM test_macros WHERE id = 1)) || ' - ' || (SELECT value FROM test_macros WHERE id = 2) AS result;
+SELECT id, (getMacro(name) || COALESCE(value, 'default_value')) AS combined_value FROM test_macros GROUP BY id HAVING combined_value != '';
+SELECT DISTINCT (getMacro('test') || IFNULL(value, 'empty')) AS macro_value FROM test_macros WHERE id < 3;
+SELECT id, COUNT(*) OVER (PARTITION BY (getMacro('macro') || ' - Partition')) AS count_partition FROM test_macros WHERE value IS NOT NULL ORDER BY id;
+SELECT getMacro(name || CAST(id AS String)) AS final_result FROM test_macros WHERE value IS NOT NULL;
+SELECT (getMacro('macro_name') || CASE WHEN value IS NULL THEN 'NULL_value' ELSE value END) AS result_case FROM test_macros;
+SELECT id, (getMacro('non_existing') || '') AS macro_test FROM test_macros WHERE name LIKE 'macro%';
+CREATE TEMPORARY TABLE temp_macros AS SELECT * FROM test_macros WHERE value IS NOT NULL;
+INSERT INTO temp_macros SELECT id, 'macro_' || (id % 3) AS name, NULL AS value FROM test_macros;
+SELECT getMacro('temp_macro') || (SELECT COUNT(*) FROM temp_macros) AS combined_count FROM system.macros LIMIT 1;
+SELECT id, (getMacro((SELECT name FROM temp_macros WHERE id = 1) || ' concatenation')) AS macro_concatenation FROM temp_macros;
+SELECT value, (getMacro('another_macro') || ' - ' || id) AS extended_macro FROM temp_macros WHERE id = 2;
+SELECT id, getMacro(name) AS macro_value FROM test_macros WHERE id IN (SELECT id FROM temp_macros WHERE value IS NULL);

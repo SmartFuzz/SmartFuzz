@@ -1,0 +1,13 @@
+CREATE TABLE test_data (id INT PRIMARY KEY, created_at TIMESTAMPTZ, bitmask BITSTRING);
+INSERT INTO test_data VALUES (1, timestamptz '1992-01-01 20:38:40', '10101'::BITSTRING), (2, NULL, '00000'::BITSTRING);
+SELECT id, strftime(created_at, '%Y-%m-%d %H:%M:%S') AS formatted_time, bitmask & '11000'::BITSTRING AS masked_bits FROM test_data WHERE bitmask IS NOT NULL;
+SELECT id, strftime(created_at, '%a, %-d %B %Y') AS day FROM test_data WHERE created_at > timestamptz '1990-01-01 00:00:00' AND (bitmask & '11111'::BITSTRING) <> '00000'::BITSTRING;
+SELECT id, COUNT(*) FROM (SELECT id, strftime(created_at, '%Y') AS year, bitmask & '10001'::BITSTRING AS result_bitmask FROM test_data WHERE created_at IS NOT NULL GROUP BY year, result_bitmask HAVING result_bitmask <> '00000'::BITSTRING) AS derived GROUP BY id;
+CREATE TABLE additional_data (user_id INT, status VARCHAR);
+INSERT INTO additional_data VALUES (1, 'active'), (2, 'inactive'), (3, NULL);
+SELECT td.id, ad.status, strftime(td.created_at, '%Y-%m-%d') AS date, td.bitmask & '10101'::BITSTRING AS combined_mask FROM test_data td LEFT JOIN additional_data ad ON td.id = ad.user_id WHERE ad.status IS NOT NULL OR td.bitmask IS NULL;
+SELECT id, MAX(CASE WHEN bitmask & '11111'::BITSTRING <> '00000'::BITSTRING THEN 1 ELSE 0 END) AS is_active FROM test_data GROUP BY id HAVING is_active = 1;
+SELECT (SELECT COUNT(*) FROM test_data WHERE created_at < timestamptz '2000-01-01') AS old_count, strftime(MIN(created_at), '%Y-%m-%d') AS earliest_date FROM test_data;
+ALTER TABLE test_data ADD COLUMN description TEXT DEFAULT 'No description';
+INSERT INTO test_data (id, created_at, bitmask, description) VALUES (3, NULL, NULL, 'NULL entry');
+SELECT id, strftime(created_at, '%H:%M:%S') AS time_only FROM test_data WHERE description IS NOT NULL AND bitmask & '00001'::BITSTRING = '00001'::BITSTRING;

@@ -1,0 +1,13 @@
+CREATE TABLE test_dates (id INTEGER PRIMARY KEY, event_date DATE NOT NULL, description TEXT);
+INSERT INTO test_dates (id, event_date, description) VALUES (1, make_date(2023, 1, 1), 'New Year'), (2, make_date(2023, 2, 1), 'February First'), (3, make_date(2023, 1, 31), 'January Last');
+CREATE TABLE event_intervals (event_id INTEGER, start_date TIMESTAMP, end_date TIMESTAMP);
+INSERT INTO event_intervals (event_id, start_date, end_date) VALUES (1, TIMESTAMP '2023-01-01 00:00:00', TIMESTAMP '2023-01-02 00:00:00'), (2, TIMESTAMP '2023-01-30 12:00:00', TIMESTAMP '2023-01-31 12:00:00');
+SELECT d.id, d.event_date + INTERVAL 5 DAY AS event_plus_five, d.description FROM test_dates d WHERE d.event_date = (SELECT MAX(event_date) FROM test_dates) - INTERVAL 2 DAY;
+SELECT e.event_id, e.start_date, e.end_date, e.end_date + INTERVAL (SELECT COUNT(*) FROM test_dates) DAY AS extended_end_date FROM event_intervals e WHERE e.start_date = make_date(2023, 1, 1) + INTERVAL 1 DAY;
+SELECT COUNT(*) as event_count, make_date(2023, 5, 1) + INTERVAL 0 DAY FROM test_dates GROUP BY make_date(2023, 5, 1) + INTERVAL (SELECT COUNT(*) FROM event_intervals) DAY HAVING event_count > 0;
+CREATE TABLE temp_dates (date_id SERIAL PRIMARY KEY, event_date DATE);
+INSERT INTO temp_dates (event_date) VALUES (NULL), (make_date(2023, 3, 15)), (make_date(2023, 3, 1));
+DROP TABLE IF EXISTS joined_results;
+CREATE TABLE joined_results AS SELECT d.id, d.event_date, e.start_date FROM test_dates d LEFT JOIN event_intervals e ON d.event_date + INTERVAL 2 DAY = e.start_date WHERE d.id IS NOT NULL;
+SELECT date_id, event_date, event_date + INTERVAL NULL AS null_interval FROM temp_dates;
+SELECT event_id, e.end_date, make_date(1992, 9, 20) + INTERVAL 10 DAY AS future_date FROM event_intervals e WHERE e.start_date < make_date(2023, 6, 1) + INTERVAL 0 DAY;

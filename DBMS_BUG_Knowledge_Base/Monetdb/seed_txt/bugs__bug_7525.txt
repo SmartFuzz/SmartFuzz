@@ -1,0 +1,10 @@
+CREATE TABLE test_vals(grp INTEGER NOT NULL, value INTEGER CHECK(value >= 0));
+INSERT INTO test_vals VALUES (1, 100), (2, 200), (1, NULL), (2, 300), (3, -50);
+CREATE OR REPLACE AGGREGATE jit_sum_variadic(*, INTEGER) RETURNS BIGINT LANGUAGE C { result->initialize(result, aggr_group.count);
+memset(result->data, 0, result->count * sizeof(result->null_value));
+for(size_t i = 0;
+i < arg2.count;
+i++) { result->data[aggr_group.data[i]] += input.data[i];
+} };
+SELECT grp, jit_sum_variadic(value) FROM test_vals GROUP BY grp;
+SELECT grp, jit_sum_variadic(value) FROM test_vals WHERE value IS NOT NULL GROUP BY grp;

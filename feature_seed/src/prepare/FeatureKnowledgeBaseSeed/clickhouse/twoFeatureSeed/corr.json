@@ -1,0 +1,19 @@
+{
+    "function": "corr",
+    "operator": "a NOT IN ...",
+    "sql_array": [
+        "CREATE TABLE test_data (id UInt32, x_value Float64, y_value Float64, category String) ENGINE = Memory;",
+        "INSERT INTO test_data (id, x_value, y_value, category) VALUES (1, 1.1, 2.2, 'A'), (2, 2.2, NULL, 'B'), (3, 3.3, 4.4, 'A'), (4, 4.4, -5.5, NULL), (5, -5.5, -6.6, 'B');",
+        "SELECT corr(x_value, y_value) FROM test_data WHERE category NOT IN (SELECT category FROM test_data WHERE id < 3);",
+        "SELECT category, corr(x_value, y_value) AS correlation FROM test_data GROUP BY category HAVING corr(x_value, y_value) NOT IN (SELECT corr(x_value, y_value) FROM test_data WHERE id > 2);",
+        "CREATE TABLE temp_series (i UInt32, x_value Float64, y_value Float64) ENGINE = Memory;",
+        "INSERT INTO temp_series (i, x_value, y_value) SELECT id, x_value, y_value FROM test_data WHERE id NOT IN (1, 2, 3);",
+        "SELECT corr(x_value, y_value) AS correlation FROM temp_series WHERE x_value NOT IN (SELECT x_value FROM test_data WHERE x_value IS NOT NULL);",
+        "SELECT id, x_value, y_value FROM test_data WHERE (x_value, y_value) NOT IN (SELECT x_value, y_value FROM test_data WHERE category = 'A' AND x_value > 2.0);",
+        "DROP TABLE IF EXISTS join_test;",
+        "CREATE TABLE join_test (a UInt32, b Float64, c Float64) ENGINE = Memory;",
+        "INSERT INTO join_test VALUES (1, NULL, 3.3), (2, 5.5, NULL), (3, 7.7, 8.8), (4, -1.0, -2.0);",
+        "SELECT corr(t1.b, t2.c) FROM join_test AS t1 JOIN join_test AS t2 ON t1.a NOT IN (SELECT a FROM join_test WHERE c IS NULL) WHERE t1.b IS NOT NULL AND t2.c IS NOT NULL;",
+        "SELECT COUNT(*) FROM (SELECT x_value, y_value FROM test_data WHERE category NOT IN (SELECT DISTINCT category FROM test_data WHERE category IS NOT NULL) GROUP BY x_value, y_value) AS sub WHERE corr(x_value, y_value) IS NOT NULL;"
+    ]
+}

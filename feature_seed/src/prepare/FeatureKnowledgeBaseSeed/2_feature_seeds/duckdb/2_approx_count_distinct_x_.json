@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id INT, event_time TIME, value FLOAT);
+INSERT INTO test_table VALUES (1, TIME '10:00:00', 10.0), (2, TIME '12:00:00', NULL), (3, TIME '14:00:00', 20.0), (4, TIME '16:00:00', 30.0), (5, TIME '18:00:00', NULL);
+SELECT approx_count_distinct(id) FROM (SELECT id, event_time - INTERVAL 4 HOUR AS adjusted_time FROM test_table WHERE value IS NOT NULL) AS subquery;
+SELECT COUNT(*) FROM (SELECT id, approx_count_distinct(value) OVER (PARTITION BY event_time) AS approx_dist FROM test_table) AS partitioned;
+SELECT APPROX_COUNT_DISTINCT(id), event_time FROM (SELECT id, event_time - INTERVAL (CASE WHEN id % 2 = 0 THEN 2 ELSE 1 END) HOUR AS adjusted_time FROM test_table) AS adjust WHERE adjusted_time IS NOT NULL GROUP BY adjusted_time;
+SELECT event_time, approx_count_distinct(value) FROM test_table GROUP BY event_time HAVING approx_count_distinct(value) > 1;
+SELECT approx_count_distinct(value) FROM (SELECT value, id FROM test_table WHERE event_time - INTERVAL 1 HOUR < TIME '12:00:00') AS time_filtered;
+CREATE TABLE secondary_table (ref_id INT, description VARCHAR);
+INSERT INTO secondary_table VALUES (1, 'Event A'), (2, NULL), (3, 'Event C');
+SELECT st.description, approx_count_distinct(tt.id) FROM secondary_table st LEFT JOIN test_table tt ON st.ref_id = tt.id GROUP BY st.description;

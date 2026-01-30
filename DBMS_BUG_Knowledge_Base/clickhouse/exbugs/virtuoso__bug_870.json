@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/870",
+  "title": "MIN disregards unbound values",
+  "description": "The MIN aggregator in Virtuoso seems to skip unbound values, at least in the example below, and I think that's wrong.\ninsert data {\n  <http://s1> <http://p1> <http://o1> .\n  <http://o1> <http://p2> <http://o2> .\n  <http://x> <http://p1> <http://y> .\n}\n\nselect (min(?o2) as ?min) {\n  ?s <http://p1> ?o1 .\n  optional { ?o1 <http://p2> ?o2 }\n}\n\nThis returns <http://o2> corresponding to ?s = <http://s1>.\nNote that ?o2 for ?s = <http://x> is unbound.\nAccording to the SPARQL 1.1 spec, 15.1 unbound values are smaller than other values (\"1. (Lowest) no value assigned to the variable\"), so smaller than <http://o2>.\nI cannot find a statement that unbound values should be ignored by the MIN aggregator.\nSo it seems the output of the query ?min should be unbound and not <http://p2>.",
+  "date": "2019-09-09 18:52:36",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id Int32, value String, nullable_value Nullable(String));",
+    "INSERT INTO test_table (id, value, nullable_value) VALUES (1, 'data1', 'data2'), (2, 'data3', NULL), (3, 'data4', 'data5'), (4, NULL, NULL);",
+    "SELECT MIN(nullable_value) AS min_value FROM test_table;",
+    "SELECT MIN(value) AS min_value FROM test_table WHERE nullable_value IS NOT NULL;",
+    "SELECT (SELECT MIN(value) FROM test_table) AS min_value, (SELECT MIN(nullable_value) FROM test_table) AS min_nullable_value;"
+  ],
+  "key_bug_features": [
+    "MIN aggregator skips unbound values in queries"
+  ]
+}

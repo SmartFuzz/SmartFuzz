@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/be436a7f45",
+  "title": "Use-after-free on schema change where RTREE is used inside of a trigger",
+  "description": "drh added on 2017-08-17 02:25:13:\nIf a virtual table invokes sqlite3_step() as part of its xConnect method\n(as RTREE does) and if that virtual table is used inside of a trigger and\nif an external schema change occurs on the first use of that trigger, then\nthe xConnect method will provoke a schema reset that will delete a pointer\nto the trigger out from under the query planner, resulting in a use-after-free\nand a probable segfault.  The following C code demonstrates the problems:\n#include <stdio.h>\n#include <unistd.h>\n#include \"sqlite3.h\"\n\nint main(int argc, char *argv){\n  sqlite3 *db1, *db2;\n  unlink(\"test.db\");\n  printf(\"VERSION: %s\\n\", sqlite3_libversion());\n  sqlite3_open(\"test.db\", &db1);\n  sqlite3_exec(db1, \n   \"CREATE VIRTUAL TABLE r1 USING rtree(id, x1, x2, y1, y2);\\n\"\n   \"CREATE TABLE t1(id, x1, x2, y1, y2);\\n\"\n   \"CREATE TABLE log(l);\\n\"\n   \"CREATE TRIGGER tr1 AFTER INSERT ON t1 BEGIN\\n\"\n   \"  INSERT INTO r1 VALUES(new.id, new.x1, new.x2, new.y1, new.y2);\\n\"\n   \"  INSERT INTO log VALUES('r1: ' || new.id);\\n\"\n   \"END;\", 0, 0, 0);\n  sqlite3_close(db1);\n  sqlite3_open(\"test.db\", &db1);\n  sqlite3_open(\"test.db\", &db2);\n  sqlite3_exec(db1, \"INSERT INTO log VALUES('startup');\", 0, 0, 0);\n  sqlite3_exec(db2, \"CREATE TABLE newtab(a,b);\", 0, 0, 0);\n  sqlite3_exec(db1, \"INSERT INTO t1 VALUES(1,2,3,4,5);\", 0, 0, 0);\n  sqlite3_close(db1);\n  sqlite3_close(db2);\n  return 0;\n}\nThis problem appears to have existed in the virtual table implementation\nforever.  The test program above first began to fail with\ncheck-in [ebc9433f] on 2010-02-16 (SQLite version 3.6.23) because that\ncheck-in was the first to cause RTREE to invoke sqlite3_step() from within\nits xConnect method.",
+  "date": "2017-08-17 02:25:137.98 years ago",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE VIRTUAL TABLE r2 USING rtree(id, x1, x2, y1, y2);",
+    "CREATE TABLE t2(id INTEGER PRIMARY KEY, x1 FLOAT, x2 FLOAT, y1 FLOAT, y2 FLOAT NOT NULL CHECK(y2 > y1));",
+    "CREATE TRIGGER tr2 AFTER INSERT ON t2 FOR EACH ROW INSERT INTO r2 VALUES(NEW.id, NEW.x1, NEW.x2, NEW.y1, NEW.y2);",
+    "INSERT INTO t2 VALUES(1, 1.5, 2.5, 3.5, 4.5);",
+    "CREATE TABLE newtab(a VARCHAR(255), b INTEGER DEFAULT 0);"
+  ],
+  "key_bug_features": [
+    "RTREE used inside a trigger with schema change"
+  ]
+}

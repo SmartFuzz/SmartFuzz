@@ -1,0 +1,8 @@
+CREATE TABLE test_table (id UInt32, value Float64, name String, created_at DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, 1.5, 'Test', '2021-01-01 00:00:00'), (2, 3.0, 'EdgeCase', '2021-01-01 01:00:00'), (3, NULL, 'NULLValue', '2021-01-01 02:00:00'), (4, 5.5, '', '2021-01-01 03:00:00'), (5, -1.0, 'Negative', '2021-01-01 04:00:00');
+SELECT value / (SELECT COUNT() FROM test_table WHERE name NOT IN (SELECT name FROM test_table WHERE value > 2.5)) AS adjusted_value, aggThrow(0.5) FROM test_table GROUP BY adjusted_value HAVING adjusted_value IS NOT NULL;
+CREATE TABLE tmp_table AS SELECT id, value FROM test_table WHERE created_at < '2021-01-01 02:00:00';
+SELECT id, value, (value * 2) AS double_value FROM tmp_table WHERE id NOT IN (SELECT id FROM test_table WHERE value >= 3.0) HAVING double_value < 5.0;
+SELECT name, aggThrow(0.1) AS error_trigger FROM (SELECT id, name FROM test_table WHERE value IS NOT NULL) GROUP BY name HAVING COUNT() > 0;
+DROP TABLE IF EXISTS tmp_table;
+SELECT id, value, CASE WHEN value IS NULL THEN 'NULL' ELSE 'Not NULL' END AS value_status, aggThrow(0.03) FROM test_table WHERE created_at <= '2021-01-01 02:00:00' AND value NOT IN (1.5, 3.0, 5.5);

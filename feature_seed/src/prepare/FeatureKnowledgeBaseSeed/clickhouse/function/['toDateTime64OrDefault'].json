@@ -1,0 +1,21 @@
+[
+    "CREATE TABLE test_dates (date_expr String, scale UInt8) ENGINE = MergeTree() ORDER BY date_expr;",
+    "INSERT INTO test_dates VALUES ('1976-10-18 00:00:00', 3), ('invalid_date', 3), ('2023-01-01 12:30:00', 2);",
+    "SELECT toDateTime64OrDefault(date_expr, scale) AS result FROM test_dates;",
+    "SELECT toDateTime64OrDefault(date_expr, scale, 'GMT', toDateTime64('2001-01-01 00:00:00.00', 3)) AS result_with_default FROM test_dates;",
+    "SELECT toDateTime64OrDefault('2023-11-30 10:20:30 10', 4) AS valid_conversion;",
+    "SELECT toDateTime64OrDefault('non_datetime_string', 2) AS invalid_conversion;",
+    "SELECT toDateTime64OrDefault('2023-11-30 10:20:30 10', 2, 'UTC', toDateTime64('2001-01-01 00:00:00', 5)) AS valid_conversion_with_default;",
+    "SELECT (SELECT toDateTime64OrDefault('invalid_data', 5) FROM test_dates) AS subquery_result;",
+    "SELECT t1.date_expr, toDateTime64OrDefault(t1.date_expr, t1.scale) AS converted_date FROM test_dates AS t1 JOIN (SELECT 'another_date' AS date_expr, 3 AS scale) AS t2 ON t1.scale = t2.scale;",
+    "CREATE TABLE nested_test (id UInt32, expr String) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO nested_test VALUES (1, '1970-01-01 00:00:01'), (2, 'invalid_value');",
+    "SELECT id, toDateTime64OrDefault(expr, 3, 'UTC', toDateTime64('2000-01-01 00:00:00', 3)) AS converted_value FROM nested_test;",
+    "SELECT id, (SELECT toDateTime64OrDefault(expr, 2) FROM nested_test WHERE id = 2) AS nested_conversion FROM nested_test;",
+    "SELECT toDateTime64OrDefault(NULL, 3) AS null_input;",
+    "SELECT toDateTime64OrDefault('1976-10-18 00:00:00', 5) AS precision_test;",
+    "CREATE TABLE joins_test (id UInt32, date_expr String) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO joins_test VALUES (1, '2022-10-10 10:10:10'), (2, '2000-02-29 00:00:00');",
+    "SELECT j.id, toDateTime64OrDefault(j.date_expr, 3) AS converted_date FROM joins_test AS j WHERE j.id = 1;",
+    "SELECT coalesce(toDateTime64OrDefault(NULL, 3), toDateTime64('2002-01-01 00:00:00', 3)) AS coalesce_test;"
+]

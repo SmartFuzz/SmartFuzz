@@ -1,0 +1,11 @@
+CREATE TABLE certificates (id INT PRIMARY KEY, user_id INT, cert_data VARCHAR, created_at TIMESTAMP);
+INSERT INTO certificates (id, user_id, cert_data, created_at) VALUES (1, 101, 'dsa-test', NOW()), (2, 102, NULL, NOW());
+SELECT id, cert_data, xenc_X509_certificate_serialize(cert_data) AS serialized_cert FROM certificates WHERE cert_data <> NULL;
+SELECT user_id, COUNT(*) FROM certificates GROUP BY user_id HAVING COUNT(*) <> (SELECT COUNT(*) FROM certificates) - 1;
+SELECT *, (SELECT xenc_X509_certificate_serialize(cert_data) FROM certificates WHERE id = 1) <> (SELECT cert_data FROM certificates WHERE user_id = 101) AS comparison FROM certificates;
+SELECT id, xenc_X509_certificate_serialize(NULLIF(cert_data, '')) AS serialized_cert FROM certificates WHERE user_id <> (SELECT user_id FROM certificates WHERE id = 2);
+CREATE TABLE users (user_id INT PRIMARY KEY, username VARCHAR NOT NULL, cert_id INT NULL, FOREIGN KEY (cert_id) REFERENCES certificates(id));
+INSERT INTO users (user_id, username, cert_id) VALUES (101, 'alice', 1), (102, 'bob', NULL);
+SELECT u.username, c.cert_data, xenc_X509_certificate_serialize(c.cert_data) FROM users u INNER JOIN certificates c ON u.cert_id = c.id WHERE xenc_X509_certificate_serialize(c.cert_data) <> 'error';
+SELECT user_id, MAX(created_at) AS last_cert_date FROM certificates WHERE cert_data IS NOT NULL GROUP BY user_id HAVING last_cert_date <> (SELECT MAX(created_at) FROM certificates WHERE user_id = user_id);
+SELECT id FROM (SELECT id, xenc_X509_certificate_serialize(cert_data) AS serialized_cert FROM certificates) AS subquery WHERE serialized_cert <> (SELECT serialized_cert FROM certificates WHERE id = 1) LIMIT 1;

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/17130",
+  "title": "Describe view with ref to parent table rowid return INTERNAL Error - Logical column index -1 out of range - DuckDB 1.2.2",
+  "description": "### What happens?\n\nAfter creating a view with a column derived from the rowid pseudocolumn (renamed as table_rowid), the DESCRIBE statement fails to return the expected view information and returns :\n\n> INTERNAL Error: Logical column index -1 out of range\n\nWithout reference to rowid it works well.\n\n### To Reproduce\n\nStep to reproduce the error :\n```\ncreate table sometable (column1 varchar);\ninsert into sometable values ('abc');\ncreate view someview as select rowid as table_rowid, * from sometable;\nselect * from someview;\ndescribe someview;\n```\nResult\n```\nv1.2.2 7c039464e4\nEnter \".help\" for usage hints.\nConnected to a transient in-memory database.\nUse \".open FILENAME\" to reopen on a persistent database.\nD create table sometable (column1 varchar);\nD insert into sometable values ('abc');\nD create view someview as select rowid as table_rowid, * from sometable;\nD select * from someview;\n┌─────────────┬─────────┐\n│ table_rowid │ column1 │\n│    int64    │ varchar │\n├─────────────┼─────────┤\n│      0      │ abc     │\n└─────────────┴─────────┘\nD describe someview;\nINTERNAL Error:\nLogical column index -1 out of range\nThis error signals an assertion failure within DuckDB. This usually occurs due to unexpected conditions or errors in the program's logic.\nFor more information, see https://duckdb.org/docs/dev/internal_errors\n```\nDroping this view and creating it without reference to this rowid works well :\n```\nD drop view someview;\nD create view someview as select * from sometable;\n┌─────────────┬─────────────┬─────────┬─────────┬─────────┬─────────┐\n│ column_name │ column_type │  null   │   key   │ default │  extra  │\n│   varchar   │   varchar   │ varchar │ varchar │ varchar │ varchar │\n├─────────────┼─────────────┼─────────┼─────────┼─────────┼─────────┤\n│ column1     │ VARCHAR     │ YES     │ NULL    │ NULL    │ NULL    │\n└─────────────┴─────────────┴─────────┴─────────┴─────────┴─────────┘\n\n```\n\n### OS:\n\nWindows, x86_64\n\n### DuckDB Version:\n\n1.2.2\n\n### DuckDB Client:\n\nDucDB CLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nCharles L.\n\n### Affiliation:\n\nhobbyist\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a stable release\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "date": "2025-04-15 14:34:17",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table VALUES (1, 'Alice', NULL);",
+    "CREATE VIEW test_view AS SELECT id, name FROM test_table WHERE id IS NOT NULL;",
+    "SELECT * FROM test_view;",
+    "SHOW CREATE VIEW test_view;"
+  ],
+  "key_bug_features": [
+    "DESCRIBE statement fails with view using rowid pseudocolumn"
+  ]
+}

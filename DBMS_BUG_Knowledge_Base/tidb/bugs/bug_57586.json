@@ -1,0 +1,31 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/57586",
+  "title": "comparing with `round()` in WHERE predicate may produce unexpected result",
+  "vulnerable_database": "tidb",
+  "date": "2024-11-21T08:23:38Z",
+  "vulnerable_version": "Unknown",
+  "description": "### 1. Minimal reproduce step (Required)\r\n```sql\r\ncreate table t1 (c1 double);\r\ninsert into t1 (c1) values (-2147483646.5);\r\n\r\nselect  \r\n  c1,\r\n  round(c1),\r\n  c1 > round(c1)\r\nfrom \r\n  t1\r\nwhere c1 > round(c1);\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\nwhen the third column is `0`, it should not appear:\r\nin TiDB with unistore:\r\n```\r\nmysql> select  \r\n    ->   c1,\r\n    ->   round(c1),\r\n    ->   c1 > round(c1)\r\n    -> from \r\n    ->   t1\r\n    -> where c1 > round(c1);\r\nEmpty set (0.00 sec)\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\nin TiDB with TiKV\r\n```\r\nmysql> select  \r\n    ->   c1,\r\n    ->   round(c1),\r\n    ->   c1 > round(c1)\r\n    -> from \r\n    ->   t1\r\n    -> where c1 > round(c1);\r\n+---------------+-------------+----------------+\r\n| c1            | round(c1)   | c1 > round(c1) |\r\n+---------------+-------------+----------------+\r\n| -2147483646.5 | -2147483646 |              0 |\r\n+---------------+-------------+----------------+\r\n1 row in set (0.00 sec)\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n```\r\nRelease Version: v8.5.0-alpha-184-g1c059a1216\r\nEdition: Community\r\nGit Commit Hash: 1c059a1216db711e2cb56ea9f3d1ad8c23db6327\r\nGit Branch: HEAD\r\nUTC Build Time: 2024-11-21 04:56:22\r\nGoVersion: go1.23.3\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv\r\n```\r\n\r\ntopology:\r\ndistributed.yaml:\r\n```\r\nglobal:\r\n  user: \"tidb\"\r\n  ssh_port: 22\r\n  deploy_dir: \"/tidb-deploy\"\r\n  data_dir: \"/tidb-data\"\r\n\r\ntidb_servers:\r\n  - host: 10.0.2.81\r\n\r\npd_servers:\r\n  - host: 10.0.2.82\r\n\r\ntikv_servers:\r\n  - host: 10.0.2.83\r\n```\r\n\r\n\r\n### about us\r\nWe are the BASS team from the School of Cyber Science and Technology at Beihang University. Our main focus is on system software security, operating systems, and program analysis research, as well as the development of automated program testing frameworks for detecting software defects. Using our self-developed database vulnerability testing tool, we have identified the above-mentioned vulnerabilities in TiDB that may lead to database logic error.\r\n",
+  "poc": [
+    "create table t1 (c1 double);",
+    "insert into t1 (c1) values (-2147483646.5);",
+    "select",
+    "  c1,",
+    "  round(c1),",
+    "  c1 > round(c1)",
+    "from",
+    "  t1",
+    "where c1 > round(c1);"
+  ],
+  "poc_type": "sql_text",
+  "state": "closed",
+  "key_bug_features": [
+    "comparing c1 with round(c1) in WHERE clause"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t2 (c1 DOUBLE, c2 INT NOT NULL DEFAULT 0);",
+    "INSERT INTO t2 (c1, c2) VALUES (-2147483646.5, 1);",
+    "INSERT INTO t2 (c1, c2) VALUES (NULL, 2);",
+    "SELECT c1, ROUND(c1), c1 > ROUND(c1) FROM t2 WHERE c1 > ROUND(c1);",
+    "SELECT c1, ROUND(c1), c1 > ROUND(c1) FROM t2 WHERE c2 = 1 AND c1 IS NOT NULL;"
+  ]
+}

@@ -1,0 +1,10 @@
+CREATE TABLE test.hits (EventTime DateTime, count_val Int64) ENGINE = MergeTree() ORDER BY EventTime;
+INSERT INTO test.hits VALUES ('2023-10-01 00:00:00', 100000), ('2023-10-01 01:00:00', 200000), ('2023-10-01 02:00:00', 300000);
+SELECT toHour(EventTime) AS h, count_val, bar(count_val, 0, 600000, 20) AS bar FROM test.hits GROUP BY h ORDER BY h ASC;
+SELECT toHour(EventTime) AS h, count_val, bar(count_val, 0, 600000, 50) AS bar FROM test.hits WHERE count_val < 400000 GROUP BY h ORDER BY h DESC;
+WITH (SELECT count() FROM test.hits WHERE count_val > 0) AS c_count SELECT toHour(EventTime) AS h, count_val, bar(c_count, 0, 600000, 10) AS bar FROM test.hits GROUP BY h ORDER BY h ASC;
+SELECT toHour(EventTime) AS h, count_val, bar(bar_val, 0, 600000, 30) AS bar FROM (SELECT EventTime, count_val, bar(count_val, 0, 600000, 20) AS bar_val FROM test.hits) AS subquery GROUP BY h ORDER BY h ASC;
+CREATE TABLE test.hits_backup AS test.hits;
+INSERT INTO test.hits_backup SELECT * FROM test.hits WHERE count_val < 200000;
+SELECT h, COUNT(*) AS occ, bar(occ, 0, 600000, 15) AS bar FROM (SELECT toHour(EventTime) AS h FROM test.hits_backup GROUP BY h) AS subquery GROUP BY h ORDER BY h ASC;
+SELECT h, COUNT(*) AS occurrence, bar(occurrence, 0, max_count, 25) AS bar FROM (SELECT toHour(EventTime) AS h, max(count_val) AS max_count FROM test.hits GROUP BY h) AS temp GROUP BY h ORDER BY h ASC;

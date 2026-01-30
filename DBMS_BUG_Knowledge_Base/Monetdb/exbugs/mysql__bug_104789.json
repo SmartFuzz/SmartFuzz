@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=104789",
+  "title": "Equi-height histogram is not equi-height",
+  "description": "I've encountered something that looks like a bug to me. Maybe, MySQL histograms were supposed to work this way, but I doubt this, so I'm filing this example here to bring it to MySQL developers' attention.\n\nIn short: a histogram that is generated for certain non-uniform data distribution is not at all equi-height.\nHow to repeat:\n# Test dataset\r\n\r\ncreate table t30 ( a varchar(100));\r\n\r\ninsert into t30 select 'aaa' from one_k limit 1;\r\ninsert into t30 select 'bbb' from one_k limit 2;\r\ninsert into t30 select 'eee' from one_k limit 4;\r\ninsert into t30 select concat('fff-',a) from one_k limit 8;\r\ninsert into t30 select concat('ggg-',a) from one_k limit 16;\r\ninsert into t30 select concat('kkk-',a) from one_k limit 16;\r\ninsert into t30 select concat('mmm-',a) from one_k limit 32;\r\ninsert into t30 select 'nnn' from one_k limit 64;\r\ninsert into t30 select 'ppp' from one_k limit 125;\r\ninsert into t30 select 'www' from one_k limit 250;\r\ninsert into t30 select 'zzz' from one_k limit 500;\r\n\r\nselect a, count(*) from t30 group by a order by a;\r\n+--------+----------+\r\n| a      | count(*) |\r\n+--------+----------+\r\n| aaa    |        1 |\r\n| bbb    |        2 |\r\n| eee    |        4 |\r\n| fff-90 |        1 |\r\n| fff-91 |        1 |\r\n| fff-92 |        1 |\r\n| fff-93 |        1 |\r\n...\r\n# more rows with count=1 here...\r\n...\r\n| mmm-97 |        1 |\r\n| mmm-98 |        1 |\r\n| mmm-99 |        1 |\r\n| nnn    |       64 |\r\n| ppp    |      125 |\r\n| www    |      250 |\r\n| zzz    |      500 |\r\n+--------+----------+\r\n79 rows in set (0.02 sec)\r\n\r\nanalyze table t30 update histogram on a with 20 buckets;\r\n\r\nselect json_pretty(histogram)\r\nfrom information_schema.column_statistics \r\nwhere table_name=\"t30\" and schema_name=database()\\G\r\n\r\nProduces this output:\nhttps://gist.github.com/spetrunia/a79f114f6b89ff1fa961a02fb09caf0b\nWrite a trivial script to decode the histogram:\nhttps://gist.github.com/spetrunia/6cf92913cce8d42eed67b5dec3b509f6\nRun it on the above histogram and get this:\nhttps://gist.github.com/spetrunia/1eabb3340f818fbf70e558c8695891e8\nThings of interest are:\r\nThere are many buckets that contain just one value, for example:\r\n\r\n    [\r\n      \"b64dec:type254:mmm-90\",\r\n      \"b64dec:type254:mmm-90\",\r\n      0.068762278978389,\r\n      1\r\n    ],\r\n    [\r\n      \"b64dec:type254:mmm-91\",\r\n      \"b64dec:type254:mmm-91\",  \r\n      0.06974459724950884,\r\n      1\r\n    ],\r\n\r\nBut then, the two most popular values (750 rows out of 1000 have them) were put\r\ninto the same bucket:\r\n\r\n    [\r\n      \"b64dec:type254:www\",\r\n      \"b64dec:type254:zzz\",\r\n      1.0,\r\n      2\r\n    ]\r\n\r\nThat is:\r\n- values that occur once are in separate buckets\r\n- values that occur in 25% and 50% of the rows, are put into a shared bucket.\r\nthis doesn't look like an equi-height histogram.\nSuggested fix:\nDistribute values between buckets so that bucket sizes are more uniform. at very least, put www and zzz into different buckets.",
+  "date": "2021-09-01 12:33:00",
+  "vulnerable_version": "8.0.26",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t31 (id INT PRIMARY KEY, value VARCHAR(100) NOT NULL);",
+    "INSERT INTO t31 (id, value) VALUES (1, 'aaa'), (2, 'bbb'), (3, 'ccc'), (4, 'ddd'), (5, 'eee');",
+    "CREATE TABLE t32 (a INT, b VARCHAR(100), FOREIGN KEY (a) REFERENCES t31(id));",
+    "INSERT INTO t32 (a, b) SELECT id, CONCAT('value-', value) FROM t31 WHERE id <= 3;",
+    "SELECT b, COUNT(*) FROM t32 GROUP BY b HAVING COUNT(*) > 1 ORDER BY b;"
+  ],
+  "key_bug_features": [
+    "Histogram buckets do not reflect data distribution accurately"
+  ]
+}

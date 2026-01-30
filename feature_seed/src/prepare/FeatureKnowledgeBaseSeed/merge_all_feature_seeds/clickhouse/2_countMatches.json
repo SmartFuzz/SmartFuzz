@@ -1,0 +1,11 @@
+CREATE TABLE test_strings (id UInt32, data String);
+INSERT INTO test_strings VALUES (1, 'foobar.com'), (2, 'aaaa'), (3, 'oabc'), (4, 'fo'), (5, 'barfoo');
+CREATE TABLE test_numbers (num UInt8);
+INSERT INTO test_numbers VALUES (1), (2), (3), (4), (5);
+SELECT COUNT(*) FROM test_strings WHERE countMatches(data, 'o+') = ALL (SELECT num FROM test_numbers WHERE num > 2);
+SELECT id, data FROM test_strings WHERE countMatches(data, 'o+') < ALL (SELECT num FROM test_numbers WHERE num < 5) GROUP BY data HAVING countMatches(data, 'o+') >= 1;
+SELECT id, data FROM test_strings WHERE countMatches(data, 'o+') = ALL (SELECT countMatches(data, 'a+') FROM test_strings) AND data LIKE concat('%', 'o', '%');
+SELECT data, countMatches(data, 'a+') AS match_count FROM test_strings GROUP BY data HAVING match_count = ALL (SELECT num FROM test_numbers);
+SELECT data FROM test_strings WHERE countMatches(data, 'o+') IS NOT NULL AND id > (SELECT MAX(num) FROM test_numbers) ORDER BY countMatches(data, 'o+') DESC;
+CREATE TABLE temp_test AS SELECT data FROM test_strings WHERE countMatches(data, '^foo') = 1;
+SELECT data, countMatches(data, 'a+') FROM (SELECT data FROM temp_test) AS subquery WHERE countMatches(data, 'a+') = ALL (SELECT num + 1 FROM test_numbers) LIMIT 2;

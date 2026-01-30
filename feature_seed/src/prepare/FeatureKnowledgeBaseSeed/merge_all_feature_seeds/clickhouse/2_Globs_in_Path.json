@@ -1,0 +1,10 @@
+CREATE TABLE test_globs (id UInt32, path String, value Float64) ENGINE = Memory;
+INSERT INTO test_globs VALUES (1, '/path/to/files/*.txt', 1.1), (2, '/another/path/*.csv', 2.2), (3, '/yet/another/path/*.json', NULL);
+SELECT EXISTS(SELECT * FROM test_globs WHERE value IS NOT NULL AND path LIKE '%/*.txt') AS exists_txt, EXISTS(SELECT * FROM test_globs WHERE value IS NULL) AS exists_null;
+SELECT count() FROM test_globs WHERE EXISTS(SELECT path FROM test_globs WHERE path LIKE '%/*.csv' AND value > 2.0) AND value IS NOT NULL;
+SELECT path, EXISTS(SELECT * FROM test_globs WHERE path LIKE CONCAT('/path/to/files/', '%.txt')) AS exists_glob FROM test_globs GROUP BY path HAVING exists_glob = 1;
+CREATE TABLE temp_data (num UInt32, data String) ENGINE = Memory;
+INSERT INTO temp_data VALUES (1, 'some data'), (2, 'more data'), (3, 'other data');
+SELECT a.num, a.data, EXISTS(SELECT * FROM temp_data b WHERE a.num = b.num AND b.data LIKE '%data%') AS glob_exists FROM temp_data a;
+SELECT count() FROM (SELECT path, EXISTS(SELECT * FROM test_globs WHERE path LIKE '/path/to/files/%') AS exists_path FROM test_globs) AS subquery WHERE exists_path = 1;
+SELECT path, EXISTS(SELECT * FROM temp_data WHERE data IS NOT NULL AND num > 2) AS existence FROM test_globs GROUP BY path HAVING existence = 1;

@@ -1,0 +1,7 @@
+CREATE TABLE testData (id UInt32, value Float64, date_column Date, str_column String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO testData VALUES (1, 0.1, '2023-01-01', 'alpha'), (2, 0.5, '2023-01-02', 'beta'), (3, 0.9, '2023-01-03', 'gamma'), (4, NULL, '2023-01-04', 'delta'), (5, 1.0, '2023-01-05', 'epsilon');
+SELECT quantilesExactInclusive(0.25, 0.5, 0.75, 0.9)(value) FROM testData WHERE str_column NOT LIKE 'b%';
+SELECT quantilesExactInclusive(0.33, 0.67, 1.0)(value) FROM (SELECT value FROM testData WHERE value NOT LIKE '0.1' FOR SYSTEM TIME AS OF date_column) AS sub WHERE date_column < '2023-01-04';
+SELECT id, quantilesExactInclusive(0.5, 1.0)((SELECT value FROM testData t2 WHERE t1.id = t2.id)) FROM testData t1 GROUP BY id HAVING count(value) > 1;
+CREATE TABLE tempResults AS SELECT id, quantilesExactInclusive(0.1, 0.9)(value) AS quantiles FROM testData GROUP BY id;
+SELECT * FROM tempResults WHERE quantiles[2] NOT LIKE '0.5' AND quantiles[1] IS NOT NULL ORDER BY quantiles[1] DESC;

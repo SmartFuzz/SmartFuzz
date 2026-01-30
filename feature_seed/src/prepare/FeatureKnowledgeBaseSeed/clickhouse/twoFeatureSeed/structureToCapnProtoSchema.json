@@ -1,0 +1,17 @@
+{
+    "function": "structureToCapnProtoSchema",
+    "operator": "x",
+    "sql_array": [
+        "CREATE TABLE test_table (column1 String, column2 Nullable(UInt32), column3 Array(String)) ENGINE = MergeTree() ORDER BY column1;",
+        "INSERT INTO test_table VALUES ('row1', 1, ['a', 'b']), ('row2', NULL, ['c']), ('row3', 2, []);",
+        "SELECT structureToCapnProtoSchema('column1 String, column2 Nullable(UInt32), column3 Array(String)') WHERE multiIf(column2 IS NOT NULL, structureToCapnProtoSchema('column1 String, column2 Nullable(UInt32)'), structureToCapnProtoSchema('column1 String, column2 String')) = structureToCapnProtoSchema('column1 String') FORMAT RawBLOB;",
+        "SELECT structureToCapnProtoSchema('column1 String, column2 Array(Tuple(a UInt32, b Nullable(String))), column3 Map(String, UInt8)') FORMAT RawBLOB WHERE (SELECT COUNT() FROM test_table WHERE multiIf(column2 IS NOT NULL, column2, array()) != array()) >= 1;",
+        "CREATE TABLE temp_table AS SELECT column1, structureToCapnProtoSchema(column3) AS CapnProtoSchema FROM test_table ARRAY JOIN column3 GROUP BY column1;",
+        "SELECT structureToCapnProtoSchema('column1 String, column2 UInt32') FORMAT RawBLOB HAVING multiIf(column1 = 'row1', 1, 0) = 1;",
+        "INSERT INTO test_table SELECT column1, multiIf(column2 IS NOT NULL, column2, 0), column3 FROM test_table;",
+        "SELECT structureToCapnProtoSchema('column1 Nullable(String), column2 Nullable(UInt32)') FORMAT RawBLOB WHERE column1 IS NULL AND column2 IS NOT NULL;",
+        "CREATE TABLE join_table (join_col String, other_col Int32) ENGINE = MergeTree() ORDER BY join_col;",
+        "INSERT INTO join_table VALUES ('row1', 100), ('row2', 200), ('row3', NULL);",
+        "SELECT t1.column1, t2.other_col, structureToCapnProtoSchema('t1.column1 String, t2.other_col Nullable(Int32)') FROM test_table AS t1 JOIN join_table AS t2 ON multiIf(t1.column1 = 'row1', 1, 0) = (CASE WHEN t2.other_col IS NULL THEN 1 ELSE 0 END);"
+    ]
+}

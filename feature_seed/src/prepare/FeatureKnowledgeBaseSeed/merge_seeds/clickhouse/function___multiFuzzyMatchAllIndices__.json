@@ -1,0 +1,12 @@
+CREATE TABLE test_strings (id UInt32, haystack String) ENGINE = Memory;
+INSERT INTO test_strings VALUES (1, 'apple'), (2, 'application'), (3, 'banana'), (4, 'grape'), (5, 'pineapple');
+SELECT id, multiFuzzyMatchAllIndices(haystack, 1, ['apple', 'banana', 'pine']) FROM test_strings;
+CREATE TABLE test_patterns (pattern String) ENGINE = Memory;
+INSERT INTO test_patterns VALUES ('app'), ('ban'), ('gr'), ('pine'), ('appl');
+SELECT ts.id, multiFuzzyMatchAllIndices(ts.haystack, 1, (SELECT arrayJoin(pattern) FROM test_patterns) ) FROM test_strings ts;
+WITH (SELECT arrayJoin(['app', 'ban', 'gr', 'pine'])) AS patterns SELECT id, multiFuzzyMatchAllIndices(haystack, 2, patterns) FROM test_strings;
+CREATE TABLE haystack_reference AS SELECT haystack FROM test_strings WHERE id < 4;
+SELECT id, multiFuzzyMatchAllIndices(haystack, 1, ['apple', 'application']) FROM haystack_reference;
+WITH (SELECT arrayJoin(['apple', 'banana'])) AS search_patterns SELECT id, multiFuzzyMatchAllIndices(haystack, 2, search_patterns) FROM test_strings WHERE haystack LIKE '%a%';
+SELECT id, multiFuzzyMatchAllIndices(haystack, 0, ['apple', 'banana']) FROM test_strings WHERE haystack IN (SELECT haystack FROM test_strings WHERE id < 4);
+SELECT ts.id, multiFuzzyMatchAllIndices(ts.haystack, 3, ['pineapple', 'banana']) FROM test_strings ts JOIN (SELECT id FROM test_strings WHERE id IN (1, 3)) AS subquery ON ts.id = subquery.id;

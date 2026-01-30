@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=107390",
+  "title": "Audit plugin does not log multiqueries correctly",
+  "description": "The audit plugin does not log multiqueries correctly, and will always log the full request, instead of only the query of interested.\nHow to repeat:\nMake this small change in sql_audit.cc to print out the query being logged.\r\n\r\ndiff --git a/sql/sql_audit.cc b/sql/sql_audit.cc\r\nindex 2dce8622f25..827b157de62 100644\r\n--- a/sql/sql_audit.cc\r\n+++ b/sql/sql_audit.cc\r\n@@ -309,6 +309,7 @@ inline const CHARSET_INFO *thd_get_audit_query(THD *thd,\r\n   } else {\r\n     query->str = thd->query().str;\r\n     query->length = thd->query().length;\r\n+    fprintf(stderr, \"%*s\\n\", (int)query->length, query->str);\r\n     return thd->charset();\r\n   }\r\n }\n\nRun this mtr test:\r\n\r\ndiff --git a/mysql-test/suite/audit_null/t/foo-master.opt b/mysql-test/suite/audit_null/t/foo-master.opt\r\nnew file mode 100644\r\nindex 00000000000..bc88b4d7d91\r\n--- /dev/null\r\n+++ b/mysql-test/suite/audit_null/t/foo-master.opt\r\n@@ -0,0 +1 @@\r\n+$AUDIT_NULL_OPT\r\n\\ No newline at end of file\r\ndiff --git a/mysql-test/suite/audit_null/t/foo.test b/mysql-test/suite/audit_null/t/foo.test\r\nnew file mode 100644\r\nindex 00000000000..4e857ca3c67\r\n--- /dev/null\r\n+++ b/mysql-test/suite/audit_null/t/foo.test\r\n@@ -0,0 +1,12 @@\r\n+--source include/have_null_audit_plugin.inc\r\n+--source include/no_protocol.inc\r\n+\r\n+--replace_regex /\\.dll/.so/\r\n+eval INSTALL PLUGIN null_audit SONAME '$AUDIT_NULL';\r\n+\r\n+delimiter |;\r\n+select 1; select 2; select 3; select 4; select 5;|\r\n+delimiter ;|\r\n+\r\n+\r\n+UNINSTALL PLUGIN null_audit;\n\nCheck error logs and find:\r\n\r\nselect 1; select 2; select 3; select 4; select 5\r\nselect 1; select 2; select 3; select 4; select 5\r\nselect 1; select 2; select 3; select 4; select 5\r\nselect 1; select 2; select 3; select 4; select 5\r\nselect 2; select 3; select 4; select 5\r\nselect 2; select 3; select 4; select 5\r\nselect 2; select 3; select 4; select 5\r\nselect 2; select 3; select 4; select 5\r\nselect 3; select 4; select 5\r\nselect 3; select 4; select 5\r\nselect 3; select 4; select 5\r\nselect 3; select 4; select 5\r\nselect 4; select 5\r\nselect 4; select 5\r\nselect 4; select 5\r\nselect 4; select 5\r\nselect 5\r\nselect 5\r\nselect 5\r\nselect 5\r\nselect 5\n\nThe expected output should be:\r\nselect 1;\r\nselect 1;\r\nselect 1;\r\nselect 1;\r\nselect 2;\r\nselect 2;\r\nselect 2;\r\nselect 2;\r\nselect 3;\r\nselect 3;\r\nselect 3;\r\nselect 3;\r\nselect 4;\r\nselect 4;\r\nselect 4;\r\nselect 4;\r\nselect 5;\r\nselect 5;\r\nselect 5;\r\nselect 5;\r\nselect 5;\nSuggested fix:\nThere are different call sites depending on the audit event class.\r\n\r\nAt least, for MYSQL_AUDIT_GENERAL_LOG, we do have the query length information passed into Query_logger::general_log_write. However, we throw away that information when we call mysql_audit_general_log.\r\n\r\nThe most general solution is probably to store the current query length on the THD so that it is accessible from thd_get_audit_query. I'm not sure how safe it is to use m_parser_state->m_lip.found_semicolon directly.",
+  "date": "2022-05-24 20:48:00",
+  "vulnerable_version": "8.0.29",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INTEGER PRIMARY KEY, name TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table (id, name) VALUES (1, 'Alice');",
+    "INSERT INTO test_table (id, name) VALUES (2, NULL);",
+    "SELECT id, name FROM test_table WHERE id IN (SELECT id FROM test_table WHERE name IS NOT NULL);",
+    "UPDATE test_table SET name = 'Bob' WHERE id = 1;"
+  ],
+  "key_bug_features": [
+    "Audit plugin logs full request instead of individual queries"
+  ]
+}

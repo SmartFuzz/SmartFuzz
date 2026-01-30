@@ -1,0 +1,17 @@
+{
+    "function": "map_contains_value(map, value)",
+    "operator": "-",
+    "sql_array": [
+        "CREATE TABLE test_table (id INT, data_map MAP<VARCHAR, INT>, created_at TIMESTAMPTZ);",
+        "INSERT INTO test_table (id, data_map, created_at) VALUES (1, MAP {'key1': 10, 'key2': 20}, TIMESTAMPTZ '2022-01-01 00:00:00 +00:00');",
+        "INSERT INTO test_table (id, data_map, created_at) VALUES (2, MAP {'key1': 30, 'key2': NULL}, TIMESTAMPTZ '2022-01-02 00:00:00 +00:00');",
+        "INSERT INTO test_table (id, data_map, created_at) VALUES (3, MAP {'key3': 40}, TIMESTAMPTZ '2022-01-03 00:00:00 +00:00');",
+        "INSERT INTO test_table (id, data_map, created_at) VALUES (4, MAP {'key1': 50, 'key2': 60}, TIMESTAMPTZ '2022-01-04 00:00:00 +00:00');",
+        "SELECT id, map_contains_value(data_map, 20) AS contains_value, created_at - TIMESTAMPTZ '2022-01-01 00:00:00 +00:00' AS time_diff FROM test_table WHERE map_contains_value(data_map, 30) IS TRUE;",
+        "SELECT MAX(created_at) - MIN(created_at) AS overall_time_diff FROM test_table WHERE map_contains_value(data_map, (SELECT MAX(data_map['key1']) FROM test_table WHERE id = 1));",
+        "SELECT id, (SELECT COUNT(*) FROM test_table WHERE map_contains_value(data_map, 10) OR map_contains_value(data_map, 20)) AS count FROM test_table GROUP BY id HAVING count > 0;",
+        "WITH filtered_map AS (SELECT id, data_map FROM test_table WHERE map_contains_value(data_map, 20)) SELECT id, created_at, created_at - TIMESTAMPTZ '1970-01-01 00:00:00 +00:00' AS unix_epoch FROM filtered_map;",
+        "CREATE TABLE temp_table AS SELECT id, data_map, created_at FROM test_table WHERE created_at - (TIMESTAMPTZ '2022-01-01 00:00:00 +00:00') < INTERVAL '30 days';",
+        "SELECT id, map_contains_value(data_map, COALESCE(NULLIF(CAST(NULL AS VARCHAR), ''), 'key2')) AS contains_coalesce FROM temp_table;"
+    ]
+}

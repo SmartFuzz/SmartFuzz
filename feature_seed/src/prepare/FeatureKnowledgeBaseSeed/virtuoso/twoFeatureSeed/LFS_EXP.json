@@ -1,0 +1,18 @@
+{
+    "function": "LFS_EXP",
+    "operator": "NOT",
+    "sql_array": [
+        "CREATE TABLE web_exports (id SERIAL PRIMARY KEY, url VARCHAR(255) NOT NULL, path VARCHAR(255) NOT NULL, export_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO web_exports (url, path) VALUES ('www.example.com', '/data/');",
+        "SELECT LFS_EXP(url, path, CONCAT('sites/', REPLACE(url, 'www.', ''), '_export'), '/temp/') FROM web_exports WHERE NOT (url IS NULL);",
+        "SELECT COUNT(*) AS export_count FROM web_exports WHERE NOT (LFS_EXP(url, path, CONCAT('sites/', REPLACE(url, 'www.', ''), '_export'), '/temp/') IS NULL);",
+        "SELECT url, path FROM web_exports WHERE url NOT IN (SELECT url FROM web_exports WHERE export_time < NOW() - INTERVAL '1 day');",
+        "CREATE TABLE temp_exports (temp_id SERIAL PRIMARY KEY, web_export_id INT REFERENCES web_exports(id), data TEXT);",
+        "INSERT INTO temp_exports (web_export_id, data) SELECT id, LFS_EXP(url, path, 'temp_data', '/temp/') FROM web_exports WHERE NOT (url = '');",
+        "SELECT temp_id, (CASE WHEN data IS NOT NULL THEN data ELSE 'No Data' END) AS export_data FROM temp_exports WHERE web_export_id NOT IN (SELECT id FROM web_exports WHERE url IS NOT NULL);",
+        "UPDATE web_exports SET path = CONCAT(path, '_archived') WHERE NOT (path LIKE '%archived%');",
+        "DROP TABLE IF EXISTS old_exports;",
+        "CREATE TABLE old_exports AS SELECT * FROM web_exports WHERE NOT (export_time < NOW() - INTERVAL '30 days');",
+        "SELECT LFS_EXP(u.url, u.path, CONCAT('sites/', REPLACE(u.url, 'www.', ''), '_archive'), '/archive/') FROM web_exports u JOIN old_exports o ON u.id = o.web_export_id WHERE NOT (o.web_export_id IS NULL);"
+    ]
+}

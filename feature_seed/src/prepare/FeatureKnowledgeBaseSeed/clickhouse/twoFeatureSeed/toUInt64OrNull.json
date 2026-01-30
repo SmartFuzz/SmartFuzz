@@ -1,0 +1,16 @@
+{
+    "function": "toUInt64OrNull",
+    "operator": "a ? b : c",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, value String, number String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table (id, value, number) VALUES (1, 'valid', '123'), (2, 'invalid', 'abc'), (3, 'boundary', '18446744073709551615'), (4, 'float', '3.14'), (5, 'negative', '-1'), (6, 'empty', ''), (7, 'na', 'NaN');",
+        "SELECT id, toUInt64OrNull(number) AS converted_number, CASE WHEN toUInt64OrNull(number) IS NULL THEN 'Conversion Failed' ELSE 'Conversion Successful' END AS conversion_status FROM test_table;",
+        "SELECT id, value, toUInt64OrNull(number) ? 1 : 0 AS success_flag FROM test_table WHERE id IN (SELECT id FROM test_table WHERE toUInt64OrNull(number) IS NOT NULL) ORDER BY success_flag DESC;",
+        "SELECT id, value, (toUInt64OrNull(number) IS NULL) ? 'NULL Value' : (toUInt64OrNull(number) ? 'Valid' : 'Invalid') AS value_state FROM test_table GROUP BY id, value HAVING value_state = 'Invalid';",
+        "SELECT id, value, (SELECT count(*) FROM test_table WHERE toUInt64OrNull(number) IS NOT NULL) + (toUInt64OrNull(number) ? 1 : 0) AS combined_count FROM test_table;",
+        "CREATE TABLE another_table (id UInt32, description String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO another_table (id, description) VALUES (1, 'Sample'), (2, 'Test'), (3, 'Example');",
+        "SELECT t.id, t.value, t.number, a.description, (t.value = 'invalid') ? 'Invalid Input' : (toUInt64OrNull(t.number) IS NOT NULL) AS validation FROM test_table t JOIN another_table a ON a.id = t.id WHERE (t.value = 'empty' OR a.description LIKE '%am%') ORDER BY validation;",
+        "SELECT t.id, (CASE WHEN toUInt64OrNull(t.number) IS NULL THEN NULL ELSE toUInt64OrNull(t.number) END) AS nullable_conversion, (SELECT avg(toUInt64OrNull(number)) FROM test_table WHERE toUInt64OrNull(number) IS NOT NULL) AS avg_conversion FROM test_table t GROUP BY t.id HAVING nullable_conversion IS NULL;"
+    ]
+}

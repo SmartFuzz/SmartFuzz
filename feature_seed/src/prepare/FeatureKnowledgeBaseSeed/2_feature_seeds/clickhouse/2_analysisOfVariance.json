@@ -1,0 +1,11 @@
+CREATE TABLE test_data (id UInt32, number Float64, category String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_data VALUES (1, 10.0, 'A'), (2, 20.0, 'A'), (3, 30.0, 'B'), (4, NULL, 'B'), (5, 40.0, 'C'), (6, 50.0, 'C');
+SELECT analysisOfVariance(x -> number, x -> if(category = 'A', 1, if(category = 'B', 2, 3))) FROM test_data GROUP BY category;
+SELECT id, number, analysisOfVariance(number, category) FROM (SELECT id, number, ifNULL(category, 'Unknown') AS category FROM test_data) GROUP BY category;
+SELECT analysisOfVariance(number, number % 2) AS (f_statistic, p_value) FROM (SELECT id, number FROM test_data WHERE number IS NOT NULL) GROUP BY (number % 2) HAVING f_statistic > 0.05;
+SELECT analysisOfVariance(number, number % 3) FROM (SELECT * FROM test_data WHERE category IS NOT NULL AND number IS NOT NULL) GROUP BY number % 3;
+SELECT analysisOfVariance(number, category) FROM (SELECT id, CAST(number AS String) AS number, category FROM test_data) GROUP BY category;
+SELECT analysisOfVariance(x -> number + 1.0, x -> (CASE WHEN category = 'A' THEN 0 ELSE category END)) FROM test_data GROUP BY (CASE WHEN category IS NULL THEN 'NULL' ELSE category END);
+CREATE TABLE temp_data AS SELECT * FROM test_data;
+INSERT INTO temp_data VALUES (7, 30.0, NULL), (8, 80.0, 'A');
+SELECT analysisOfVariance(number, if(category IS NULL, 2, 1)) FROM temp_data GROUP BY if(category IS NULL, 'No Category', category);

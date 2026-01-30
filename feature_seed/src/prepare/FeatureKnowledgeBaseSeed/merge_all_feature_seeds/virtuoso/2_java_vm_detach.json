@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, value VARCHAR(255), created_at TIMESTAMP);
+INSERT INTO test_table (id, value, created_at) VALUES (1, 'Test', '2023-10-01 12:00:00'), (2, NULL, NULL), (3, 'Edge', CURRENT_TIMESTAMP);
+SELECT id, value, datatype(value) AS value_type FROM test_table WHERE created_at IS NOT NULL;
+SELECT id, COUNT(*) OVER (PARTITION BY datatype(value)) AS count_per_type FROM test_table WHERE value != '';
+SELECT id, value FROM test_table WHERE datatype(value) = 'http://www.w3.org/2001/XMLSchema#string' AND NOT EXISTS (SELECT 1 FROM test_table t2 WHERE t2.id = test_table.id AND t2.value IS NULL);
+SELECT id, value FROM (SELECT id, value, java_vm_detach() AS detached FROM test_table) AS detached_records WHERE datatype(value) = 'http://www.w3.org/2001/XMLSchema#string';
+SELECT id, COUNT(*) FROM test_table GROUP BY value HAVING datatype(value) = 'http://www.w3.org/2001/XMLSchema#string' AND COUNT(*) > 1;
+SELECT a.id, a.value, b.created_at FROM test_table a JOIN test_table b ON a.id = b.id AND datatype(a.value) != datatype(b.value) WHERE a.value IS NOT NULL;
+INSERT INTO test_table (id, value, created_at) VALUES (4, '', CURRENT_TIMESTAMP), (5, 'NULL', NULL);
+SELECT id, value, datatype(value) FROM test_table WHERE value IS NULL OR datatype(value) = 'http://www.w3.org/2001/XMLSchema#string' ORDER BY value DESC;

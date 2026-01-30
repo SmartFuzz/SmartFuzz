@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id INTEGER, value DECIMAL(10, 2), interval_col INTERVAL);
+INSERT INTO test_table (id, value, interval_col) VALUES (1, 5.00, INTERVAL '1 HOUR'), (2, NULL, INTERVAL '2 HOUR'), (3, 10.00, INTERVAL '3 HOUR');
+SELECT product(value) + INTERVAL '2 HOURS' AS combined_result FROM test_table WHERE value IS NOT NULL GROUP BY id HAVING product(value) > 5.00;
+CREATE TABLE another_table (ref_id INTEGER, other_value DECIMAL(10, 2));
+INSERT INTO another_table (ref_id, other_value) VALUES (1, 2.00), (2, 4.00);
+SELECT a.ref_id, product(a.other_value + (SELECT COUNT(*) FROM test_table WHERE id = a.ref_id)) AS total_product FROM another_table a LEFT JOIN test_table t ON t.id = a.ref_id GROUP BY a.ref_id HAVING total_product IS NOT NULL;
+CREATE TABLE edge_case_table (text_value TEXT, number_value INTEGER);
+INSERT INTO edge_case_table (text_value, number_value) VALUES ('0', 0), ('100', 100), ('-', NULL), (NULL, NULL);
+SELECT product(COALESCE(CAST(NULLIF(text_value, '-') AS INTEGER), 1)) + INTERVAL 1 HOUR AS final_product FROM edge_case_table GROUP BY text_value HAVING final_product IS NOT NULL;
+CREATE TEMPORARY TABLE temp_table AS SELECT id, value * 2 AS double_value, interval_col FROM test_table;
+SELECT product(double_value) AS product_result, product(double_value) + INTERVAL (SELECT COUNT(*) FROM temp_table) HOUR AS combined_hour FROM temp_table GROUP BY double_value HAVING product_result > 10;

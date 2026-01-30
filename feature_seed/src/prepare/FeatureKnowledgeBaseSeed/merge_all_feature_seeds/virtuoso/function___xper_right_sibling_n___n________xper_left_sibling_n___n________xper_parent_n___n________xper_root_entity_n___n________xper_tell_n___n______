@@ -1,0 +1,15 @@
+CREATE TABLE xper_entities (id INT PRIMARY KEY, data XML);
+INSERT INTO xper_entities (id, data) VALUES (1, '<RDF><Topic>Sample Topic 1</Topic><Topic>Sample Topic 2</Topic></RDF>');
+INSERT INTO xper_entities (id, data) VALUES (2, '<RDF><ExternalPage>External Page 1</ExternalPage><Topic>Sample Topic 3</Topic></RDF>');
+SELECT xper_right_sibling(1) AS sibling FROM xper_entities WHERE id = 1;
+SELECT xper_left_sibling(2) AS sibling FROM xper_entities WHERE id = 2;
+SELECT xper_parent(1) AS parent FROM xper_entities WHERE id = 1;
+SELECT xper_root_entity(2) AS root FROM xper_entities WHERE id = 2;
+SELECT xper_length(1) AS length FROM xper_entities WHERE id = 1;
+SELECT xper_tell(2) AS offset FROM xper_entities WHERE id = 2;
+SELECT DISTINCT xper_right_sibling(e.id) FROM xper_entities e JOIN xper_entities r ON e.id = r.id WHERE r.data LIKE '%Topic%' AND e.id < 2;
+SELECT xper_left_sibling(e.id) FROM xper_entities e LEFT JOIN xper_entities r ON e.id = r.id WHERE r.data LIKE '%ExternalPage%' ORDER BY e.id DESC;
+SELECT xper_length(e.id), xper_tell(e.id) FROM xper_entities e WHERE e.id IN (SELECT id FROM xper_entities WHERE data LIKE '%RDF%') ORDER BY xper_length(e.id) DESC;
+CREATE TABLE xper_import_log (id INT PRIMARY KEY, entity_id INT, import_time TIMESTAMP, status VARCHAR(10));
+INSERT INTO xper_import_log (id, entity_id, import_time, status) SELECT seq.id, e.id, NOW(), 'started' FROM xper_entities e JOIN (SELECT 1 AS id) seq ON e.id = seq.id;
+UPDATE xper_import_log SET status = 'completed' WHERE import_time < NOW() - INTERVAL '1 hour' AND status = 'started';

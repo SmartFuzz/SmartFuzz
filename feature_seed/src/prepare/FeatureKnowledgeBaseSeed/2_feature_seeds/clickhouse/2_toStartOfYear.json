@@ -1,0 +1,11 @@
+CREATE TABLE test_dates (id Int32, event_date DateTime, description String);
+INSERT INTO test_dates VALUES (1, toDateTime('2023-04-21 10:20:30'), 'First Event');
+INSERT INTO test_dates VALUES (2, toDateTime('2023-12-31 23:59:59'), 'Last Event');
+INSERT INTO test_dates VALUES (3, toDateTime('2024-01-01 00:00:01'), 'New Year Event');
+SELECT id, toStartOfYear(event_date) AS start_of_year FROM test_dates WHERE event_date GLOBAL NOT IN (SELECT event_date FROM test_dates WHERE description = 'Last Event');
+SELECT id, COUNT(*) AS events, toStartOfYear(event_date) AS year_group FROM (SELECT event_date FROM test_dates WHERE event_date GLOBAL NOT IN (SELECT event_date FROM test_dates WHERE description = 'First Event')) GROUP BY year_group HAVING events > 0;
+CREATE TABLE test_nums (number Int32, category String);
+INSERT INTO test_nums VALUES (1, 'A'), (2, 'B'), (3, NULL), (NULL, 'C');
+SELECT number, toStartOfYear(toDateTime(CONCAT(toString(number), '-01-01'))) AS year_start FROM test_nums WHERE number GLOBAL NOT IN (SELECT number FROM test_nums WHERE category IS NULL);
+SELECT number, toStartOfYear(toDateTime(CASE WHEN number IS NULL THEN '1970-01-01 00:00:00' ELSE CONCAT(toString(number), '-01-01') END)) AS year_start FROM test_nums GROUP BY number ORDER BY year_start;
+SELECT toStartOfYear(event_date) AS year_start, COALESCE(SUM(number), 0) AS total_numbers FROM test_dates LEFT JOIN test_nums ON toStartOfYear(event_date) GLOBAL NOT IN (SELECT toStartOfYear(event_date) FROM test_dates WHERE description IS NULL) GROUP BY year_start HAVING total_numbers > 1;

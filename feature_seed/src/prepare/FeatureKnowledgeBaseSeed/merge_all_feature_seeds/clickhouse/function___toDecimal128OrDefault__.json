@@ -1,0 +1,14 @@
+CREATE TABLE test_table (expr String, scale UInt8 DEFAULT 0, default_value Decimal128(18)) ENGINE = MergeTree() ORDER BY expr;
+INSERT INTO test_table (expr, scale, default_value) VALUES ('123.456', 2, CAST('-1', 'Decimal128(0)'));
+INSERT INTO test_table (expr, scale, default_value) VALUES ('-200.789', 3, CAST('0', 'Decimal128(0)'));
+INSERT INTO test_table (expr, scale, default_value) VALUES ('Inf', 0, CAST('-1', 'Decimal128(0)'));
+INSERT INTO test_table (expr, scale, default_value) VALUES ('NaN', 1, CAST('0', 'Decimal128(0)'));
+INSERT INTO test_table (expr, scale, default_value) VALUES ('0.123456789123456789', 18, CAST('5', 'Decimal128(0)'));
+INSERT INTO test_table (expr, scale, default_value) VALUES ('99999999999999999999999999999999999999999999', 0, CAST('10', 'Decimal128(0)'));
+SELECT toDecimal128OrDefault(expr, scale, default_value) AS result FROM test_table;
+SELECT toDecimal128OrDefault(toString(1 / 42), 18) AS a, toTypeName(a) FROM test_table;
+SELECT toDecimal128OrDefault('12.34567', 5, CAST('0', 'Decimal128(0)')) AS valid_conversion, toTypeName(valid_conversion) FROM test_table;
+SELECT toDecimal128OrDefault('abc', 5, CAST('0', 'Decimal128(0)')) AS invalid_conversion, toTypeName(invalid_conversion) FROM test_table;
+WITH (SELECT sum(toDecimal128OrDefault(expr, scale, default_value)) FROM test_table) AS total_sum SELECT total_sum;
+SELECT a.expr, a.scale, toDecimal128OrDefault(a.expr, a.scale, CAST('0', 'Decimal128(0)')) AS decimal_value FROM test_table AS a WHERE a.scale > 10 ORDER BY decimal_value DESC;
+SELECT a.expr, b.default_value, toDecimal128OrDefault(a.expr, b.scale, b.default_value) AS converted_value FROM test_table AS a JOIN test_table AS b ON a.expr = b.expr WHERE a.scale < b.scale;

@@ -1,0 +1,33 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/52664",
+  "title": "Unexpected ExprType MysqlBit and EvalType Int",
+  "vulnerable_database": "tidb",
+  "date": "2024-04-17T08:26:01Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n```sql\r\ndrop table if exists UK_PRECISION19239;\r\nCREATE TABLE `UK_PRECISION19239` (\r\n  `COL1` bit(16) DEFAULT NULL COMMENT 'NUMERIC WITH PRECISION',\r\n  `COL2` varchar(20) DEFAULT NULL,\r\n  `COL4` datetime DEFAULT NULL,\r\n  `COL3` bigint(20) DEFAULT NULL,\r\n  `COL5` float DEFAULT NULL,\r\n  UNIQUE KEY `UK_COL1` (`COL1`) /*!80000 INVISIBLE */\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;\r\n\r\n insert into `UK_PRECISION19239` (`COL1`) values ( 0x0000);\r\n\r\nselect col1, col2 from UK_PRECISION19239 t1 where (select count(*) from UK_PRECISION19239 t2 where t2.col1 in (t1.col1, 30327)) > 1;\r\n```\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\n```sql\r\n[16:25:04]MySQL root:test> select col1, col2 from UK_PRECISION19239 t1 where (select count(*) from UK_PRECISION19239 t2 where t2.col1 in (t1.col1, 30327)) > 1;\r\n+------+------+\r\n| col1 | col2 |\r\n+------+------+\r\n+------+------+\r\n0 rows in set\r\n```\r\n### 3. What did you see instead (Required)\r\n```sql\r\n[16:25:24]TiDB root:test>  select col1, col2 from UK_PRECISION19239 t1 where (select count(*) from UK_PRECISION19239 t2 where t2.col1 in (t1.col1, 30327)) > 1;\r\n(1105, 'other error: [components/tidb_query_expr/src/impl_compare_in.rs:68]: Unexpected ExprType MysqlBit and EvalType Int')\r\n```\r\n### 4. What is your TiDB version? (Required)\r\nv8.1.0\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "poc": [
+    "drop table if exists UK_PRECISION19239;",
+    "CREATE TABLE `UK_PRECISION19239` (",
+    "  `COL1` bit(16) DEFAULT NULL COMMENT 'NUMERIC WITH PRECISION',",
+    "  `COL2` varchar(20) DEFAULT NULL,",
+    "  `COL4` datetime DEFAULT NULL,",
+    "  `COL3` bigint(20) DEFAULT NULL,",
+    "  `COL5` float DEFAULT NULL,",
+    "  UNIQUE KEY `UK_COL1` (`COL1`) /*!80000 INVISIBLE */",
+    ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;",
+    " insert into `UK_PRECISION19239` (`COL1`) values ( 0x0000);",
+    "select col1, col2 from UK_PRECISION19239 t1 where (select count(*) from UK_PRECISION19239 t2 where t2.col1 in (t1.col1, 30327)) > 1;"
+  ],
+  "poc_type": "sql_text",
+  "state": "open",
+  "key_bug_features": [
+    "Comparison between MysqlBit and EvalType Int"
+  ],
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS UK_PRECISION19240;",
+    "CREATE TABLE `UK_PRECISION19240` ( `COL1` bit(8) DEFAULT NULL, `COL2` int DEFAULT NULL, `COL3` varchar(50) DEFAULT NULL, UNIQUE KEY `UK_COL1` (`COL1`) ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;",
+    "INSERT INTO `UK_PRECISION19240` (`COL1`, `COL2`) VALUES (0b10101010, 100);",
+    "SELECT COL1, COL2 FROM UK_PRECISION19240 WHERE COL2 IN (SELECT COL2 FROM UK_PRECISION19240 WHERE COL1 IS NOT NULL);",
+    "SELECT COL1 FROM UK_PRECISION19240 WHERE COL1 IN (0b10101010, 255);"
+  ]
+}

@@ -1,0 +1,11 @@
+CREATE TABLE timestamps_table (ts TIMESTAMP, value INT);
+INSERT INTO timestamps_table VALUES (TIMESTAMP '2001-04-10 01:00:00', 1), (TIMESTAMP '2001-04-10 02:00:00', NULL), (TIMESTAMP '2001-04-10 03:00:00', 3);
+SELECT range(ts, ts + INTERVAL 1 HOUR, INTERVAL 15 MINUTE) AS generated_range FROM timestamps_table WHERE value IS NOT NULL;
+SELECT DISTINCT generated_timestamp FROM (SELECT range(TIMESTAMP '2001-01-01', TIMESTAMP '2001-01-02', INTERVAL 1 HOUR) AS generated_range) AS rng WHERE rng.generated_range && [TIMESTAMP '2001-01-01 00:30:00', TIMESTAMP '2001-01-01 01:30:00'];
+WITH generated AS (SELECT range(ts, ts + INTERVAL 2 DAY, INTERVAL 6 HOUR) AS ts_range FROM timestamps_table WHERE value IS NOT NULL) SELECT COUNT(*) FROM generated WHERE ts_range && [TIMESTAMP '2001-04-10 00:00:00', TIMESTAMP '2001-04-10 12:00:00'];
+SELECT ts, value FROM timestamps_table WHERE value IS NULL OR value = ANY(SELECT value FROM timestamps_table WHERE value IS NOT NULL) AND ts IN (SELECT UNNEST(range(TIMESTAMP '2001-04-10', TIMESTAMP '2001-04-11', INTERVAL 1 DAY)));
+CREATE TABLE test_list (id INT, values_list LIST<INT>);
+INSERT INTO test_list VALUES (1, [1, 2, 3]), (2, [NULL]), (3, [4, 5, 6]);
+SELECT id FROM test_list WHERE values_list && (SELECT UNNEST(range(TIMESTAMP '2000-12-31', TIMESTAMP '2001-01-01', INTERVAL 1 DAY)));
+CREATE TEMP TABLE temp_range AS SELECT range(TIMESTAMP '2023-01-01', TIMESTAMP '2023-01-02', INTERVAL 12 HOUR) AS time_range;
+SELECT time_range FROM temp_range WHERE time_range && [TIMESTAMP '2023-01-01 06:00:00', TIMESTAMP '2023-01-01 18:00:00'];

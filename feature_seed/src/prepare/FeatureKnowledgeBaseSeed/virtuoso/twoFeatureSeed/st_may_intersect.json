@@ -1,0 +1,17 @@
+{
+    "function": "st_may_intersect",
+    "operator": "*",
+    "sql_array": [
+        "CREATE TABLE geo_shapes (id INT, shape GEOMETRY, name VARCHAR(255), area FLOAT, perimeter FLOAT, precision FLOAT);",
+        "INSERT INTO geo_shapes VALUES (1, 'POLYGON((0 0, 4 0, 4 4, 0 4, 0 0))', 'Square', 16, 16, 0.1);",
+        "INSERT INTO geo_shapes VALUES (2, 'POLYGON((1 1, 5 1, 5 5, 1 5, 1 1))', 'OverlapSquare', 16, 16, 0.2);",
+        "INSERT INTO geo_shapes VALUES (3, 'POINT(1 1)', 'Point1', 0, 0, 0.0);",
+        "INSERT INTO geo_shapes VALUES (4, 'MULTIPOINT((2 2), (3 3))', 'MultiPoint', 0, 0, 0.3);",
+        "INSERT INTO geo_shapes VALUES (5, 'LINESTRING(0 0, 4 4)', 'Diagonal', 0, 4*SQRT(2), 0.1);",
+        "SELECT s1.id, s2.id FROM geo_shapes s1, geo_shapes s2 WHERE s1.id != s2.id AND bif:st_may_intersect(s1.shape, s2.shape) AND (s1.area * s2.perimeter) > 50;",
+        "SELECT COUNT(*) AS intersection_count FROM (SELECT s1.id AS id1, s2.id AS id2 FROM geo_shapes s1 JOIN geo_shapes s2 ON bif:st_may_intersect(s1.shape, s2.shape) GROUP BY s1.id, s2.id HAVING COUNT(*) > 1) AS tmp;",
+        "WITH ShapeStats AS (SELECT id, area, perimeter, area * NULLIF(perimeter, 0) AS area_perimeter FROM geo_shapes) SELECT AVG(area_perimeter) AS avg_area_perimeter FROM ShapeStats WHERE area_perimeter IS NOT NULL;",
+        "SELECT s1.name, s2.name FROM geo_shapes s1 LEFT JOIN geo_shapes s2 ON bif:st_may_intersect(s1.shape, s2.shape) WHERE s1.area < (SELECT MAX(area) FROM geo_shapes) - 5*1.5;",
+        "SELECT id, shape FROM geo_shapes WHERE bif:st_may_intersect(shape, (SELECT shape FROM geo_shapes WHERE id = 3)) AND precision > (SELECT MIN(precision) FROM geo_shapes) ORDER BY perimeter * precision;"
+    ]
+}

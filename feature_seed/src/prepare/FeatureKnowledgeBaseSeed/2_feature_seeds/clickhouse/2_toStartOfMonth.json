@@ -1,0 +1,12 @@
+CREATE TABLE test_dates (id Int32, event_date DateTime, description String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_dates VALUES (1, '2023-04-21 10:20:30', 'Event A'), (2, '2023-05-15 15:45:00', 'Event B'), (3, '2023-04-01 00:00:00', 'Event C'), (4, NULL, 'Event D');
+SELECT id, toStartOfMonth(event_date) AS start_of_month FROM test_dates WHERE event_date != ANY (SELECT event_date FROM test_dates WHERE description = 'Event A' AND event_date IS NOT NULL);
+SELECT id, COUNT(*) AS event_count FROM test_dates GROUP BY toStartOfMonth(event_date) HAVING event_count != ANY (SELECT COUNT(*) FROM test_dates GROUP BY description);
+CREATE TABLE temp_dates AS SELECT toStartOfMonth(event_date) AS rounded_date FROM test_dates WHERE event_date IS NOT NULL;
+SELECT rounded_date FROM temp_dates WHERE rounded_date <= (SELECT toStartOfMonth(MAX(event_date)) FROM test_dates WHERE event_date IS NOT NULL) AND rounded_date != ANY (SELECT toStartOfMonth(toDateTime(NULL)) FROM temp_dates);
+SELECT id, SUM(CASE WHEN event_date IS NULL THEN 0 ELSE 1 END) AS non_null_events FROM test_dates GROUP BY id HAVING non_null_events != ANY (SELECT COUNT(*) FROM test_dates WHERE event_date IS NULL);
+INSERT INTO test_dates VALUES (5, '2023-04-01 23:59:59', 'Event E');
+SELECT DISTINCT id, toStartOfMonth(event_date) FROM test_dates WHERE event_date != ANY (SELECT event_date FROM test_dates WHERE event_date IS NOT NULL);
+CREATE TABLE another_dates (value DateTime64(3)) ENGINE = MergeTree() ORDER BY value;
+INSERT INTO another_dates VALUES (toDateTime64('2023-01-01 00:00:00.123', 3));
+SELECT value, toStartOfMonth(value) AS month_start FROM another_dates WHERE value != ANY (SELECT toDateTime64('2023-01-01 00:00:00.000', 3) FROM another_dates);

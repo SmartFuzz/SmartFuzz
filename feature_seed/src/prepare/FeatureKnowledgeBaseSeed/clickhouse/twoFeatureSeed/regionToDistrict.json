@@ -1,0 +1,18 @@
+{
+    "function": "regionToDistrict",
+    "operator": "a != ANY (subquery)",
+    "sql_array": [
+        "CREATE TABLE test_regions (id UInt32, name String, population UInt32) ENGINE = Memory;",
+        "INSERT INTO test_regions VALUES (1, 'Region A', 1000000), (2, 'Region B', 2000000), (3, 'Region C', 1500000), (4, 'Region D', 0);",
+        "CREATE TABLE test_districts (id UInt32, region_id UInt32, district_name String) ENGINE = Memory;",
+        "INSERT INTO test_districts VALUES (1, 1, 'District A1'), (2, 2, 'District B1'), (3, 3, 'District C1');",
+        "SELECT regionToDistrict(id) AS district_id FROM (SELECT id FROM test_regions WHERE population > 500000) AS subquery WHERE district_id != ANY (SELECT region_id FROM test_districts);",
+        "SELECT DISTINCT regionToDistrict(regionToDistrict(toUInt32(id), 'ua')) FROM test_regions WHERE id != ANY (SELECT id FROM test_regions WHERE population = 0);",
+        "SELECT id, regionToDistrict(id) AS district_id FROM test_regions GROUP BY district_id HAVING district_id != ANY (SELECT id FROM test_districts WHERE district_name LIKE 'District%');",
+        "SELECT DISTINCT regionToDistrict(regionToDistrict(toUInt32(id), 'ua')) FROM (SELECT id FROM test_districts) AS inner_subquery WHERE id != ANY (SELECT id FROM test_regions WHERE population < 100000);",
+        "SELECT COUNT(*) FROM test_regions WHERE regionToDistrict(id) != ANY (SELECT DISTINCT region_id FROM test_districts WHERE district_name IS NOT NULL);",
+        "SELECT regionToDistrict(id) AS district_id, COUNT(*) FROM test_regions GROUP BY district_id HAVING district_id != ANY (SELECT region_id FROM test_districts WHERE district_name LIKE '%A%') ORDER BY COUNT(*) DESC;",
+        "CREATE TEMPORARY TABLE temp_test AS SELECT id, regionToDistrict(id) AS district_id FROM test_regions WHERE population > 0;",
+        "SELECT t1.id FROM temp_test AS t1 JOIN test_districts AS t2 ON t1.district_id = t2.region_id WHERE t1.id != ANY (SELECT id FROM test_regions WHERE name IS NULL);"
+    ]
+}

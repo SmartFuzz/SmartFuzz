@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/89472",
+  "title": "Block structure mismatch in patch parts stream",
+  "description": "### Company or project name\nXdroid Voiceanalytics Project\n### Describe what's wrong\nThe execution of the following query results in an error:\n```\nselect\n\"id\", \"gdpr\", \"lock_time\", \"number_of_locks\", \"status\", \"status_message\",\n\"operator_id\", \"operator_role_id\", \"location_id\", \"call_date\", \"language_id\", \"processed_engine_name\", \"getjob\", \"postjob\", \"file_name\", \"file_path\"\nfrom calls_queues where \"status\" <> 'ANALYZED' and \"id\" = 7391112686186261034 and \"deleted_at\" is null\nlimit 1\n```\nThe error message:\n```\nQuery 1 ERROR at Line 1: : DB::Exception: Block structure mismatch in patch parts stream: different names of columns:\nnumber_of_locks UInt32 UInt32(size = 0)\nlock_time Nullable(DateTime) Nullable(size = 0, UInt32(size = 0), UInt8(size = 0)): While executing MergeTreeSelect(pool: ReadPoolInOrder, algorithm: InOrder)\n```\nIf I remove the number_of_locks field from the SELECT clause or the status condition from the WHERE clause, the query runs successfully.\nThe problem occurred when we ran updates in the system with the following settings:\n```\n<alter_update_mode>lightweight</alter_update_mode>\n<lightweight_delete_mode>lightweight_update</lightweight_delete_mode>\n```\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nDockerized Clickhouse 25.9 latest and 25.10 latest\n```\nCREATE TABLE sandbox1.calls_queues\n(\n`id` UInt64 DEFAULT generateSnowflakeID(),\n`call_date` DateTime,\n`source_id` Nullable(String),\n`file_name` String,\n`display_name` Nullable(String),\n`file_path` Nullable(String),\n`file_date` Nullable(DateTime),\n`mp3_dir_by_date` UInt8 DEFAULT '0',\n`location_id` Nullable(UInt64),\n`length` Nullable(UInt32),\n`direction` Nullable(String),\n`source_operator_id` Nullable(UInt64),\n`operator_role_id` Nullable(UInt64),\n`agent_classification_work_start` Nullable(UInt64),\n`agent_classification_birthdate` Nullable(UInt64),\n`anumber` Nullable(String),\n`bnumber` Nullable(String),\n`customer_id` Nullable(String),\n`status` Nullable(String),\n`status_message` Nullable(String),",
+  "date": "2025-11-04T10:59:56Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE calls_queues_test (id INTEGER PRIMARY KEY, call_date DATETIME, status TEXT, number_of_locks INTEGER DEFAULT 0, lock_time DATETIME, deleted_at DATETIME);",
+    "INSERT INTO calls_queues_test (id, call_date, status, number_of_locks, lock_time, deleted_at) VALUES (7391112686186261034, CURRENT_TIMESTAMP, 'PENDING', 5, NULL, NULL);",
+    "INSERT INTO calls_queues_test (id, call_date, status, number_of_locks, lock_time, deleted_at) VALUES (7391112686186261035, CURRENT_TIMESTAMP, 'ANALYZED', 0, NULL, NULL);",
+    "SELECT id, status, number_of_locks FROM calls_queues_test WHERE status <> 'ANALYZED' AND number_of_locks > 0 AND deleted_at IS NULL LIMIT 1;",
+    "SELECT id, lock_time FROM calls_queues_test WHERE lock_time IS NULL OR number_of_locks = 0;"
+  ],
+  "key_bug_features": [
+    "Block structure mismatch in patch parts stream"
+  ]
+}

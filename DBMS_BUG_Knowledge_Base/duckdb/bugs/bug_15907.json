@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/15907",
+  "title": "EXCLUDE is not disallowed for framed window functions that don't support it",
+  "vulnerable_database": "DuckDB",
+  "date": "2025-01-24 21:42:46",
+  "vulnerable_version": "",
+  "description": "### What happens?\n\nAll of the new non-aggregate window functions (except `dense_rank`) now use framing when an `ORDER BY` argument is provided, but they do not check whether unsupported `EXCLUDE` modifiers are present. \n\n### To Reproduce\n\nThe following queries should fail because the functionality is unsupported:\n\n```sql\n-- EXCLUDE in the OVER clause\nSELECT \n\ti,\n\tlead(i ORDER BY i // 2, i) OVER (\n\t\tORDER BY i // 2\n\t\tROWS BETWEEN 3 PRECEDING AND 3 FOLLOWING \n\t\tEXCLUDE TIES\n\t) AS f,\nFROM range(10) tbl(i)\nORDER BY i;\n\n--EXCLUDE in a WINDOW clause\nSELECT \n\ti,\n\tlead(i ORDER BY i // 2, i) OVER w AS f,\nFROM range(10) tbl(i)\nWINDOW w AS (\n\t\tORDER BY i // 2\n\t\tROWS BETWEEN 3 PRECEDING AND 3 FOLLOWING \n\t\tEXCLUDE TIES\n\t)\nORDER BY i;\n```\n\nThis applies to all the new non-aggregate functions.\n\n### OS:\n\nMacOS\n\n### DuckDB Version:\n\nv1.1.4-dev4931\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nRichard Wesley\n\n### Affiliation:\n\nDuckDB Labs\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a source build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "poc": [
+    "SELECT \n\ti,\n\tlead(i ORDER BY i // 2, i) OVER w AS f,\nFROM range(10) tbl(i)\nWINDOW w AS (\n\t\tORDER BY i // 2\n\t\tROWS BETWEEN 3 PRECEDING AND 3 FOLLOWING \n\t\tEXCLUDE TIES\n\t)\nORDER BY i;"
+  ],
+  "key_bug_features": [
+    "Unsupported EXCLUDE modifiers in window functions"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INTEGER, value FLOAT, name VARCHAR(50), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table (id, value, name) VALUES (1, 10.5, 'Alice'), (2, 20.0, 'Bob'), (3, NULL, 'Charlie');",
+    "SELECT id, lead(value ORDER BY id) OVER (ORDER BY id ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING EXCLUDE TIES) AS next_value FROM test_table;",
+    "SELECT id, lead(value ORDER BY id) OVER w AS next_value FROM test_table WINDOW w AS (ORDER BY id ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING EXCLUDE TIES);",
+    "SELECT id, value, name FROM test_table WHERE value IS NOT NULL ORDER BY created_at DESC;"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7437",
+  "title": "MonetDB server crashes in `exp_values_set_supertype`",
+  "vulnerable_database": "monetdb",
+  "date": "2024-01-17T06:50:50Z",
+  "vulnerable_version": "Unknown",
+  "description": "MonetDB server crashes in `exp_values_set_supertype`.\n\n**To Reproduce**\n```sql\n CREATE MERGE TABLE testagain (a int, b varchar(32)) PARTITION BY VALUES ON (a)  ;\n CREATE TABLE sublimits2 (a int, b varchar(32))  ;\n ALTER TABLE testagain ADD TABLE sublimits2 AS PARTITION IN (-100 * 2, '-90', '120', addtwo(55), 11.2)  ; \n```\n\n**Backtrace of the Crash**\n```c\n#0 0x7fbf9bc5b7e9 (exp_values_set_supertype+0x119)\n#1 0x7fbf9bcdd540 (rel_alter_table_add_partition_list+0x210)\n#2 0x7fbf9bc40497 (rel_schemas+0x5697)\n#3 0x7fbf9bc04df9 (rel_semantic+0x4c9)\n#4 0x7fbf9b9f9cf3 (sql_symbol2relation+0x93)\n#5 0x7fbf9ba26b84 (SQLparser+0x624)\n#6 0x7fbf9ba25cbc (SQLengine_+0xa5c)\n#7 0x7fbf9ba234fe (SQLengine+0x3e)\n#8 0x7fbf9bfa12cf (runScenario+0x6f)\n#9 0x7fbf9bfa24de (MSscheduleClient+0xb6e)\n#10 0x7fbf9c0d9182 (doChallenge+0x132)\n#11 0x7fbf9ce028a7 (thread_starter+0xc7)\n#12 0x7fbf9b91d609 (start_thread+0xd9)\n#13 0x7fbf9b840133 (clone+0x43)\n```\n\n**Software versions**\n - MonetDB version number: v11.49.1 (Dec2023)\n - OS and version: Ubuntu 20.04\n - From docker image monetdb/monetdb:Dec2023\n\nAn example of steps to reproduce in docker container (**write the poc into /tmp/test.sql first**):\n```bash\ndocker container rm monetdb_test -f\ndocker run -e MDB_DB_ADMIN_PASS=monetdb --name monetdb_test -itd monetdb/monetdb:Dec2023\ndocker exec monetdb_test bash -c 'echo -n -e \"user=monetdb\\npassword=monetdb\\n\" > /root/.monetdb'\n\nsleep 10\ncat /tmp/test.sql | timeout 5s docker exec -i monetdb_test mclient monetdb     # run test case\n\nif docker exec monetdb_test bash -c \"grep '[m]server5' /proc/*/cmdline -lR\"; then\n    echo \"[INFO] Server normal.\"\nelse\n    echo \"[CRASH] Mserver5 process does NOT exist.\"\nfi\n```\n\nIt can also be reproduced on the docker image `monetdb/dev-builds:default`.\n\n**Issue labeling**\nbug",
+  "poc": [
+    "CREATE TABLE sublimits2 (a int, b varchar(32))  ;",
+    "ALTER TABLE testagain ADD TABLE sublimits2 AS PARTITION IN (-100 * 2, '-90', '120', addtwo(55), 11.2)  ;"
+  ],
+  "key_bug_features": [
+    "ALTER TABLE with invalid partition values causes crash"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE testpart (x int, y varchar(50), z date);",
+    "CREATE TABLE partvalues (x int, y varchar(50)) PARTITION BY VALUES ON (x);",
+    "INSERT INTO testpart (x, y, z) VALUES (NULL, 'test', '2023-01-01');",
+    "ALTER TABLE partvalues ADD TABLE testpart AS PARTITION IN (0, 1, 2, 3, NULL);",
+    "INSERT INTO partvalues (x, y) VALUES (-1, 'negative'), (2, 'positive'), (3, NULL);"
+  ]
+}

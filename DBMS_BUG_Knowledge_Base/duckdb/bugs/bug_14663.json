@@ -1,0 +1,24 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14663",
+  "title": "`LIST_CONCAT()` and `||` don't propagate nulls",
+  "vulnerable_database": "DuckDB",
+  "date": "2024-10-31 22:45:37",
+  "vulnerable_version": "",
+  "description": "### What happens?\r\n\r\nUsing the concatenation operator `||` on strings does NULL propagation, ie `'foo' || NULL` results in `NULL`. I think this is good behavior. I expected that for lists, the `||` operator (and the alias function, `LIST_CONCAT()`), to work the same. But instead, they treat NULL as an empty list, so that `NULL || [1,2,3]` results in `[1,2,3]`, where I would expect `NULL`.\r\n\r\n### To Reproduce\r\n\r\n```sql\r\nSELECT\r\n    a,\r\n    LIST_CONCAT(a, [3, 4]),\r\n    a || [3, 4],\r\nFROM (\r\n    SELECT [1, 2] AS \"a\"\r\n    UNION ALL\r\n    SELECT [] AS \"a\"\r\n    UNION ALL\r\n    SELECT NULL AS \"a\"\r\n);\r\n```\r\n\r\n```\r\n┌─────────┬───────────────────────────────────────┬──────────────────────────────┐\r\n│    a    │ list_concat(a, main.list_value(3, 4)) │ (a || main.list_value(3, 4)) │\r\n│ int32[] │                int32[]                │           int32[]            │\r\n├─────────┼───────────────────────────────────────┼──────────────────────────────┤\r\n│ [1, 2]  │ [1, 2, 3, 4]                          │ [1, 2, 3, 4]                 │\r\n│ []      │ [3, 4]                                │ [3, 4]                       │\r\n│ NULL    │ [3, 4]                                │ [3, 4]                       │\r\n└─────────┴───────────────────────────────────────┴──────────────────────────────┘\r\n```\r\n\r\nIn addition, there is separate issue related to parsing, but may be related so I wanted to bring it up. The way duckdb interprets the types from using `||` vs `LIST_CONCAT` are different. Note the int32 vs the int32[]. This datatype different leads to different values getting produced as well.\r\n\r\n```sql\r\nSELECT NULL || [1, 2, 3] as pipes, LIST_CONCAT(NULL, [1, 2, 3]) as list_concat;\r\n```\r\n\r\n```\r\n┌───────┬─────────────┐\r\n│ pipes │ list_concat │\r\n│ int32 │   int32[]   │\r\n├───────┼─────────────┤\r\n│  NULL │ [1, 2, 3]   │\r\n└───────┴─────────────┘\r\n```\r\n\r\n### OS:\r\n\r\nshell.duckdb.org\r\n\r\n### DuckDB Version:\r\n\r\n1.1.2\r\n\r\n### DuckDB Client:\r\n\r\nhttps://shell.duckdb.org/\r\n\r\n### Hardware:\r\n\r\n_No response_\r\n\r\n### Full Name:\r\n\r\nNick Crews\r\n\r\n### Affiliation:\r\n\r\nShip Creek Group\r\n\r\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\r\n\r\nI have tested with a stable release\r\n\r\n### Did you include all relevant data sets for reproducing the issue?\r\n\r\nNo - Other reason (please specify in the issue body)\r\n\r\n### Did you include all code required to reproduce the issue?\r\n\r\n- [X] Yes, I have\r\n\r\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\r\n\r\n- [X] Yes, I have",
+  "poc": [
+    "SELECT\r\n    a,\r\n    LIST_CONCAT(a, [3, 4]),\r\n    a || [3, 4],\r\nFROM (\r\n    SELECT [1, 2] AS \"a\"\r\n    UNION ALL\r\n    SELECT [] AS \"a\"\r\n    UNION ALL\r\n    SELECT NULL AS \"a\"\r\n);",
+    "SELECT NULL || [1, 2, 3] as pipes, LIST_CONCAT(NULL, [1, 2, 3]) as list_concat;",
+    "select 'hello' || NULL AS concat_op, concat('hello', NULL) as concat_func;",
+    "select [1,2,3] || NULL AS concat_op, concat([1,2,3], NULL) as concat_func;"
+  ],
+  "key_bug_features": [
+    "NULL handling in LIST_CONCAT() and concatenation operator"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INTEGER, values_list INTEGER[]);",
+    "INSERT INTO test_table VALUES (1, [1, 2]), (2, []), (3, NULL);",
+    "SELECT id, LIST_CONCAT(values_list, [5, 6]) AS list_concat, values_list || [5, 6] AS concat_op FROM test_table;",
+    "SELECT NULL AS null_value, LIST_CONCAT(NULL, [7, 8]) AS list_concat_null, NULL || [7, 8] AS concat_null;",
+    "SELECT [10, 11] || NULL AS concat_with_null, LIST_CONCAT([10, 11], NULL) AS list_concat_with_null;"
+  ]
+}

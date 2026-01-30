@@ -1,0 +1,10 @@
+CREATE TABLE airline_data (AirlineID String, FlightDate Date, PassengerCount Int32);
+INSERT INTO airline_data VALUES ('AA123', '2023-10-01', 100), ('AA456', '2023-10-02', 150), ('DL789', '2023-10-01', 200), ('UA321', '2023-10-01', 50);
+SELECT topK(3)(AirlineID) AS frequent_airlines FROM airline_data WHERE AirlineID NOT IN (SELECT AirlineID FROM airline_data WHERE PassengerCount < 100);
+SELECT AirlineID, topK(3)(PassCount) AS frequent_counts FROM (SELECT AirlineID, sum(PassengerCount) AS PassCount FROM airline_data GROUP BY AirlineID) WHERE AirlineID NOT IN (SELECT AirlineID FROM airline_data WHERE FlightDate = '2023-10-02') GROUP BY AirlineID;
+SELECT AirlineID, COUNT(*) AS flight_count FROM airline_data WHERE FlightDate NOT IN (SELECT FlightDate FROM airline_data WHERE PassengerCount > 100) GROUP BY AirlineID HAVING flight_count > topK(2)(passenger_count)[1];
+SELECT AirlineID, topK(5)(AirlineID) AS approx_airlines FROM (SELECT AirlineID, CAST(PassengerCount AS Nullable(Int32)) AS PassCount FROM airline_data) WHERE PassCount IS NOT NULL OR AirlineID NOT IN ('AA123', 'DL789');
+CREATE TABLE temp_airlines AS SELECT AirlineID FROM airline_data WHERE 1=0;
+INSERT INTO temp_airlines SELECT AirlineID FROM airline_data WHERE PassengerCount NOT IN (SELECT DISTINCT PassengerCount FROM airline_data WHERE PassengerCount IS NOT NULL);
+SELECT AirlineID, topK(10)(AirlineID) AS top_airlines FROM temp_airlines;
+SELECT AirlineID, topK(3, 2)(AirlineID) AS filtered_top_airlines FROM airline_data WHERE AirlineID NOT IN (SELECT AirlineID FROM airline_data WHERE FlightDate > (today - INTERVAL 10 DAY)) GROUP BY AirlineID HAVING COUNT(*) > 1;

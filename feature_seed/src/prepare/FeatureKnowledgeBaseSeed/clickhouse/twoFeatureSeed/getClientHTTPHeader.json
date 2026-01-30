@@ -1,0 +1,20 @@
+{
+    "function": "getClientHTTPHeader",
+    "operator": "a <> b",
+    "sql_array": [
+        "CREATE TABLE test_http_headers (id UInt32, header_name String, header_value String);",
+        "INSERT INTO test_http_headers VALUES (1, 'User-Agent', 'Mozilla/5.0'), (2, 'Accept', 'application/json');",
+        "SELECT id, getClientHTTPHeader(header_name) AS http_value FROM test_http_headers WHERE header_value <> '' AND header_name <> 'X-ClickHouse-Security';",
+        "SELECT id, COUNT(*) AS header_count FROM test_http_headers GROUP BY getClientHTTPHeader(header_name) HAVING header_count > 1;",
+        "SELECT id, getClientHTTPHeader(header_name) AS http_value FROM test_http_headers WHERE http_value <> 'InvalidHeader' AND header_value IS NOT NULL;",
+        "SELECT id, getClientHTTPHeader('User-Agent') AS user_agent FROM test_http_headers WHERE user_agent <> '' AND id IN (SELECT id FROM test_http_headers WHERE header_name = 'Accept' AND header_value <> '');",
+        "CREATE TABLE test_numeric_cast (num1 Float64, num2 Int32);",
+        "INSERT INTO test_numeric_cast VALUES (123.45, 123), (0.0, -1), (NULL, 0);",
+        "SELECT num1, num2 FROM test_numeric_cast WHERE getClientHTTPHeader('Content-Type') <> '' AND num1 <> num2;",
+        "SELECT num1, num2, getClientHTTPHeader('Non-Existent-Header') AS header_check FROM test_numeric_cast HAVING header_check <> '' AND num1 <> num2;",
+        "CREATE TABLE test_boundary_values (value1 Nullable(Int32), value2 Nullable(Float32));",
+        "INSERT INTO test_boundary_values VALUES (2147483647, 3.14), (NULL, NULL), (0, -1.5);",
+        "SELECT value1, value2 FROM test_boundary_values WHERE getClientHTTPHeader('Random-Header') <> '' AND (value1 <> value2 OR value1 IS NULL);",
+        "SELECT id, getClientHTTPHeader(header_name) AS header_value, value1, value2 FROM test_http_headers JOIN test_boundary_values ON value1 IS NOT NULL WHERE header_value <> '';"
+    ]
+}

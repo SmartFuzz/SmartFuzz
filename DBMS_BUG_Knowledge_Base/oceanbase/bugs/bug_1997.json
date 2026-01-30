@@ -1,0 +1,33 @@
+{
+  "url": "https://github.com/oceanbase/oceanbase/issues/1997",
+  "title": "[Bug]: `left outer join` some `view` may produce unexpected result.",
+  "vulnerable_database": "oceanbase",
+  "date": "2024-06-01T06:42:57Z",
+  "vulnerable_version": "Unknown",
+  "description": "`left outer join` some `view` produces unexpected result.",
+  "poc": [
+    "create table t_e as \r\nselect  \r\n    ref_0.c_tausij as c0, \r\n    ref_0.c_gk06ao9l as c1\r\n  from \r\n    (t_ot8lohr as ref_0 left outer join t_ot8lohr as ref_1 on (1=1))\r\n;",
+    "alter table t_ot8lohr add column c_corupscj tinyint;",
+    "create table t_m ( \r\n  c_ydogyq1 int ,\r\n  c_reoxwl34 int ,\r\n  primary key(c_reoxwl34, c_ydogyq1),\r\n  unique(c_ydogyq1)) partition by hash(c_ydogyq1) partitions 9;",
+    "insert into t_m (c_ydogyq1, c_reoxwl34) values \r\n  (396667551, 217625229), \r\n  (-368695015, -1288002677), \r\n  (1741309262, -712324340), \r\n  (970953275, -1454379871);",
+    "create view t_zsp as \r\nselect  \r\n    (select c_corupscj from t_ot8lohr order by c_corupscj limit 1 offset 2)\r\n       as c0, \r\n    ref_0.c_ydogyq1 as c1,  \r\n    ref_0.c_ydogyq1 as c3, \r\n    ref_0.c_ydogyq1 as c4\r\n  from \r\n    t_m as ref_0\r\n  where (EXISTS (\r\n    select  \r\n        1 as c0\r\n      from \r\n        t_m as ref_1\r\n      where 1=1));",
+    "SELECT\r\n  ref_1.c3 as c1\r\nFROM\r\n  ((t_zsp as ref_0\r\n      left outer join t_zsp as ref_1\r\n      on (ref_0.c4 = ref_1.c1 ))\r\n    left outer join (t_e as ref_2\r\n      left outer join t_zsp as ref_3\r\n      on ((ref_2.c0 is NULL)))\r\n    on (ref_0.c0 = ref_3.c0 ));",
+    "DROP TENANT mysql FORCE;",
+    "DROP RESOURCE POOL pool_for_tenant_mysql;",
+    "CREATE RESOURCE UNIT 4c7g MAX_CPU 4, MIN_CPU 4, MEMORY_SIZE '7G';",
+    "create resource pool pool_test unit='4c7g', unit_num=1, zone_list=('zone1' ,'zone2', 'zone3');",
+    "create tenant test resource_pool_list=('pool_test'), primary_zone='RANDOM',comment 'test tenant', charset='utf8' set ob_tcp_invited_nodes='%', recyclebin=OFF, ob_query_timeout=5000000;",
+    "do\r\n  tag: latest\r\n  include: obd/observer.include.yaml\r\n  global: \r\n    # for default system config used by farm, please see tools/deploy/obd/observer.include.yaml\r\n    # You can also specify the configuration directly below (stored locally, switching the working directory and redeploying will still take effect)\r\n    production_mode: false\r\n    devname: eth0\r\n    syslog_level: 'WARN'\r\n    syslog_io_bandwidth_limit: '30M'\r\n    log_disk_size: '40G'\r\n    max_syslog_file_count: '4'\r\n    cpu_count: '6'\r\n    datafile_size: '10G'\r\n    datafile_next: '5G'\r\n    datafile_maxsize: '30G'\r\n    root_password: ''\r\n    memory_limit: '9G'\r\n    system_memory: '1G'\r\n\r\n```\r\n\r\nSingle node tenant config:\r\n```\r\nDROP TENANT mysql FORCE;",
+    "create resource pool pool_test unit='4c7g', unit_num=1, zone_list=('zone1');"
+  ],
+  "key_bug_features": [
+    "left outer join on views produces unexpected results"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t_test (id INT PRIMARY KEY, name VARCHAR(255), value DECIMAL(10, 2), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t_test (id, name, value) VALUES (1, 'Test1', 10.50), (2, 'Test2', NULL), (3, 'Test3', 20.00);",
+    "CREATE VIEW v_test AS SELECT id, name, value FROM t_test WHERE value IS NOT NULL;",
+    "SELECT v1.name, v2.value FROM v_test AS v1 LEFT OUTER JOIN v_test AS v2 ON v1.id = v2.id WHERE v2.value IS NULL;",
+    "CREATE TABLE t_another (ref_id INT, description TEXT, FOREIGN KEY (ref_id) REFERENCES t_test(id));"
+  ]
+}

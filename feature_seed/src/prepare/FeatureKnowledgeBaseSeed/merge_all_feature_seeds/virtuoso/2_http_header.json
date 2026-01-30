@@ -1,0 +1,11 @@
+CREATE TABLE headers_test (id INT PRIMARY KEY, header_value VARCHAR(255), response_code INT);
+INSERT INTO headers_test VALUES (1, 'Content-type: text/html\r\n', 200);
+INSERT INTO headers_test VALUES (2, 'Content-type: application/json\r\n', 200);
+INSERT INTO headers_test VALUES (3, 'Cache-Control: no-cache\r\n', 200);
+SELECT http_header((SELECT header_value FROM headers_test WHERE response_code = 200 LIMIT 1) || 'X-Frame-Options: DENY\r\n') AS http_response_header;
+SELECT * FROM headers_test WHERE isIRI((SELECT header_value FROM headers_test WHERE id = 1));
+SELECT id, COUNT(*) FROM headers_test GROUP BY id HAVING HttpHeaderTest = http_header('Set-Cookie: sessionid=xyz\r\n') AND isIRI(header_value);
+CREATE TABLE response_analytics (header_id INT, viewer_count INT, last_accessed TIMESTAMP, FOREIGN KEY (header_id) REFERENCES headers_test(id));
+INSERT INTO response_analytics VALUES (1, 100, '2023-10-01 10:00:00'), (2, 150, '2023-10-01 11:00:00');
+SELECT a.header_id, a.viewer_count, a.last_accessed FROM response_analytics a JOIN headers_test h ON a.header_id = h.id WHERE isIRI(header_value) AND viewer_count > (SELECT AVG(viewer_count) FROM response_analytics);
+SELECT MAX(response_code) AS max_code, http_header('Content-Encoding: gzip\r\n') FROM headers_test GROUP BY response_code HAVING MAX(response_code) > 200;

@@ -1,0 +1,16 @@
+{
+    "function": "toLastDayOfWeek",
+    "operator": "a / b",
+    "sql_array": [
+        "CREATE TABLE test_dates (id Int32, event_date DateTime, value Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_dates VALUES (1, '2023-01-01 00:00:00', 100.5), (2, '2023-04-21 10:20:30', 200.75), (3, '2023-04-22 15:30:00', 300.25), (4, '2023-04-23 09:15:00', NULL), (5, '2023-12-31 23:59:59', 0.0);",
+        "SELECT id, toLastDayOfWeek(event_date) AS last_day, value / (CASE WHEN value IS NULL THEN 1 ELSE value END) AS normalized_value FROM test_dates;",
+        "SELECT id, value / (toLastDayOfWeek(event_date) - toDateTime('2023-01-01 00:00:00')) AS division_result FROM test_dates WHERE toLastDayOfWeek(event_date, 1) IS NOT NULL;",
+        "SELECT avg(value) / (toLastDayOfWeek(toDateTime(event_date), 0) - toLastDayOfWeek(toDateTime('2023-06-10 00:00:00'))) AS average_division FROM test_dates GROUP BY id HAVING average_division > 0;",
+        "SELECT id, event_date, toLastDayOfWeek(event_date, 0) AS last_saturday FROM test_dates WHERE toLastDayOfWeek(event_date, 1) >= '2023-04-22' ORDER BY id DESC;",
+        "SELECT id, SUM(value) AS total_value, toLastDayOfWeek(event_date) AS week_end FROM test_dates GROUP BY week_end HAVING total_value / COUNT(*) > 50;",
+        "CREATE TABLE temp_results AS SELECT id, toLastDayOfWeek(event_date) AS week_end, value / (CASE WHEN value IS NULL THEN 1 ELSE value END) AS safe_value FROM test_dates WHERE value IS NOT NULL;",
+        "SELECT week_end, SUM(safe_value) AS aggregated_value FROM temp_results GROUP BY week_end HAVING aggregated_value > 100 ORDER BY week_end;",
+        "DROP TABLE IF EXISTS temp_results;"
+    ]
+}

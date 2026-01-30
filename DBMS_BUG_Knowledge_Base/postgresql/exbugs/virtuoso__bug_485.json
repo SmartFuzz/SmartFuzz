@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/485",
+  "title": "Sparql: xsd:boolean is occasionally returned as xsd:integer",
+  "description": "I've got a dataset including a xsd:boolean datatype. When I query Virtuoso via Sparql, sometimes I get my data as booleans and sometimes as integers, depending on the query. Details are as below.\nVirtuoso version:\nOpenLink Virtuoso Universal Server\nVersion 07.20.3214-pthreads for Linux as of Oct  1 2015\n\nGiven the dataset as below:\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n@prefix mp: <http://localhost/my/prefix#> .\n\n<abb8616d-502d-4f69-9c90-b0c4d0574343>\n    mp:mystring \"stringvalue\"^^xsd:string ;\n    mp:myboolean \"false\"^^xsd:boolean .\n\nwhen I execute the following Query:\nPREFIX xsd: <http://www.w3.org/2001/XMLSchema#>\nPREFIX mp: <http://localhost/my/prefix#>\n\nSELECT ?id ?mystring ?myboolean WHERE {\n    ?id mp:mystring ?mystring .\n    ?id mp:myboolean ?myboolean .\n    FILTER (?mystring = \"stringvalue\"^^xsd:string)\n}\n\nI get the myboolean as xsd:boolean:\n{\n    'id': {\n        'type': 'uri',\n        'value': 'abb8616d-502d-4f69-9c90-b0c4d0574343'\n    },\n    'myboolean': {\n        'datatype': 'http: //www.w3.org/2001/XMLSchema#boolean',\n        'type': 'typed-literal',\n        'value': '0'\n    },\n    'mystring': {\n        'datatype': 'http: //www.w3.org/2001/XMLSchema#string',\n        'type': 'typed-literal',\n        'value': 'stringvalue'\n    }\n}\n\nBut with the following query:\nPREFIX xsd: <http://www.w3.org/2001/XMLSchema#>\nPREFIX mp: <http://localhost/my/prefix#>\n\nSELECT ?id ?mystring ?myboolean WHERE {\n    ?id mp:mystring ?mystring .\n    ?id mp:myboolean ?myboolean .\n    FILTER (?myboolean = \"false\"^^xsd:boolean)\n}\n\nit is returned as xsd:integer:\n{\n    'mystring': {\n        'value': 'stringvalue',\n        'datatype': 'http: //www.w3.org/2001/XMLSchema#string',\n        'type': 'typed-literal'\n    },\n    'myboolean': {\n        'value': '0',\n        'datatype': 'http: //www.w3.org/2001/XMLSchema#integer',\n        'type': 'typed-literal'\n    },\n    'id': {\n        'value': 'abb8616d-502d-4f69-9c90-b0c4d0574343',\n        'type': 'uri'\n    }\n}\n\nI've checked that against the source release 7.2.1 and also against code from develop/7 branch and the behavior is the same.",
+  "date": "2015-10-02 13:06:32",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE my_table (id UUID PRIMARY KEY, mystring VARCHAR(255), myboolean BOOLEAN);",
+    "INSERT INTO my_table (id, mystring, myboolean) VALUES ('abb8616d-502d-4f69-9c90-b0c4d0574343', 'stringvalue', FALSE);",
+    "SELECT id, mystring, myboolean FROM my_table WHERE mystring = 'stringvalue';",
+    "SELECT id, mystring, CASE WHEN myboolean THEN 1 ELSE 0 END AS myboolean_int FROM my_table WHERE myboolean IS NOT NULL;",
+    "SELECT id, mystring, myboolean FROM my_table WHERE myboolean = TRUE;"
+  ],
+  "key_bug_features": [
+    "Querying xsd:boolean with FILTER returns xsd:integer"
+  ]
+}

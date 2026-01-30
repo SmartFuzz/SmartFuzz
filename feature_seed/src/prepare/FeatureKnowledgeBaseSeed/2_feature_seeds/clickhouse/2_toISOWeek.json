@@ -1,0 +1,10 @@
+CREATE TABLE test_dates (event_date Date, event_time DateTime, some_value UInt8) ENGINE = MergeTree() ORDER BY event_date;
+INSERT INTO test_dates (event_date, event_time, some_value) VALUES ('2024-01-01', '2024-01-01 12:00:00', 1), ('2024-12-31', '2024-12-31 23:59:59', 2), ('2024-06-15', '2024-06-15 00:00:00', NULL), ('2024-07-01', '2024-07-01 15:30:00', 255);
+SELECT toISOWeek(event_date) AS iso_week FROM test_dates WHERE some_value = ALL (SELECT MAX(some_value) FROM test_dates WHERE event_date >= '2024-01-01');
+SELECT event_date, toISOWeek(event_time) AS week_number FROM test_dates WHERE event_time IS NOT NULL AND event_date = ALL (SELECT event_date FROM test_dates WHERE some_value IS NULL);
+SELECT event_date, COUNT(*) FROM test_dates GROUP BY toISOWeek(event_date) HAVING COUNT(*) > ALL (SELECT COUNT(*) FROM test_dates WHERE event_date < '2024-01-01');
+SELECT DISTINCT event_date FROM test_dates WHERE some_value = ALL (SELECT some_value FROM test_dates WHERE event_time < '2024-07-01 00:00:00');
+SELECT toISOWeek(event_date) AS week_num FROM test_dates WHERE event_date < '2025-01-01' AND event_time >= '2024-01-01 00:00:00' AND (event_time = ALL (SELECT event_time FROM test_dates) OR event_time IS NULL);
+SELECT event_date, some_value FROM (SELECT event_date, some_value FROM test_dates WHERE some_value IS NOT NULL) sub WHERE some_value = ALL (SELECT some_value FROM test_dates WHERE event_date = '2024-06-15');
+WITH (SELECT toISOWeek(event_time) FROM test_dates WHERE event_date = '2024-12-31') AS week_val SELECT event_date FROM test_dates WHERE toISOWeek(event_date) = week_val;
+CREATE TEMPORARY TABLE temp_test AS SELECT event_date, event_time FROM test_dates WHERE event_time IS NOT NULL HAVING toISOWeek(event_date) = ALL (SELECT toISOWeek(event_date) FROM test_dates WHERE some_value > 1);

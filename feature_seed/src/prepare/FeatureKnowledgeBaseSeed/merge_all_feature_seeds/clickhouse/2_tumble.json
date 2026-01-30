@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id UInt32, event_time DateTime, description String, value Float64, valid Boolean);
+INSERT INTO test_data VALUES (1, now(), 'test event 1', 100.5, true), (2, now() - INTERVAL 1 DAY, 'test event 2', NULL, false);
+SELECT id, value, tumble(event_time, toIntervalDay('1')) AS time_window FROM test_data WHERE description ILIKE 'test%';
+SELECT id, value, event_time, tumble(event_time, toIntervalDay('1')) AS time_window FROM test_data WHERE value IS NOT NULL AND description ILIKE CONCAT('%', CAST(value AS String), '%');
+SELECT id, COUNT(*) AS event_count FROM (SELECT id, tumble(event_time, toIntervalDay('1')) AS time_window FROM test_data WHERE event_time > now() - INTERVAL 5 DAY GROUP BY id, time_window) AS tmp GROUP BY id HAVING event_count > 1;
+SELECT a.id, a.description, a.value FROM test_data AS a JOIN (SELECT id, tumble(event_time, toIntervalDay('1')) AS time_window FROM test_data GROUP BY time_window) AS b ON a.id = b.id WHERE a.value ILIKE '%' AND a.event_time >= b.time_window.1;
+SELECT COUNT(*) FROM test_data WHERE description ILIKE 'empty' AND value IS NULL;
+CREATE TEMPORARY TABLE temp_data AS SELECT * FROM test_data WHERE valid = true;
+SELECT id, COUNT(*) FROM temp_data WHERE description ILIKE '%';
+SELECT id, COUNT(*) AS valid_event_count FROM test_data GROUP BY id HAVING valid_event_count = (SELECT COUNT(*) FROM test_data WHERE value IS NOT NULL AND description ILIKE '%event%');

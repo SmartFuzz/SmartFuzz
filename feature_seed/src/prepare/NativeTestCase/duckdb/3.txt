@@ -1,0 +1,12 @@
+PRAGMA enable_verification;
+CALL dbgen(sf=0.001);
+select min(l_orderkey, 3) from lineitem;
+select max(l_orderkey, 3) from lineitem;
+SELECT l_returnflag, max( 	CASE WHEN l_returnflag='R' THEN null ELSE l_orderkey END, 	CASE WHEN l_returnflag='N' THEN 5 ELSE 3 END) FROM lineitem GROUP BY ALL ORDER BY ALL;
+CREATE MACRO compute_top_k(table_name, group_col, val_col, k) AS TABLE SELECT rs.grp, array_agg(rs.val ORDER BY rid) FROM (   SELECT group_col AS grp, val_col AS val, row_number() OVER (PARTITION BY group_col ORDER BY val_col DESC) as rid   FROM query_table(table_name::VARCHAR) ORDER BY group_col DESC ) as rs WHERE rid <= k GROUP BY ALL ORDER BY ALL;
+SET disabled_optimizers = 'top_n_window_elimination';
+SELECT * FROM compute_top_k(lineitem, l_returnflag, l_orderkey, 3);
+SELECT l_returnflag, max(l_orderkey, 3) FROM lineitem GROUP BY ALL ORDER BY ALL;
+CREATE MACRO compute_bottom_k(table_name, group_col, val_col, k) AS TABLE SELECT rs.grp, array_agg(rs.val ORDER BY rid) FROM (   SELECT group_col AS grp, val_col AS val, row_number() OVER (PARTITION BY group_col ORDER BY val_col ASC) as rid   FROM query_table(table_name::VARCHAR) ORDER BY group_col ASC ) as rs WHERE rid <= k GROUP BY ALL ORDER BY ALL;
+SELECT * FROM compute_bottom_k(lineitem, l_returnflag, l_orderkey, 3);
+SELECT l_returnflag, min(l_orderkey, 3) FROM lineitem GROUP BY ALL ORDER BY ALL;

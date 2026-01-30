@@ -1,0 +1,17 @@
+{
+    "function": "dateName",
+    "operator": "a == b",
+    "sql_array": [
+        "CREATE TABLE test_dates (id UInt32, event_time DateTime, nullable_time DateTime64(3) NULL, description String);",
+        "INSERT INTO test_dates VALUES (1, toDateTime('2021-04-14 11:22:33'), NULL, 'Test Event 1'), (2, toDateTime('2021-04-15 12:22:33'), toDateTime64('2021-04-15 12:00:00.123', 3), 'Test Event 2');",
+        "SELECT id, dateName('year', event_time) AS year, dateName('month', event_time) AS month FROM test_dates WHERE dateName('year', event_time) == '2021';",
+        "SELECT id, dateName('day', event_time) AS day, if(nullable_time IS NULL, 'No Time', dateName('hour', nullable_time)) AS hour_check FROM test_dates HAVING day == '14' OR hour_check == 'No Time';",
+        "WITH (SELECT count() FROM test_dates) AS total_events SELECT dateName('quarter', event_time) AS quarter, total_events FROM test_dates GROUP BY quarter HAVING total_events > 1;",
+        "SELECT event_time, dateName('weekday', event_time) AS weekday FROM test_dates WHERE dateName('day', event_time) == '15' AND (NULL IS NULL);",
+        "CREATE TABLE test_dates2 (id UInt32, event_date Date, description String, CHECK (event_date >= '2020-01-01'));",
+        "INSERT INTO test_dates2 VALUES (1, toDate('2021-04-14'), 'Check Event 1'), (2, toDate('2022-03-15'), 'Check Event 2');",
+        "SELECT id, dateName('month', event_date) AS month_check FROM test_dates2 WHERE event_date == toDate('2022-03-15');",
+        "SELECT a.id, a.event_time, dateName('year', a.event_time) AS year, dateName('day', b.event_date) AS day_check FROM test_dates a JOIN test_dates2 b ON dateName('month', a.event_time) == dateName('month', b.event_date) WHERE a.event_time IS NOT NULL;",
+        "WITH (SELECT dateName('weekday', event_time) AS wd FROM test_dates JOIN test_dates2 ON dateName('month', event_time) == dateName('month', event_date)) AS weekday_list SELECT DISTINCT wd FROM weekday_list WHERE wd IS NOT NULL ORDER BY wd;"
+    ]
+}

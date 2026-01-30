@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7382",
+  "title": "MonetDB server 11.46.0 crashes at `gc_col`",
+  "description": "MonetDB server 11.46.0 crashes at `gc_col` after executing SQL statements through ODBC.\n\n**To Reproduce**\n1. Configure the unixODBC with MonetDB ODBC drivers\n2. Use the command line like `isql monetdb -v -e` to connect (**to trigger the crash, the '-e' option is necessary.** But I don't know why)\n3. Execute the following SQL statements:\n```sql\nSTART TRANSACTION;\nCREATE TEMPORARY TABLE t1 (keyc INT, c1 VARCHAR(100), c2 VARCHAR(100), PRIMARY KEY(keyc));\nCREATE TABLE c1(c2 DECIMAL(9,4) NOT NULL);\nSAVEPOINT a_a;\nTRUNCATE TABLE t1;\nDELETE FROM w;\nCOMMIT;\nSELECT 1;\n```\n\n**Expected behavior**\nExecuting statements successfully or throwing errors, instead of breaking down the whole MonetDB server.\n\n**Backtrace**\n```\n#0 0x7ff2e7285dd6 (gc_col+0x26)\n#1 0x7ff2e7282cd5 (tc_gc_col+0x15)\n#2 0x7ff2e7251307 (store_pending_changes+0x307)\n#3 0x7ff2e7255a87 (sql_trans_commit+0x567)\n#4 0x7ff2e7260353 (sql_trans_end+0x83)\n#5 0x7ff2e72a310c (mvc_commit+0x4fc)\n#6 0x7ff2e71a4564 (SQLengine_+0x284)\n#7 0x7ff2e71a3343 (SQLengine+0x23)\n#8 0x7ff2e75326cf (runScenario+0x4f)\n#9 0x7ff2e753316c (MSscheduleClient+0x68c)\n#10 0x7ff2e75dac2b (doChallenge+0xfb)\n#11 0x7ff2e7c59ba0 (THRstarter+0x100)\n#12 0x7ff2e7cc9cc4 (thread_starter+0x34)\n#13 0x7ff2e703e609 (start_thread+0xd9)\n#14 0x7ff2e6f63133 (clone+0x43)\n```\n\n**Software versions**\n - MonetDB server version: 11.46.0 (hg id: 63a42c2) (pulled from the master branch)\n - MonetDB client version: mclient, version 11.48.0 (hg id: 63a42c2)\n - OS and version: ubuntu 20.04\n - Self-installed and compiled. The command line of compilation: `CC=clang-12 CXX=clang++-12 cmake /root/monetdb_master -DCMAKE_BUILD_TYPE=RelWithDebInfo`\n\n**Issue labeling**\nbug\n\n**Additional context**\nThe MonetDB here runs in-memory database. The command line of starting MonetDB server is `mserver5 --in-memory`.\n\nIf the crash cannot be reproduced easily, please tell me. I will try to provide the whole steps to trigger the crash as possible.",
+  "date": "2023-06-16T17:28:01Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (id INT PRIMARY KEY, name VARCHAR(50), age INT CHECK (age >= 0));",
+    "INSERT INTO t2 (id, name, age) VALUES (1, 'Alice', 30);",
+    "INSERT INTO t2 (id, name, age) VALUES (2, 'Bob', NULL);",
+    "SELECT * FROM t2 WHERE age IS NULL;",
+    "DELETE FROM t2 WHERE id = 1;"
+  ],
+  "key_bug_features": [
+    "Crashes when executing SQL with ODBC '-e' option"
+  ]
+}

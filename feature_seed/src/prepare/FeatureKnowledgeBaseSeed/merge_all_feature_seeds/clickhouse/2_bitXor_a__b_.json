@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id UInt32, value1 Int32, value2 Int32, description String, flag Boolean);
+INSERT INTO test_table VALUES (1, 5, 10, '', NULL), (2, NULL, 15, 'test', 1), (3, 0, -5, 'sample', NULL);
+SELECT id, bitXor(value1, value2) AS bitwise_xor FROM test_table WHERE flag IN (SELECT DISTINCT flag FROM test_table WHERE description LIKE '%test%') GROUP BY id HAVING bitwise_xor > 0;
+SELECT id, COUNT() AS cnt FROM (SELECT id, bitXor(value1, value2) AS func_result FROM test_table GROUP BY id) tmp WHERE func_result IN (1, -1, 0) GROUP BY id HAVING cnt > 0;
+SELECT id, bitXor(value1, value2) AS combined_xor, description FROM test_table WHERE description IN (SELECT description FROM test_table WHERE description IS NOT NULL AND flag IS TRUE ORDER BY id ASC) ORDER BY combined_xor DESC;
+CREATE TABLE temp_table AS SELECT * FROM test_table WHERE id IN (SELECT id FROM test_table WHERE value1 IS NOT NULL) ENGINE = MergeTree ORDER BY id;
+SELECT a.id, bitXor(a.value1, a.value2) AS xor_result FROM test_table a JOIN temp_table b ON a.id = b.id WHERE b.flag = 1 GROUP BY a.id HAVING xor_result != 0;
+WITH (SELECT count() FROM test_table WHERE flag IS NOT NULL) AS non_null_count SELECT non_null_count, bitXor(value1, value2) AS total_xor FROM test_table GROUP BY non_null_count HAVING total_xor < 10 OR total_xor IS NULL;
+INSERT INTO temp_table SELECT id, value1 + value2, description FROM test_table WHERE (value1 < 5) IN (SELECT flag FROM test_table WHERE flag IS NOT NULL AND value1 > 0);
+SELECT DISTINCT a.id, bitXor(a.value1, a.value2) AS final_xor FROM test_table a WHERE a.value1 IN (SELECT value2 FROM test_table WHERE value1 IS NOT NULL AND flag IS FALSE) GROUP BY a.id HAVING final_xor >= 0;

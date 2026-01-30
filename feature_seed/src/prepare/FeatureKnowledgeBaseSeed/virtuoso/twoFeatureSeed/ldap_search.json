@@ -1,0 +1,16 @@
+{
+    "function": "ldap_search",
+    "operator": "*",
+    "sql_array": [
+        "CREATE TABLE ldap_test (id INT PRIMARY KEY, user_dn VARCHAR(255), search_criteria VARCHAR(255), result_count INT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO ldap_test VALUES (1, 'cn=John Doe,dc=example,dc=com', '(uid=jd*)', NULL);",
+        "INSERT INTO ldap_test VALUES (2, 'cn=Jane Smith,dc=example,dc=com', '(mail=jane*example.com)', NULL);",
+        "UPDATE ldap_test SET result_count = (SELECT COUNT(*) FROM ldap_search('ldap://localhost', 0, 'dc=example,dc=com', user_dn, NULL) * 2) WHERE id = 1;",
+        "SELECT id, user_dn, ldap_search('ldap://localhost', 0, 'dc=example,dc=com', search_criteria, NULL) * 1.5 AS adjusted_results FROM ldap_test WHERE result_count IS NULL;",
+        "SELECT id, (SELECT COUNT(*) FROM ldap_search('ldap://localhost', 0, 'dc=example,dc=com', '(ou=Users)', NULL) * 2) AS total_users FROM ldap_test GROUP BY id HAVING total_users > 0;",
+        "SELECT ld.id, ld.user_dn, (SELECT COUNT(*) FROM ldap_search('ldap://localhost', 0, 'dc=example,dc=com', ld.search_criteria, NULL)) AS search_results FROM ldap_test ld WHERE search_criteria IS NOT NULL ORDER BY search_results DESC;",
+        "INSERT INTO ldap_test VALUES (3, 'cn=Test User,dc=example,dc=com', '(cn=*)', NULL);",
+        "UPDATE ldap_test SET result_count = (SELECT COUNT(*) FROM ldap_search('ldap://localhost', 0, 'dc=example,dc=com', '(cn=nonexistent)', NULL)) WHERE id = 3;",
+        "SELECT id, user_dn, COALESCE(result_count, 0) * 100 AS scaled_results FROM ldap_test WHERE COALESCE(result_count, 0) > 0;"
+    ]
+}

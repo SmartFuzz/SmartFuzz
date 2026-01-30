@@ -1,0 +1,11 @@
+CREATE TABLE replication_logs (account_name VARCHAR(255), transaction_level INT, log_time TIMESTAMP, log_data TEXT);
+INSERT INTO replication_logs VALUES ('demoserver', 999999950, '2023-10-01 12:00:00', 'Transaction data 1');
+INSERT INTO replication_logs VALUES ('demoserver', 999999880, '2023-10-01 12:01:00', 'Transaction data 2');
+INSERT INTO replication_logs VALUES ('demopub', 999999900, '2023-10-01 12:02:00', NULL);
+INSERT INTO replication_logs VALUES ('demoserver', NULL, '2023-10-01 12:03:00', 'Transaction data 4');
+INSERT INTO replication_logs VALUES ('demoserver', 1000001000, '2023-10-01 12:04:00', 'Transaction data 5');
+SELECT account_name FROM replication_logs WHERE transaction_level IN (SELECT MAX(transaction_level) FROM replication_logs WHERE account_name = 'demoserver');
+SELECT COUNT(*) FROM (SELECT DISTINCT account_name FROM replication_logs WHERE log_time > (CURRENT_TIMESTAMP - INTERVAL '1 hour')) AS recent_logs WHERE recent_logs.account_name IN ('demoserver', 'demopub');
+SELECT repl_purge(account_name, transaction_level) FROM (SELECT account_name, COUNT(*) AS transaction_count FROM replication_logs GROUP BY account_name HAVING transaction_count > 10) AS account_statistics;
+SELECT NULL IN (SELECT transaction_level FROM replication_logs WHERE log_data IS NULL) AS null_check;
+SELECT repl_purge('demoserver', (SELECT MAX(transaction_level) FROM replication_logs WHERE account_name IN (SELECT DISTINCT account_name FROM replication_logs WHERE transaction_level < 999999900))) AS purge_result;

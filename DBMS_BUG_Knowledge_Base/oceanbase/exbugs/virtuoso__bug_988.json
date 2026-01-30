@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/988",
+  "title": "Virtuoso 42000 Error GBJON: Partitioned hash table must be of the chash type",
+  "description": "For a research project, I am extracting statistics about the content on RDF bases. To avoid using several nested blank nodes and to be able to gather the stats concerning the same classes and properties from my dozen of queries, I sent to DBpedia the following query where I generate Uris.\nPREFIX prov: <http://www.w3.org/ns/prov#>\nPREFIX earl: <http://www.w3.org/ns/earl#>\nPREFIX kgi: <http://ns.inria.fr/kg/index#>\nPREFIX void: <http://rdfs.org/ns/void#>\nCONSTRUCT {\n    kgi:dbpediaMetadata a prov:Entity , earl:TestSubject ;\n        prov:wasDerivedFrom <https://dbpedia.org/sparql> ;\n        kgi:curated kgi:dbpediaDataset .\n    kgi:dbpediaDataset void:classPartition ?classPartition .\n    GRAPH ?sportalGraph {\n        ?classPartition void:class ?c ;\n            void:propertyPartition ?classPropPartition .\n            ?classPropPartition void:property ?p ;\n                void:triples ?x .\n     }\n}\nWHERE {\n    { SELECT ?c (COUNT(?o) AS ?x) ?p WHERE { ?s a ?c ; ?p ?o } GROUP BY ?c ?p }\n    BIND( IRI( CONCAT( str(kgi:), str(?c) ) ) AS ?classPartition )\n    BIND( IRI( CONCAT( str(?classPartition), str(?p) ) ) AS ?classPropPartition )\n    BIND( IRI( CONCAT( str(kgi:dbpediaDataset), \"Statistics\" ) ) AS ?sportalGraph )\n }\n\nI obtained the following error, that I do not understand:\nVirtuoso 42000 Error GBJON: Partitioned hash table must be of the chash type\nSending the version of the query without the concatenation, with nested blank nodes, does not create the error.",
+  "date": "2021-10-01 07:40:45",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE test_partitioned (id INT PRIMARY KEY, name VARCHAR(255), value FLOAT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_partitioned (id, name, value) VALUES (1, 'Test A', 10.5), (2, 'Test B', NULL), (3, 'Test C', 20.0);",
+    "CREATE TABLE test_class_partition (class_id INT, class_name VARCHAR(255), FOREIGN KEY (class_id) REFERENCES test_partitioned(id));",
+    "INSERT INTO test_class_partition (class_id, class_name) SELECT id, name FROM test_partitioned WHERE value IS NOT NULL;",
+    "SELECT cp.class_name, COUNT(tp.value) AS value_count FROM test_class_partition cp JOIN test_partitioned tp ON cp.class_id = tp.id GROUP BY cp.class_name;"
+  ],
+  "key_bug_features": [
+    "Partitioned hash table must be of the chash type"
+  ]
+}

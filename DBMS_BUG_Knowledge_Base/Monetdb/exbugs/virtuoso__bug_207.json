@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/207",
+  "title": "Wrong number of results returned",
+  "description": "In 048ed2d deployed on http://ruian.linked.opendata.cz/sparql when I run this query:\n\nselect ?amnumber ?nazevulice ?cisloD ?cisloO ?psc ?nazevobce ?nazevvusc where\n{\n?am a ruian:AdresniMisto ;\n    skos:notation ?amnumber ;\n    ruian:psc ?psc .\nOPTIONAL { ?am ruian:cisloDomovni ?cisloD . }\nOPTIONAL { ?am ruian:cisloOrientacni ?cisloO . }\nOPTIONAL {?am ruian:ulice ?ulice .\n  ?ulice a ruian:Ulice ;\n    s:name ?nazevulice .\nOPTIONAL { ?ulice ruian:obec ?obec .\n  ?obec a ruian:Obec ;\n    s:name ?nazevobce .\nOPTIONAL { ?obec ruian:pou/ruian:orp/ruian:vusc ?vusc .\n  ?vusc a ruian:Vusc ;\n    s:name ?nazevvusc .}\n}\n}\n}\n\nI get 1 048 578 results (e.g. as a CSV file).\nHowever, when I count the results like this (only the first row changed):\n\nselect count (distinct ?amnumber) where\n{\n?am a ruian:AdresniMisto ;\n    skos:notation ?amnumber ;\n    ruian:psc ?psc .\nOPTIONAL { ?am ruian:cisloDomovni ?cisloD . }\nOPTIONAL { ?am ruian:cisloOrientacni ?cisloO . }\nOPTIONAL {?am ruian:ulice ?ulice .\n  ?ulice a ruian:Ulice ;\n    s:name ?nazevulice .\nOPTIONAL { ?ulice ruian:obec ?obec .\n  ?obec a ruian:Obec ;\n    s:name ?nazevobce .\nOPTIONAL { ?obec ruian:pou/ruian:orp/ruian:vusc ?vusc .\n  ?vusc a ruian:Vusc ;\n    s:name ?nazevvusc .}\n}\n}\n}\n\nthe answer is 2 894 126.\nI thought this was an issue with ResultSetMaxRows virtuoso.ini, but that is set to 10000000000.\nThe database is the same one as in #200 only with 2 added prefixes:\ns: http://schema.org/\nruian: http://ruian.linked.opendata.cz/ontology/",
+  "date": "2014-06-26 13:51:48",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE ruian_AdresniMisto (amnumber VARCHAR(255), psc VARCHAR(10), cisloD INT, cisloO INT);",
+    "INSERT INTO ruian_AdresniMisto (amnumber, psc, cisloD, cisloO) VALUES ('AM001', '12345', 1, NULL);",
+    "INSERT INTO ruian_AdresniMisto (amnumber, psc, cisloD, cisloO) VALUES ('AM002', '12345', NULL, 2);",
+    "SELECT COUNT(DISTINCT amnumber) FROM ruian_AdresniMisto WHERE psc IS NOT NULL;",
+    "SELECT amnumber, COUNT(*) FROM ruian_AdresniMisto GROUP BY amnumber HAVING COUNT(*) > 1;"
+  ],
+  "key_bug_features": [
+    "Count distinct results returns incorrect total"
+  ]
+}

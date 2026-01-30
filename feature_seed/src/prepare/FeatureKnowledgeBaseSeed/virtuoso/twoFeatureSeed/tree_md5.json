@@ -1,0 +1,16 @@
+{
+    "function": "tree_md5",
+    "operator": "XPath /",
+    "sql_array": [
+        "CREATE TABLE test_data (id INT PRIMARY KEY, data XML, val NUMERIC, arr_data ARRAY);",
+        "INSERT INTO test_data (id, data, val, arr_data) VALUES (1, '<root><child>Value1</child></root>', 12345.67, ARRAY[1, 2, 3]);",
+        "INSERT INTO test_data (id, data, val, arr_data) VALUES (2, '<root><child>Value2</child></root>', NULL, ARRAY[4, 5, 6]);",
+        "INSERT INTO test_data (id, data, val, arr_data) VALUES (3, '<root><child>Value3</child></root>', 0, ARRAY[]);",
+        "SELECT id, tree_md5(arr_data) AS checksum, xpath_string('/root/child', data) AS child_value FROM test_data WHERE val IS NOT NULL;",
+        "SELECT id, tree_md5(arr_data) AS checksum FROM (SELECT id, arr_data FROM test_data WHERE val > 10000 UNION SELECT id, arr_data FROM test_data WHERE val IS NULL) AS combined_data;",
+        "SELECT id, tree_md5(arr_data) AS checksum FROM test_data WHERE arr_data IS NOT NULL AND (SELECT COUNT(*) FROM test_data WHERE val IS NULL) > 0;",
+        "SELECT id, tree_md5(ARRAY[CAST(val AS TEXT), xpath_string('/root/child', data)]) AS composite_md5 FROM test_data GROUP BY id HAVING COUNT(*) > 1;",
+        "SELECT id, COUNT(*) FROM (SELECT id, tree_md5(arr_data) AS checksum FROM test_data GROUP BY id) AS checksums GROUP BY id HAVING COUNT(checksum) > 1;",
+        "WITH XMLData AS (SELECT id, xpath_string('/root/child', data) AS child_value FROM test_data) SELECT id, tree_md5(ARRAY[child_value, CAST(id AS TEXT)]) FROM XMLData WHERE child_value IS NOT NULL;"
+    ]
+}

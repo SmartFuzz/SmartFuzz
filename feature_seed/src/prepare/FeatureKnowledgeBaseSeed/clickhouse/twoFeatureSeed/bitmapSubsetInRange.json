@@ -1,0 +1,14 @@
+{
+    "function": "bitmapSubsetInRange",
+    "operator": "a != ALL (subquery)",
+    "sql_array": [
+        "CREATE TABLE test_bitmap (id UInt32, bitmap_col AggregateFunction(bitmapBuild, UInt32));",
+        "INSERT INTO test_bitmap VALUES (1, bitmapBuild([0,5,10,15,20,25,30,35,40,45])), (2, bitmapBuild([1,6,11,16,21,26,31,36,41,46])), (3, bitmapBuild([2,7,12,17,22,27,32,37,42,47]));",
+        "SELECT id, bitmapToArray(bitmapSubsetInRange(bitmap_col, toUInt32(0), toUInt32(30))) AS subset FROM test_bitmap WHERE id != ALL (SELECT id FROM test_bitmap WHERE id < 3);",
+        "SELECT id, COUNT() FROM (SELECT id, bitmapToArray(bitmapSubsetInRange(bitmap_col, toUInt32(0), toUInt32(50))) AS subset FROM test_bitmap GROUP BY id HAVING length(subset) > 0) AS inner_query GROUP BY id HAVING id != ALL (SELECT id FROM test_bitmap WHERE id = 2);",
+        "CREATE TABLE test_numbers (number UInt32);",
+        "INSERT INTO test_numbers VALUES (0), (1), (2), (3), (4), (5), (10), (20), (30), (50), (100);",
+        "SELECT number, bitmapToArray(bitmapSubsetInRange(bitmapBuild([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]), toUInt32(5), toUInt32(15))) AS subset FROM test_numbers WHERE number != ALL (SELECT number FROM test_numbers WHERE number > 35);",
+        "SELECT number, bitmapToArray(bitmapSubsetInRange(bitmapBuild([0,1,2,4,5,10,15,20,25,50]), toUInt32(5), toUInt32(30))) AS subset FROM test_numbers WHERE number IN (SELECT number FROM test_numbers WHERE number >= 1 AND number <= 5) AND number != ALL (SELECT number FROM test_numbers WHERE number = 3);"
+    ]
+}

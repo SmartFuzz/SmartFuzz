@@ -1,0 +1,20 @@
+{
+    "function": "DB.DBA.RDF_GRAPH_USER_PERMS_DEL",
+    "operator": "SPARQL: sameTerm",
+    "sql_array": [
+        "CREATE TABLE user_permissions (uname VARCHAR(255), graph_iri VARCHAR(255), access_level INT);",
+        "INSERT INTO user_permissions VALUES ('user1', 'http://example.org/graph1', 1);",
+        "INSERT INTO user_permissions VALUES (NULL, 'http://example.org/graph2', NULL);",
+        "INSERT INTO user_permissions VALUES ('user2', NULL, 2);",
+        "SELECT DB.DBA.RDF_GRAPH_USER_PERMS_DEL(uname, graph_iri) FROM user_permissions WHERE sameTerm(graph_iri, 'http://example.org/graph1');",
+        "SELECT DB.DBA.RDF_GRAPH_USER_PERMS_DEL(UNNEST(ARRAY['user1', 'user2', NULL]), graph_iri) FROM user_permissions WHERE sameTerm(graph_iri, 'http://example.org/graph2') OR graph_iri IS NULL;",
+        "SELECT DB.DBA.RDF_GRAPH_USER_PERMS_DEL(uname, graph_iri) AS removed_permissions FROM user_permissions WHERE access_level > 1 AND uname = 'user1' HAVING sameTerm(removed_permissions, uname);",
+        "SELECT DB.DBA.RDF_GRAPH_USER_PERMS_DEL(user_permissions.uname, user_permissions.graph_iri) FROM user_permissions INNER JOIN (SELECT DISTINCT uname, graph_iri FROM user_permissions WHERE access_level IS NULL) AS subquery ON user_permissions.uname = subquery.uname;",
+        "SELECT COUNT(*) FROM user_permissions WHERE graph_iri IN (SELECT graph_iri FROM user_permissions WHERE access_level = 1) HAVING sameTerm(UNNEST(ARRAY[graph_iri]), graph_iri) IS TRUE;",
+        "CREATE TABLE temp_users (uname VARCHAR(255) PRIMARY KEY, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO temp_users VALUES ('user3'), (NULL);",
+        "SELECT DB.DBA.RDF_GRAPH_USER_PERMS_DEL(user_permissions.uname, temp_users.uname) FROM user_permissions, temp_users WHERE user_permissions.uname IS NULL OR temp_users.uname IS NULL;",
+        "DROP TABLE IF EXISTS user_permissions;",
+        "DROP TABLE IF EXISTS temp_users;"
+    ]
+}

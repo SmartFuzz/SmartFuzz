@@ -1,0 +1,18 @@
+CREATE TABLE test_zookeeper (id UInt32, session_time UInt32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_zookeeper VALUES (1, zookeeperSessionUptime());
+INSERT INTO test_zookeeper VALUES (2, zookeeperSessionUptime());
+INSERT INTO test_zookeeper VALUES (3, zookeeperSessionUptime());
+SELECT * FROM test_zookeeper WHERE session_time > 0;
+SELECT AVG(session_time) as avg_uptime FROM test_zookeeper;
+SELECT MAX(session_time) as max_uptime FROM test_zookeeper GROUP BY id HAVING max_uptime > 0;
+SELECT SUM(session_time) FROM (SELECT zookeeperSessionUptime() AS session_time) AS s;
+SELECT count() FROM test_zookeeper WHERE session_time = (SELECT MAX(session_time) FROM test_zookeeper);
+WITH zookeeperSessionUptime() AS uptime SELECT id, uptime FROM test_zookeeper WHERE uptime > 10;
+SELECT zookeeperSessionUptime() AS current_uptime, AVG(session_time) FROM test_zookeeper GROUP BY id HAVING current_uptime > 0;
+CREATE TABLE logs (log_date DateTime, session_id UInt32, session_time UInt32) ENGINE = MergeTree() ORDER BY log_date;
+INSERT INTO logs VALUES (now(), 1, zookeeperSessionUptime());
+INSERT INTO logs VALUES (now(), 2, zookeeperSessionUptime());
+SELECT log_date, session_time FROM logs WHERE session_time = (SELECT zookeeperSessionUptime());
+SELECT COUNT(*) FROM (SELECT zookeeperSessionUptime() AS uptime) AS current WHERE uptime <= 60;
+SELECT DISTINCT session_time FROM test_zookeeper JOIN logs ON test_zookeeper.id = logs.session_id;
+SELECT session_time FROM test_zookeeper WHERE session_time IN (SELECT session_time FROM logs);

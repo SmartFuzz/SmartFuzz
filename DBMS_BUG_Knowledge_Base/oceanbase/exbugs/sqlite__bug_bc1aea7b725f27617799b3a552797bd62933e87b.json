@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/bc1aea7b72",
+  "title": "Incorrect result on LEFT JOIN with OR constraints and an ORDER BY clause",
+  "description": "drh added on 2013-06-03 13:23:57:\nIn the following script, the first query (without the ORDER BY clause) gets\nthe correct answer, but adding the ORDER BY clause in the second query gives\nan extra incorrect output row:\nCREATE TABLE t1(a INTEGER, b INTEGER);\nINSERT INTO t1 VALUES(1,2);\nINSERT INTO t1 VALUES(3,4);\n-- CORRECT answer when ORDER BY omitted\nSELECT *\n  FROM t1 AS x\n       LEFT JOIN (SELECT a AS c, b AS d FROM t1) AS y ON a=c\n WHERE d=4 OR d IS NULL;\n-- INCORRECT answer when ORDER BY used\nSELECT *\n  FROM t1 AS x\n       LEFT JOIN (SELECT a AS c, b AS d FROM t1) AS y ON a=c\n WHERE d=4 OR d IS NULL\n ORDER BY a;\nThe correct answer is obtained in both cases prior to check-in\n[1e874629d7cf5683].  After that check-in, the second query segfaults.\nthe segfault was fixed by [dd34bec389359845] (which is the fix for \nticket [d02e1406a58ea02]) but the wrong answer is generated.  Hence,\nversion 3.7.14 was working correctly, but all subsequent versions contain\na problem with the second query.\ndrh added on 2013-06-03 14:03:16:\nHere is a slightly different script to demonstrate the problem.  This script\nmight be easier to analyze since it does not use subqueries:\nCREATE TABLE t1(a,b);\nINSERT INTO t1 VALUES(1,2), (3,4);\nCREATE TABLE t2(c,d);\nINSERT INTO t2 SELECT * FROM t1;\nSELECT * FROM t1 LEFT JOIN t2 ON a=c\n WHERE d=4 OR d IS NULL\n ORDER BY a;\nAs before, the correct answer is obtained if the ORDER BY clause is omitted.",
+  "date": "2013-06-03 13:23:5712.19 years ago",
+  "vulnerable_version": "3.7.17",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(a INTEGER, b VARCHAR(255), c FLOAT);",
+    "INSERT INTO t1 VALUES(1, 'text1', 1.1), (2, 'text2', 2.2), (3, 'text3', NULL);",
+    "CREATE TABLE t2(d INTEGER, e INTEGER);",
+    "INSERT INTO t2 SELECT a, CAST(b AS INTEGER) FROM t1 WHERE c IS NOT NULL;",
+    "SELECT * FROM t1 LEFT JOIN t2 ON a=d WHERE e=2 OR e IS NULL ORDER BY a;"
+  ],
+  "key_bug_features": [
+    "LEFT JOIN with OR constraints and ORDER BY clause"
+  ]
+}

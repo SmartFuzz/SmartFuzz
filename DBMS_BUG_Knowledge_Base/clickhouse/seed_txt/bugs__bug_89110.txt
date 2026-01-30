@@ -1,0 +1,33 @@
+CREATE TABLE IF NOT EXISTS default.initial_complex
+(
+    n          UInt32,
+    description String,
+    _timestamp DateTime DEFAULT now()
+)
+ENGINE = ReplacingMergeTree(_timestamp)
+ORDER BY (n);
+CREATE TABLE IF NOT EXISTS default.target1_complex
+(
+    x          UInt32,
+    status     Nullable(String),
+    _timestamp DateTime DEFAULT now()
+)
+ENGINE = ReplacingMergeTree(_timestamp)
+ORDER BY (x);
+CREATE TABLE IF NOT EXISTS default.target2_complex
+(
+    x          UInt32,
+    value      Float64,
+    _timestamp DateTime DEFAULT now()
+)
+ENGINE = ReplacingMergeTree(_timestamp)
+ORDER BY (x);
+CREATE MATERIALIZED VIEW IF NOT EXISTS default.initial_target1_mv_complex
+REFRESH EVERY 1 MINUTE TO default.target1_complex AS
+SELECT n AS x, CASE WHEN n % 2 = 0 THEN 'even' ELSE 'odd' END AS status
+FROM default.initial_complex
+WHERE rand() < 0.5;
+CREATE MATERIALIZED VIEW IF NOT EXISTS default.target1_target2_mv_complex
+TO default.target2_complex AS
+SELECT x, CAST(x AS Float64) * 1.5 AS value
+FROM default.target1_complex WHERE status IS NOT NULL;

@@ -1,0 +1,12 @@
+CREATE TABLE test_table (id INTEGER, values BITSTRING, mappings MAP(TEXT, INTEGER), nullable_col INTEGER);
+INSERT INTO test_table (id, values, mappings, nullable_col) VALUES (1, '101'::BITSTRING, map([1, 2, 3], ['a', 'b', 'c']), NULL);
+INSERT INTO test_table (id, values, mappings, nullable_col) VALUES (2, '010'::BITSTRING, map([4, 5], ['d', 'e']), 3);
+INSERT INTO test_table (id, values, mappings, nullable_col) VALUES (3, '111'::BITSTRING, map([100, 200], ['f', 'g']), 0);
+SELECT id, ~values AS not_values, map(mappings, keys(mappings))[values] AS mapped_value FROM test_table WHERE nullable_col IS NOT NULL;
+SELECT id, ~('010'::BITSTRING), (CASE WHEN nullable_col IS NOT NULL THEN map(mappings, keys(mappings))[nullable_col] END) AS conditional_mapped_value FROM test_table;
+SELECT id, (SELECT COUNT(*) FROM test_table AS t2 WHERE t2.id = t1.id) AS correlated_count, (map(mappings, keys(mappings))[MAX(nullable_col)]) AS max_mapped_value FROM test_table AS t1 GROUP BY id HAVING correlated_count > 0;
+SELECT id, ~(map([values], ['single'])) AS single_not_value FROM test_table WHERE id IN (SELECT id FROM test_table WHERE nullable_col IS NULL);
+CREATE TEMP TABLE secondary_table (sec_id INTEGER, sec_val BITSTRING);
+INSERT INTO secondary_table (sec_id, sec_val) VALUES (1, ~('001'::BITSTRING));
+SELECT sec_id, not_sum FROM (SELECT sec_id, SUM(~values) AS not_sum FROM test_table JOIN secondary_table ON test_table.id = secondary_table.sec_id GROUP BY sec_id) AS subquery WHERE not_sum IS NOT NULL;
+SELECT id, map(values, ARRAY[('a'), ('b'), ('c')]) AS array_mapped FROM test_table ORDER BY id;

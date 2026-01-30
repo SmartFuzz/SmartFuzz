@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id INTEGER PRIMARY KEY, text_col VARCHAR, timestamp_col TIMESTAMP, numeric_col DOUBLE);
+INSERT INTO test_data (id, text_col, timestamp_col, numeric_col) VALUES (1, 'abc', TIMESTAMP '2023-01-01 00:00:00', 1.0);
+INSERT INTO test_data (id, text_col, timestamp_col, numeric_col) VALUES (2, 'ardéch', TIMESTAMP '2023-01-02 00:00:00', 2.5);
+INSERT INTO test_data (id, text_col, timestamp_col, numeric_col) VALUES (3, NULL, TIMESTAMP '2023-01-03 00:00:00', NULL);
+SELECT nfc_normalize(text_col) AS normalized_text, timestamp_col - INTERVAL (3 + (CASE WHEN numeric_col IS NOT NULL THEN 2 ELSE 0 END)) DAY AS adjusted_timestamp FROM test_data WHERE nfc_normalize(text_col) IS NOT NULL;
+SELECT id, nfc_normalize(text_col) AS normalized_text, (timestamp_col - INTERVAL (1 DAY)) AS one_day_prior FROM test_data WHERE normalized_text LIKE '%a%' GROUP BY id, normalized_text HAVING COUNT(text_col) > 0;
+SELECT id, nfc_normalize(text_col) AS normalized_text FROM test_data WHERE id IN (SELECT id FROM test_data WHERE text_col IS NOT NULL) ORDER BY adjusted_timestamp - INTERVAL 1 DAY DESC;
+SELECT nfc_normalize(text_col), (timestamp_col - INTERVAL (SELECT COUNT(*) FROM test_data WHERE numeric_col > 1) DAY) AS modified_timestamp FROM test_data HAVING modified_timestamp > TIMESTAMP '2022-12-31 00:00:00';
+CREATE TEMPORARY TABLE temp_data AS SELECT nfc_normalize(text_col) AS normalized_text FROM test_data WHERE text_col IS NOT NULL;
+SELECT COUNT(*), normalized_text FROM temp_data GROUP BY normalized_text HAVING COUNT(*) > 1;

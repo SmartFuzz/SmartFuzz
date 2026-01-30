@@ -1,0 +1,13 @@
+CREATE TABLE test_strings (id UInt32, str1 String, str2 String);
+INSERT INTO test_strings VALUES (1, 'clickhouse', 'click'), (2, '', 'empty'), (3, 'similarity', 'similarity'), (4, NULL, 'null');
+SELECT id, jaroWinklerSimilarity(str1, str2) AS similarity_score FROM test_strings WHERE similarity_score > 0 ? str1 : str2;
+SELECT id, CASE WHEN jaroWinklerSimilarity(str1, str2) IS NULL THEN 'No similarity' ELSE jaroWinklerSimilarity(str1, str2) END AS similarity_result FROM test_strings;
+SELECT id, jaroWinklerSimilarity(str1, CASE WHEN str2 = '' THEN 'fallbackstring' ELSE str2 END) AS fallback_similarity FROM test_strings WHERE id < 3;
+SELECT id, jaroWinklerSimilarity(str1, str2) * 100 AS score_percentage FROM test_strings HAVING score_percentage > 50 ? str1 : 'low similarity';
+CREATE TABLE secondary_test (id UInt32, description String) ENGINE = MergeTree ORDER BY id;
+INSERT INTO secondary_test VALUES (1, 'high similarity'), (2, 'low similarity');
+SELECT s.id, jaroWinklerSimilarity(t.str1, t.str2) AS sim_score, s.description FROM secondary_test AS s JOIN test_strings AS t ON s.id = (t.id ? 1 : 2) WHERE jaroWinklerSimilarity(t.str1, t.str2) IS NOT NULL;
+SELECT id, str1, str2, jaroWinklerSimilarity(str1, str2) AS full_similarity FROM test_strings GROUP BY id, str1, str2 HAVING (str1 != '' AND jaroWinklerSimilarity(str1, str2) < 0.5) ? 'Low similarity' : 'High similarity';
+SELECT id, jaroWinklerSimilarity(str1, toString(id)) AS id_similarity FROM test_strings UNION ALL SELECT id, jaroWinklerSimilarity(str2, '') FROM test_strings;
+CREATE TABLE temp_analysis AS SELECT id, jaroWinklerSimilarity(str1, str2) AS similarity FROM test_strings WHERE str1 IS NOT NULL;
+SELECT * FROM temp_analysis WHERE similarity > 0.9 ? 'Very similar' : 'Different';

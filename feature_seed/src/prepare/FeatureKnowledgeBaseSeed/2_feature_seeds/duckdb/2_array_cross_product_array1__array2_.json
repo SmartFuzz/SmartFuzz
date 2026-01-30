@@ -1,0 +1,11 @@
+CREATE TABLE test_arrays (id INTEGER PRIMARY KEY, arr1 FLOAT[], arr2 FLOAT[]);
+INSERT INTO test_arrays (id, arr1, arr2) VALUES (1, array_value(1.0::FLOAT, 2.0::FLOAT, 3.0::FLOAT), array_value(2.0::FLOAT, 3.0::FLOAT, 4.0::FLOAT));
+INSERT INTO test_arrays (id, arr1, arr2) VALUES (2, array_value(0.0::FLOAT, -1.0::FLOAT, NULL), array_value(3.0::FLOAT, 4.0::FLOAT, 5.0::FLOAT));
+INSERT INTO test_arrays (id, arr1, arr2) VALUES (3, array_value(1.0::FLOAT, 2.0::FLOAT, 3.0::FLOAT), array_value(NULL, NULL, NULL));
+SELECT array_cross_product(arr1, arr2) FROM test_arrays WHERE id = 1;
+SELECT array_cross_product(arr1, arr2) AS cross_product FROM test_arrays WHERE id = 1 HAVING cross_product[1] IS NOT NULL;
+SELECT (array_cross_product(arr1, arr2) | '1010'::BITSTRING) AS combined_results FROM test_arrays WHERE id = 1 AND (arr1[1] IS NOT NULL OR arr2[1] IS NOT NULL);
+SELECT id, (array_cross_product(arr1, arr2) | (SELECT '1110'::BITSTRING)) AS nested_bitwise FROM test_arrays WHERE id IN (SELECT id FROM test_arrays WHERE arr1[2] IS NOT NULL);
+WITH cte AS (SELECT id, array_cross_product(arr1, arr2) AS cp FROM test_arrays) SELECT cp | '1100'::BITSTRING FROM cte WHERE id >= 1;
+SELECT id, arr1, arr2, (SELECT COUNT(*) FROM test_arrays AS t2 WHERE t2.id > t1.id) AS count_greater FROM test_arrays AS t1;
+SELECT cp FROM (SELECT array_cross_product(arr1, arr2) AS cp FROM test_arrays WHERE arr1 IS NOT NULL) AS derived_table WHERE cp[3] > 1.0;

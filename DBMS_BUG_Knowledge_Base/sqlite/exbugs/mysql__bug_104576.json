@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=104576",
+  "title": "partition table access second index lead to cpu high load",
+  "description": "Hi all:\r\n  we find when partition table have a great many columns(like 300 cols),access second index,if needed data distribute in different partition, cpu high load in funcation build_template_field. like,\r\n\r\ncreate table t(\r\n    id1 int,\r\n    id2 int\r\n    primary key(id1),\r\n    key(id2)\r\n)engine=innodb\r\npartition by range(id1)(\r\n    partition p0 values less than(100),\r\n    partition p1 values less than(200),\r\n    partition p2 values less than(300));    \r\n\r\ninsert into tpar10col values(1,1);\r\ninsert into tpar10col values(101,1);\r\ninsert into tpar10col values(201,1);\r\ninsert into tpar10col values(2,2);\r\ninsert into tpar10col values(3,2);\r\ninsert into tpar10col values(4,2);\r\ninsert into tpar10col values(7,2);\r\ninsert into tpar10col values(8,2);\r\ninsert into tpar10col values(9,2);\r\ninsert into tpar10col values(10,2);\r\n\r\nif we use statement \"select * from t where id2=1\",this statement will access p0,p1,p2。access every partition may call funcation ha_innobase::build_template。\r\nha_innobase::build_template loop every filed,if in write_set and read_set will call build_template_field funcation to find clust_rec_field_no(loop every field in clust index) and rec_field_no,because clust index include all filed ,so cpu high load here. perf top output like:\r\n\r\n53.98%  mysqld               [.] build_template_field                                                                                                                                     \r\n10.40%  [kernel]             [k] _raw_spin_unlock_irqrestore                                                                                                                              \r\n 4.12%  [kernel]             [k] copy_user_generic_unrolled                                                                                                                               \r\n 1.95%  mysqld               [.] ha_innobase::build_template                                                                                                                              \r\n 1.48%  mysqld               [.] row_sel_store_mysql_field_func\r\n \r\n\r\ncan we save mysql_row_templ_t.clust_rec_field_no ,if next parition access,we copy it to new mysql_row_templ_t.clust_rec_field_no,not loop every field in clust index.in all parition this value maybe is same.\r\n\r\nthanks.\nHow to repeat:\nsee the attachment\nSuggested fix:\ncan we save mysql_row_templ_t.clust_rec_field_no ,if next parition access,we copy it to new mysql_row_templ_t.clust_rec_field_no,not loop every field in clust index.in all parition this value maybe is same.",
+  "date": "2021-08-10 04:18:00",
+  "vulnerable_version": "8.0.26, 5.7.35",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t (id1 INTEGER, id2 INTEGER, name TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, is_active INTEGER DEFAULT 1, PRIMARY KEY (id1));",
+    "INSERT INTO t (id1, id2, name, is_active) VALUES (1, 1, 'Alice', 1);",
+    "INSERT INTO t (id1, id2, name, is_active) VALUES (101, 1, 'Bob', NULL);",
+    "INSERT INTO t (id1, id2, name, is_active) VALUES (201, 1, 'Charlie', 0);",
+    "SELECT * FROM t WHERE id2 = 1 OR (id1 IS NULL AND is_active = 1);"
+  ],
+  "key_bug_features": [
+    "Accessing second index in partition table with many columns"
+  ]
+}

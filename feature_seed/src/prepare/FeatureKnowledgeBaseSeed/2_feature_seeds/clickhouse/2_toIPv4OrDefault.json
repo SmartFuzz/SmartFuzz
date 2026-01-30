@@ -1,0 +1,8 @@
+CREATE TABLE test_ips (ip_string String, value Int32) ENGINE = MergeTree() ORDER BY ip_string;
+INSERT INTO test_ips VALUES ('::ffff:127.0.0.1', 1), ('fe80:2030:31:24', 2), ('256.256.256.256', 3), (NULL, 4);
+WITH (SELECT COUNT(*) FROM test_ips WHERE toIPv4OrDefault(ip_string, '192.168.1.1') >= 0) AS valid_count SELECT valid_count, (SELECT COUNT(*) FROM test_ips WHERE toIPv4OrDefault(ip_string) > 0) AS total_valid FROM test_ips;
+SELECT toIPv4OrDefault(ip_string, toIPv4('10.0.0.1')) AS ipv4_address, value FROM test_ips WHERE value >= (SELECT COUNT(*) FROM test_ips WHERE toIPv4OrDefault(ip_string) = '0.0.0.0');
+CREATE TABLE temp_ips AS SELECT DISTINCT toIPv4OrDefault(ip_string) AS ipv4, value FROM test_ips WHERE value >= 2;
+INSERT INTO temp_ips VALUES (NULL, 10), (toIPv4('192.168.0.1'), 20);
+SELECT ipv4, value FROM temp_ips GROUP BY ipv4 HAVING ipv4 >= toIPv4OrDefault(NULL, '1.1.1.1');
+WITH (SELECT COUNT(*) FROM temp_ips WHERE ipv4 IS NULL) AS null_count SELECT ipv4, null_count FROM temp_ips ORDER BY value DESC;

@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=101346",
+  "title": "\"Illegal mix of collations\" errors when matching ascii field and unicode",
+  "description": "Hello,\r\n\r\nAfter upgrade mysql-server 8.0.21 package to 8.0.22 one at Ubuntu 18.04 I started getting errors in my Node.JS scripts (i use mysql2 package). At first I started thinking it was a mysql2 module problem. But I was unable to recreate this issue with the same module versions and all dependencies on the server where the 8.0.21 package version was (more precisely - mysql-server 8.0.21-1ubuntu18.04). Both my servers have repo \"\nhttp://repo.mysql.com/apt/ubuntu/\n\".\r\n\r\nThe \"buggy\" server has mysql-server 8.0.22-1ubuntu18.04 version.\r\n\r\nI wrote test for mysql2 module which has a simple commands through API:\r\n\r\nDROP TABLE IF EXISTS asciitest;\r\nCREATE TABLE IF NOT EXISTS asciitest (a char (64) ascii not null, b int unsigned  not null) character set utf8;\r\nINSERT INTO asciitest (a, b) VALUES ('test', 1);\r\nINSERT INTO asciitest (a, b) VALUES ('super', 2);\r\nSELECT a FROM asciitest WHERE a='test' AND b=2;\r\n\r\nIn 8.0.21 I will not get errors but in 8.0.22 I get the error:\r\n\r\nIllegal mix of collations (latin1_swedish_ci,IMPLICIT) and (utf8mb4_unicode_ci,COERCIBLE) for operation '='\r\n\r\nThis error should not happen because the Mysql has repertoire feature which is described here:\nhttps://dev.mysql.com/doc/refman/8.0/en/charset-repertoire.html\nHow to repeat:\n1) To install mysql-server 8.0.22-1ubuntu18.04 version from repo \"\nhttp://repo.mysql.com/apt/ubuntu/\n\"\r\n\r\n2) To install mysql2 patched by me module from my github:\nhttps://github.com/Perlover/node-mysql2/tree/perlover-ascii-collation\n(there is only one new test for this)\r\n\r\n3) To do tests as described here:\nhttps://github.com/sidorares/node-mysql2/blob/master/Contributing.md#running-tests\nYou will get error like here:\r\n\r\n/home/perlover/tmp/node-mysql2/test/integration/connection/test-execute-bind-ascii.js:21\r\n        throw err;\r\n        ^\r\n  \r\n  Error: Illegal mix of collations (latin1_swedish_ci,IMPLICIT) and (utf8mb4_unicode_ci,COERCIBLE) for operation '='\r\n      at Packet.asError (/home/perlover/tmp/node-mysql2/lib/packets/packet.js:712:17)\r\n      at Execute.execute (/home/perlover/tmp/node-mysql2/lib/commands/command.js:28:26)\r\n      at Connection.handlePacket (/home/perlover/tmp/node-mysql2/lib/connection.js:425:32)\r\n      at PacketParser.onPacket (/home/perlover/tmp/node-mysql2/lib/connection.js:75:12)\r\n      at PacketParser.executeStart (/home/perlover/tmp/node-mysql2/lib/packet_parser.js:75:16)\r\n      at Socket.<anonymous> (/home/perlover/tmp/node-mysql2/lib/connection.js:82:25)\r\n      at Socket.emit (events.js:314:20)\r\n      at addChunk (_stream_readable.js:298:12)\r\n      at readableAddChunk (_stream_readable.js:273:9)\r\n      at Socket.Readable.push (_stream_readable.js:214:10) {\r\n    code: 'ER_CANT_AGGREGATE_2COLLATIONS',\r\n    errno: 1267,\r\n    sqlState: 'HY000',\r\n    sqlMessage: \"Illegal mix of collations (latin1_swedish_ci,IMPLICIT) and (utf8mb4_unicode_ci,COERCIBLE) for operation '='\"\r\n  }",
+  "date": "2020-10-27 16:05:00",
+  "vulnerable_version": "8.0.22",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS test_table;",
+    "CREATE TABLE test_table (id INT PRIMARY KEY, name CHAR(64) NOT NULL, value INT NOT NULL);",
+    "INSERT INTO test_table (id, name, value) VALUES (1, 'example', 10);",
+    "INSERT INTO test_table (id, name, value) VALUES (2, 'sample', 20);",
+    "SELECT * FROM test_table WHERE name = 'example' AND value IS NULL;"
+  ],
+  "key_bug_features": [
+    "Illegal mix of collations for equality operation"
+  ]
+}

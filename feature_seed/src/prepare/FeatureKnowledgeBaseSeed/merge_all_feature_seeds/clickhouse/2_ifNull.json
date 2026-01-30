@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id Int32, value Nullable(String), description String, created_at DateTime);
+INSERT INTO test_table (id, value, description, created_at) VALUES (1, 'Hello', 'A test row', now()), (2, NULL, 'Another row with NULL', now()), (3, '', 'Empty string case', now());
+SELECT id, ifNull(value, 'default') AS alternative_value FROM test_table WHERE description NOT LIKE 'test%' ORDER BY alternative_value;
+SELECT id, ifNull((SELECT MAX(value) FROM test_table WHERE value NOT LIKE '%e%'), 'No max found') AS max_value FROM test_table GROUP BY id;
+SELECT id, ifNull(value, CONCAT('Missing: ', description)) AS fallback FROM test_table WHERE NOT (value NOT LIKE description AND created_at > now() - INTERVAL 1 DAY) ORDER BY created_at;
+SELECT id, ifNull(value, 'N/A') AS value_check FROM (SELECT id, value FROM test_table WHERE value NOT LIKE '%NULL%') AS subquery WHERE value_check NOT LIKE 'N/A';
+SELECT id, ifNull(NULL, 'Fallback Value') AS test_fallback, description FROM test_table GROUP BY id HAVING test_fallback NOT LIKE 'Legacy';
+CREATE TABLE secondary_table (ref_id Int32, ref_value Nullable(Int32), PRIMARY KEY (ref_id));
+INSERT INTO secondary_table (ref_id, ref_value) VALUES (1, 10), (2, NULL), (3, 20);
+SELECT t.id, ifNull((SELECT ref_value FROM secondary_table WHERE ref_id = t.id), -1) AS resolved_value FROM test_table t WHERE resolved_value NOT LIKE '-1' AND created_at < now() - INTERVAL 7 DAY;

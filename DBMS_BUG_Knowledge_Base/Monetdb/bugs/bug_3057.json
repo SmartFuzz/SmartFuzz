@@ -1,0 +1,28 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/3057",
+  "title": "comparison in where clause (left-side multiplication, right-side cosine and sql function with column argument) crashes mserver5",
+  "vulnerable_database": "monetdb",
+  "date": "2020-11-30T12:09:19Z",
+  "vulnerable_version": "Unknown",
+  "description": "",
+  "poc": [
+    "create table im\n   (imageid int\n   ,ds_id int\n   ,bmaj double\n   ,primary key (imageid)\n   )\n ;",
+    "create table xtr\n   (xtrsrcid int\n   ,image_id int\n   ,zone int\n   ,ra double\n   ,decl double\n   ,ra_err double\n   ,decl_err double\n   ,x double\n   ,y double\n   ,z double\n   ,primary key (xtrsrcid)\n   ,foreign key (image_id) references images (imageid)\n   )\n ;",
+    "create table rc\n   (xtrsrc_id int\n   ,ds_id int\n   ,wm_ra double\n   ,wm_decl double\n   ,wm_ra_err double\n   ,wm_decl_err double\n   ,x double\n   ,y double\n   ,z double\n   )\n ;",
+    "insert into rc values (1, 1, 331.79744325500002, 43.448623302500003, 0.11882242138100001, 0.116043821024, 0.63980334843300002, -0.34309630504999999, 0.68770386126299998);",
+    "insert into im values (2,1,0.0063888886943499999);",
+    "insert into xtr values (1, 2, 43, 331.79750356540063, 43.448645530624432, 0.45809725743310992, 0.48429103640614812, 0.6398034744584673, -0.34309550549403994, 0.68770414291369697);",
+    "select t.xtrsrc_id\n   from (SELECT r.xtrsrc_id\n               ,r.x * x.x + r.y * x.y + r.z * x.z AS dist\n               ,COS(RADIANS(im0.bmaj)) AS dist_lim\n           FROM rc r\n               ,xtr x\n               ,im im0\n          WHERE x.image_id = 2\n            AND x.image_id = im0.imageid\n            AND im0.ds_id = r.ds_id\n            AND x.zone BETWEEN CAST(FLOOR(r.wm_decl - im0.bmaj) as integer)\n                           AND CAST(FLOOR(r.wm_decl - im0.bmaj) as integer)\n            AND x.decl BETWEEN r.wm_decl - im0.bmaj\n                           AND r.wm_decl + im0.bmaj\n            AND x.ra BETWEEN r.wm_ra - alpha(im0.bmaj, r.wm_decl)\n                         AND r.wm_ra + alpha(im0.bmaj, r.wm_decl)\n        ) t\n  where t.dist > t.dist_lim\n ;",
+    "SELECT r.xtrsrc_id\n   FROM rc r\n       ,xtr x\n       ,im im0\n  WHERE x.image_id = 2\n    AND x.image_id = im0.imageid\n    AND im0.ds_id = r.ds_id\n    AND x.zone BETWEEN CAST(FLOOR(r.wm_decl - im0.bmaj) as integer)\n                   AND CAST(FLOOR(r.wm_decl - im0.bmaj) as integer)\n    AND x.decl BETWEEN r.wm_decl - im0.bmaj\n                   AND r.wm_decl + im0.bmaj\n    AND x.ra BETWEEN r.wm_ra - alpha(im0.bmaj, r.wm_decl)\n                 AND r.wm_ra + alpha(im0.bmaj, r.wm_decl)\n    AND r.x * x.x + r.y * x.y + r.z * x.z > COS(RADIANS(im0.bmaj))\n ;"
+  ],
+  "key_bug_features": [
+    "comparison in where clause with multiplication and cosine"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE images (imageid INT, ds_id INT, bmaj DOUBLE, PRIMARY KEY (imageid));",
+    "CREATE TABLE xtrsrc (xtrsrcid INT, image_id INT, zone INT, ra DOUBLE, decl DOUBLE, ra_err DOUBLE, decl_err DOUBLE, x DOUBLE, y DOUBLE, z DOUBLE, PRIMARY KEY (xtrsrcid), FOREIGN KEY (image_id) REFERENCES images (imageid));",
+    "INSERT INTO images VALUES (1, 1, 0.005);",
+    "INSERT INTO xtrsrc VALUES (1, 1, 10, 100.0, 20.0, 0.1, 0.1, 0.5, 0.5, 0.5);",
+    "SELECT xtrsrcid FROM xtrsrc WHERE x * x + y * y + z * z > COS(RADIANS((SELECT bmaj FROM images WHERE imageid = 1)));"
+  ]
+}

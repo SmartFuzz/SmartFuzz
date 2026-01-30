@@ -1,0 +1,18 @@
+{
+    "function": "sumMap",
+    "operator": "SELECT NOT a",
+    "sql_array": [
+        "CREATE TABLE test_sum_map (date Date, timeslot DateTime, statusMap Nested(status UInt16, requests UInt64), statusMapTuple Tuple(Array(Int32), Array(Int32))) ENGINE = Log;",
+        "INSERT INTO test_sum_map VALUES ('2023-01-01', '2023-01-01 00:00:00', [1, 2, 3], [10, 20, 30], ([1, 2, 3], [10, 20, 30])), ('2023-01-01', '2023-01-01 00:00:01', [2, 3, 4], [15, 25, 35], ([2, 3, 4], [15, 25, 35]));",
+        "SELECT timeslot, sumMap(NOT statusMap.status, statusMap.requests) FROM test_sum_map GROUP BY timeslot;",
+        "SELECT timeslot, sumMap(statusMapTuple) AS summed_tuple FROM (SELECT timeslot, NOT statusMap.requests AS requests FROM test_sum_map) GROUP BY timeslot;",
+        "SELECT timeslot, sumMap(statusMap.status, statusMap.requests) AS summed_requests FROM test_sum_map WHERE NOT (timeslot IS NULL) GROUP BY timeslot HAVING summed_requests.1 > 50;",
+        "CREATE TABLE complex_test (category String, values Array(Int32)) ENGINE = Log;",
+        "INSERT INTO complex_test VALUES ('A', [1, 2, 3]), ('B', [3, 4, 5]), ('C', [5, 6, 7]);",
+        "SELECT category, sumMap(NOT arrayJoin(values), arrayJoin(values)) AS sumValues FROM complex_test GROUP BY category;",
+        "WITH (SELECT sumMap(NOT statusMap.status, statusMap.requests) FROM test_sum_map) AS temp_sumMap SELECT timeslot, temp_sumMap.1 FROM test_sum_map WHERE timeslot > '2023-01-01 00:00:00' ORDER BY temp_sumMap.1 DESC;",
+        "CREATE TABLE edge_case_test (id UInt32, data String, value UInt64) ENGINE = Log;",
+        "INSERT INTO edge_case_test VALUES (1, 'A', 3), (2, 'B', 5), (3, 'A', NULL), (4, 'B', 7);",
+        "SELECT data, sumMap(NOT id, IF(value IS NULL, 0, value)) AS conditional_sum FROM edge_case_test GROUP BY data;"
+    ]
+}

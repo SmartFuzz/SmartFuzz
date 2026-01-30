@@ -1,0 +1,12 @@
+CREATE TABLE geom_data (id INT PRIMARY KEY, point GEOMETRY, attr FLOAT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO geom_data (id, point, attr) VALUES (1, POINT(10 20), 1.5), (2, POINT(30 40), NULL), (3, POINT(10 20), 2.5);
+SELECT id, attr, bif:st_distance(point, (SELECT point FROM geom_data WHERE id = 2)) AS distance, sinv_create_inverse(attr) AS inverse_attr FROM geom_data WHERE point IS NOT NULL ORDER BY distance DESC;
+SELECT id, sinv_create_inverse(attr) AS inverse_attr FROM geom_data WHERE attr IS NOT NULL AND NOT EXISTS (SELECT 1 FROM geom_data AS g2 WHERE g2.point = geom_data.point AND g2.id <> geom_data.id);
+CREATE TABLE feature_data (feature_id INT PRIMARY KEY, geom GEOMETRY, feature_value FLOAT);
+INSERT INTO feature_data (feature_id, geom, feature_value) VALUES (1, POINT(15 25), 2.0), (2, POINT(25 35), 3.0);
+SELECT fd.feature_id, bif:st_distance(fd.geom, gd.point) AS distance, sinv_create_inverse(fd.feature_value) AS inverse_feature_value FROM feature_data fd JOIN geom_data gd ON bif:st_distance(fd.geom, gd.point) < 50 GROUP BY fd.feature_id HAVING AVG(fd.feature_value) > 1.5 ORDER BY distance;
+SELECT (SELECT AVG(attr) FROM geom_data WHERE attr IS NOT NULL) AS avg_attr, sinv_create_inverse((SELECT COUNT(*) FROM feature_data)) AS inverse_count FROM dual;
+CREATE TABLE fuzz_data (fuzz_id INT PRIMARY KEY, random_value VARCHAR(100), point GEOMETRY);
+INSERT INTO fuzz_data (fuzz_id, random_value, point) VALUES (1, '10.5', POINT(20 30)), (2, NULL, POINT(5 5)), (3, '', POINT(0 0));
+SELECT f.fuzz_id, f.random_value, bif:st_distance(f.point, (SELECT point FROM geom_data WHERE id = 1)) AS distance, sinv_create_inverse(CAST(f.random_value AS FLOAT)) AS inverse_value FROM fuzz_data f WHERE f.random_value IS NOT NULL;
+SELECT f.fuzz_id, sinv_create_inverse(bif:st_distance(f.point, (SELECT point FROM geom_data WHERE id = 3))) AS inverse_distance FROM fuzz_data f WHERE f.point IS NOT NULL HAVING sinv_create_inverse(bif:st_distance(f.point, (SELECT point FROM geom_data WHERE id = 2))) IS NOT NULL;

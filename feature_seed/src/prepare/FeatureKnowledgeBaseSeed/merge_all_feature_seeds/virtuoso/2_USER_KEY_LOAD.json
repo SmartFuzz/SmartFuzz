@@ -1,0 +1,10 @@
+CREATE TABLE keys (id INT PRIMARY KEY, key_name VARCHAR(255), key_data BLOB, key_type VARCHAR(100), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO keys (id, key_name, key_data, key_type) VALUES (1, 'Sample Key 1', NULL, 'X.509');
+INSERT INTO keys (id, key_name, key_data, key_type) VALUES (2, 'Sample Key 2', 'some_data', 'PKCS12');
+SELECT USER_KEY_LOAD(key_name, key_data, key_type, 'PKCS12', 'virt') FROM keys WHERE id >= (SELECT MIN(id) FROM keys);
+SELECT COUNT(*) FROM keys WHERE USER_KEY_LOAD(key_name, NULL, key_type, 'DER', 'virt') IS NOT NULL GROUP BY key_type HAVING COUNT(*) >= 1;
+WITH key_info AS (SELECT key_name, CUSTOMER_RATING() OVER () AS rating FROM keys) SELECT USER_KEY_LOAD(key_name, NULL, 'DSA', 'DER', 'virt') FROM key_info WHERE rating >= 3;
+CREATE TABLE temp_keys (id INT, key_info VARCHAR(255), CONSTRAINT check_id CHECK (id >= 0));
+INSERT INTO temp_keys (id, key_info) VALUES (-1, 'negative id'), (0, 'zero id'), (1, 'positive id');
+SELECT USER_KEY_LOAD('temp_file.pfx', key_info, 'X.509', NULL, 'virt') FROM temp_keys WHERE id >= (SELECT MAX(id) FROM temp_keys) HAVING COUNT(*) > 0;
+SELECT NULLIF(USER_KEY_LOAD('non_existent_key', NULL, 'RSA', 'DER', 'virt'), 'NULL value check') AS result WHERE 1 >= 1;

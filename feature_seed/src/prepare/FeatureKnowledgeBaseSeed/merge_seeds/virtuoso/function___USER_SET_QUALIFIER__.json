@@ -1,0 +1,15 @@
+CREATE TABLE users (user_id INT PRIMARY KEY, username VARCHAR(255), default_catalog VARCHAR(255));
+INSERT INTO users (user_id, username, default_catalog) VALUES (1, 'alice', 'catalog_a');
+INSERT INTO users (user_id, username, default_catalog) VALUES (2, 'bob', 'catalog_b');
+UPDATE users SET default_catalog = 'new_catalog' WHERE username = 'alice';
+SELECT * FROM users WHERE username = 'alice';
+UPDATE users SET default_catalog = (SELECT DISTINCT user_catalog FROM user_catalogs WHERE user_id = 1) WHERE user_id = 1;
+UPDATE users SET default_catalog = (SELECT uc.user_catalog FROM user_catalogs uc JOIN users u ON uc.user_id = u.user_id WHERE u.username = 'bob') WHERE username = 'bob';
+CREATE TABLE user_catalogs (user_id INT, user_catalog VARCHAR(255), FOREIGN KEY (user_id) REFERENCES users(user_id));
+INSERT INTO user_catalogs (user_id, user_catalog) VALUES (1, 'catalog_x');
+INSERT INTO user_catalogs (user_id, user_catalog) VALUES (1, 'catalog_y');
+UPDATE users SET default_catalog = (SELECT user_catalog FROM user_catalogs WHERE user_id = 1 LIMIT 1) WHERE username = 'alice';
+SELECT u.username, uc.user_catalog FROM users u JOIN user_catalogs uc ON u.user_id = uc.user_id WHERE u.default_catalog = 'catalog_y';
+DELETE FROM user_catalogs WHERE user_id = 1 AND user_catalog = 'catalog_x';
+UPDATE users SET default_catalog = (SELECT user_catalog FROM user_catalogs WHERE user_id = (SELECT user_id FROM users WHERE username = 'bob')) WHERE username = 'bob';
+SELECT COUNT(*) FROM users WHERE default_catalog = 'new_catalog';

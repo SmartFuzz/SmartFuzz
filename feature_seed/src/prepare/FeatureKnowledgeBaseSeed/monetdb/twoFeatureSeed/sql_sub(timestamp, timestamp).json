@@ -1,0 +1,18 @@
+{
+    "function": "sql_sub(timestamp, timestamp)",
+    "operator": ">>",
+    "sql_array": [
+        "CREATE TABLE events (id SERIAL PRIMARY KEY, event_time TIMESTAMP, location INET);",
+        "INSERT INTO events (event_time, location) VALUES (timestamp '2021-01-01 00:00:00', inet '192.168.1.10'), (timestamp '2021-01-01 01:00:00', inet '192.168.1.20');",
+        "SELECT e1.id, sql_sub(e1.event_time, e2.event_time) AS duration FROM events e1, events e2 WHERE e1.id <> e2.id AND e1.location >> inet '192.168.1.0/24' AND e2.location >> inet '192.168.1.10' ORDER BY duration;",
+        "CREATE TABLE network_logs (network_id SERIAL PRIMARY KEY, log_time TIMESTAMP, user INET NOT NULL);",
+        "INSERT INTO network_logs (log_time, user) VALUES (timestamp '2022-02-01 10:00:00', inet '10.0.0.1'), (timestamp '2022-03-01 10:00:00', inet '10.0.0.2'), (timestamp '2022-03-01 11:00:00', inet NULL);",
+        "SELECT COUNT(*) AS total_logs, AVG(sql_sub(nl.log_time, timestamp '1970-01-01 00:00:00')) AS avg_seconds FROM network_logs nl WHERE nl.user IS NOT NULL GROUP BY nl.user HAVING avg_seconds > 0;",
+        "CREATE TEMP TABLE temp_users AS SELECT * FROM events WHERE location >> inet '192.168.1.0/24';",
+        "SELECT tu.id, sql_sub(MAX(te.event_time), MIN(te.event_time)) AS time_diff FROM temp_users tu JOIN events te ON tu.location >> te.location GROUP BY tu.id HAVING time_diff < 3600;",
+        "CREATE TABLE boundary_test (id SERIAL PRIMARY KEY, creation_time TIMESTAMP NOT NULL, ip_address INET);",
+        "INSERT INTO boundary_test (creation_time, ip_address) VALUES (timestamp '2020-12-31 23:59:59', inet '192.0.2.1'), (timestamp '2020-12-31 00:00:00', inet '172.16.0.0');",
+        "SELECT id, sql_sub(creation_time, timestamp '2020-12-31 12:00:00') AS time_from_midnight FROM boundary_test WHERE creation_time IS NOT NULL;",
+        "SELECT id, sql_sub(now(), (SELECT MAX(event_time) FROM events)) AS last_event_duration FROM events WHERE location >> inet '192.168.1.0/24';"
+    ]
+}

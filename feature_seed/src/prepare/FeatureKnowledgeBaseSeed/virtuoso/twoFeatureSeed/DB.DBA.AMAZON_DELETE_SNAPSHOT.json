@@ -1,0 +1,17 @@
+{
+    "function": "DB.DBA.AMAZON_DELETE_SNAPSHOT",
+    "operator": ">",
+    "sql_array": [
+        "CREATE TABLE snapshots (snapshotId VARCHAR PRIMARY KEY, size INT, access_key VARCHAR, sec_token VARCHAR);",
+        "INSERT INTO snapshots (snapshotId, size, access_key, sec_token) VALUES ('snap-1a2b3c4d', 100, 'AKIAXXXXXX', 'SECRET123');",
+        "INSERT INTO snapshots (snapshotId, size, access_key, sec_token) VALUES ('snap-1a2b3c4e', 200, 'AKIAYYYYYY', 'SECRET456');",
+        "CREATE PROCEDURE test_delete_snapshot()\n{\n  DECLARE access_key VARCHAR;\n  DECLARE sec_token VARCHAR;\n  DECLARE snapshotId VARCHAR;\n  SET access_key := (SELECT access_key FROM snapshots WHERE size > 50 LIMIT 1);\n  SET sec_token := (SELECT sec_token FROM snapshots WHERE snapshotId = 'snap-1a2b3c4d');\n  SET snapshotId := (SELECT snapshotId FROM snapshots WHERE access_key = 'AKIAXXXXXX');\n  IF snapshotId > '' THEN\n    DB.DBA.AMAZON_DELETE_SNAPSHOT(access_key, snapshotId, sec_token);\n  END IF;\n};",
+        "SELECT snapshotId, DB.DBA.AMAZON_DELETE_SNAPSHOT(access_key, snapshotId, sec_token) FROM snapshots WHERE size > 150;",
+        "CREATE TABLE test_results (resultId INT PRIMARY KEY, test_name VARCHAR, result VARCHAR);",
+        "INSERT INTO test_results (resultId, test_name, result) VALUES (1, 'Delete Snapshot Test', 'Passed');",
+        "SELECT resultId, result FROM test_results WHERE resultId > (SELECT COUNT(*) FROM test_results);",
+        "INSERT INTO test_results (resultId, test_name, result) VALUES (2, 'Snapshot Deletion Check', (SELECT CASE WHEN COUNT(*) > 0 THEN 'Passed' ELSE 'Failed' END FROM snapshots WHERE size > 150));",
+        "SELECT COUNT(*) AS num_snapshot_ids FROM snapshots WHERE size < (SELECT MAX(size) FROM snapshots);",
+        "SELECT access_key FROM snapshots WHERE snapshotId > (SELECT MAX(snapshotId) FROM snapshots) AND sec_token IS NOT NULL;"
+    ]
+}

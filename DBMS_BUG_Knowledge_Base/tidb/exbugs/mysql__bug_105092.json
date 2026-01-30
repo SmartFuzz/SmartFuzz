@@ -1,0 +1,21 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=105092",
+  "title": "AUTO_INCREMENT can be set to less than MAX + 1 and not forced to MAX + 1",
+  "description": "AUTO_INCREMENT can be set to less than MAX + 1 and not forced to MAX + 1 if AUTO_INCREMENT property was added with ALTER TABLE.\r\n\r\nTested only on InnoDB tables.\nHow to repeat:\nWe create table but add AUTO_INCREMENT property later with ALTER TABLE:\r\n\r\nCREATE TABLE `test` (`id` INT NOT NULL PRIMARY KEY);\r\nINSERT INTO `test` (`id`) VALUES (1), (2), (3);\r\nALTER TABLE `test` MODIFY `id` INT NOT NULL AUTO_INCREMENT;\r\nALTER TABLE `test` AUTO_INCREMENT=1; -- should be forced to 4 but it's not\r\n\r\nWhen trying to add new rows, server starts incrementing `id` from 1 which leads to duplication errors (but AUTO_INCREMENT increments despite errors):\r\n\r\nINSERT INTO `test` (`id`) VALUES (NULL); -- error: #1062 - Duplicate entry '1' for key 'test.PRIMARY'\r\nINSERT INTO `test` (`id`) VALUES (NULL); -- error: #1062 - Duplicate entry '2' for key 'test.PRIMARY'\r\nINSERT INTO `test` (`id`) VALUES (NULL); -- error: #1062 - Duplicate entry '3' for key 'test.PRIMARY'\r\nINSERT INTO `test` (`id`) VALUES (NULL); -- success\r\n\r\nIf AUTO_INCREMENT is moved from ALTER TABLE to CREATE TABLE this does not happen.",
+  "date": "2021-09-30 21:34:00",
+  "vulnerable_version": "8.0.26, 8.0.11",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE `test_fuzz` (`id` INT NOT NULL PRIMARY KEY, `name` VARCHAR(50));",
+    "INSERT INTO `test_fuzz` (`id`, `name`) VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie');",
+    "ALTER TABLE `test_fuzz` MODIFY `id` INT NOT NULL AUTO_INCREMENT;",
+    "SET @auto_increment_value = 2;",
+    "UPDATE `test_fuzz` SET `id` = @auto_increment_value WHERE `id` IS NULL;",
+    "INSERT INTO `test_fuzz` (`id`, `name`) VALUES (NULL, 'David');"
+  ],
+  "key_bug_features": [
+    "AUTO_INCREMENT set below MAX + 1 with ALTER TABLE"
+  ]
+}

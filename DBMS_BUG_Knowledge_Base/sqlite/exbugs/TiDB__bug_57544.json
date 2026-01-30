@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/57544",
+  "title": "sync load cannot load common column when to concurrently init stats",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\nwe need to set the tidb config as following.\r\n```\r\n[performance]\r\nlite-init-stats = false\r\n\r\nforce-init-stats = true\r\n\r\nconcurrently-init-stats = true\r\n\r\n```\r\n\r\noperate as following\r\n\r\n```\r\ntiup Playground: Start a 7.5.4 cluster, remember to add --tag.\r\n\r\n\r\ncreate table t(a int, b int);\r\ninsert into t value(1,1),(2,2),(3,3);\r\n\r\nStop the cluster, then start it again.\r\n\r\nanalyze table t;\r\ncreate table tt(a int, b int);\r\ninsert into tt value(1,1),(2,2),(3,3);\r\n\r\nStop the cluster again, then start it again.\r\nWait for 15 seconds.\r\n\r\nanalyze table tt;\r\n\r\nStop the cluster again, then start it again.\r\n\r\nexplain select * from t where a = 1;\r\n```\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nwe cannot see any pseudo stats\r\n### 3. What did you see instead (Required)\r\n\r\nwe can see a pseudo stats\r\n### 4. What is your TiDB version? (Required)\r\n\r\nonly for v7.5\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2024-11-20T06:53:46Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1(a INTEGER, b TEXT, c DATE);",
+    "INSERT INTO t1(a, b, c) VALUES (1, 'test', '2023-01-01'), (2, 'example', NULL), (3, 'sample', '2023-01-03');",
+    "CREATE TABLE t2(x INTEGER PRIMARY KEY, y REAL NOT NULL, z DATETIME DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t2(x, y) VALUES (1, 1.1), (2, 2.2), (3, 3.3);",
+    "SELECT * FROM t1 WHERE a = (SELECT MAX(x) FROM t2 WHERE y > 2.0);"
+  ],
+  "key_bug_features": [
+    "concurrently init stats with specific config settings"
+  ]
+}

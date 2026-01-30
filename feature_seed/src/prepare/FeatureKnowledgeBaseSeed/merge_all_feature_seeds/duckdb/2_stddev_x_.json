@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id INTEGER, start_time TIME, value DOUBLE);
+INSERT INTO test_data VALUES (1, TIME '01:00:00', 2.5), (2, TIME '02:00:00', NULL), (3, TIME '03:00:00', 5.0), (4, TIME '04:00:00', 3.5), (5, TIME '05:00:00', 4.5);
+SELECT stddev(value) AS stddev_value, start_time - INTERVAL (SELECT MIN(value) FROM test_data WHERE value IS NOT NULL) HOUR AS adjusted_time FROM test_data GROUP BY start_time HAVING adjusted_time IS NOT NULL;
+SELECT stddev(value) OVER (PARTITION BY (start_time - INTERVAL 1 HOUR)) AS stddev_partitioned FROM test_data;
+SELECT id, stddev(value) AS sample_stddev FROM (SELECT value, start_time - INTERVAL 30 MINUTE AS adjusted_time FROM test_data WHERE value IS NOT NULL) AS subquery GROUP BY adjusted_time HAVING sample_stddev IS NOT NULL;
+CREATE TEMP TABLE temp_data AS SELECT id, start_time, value FROM test_data WHERE value IS NOT NULL;
+SELECT stddev(value) FROM temp_data WHERE start_time IS NOT NULL GROUP BY start_time ORDER BY stddev(value) DESC;
+INSERT INTO temp_data VALUES (6, TIME '06:00:00', 100.0), (7, TIME '07:00:00', cast(NULL as DOUBLE));
+SELECT stddev(CASE WHEN value IS NULL THEN 0 ELSE value END) AS stddev_filled FROM temp_data;
+SELECT start_time, stddev(value) - INTERVAL 1 HOUR FROM (SELECT value, start_time FROM temp_data) AS subquery GROUP BY start_time HAVING stddev(value) IS NOT NULL;

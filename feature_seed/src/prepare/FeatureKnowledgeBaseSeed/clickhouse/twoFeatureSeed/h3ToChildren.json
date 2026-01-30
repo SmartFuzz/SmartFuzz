@@ -1,0 +1,16 @@
+{
+    "function": "h3ToChildren",
+    "operator": "a - b",
+    "sql_array": [
+        "CREATE TABLE geo_data (id UInt32, h3_index UInt64, resolution UInt8, values String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO geo_data VALUES (1, 599405990164561919, 6, 'test1'), (2, 599405990164561920, 7, 'test2'), (3, 599405990164561921, 8, 'test3');",
+        "SELECT h3ToChildren(h3_index, resolution) AS children FROM geo_data WHERE resolution >= 0 AND resolution <= 15;",
+        "SELECT id, h3ToChildren((h3_index - 1), resolution) AS adjusted_children FROM geo_data WHERE h3_index IS NOT NULL;",
+        "SELECT resolution, COUNT(*) FROM geo_data GROUP BY resolution HAVING COUNT(*) > 0;",
+        "SELECT t1.id, h3ToChildren(t1.h3_index, t1.resolution) AS children FROM geo_data t1 JOIN (SELECT id, h3_index FROM geo_data WHERE values = '') t2 ON t1.id = t2.id;",
+        "SELECT id, h3ToChildren(h3_index, resolution) AS children FROM geo_data WHERE h3_index = (SELECT MAX(h3_index) from geo_data) - 1;",
+        "CREATE TABLE temp_data AS SELECT id, h3_index - (CAST(resolution AS UInt64) * 100) AS adjusted_index FROM geo_data;",
+        "SELECT id, CASE WHEN h3_index IS NULL THEN NULL ELSE h3ToChildren(h3_index, resolution) END AS children FROM geo_data ORDER BY id;",
+        "SELECT COUNT(h3ToChildren(h3_index, resolution)) AS child_count, resolution FROM geo_data GROUP BY resolution HAVING child_count > 0;"
+    ]
+}

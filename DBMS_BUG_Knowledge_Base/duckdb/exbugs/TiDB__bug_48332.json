@@ -1,0 +1,19 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/48332",
+  "title": "different result between tikv and tiflash ",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n```sql\r\nCREATE TABLE `UK_PRECISION19237` (\r\n  `COL1` decimal(37,4) DEFAULT NULL COMMENT 'NUMERIC WITH PRECISION',\r\n  `COL2` varchar(20) DEFAULT NULL,\r\n  `COL4` datetime DEFAULT NULL,\r\n  `COL3` bigint(20) DEFAULT NULL,\r\n  `COL5` float DEFAULT NULL,\r\n  UNIQUE KEY `UK_COL1` (`COL1`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;\r\nINSERT INTO `UK_PRECISION19237` VALUES (999999999999999999999999999999999.9999,'狪萖秐臾諮羶懝彃惾膁綥繷绿鄟鸚姶圪疪郛釦','8847-09-16 22:32:17',4567224115423045463,5.34134e37);\r\nalter table UK_PRECISION19237 set tiflash replica 1;\r\nset tidb_isolation_read_engines='tikv';\r\nselect * from UK_PRECISION19237 where col1 * 766507373740683764182618847769240.9770 != -604793534779049308874387484528661.3368;\r\nset tidb_isolation_read_engines='tiflash';\r\nselect * from UK_PRECISION19237 where col1 * 766507373740683764182618847769240.9770 != -604793534779049308874387484528661.3368;\r\n```\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\nhave the same result \r\n### 3. What did you see instead (Required)\r\n```sql\r\n[19:48:37]TiDB root:test> set tidb_isolation_read_engines='tikv';\r\nQuery OK, 0 rows affected\r\nTime: 0.002s\r\n[19:48:39]TiDB root:test> select * from UK_PRECISION19237 where col1 * 766507373740683764182618847769240.9770 != -604793534779049308874387484528661.3368;\r\n(1105, 'Data Truncated')\r\n[19:48:49]TiDB root:test> alter table UK_PRECISION19237 set tiflash replica 1;\r\nQuery OK, 0 rows affected\r\nTime: 0.284s\r\n[19:48:51]TiDB root:test> set tidb_isolation_read_engines='tiflash';\r\nQuery OK, 0 rows affected\r\nTime: 0.001s\r\n[19:48:52]TiDB root:test> select * from UK_PRECISION19237 where col1 * 766507373740683764182618847769240.9770 != -604793534779049308874387484528661.3368;\r\n+----------------------------------------+------------------------------------------+---------------------+---------------------+-------------+\r\n| COL1                                   | COL2                                     | COL4                | COL3                | COL5        |\r\n+----------------------------------------+------------------------------------------+---------------------+---------------------+-------------+\r\n| 999999999999999999999999999999999.9999 | 狪萖秐臾諮羶懝彃惾膁綥繷绿鄟鸚姶圪疪郛釦 | 8847-09-16 22:32:17 | 4567224115423045463 | 5.34134e+37 |\r\n+----------------------------------------+------------------------------------------+---------------------+---------------------+-------------+\r\n1 row in set\r\nTime: 0.140s\r\n[19:48:52]TiDB root:test>\r\n```\r\n### 4. What is your TiDB version? (Required)\r\nmaster \r\nv7.5.0\r\nv7.1.2\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2023-11-06T11:52:38Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE TestPrecision ( ID INTEGER NOT NULL, Value DECIMAL(38,10) DEFAULT NULL, Description VARCHAR(50) DEFAULT NULL, PRIMARY KEY (ID));",
+    "INSERT INTO TestPrecision (ID, Value, Description) VALUES (1, 999999999999999999999999999999999.9999999999, 'Test value for precision');",
+    "SELECT * FROM TestPrecision WHERE Value * 12345678901234567890.1234567890 != 999999999999999999999999999999999.9999999999;",
+    "SELECT COUNT(*) FROM TestPrecision;"
+  ],
+  "key_bug_features": [
+    "Different results from tikv and tiflash for same query"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+    "function": "Svg",
+    "operator": "a IN ...",
+    "sql_array": [
+        "CREATE TABLE geo_test (id Int32, geom Geometry, style String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO geo_test (id, geom, style) VALUES (1, 'multipoint((0, 0))', 'circle'), (2, 'multipolygon(((0, 0), (10, 0), (10, 10), (0, 10)))', 'polygon');",
+        "SELECT SVG(geom, style) AS svg_representation FROM geo_test WHERE id IN (SELECT DISTINCT id FROM geo_test WHERE style IN ('circle', 'polygon'));",
+        "SELECT id, SVG(geom, style) FROM geo_test WHERE id IN (SELECT id FROM geo_test WHERE geom IS NOT NULL) HAVING COUNT(SVG(geom)) > 0;",
+        "SELECT id, COUNT(*) AS count_svg FROM geo_test GROUP BY id HAVING count_svg IN (SELECT COUNT(*) FROM geo_test WHERE style IN ('circle', 'polygon'));",
+        "SELECT id, SVG(multipoint((0, 0)), style) FROM geo_test WHERE style IN (SELECT DISTINCT style FROM geo_test WHERE geom IS NOT NULL);",
+        "CREATE TABLE temp_geo AS SELECT id, svg_representation FROM (SELECT id, SVG(geom, style) AS svg_representation FROM geo_test) WHERE svg_representation IN ('', 'svg') ORDER BY id;",
+        "SELECT id FROM geo_test WHERE NOT (style IN ('circle', 'polygon')) AND geom IS NOT NULL;",
+        "CREATE TABLE edge_cases (value String) ENGINE = MergeTree() ORDER BY value;",
+        "INSERT INTO edge_cases VALUES ('string'), ('true'), ('2010-01-01'), ('100'), (NULL);",
+        "SELECT SVG(multipoint((CAST(NULL AS Float), CAST(0 AS Float))), 'circle') FROM dual WHERE '0' IN (SELECT value FROM edge_cases WHERE value IS NOT NULL);"
+    ]
+}

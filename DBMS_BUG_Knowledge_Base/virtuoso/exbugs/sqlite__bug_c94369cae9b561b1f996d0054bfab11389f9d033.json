@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/c94369cae9",
+  "title": "Wrong answer due to the LIKE optimization",
+  "description": "drh added on 2018-09-09 10:46:11:\nThe following query returns no rows where it should return one row:\nCREATE TABLE t1(x INT COLLATE NOCASE UNIQUE);\nINSERT INTO t1 VALUES('/abc');\nSELECT x FROM t1 WHERE x LIKE '/%';\nThe problem is that a numeric column is used with a LIKE operator and the LIKE\npattern begins with the character '/'.  The '/' character is one less than '0'\n(in ASCII) and so the LIKE optimization converts the expression into:\n... x>='/' AND x<'0'\nBut because column x is numeric, the x<'0' is convert into x<0 and there are\nnot values that are both greater than '/' and less then zero.\nOf course, a reasonable schema should not do a LIKE string comparison on a\nnumeric column.  This problem was reported (via private) email against a\nschema that uses the type \"STRING\" for the column x, which is actually\na numeric type in SQLite.  (The fact that STRING is a numeric type is a\nseparate issue that cannot be fixed without breaking backwards compatibility.)\ndrh added on 2018-09-10 10:16:53:\nA similar problem can arise if the first character of the pattern is\nthe ESCAPE character.  The following SQL returns an empty set but it should\nreturn one row.\nCREATE TABLE t1(x INT COLLATE NOCASE UNIQUE);\nINSERT INTO t1 VALUES('123');\nSELECT x FROM t1 WHERE x LIKE '^1%' ESCAPE '^';",
+  "date": "2018-09-09 10:46:116.92 years ago",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(x VARCHAR(255) UNIQUE);",
+    "INSERT INTO t1 VALUES('123');",
+    "INSERT INTO t1 VALUES('/abc');",
+    "SELECT x FROM t1 WHERE x LIKE '/%';",
+    "SELECT x FROM t1 WHERE x LIKE '^1%' ESCAPE '^';"
+  ],
+  "key_bug_features": [
+    "LIKE operator on numeric column with specific pattern"
+  ]
+}

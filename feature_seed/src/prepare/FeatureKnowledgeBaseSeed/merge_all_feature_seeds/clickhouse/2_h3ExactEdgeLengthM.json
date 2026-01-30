@@ -1,0 +1,10 @@
+CREATE TABLE h3_edges (id UInt64, h3_index UInt64, metadata String);
+INSERT INTO h3_edges VALUES (1, 1310277011704381439, 'test edge'), (2, 1310277011704381440, 'test edge 2');
+SELECT id, h3ExactEdgeLengthM(h3_index) * 3.14 AS scaled_length FROM h3_edges WHERE h3_index IS NOT NULL;
+SELECT id, h3ExactEdgeLengthM(h3_index) * (SELECT COUNT(*) FROM h3_edges) AS total_length FROM h3_edges;
+SELECT id, h3_index, h3ExactEdgeLengthM(h3_index) / NULLIF((SELECT COUNT(*) FROM h3_edges WHERE metadata LIKE '%test%'), 0) AS edge_length_per_element FROM h3_edges ORDER BY edge_length_per_element;
+SELECT id, COUNT(*) AS edge_count, SUM(h3ExactEdgeLengthM(h3_index)) * 0.1 AS scaled_sum_length FROM h3_edges GROUP BY id HAVING edge_count > 1;
+WITH (SELECT AVG(h3ExactEdgeLengthM(h3_index)) FROM h3_edges) AS avg_length SELECT id, h3ExactEdgeLengthM(h3_index) * avg_length AS product FROM h3_edges;
+CREATE TABLE h3_edges_temp AS SELECT *, h3ExactEdgeLengthM(h3_index) * 10 AS extended_length FROM h3_edges;
+INSERT INTO h3_edges_temp SELECT 3, 1310277011704381450, 'test edge 3';
+SELECT id, extended_length, h3_index FROM h3_edges_temp WHERE extended_length > 1000.0;

@@ -1,0 +1,18 @@
+[
+    "CREATE TABLE session_variables (id INTEGER PRIMARY KEY, var_name VARCHAR(255), var_value VARCHAR(255));",
+    "INSERT INTO session_variables (var_name, var_value) VALUES ('user_id', '1');",
+    "INSERT INTO session_variables (var_name, var_value) VALUES ('session_token', 'abc123');",
+    "SELECT * FROM session_variables WHERE var_name = 'user_id';",
+    "<?vsp\n    declare rc integer;\n    connection_vars_set ();\n    rc := connection_is_dirty (); -- rc is equal to 0\n  ?>",
+    "UPDATE session_variables SET var_value = '2' WHERE var_name = 'user_id';",
+    "<?vsp\n    rc := connection_is_dirty (); -- rc is equal to 1\n  ?>",
+    "SELECT user_id, session_token FROM session_variables WHERE user_id IN (SELECT var_value FROM session_variables WHERE var_name = 'user_id');",
+    "<?vsp\n    connection_vars_set ();\n    rc := connection_is_dirty (); -- rc is equal to 0\n  ?>",
+    "INSERT INTO session_variables (var_name, var_value) VALUES ('last_action', 'login');",
+    "<?vsp\n    rc := connection_is_dirty (); -- rc is equal to 1\n  ?>",
+    "DELETE FROM session_variables WHERE var_name = 'session_token';",
+    "<?vsp\n    rc := connection_is_dirty (); -- rc is equal to 1\n  ?>",
+    "CREATE TABLE user_sessions (session_id INTEGER PRIMARY KEY, user_id INTEGER, login_time TIMESTAMP, FOREIGN KEY (user_id) REFERENCES session_variables(id));",
+    "INSERT INTO user_sessions (user_id, login_time) VALUES ((SELECT id FROM session_variables WHERE var_name = 'user_id'), CURRENT_TIMESTAMP);",
+    "SELECT COUNT(*) FROM user_sessions WHERE user_id = (SELECT var_value FROM session_variables WHERE var_name = 'user_id');"
+]

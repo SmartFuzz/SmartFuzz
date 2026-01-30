@@ -1,0 +1,13 @@
+CREATE TABLE test_data (id INT, description TEXT, flags BITSTRING);
+INSERT INTO test_data VALUES (1, 'abc', '10101'::BITSTRING), (2, 'def', '10001'::BITSTRING), (3, NULL, '11111'::BITSTRING);
+SELECT id, description, contains(description, 'a') AS contains_a, flags & '10000'::BITSTRING AS flag_check FROM test_data WHERE flags & '10001'::BITSTRING <> '00000'::BITSTRING;
+SELECT id, description FROM test_data WHERE contains(description, 'd') AND flags & '10101'::BITSTRING = '10101'::BITSTRING;
+CREATE TABLE more_data (user_id INT, preference TEXT);
+INSERT INTO more_data VALUES (1, 'abc'), (2, 'def'), (3, 'xyz');
+SELECT t1.id, t1.description, COUNT(t2.user_id) AS user_count FROM test_data t1 LEFT JOIN more_data t2 ON contains(t1.description, t2.preference) GROUP BY t1.id, t1.description HAVING flags & '10000'::BITSTRING IS NOT NULL;
+SELECT id, description, flags FROM test_data WHERE flags IS NOT NULL AND contains(description, 'xyz') AND (flags & '11111'::BITSTRING) <> '00000'::BITSTRING;
+SELECT id FROM test_data WHERE id IN (SELECT user_id FROM more_data WHERE preference IS NOT NULL AND contains(preference, 'def'));
+DROP TABLE IF EXISTS temp_data;
+CREATE TEMP TABLE temp_data AS SELECT id, flags FROM test_data;
+SELECT t.id, (flags & '10101'::BITSTRING) AS flag_result FROM temp_data t WHERE contains(CAST(flag_result AS TEXT), '101') OR flags IS NULL;
+SELECT * FROM (SELECT id, description, flags & '11111'::BITSTRING AS combined_flags FROM test_data) AS subquery WHERE contains(description, 'e') AND combined_flags > '00000'::BITSTRING;

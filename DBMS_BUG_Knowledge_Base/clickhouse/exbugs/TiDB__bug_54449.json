@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/54449",
+  "title": "planner: invalid pointer caused by a recursive CTE query",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n```\r\nCREATE TABLE `p` (\r\n  `groupid` bigint(20) DEFAULT NULL,\r\n  KEY `k1` (`groupid`)\r\n);\r\n\r\n\r\nCREATE TABLE `g` (\r\n  `groupid` bigint(20) DEFAULT NULL,\r\n  `parentid` bigint(20) NOT NULL,\r\n  KEY `k1` (`parentid`),\r\n  KEY `k2` (`groupid`,`parentid`)\r\n);\r\n\r\nset tidb_opt_enable_hash_join=off;\r\n\r\nWITH RECURSIVE w(gid) AS (\r\n  SELECT\r\n    groupId\r\n  FROM\r\n    p\r\n  UNION\r\n  SELECT\r\n    g.groupId\r\n  FROM\r\n    g\r\n    JOIN w ON g.parentId = w.gid\r\n)\r\nSELECT\r\n  1\r\nFROM\r\n  g\r\nWHERE\r\n  g.groupId IN (\r\n    SELECT\r\n      gid\r\n    FROM\r\n      w\r\n  );\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nno error\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n```\r\nERROR 1105 (HY000): runtime error: invalid memory address or nil pointer dereference\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n\r\nMaster",
+  "date": "2024-07-04T08:46:25Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE p ( groupid Int64 DEFAULT NULL, PRIMARY KEY (groupid));",
+    "CREATE TABLE g ( groupid Int64 DEFAULT NULL, parentid Int64 NOT NULL, PRIMARY KEY (groupid, parentid));",
+    "INSERT INTO p (groupid) VALUES (1), (2), (3);",
+    "INSERT INTO g (groupid, parentid) VALUES (1, 0), (2, 1), (3, 1);",
+    "WITH w AS ( SELECT groupid FROM p UNION ALL SELECT g.groupid FROM g JOIN w ON g.parentid = w.gid ) SELECT 1 FROM g WHERE g.groupid IN (SELECT gid FROM w);"
+  ],
+  "key_bug_features": [
+    "invalid pointer dereference in recursive CTE query"
+  ]
+}

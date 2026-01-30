@@ -1,0 +1,17 @@
+{
+    "function": "polygonPerimeterCartesian",
+    "operator": "a IN ...",
+    "sql_array": [
+        "CREATE TABLE polygons (id Int32, coords Array(Array(Float64))) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO polygons VALUES (1, [[(0., 0.), (0., 5.), (5., 5.), (5., 0.)]]), (2, [[(10., 10.), (10., 15.), (15., 15.), (15., 10.)]]);",
+        "SELECT id, polygonPerimeterCartesian(coords) AS perimeter FROM polygons WHERE id IN (SELECT id FROM polygons WHERE coords[1][1] IS NOT NULL);",
+        "SELECT id, polygonPerimeterCartesian(coords) AS perimeter FROM polygons WHERE id IN (1, 2) HAVING perimeter > 20.0;",
+        "SELECT id, SUM(polygonPerimeterCartesian(coords)) AS total_perimeter FROM polygons GROUP BY id HAVING total_perimeter IN (SELECT DISTINCT (perimeter + 1.0) FROM (SELECT polygonPerimeterCartesian(coords) AS perimeter FROM polygons)) ORDER BY total_perimeter;",
+        "CREATE TABLE temp_polygon AS SELECT *, polygonPerimeterCartesian(coords) AS perimeter FROM polygons WHERE coords[1][1] IS NOT NULL;",
+        "INSERT INTO temp_polygon SELECT 3, [[(4., 4.), (4., 14.), (14., 14.), (14., 4.)]];",
+        "SELECT id, perimeter FROM temp_polygon WHERE perimeter IN (SELECT DISTINCT perimeter FROM polygons WHERE perimeter IS NOT NULL ORDER BY perimeter DESC LIMIT 3);",
+        "SELECT id, polygonPerimeterCartesian([[[(0., 0.), (0., 3.), (3., 3.), (3., 0.)]]]) AS perimeter FROM polygons WHERE perimeter IS NOT NULL AND id IN (SELECT id FROM polygons WHERE coords[1][1] IN (5.0, NULL));",
+        "ALTER TABLE polygons ADD COLUMN area Float64 DEFAULT NULL;",
+        "UPDATE polygons SET area = polygonPerimeterCartesian(coords) * 2.0 WHERE area IS NULL;"
+    ]
+}

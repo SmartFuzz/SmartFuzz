@@ -1,0 +1,10 @@
+CREATE TABLE test_fuzzing (id UInt32, data String, timestamp DateTime DEFAULT now());
+INSERT INTO test_fuzzing VALUES (1, 'as12bc23de345f'), (2, 'xyz456'), (3, 'pqrstuvw'), (4, '');
+SELECT id, splitByRegexp('\\d+', data) AS split_result FROM test_fuzzing WHERE splitByRegexp('\\d+', data) ILIKE '%12%';
+SELECT id, splitByRegexp('', data) AS chars FROM test_fuzzing WHERE chars[1] IS NOT NULL;
+SELECT id, data, (SELECT count() FROM test_fuzzing WHERE splitByRegexp('\\d+', data) ILIKE '%45%') AS match_count FROM test_fuzzing HAVING match_count > 0;
+SELECT id, splitByRegexp('\\D+', data), splitByRegexp('\\d+', data) ILIKE '45' AS match FROM test_fuzzing WHERE MATCH(data) > 0;
+SELECT id, data FROM (SELECT id, splitByRegexp('\\W+', data) AS words FROM test_fuzzing WHERE data ILIKE '%p%') AS tmp WHERE words[1] IS NOT NULL;
+CREATE TEMPORARY TABLE temp_data AS SELECT splitByRegexp('\\d+', data) AS split_digits FROM test_fuzzing WHERE data ILIKE 'xyz%';
+SELECT temp_data.split_digits[1] AS first_digit FROM temp_data WHERE first_digit IS NOT NULL AND first_digit ILIKE '4%';
+SELECT id, data FROM test_fuzzing WHERE data ILIKE '%' || splitByRegexp('\\d+', data)[1] || '%';

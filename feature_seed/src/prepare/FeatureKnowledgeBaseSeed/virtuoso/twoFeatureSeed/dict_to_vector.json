@@ -1,0 +1,23 @@
+{
+    "function": "dict_to_vector",
+    "operator": "SPARQL Operator: isIRI",
+    "sql_array": [
+        "CREATE TABLE test_dict (id INT PRIMARY KEY, data_dict JSON, value_col VARCHAR(255));",
+        "INSERT INTO test_dict (id, data_dict, value_col) VALUES (1, '{\"key1\": \"value1\", \"key2\": \"value2\"}', 'test value');",
+        "INSERT INTO test_dict (id, data_dict, value_col) VALUES (2, '{\"key3\": null, \"key4\": \"value4\"}', 'another test value');",
+        "SELECT dict_to_vector(data_dict) AS vector FROM test_dict WHERE isIRI(value_col);",
+        "SELECT id, dict_to_vector(data_dict) AS vector FROM test_dict WHERE isIRI(CAST(value_col AS IRI));",
+        "SELECT id, dict_to_vector(data_dict) AS vector FROM test_dict WHERE value_col IS NOT NULL AND isIRI(value_col);",
+        "SELECT id, AVG(COALESCE(LENGTH(value_col), 0)) OVER (PARTITION BY isIRI(value_col)) AS average_length FROM test_dict;",
+        "CREATE TABLE complex_test (id INT PRIMARY KEY, json_data JSON NOT NULL, extra_value VARCHAR(255));",
+        "INSERT INTO complex_test (id, json_data, extra_value) VALUES (1, '{\"keyA\": 1, \"keyB\": 2.5}', 'valueA');",
+        "SELECT id, dict_to_vector(json_data) AS vector FROM complex_test WHERE isIRI(extra_value) AND extra_value != '';",
+        "SELECT COUNT(*) FROM complex_test WHERE isIRI(CAST(extract(json_data, '$.keyB') AS VARCHAR)) HAVING COUNT(*) > 1;",
+        "CREATE TABLE reference_data (ref_id INT, ref_name VARCHAR(100));",
+        "INSERT INTO reference_data (ref_id, ref_name) VALUES (1, 'Reference 1'), (2, 'Reference 2');",
+        "SELECT c.id, dict_to_vector(data_dict) AS vector, r.ref_name FROM test_dict c JOIN reference_data r ON c.id = r.ref_id WHERE isIRI(r.ref_name);",
+        "SELECT CASE WHEN isIRI(value_col) THEN dict_to_vector(data_dict) ELSE NULL END AS vector_case FROM test_dict;",
+        "CREATE TEMPORARY TABLE temp_dict AS SELECT dict_to_vector(data_dict) AS temp_vector FROM test_dict WHERE id = 1;",
+        "SELECT * FROM temp_dict WHERE temp_vector IS NOT NULL;"
+    ]
+}

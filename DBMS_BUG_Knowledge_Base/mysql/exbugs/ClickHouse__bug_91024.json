@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/91024",
+  "title": "Test `00906_low_cardinality_cache` is flaky",
+  "description": "https://play.clickhouse.com/play?user=play&run=1#V0lUSAogICAgOTAgQVMgaW50ZXJ2YWxfZGF5cwpTRUxFQ1QKICAgIHRvU3RhcnRPZkRheShjaGVja19zdGFydF90aW1lKSBBUyBkYXksCiAgICBjb3VudCgpIEFTIGZhaWx1cmVzLAogICAgZ3JvdXBVbmlxQXJyYXkocHVsbF9yZXF1ZXN0X251bWJlcikgQVMgcHJzLAogICAgYW55KHJlcG9ydF91cmwpIEFTIHJlcG9ydF91cmwKRlJPTSBjaGVja3MKV0hFUkUgKG5vdygpIC0gdG9JbnRlcnZhbERheShpbnRlcnZhbF9kYXlzKSkgPD0gY2hlY2tfc3RhcnRfdGltZQogICAgQU5EIHRlc3RfbmFtZSA9ICcwMDkwNl9sb3dfY2FyZGluYWxpdHlfY2FjaGUnCiAgICAtLSBBTkQgY2hlY2tfbmFtZSA9ICdTdGF0ZWxlc3MgdGVzdHMgKGFtZF9tc2FuLCBwYXJhbGxlbCknCiAgICBBTkQgdGVzdF9zdGF0dXMgSU4gKCdGQUlMJywgJ0VSUk9SJykKICAgIEFORCAoKGhlYWRfcmVmID0gJ21hc3RlcicgQU5EIHB1bGxfcmVxdWVzdF9udW1iZXIgPSAwKSBPUiBwdWxsX3JlcXVlc3RfbnVtYmVyICE9IDApCkdST1VQIEJZIGRheQpPUkRFUiBCWSBkYXkgREVTQwo=\nFailes due to timeout:\n```\n2025-11-21 16:17:35 [4d21e489bc1a] 2025.11.21 06:17:33.907909 [ 852156 ] {4b2dced1-5f2e-4153-8fe3-72f93bdf29aa} <Error> executeQuery: Code: 160. DB::Exception: Estimated query execution time (607.94226 seconds) is too long. Maximum: 600. Estimated rows to process: 100000000 (49610764 read in 301.60480 seconds): While executing NumbersRange. (TOO_SLOW) (version 25.11.1.580) (from [::1]:60582) (comment: 00906_low_cardinality_cache.sql-test_qzazfy8y) (query 4, line 6) (in query: insert into lc_00906 select '0123456789' from numbers(100000000);), Stack trace (when copying this message, always include the lines below):\n```",
+  "date": "2025-11-27T19:33:23Z",
+  "vulnerable_version": "25.11.1.580",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE lc_00906 (id INT UNSIGNED, value VARCHAR(255)) ENGINE=InnoDB;",
+    "INSERT INTO lc_00906 (id, value) SELECT number, '0123456789' FROM (SELECT @rownum := @rownum + 1 AS number FROM (SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9 UNION SELECT 10) t1, (SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9 UNION SELECT 10) t2, (SELECT @rownum := 0) r) numbers WHERE number <= 100000000;",
+    "CREATE TABLE lc_test (id INT UNSIGNED, data INT NULL);",
+    "INSERT INTO lc_test (id, data) SELECT number, CASE WHEN number % 2 = 0 THEN number ELSE NULL END FROM (SELECT @rownum := @rownum + 1 AS number FROM (SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9 UNION SELECT 10) t1, (SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9 UNION SELECT 10) t2, (SELECT @rownum := 0) r) numbers WHERE number <= 100;",
+    "SELECT COUNT(*) FROM lc_test WHERE data IS NULL;"
+  ],
+  "key_bug_features": [
+    "Timeout during execution of large number insert query"
+  ]
+}

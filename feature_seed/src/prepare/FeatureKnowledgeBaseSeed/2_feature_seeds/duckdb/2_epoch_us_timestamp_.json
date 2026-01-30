@@ -1,0 +1,11 @@
+CREATE TABLE timestamps_data (id INTEGER PRIMARY KEY, event_time TIMESTAMP, interval_value INTEGER);
+INSERT INTO timestamps_data (id, event_time, interval_value) VALUES (1, timestamp '2021-01-01 00:00:00', 5), (2, timestamp '2021-01-01 00:01:00', 10), (3, timestamp '2021-01-01 00:02:00', NULL);
+SELECT id, event_time, epoch_us(event_time) - INTERVAL (COALESCE(interval_value, 0)) MINUTE AS adjusted_time FROM timestamps_data ORDER BY adjusted_time DESC;
+SELECT id, COUNT(*) AS event_count, AVG(epoch_us(event_time) - INTERVAL (COALESCE(interval_value, 0)) MINUTE) AS avg_time_diff FROM timestamps_data GROUP BY id HAVING avg_time_diff IS NOT NULL;
+WITH adjusted_times AS (SELECT id, event_time, epoch_us(event_time) - INTERVAL (COALESCE(interval_value, 0)) MINUTE AS new_time_value FROM timestamps_data) SELECT new_time_value, COUNT(*) FROM adjusted_times WHERE new_time_value > 0 GROUP BY new_time_value HAVING COUNT(*) > 1;
+CREATE TABLE extra_data (extra_id INTEGER PRIMARY KEY, fk_id INTEGER, extra_time TIMESTAMP);
+INSERT INTO extra_data (extra_id, fk_id, extra_time) VALUES (1, 1, timestamp '2021-01-01 00:00:05'), (2, 2, timestamp '2021-01-01 00:01:05'), (3, 3, NULL);
+SELECT a.id, a.event_time, epoch_us(a.event_time) - INTERVAL (COALESCE(b.fk_id, 0)) DAY AS time_difference FROM timestamps_data a LEFT JOIN extra_data b ON a.id = b.fk_id WHERE b.extra_time IS NULL OR b.extra_time < a.event_time;
+SELECT MAX(epoch_us(event_time) - INTERVAL (COALESCE(interval_value, 0)) SECOND) AS maximum_time_diff FROM timestamps_data;
+SELECT id, (epoch_us(event_time) - INTERVAL (COALESCE(NULLIF(interval_value, 0), 1))) SECOND) AS boundary_time FROM timestamps_data;
+SELECT (SELECT epoch_us(MIN(event_time)) FROM timestamps_data) - (SELECT epoch_us(MAX(event_time)) FROM timestamps_data) AS time_span;

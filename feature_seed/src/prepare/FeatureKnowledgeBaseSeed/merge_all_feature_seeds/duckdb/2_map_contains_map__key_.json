@@ -1,0 +1,10 @@
+CREATE TABLE test_map (id INTEGER PRIMARY KEY, data_map MAP(VARCHAR, INTEGER));
+INSERT INTO test_map VALUES (1, MAP {'key1': 10, 'key2': 20}), (2, MAP {'key3': 30, 'key4': 40}), (3, MAP {}, (0, NULL));
+SELECT id, data_map, map_contains(data_map, 'key1') + map_contains(data_map, 'key2') AS key_check FROM test_map WHERE map_contains(data_map, 'key1') IS NOT NULL;
+SELECT id, CASE WHEN map_contains(data_map, 'key5') THEN (2 + 3) ELSE (4 + NULL) END AS check_result FROM test_map;
+WITH recursive_key_check AS (SELECT id, data_map, map_contains(data_map, 'key2') AS found_key FROM test_map) SELECT COUNT(*) AS total_found FROM recursive_key_check WHERE found_key;
+SELECT id, (SELECT COUNT(*) FROM test_map AS inner_map WHERE map_contains(inner_map.data_map, 'key2') OR map_contains(inner_map.data_map, 'key3')) + (SELECT COUNT(*) FROM test_map WHERE data_map IS NULL) AS complex_count FROM test_map;
+CREATE TABLE additional_data (info VARCHAR, number INTEGER);
+INSERT INTO additional_data VALUES ('test1', 1), ('test2', 2), ('test3', 3);
+SELECT t.id, t.data_map, a.info, (SELECT COUNT(*) FROM additional_data WHERE number < (CASE WHEN map_contains(t.data_map, 'key1') THEN 5 ELSE 0 END)) AS related_count FROM test_map t JOIN additional_data a ON t.id = a.number+1;
+SELECT id, map_contains(data_map, 'key1') + (CASE WHEN data_map IS NOT NULL THEN 1 ELSE 0 END) AS complete_check FROM test_map GROUP BY id HAVING complete_check > 0 ORDER BY complete_check DESC;

@@ -1,0 +1,16 @@
+CREATE TABLE files (id INT PRIMARY KEY, filepath VARCHAR(255), mode INT);
+INSERT INTO files (id, filepath, mode) VALUES (1, 'testfile.txt', 755);
+INSERT INTO files (id, filepath, mode) VALUES (2, 'testfile2.txt', 640);
+SELECT os_chmod(filepath, bit_or(cast(mode as integer), 2)) FROM files WHERE id = 1;
+SELECT xpath_string('/root/file[mode=755]', xml_col) FROM (SELECT '/root/file' as xml_col, 755 as mode) AS subquery;
+SELECT os_chmod(virtuoso_ini_path(), (SELECT bit_or(cast(mode as integer)) FROM files WHERE mode < 700)) FROM dual;
+CREATE TABLE xml_data (id INT PRIMARY KEY, xml_col XML);
+INSERT INTO xml_data (id, xml_col) VALUES (1, '<root><a>Value</a></root>');
+SELECT os_chmod(virtuoso_ini_path(), bit_xor(cast(file_stat(virtuoso_ini_path(), 2) as integer), 1)) WHERE id IN (SELECT id FROM xml_data WHERE xpath_string('/root/a', xml_col) = 'Value');
+SELECT os_chmod(virtuoso_ini_path(), 0) AS result, xpath_string('/root/a', xml_col) AS extracted FROM xml_data;
+UPDATE files SET mode = (SELECT bit_or(cast(mode as integer)) FROM files) WHERE id = 1;
+DROP TABLE files;
+ALTER TABLE xml_data ADD COLUMN additional_info VARCHAR(255);
+INSERT INTO xml_data (id, xml_col, additional_info) VALUES (2, '<root><a>Another</a></root>', NULL);
+SELECT os_chmod(filepath, bit_and(cast(NULL AS integer) + 4)) FROM files WHERE id = 2;
+SELECT os_chmod(virtuoso_ini_path(), (SELECT bit_or(mode) FROM files GROUP BY id HAVING COUNT(*) > 0)) FROM dual;

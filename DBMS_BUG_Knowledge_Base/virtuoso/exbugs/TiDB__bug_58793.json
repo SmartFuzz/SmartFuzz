@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/58793",
+  "title": "wrong null rejective with nulleq and is not null",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n\n```sql\nDROP TABLE IF EXISTS t0;\nDROP TABLE IF EXISTS t1;\nCREATE TABLE t0(c0 TEXT(227));\nCREATE TABLE t1 LIKE t0;\nINSERT INTO t1 VALUES ('');\nSELECT COUNT(*) FROM t1 LEFT JOIN t0 ON t0.c0 <> t1.c0 WHERE (NULL AND t1.c0) <=> (t0.c0 IS NOT NULL);\n```\n\n### 2. What did you expect to see? (Required)\n\nsee the following case:\n\n### 3. What did you see instead (Required)\n\n```sql\n// MySQL 8.4.1\nMySQL [test]> SELECT COUNT(*) FROM t1 LEFT JOIN t0 ON t0.c0 <> t1.c0 WHERE (NULL AND t1.c0) <=> (t0.c0 IS NOT NULL);\n+----------+\n| COUNT(*) |\n+----------+\n|        1 |\n+----------+\n1 row in set (0.01 sec)\n\n// TiDB\nmysql> SELECT COUNT(*) FROM t1 LEFT JOIN t0 ON t0.c0 <> t1.c0 WHERE (NULL AND t1.c0) <=> (t0.c0 IS NOT NULL);\n+----------+\n| COUNT(*) |\n+----------+\n|        0 |\n+----------+\n1 row in set (0.04 sec)\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\nTiDB v8.5.0",
+  "date": "2025-01-08T07:11:42Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t2;",
+    "CREATE TABLE t2(c1 INTEGER, c2 VARCHAR(50) NOT NULL, c3 DATE NULL);",
+    "INSERT INTO t2 VALUES (1, 'test', NULL), (2, 'example', '2023-01-01');",
+    "SELECT COUNT(*) FROM t2 LEFT JOIN t1 ON t2.c2 = t1.c0 WHERE (NULL OR t2.c1) = (CASE WHEN t1.c0 IS NOT NULL THEN 1 ELSE NULL END);",
+    "SELECT COUNT(*) FROM t2 LEFT JOIN t0 ON t0.c0 IS NULL WHERE (t2.c3 IS NOT NULL) = (CASE WHEN t0.c0 IS NOT NULL THEN 1 ELSE NULL END);"
+  ],
+  "key_bug_features": [
+    "LEFT JOIN with NULL condition and IS NOT NULL check"
+  ]
+}

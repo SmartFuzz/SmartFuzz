@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/d96eba8769",
+  "title": "Incorrect results for OR query where both OR terms are different indexed expressions",
+  "description": "dan added on 2018-12-14 07:53:15:\nWHERE terms of the form:\n... WHERE func1(cols) = ?1 OR func2(cols) = ?2\nare being incorrectly transformed to:\n... WHERE func2(cols) IN (?1, ?2)\nFor example:\nCREATE TABLE t1(a, b);\n  INSERT INTO t1 VALUES('abc', 'ABC');\n  INSERT INTO t1 VALUES('def', 'DEF');\n\n  .print \"---- without indexes:\"\n  SELECT * FROM t1 WHERE upper(a) = 'ABC' OR lower(b) = 'def';\n\n  .print \"---- with indexes:\"\n  CREATE INDEX i1 ON t1( upper(a) );\n  CREATE INDEX i2 ON t1( lower(b) );\n  SELECT * FROM t1 WHERE upper(a) = 'ABC' OR lower(b) = 'def';\nThe first query above returns both table rows, but the second only returns the ('def', 'DEF') tuple.\ndrh added on 2018-12-14 11:00:25:\nThis problem has existed in all versions of SQLite since support for\nindexes on expressions was first added, with version 3.9.0 on 2015-10-14.\nThis problem is a previously undetected\nerror in the implementation of indexes on expressions.",
+  "date": "2018-12-14 07:53:156.66 years ago",
+  "vulnerable_version": "3.26",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t2(id UInt64, name String, value Float64, created_at DateTime DEFAULT now());",
+    "INSERT INTO t2(name, value) VALUES('Test1', 10.5);",
+    "INSERT INTO t2(name, value) VALUES('Test2', NULL);",
+    "CREATE INDEX idx_name ON t2(upper(name)) TYPE minmax;",
+    "SELECT * FROM t2 WHERE upper(name) = 'TEST1' OR value IS NULL;"
+  ],
+  "key_bug_features": [
+    "Incorrect transformation of OR query with indexed expressions"
+  ]
+}

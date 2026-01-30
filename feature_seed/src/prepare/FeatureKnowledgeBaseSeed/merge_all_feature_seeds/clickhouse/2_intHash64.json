@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id UInt64, value Int32, str_value String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, 42, 'test1'), (2, NULL, 'test2'), (3, -1, NULL), (4, 2147483647, 'test4');
+CREATE TABLE secondary_table (id UInt64, hash_value UInt64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO secondary_table SELECT id, intHash64(value) FROM test_table WHERE value IS NOT NULL;
+SELECT id, intHash64(value) AS hashed FROM test_table WHERE str_value = 'test2' OR (id, value) IN (SELECT id, intHash64(value) FROM test_table WHERE value < 0);
+SELECT id, intHash64(ifNull(value, -1)) AS hash_value FROM test_table GROUP BY id, value HAVING hash_value > intHash64(0);
+SELECT (intHash64(value), str_value) FROM test_table WHERE value IS NOT NULL AND id IN (SELECT id FROM test_table WHERE str_value LIKE '%test%') ORDER BY intHash64(value);
+SELECT id, intHash64(value) FROM test_table WHERE str_value = '' OR value = 0 GROUP BY id HAVING intHash64(value) > 0;
+SELECT id, intHash64(value) FROM (SELECT id, value, str_value FROM test_table WHERE value IS NOT NULL) AS subquery WHERE intHash64(value) < (SELECT MAX(intHash64(value)) FROM test_table);
+SELECT id, intHash64(arr) FROM (SELECT id, arrayJoin(array(value)) AS arr FROM (SELECT value FROM test_table) GROUP BY id) AS derived_table ORDER BY intHash64(arr);

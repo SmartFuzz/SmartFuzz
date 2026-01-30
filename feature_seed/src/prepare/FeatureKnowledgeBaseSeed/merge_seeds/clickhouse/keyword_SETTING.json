@@ -1,0 +1,13 @@
+CREATE TABLE test_table (id Int32) ENGINE = MergeTree() ORDER BY id;
+ALTER TABLE test_table MODIFY SETTING max_parts_in_total = 200;
+ALTER TABLE test_table MODIFY SETTING min_bytes_to_use_direct_io = 1048576, enable_partial_merge = 0;
+SELECT * FROM test_table SETTINGS max_threads = 8;
+ALTER TABLE test_table RESET SETTING max_parts_in_total;
+ALTER TABLE test_table MODIFY SETTING enable_mixed_granularity_parts = 1, parts_to_throw_insert = 300;
+SELECT * FROM (SELECT id FROM test_table) AS subquery SETTINGS optimize_trivial_count = 1;
+ALTER TABLE test_table MODIFY SETTING merge_with_ttl_timeout = 600;
+ALTER TABLE test_table MODIFY SETTING min_bytes_to_use_direct_io = 1048576, parts_to_throw_insert = 400;
+ALTER TABLE test_table RESET SETTING enable_partial_merge;
+CREATE TABLE another_table (id Int32, value String) ENGINE = MergeTree() ORDER BY id;
+ALTER TABLE test_table MODIFY SETTING parts_to_throw_insert = (SELECT COUNT(*) FROM another_table) * 10;
+ALTER TABLE test_table MODIFY SETTING merge_with_ttl_timeout = 500, max_threads = (SELECT count() FROM system.processes);

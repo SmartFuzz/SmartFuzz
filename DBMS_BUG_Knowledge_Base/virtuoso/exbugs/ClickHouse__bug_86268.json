@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/86268",
+  "title": "PREWHERE + FINAL on ReplacingMergeTree drops version column",
+  "description": "### Describe what's wrong\nOptimizer removes column when using PREWHERE, FINAL and ReplacingMergeTree with is_deleted column\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\n```sql\nCREATE TABLE repro\n(\nid UInt64,\ncreated_at DateTime,\nis_deleted UInt8\n)\nENGINE = ReplacingMergeTree(created_at, is_deleted)\nORDER BY id;\nINSERT INTO repro values(1,0,0);\nSELECT id FROM repro FINAL\nPREWHERE created_at <= '2025-08-26'\n```\n**Error message:**\n```\nReceived exception from server (version 25.7.4):\nCode: 10. DB::Exception: Received from localhost:9000. DB::Exception: Not found column created_at in block. There are only columns: id, is_deleted. (NOT_FOUND_COLUMN_IN_BLOCK)\n```\nhttps://fiddle.clickhouse.com/cfe81b89-125f-45bd-a66e-fe616b9d38fb\n### Expected behavior\n* Query should work the same way as if the filter is in `WHERE`, not `PREWHERE`.\n* The column used in PREWHERE should remain available after FINAL.\n**Actual behavior:**\n* `created_at` column is optimized away too early.\n* Query throws `NOT_FOUND_COLUMN_IN_BLOCK`.\n**Workaround:**\n* Use `WHERE` instead of `PREWHERE`.\n### Additional context\nRelated issue: https://github.com/ClickHouse/ClickHouse/issues/45804",
+  "date": "2025-08-27T11:34:26Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INTEGER, created_at TIMESTAMP, is_deleted INTEGER);",
+    "INSERT INTO test_table (id, created_at, is_deleted) VALUES (1, '2025-08-25 12:00:00', 0), (2, '2025-08-26 12:00:00', 1);",
+    "SELECT id FROM test_table WHERE created_at < '2025-08-26';",
+    "CREATE TABLE another_table (user_id INTEGER, last_login TIMESTAMP, status INTEGER);",
+    "INSERT INTO another_table (user_id, last_login, status) VALUES (1, '2025-08-25 12:00:00', NULL), (2, '2025-08-26 12:00:00', 1);"
+  ],
+  "key_bug_features": [
+    "Using PREWHERE with FINAL on ReplacingMergeTree"
+  ]
+}

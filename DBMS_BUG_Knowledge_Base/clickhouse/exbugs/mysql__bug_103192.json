@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=103192",
+  "title": "Wrong result of execute prepare on 'smallint'",
+  "description": "correct:\r\nmysql> select sum(col1) from t1 where col1 > 32767;\r\n+-----------+\r\n| sum(col1) |\r\n+-----------+\r\n| NULL      |\r\n+-----------+\r\n1 row in set (0.04 sec)\r\n\r\nincorrect:\r\nmysql>  prepare stmt from 'select sum(col1) from t1 where col1 > ?;';\r\n\r\nQuery OK, 0 rows affected (0.06 sec)\r\nStatement prepared\r\n \r\nmysql> set @a=14742;\r\n\r\nQuery OK, 0 rows affected (0.04 sec)\r\n \r\nmysql> execute stmt using @a;\r\n+-----------+\r\n| sum(col1) |\r\n+-----------+\r\n| 47510     |\r\n+-----------+\r\n1 row in set (0.04 sec)\r\n \r\nmysql> set @a=32767;\r\nQuery OK, 0 rows affected (0.04 sec)\r\n \r\nmysql> execute stmt using @a;\r\n+-----------+\r\n| sum(col1) |\r\n+-----------+\r\n| 47510     |\r\n+-----------+\r\n1 row in set (0.04 sec)\nHow to repeat:\nmysql> CREATE TABLE t1(\r\n  col1 smallint NOT NULL\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;\r\nQuery OK, 0 rows affected (0.06 sec)\r\n\r\nmysql> insert into t1 values(32767);\r\nQuery OK, 1 row affected (0.05 sec)\r\n \r\nmysql> insert into t1 values(14742);\r\nQuery OK, 1 row affected (0.07 sec)\r\n \r\nmysql> insert into t1 values(14743);\r\nQuery OK, 1 row affected (0.05 sec)",
+  "date": "2021-04-02 07:24:00",
+  "vulnerable_version": "8.0.23",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t2(col1 Int16 NOT NULL, col2 Int32 DEFAULT NULL);",
+    "INSERT INTO t2 VALUES(32767, NULL);",
+    "INSERT INTO t2 VALUES(14742, 100);",
+    "INSERT INTO t2 VALUES(14743, 200);",
+    "SELECT SUM(col1) FROM t2 WHERE col1 > (SELECT MAX(col1) FROM t2 WHERE col2 IS NULL);"
+  ],
+  "key_bug_features": [
+    "execute prepared statement with smallint parameter"
+  ]
+}

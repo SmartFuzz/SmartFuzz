@@ -1,0 +1,32 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/6686",
+  "title": "Bug in subselect (count function)",
+  "vulnerable_database": "monetdb",
+  "date": "2020-11-30T16:33:07Z",
+  "vulnerable_version": "Unknown",
+  "description": "",
+  "poc": [
+    "CREATE TABLE \"sys\".\"unitTestDontDelete\" (\r\n \t\"A\" VARCHAR(255),\r\n \t\"B\" BIGINT,\r\n \t\"C\" DOUBLE,\r\n \t\"D\" TIMESTAMP\r\n );",
+    "INSERT INTO \"sys\".\"unitTestDontDelete\" VALUES (NULL, NULL, NULL, NULL);",
+    "INSERT INTO \"sys\".\"unitTestDontDelete\" VALUES ('Cat1', 0, 0.5, '2013-06-10 11:10:10.000000');",
+    "INSERT INTO \"sys\".\"unitTestDontDelete\" VALUES ('Cat2', 1, 1.5, '2013-06-11 12:11:11.000000');",
+    "INSERT INTO \"sys\".\"unitTestDontDelete\" VALUES ('Cat1', 2, 2.5, '2013-06-12 13:12:12.000000');",
+    "INSERT INTO \"sys\".\"unitTestDontDelete\" VALUES ('Cat2', 3, 3.5, '2013-06-13 14:13:13.000000');",
+    "INSERT INTO \"sys\".\"unitTestDontDelete\" VALUES ('Cat1', 4, 4.5, '2013-06-14 15:14:14.000000');",
+    "INSERT INTO \"sys\".\"unitTestDontDelete\" VALUES ('Cat2', 5, 5.5, '2013-06-15 16:15:15.000000');",
+    "INSERT INTO \"sys\".\"unitTestDontDelete\" VALUES ('Cat1', 6, 6.5, '2013-06-16 17:16:16.000000');",
+    "INSERT INTO \"sys\".\"unitTestDontDelete\" VALUES ('Cat2', 7, 7.5, '2013-06-17 18:17:17.000000');",
+    "INSERT INTO \"sys\".\"unitTestDontDelete\" VALUES ('Cat1', 8, 8.5, '2013-06-18 19:18:18.000000');",
+    "with \"c3_t\" as\r\n (\r\n   select\r\n     \"c1_t\".\"A\",\r\n     \"c1_t\".\"B\",\r\n     \"c1_t\".\"C\",\r\n     \"c1_t\".\"D\"\r\n   from\r\n     \"unitTestDontDelete\" as \"c1_t\"\r\n )\r\n select\r\n \t\"c3_t\".\"C\",\r\n   (\r\n     select\r\n       count(*) \r\n     from\r\n       \"c3_t\" as \"c4_t\"\r\n     where\r\n       \"c4_t\".\"C\" >= coalesce(\"c3_t\".\"C\", 0.0) + 1\r\n   )\r\n   as \"c2_f1\"\r\n from\r\n   \"c3_t\";"
+  ],
+  "key_bug_features": [
+    "Count function in subselect with NULL values"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE \"sys\".\"unitTestFuzz\" (\r\n \t\"X\" VARCHAR(100) NOT NULL,\r\n \t\"Y\" INT,\r\n \t\"Z\" FLOAT,\r\n \t\"W\" DATE DEFAULT CURRENT_DATE\r\n );",
+    "INSERT INTO \"sys\".\"unitTestFuzz\" VALUES (NULL, NULL, NULL, NULL);",
+    "INSERT INTO \"sys\".\"unitTestFuzz\" VALUES ('Alpha', 10, 1.1, '2023-01-01');",
+    "INSERT INTO \"sys\".\"unitTestFuzz\" VALUES ('Beta', 20, 2.2, '2023-01-02');",
+    "SELECT \"X\", (SELECT COUNT(*) FROM \"unitTestFuzz\" WHERE \"Z\" IS NULL OR \"Z\" < COALESCE(\"Z\", 0.0) + 1) AS \"CountNulls\" FROM \"unitTestFuzz\";"
+  ]
+}

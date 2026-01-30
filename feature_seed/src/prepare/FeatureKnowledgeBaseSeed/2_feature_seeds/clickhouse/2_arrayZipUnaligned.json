@@ -1,0 +1,9 @@
+CREATE TABLE test_arrays (id Int32, array_col1 Array(String), array_col2 Array(Int32)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_arrays VALUES (1, ['a', 'b', 'c'], [10, 20, 30]), (2, ['d', 'e'], [40, 50]), (3, ['f'], [60]), (4, [], [70, 80]);
+SELECT id, arrayZipUnaligned(array_col1, array_col2) AS zipped FROM test_arrays WHERE id NOT LIKE (SELECT id FROM test_arrays WHERE array_col1 = ['f']);
+SELECT id, arrayZipUnaligned(arrayCol, arrayZipUnaligned(array_col1, array_col2)) AS complex_zip FROM (SELECT id, array_col1, array_col2 FROM test_arrays) WHERE id NOT LIKE '1';
+SELECT id, arrayZipUnaligned(array_col1, array_col2) AS zipped FROM (SELECT id, array_col1, array_col2 FROM test_arrays) HAVING zipped NOT LIKE (SELECT arrayZipUnaligned(['d'], [NULL])) AND arrayZipUnaligned(array_col1, array_col2)[1] NOT LIKE 'e';
+CREATE TABLE test_numbers (num1 Int32, num2 Float64, arr Array(Int32)) ENGINE = MergeTree() ORDER BY num1;
+INSERT INTO test_numbers VALUES (1, 1.5, [1, 2]), (2, 2.5, [3]), (3, 3.5, []), (4, NULL, [5, 6, 7]);
+SELECT num1, arrayZipUnaligned(arr, [num2]) AS combined FROM test_numbers WHERE num1 NOT LIKE (SELECT num1 FROM test_numbers WHERE num2 = 2.5);
+SELECT num1, num2, arrayZipUnaligned(arr, arrayZipUnaligned([CAST(num2 AS String)], [NULL])) AS complex_array FROM test_numbers HAVING combined NOT LIKE ['1.5', NULL];

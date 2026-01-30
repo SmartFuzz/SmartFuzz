@@ -1,0 +1,14 @@
+CREATE TABLE test_data (id INTEGER, value NUMERIC, created_at DATE);
+INSERT INTO test_data (id, value, created_at) VALUES (1, -349.75, DATE '2023-10-01'), (2, 0.0, DATE '2023-10-02'), (3, 349.75, DATE '2023-10-03');
+SELECT id, sign(value) AS sign_value, created_at - INTERVAL sign(value) DAY AS adjusted_date FROM test_data WHERE sign(value) != 0;
+SELECT id, AVG(sign(value)) OVER (PARTITION BY created_at) AS avg_sign, created_at - INTERVAL AVG(sign(value)) OVER (PARTITION BY created_at) DAY AS date_offset FROM test_data GROUP BY id, created_at HAVING sign(value) + 1 > 0;
+SELECT id, (SELECT MAX(sign(value)) FROM test_data WHERE created_at < DATE '2023-10-03') AS max_sign_value FROM test_data WHERE created_at > DATE '2023-10-01';
+CREATE TABLE edge_cases (id INTEGER, num_value NUMERIC, date_value DATE);
+INSERT INTO edge_cases (id, num_value, date_value) VALUES (1, NULL, DATE '2023-10-05'), (2, -0.000001, DATE '2023-10-06'), (3, 999999.999999, DATE '2023-10-07');
+SELECT id, sign(num_value) AS sign_num, date_value - INTERVAL sign(num_value) DAY AS adjusted_date FROM edge_cases WHERE sign(num_value) IN (-1, 1);
+SELECT e.id, e.date_value, e.num_value, sign(e.num_value) AS sign_num, (SELECT COUNT(*) FROM edge_cases WHERE sign(num_value) IS NOT NULL) AS not_null_count FROM edge_cases e WHERE e.sign_num IS NOT NULL ORDER BY e.date_value DESC;
+SELECT e.id, COUNT(*) AS sign_count, created_at - INTERVAL COUNT(*) DAY AS avg_date FROM (SELECT id, sign(num_value) AS sign_result, date_value FROM edge_cases) AS e WHERE sign_result = 1 GROUP BY e.id;
+CREATE TABLE nested_test (id INTEGER PRIMARY KEY, value_a NUMERIC, value_b NUMERIC);
+INSERT INTO nested_test (id, value_a, value_b) VALUES (1, -2.3, 4.5), (2, 0, 1.1), (3, 2.3, 0);
+SELECT n.id, sign(n.value_a - n.value_b) AS sign_diff, sign(n.value_a) AS sign_a, sign(n.value_b) AS sign_b FROM nested_test n WHERE sign(n.value_a - n.value_b) = -1;
+SELECT n.id, AVG(n.value_a) AS avg_value FROM (SELECT value_a FROM nested_test WHERE sign(value_a) != 0) AS n GROUP BY n.id HAVING avg_value > 0;

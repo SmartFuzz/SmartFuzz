@@ -1,0 +1,14 @@
+{
+    "function": "emptyArrayFloat64",
+    "operator": "a ILIKE s",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, name String, float_values Array(Float64), created_at DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table VALUES (1, 'Test One', emptyArrayFloat64(), now()), (2, 'Test Two', [1.1, 2.2, 3.3], now()), (3, 'Test Three', [4.4, 5.5], now());",
+        "SELECT id, name, float_values, (SELECT COUNT(*) FROM test_table WHERE id = t.id AND length(name) ILIKE '%Test%') AS test_count FROM test_table AS t WHERE name ILIKE 'Test%' AND float_values = emptyArrayFloat64();",
+        "SELECT id, name, arrayJoin(float_values) AS value FROM test_table WHERE value ILIKE '1.1' OR id ILIKE '2' LIMIT 5;",
+        "SELECT id, name, float_values FROM test_table GROUP BY id, name HAVING arrayLength(float_values) ILIKE (SELECT toString(arrayReduce('any', float_values)) FROM test_table WHERE name = 'Test Two');",
+        "SELECT AVG(value) FROM (SELECT arrayJoin(float_values) AS value FROM test_table WHERE name ILIKE 'Test%') GROUP BY value;",
+        "SELECT id, name FROM test_table WHERE created_at > now() - INTERVAL 1 DAY AND (name ILIKE 'Test Three' OR (length(name) = 0 AND name ILIKE 'Test%'));",
+        "SELECT id, (float_values, float_values ILIKE '4.4') AS values_status FROM test_table WHERE id = (SELECT MAX(id) FROM test_table WHERE float_values ILIKE emptyArrayFloat64());"
+    ]
+}

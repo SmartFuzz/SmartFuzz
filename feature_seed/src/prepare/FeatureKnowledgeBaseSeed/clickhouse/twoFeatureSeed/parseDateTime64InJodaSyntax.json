@@ -1,0 +1,19 @@
+{
+    "function": "parseDateTime64InJodaSyntax",
+    "operator": "a GLOBAL NOT IN ...",
+    "sql_array": [
+        "CREATE TABLE test_dates (id UInt32, date_column String, value Int32);",
+        "INSERT INTO test_dates (id, date_column, value) VALUES (1, '2023-10-01T12:00:00.000Z', 100), (2, 'invalid-date', 200), (3, '', 300);",
+        "SELECT id, parseDateTime64InJodaSyntax(date_column, 3) AS parsed_date FROM test_dates WHERE parsed_date GLOBAL NOT IN (SELECT parseDateTime64InJodaSyntax(date_column, 3) FROM test_dates WHERE value > 150);",
+        "CREATE TABLE test_dates_extended (id UInt32, timestamp_column DateTime64(3), some_value Int32, FOREIGN KEY (id) REFERENCES test_dates(id));",
+        "INSERT INTO test_dates_extended (id, timestamp_column, some_value) VALUES (1, '2023-10-01 12:00:00.000', 10), (2, '2023-10-01 12:00:00.000', NULL), (3, '2023-10-01 01:00:00.000', -10);",
+        "SELECT a.id, a.value, a.date_column, b.timestamp_column FROM test_dates a JOIN test_dates_extended b ON a.id = b.id WHERE b.some_value GLOBAL NOT IN (SELECT value FROM test_dates WHERE id = 2);",
+        "SELECT id, parseDateTime64InJodaSyntax(date_column, 3) AS date_converted FROM test_dates GROUP BY date_converted HAVING COUNT(*) > 1;",
+        "CREATE TEMPORARY TABLE test_fuzzing (id UInt32, mix_column String);",
+        "INSERT INTO test_fuzzing (id, mix_column) VALUES (1, '123'), (2, ''), (3, '2023-10-01T00:00:00.000Z');",
+        "SELECT id, parseDateTime64InJodaSyntax(mix_column, 3) AS mix_parsed FROM test_fuzzing WHERE mix_parsed IS NOT NULL GLOBAL NOT IN (SELECT parseDateTime64InJodaSyntax('2000-01-01T00:00:00.000Z', 3));",
+        "SELECT parseDateTime64InJodaSyntax(date_column, 3) AS parsed_date FROM test_dates WHERE parsed_date IS NULL OR parsed_date > parseDateTime64InJodaSyntax('2023-01-01T00:00:00.000Z', 3);",
+        "ALTER TABLE test_dates_extended ADD COLUMN new_column String DEFAULT 'default_value';",
+        "DROP TABLE IF EXISTS test_fuzzing;"
+    ]
+}

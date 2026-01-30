@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/53546",
+  "title": "when `truncate(...)` is `NULL`, `truncate(...) is not NULL` evaluates to 1 unexpectedly",
+  "description": "### 1. Minimal reproduce step (Required)\r\n```sql\r\ncreate table t1 (c1 int);\r\ninsert into t1 values (null);\r\nselect truncate(1,c1), truncate(1,c1) is not NULL from t1;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\nThe column `(truncate(...) is not NULL)` should be 0 when the expression in the column `truncate(...)` is NULL：\r\n```\r\nmysql> select NULL is not NULL;\r\n+------------------+\r\n| NULL is not NULL |\r\n+------------------+\r\n|                0 |\r\n+------------------+\r\n1 row in set (0.00 sec)\r\n```\r\n### 3. What did you see instead (Required)\r\nBut TiDB output 1.\r\n```\r\nmysql> select truncate(1,c1), truncate(1,c1) is not NULL from t1;\r\n+----------------+----------------------------+\r\n| truncate(1,c1) | truncate(1,c1) is not NULL |\r\n+----------------+----------------------------+\r\n|           NULL |                          1 |\r\n+----------------+----------------------------+\r\n1 row in set (0.00 sec)\r\n```\r\n\r\n\r\n### 4. What is your TiDB version? (Required)\r\n```\r\nRelease Version: v8.2.0-alpha-126-g5d780eb\r\nEdition: Community\r\nGit Commit Hash: 5d780ebf8e9bec3f4f38a26e3f1ec26269dda555\r\nGit Branch: HEAD\r\nUTC Build Time: 2024-05-11 01:07:06\r\nGoVersion: go1.21.4\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv\r\n```\r\ntopology:\r\n\r\ndistributed.yaml:\r\n```\r\nglobal:\r\n  user: \"tidb\"\r\n  ssh_port: 22\r\n  deploy_dir: \"/tidb-deploy\"\r\n  data_dir: \"/tidb-data\"\r\n\r\npd_servers:\r\n  - host: 10.0.2.31\r\n\r\ntidb_servers:\r\n  - host: 10.0.2.21\r\n\r\ntikv_servers:\r\n  - host: 10.0.2.11\r\n  - host: 10.0.2.12\r\n  - host: 10.0.2.13\r\n\r\nmonitoring_servers:\r\n  - host: 10.0.2.8\r\n\r\ngrafana_servers:\r\n  - host: 10.0.2.8\r\n\r\nalertmanager_servers:\r\n  - host: 10.0.2.8\r\n\r\ntiflash_servers:\r\n  - host: 10.0.2.32\r\n```\r\n\r\n\r\n\r\n### about us\r\nWe are the BASS team from the School of Cyber Science and Technology at Beihang University. Our main focus is on system software security, operating systems, and program analysis research, as well as the development of automated program testing frameworks for detecting software defects. Using our self-developed database vulnerability testing tool, we have identified the above-mentioned vulnerabilities in TiDB that may lead to database logic error.\r\n",
+  "date": "2024-05-24T11:27:02Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (c1 INT, c2 FLOAT, c3 VARCHAR(10));",
+    "INSERT INTO t2 VALUES (NULL, 1.5, 'test');",
+    "SELECT TRUNCATE(c2, 1) AS truncated_value, CASE WHEN TRUNCATE(c2, 1) IS NULL THEN 0 ELSE 1 END AS is_not_null FROM t2;",
+    "CREATE TABLE t3 (c1 INT NOT NULL, c2 INT DEFAULT NULL);",
+    "INSERT INTO t3 VALUES (1, NULL);"
+  ],
+  "key_bug_features": [
+    "truncate(...) is NULL evaluates to not NULL unexpectedly"
+  ]
+}

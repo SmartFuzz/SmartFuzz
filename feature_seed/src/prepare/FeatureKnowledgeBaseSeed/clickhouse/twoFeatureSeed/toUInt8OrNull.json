@@ -1,0 +1,16 @@
+{
+    "function": "toUInt8OrNull",
+    "operator": "s1 || s2",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt8, value String, number String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table (id, value, number) VALUES (1, '0', '123'), (2, '0.9', 'abc'), (3, NULL, '255'), (4, '127', '256');",
+        "SELECT id, toUInt8OrNull(value || '1') AS converted_value FROM test_table WHERE number IS NOT NULL GROUP BY id ORDER BY id;",
+        "SELECT id, toUInt8OrNull(CONCAT(value, ' - ', number)) AS combined_value FROM test_table WHERE toUInt8OrNull(number) IS NULL;",
+        "SELECT id, toUInt8OrNull('abc' || '1.5') AS erroneous_conversion FROM test_table WHERE value LIKE 'x%' HAVING erroneous_conversion IS NULL;",
+        "CREATE TABLE temp_table AS SELECT id, toUInt8OrNull(value) AS converted FROM test_table;",
+        "SELECT id, COUNT(*) AS count, MAX(toUInt8OrNull(number)) AS max_number FROM temp_table GROUP BY id HAVING count > 0;",
+        "SELECT id, toUInt8OrNull(NULLIF(value, '0')) AS non_zero_value FROM test_table WHERE number != '' UNION ALL SELECT id, toUInt8OrNull(value || '0') FROM test_table WHERE value IS NOT NULL;",
+        "SELECT id, toUInt8OrNull(value) AS converted_value FROM test_table WHERE converted_value BETWEEN 0 AND 255 ORDER BY converted_value;",
+        "SELECT id, SUM(toUInt8OrNull(s1 || s2)) AS sum_value FROM (SELECT id, value AS s1, number AS s2 FROM test_table) GROUP BY id HAVING sum_value IS NOT NULL;"
+    ]
+}

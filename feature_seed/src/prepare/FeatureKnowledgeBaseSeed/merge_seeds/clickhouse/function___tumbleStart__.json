@@ -1,0 +1,14 @@
+CREATE TABLE events (event_time DateTime, event_id UInt32) ENGINE = MergeTree() ORDER BY event_time;
+INSERT INTO events VALUES (now(), 1), (now() - INTERVAL 1 DAY, 2), (now() - INTERVAL 2 DAY, 3);
+SELECT tumbleStart(event_time, toIntervalDay(1)) AS window_start, count(*) FROM events GROUP BY window_start;
+SELECT event_id, tumbleStart(event_time, toIntervalDay(1)) FROM events WHERE event_time < now() GROUP BY event_id, tumbleStart(event_time, toIntervalDay(1));
+CREATE TABLE long_events (event_time DateTime, event_type String) ENGINE = MergeTree() ORDER BY event_time;
+INSERT INTO long_events VALUES (now() - INTERVAL 1 DAY, 'click'), (now() - INTERVAL 2 DAY, 'scroll'), (now() - INTERVAL 3 DAY, 'hover');
+SELECT DISTINCT tumbleStart(event_time, toIntervalDay(1)) FROM long_events WHERE event_time >= now() - INTERVAL 3 DAY;
+WITH (SELECT min(event_time) FROM events) AS min_time SELECT tumbleStart(min_time, toIntervalDay(5));
+SELECT tumbleStart(now(), toIntervalHour(1)) AS h_window, COUNT(*) FROM events WHERE event_time >= h_window GROUP BY h_window;
+CREATE TABLE user_log (user_id UInt32, log_time DateTime) ENGINE = MergeTree() ORDER BY log_time;
+INSERT INTO user_log VALUES (1, now() - INTERVAL 1 HOUR), (2, now() - INTERVAL 2 HOUR), (3, now() - INTERVAL 3 HOUR);
+SELECT user_id, tumbleStart(log_time, toIntervalHour(2)) FROM user_log GROUP BY user_id, tumbleStart(log_time, toIntervalHour(2));
+SELECT COUNT(*) FROM events WHERE event_time BETWEEN tumbleStart(now(), toIntervalDay(1)) AND now();
+SELECT tumbleStart(event_time, toIntervalMinute(30)) AS window_start, SUM(event_id) FROM events GROUP BY window_start HAVING window_start >= now() - INTERVAL 3 DAY;

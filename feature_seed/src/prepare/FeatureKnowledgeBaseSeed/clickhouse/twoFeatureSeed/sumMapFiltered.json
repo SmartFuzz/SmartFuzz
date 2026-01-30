@@ -1,0 +1,16 @@
+{
+    "function": "sumMapFiltered",
+    "operator": "a - b",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, keys Array(UInt16), values Array(UInt64), date Date) ENGINE = MergeTree() PARTITION BY date ORDER BY id;",
+        "INSERT INTO test_table VALUES (1, [1, 2, 3, 4], [100, 150, 200, 250], '2023-01-01'), (2, [3, 4, 5, 6], [300, 350, 400, 450], '2023-01-02'), (3, [5, 6, 7, 8], [500, 550, 600, 650], '2023-01-03');",
+        "SELECT sumMapFiltered([1, 2, 5])(keys, values) - sumMapFiltered([3, 4, 6])(keys, values) AS result FROM test_table WHERE date >= '2023-01-01' GROUP BY date;",
+        "SELECT sumMapFiltered([1, 3, 4])(keys, values) FROM (SELECT date, keys, values FROM test_table WHERE date < '2023-01-03') AS subquery;",
+        "SELECT a.date, sumMapFiltered([1, 2, 3])(a.keys, a.values) AS sum_value FROM test_table AS a JOIN test_table AS b ON a.id != b.id AND a.values[1] - b.values[2] > 0 GROUP BY a.date HAVING sum_value > 200;",
+        "SELECT keys, values - sumMapFiltered([6, 7, 8])(keys, values) FROM test_table WHERE keys IS NOT NULL;",
+        "CREATE TABLE temp_test AS SELECT date, sumMapFiltered(keys)(keys, values) AS reduced_values FROM test_table WHERE date = '2023-01-01' GROUP BY date;",
+        "ALTER TABLE temp_test ADD COLUMN additional_col Nullable(UInt64);",
+        "INSERT INTO temp_test VALUES ('2023-01-01', [1], [110]), ('2023-01-01', NULL, [0]);",
+        "SELECT additional_col, sumMapFiltered([2, 1, 3])(keys, values) - NULLIF(sumMapFiltered([3, 4])(keys, values), 0) AS adjusted_sum FROM temp_test WHERE additional_col IS NOT NULL;"
+    ]
+}

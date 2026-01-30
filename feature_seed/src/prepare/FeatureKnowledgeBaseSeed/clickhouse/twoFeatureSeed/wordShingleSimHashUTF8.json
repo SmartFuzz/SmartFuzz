@@ -1,0 +1,18 @@
+{
+    "function": "wordShingleSimHashUTF8",
+    "operator": "SELECT NOT a",
+    "sql_array": [
+        "CREATE TABLE test_strings (id UInt32, text String, created_at DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_strings VALUES (1, 'ClickHouse\u00ae is a column-oriented database management system (DBMS) for online analytical processing of queries (OLAP).', now()), (2, 'clickhouse\u00ae is a column-oriented DATABASE management SYSTEM (dbms) for online ANALYTICAL processing of QUERIES (OLAP).', now());",
+        "SELECT id, wordShingleSimHashUTF8(text, 3) AS simhash FROM test_strings;",
+        "SELECT id, NOT (wordShingleSimHashUTF8(text, 4) = wordShingleSimHashUTF8('ClickHouse is a database', 4)) AS is_duplicate FROM test_strings;",
+        "SELECT id, wordShingleSimHashUTF8(CONCAT(text, ' Extra'), 2) AS simhash FROM test_strings WHERE NOT (text IS NULL);",
+        "SELECT id, skewedText.simhash FROM (SELECT id, wordShingleSimHashUTF8(text, 5) AS simhash FROM test_strings WHERE created_at > now() - INTERVAL 7 DAY) AS skewedText WHERE NOT (simhash IS NULL);",
+        "SELECT text FROM test_strings WHERE NOT (text LIKE '') AND wordShingleSimHashUTF8(text, 3) < 18446744073709551615;",
+        "CREATE TABLE temp_results (res UInt64) ENGINE = MergeTree() ORDER BY res;",
+        "INSERT INTO temp_results SELECT NOT (wordShingleSimHashUTF8(text, 1)) FROM test_strings;",
+        "SELECT text, (SELECT COUNT(*) FROM temp_results) AS result_count FROM test_strings GROUP BY text HAVING NOT (result_count = 0);",
+        "ALTER TABLE test_strings ADD COLUMN processed UInt8 DEFAULT 0;",
+        "UPDATE test_strings SET processed = 1 WHERE NOT (text IS NULL);"
+    ]
+}

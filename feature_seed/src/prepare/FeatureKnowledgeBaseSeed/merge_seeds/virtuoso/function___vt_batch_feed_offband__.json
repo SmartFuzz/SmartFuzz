@@ -1,0 +1,51 @@
+CREATE TABLE LEADS_TEST (
+  ORG_ID      integer not null,
+  LEAD_ID     integer not null,
+  FREETEXT_ID integer not null,
+  SUBJECT     varchar (255),
+  NAME_FIRST  varchar (30),
+  NAME_LAST   varchar (30),
+  TITLE       varchar (255),
+  primary key (ORG_ID, LEAD_ID));
+CREATE PROCEDURE LEADS_TEST_SUBJECT_INDEX_HOOK (inout vtb any, inout pkeyid integer)
+{
+  DECLARE text_to_index varchar;
+DECLARE oid any;
+text_to_index := COALESCE (
+    (SELECT CONCAT (
+      COALESCE (SUBJECT, ''), ' ',
+      COALESCE (TITLE, ''), ' ',
+      COALESCE (NAME_FIRST, '') ) FROM LEADS_TEST
+    WHERE FREETEXT_ID = pkeyid), null);
+IF (text_to_index IS NULL)
+    RETURN 0;
+oid := COALESCE ((SELECT ORG_ID FROM LEADS_TEST WHERE FREETEXT_ID = pkeyid), null);
+vt_batch_feed (vtb, text_to_index, 0);
+vt_batch_feed_offband (vtb, serialize (vector (oid)), 0);
+RETURN 1;
+};
+CREATE PROCEDURE LEADS_TEST_SUBJECT_UNINDEX_HOOK (inout vtb any, inout pkeyid integer)
+{
+  DECLARE text_to_index varchar;
+DECLARE oid any;
+text_to_index := COALESCE (
+    (SELECT CONCAT (
+      COALESCE (SUBJECT, ''), ' ',
+      COALESCE (TITLE, ''), ' ',
+      COALESCE (NAME_FIRST, '') ) FROM LEADS_TEST
+    WHERE FREETEXT_ID = pkeyid), null);
+IF (text_to_index IS NULL)
+    RETURN 0;
+oid := COALESCE ((SELECT ORG_ID FROM LEADS_TEST WHERE FREETEXT_ID = pkeyid), null);
+vt_batch_feed (vtb, text_to_index, 1);
+vt_batch_feed_offband (vtb, serialize (vector (oid)), 1);
+RETURN 1;
+};
+INSERT INTO LEADS_TEST (ORG_ID, LEAD_ID, FREETEXT_ID, SUBJECT, NAME_FIRST, NAME_LAST, TITLE) VALUES (1, 1, 1000, 'Breaking News', 'John', 'Doe', 'Latest Update');
+INSERT INTO LEADS_TEST (ORG_ID, LEAD_ID, FREETEXT_ID, SUBJECT, NAME_FIRST, NAME_LAST, TITLE) VALUES (1, 2, 1001, 'Sports Event', 'Jane', 'Smith', 'Game Highlights');
+INSERT INTO LEADS_TEST (ORG_ID, LEAD_ID, FREETEXT_ID, SUBJECT, NAME_FIRST, NAME_LAST, TITLE) VALUES (1, 3, 1002, NULL, 'Alice', 'Johnson', 'Opinion Piece');
+SELECT vtb, FREETEXT_ID FROM LEADS_TEST WHERE FREETEXT_ID IN (SELECT FREETEXT_ID FROM LEADS_TEST WHERE ORG_ID = 1);
+CALL LEADS_TEST_SUBJECT_INDEX_HOOK(?, 1000);
+CALL LEADS_TEST_SUBJECT_UNINDEX_HOOK(?, 1001);
+WITH indexed_data AS (SELECT FREETEXT_ID FROM LEADS_TEST WHERE SUBJECT IS NOT NULL) SELECT COUNT(*) FROM indexed_data;
+SELECT (SELECT COALESCE(COUNT(*), 0) FROM LEADS_TEST WHERE ORG_ID = 1) AS ORGANIZATION_COUNT;

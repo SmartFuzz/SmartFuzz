@@ -1,0 +1,16 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, data VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO test_table (id, data) VALUES (1, 'test data'), (2, NULL), (3, '');
+SELECT id, data, bif:md5(data) AS data_hash FROM test_table;
+SELECT id, bif:md5(CONCAT(data, created_at::TEXT)) AS combined_hash FROM test_table WHERE data IS NOT NULL;
+SELECT id, bif:md5(data) AS data_hash FROM test_table WHERE data IS NOT NULL GROUP BY id HAVING data_hash IS NOT NULL;
+SELECT id, bif:md5(data) AS data_hash FROM test_table WHERE bif:md5(data) = 'dummy_hash' OR id IN (SELECT id FROM test_table WHERE data IS NULL);
+SELECT id, bif:md5(COALESCE(data, 'empty')) AS coalesce_hash FROM test_table ORDER BY coalesce_hash DESC;
+SELECT *, VAD_FAIL_CHECK() FROM (SELECT id, data FROM test_table WHERE data LIKE '%' || NULL || '%') AS subquery;
+SELECT id, data FROM test_table JOIN (SELECT id FROM test_table WHERE id > 0) AS valid_ids ON test_table.id = valid_ids.id WHERE VAD_FAIL_CHECK() IS NULL;
+SELECT id FROM test_table WHERE data IS NOT NULL AND bif:md5(NULLIF(data, '')) <> '';
+WITH data_summary AS (SELECT id, bif:md5(data) AS data_hash FROM test_table GROUP BY id) SELECT data_hash, COUNT(*) FROM data_summary GROUP BY data_hash HAVING COUNT(*) > 1;
+ALTER TABLE test_table ADD COLUMN checksum VARCHAR(32);
+UPDATE test_table SET checksum = bif:md5(COALESCE(data, 'null_value')) WHERE data IS NOT NULL;
+SELECT *, VAD_FAIL_CHECK() FROM (SELECT bif:md5(data || created_at::TEXT) AS combined_hash FROM test_table WHERE created_at < NOW() - INTERVAL '1 day') AS old_data;
+SELECT bif:md5(CONVERT(data USING utf8)) as utf8_hash FROM test_table WHERE LENGTH(data) < 5;
+DROP TABLE IF EXISTS test_table;

@@ -1,0 +1,10 @@
+CREATE TABLE test_table (number_column String, default_column Int8, float_column Float64) ENGINE = MergeTree() ORDER BY number_column;
+INSERT INTO test_table (number_column, default_column, float_column) VALUES ('abc', CAST('10', 'Int8'), 3.14), ('-300', CAST('-1', 'Int8'), 2.71), ('0xc0fe', CAST('5', 'Int8'), NULL), ('NaN', CAST('0', 'Int8'), 1.23);
+SELECT toInt8OrDefault(number_column, -10) AS converted_value, -toInt8OrDefault(float_column, -1) AS negated_float_default FROM test_table WHERE float_column IS NOT NULL;
+SELECT a.number_column, toInt8OrDefault(ROUND(float_column), CAST('0', 'Int8')) FROM test_table AS a JOIN (SELECT number_column FROM test_table WHERE float_column > 1.0) AS b ON a.number_column = b.number_column;
+SELECT COUNT(*) FROM (SELECT number_column, toInt8OrDefault(CONCAT(number_column, '0'), CAST('-1', 'Int8')) AS new_int_value FROM test_table GROUP BY number_column HAVING new_int_value < 0) AS grouped;
+SELECT number_column, toInt8OrDefault(NULLIF(number_column, 'abc'), CAST('100', 'Int8')) AS validated_int, -toInt8OrDefault(NULL, CAST('-1', 'Int8')) AS fallback_value FROM test_table;
+CREATE TABLE another_table (id Int32, value_column String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO another_table (id, value_column) VALUES (1, '100'), (2, 'invalid'), (3, '300'), (4, NULL);
+SELECT a.id, toInt8OrDefault(b.value_column, CAST('-1', 'Int8')) AS converted_value, -toInt8OrDefault('0', CAST('-1', 'Int8')) FROM another_table AS b JOIN test_table AS a ON b.id = CAST(a.number_column AS Int32) ORDER BY converted_value DESC;
+SELECT a.*, toInt8OrDefault(-b.value_column, 127) AS negated_default FROM test_table AS a JOIN another_table AS b ON toInt8OrDefault(a.number_column, -1) = b.id;

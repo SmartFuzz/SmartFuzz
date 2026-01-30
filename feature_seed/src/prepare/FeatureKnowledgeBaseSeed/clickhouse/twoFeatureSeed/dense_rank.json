@@ -1,0 +1,15 @@
+{
+    "function": "dense_rank",
+    "operator": "a == b",
+    "sql_array": [
+        "CREATE TABLE player_stats(`team` String, `player` String, `salary` UInt32, `position` String) Engine = Memory;",
+        "INSERT INTO player_stats FORMAT Values ('Team A', 'Player 1', 200000, 'F'), ('Team A', 'Player 2', 200000, 'F'), ('Team A', 'Player 3', 180000, 'D'), ('Team B', 'Player 4', 190000, 'D'), ('Team B', 'Player 5', 190000, 'M'), ('Team C', 'Player 6', 170000, 'M');",
+        "SELECT player, salary, dense_rank() OVER (PARTITION BY team ORDER BY salary DESC) AS rank FROM player_stats WHERE (salary == 200000 OR position == 'F') AND rank <= 2;",
+        "SELECT player, salary, dense_rank() OVER (ORDER BY (salary == 200000 ? NULL : salary)) AS dense_rank FROM player_stats GROUP BY player HAVING dense_rank > 1;",
+        "CREATE TABLE temp_salaries(`team` String, `salary` UInt32) Engine = Memory;",
+        "INSERT INTO temp_salaries FORMAT Values ('Team A', 150000), ('Team B', NULL), ('Team A', 250000);",
+        "SELECT t1.team, t1.salary, dense_rank() OVER (PARTITION BY t1.team ORDER BY t1.salary) AS dense_rank FROM player_stats AS t1 JOIN temp_salaries AS t2 ON t1.salary == t2.salary WHERE t1.salary IS NOT NULL;",
+        "SELECT team, COUNT(*) AS player_count, dense_rank() OVER (ORDER BY COUNT(*)) AS team_rank FROM player_stats GROUP BY team HAVING team_rank <= 2;",
+        "SELECT player, dense_rank() OVER (ORDER BY salary) AS rnk FROM (SELECT player, salary FROM player_stats UNION ALL SELECT player, salary FROM temp_salaries) AS all_players WHERE (salary == NULL OR salary == 180000);"
+    ]
+}

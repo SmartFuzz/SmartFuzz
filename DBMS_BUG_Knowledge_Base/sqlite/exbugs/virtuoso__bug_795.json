@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/795",
+  "title": "SERVICE clause not working with limits higher than 1",
+  "description": "While writing queries I came by an error that looks like something that happens in virtuoso, as I can not figure out why this query does not work. I am trying to retrieve all the heights of a set of buildings from two different datasets. But while the code works for one example as shown in the code below. The code breaks when the limit is set to 2. It looks as if the service query changes with when multiple records are being selected. This in turn breaks the entire query as shown in the error message below.\nQuery with the limit set to 1 in the select query.\nprefix bag: <http://bag.basisregistraties.overheid.nl/def/bag#>\nselect ?pand ?shapeHeight {\n  {\n    select ?pand {\n      ?pand bag:geometriePand _:1.\n    }\n    limit 1\n  }\n  service <https://api.demo.triply.cc/datasets/kadaster/2-5D/services/2-5D/sparql> {\n    ?pand <https://data.labs.pdok.nl/bag/def/measuredHeight> ?shapeHeight.\n  }\n}\nlimit 1\n\nResult with a limit set to 1:\n1 | http://bag.basisregistraties.overheid.nl/bag/id/pand/0003100000117485 | \"14.07\"^^xsd:double\n\nQuery written that has a limit of two for the select statement.\nprefix bag: <http://bag.basisregistraties.overheid.nl/def/bag#>\nselect ?pand ?shapeHeight {\n  {\n    select ?pand {\n      ?pand bag:geometriePand _:1.\n    }\n    limit 2\n  }\n  service <https://api.demo.triply.cc/datasets/kadaster/2-5D/services/2-5D/sparql> {\n    ?pand <https://data.labs.pdok.nl/bag/def/measuredHeight> ?shapeHeight.\n  }\n}\nlimit 1\n\nError message when the limit is set to 2.\n\nError - http status (500) - Query evaluation error: Virtuoso S0022 Error SQ200: No column pand.\nSPARQL query:\ndefine sql:big-data-const 0 PREFIX bag: http://bag.basisregistraties.overheid.nl/def/bag# PREFIX rdf: http://www.w3.org/1999/02/22-rdf-syntax-ns# PREFIX rdfs: http://www.w3.org/2000/01/rdf-schema# PREFIX sesame: http://www.openrdf.org/schema/sesame# PREFIX owl: http://www.w3.org/2002/07/owl# PREFIX xsd: http://www.w3.org/2001/XMLSchema# PREFIX fn: http://www.w3.org/2005/xpath-functions# SELECT  ?__rowIdx ?shapeHeight WHERE { ?pand https://data.labs.pdok.nl/bag/def/measuredHeight ?shapeHeight.\n} VALUES (?__rowIdx ?pand) {  (\"0\" http://bag.basisregistraties.overheid.nl/bag/id/pand/0003100000117485 ) (\"1\" http://bag.basisregistraties.overheid.nl/bag/id/pand/0003100000117486 ) }\n\nI've checked the queries but could not figure out why the query converts the values such that it does not accept the ?pand, but I could not figure it out. Possibly the query can be rewritten to insert the values correctly.",
+  "date": "2018-10-24 13:15:24",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE buildings (id INTEGER PRIMARY KEY, geometry TEXT, measuredHeight REAL);",
+    "INSERT INTO buildings (id, geometry, measuredHeight) VALUES (1, 'geometry1', 14.07), (2, 'geometry2', 15.20);",
+    "CREATE TABLE heights (building_id INTEGER, height REAL, FOREIGN KEY (building_id) REFERENCES buildings(id));",
+    "INSERT INTO heights (building_id, height) VALUES (1, 14.07), (2, 15.20);",
+    "SELECT b.id, h.height FROM buildings b JOIN heights h ON b.id = h.building_id LIMIT 2;"
+  ],
+  "key_bug_features": [
+    "SERVICE clause fails with limit greater than one"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+    "function": "VAD_CHECK",
+    "operator": "!=",
+    "sql_array": [
+        "CREATE TABLE test_table (id INT, value VARCHAR(255), updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO test_table (id, value) VALUES (1, 'test'), (2, NULL), (3, 'example');",
+        "SELECT id FROM test_table WHERE value != 'unmatched' AND VAD_CHECK((SELECT value FROM test_table WHERE id = 1));",
+        "SELECT id FROM test_table WHERE VAD_CHECK(value) != 'modified' AND updated_at IS NOT NULL;",
+        "CREATE TABLE another_table (another_id INT, another_value INT CHECK (another_value >= 0));",
+        "INSERT INTO another_table (another_id, another_value) VALUES (10, 5), (11, NULL), (12, 0);",
+        "SELECT tt.id, tt.value FROM test_table tt JOIN another_table at ON tt.id != at.another_id WHERE tt.value IS NOT NULL AND VAD_CHECK(tt.value) IS NOT NULL;",
+        "SELECT COUNT(*) FROM (SELECT id, VAD_CHECK(value) FROM test_table GROUP BY id HAVING COUNT(value) != 1) AS subquery;",
+        "SELECT id FROM test_table WHERE VAD_CHECK(value) != (SELECT MAX(another_value) FROM another_table);",
+        "CREATE TABLE complex_table (c_id INT, c_value NUMERIC, c_date DATE);",
+        "INSERT INTO complex_table (c_id, c_value, c_date) VALUES (1, 100.5, '2023-01-01'), (2, NULL, '2023-05-01'), (3, 200, '2024-01-01');",
+        "SELECT c_id FROM complex_table WHERE c_value != 100.5 AND c_date != (SELECT MAX(c_date) FROM complex_table WHERE c_value IS NOT NULL);",
+        "SELECT DISTINCT id FROM test_table WHERE value != (SELECT value FROM another_table WHERE another_value IS NULL) AND VAD_CHECK((SELECT value FROM another_table LIMIT 1)) IS NOT NULL;"
+    ]
+}

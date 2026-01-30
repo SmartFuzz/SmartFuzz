@@ -1,0 +1,16 @@
+CREATE TABLE test_ips (id UInt32, ip_address String, valid_ip UInt64 DEFAULT IPv6StringToNumOrDefault(ip_address));
+INSERT INTO test_ips (id, ip_address) VALUES (1, '2001:0db8:85a3:0000:0000:8a2e:0370:7334');
+INSERT INTO test_ips (id, ip_address) VALUES (2, 'invalid-ip-address');
+INSERT INTO test_ips (id, ip_address) VALUES (3, '::1');
+INSERT INTO test_ips (id, ip_address) VALUES (4, '2001:db8::ff00:42:8329');
+SELECT id, valid_ip FROM test_ips WHERE valid_ip <= 0;
+SELECT id, IPv6StringToNumOrDefault(ip_address) AS numeric_ip FROM test_ips WHERE numeric_ip <= 0;
+SELECT id, ip_address, valid_ip FROM test_ips WHERE valid_ip > (SELECT AVG(valid_ip) FROM test_ips) OR valid_ip <= 0;
+SELECT id, COUNT(*) OVER (PARTITION BY valid_ip) AS ip_count FROM test_ips GROUP BY valid_ip HAVING valid_ip <= 0;
+SELECT id FROM (SELECT id, valid_ip FROM test_ips) AS inner_query WHERE valid_ip <= (SELECT MAX(valid_ip) FROM test_ips);
+CREATE TABLE test_ips_2 (id UInt32, ip_address String, ip_num UInt64, PRIMARY KEY (ip_num));
+INSERT INTO test_ips_2 (id, ip_address, ip_num) SELECT id, ip_address, IPv6StringToNumOrDefault(ip_address) FROM test_ips;
+SELECT id FROM test_ips_2 WHERE (ip_num <= 0 AND ip_address != '') OR (ip_num > 0 AND ip_address = '');
+ALTER TABLE test_ips_2 ADD COLUMN processed_date DateTime DEFAULT now();
+UPDATE test_ips_2 SET processed_date = now() WHERE valid_ip <= 0;
+DROP TABLE IF EXISTS test_ips_2;

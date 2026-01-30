@@ -1,0 +1,17 @@
+{
+    "function": "arrayEnumerate(arr)",
+    "operator": "a * b",
+    "sql_array": [
+        "CREATE TABLE test.hits (CounterID UInt32, GoalsReached Array(Int32), timestamp DateTime) ENGINE = MergeTree() ORDER BY timestamp;",
+        "INSERT INTO test.hits (CounterID, GoalsReached, timestamp) VALUES (160656, [1, 2, NULL, 3], now()), (160656, [], now()), (160657, [4, 5, 6], now());",
+        "SELECT    sum(arrayEnumerate(GoalsReached) * num) AS TotalReached, countIf(GoalsReached != []) AS UniqueHits FROM (SELECT CounterID, arrayEnumerate(GoalsReached) AS num FROM test.hits WHERE CounterID = 160656) GROUP BY CounterID HAVING TotalReached > 0;",
+        "SELECT    count(num) AS Reaches, countIf(num = max_num) AS Hits FROM (SELECT GoalsReached, arrayEnumerate(GoalsReached) AS num, (SELECT max(arrayEnumerate(GoalsReached)) FROM test.hits WHERE CounterID = 160656) AS max_num FROM test.hits) AS subquery WHERE GoalsReached IS NOT NULL GROUP BY num;",
+        "SELECT    CounterID, sum(length(GoalsReached)) * 2 AS DoubledReaches, countIf(num IS NOT NULL) AS Hits FROM (SELECT CounterID, arrayEnumerate(GoalsReached) AS num, GoalsReached FROM test.hits) GROUP BY CounterID HAVING DoubledReaches > 100 AND Hits > 1 ORDER BY DoubledReaches DESC;",
+        "SELECT    CounterID, avg(length(GoalsReached)) AS AvgReaches FROM (SELECT GoalsReached FROM test.hits WHERE CounterID = 160656) GROUP BY CounterID HAVING AvgReaches IS NOT NULL;",
+        "SELECT    count(num) AS Reaches, sum(COALESCE(num, 0) * 2) AS AdjustedHits FROM (SELECT CounterID, arrayEnumerate(GoalsReached) AS num FROM test.hits) GROUP BY CounterID;",
+        "SELECT    avg(num) AS AvgNum FROM (SELECT arrayEnumerate(GoalsReached) AS num FROM test.hits WHERE length(GoalsReached) > 0) WHERE num IS NOT NULL;",
+        "SELECT    CounterID, countIf(num = 1) AS FirstHits FROM (SELECT CounterID, arrayEnumerate(GoalsReached) AS num FROM test.hits WHERE CounterID IN (SELECT DISTINCT CounterID FROM test.hits WHERE length(GoalsReached) > 0)) GROUP BY CounterID;",
+        "SELECT    count() AS Reaches, countIf(NULLIF(num, 0) = 1) AS ValidHits FROM (SELECT arrayEnumerate(GoalsReached) AS num FROM test.hits WHERE CounterID = 160656 AND GoalsReached IS NOT NULL) GROUP BY CounterID;",
+        "SELECT    multiply(sum(num), countIf(num IS NOT NULL)) AS ProductHits FROM (SELECT CounterID, arrayEnumerate(GoalsReached) AS num FROM test.hits WHERE length(GoalsReached) > 0) GROUP BY CounterID;"
+    ]
+}

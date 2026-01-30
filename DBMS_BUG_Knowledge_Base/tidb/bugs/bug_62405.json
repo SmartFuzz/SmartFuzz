@@ -1,0 +1,25 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/62405",
+  "title": "🐛 Bug Report：GROUP_CONCAT without explicit SEPARATOR clause generates incorrect column name",
+  "vulnerable_database": "tidb",
+  "date": "2025-07-14T11:17:08Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n```sql\nCREATE TABLE t (c1 INT);\nINSERT INTO t VALUES (1016), (1017), (1018);\nSELECT GROUP_CONCAT(c1) FROM t;\n```\n\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\n\nExpected the result column name to match MySQL's behavior:\nGROUP_CONCAT(c1)\nwithout any extra SEPARATOR clause in the column name.\n\n- Expected \n```sql\nmysql> SELECT GROUP_CONCAT(c1) FROM t;\n+------------------+\n| GROUP_CONCAT(c1) |\n+------------------+\n| A,A,B,A,B,B,C    |\n+------------------+\n1 row in set (0.008 sec)\n```\n\n- Actual\n\n```sql\n+--------------------------------------+\n| GROUP_CONCAT(c1 SEPARATOR ',')       |  # Incorrect column name\n+--------------------------------------+\n| 1016,1017,1018                                         |\n+--------------------------------------+\n```\n\n### 3. What did you see instead (Required)\nActual column name contains an unexpected SEPARATOR clause:\nGROUP_CONCAT(c1 SEPARATOR ',')\nResult display:\n```sql\n+--------------------------------------+\n| GROUP_CONCAT(c1 SEPARATOR ',')       |  # Incorrect column name\n+--------------------------------------+\n| 1016,1017,1018                                         |\n+--------------------------------------+\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\ntidb v8.5.2\n\n\n### Additional Context (Recommended)\n\nAffected Components:\n\n- SQL parser\n- SQL restoration logic\n- Result metadata handling\n",
+  "poc": [
+    "CREATE TABLE t (c1 INT);",
+    "INSERT INTO t VALUES (1016), (1017), (1018);",
+    "SELECT GROUP_CONCAT(c1) FROM t;"
+  ],
+  "poc_type": "sql_text",
+  "state": "open",
+  "key_bug_features": [
+    "GROUP_CONCAT without explicit SEPARATOR clause"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t1 (c1 INT, c2 VARCHAR(50) NOT NULL);",
+    "INSERT INTO t1 VALUES (1016, 'A'), (1017, 'B'), (1018, 'C');",
+    "CREATE TABLE t2 (c3 INT, c4 VARCHAR(50) DEFAULT 'X');",
+    "INSERT INTO t2 VALUES (1016, 'D'), (1017, NULL), (1018, 'E');",
+    "SELECT GROUP_CONCAT(c2) FROM t1 WHERE c1 > 1015;"
+  ]
+}

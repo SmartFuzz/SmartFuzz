@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=102100",
+  "title": "DCL commands are not replicated witch certain replication filters",
+  "description": "If replica has filter --replicate-ignore-db=mysql and a DCL statement is issued in the another database it is still replicated.\r\n\r\nHowever, if I add additional filter replicate-do-table a DCL would not be recorded even if it is executed in the database, not related to the table filter.\r\n\r\nThis contradicts with both\nhttps://dev.mysql.com/doc/refman/8.0/en/replication-rules-examples.html\nand behavior, considered correct, in\nbug #70877\nHow to repeat:\n1. DCL statement is replicated.\r\n\r\nOn the replica:\r\n\r\nstop slave;\r\nchange replication filter REPLICATE_IGNORE_DB = (mysql);\r\nstart slave;\r\n\r\nOn the source:\r\n\r\nuse test;\r\ncreate user replicated1;\r\n\r\nOn the replica:\r\n\r\nselect user, host from mysql.user;\r\nuser\thost\r\nreplicated1\t%\r\n...\r\n\r\nThis behavior is correct and expected.\r\n\r\n2. DCLs are not replicated.\r\n\r\nOn the same replica:\r\n\r\nstop slave;\r\nchange replication filter REPLICATE_DO_TABLE = (db1.foo);\r\nstart slave;\r\n\r\nOn the source:\r\n\r\ncreate database db1;\r\nuse test;\r\ncreate user not_replicated;\r\nuse db1;\r\ncreate user also_not_replicated;\r\nselect user, host from mysql.user;\r\nuser\thost\r\nalso_not_replicated\t%\r\nnot_replicated\t%\r\n...\r\n\r\nOn the replica:\r\n\r\nselect user, host from mysql.user;\r\nuser\thost\r\nreplicated1\t%\r\nroot\t127.0.0.1\r\nroot\t::1\r\nroot\tdelly-7390\r\nmysql.session\tlocalhost\r\nmysql.sys\tlocalhost\r\nroot\tlocalhost\r\n\r\nSee also attached test case for MTR\nSuggested fix:\nReplicate DCL statements no matter of table filters.",
+  "date": "2020-12-31 10:58:00",
+  "vulnerable_version": "5.7.31, 8.0.22, 5.7.32",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR(255) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table (id, name) VALUES (1, 'Alice');",
+    "CREATE DATABASE db2;",
+    "CREATE TABLE db2.foo (value INT CHECK (value >= 0));",
+    "SELECT * FROM test_table;"
+  ],
+  "key_bug_features": [
+    "DCL commands replicated despite replication filters"
+  ]
+}

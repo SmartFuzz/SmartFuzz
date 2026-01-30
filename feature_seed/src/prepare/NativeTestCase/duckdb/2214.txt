@@ -1,0 +1,12 @@
+PRAGMA force_compression = 'bitpacking';
+PRAGMA force_bitpacking_mode='${bitpacking_mode}';
+CREATE TABLE test (id VARCHAR, col INTEGER);
+INSERT INTO test SELECT i::VARCHAR id, i b FROM range(10000) tbl(i);
+INSERT INTO test SELECT i::VARCHAR id, 1337 FROM range(20000, 30000) tbl(i);
+INSERT INTO test SELECT i::VARCHAR id, i b FROM range(30000,40000) tbl(i);
+CHECKPOINT;
+SELECT compression FROM pragma_storage_info('test') where segment_type = 'INTEGER' and compression != 'BitPacking';
+SELECT SUM(col), MIN(col), MAX(col), COUNT(*) FROM test WHERE col=1337;
+SELECT MIN(id), MAX(id), SUM(col), MIN(col), MAX(col), COUNT(*) FROM test WHERE id='5000';
+SELECT MIN(id), MAX(id), SUM(col), MIN(col), MAX(col), COUNT(*) FROM test WHERE id::INT64%1000=0;
+DROP TABLE test;

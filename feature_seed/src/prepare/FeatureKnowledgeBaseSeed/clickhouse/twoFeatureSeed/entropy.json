@@ -1,0 +1,18 @@
+{
+    "function": "entropy",
+    "operator": "a > b",
+    "sql_array": [
+        "CREATE TABLE complex_entropy (`id` UInt32, `value` Float64, `string_value` String, `nullable_value` Nullable(Int32)) ENGINE = Memory;",
+        "INSERT INTO complex_entropy VALUES (1, 0.1, 'A', NULL), (2, 0.1, 'B', 5), (3, 0.5, 'A', NULL), (4, 0.5, 'C', 15), (5, 1.0, 'A', 20), (6, 1.0, NULL, 25);",
+        "SELECT entropy(value) AS entropy_val, COUNT(*) AS count FROM complex_entropy GROUP BY string_value HAVING count > 1 AND entropy(value) > 0.0;",
+        "CREATE TABLE temp_join (`join_id` UInt32, `foreign_id` UInt32) ENGINE = Memory;",
+        "INSERT INTO temp_join VALUES (1, 1), (2, 2), (3, 3), (4, 1), (5, 2);",
+        "SELECT a.id, entropy(a.value) FROM complex_entropy a JOIN temp_join b ON a.id = b.foreign_id WHERE a.value > (SELECT AVG(value) FROM complex_entropy) AND a.nullable_value IS NOT NULL GROUP BY a.id HAVING entropy(a.value) > 0.0 ORDER BY a.id;",
+        "SELECT AVG(value) FROM complex_entropy WHERE string_value IN (SELECT string_value FROM complex_entropy WHERE entropy(value) > 0.5) AND nullable_value IS NULL;",
+        "CREATE TABLE boundary_values (`num` Int32, `str_value` String) ENGINE = Memory;",
+        "INSERT INTO boundary_values VALUES (2147483647, 'Max Int32'), (-2147483648, 'Min Int32'), (0, 'Zero'), (1, 'One'), (NULL, 'Null');",
+        "SELECT entropy(num) AS entropy_num, COUNT(*) FROM boundary_values WHERE num IS NOT NULL AND str_value != '' GROUP BY str_value;",
+        "SELECT entropy(TOFloat64(num)) FROM boundary_values WHERE num IS NOT NULL AND num > 0 GROUP BY str_value HAVING entropy(num) > 0.0;",
+        "SELECT entropy(TOUInt32(value * 100)) AS entropy_scaled FROM complex_entropy WHERE value IS NOT NULL AND string_value IS NOT NULL GROUP BY string_value HAVING entropy_scaled > 0.5;"
+    ]
+}

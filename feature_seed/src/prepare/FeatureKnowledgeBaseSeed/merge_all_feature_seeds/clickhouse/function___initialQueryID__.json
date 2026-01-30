@@ -1,0 +1,11 @@
+CREATE TABLE tmp1 (id UInt32, value String) ENGINE = Log;
+CREATE TABLE tmp2 (id UInt32, description String) ENGINE = Log;
+INSERT INTO tmp1 VALUES (1, 'a'), (2, 'b'), (3, 'c');
+INSERT INTO tmp2 VALUES (1, 'desc_a'), (2, 'desc_b'), (3, 'desc_c');
+SELECT initialQueryID() AS query_id, count(DISTINCT t.value) FROM tmp1 t JOIN tmp2 d ON t.id = d.id GROUP BY query_id;
+SELECT initialQueryID() AS query_id, count(DISTINCT t.value) FROM (SELECT id, value FROM tmp1 WHERE id > 1) AS t JOIN (SELECT id, description FROM tmp2 WHERE description LIKE '%b%') AS d ON t.id = d.id GROUP BY query_id;
+SELECT initialQueryID() AS query_id FROM (SELECT initialQueryID() AS inner_query_id FROM tmp1) WHERE inner_query_id IS NOT NULL;
+SELECT initialQueryID() AS query_id, SUM(t.id) FROM (SELECT id FROM tmp1 UNION ALL SELECT id FROM tmp2) AS t GROUP BY query_id;
+SELECT initialQueryID() AS query_id, count(DISTINCT t.value) FROM (SELECT initialQueryID() AS sub_query_id, id FROM tmp1) AS t JOIN tmp2 ON t.id = tmp2.id GROUP BY query_id;
+CREATE TABLE tmp3 AS SELECT id, value FROM tmp1 WHERE value IN (SELECT description FROM tmp2);
+SELECT distinct initialQueryID() AS query_id FROM (SELECT id FROM tmp3) AS t WHERE id > 1;

@@ -1,0 +1,11 @@
+CREATE TABLE test_data (id INT, path_column XML, value_column INT, random_string VARCHAR(50), number_column DECIMAL(10,2));
+INSERT INTO test_data (id, path_column, value_column, random_string, number_column) VALUES (1, xml_get_system_paths(), 10, 'Test', 123.456);
+INSERT INTO test_data (id, path_column, value_column, random_string, number_column) VALUES (2, xml_get_system_paths(), 5, NULL, 78.90);
+INSERT INTO test_data (id, path_column, value_column, random_string, number_column) VALUES (3, xml_get_system_paths(), NULL, 'Edge Case', -1.23);
+SELECT id, path_column, value_column, (value_column % 2) AS mod_result FROM test_data WHERE value_column IS NOT NULL;
+SELECT id, path_column, value_column, (10 % (SELECT COUNT(*) FROM test_data)) AS mod_subquery FROM test_data WHERE random_string IS NOT NULL;
+SELECT id, path_column, SUM(value_column) AS total_value, (SELECT xml_get_system_paths()) FROM test_data GROUP BY id HAVING total_value % 3 = 0;
+WITH recursive_paths AS (SELECT id, xml_get_system_paths() AS system_path FROM test_data) SELECT r.id, r.system_path, (value_column % 10) AS mod_value FROM recursive_paths r JOIN test_data d ON r.id = d.id ORDER BY mod_value DESC;
+SELECT id, path_column, (random_string || ' - ' || CAST(value_column AS VARCHAR)) AS combined_result FROM test_data WHERE number_column IS NULL OR number_column % 3 = 0;
+CREATE TEMP TABLE temp_data AS SELECT id, (value_column % 7) AS mod_value FROM test_data WHERE path_column IS NOT NULL;
+SELECT d.id, d.path_column, temp.mod_value FROM test_data d LEFT JOIN temp_data temp ON d.id = temp.id WHERE temp.mod_value IS NULL OR temp.mod_value > 1;

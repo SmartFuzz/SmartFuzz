@@ -1,0 +1,10 @@
+CREATE TABLE security_tokens (id INT PRIMARY KEY, token VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO security_tokens (id, token) VALUES (1, 'abc123'), (2, NULL), (3, 'xyz789');
+SELECT id, wst_cli(token) AS security_token FROM security_tokens WHERE token IS NOT NULL AND 1 >= (SELECT COUNT(*) FROM security_tokens WHERE created_at IS NOT NULL);
+SELECT id, COUNT(*) AS token_count FROM security_tokens GROUP BY id HAVING wst_cli(token) IS NOT NULL AND token_count >= 2;
+SELECT id, wst_cli(token) FROM security_tokens WHERE token IS NOT NULL AND EXISTS (SELECT 1 FROM security_tokens AS st WHERE st.token < 'abc123' AND st.id >= security_tokens.id);
+SELECT id, wst_cli(CAST(NULL AS VARCHAR)) AS security_token FROM security_tokens WHERE token >= CAST(1 AS VARCHAR) OR token IS NULL;
+SELECT id, wst_cli(token) FROM security_tokens WHERE token IS NULL UNION SELECT id, wst_cli(token) FROM security_tokens WHERE token >= 'xyz789';
+CREATE TABLE temp_tokens AS SELECT id, wst_cli(CAST(token AS VARCHAR)) AS security_token FROM security_tokens WHERE token >= 'abc';
+INSERT INTO temp_tokens (id, security_token) SELECT id, token FROM security_tokens WHERE token IS NOT NULL AND id >= 1;
+SELECT id, COUNT(*) OVER (PARTITION BY wst_cli(token)) AS partition_count FROM security_tokens WHERE token IS NOT NULL AND partition_count >= 2;

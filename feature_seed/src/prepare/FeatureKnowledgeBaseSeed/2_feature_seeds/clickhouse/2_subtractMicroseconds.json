@@ -1,0 +1,13 @@
+CREATE TABLE test_dates (id UInt32, event_time DateTime64(6), description String);
+INSERT INTO test_dates (id, event_time, description) VALUES (1, toDateTime64('2024-01-01 12:00:00', 6), 'New Year Event');
+INSERT INTO test_dates (id, event_time, description) VALUES (2, toDateTime64('2024-01-02 12:00:00', 6), 'Post New Year Analysis');
+SELECT id, subtractMicroseconds(event_time, -1000000) AS adjusted_event_time FROM test_dates;
+SELECT id, event_time, subtractMicroseconds(event_time, 500000) AS sub_event_time FROM test_dates WHERE event_time IS NOT NULL;
+SELECT id, -subtractMicroseconds(event_time, 2000000) AS neg_adjusted_event_time FROM test_dates HAVING neg_adjusted_event_time < event_time;
+WITH (SELECT AVG(subtractMicroseconds(event_time, 100000)) FROM test_dates) AS average_adjusted_time SELECT id, event_time, average_adjusted_time FROM test_dates WHERE event_time > average_adjusted_time;
+SELECT id, subtractMicroseconds(event_time, 1000000) AS sub_time FROM test_dates JOIN (SELECT MAX(event_time) as max_time FROM test_dates) as max_table ON sub_time < max_table.max_time;
+CREATE TABLE test_dates_nullable (id UInt32, event_time Nullable(DateTime64(6)), description String);
+INSERT INTO test_dates_nullable (id, event_time, description) VALUES (1, NULL, 'Event with NULL time');
+SELECT id, subtractMicroseconds(COALESCE(event_time, toDateTime64('1970-01-01 00:00:00', 6)), 1000000) AS coalesce_event_time FROM test_dates_nullable WHERE description IS NOT NULL;
+SELECT -subtractMicroseconds(ifNull(event_time, toDateTime64('2024-01-01 00:00:00', 6)), 1500000) AS neg_adjusted_time FROM test_dates_nullable;
+SELECT id, subtractMicroseconds(COALESCE(event_time, toDateTime64('2024-01-01 00:00:00', 6)), 2500000) AS fallback_time FROM test_dates_nullable GROUP BY id HAVING fallback_time IS NOT NULL;

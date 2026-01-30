@@ -1,0 +1,15 @@
+CREATE TABLE archive_test (id UInt32, name String);
+INSERT INTO archive_test VALUES (1, 'archive1'), (2, 'archive2'), (3, 'archive3');
+SELECT * FROM s3('https://s3-us-west-1.amazonaws.com/umbrella-static/top-1m-2018-01-1{0..2}.csv.zip :: *.csv');
+CREATE TABLE extracted_data AS SELECT * FROM s3('https://s3-us-west-1.amazonaws.com/umbrella-static/top-1m-2018-01-1{0..2}.csv.zip :: *.csv') WITH NO DATA;
+INSERT INTO extracted_data SELECT * FROM s3('https://s3-us-west-1.amazonaws.com/umbrella-static/top-1m-2018-01-1{0..2}.csv.zip :: *.csv');
+SELECT id, name FROM archive_test WHERE id IN (SELECT id FROM archive_test WHERE name LIKE 'archive%');
+WITH (SELECT COUNT(*) FROM extracted_data) AS total_records, (SELECT name FROM archive_test LIMIT 1) AS first_archive SELECT total_records, first_archive;
+SELECT a.name, e.* FROM archive_test a JOIN extracted_data e ON a.id = e.id;
+CREATE TABLE local_7z_test (id UInt32, data String) ENGINE = MergeTree() ORDER BY id;
+SELECT * FROM local_7z_test;
+SELECT * FROM s3('file:///local/path/to/archive.7z :: *.csv');
+SELECT COUNT(*) FROM s3('https://s3-us-west-1.amazonaws.com/umbrella-static/top-1m-2018-01-1{0..2}.csv.zip :: *.csv') WHERE id < 100;
+SELECT COUNT(*) AS number_of_records FROM s3('https://s3-us-west-1.amazonaws.com/umbrella-static/top-1m-2018-01-1{0..2}.csv.zip :: *.csv') GROUP BY name;
+SELECT DISTINCT name FROM s3('https://s3-us-west-1.amazonaws.com/umbrella-static/top-1m-2018-01-1{0..2}.csv.zip :: *.csv') WHERE LENGTH(name) > 5;
+SELECT e.name, COUNT(*) FROM extracted_data e JOIN archive_test a ON e.id = a.id GROUP BY e.name;

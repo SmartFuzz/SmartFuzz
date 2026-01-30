@@ -1,0 +1,15 @@
+CREATE TABLE network_data (ip_address inet NOT NULL, data_value int);
+INSERT INTO network_data (ip_address, data_value) VALUES (inet '192.168.1.5/24', 10), (inet '192.168.1.6/24', NULL), (inet '192.168.1.0/24', 20);
+SELECT ip_address, sys.masklen(ip_address) AS mask_length FROM network_data WHERE sys.masklen(ip_address) >= 24;
+SELECT ip_address FROM network_data WHERE ip_address = (SELECT ip_address FROM network_data WHERE data_value IS NULL);
+SELECT ip_address, COUNT(*) FROM network_data GROUP BY ip_address HAVING COUNT(*) > (SELECT AVG(data_value) FROM network_data WHERE data_value IS NOT NULL);
+SELECT DISTINCT ip_address FROM network_data WHERE sys.masklen(ip_address) = 24 AND ip_address = inet '192.168.1.5/24';
+WITH mask_info AS (SELECT ip_address, sys.masklen(ip_address) AS mask_length FROM network_data) SELECT mask_length, COUNT(*) FROM mask_info GROUP BY mask_length HAVING mask_length IS NOT NULL;
+SELECT ip_address FROM network_data WHERE ip_address IN (SELECT inet '192.168.1.5') AND sys.masklen(ip_address) = (SELECT sys.masklen(inet '192.168.1.5/24'));
+SELECT A.ip_address FROM network_data A JOIN network_data B ON A.data_value = B.data_value WHERE A.ip_address = inet '192.168.1.5/24' AND sys.masklen(B.ip_address) < 24;
+CREATE TEMPORARY TABLE temp_data AS SELECT ip_address, SYS.MASKLEN(ip_address) AS mask_len FROM network_data;
+SELECT CASE WHEN mask_len IS NULL THEN 'No Mask' ELSE 'Valid Mask' END AS mask_status FROM temp_data WHERE mask_len IS NOT NULL ORDER BY mask_len DESC;
+INSERT INTO network_data (ip_address, data_value) VALUES (inet '192.168.1.5/33', 5);
+SELECT ip_address FROM network_data WHERE sys.masklen(inet '192.168.1.5/24') = 24 AND ip_address != inet NULL;
+INSERT INTO network_data (ip_address, data_value) VALUES (inet '0.0.0.0/0', 999);
+SELECT ip_address FROM network_data WHERE sys.masklen(ip_address) <= 32 ORDER BY data_value DESC;

@@ -1,0 +1,16 @@
+{
+    "function": "epoch_ns(timestamptz)",
+    "operator": "+",
+    "sql_array": [
+        "CREATE TABLE test_data (id INTEGER PRIMARY KEY, ts TIMESTAMPTZ, value NUMERIC);",
+        "INSERT INTO test_data (id, ts, value) VALUES (1, '2022-01-01 00:00:00+00', 10.5), (2, '2022-01-02 00:00:00+00', 20.5);",
+        "SELECT id, epoch_ns(ts) + INTERVAL (value * 2) DAY AS adjusted_epoch_ns FROM test_data WHERE value IS NOT NULL;",
+        "SELECT id, epoch_ns(ts) AS epoch_ns_val, (SELECT MAX(epoch_ns(ts)) FROM test_data) + INTERVAL 1 DAY FROM test_data;",
+        "SELECT id, epoch_ns(ts) + INTERVAL 5 DAY AS epoch_plus_5, value FROM test_data GROUP BY id, value HAVING epoch_ns(ts) IS NOT NULL ORDER BY epoch_plus_5 DESC;",
+        "SELECT a.id, (epoch_ns(a.ts) + INTERVAL b.offset DAY) AS recalculated, b.offset FROM test_data a JOIN (SELECT id AS offset_id, value AS offset FROM test_data WHERE value < 15) b ON a.id = b.offset_id;",
+        "CREATE TABLE more_data (id INTEGER PRIMARY KEY, ts TIMESTAMPTZ, amount DOUBLE);",
+        "INSERT INTO more_data (id, ts, amount) VALUES (1, '2022-01-01 23:59:59+00', 5.5);",
+        "SELECT t.id, epoch_ns(t.ts) + INTERVAL '0.0001' SECOND AS adjusted_epoch FROM more_data t WHERE t.amount > 5 AND epoch_ns(t.ts) = (SELECT MAX(epoch_ns(ts)) FROM more_data);",
+        "SELECT SUM(epoch_ns(ts)) + INTERVAL (SELECT COUNT(*) FROM test_data WHERE value > 15) DAY AS summed_epoch FROM test_data;"
+    ]
+}

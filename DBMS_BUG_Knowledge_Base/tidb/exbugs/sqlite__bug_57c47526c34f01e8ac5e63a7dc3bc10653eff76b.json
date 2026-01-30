@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/57c47526c3",
+  "title": "Incorrect answer when flattening a UNION ALL compound",
+  "description": "drh added on 2022-10-31 13:24:09:\nDbsqlfuzz discovered that the final query in the SQL below gets different\nanswers depending on whether or not query flattening is enabled:\n\nCREATE TABLE t0(c0 INT);\nINSERT INTO t0 VALUES(0);\nCREATE VIEW v0(c0) AS SELECT CAST(t0.c0 AS INTEGER) FROM t0;\nCREATE TABLE t1_a(a INTEGER PRIMARY KEY, b TEXT);\nINSERT INTO t1_a VALUES(1,'one'),(4,'four');\nCREATE TABLE t1_b(c INTEGER PRIMARY KEY, d TEXT);\nINSERT INTO t1_b VALUES(2,'two'),(5,'five');\nCREATE VIEW t1 AS \n  SELECT a, b FROM t1_a   UNION ALL\n  SELECT c, c FROM t1_b;\nSELECT * FROM (\n  SELECT t1.a AS a, t1.b AS b, t0.c0 AS c, v0.c0 AS d\n    FROM t0 LEFT JOIN v0 ON v0.c0>'0',t1\n) AS t2 WHERE b='2';\n.testctrl optimization 1\nSELECT * FROM (\n  SELECT t1.a, t1.b, t0.c0 AS c, v0.c0 AS d\n    FROM t0 LEFT JOIN v0 ON v0.c0>'0',t1\n) AS t2 WHERE b='2';\n\nPostgreSQL does not accept the definition of the view T1 due to a type\nmismatch.  To make T1 acceptable to PG, it has to be changed by inserting\na CAST as follows:\n\nCREATE VIEW t1 AS \n  SELECT a, b FROM t1_a   UNION ALL\n  SELECT c, CAST(c AS text) FROM t1_b;\n\nWith that change to t1, PG and SQLite get the same answer, and SQLite\nalways works, with or without the query flattener.  So we presume that\nthe answer with query flattening enabled is correct.\nSQLite got the correct answer prior to [df12f097224ebc94] (2020-10-03)\nwhich was a fix for ticket [95302bdb08fb6495].  After that change,\nan incorrect answer was obtained (no rows) regardless of whether or not\nthe query flattener was used.\nBeginning with [df1d6482f9e92daf] on 2020-12-19, when the query flattener\nis enabled, the compile fails with an error:  \"ON clause references tables to its right\".\nBeginning with [d554f710a5abbe64] on 2020-12-21, attempts to run the\nquery result in an assertion fault.  The assertion fault problem was\nfixed by [e4f8a79fd8b3be9b] on 2021-02-13.  Ever since then, the query\nhas returned the correct answer when query flattening is enabled, and an\nincorrect answer when query flattening is disabled.\ndrh added on 2022-12-10 13:31:45:\nReopened\nCheck-in 88a05141c28e5ff1 that was suppose to fix\nthis problem introduced a new problem seen here:\n\n.echo on\n.mode qbox\n.eqp on\nCREATE VIEW dual(dummay) AS SELECT 'X';\nSELECT x, typeof(x) FROM (SELECT CAST(4.0 AS NUMERIC) AS x) JOIN dual;\nSELECT x, typeof(x) FROM (SELECT CAST(4.0 AS NUMERIC) AS x) CROSS JOIN dual;\n\nThe two queries get a different result.  The difference is that the second\nquery uses a co-routine and the first query materializes the subquery.\nIt seems like the same result should be obtained regardless of whether or\nnot the query planner chooses to implement a subquery by materializing or\nas a co-routine.",
+  "date": "2022-10-31 13:24:092.78 years ago",
+  "vulnerable_version": "3.39.4",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t2(c1 TEXT, c2 DOUBLE, c3 INT);",
+    "INSERT INTO t2 VALUES('test', 3.14, NULL), (NULL, 2.71, 1);",
+    "CREATE VIEW v1 AS SELECT c1, CAST(c2 AS SIGNED) AS c2_int FROM t2 WHERE c3 IS NOT NULL;",
+    "SELECT * FROM v1 WHERE c2_int > 2;",
+    "SELECT * FROM (SELECT c1, c2 FROM t2 UNION ALL SELECT c1, CAST(c3 AS DOUBLE) FROM t2 WHERE c3 IS NOT NULL) AS combined WHERE c2 > 2;"
+  ],
+  "key_bug_features": [
+    "Query flattening affects UNION ALL compound results"
+  ]
+}

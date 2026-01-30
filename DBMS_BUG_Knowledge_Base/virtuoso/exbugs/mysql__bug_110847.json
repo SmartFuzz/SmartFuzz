@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=110847",
+  "title": "Prepared SELECT returns different results on consecutive executions.",
+  "description": "Executing the same prepared statement twice gives two different results.\r\n\r\nThe statements below output this: \r\n+--------+\r\n| result |\r\n+--------+\r\n|      1 |\r\n|      1 |\r\n+--------+\r\n+--------+\r\n| result |\r\n+--------+\r\n|   NULL |\r\n|   NULL |\r\n+--------+\r\n+-----------+\r\n| VERSION() |\r\n+-----------+\r\n| 8.0.33    |\r\n+-----------+\r\n\r\nExpected outcome is that the second execution matches the first. \r\n\r\nThis is changed behaviour since 8.0.33. It does not happen in 8.0.32.\r\n\r\nTesting using docker tags mysql:8.0.32 and mysql:8.0.33\nHow to repeat:\nCREATE DATABASE IF NOT EXISTS window_lag_bug;\r\nUSE window_lag_bug; \r\nDROP TABLE IF EXISTS `data_table`;\r\nCREATE TABLE IF NOT EXISTS `data_table` (`uid` INT) ENGINE=InnoDB;\r\nINSERT INTO `data_table` (`uid`) VALUES (100), (101);\r\n\r\nPREPARE stmt1 FROM \"SELECT (LAST_VALUE(a.`uid`) OVER `outer_window`) = a.`uid` as `result`\r\nFROM \r\n\t(\t\r\n\t\tSELECT \r\n\t\tLAG(`uid`) OVER `inner_window` AS `uid_lag`,\r\n\t\t`uid` AS `uid`\r\n\t\tFROM data_table\r\n\t\tWINDOW `inner_window` AS (ORDER BY `uid`)\r\n\t) AS a \r\n\tWINDOW `outer_window` AS (ORDER BY a.`uid`)\r\n\";\r\nEXECUTE stmt1;\r\nEXECUTE stmt1;\r\nSELECT VERSION();\r\nDROP DATABASE window_lag_bug;",
+  "date": "2023-04-27 15:01:00",
+  "vulnerable_version": "8.0.33",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE DATABASE test_fuzzing;",
+    "USE test_fuzzing;",
+    "CREATE TABLE mixed_types_table (id INT PRIMARY KEY, name VARCHAR(50), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, is_active BOOLEAN);",
+    "INSERT INTO mixed_types_table (id, name, is_active) VALUES (1, 'Test User', TRUE), (2, 'Another User', FALSE);",
+    "SELECT name, (CASE WHEN is_active THEN 'Active' ELSE 'Inactive' END) AS status FROM mixed_types_table WHERE id = 1;"
+  ],
+  "key_bug_features": [
+    "Prepared statement returns inconsistent results on consecutive executions."
+  ]
+}

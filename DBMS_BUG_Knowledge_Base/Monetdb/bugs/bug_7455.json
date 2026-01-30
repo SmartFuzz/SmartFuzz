@@ -1,0 +1,29 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7455",
+  "title": "Unexpected result when using `BETWEEN` with `BOOLEAN` values",
+  "vulnerable_database": "monetdb",
+  "date": "2024-02-10T01:59:59Z",
+  "vulnerable_version": "Unknown",
+  "description": "Consider the test cases below. It is unexpected that the third query returns 9 rows, since the second query returns 3 true and 6 false, which means that the `WHERE` clause in the third query should be evaluated to 3 true and thus return 3 rows in the table.\n\n**To Reproduce**\n\n```sql\nDROP TABLE t0 CASCADE;\n\nCREATE TABLE t0(c0 VARCHAR, c1 VARCHAR(500));\nCREATE VIEW v0(c0) AS SELECT true FROM t0;\nINSERT INTO t0 (c0, c1) VALUES ('', 0);\nINSERT INTO t0 (c0) VALUES ('a');\nINSERT INTO t0 (c0) VALUES ('b');\n\nSELECT * FROM v0, t0; -- 9 rows\nSELECT (t0.c0||true BETWEEN v0.c0 AND v0.c0) FROM v0, t0; -- 3 true, 6 false\nSELECT * FROM v0, t0 WHERE (t0.c0||true BETWEEN v0.c0 AND v0.c0); \n-- Expected: 3 rows\n-- Actual: 9 rows\n```\n\n**Expected behavior**\nAs mentioned above\n\n**Screenshots**\nN/A\n\n**Software versions**\nBuild from source:\n\n```\n> docker exec monetdb-test mserver5 --version --dbname=monetdb\nMonetDB 5 server 11.50.0 (hg id: 2b40c2c) (64-bit, 128-bit integers)\nThis is an unreleased version\nCopyright (c) 1993 - July 2008 CWI\nCopyright (c) August 2008 - 2023 MonetDB B.V., all rights reserved\nVisit https://www.monetdb.org/ for further information\nFound 503.5GiB available memory, 128 available cpu cores\nLibraries:\nCompiled by: @70bf17df2bbc (x86_64-pc-linux-gnu)\nCompilation: /usr/bin/cc \nLinking    : /usr/bin/ld\n```\n\n**Issue labeling**\nBug\n\n**Additional context**\nAdd any other context about the problem here.",
+  "poc": [
+    "DROP TABLE t0 CASCADE;",
+    "CREATE TABLE t0(c0 VARCHAR, c1 VARCHAR(500));",
+    "CREATE VIEW v0(c0) AS SELECT true FROM t0;",
+    "INSERT INTO t0 (c0, c1) VALUES ('', 0);",
+    "INSERT INTO t0 (c0) VALUES ('a');",
+    "INSERT INTO t0 (c0) VALUES ('b');",
+    "SELECT * FROM v0, t0;",
+    "SELECT (t0.c0||true BETWEEN v0.c0 AND v0.c0) FROM v0, t0;",
+    "SELECT * FROM v0, t0 WHERE (t0.c0||true BETWEEN v0.c0 AND v0.c0);"
+  ],
+  "key_bug_features": [
+    "Using BETWEEN with BOOLEAN values in SQL queries"
+  ],
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t1 CASCADE;",
+    "CREATE TABLE t1(c0 BOOLEAN, c1 INT, c2 VARCHAR(100));",
+    "INSERT INTO t1 (c0, c1, c2) VALUES (true, 1, 'true1');",
+    "INSERT INTO t1 (c0, c1, c2) VALUES (false, 2, 'false1');",
+    "SELECT * FROM t1 WHERE (c0 BETWEEN true AND false);"
+  ]
+}

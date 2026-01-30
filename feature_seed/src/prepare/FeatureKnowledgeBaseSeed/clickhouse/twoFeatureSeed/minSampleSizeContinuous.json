@@ -1,0 +1,16 @@
+{
+    "function": "minSampleSizeContinuous",
+    "operator": "a = b",
+    "sql_array": [
+        "CREATE TABLE test_samples (id INT, baseline FLOAT, sigma FLOAT, mde FLOAT, power FLOAT, alpha FLOAT) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_samples VALUES (1, 112.25, 21.1, 0.03, 0.80, 0.05), (2, 150.0, 30.0, 0.05, 0.90, 0.01), (3, NULL, 25.0, 0.07, 0.85, 0.05), (4, 200.0, null, 0.10, 0.95, 0.02);",
+        "SELECT id, minSampleSizeContinous(baseline, sigma, mde, power, alpha) AS sample_size FROM test_samples WHERE baseline IS NOT NULL;",
+        "SELECT id, minSampleSizeContinous(baseline + 5.5, sigma * 2, mde, power, alpha) AS adjusted_sample_size FROM test_samples WHERE (baseline + sigma) > 100;",
+        "SELECT id, minSampleSizeContinous(baseline, sigma, mde, power, alpha) AS sample_size FROM test_samples WHERE minSampleSizeContinous(baseline, sigma, mde, power, alpha).minimum_sample_size >= 50;",
+        "SELECT id, (SELECT COUNT(*) FROM test_samples AS ts WHERE ts.baseline = test_samples.baseline) AS count_per_baseline, minSampleSizeContinous(baseline, sigma, mde, power, alpha) AS sample_size FROM test_samples GROUP BY baseline HAVING count_per_baseline > 1;",
+        "SELECT t1.id, minSampleSizeContinous(t1.baseline, t2.sigma, t1.mde, t1.power, t1.alpha) AS sample_size FROM test_samples AS t1 JOIN test_samples AS t2 ON t1.baseline = t2.baseline WHERE t2.mde IS NOT NULL;",
+        "SELECT minSampleSizeContinous(NULL, sigma, mde, power, alpha) AS invalid_sample_size FROM test_samples WHERE id = 3;",
+        "SELECT minSampleSizeContinous(baseline, sigma, 0.02, power, alpha) AS sample_size FROM (SELECT baseline, sigma, power, alpha FROM test_samples WHERE mde < 0.1) AS subq WHERE baseline IS NOT NULL;",
+        "SELECT minSampleSizeContinous(baseline, CAST(sigma AS Float64), mde, power, alpha + 0.01) AS adjusted_sample_size FROM test_samples WHERE alpha < 0.1;"
+    ]
+}

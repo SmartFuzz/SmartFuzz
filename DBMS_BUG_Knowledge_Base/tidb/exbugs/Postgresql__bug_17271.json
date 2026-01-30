@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/17271-8b4317357c4991e2%40postgresql.org",
+  "title": "BUG #17271: Updating enum columns type fails when constraints exist",
+  "description": "The following bug has been logged on the website:\nBug reference:      17271\nLogged by:          Amaury Dumoulin\nEmail address:      amaury(at)castordoc(dot)com\nPostgreSQL version: 12.8\nOperating system:   alpine 3.14 on docker (host macOs 11.6)\nDescription:\nError message upon failure\nThe following fails\nCREATE TYPE direction_state AS ENUM('UP', 'DOWN');\nCREATE TABLE example (id SERIAL PRIMARY KEY, direction direction_state NOT\nNULL, below BOOLEAN NOT NULL);\nALTER TABLE example ADD CONSTRAINT ck_example_direction CHECK ((direction =\n'DOWN' AND below) OR (NOT below));\nALTER TYPE direction_state RENAME TO direction_state_old;\nCREATE TYPE direction_state AS ENUM('UP', 'DOWN', 'UNKNOWN');\nALTER TABLE example ALTER COLUMN direction TYPE direction_state USING\ndirection::text::direction_state;\nDROP TYPE direction_state_old\nWith a sibyllin error message\nERROR:  operator does not exist: direction_state = direction_state_old\nHINT:  No operator matches the given name and argument types. You might need\nto add explicit type casts.\nIf we drop and recreate the constraint it works\nCREATE TYPE direction_state AS ENUM('UP', 'DOWN');\nCREATE TABLE example (id SERIAL PRIMARY KEY, direction direction_state NOT\nNULL, below BOOLEAN NOT NULL);\nALTER TABLE example ADD CONSTRAINT ck_example_direction CHECK ((direction =\n'DOWN' AND below) OR (NOT below));\nALTER TYPE direction_state RENAME TO direction_state_old;\nCREATE TYPE direction_state AS ENUM('UP', 'DOWN', 'UNKNOWN');\nALTER TABLE example DROP CONSTRAINT ck_example_direction;\nALTER TABLE example ALTER COLUMN direction TYPE direction_state USING\ndirection::text::direction_state;\nDROP TYPE direction_state_old\nALTER TABLE example ADD CONSTRAINT ck_example_direction CHECK ((direction =\n'DOWN' AND below) OR (NOT below));",
+  "date": "2021-11-04 13:42:00",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE example (id INT AUTO_INCREMENT PRIMARY KEY, direction ENUM('UP', 'DOWN') NOT NULL, below BOOLEAN NOT NULL);",
+    "ALTER TABLE example ADD CONSTRAINT ck_example_direction CHECK ((direction = 'DOWN' AND below) OR (NOT below));",
+    "ALTER TABLE example DROP CONSTRAINT ck_example_direction;",
+    "ALTER TABLE example MODIFY COLUMN direction ENUM('UP', 'DOWN', 'UNKNOWN');",
+    "ALTER TABLE example ADD CONSTRAINT ck_example_direction CHECK ((direction = 'DOWN' AND below) OR (NOT below));"
+  ],
+  "key_bug_features": [
+    "Updating enum columns type with existing constraints"
+  ]
+}

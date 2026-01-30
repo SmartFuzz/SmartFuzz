@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/52633",
+  "title": "Non matching attribute when executing exchange partition",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n```sql\r\nDROP TABLE p0;\r\nDROP TABLE t0;\r\n\r\nCREATE TABLE `p0` (\r\n  `id` bigint(20) NOT NULL /*T![auto_rand] AUTO_RANDOM(5) */,\r\n  `code` varchar(64) NOT NULL DEFAULT '',\r\n  `third_user_name` varchar(64) NOT NULL DEFAULT '',\r\n  PRIMARY KEY (`id`,`code`) /*T![clustered_index] CLUSTERED */,\r\n  KEY `idx_third_user_name` (`third_user_name`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin\r\nPARTITION BY LIST COLUMNS(`code`)\r\n(PARTITION `code_261` VALUES IN ('261'),\r\n PARTITION `code_518` VALUES IN ('518'));\r\n\r\nCREATE TABLE `t0` (\r\n  `id` bigint(20) NOT NULL /*T![auto_rand] AUTO_RANDOM(5) */,\r\n  `code` varchar(64) NOT NULL DEFAULT '',\r\n  `third_user_name` varchar(64) NOT NULL DEFAULT '',\r\n  PRIMARY KEY (`id`,`code`) /*T![clustered_index] CLUSTERED */,\r\n  KEY `idx_third_user_name` (`third_user_name`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;\r\n\r\nALTER TABLE `t0` DROP INDEX `idx_third_user_name`;\r\nALTER TABLE `t0` ADD INDEX `idx_third_user_name` (`third_user_name`);\r\n\r\nALTER TABLE p0 EXCHANGE PARTITION code_518 WITH TABLE t0;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\nexchange ddl is successfully executed\r\n\r\n### 3. What did you see instead (Required)\r\n```sql\r\nERROR 1731 (HY000): Non matching attribute 'index: idx_third_user_name' between partition and table\r\n```\r\n\r\nBased on the error message, we checked the information about index in the table structure and found that the definition was exactly the same, so we could not determine the reason for the execution failure. \r\n\r\nThe behaviour can be confusing for users. Maybe, it is better to optimize the error information to explicitly state the cause of the error to avoid confusion.\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2024-04-16T06:27:46Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS p1;",
+    "CREATE TABLE p1 ( id INTEGER NOT NULL, code TEXT NOT NULL DEFAULT '', third_user_name TEXT NOT NULL DEFAULT '', PRIMARY KEY (id, code));",
+    "DROP TABLE IF EXISTS t1;",
+    "CREATE TABLE t1 ( id INTEGER NOT NULL, code TEXT NOT NULL DEFAULT '', third_user_name TEXT NOT NULL DEFAULT '', PRIMARY KEY (id, code));",
+    "CREATE INDEX idx_third_user_name ON t1 (third_user_name);"
+  ],
+  "key_bug_features": [
+    "Non matching index attribute during partition exchange"
+  ]
+}

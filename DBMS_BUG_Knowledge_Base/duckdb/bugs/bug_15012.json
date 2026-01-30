@@ -1,0 +1,23 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/15012",
+  "title": "literal max uhugeint raises exception",
+  "vulnerable_database": "DuckDB",
+  "date": "2024-11-27 22:30:14",
+  "vulnerable_version": "",
+  "description": "### What happens?\n\nThe page https://duckdb.org/docs/sql/data_types/numeric\r\ncorrectly states that the max value of a UHUGEINT should be\r\n340282366920938463463374607431768211455\r\n\r\nBut the CLI gets confused:\r\n```\r\nD select 340282366920938463463374607431768211455::UHUGEINT;\r\nConversion Error:\r\nType DOUBLE with value 3.402823669209385e+38 can't be cast because the value is out of range for the destination type UINT128\r\n```\r\nEvidently it first attempts to parse the digit sequence before it gets to the type declaration.\r\n\r\nThe good news is DuckDB correctly handles 2^127 + (2^127 - 1):\r\n \r\nselect 170141183460469231731687303715884105728::UHUGEINT + 170141183460469231731687303715884105727;\r\n```\r\n┌──────────────────────────────────────────────────────────────────────────────────────┐\r\n│ (CAST(1.7014118346046923e+38 AS UHUGEINT) + 170141183460469231731687303715884105727) │\r\n│                                       uint128                                        │\r\n├──────────────────────────────────────────────────────────────────────────────────────┤\r\n│                                              340282366920938463463374607431768211455 │\r\n└──────────────────────────────────────────────────────────────────────────────────────┘\r\n```\n\n### To Reproduce\n\nselect 340282366920938463463374607431768211455::UHUGEINT;\n\n### OS:\n\nMacOC\n\n### DuckDB Version:\n\n1.1.4\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nPeter Koppstein\n\n### Affiliation:\n\nPrinceton University\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a source build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nNot applicable - the reproduction does not require a data set\n\n### Did you include all code required to reproduce the issue?\n\n- [X] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [X] Yes, I have",
+  "poc": [
+    "select 340282366920938463463374607431768211455::UHUGEINT;",
+    "select 170141183460469231731687303715884105728::UHUGEINT + 170141183460469231731687303715884105727;",
+    "select '340282366920938463463374607431768211455'::UHUGEINT;"
+  ],
+  "key_bug_features": [
+    "Parsing large UHUGEINT values before type declaration"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id UHUGEINT, value DOUBLE, description VARCHAR);",
+    "INSERT INTO test_table (id, value, description) VALUES (340282366920938463463374607431768211455, 3.402823669209385e+38, 'Max UHUGEINT value');",
+    "INSERT INTO test_table (id, value, description) VALUES (170141183460469231731687303715884105727, 1.0, 'Boundary value just below max');",
+    "SELECT id, value FROM test_table WHERE value > 3.0;",
+    "SELECT id FROM test_table WHERE id = '340282366920938463463374607431768211455'::UHUGEINT;"
+  ]
+}

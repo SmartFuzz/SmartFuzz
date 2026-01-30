@@ -1,0 +1,15 @@
+CREATE TABLE test_strings (s String, len Int32, pad String DEFAULT ' ');
+INSERT INTO test_strings VALUES ('', 5, '*'), ('hello', 10, '0'), ('абвг', 3, NULL), ('', 0, 'pad');
+SELECT leftPadUTF8(s, len, pad) AS padded_string FROM test_strings WHERE len < 10 ORDER BY padded_string;
+SELECT leftPadUTF8(NULL, 5), leftPadUTF8(s, 5) AS padded_s FROM test_strings WHERE padded_s < leftPadUTF8('example', 7, 'test') ORDER BY padded_s;
+SELECT COUNT(*) FROM test_strings WHERE leftPadUTF8(s, len, pad) < 'з';
+SELECT AVG(len) AS avg_length, COUNT(*) FROM test_strings GROUP BY len HAVING avg_length < 7;
+CREATE TEMPORARY TABLE join_test (id Int32, data String);
+INSERT INTO join_test VALUES (1, 'a'), (2, 'b'), (3, 'привет');
+SELECT jt.id, leftPadUTF8(ts.s, ts.len, ts.pad) AS padded_str FROM test_strings ts JOIN join_test jt ON jt.id < ts.len;
+SELECT DISTINCT leftPadUTF8(s, len) FROM test_strings WHERE pad IS NOT NULL AND leftPadUTF8(s, len) != '';
+CREATE TABLE test_numbers (num Int32, str String, valid_flag Nullable(UInt8));
+INSERT INTO test_numbers VALUES (1, '1', 1), (2, '2', NULL), (3, '3', 0);
+SELECT leftPadUTF8(toString(num), 3, '0') AS padded_num FROM test_numbers WHERE valid_flag = 1 ORDER BY padded_num DESC;
+SELECT COUNT(*) AS count_valid FROM (SELECT leftPadUTF8(str, 5, '0') AS padded_str FROM test_numbers WHERE str < leftPadUTF8('5', 1, '0')) AS subquery;
+UPDATE test_strings SET len = CASE WHEN len < 5 THEN 4 ELSE len END WHERE s IS NOT NULL;

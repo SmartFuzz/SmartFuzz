@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=107635",
+  "title": "event scheduler cause error on group replication",
+  "description": "When run below test case will cause group replication error.\r\n\r\nAssert In debug version:\r\n\r\n```\r\n#0  __GI_raise (sig=...) at raise.c:50\r\n#1  0x00007fc873279535 in __GI_abort () at abort.c:79\r\n#2  0x00007fc87327940f in __assert_fail_base (fmt=..., assertion=..., file=..., line=..., function=...) at assert.c:92\r\n#3  0x00007fc873287102 in __GI___assert_fail (assertion=..., file=..., line=..., function=...) at assert.c:101\r\n#4  0x000055e3f8f44bab in Disable_autocommit_guard::~Disable_autocommit_guard (this=..., __in_chrg=...) at thd_raii.h:79\r\n#5  0x000055e3f985561f in Event_queue::recalculate_activation_times (this=..., thd=...) at event_queue.cc:390\r\n#6  0x000055e3f985b4ab in Event_scheduler::run (this=..., thd=...) at event_scheduler.cc:568\r\n#7  0x000055e3f985a372 in event_scheduler_thread (arg=...) at event_scheduler.cc:279\r\n#8  0x000055e3faee89df in pfs_spawn_thread (arg=...) at pfs.cc:2899\r\n#9  0x00007fc87341efa3 in start_thread (arg=...) at pthread_create.c:486\r\n#10 0x00007fc87334feff in clone () at clone.S:95\r\n```\n\nIn release mode:  The server will leave MGR group:\r\n\r\n```\r\n2022-06-22T14:32:18.412045Z 15 [ERROR] [MY-011452] [Repl] Plugin group_replication reported: 'Fatal error during execution     on the Applier process of Group Replication. The server will now leave the group.'\r\n\r\n```\nHow to repeat:\nSET GLOBAL EVENT_SCHEDULER = OFF; \n\nCREATE EVENT e1 ON SCHEDULE EVERY 1 SECOND ENDS NOW() + INTERVAL 1 SECOND DO SELECT 1;  \r\n\r\nSET GLOBAL EVENT_SCHEDULER = ON;\nSuggested fix:\nallow daemon event scheduler thread can be found in THD manager.\r\nOr set event scheduler thread to !COM_DAEMON in function",
+  "date": "2022-06-22 14:47:00",
+  "vulnerable_version": "8.0.*",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_events (id INTEGER PRIMARY KEY, event_name VARCHAR(255) NOT NULL, event_time TIMESTAMP NOT NULL, is_active BOOLEAN DEFAULT TRUE);",
+    "INSERT INTO test_events (event_name, event_time) VALUES ('Test Event 1', TIMESTAMPADD(SECOND, 1, NOW()));",
+    "INSERT INTO test_events (event_name, event_time) VALUES ('Scheduled Event', NOW());",
+    "SELECT * FROM test_events WHERE is_active = TRUE;",
+    "DELETE FROM test_events WHERE event_time < NOW();"
+  ],
+  "key_bug_features": [
+    "Event scheduler causes group replication error on activation"
+  ]
+}

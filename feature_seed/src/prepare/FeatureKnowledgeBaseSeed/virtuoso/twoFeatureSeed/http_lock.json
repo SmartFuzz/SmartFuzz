@@ -1,0 +1,21 @@
+{
+    "function": "http_lock",
+    "operator": "SPARQL Logical ||",
+    "sql_array": [
+        "CREATE TABLE http_test (id INT PRIMARY KEY, content VARCHAR(255) NOT NULL);",
+        "INSERT INTO http_test (id, content) VALUES (1, 'test1'), (2, 'test2');",
+        "SELECT http_lock((SELECT content FROM http_test WHERE id = 1) || ' fallback.html');",
+        "SELECT http_lock('password') || (SELECT MAX(id) FROM http_test WHERE content IS NOT NULL);",
+        "SELECT http_lock('admin') || (SELECT COUNT(*) FROM http_test WHERE content = 'test1' OR content = '');",
+        "SELECT http_lock(CONCAT('user:', (SELECT MIN(id) FROM http_test)), 'error.html') AS response;",
+        "CREATE TABLE edge_case_test (id INT, value NUMERIC, str_value VARCHAR(50), created_at TIMESTAMP);",
+        "INSERT INTO edge_case_test (id, value, str_value, created_at) VALUES (1, 1.1, NULL, NOW()), (2, NULL, 'test2', NOW());",
+        "SELECT http_lock('secret123') || (SELECT AVG(value) FROM edge_case_test WHERE value IS NOT NULL GROUP BY id HAVING COUNT(*) > 1);",
+        "SELECT DISTINCT http_lock('public') || (SELECT str_value FROM edge_case_test WHERE str_value IS NOT NULL AND value IS NULL);",
+        "SELECT http_lock(COALESCE((SELECT str_value FROM edge_case_test WHERE str_value = '' LIMIT 1), 'default.html')) || (SELECT COUNT(*) FROM edge_case_test WHERE created_at > NOW() - INTERVAL '1 day');",
+        "SELECT http_lock('password') || (SELECT SUM(id) FROM (SELECT id FROM http_test GROUP BY id HAVING id > 0) sub);",
+        "CREATE TEMPORARY TABLE temp_lock_test (id INT, locked BOOLEAN DEFAULT FALSE);",
+        "INSERT INTO temp_lock_test (id, locked) VALUES (1, TRUE), (2, FALSE);",
+        "SELECT http_lock(MIN(CASE WHEN locked THEN 'locked_page.html' ELSE 'unlocked_page.html' END)) || (SELECT COUNT(*) FROM temp_lock_test);"
+    ]
+}

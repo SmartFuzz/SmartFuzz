@@ -1,0 +1,17 @@
+{
+    "function": "multiSearchFirstIndexUTF8",
+    "operator": "[x1, ...]",
+    "sql_array": [
+        "CREATE TABLE fuzz_test (id UInt32, name String, data Array(String), created_at DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO fuzz_test VALUES (1, 'test1', ['needle1', 'needle2'], now()), (2, 'test2', [], now()), (3, 'test3', ['needle3', 'needle4'], now());",
+        "SELECT id, multiSearchFirstIndexUTF8(name, [multiSearchFirstIndexUTF8(data[1], ['needle1', 'needle2']), 'needle5']) AS result FROM fuzz_test WHERE result > 0;",
+        "SELECT id, multiSearchFirstIndexUTF8(name, multiSearchFirstIndexUTF8(data, ['needle1', 'needle2'])) AS final_result FROM fuzz_test GROUP BY id HAVING final_result > 0;",
+        "SELECT id, multiSearchFirstIndexUTF8(name, ['needle1', multiSearchFirstIndexUTF8(name, ['needle2'])]) AS search_result, created_at FROM fuzz_test WHERE created_at >= now() - INTERVAL 1 DAY ORDER BY search_result DESC;",
+        "SELECT id, count(*) AS cnt, multiSearchFirstIndexUTF8(name, data) AS search_index FROM fuzz_test GROUP BY id HAVING cnt = 1;",
+        "CREATE TEMPORARY TABLE fuzz_test_temp AS SELECT id, multiSearchFirstIndexUTF8(name, ['needle1', 'needle2']) AS search_index FROM fuzz_test WHERE search_index > 0;",
+        "SELECT id, multiSearchFirstIndexUTF8(name, ['needle3']) AS temp_index FROM fuzz_test_temp WHERE temp_index > 0 ORDER BY temp_index;",
+        "SELECT id, multiSearchFirstIndexUTF8(name, null) AS null_index FROM fuzz_test WHERE id = 1;",
+        "SELECT multiSearchFirstIndexUTF8('abcdef', [0, 'c', 'e']) AS invalid_search;",
+        "INSERT INTO fuzz_test VALUES (4, 'test4', ['needle1', 'needle3'], NULL);"
+    ]
+}

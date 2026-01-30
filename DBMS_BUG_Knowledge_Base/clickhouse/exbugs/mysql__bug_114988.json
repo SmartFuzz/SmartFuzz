@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=114988",
+  "title": "WHERE ({date} < zeroDate OR zeroDate is NULL) is incorrect in MySQL 8",
+  "description": "There is a bug when a zero date (or datetime) is checked in a where statement like:\r\n\r\nWHERE ({date} < zeroDate OR zeroDate is NULL) \r\n\r\nMySql  filters out rows which pass the condition, specifically when the following circumstances are true:\r\n\r\n* NOT NULLABLE date or date column\r\n* There is a zero date value in that column\r\nComparison on date column that involves an OR (and maybe other predicate logic)\r\n* Comparison on date includes a \"IS NULL\"\r\n* Comparison on date includes an inequality operator that points AWAY from datetime column\nHow to repeat:\nI found this when migrating from 5.7 to 8.0, so I give a series of queries that are the same and then the final query which is different and is a bug in 8.0.36:\r\n\r\nCREATE TABLE `testZeroDates` (\r\n  `dateNotNull` date NOT NULL\r\n); \n\nINSERT INTO testZeroDates (dateNotNull)\r\nVALUES ('0000-00-00');\r\n \r\n \r\n-- Returns 1 row in MySQL 5.7 and 8.0\r\nSELECT 1\r\nFROM testZeroDates \r\nWHERE dateNotNull IS  NULL;\r\n \r\n\r\n-- Returns 1 row in MySQL 5.7 and 8.0\r\nSELECT 1\r\nFROM testZeroDates \r\nWHERE ('2000-01-01' > dateNotNull) OR (dateNotNull IS NULL);\r\n \r\n \r\n-- Returns 1 row in MySQL 5.7 and 8.0\r\nSELECT 1\r\nFROM testZeroDates \r\nWHERE ('2000-01-01' < dateNotNull) OR (dateNotNull = '0000-00-00');\r\n \r\n\r\n-- Returns 1 row in MySQL 5.7, but 0 rows in MySQL 8.0 (bug!)\r\nSELECT 1\r\nFROM testZeroDates \r\nWHERE ('2000-01-01' < dateNotNull) OR (dateNotNull IS NULL);\nSuggested fix:\ndateNotNull IS NULL is TRUE, so MySQL 8.0.36 should not filter rows based on WHERE ({expression}) OR TRUE.\r\n\r\nThe behavior should change to the same as MySQL 5.7.",
+  "date": "2024-05-13 17:02:00",
+  "vulnerable_version": "8.0.36",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE testBoundaryDates (dateColumn Date NOT NULL, intColumn Int32 NOT NULL);",
+    "INSERT INTO testBoundaryDates (dateColumn, intColumn) VALUES ('0000-00-00', 1);",
+    "INSERT INTO testBoundaryDates (dateColumn, intColumn) VALUES ('2023-01-01', 2);",
+    "SELECT 1 FROM testBoundaryDates WHERE (dateColumn < '2023-01-01' OR dateColumn IS NULL);",
+    "SELECT 1 FROM testBoundaryDates WHERE (dateColumn > '0000-00-00' OR dateColumn IS NULL);"
+  ],
+  "key_bug_features": [
+    "WHERE clause with zero date and IS NULL condition"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/57062",
+  "title": "wrong list partition prune for non point range",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```mysql\r\nCREATE TABLE t1 (\r\n  col1 int, col2 int\r\n) PARTITION BY LIST (col2)\r\n(PARTITION p0 VALUES IN (1),\r\n PARTITION p1 VALUES IN (-1));\r\n\r\ninsert into t1 values (1, -1);\r\n\r\nselect col1 from t1 where col1 > 0;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\n```mysql\r\n+------+\r\n| col1 |\r\n+------+\r\n|    1 |\r\n+------+\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n```mysql\r\nEmpty set (0.00 sec)\r\n```\r\n\r\nFrom the plan, we can see that we got a wrong partition. \r\n```\r\n+-------------------------+---------+-----------+---------------+--------------------------------+\r\n| id                      | estRows | task      | access object | operator info                  |\r\n+-------------------------+---------+-----------+---------------+--------------------------------+\r\n| TableReader_7           | 0.33    | root      | partition:p0  | data:Selection_6               |\r\n| └─Selection_6           | 0.33    | cop[tikv] |               | gt(test.t1.col1, 0)            |\r\n|   └─TableFullScan_5     | 1.00    | cop[tikv] | table:t1      | keep order:false, stats:pseudo |\r\n+-------------------------+---------+-----------+---------------+--------------------------------+\r\n3 rows in set (0.00 sec)\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2024-11-01T06:45:29Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (id INT, value VARCHAR(255), status BOOLEAN);",
+    "INSERT INTO t2 VALUES (1, 'active', TRUE);",
+    "INSERT INTO t2 VALUES (2, 'inactive', FALSE);",
+    "SELECT id FROM t2 WHERE value LIKE 'a%';",
+    "SELECT id FROM t2 WHERE status IS NULL;"
+  ],
+  "key_bug_features": [
+    "wrong list partition prune for non point range"
+  ]
+}

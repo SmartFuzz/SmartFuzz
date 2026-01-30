@@ -1,0 +1,14 @@
+CREATE TABLE team_salaries (team String, player String, salary UInt32, position String) Engine = Memory;
+INSERT INTO team_salaries VALUES ('Port Elizabeth Barbarians', 'Gary Chen', 195000, 'F'), ('New Coreystad Archdukes', 'Charles Juarez', 190000, 'F'), ('Port Elizabeth Barbarians', 'Michael Stanley', 150000, 'D'), ('New Coreystad Archdukes', 'Scott Harrison', 150000, 'D'), ('Port Elizabeth Barbarians', 'Robert George', 195000, 'M');
+SELECT player, salary, row_number() OVER (PARTITION BY position ORDER BY salary DESC) AS rn FROM team_salaries WHERE player LIKE 'G%' ORDER BY rn;
+SELECT team, player, salary FROM (SELECT team, player, salary, row_number() OVER (PARTITION BY team ORDER BY salary DESC) as rn FROM team_salaries) sub WHERE rn = 1 OR player LIKE '%Stanley';
+SELECT COUNT(*) FROM (SELECT player, position FROM team_salaries WHERE salary > 180000 AND position LIKE 'F') sub;
+SELECT DISTINCT team, row_number() OVER (ORDER BY salary) AS rn FROM (SELECT team FROM team_salaries WHERE position IS NOT NULL) sub;
+SELECT player, CASE WHEN salary IS NULL THEN 'No Salary' ELSE CAST(salary AS String) END AS salary_text FROM team_salaries WHERE salary LIKE '195%' ORDER BY player;
+CREATE TABLE test_salaries (id UInt32, salary Nullable(UInt32)) Engine = Memory;
+INSERT INTO test_salaries VALUES (1, 200000), (2, NULL), (3, 150000);
+SELECT IF(salary IS NULL, 'No Salary', row_number() OVER (ORDER BY salary DESC)) AS row_num FROM test_salaries WHERE id LIKE '1';
+SELECT AVG(salary) AS avg_salary FROM test_salaries WHERE salary > (SELECT COUNT(*) FROM test_salaries WHERE salary LIKE '15%');
+CREATE TABLE fuzzy_salaries (name UUID, salary UInt32, team String) Engine = Memory;
+INSERT INTO fuzzy_salaries VALUES (generateUUIDv4(), 300000, 'Team A'), (generateUUIDv4(), 280000, 'Team B'), (generateUUIDv4(), 0, 'Team C');
+SELECT name, salary, row_number() OVER (PARTITION BY team ORDER BY salary DESC) AS RowNum FROM fuzzy_salaries WHERE salary > 100000 AND name LIKE '123%';

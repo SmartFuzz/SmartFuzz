@@ -1,0 +1,17 @@
+CREATE TABLE paths (id INT, path TEXT);
+INSERT INTO paths VALUES (1, '/path/to/file.csv');
+INSERT INTO paths VALUES (2, 'C:\path\to\file.csv');
+INSERT INTO paths VALUES (3, '/another/path/to/file.txt');
+INSERT INTO paths VALUES (4, 'no/slash/here');
+INSERT INTO paths VALUES (5, '/single/slash/');
+SELECT parse_dirpath(path, 'forward_slash') AS head FROM paths WHERE id = 1;
+SELECT parse_dirpath(path, 'backslash') AS head FROM paths WHERE id = 2;
+SELECT parse_dirpath(path, 'both_slash') AS head FROM paths WHERE id IN (3, 4);
+SELECT id, parse_dirpath(path, 'both_slash') AS head FROM paths WHERE path LIKE 'C:%' OR path LIKE '/%';
+WITH path_data AS (SELECT path, parse_dirpath(path, 'forward_slash') AS head FROM paths) SELECT * FROM path_data WHERE head IS NOT NULL;
+CREATE TABLE join_example AS SELECT a.id, a.path, b.head FROM paths AS a JOIN (SELECT id, parse_dirpath(path, 'forward_slash') AS head FROM paths) AS b ON a.id = b.id WHERE a.id < 3;
+SELECT COUNT(*) AS cnt FROM paths WHERE parse_dirpath(path, 'backslash') IS NOT NULL;
+SELECT id, path, parse_dirpath(path, 'both_slash') AS head FROM paths ORDER BY head DESC;
+CREATE TABLE mixed_paths (id INT, path TEXT);
+INSERT INTO mixed_paths VALUES (1, '/mixed/path/to/file.csv'), (2, 'C:\mixed\path\to\file.txt');
+SELECT a.id, a.path, parse_dirpath(b.path, 'forward_slash') AS head FROM mixed_paths AS a LEFT JOIN paths AS b ON a.id = b.id;

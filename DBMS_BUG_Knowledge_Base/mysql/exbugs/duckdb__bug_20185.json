@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/20185",
+  "title": "Projections are not pushed through unnest(arg_max(...))",
+  "description": "### What happens?\n\nConsider this table foo:\n```sql\ncreate table foo (\n  col_1 text,\n  col_2 text,\n  col_3 text,\n  col_4 text,\n  col_5 int\n);\n```\n\nConsider the common case where you have a log of events and you want to take the latest version of a row you would possibly write something like:\n```sql\nselect col_1, col_2, col_3\nfrom (\n  select unnest(arg_max(foo, col_5))\n  from foo\n  group by col_1, col_2\n)\n```\n\n`arg_max` will construct a struct of all columns of `foo` and then perform projection after unnesting. But here we can see that adding col_4 to the intermediate struct is unnecessary and can be pruned.\n\nNow imagine a very wide table (100s of columns), performing this `unnest(arg_max())` is very memory intensive where if the downstream projection is limited to only a handful of columns the aggregation performance and memory usage improves.\n\nCurrently you must manually specify what you want to project before aggregation which is do-able but tedious:\n```sql\nselect col_1, col_2, col_3\nfrom (\n  select unnest(arg_max(t, col_5))\n  from (select col_1, col_2, col_3, col_5 from foo) as t\n  group by col_1, col_2\n)\n```\n\n### To Reproduce\n\n```sql\ncreate table foo (\n  col_1 text,\n  col_2 text,\n  col_3 text,\n  col_4 text,\n  col_5 int\n);\n\nexplain select col_1, col_2, col_3\nfrom (\n  select unnest(arg_max(foo, col_5))\n  from foo\n  group by col_1, col_2\n);\n\nexplain select col_1, col_2, col_3\nfrom (\n  select unnest(arg_max(t, col_5))\n  from (select col_1, col_2, col_3, col_5 from foo) as t\n  group by col_1, col_2\n);\n```\n\n### OS:\n\narm64\n\n### DuckDB Version:\n\n1.4.2\n\n### DuckDB Client:\n\nPython\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nRyan Chui\n\n### Affiliation:\n\nRecurrency\n\n### Did you include all relevant configuration (e.g., CPU architecture, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant data sets for reproducing the issue?\n\nNo - Other reason (please specify in the issue body)",
+  "date": "2025-12-13 19:43:01",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE bar (id INT PRIMARY KEY, name VARCHAR(255), value FLOAT, created_at DATETIME, is_active BOOLEAN);",
+    "INSERT INTO bar (id, name, value, created_at, is_active) VALUES (1, 'Event A', 10.5, '2023-01-01 10:00:00', TRUE);",
+    "INSERT INTO bar (id, name, value, created_at, is_active) VALUES (2, 'Event B', 20.0, '2023-01-02 11:00:00', FALSE);",
+    "SELECT name, value FROM (SELECT name, value FROM bar WHERE (created_at, is_active) IN (SELECT MAX(created_at), is_active FROM bar GROUP BY is_active)) AS temp;",
+    "SELECT name, value FROM (SELECT id, name, value FROM bar WHERE is_active = TRUE) AS t WHERE value = (SELECT MAX(value) FROM (SELECT id, name, value FROM bar WHERE is_active = TRUE) AS sub_t GROUP BY name);"
+  ],
+  "key_bug_features": [
+    "Projections not pushed through unnest(arg_max(...))"
+  ]
+}

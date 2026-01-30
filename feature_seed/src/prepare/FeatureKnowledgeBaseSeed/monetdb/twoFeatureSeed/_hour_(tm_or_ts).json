@@ -1,0 +1,20 @@
+{
+    "function": "\"hour\"(tm_or_ts)",
+    "operator": "-",
+    "sql_array": [
+        "CREATE TABLE test_time (id INT PRIMARY KEY, event_time TIMESTAMPTZ NOT NULL, duration INTERVAL NOT NULL);",
+        "INSERT INTO test_time (id, event_time, duration) VALUES (1, TIMESTAMPTZ '2023-10-01 15:30:00+01:00', INTERVAL '1 hour'), (2, TIMESTAMPTZ '2023-10-01 18:45:00+01:00', INTERVAL '30 minutes');",
+        "SELECT id, hour(event_time) - hour(event_time - duration) AS hour_diff FROM test_time WHERE hour(event_time) IS NOT NULL;",
+        "CREATE TABLE events (event_id INT PRIMARY KEY, start_time TIMESTAMPTZ, end_time TIMESTAMPTZ);",
+        "INSERT INTO events (event_id, start_time, end_time) VALUES (1, TIMESTAMPTZ '2023-10-01 08:00:00+00:00', TIMESTAMPTZ '2023-10-01 09:00:00+00:00');",
+        "SELECT e.event_id, hour(e.end_time) - hour(e.start_time) AS duration_hours FROM events e WHERE e.end_time IS NOT NULL;",
+        "WITH time_diff AS (SELECT event_id, hour(start_time) - hour(end_time) AS diff FROM events) SELECT event_id, CASE WHEN diff < 0 THEN NULL ELSE diff END AS valid_diff FROM time_diff WHERE valid_diff IS NOT NULL;",
+        "SELECT e.event_id, hour(e.start_time) - (SELECT hour(start_time) FROM events WHERE event_id = 1) AS time_difference FROM events e WHERE e.event_id <> 1;",
+        "SELECT id, hour(event_time + duration) - hour(event_time) AS extended_hour_diff FROM test_time WHERE hour(event_time + duration) > hour(event_time);",
+        "SELECT e.event_id, hour(e.start_time) - (hour(e.end_time) - hour(e.start_time)) AS adjusted_duration FROM events e HAVING adjusted_duration > -1;",
+        "ALTER TABLE test_time ADD COLUMN extra_info VARCHAR(255);",
+        "UPDATE test_time SET extra_info = 'No duration' WHERE duration = INTERVAL '0 seconds';",
+        "SELECT id, hour(event_time) + 1 - hour(event_time) AS adjusted_hour FROM test_time WHERE hour(event_time) < 23;",
+        "SELECT e.event_id, (hour(start_time) - hour(end_time)) + (hour(end_time) - hour(start_time)) AS total_time FROM events e WHERE hour(start_time) <> hour(end_time);"
+    ]
+}

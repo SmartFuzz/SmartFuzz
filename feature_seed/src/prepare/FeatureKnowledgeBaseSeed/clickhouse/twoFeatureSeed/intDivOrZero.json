@@ -1,0 +1,18 @@
+{
+    "function": "intDivOrZero",
+    "operator": "a - b",
+    "sql_array": [
+        "CREATE TABLE test_fuzzing (id UInt32, value1 Int32, value2 Int32, str_value String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_fuzzing VALUES (1, 10, 0, 'test1'), (2, 20, -1, 'test2'), (3, 30, 1, 'test3'), (4, 40, NULL, 'test4');",
+        "SELECT id, intDivOrZero(value1, value2) AS div_result FROM test_fuzzing WHERE value2 IS NOT NULL;",
+        "SELECT id, value1 - intDivOrZero(value2, 5) as result FROM test_fuzzing WHERE str_value = 'test1';",
+        "SELECT id, intDivOrZero(value1, (SELECT MIN(value2) FROM test_fuzzing WHERE value2 < 0)) AS safe_div FROM test_fuzzing;",
+        "SELECT id, intDivOrZero(value1, value2 - 1) AS adjusted_div FROM test_fuzzing GROUP BY value1 HAVING adjusted_div > 0;",
+        "SELECT id, value1 - intDivOrZero((CASE WHEN str_value = 'test1' THEN 0 ELSE value2 END), 0) AS adjusted_value FROM test_fuzzing;",
+        "SELECT t.id, intDivOrZero(t.value1 + t.value2, (SELECT SUM(value2) FROM test_fuzzing WHERE id < t.id)) AS conditional_div FROM test_fuzzing t;",
+        "SELECT id, intDivOrZero(nullIf(value1, 10), CASE WHEN value2 = 0 THEN 1 ELSE value2 END) AS null_safe_div FROM test_fuzzing;",
+        "CREATE TABLE temp_fuzzing AS SELECT id, value1, value2 FROM test_fuzzing WHERE value2 IS NOT NULL;",
+        "INSERT INTO temp_fuzzing SELECT id, intDivOrZero(value1, value2) AS computed_value1, intDivOrZero(value2, -1) AS computed_value2 FROM test_fuzzing;",
+        "SELECT id, computed_value1 - computed_value2 AS final_adjustment FROM temp_fuzzing WHERE computed_value1 IS NOT NULL;"
+    ]
+}

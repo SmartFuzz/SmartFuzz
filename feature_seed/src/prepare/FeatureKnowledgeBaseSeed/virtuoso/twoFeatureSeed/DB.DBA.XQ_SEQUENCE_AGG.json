@@ -1,0 +1,17 @@
+{
+    "function": "DB.DBA.XQ_SEQUENCE_AGG",
+    "operator": "bif:st_within",
+    "sql_array": [
+        "CREATE TABLE spatial_data (id INT PRIMARY KEY, location GEOMETRY, value FLOAT NOT NULL);",
+        "INSERT INTO spatial_data (id, location, value) VALUES (1, ST_GeomFromText('POINT(30 10)'), 25.3), (2, ST_GeomFromText('POINT(20 20)'), NULL), (3, ST_GeomFromText('POINT(10 30)'), 10.0);",
+        "CREATE TABLE measurements (id INT PRIMARY KEY, spatial_id INT, measurement_date DATE, measure_value FLOAT, FOREIGN KEY (spatial_id) REFERENCES spatial_data(id));",
+        "INSERT INTO measurements (id, spatial_id, measurement_date, measure_value) VALUES (1, 1, '2023-01-01', 15.0), (2, 1, '2023-01-02', NULL), (3, 2, '2023-02-01', 5.0);",
+        "SELECT DB.DBA.XQ_SEQUENCE_AGG(value) AS aggregated_value FROM spatial_data WHERE value IS NOT NULL GROUP BY id HAVING bif:st_within(location, ST_GeomFromText('POLYGON((15 5, 25 5, 25 15, 15 15, 15 5))')) = TRUE;",
+        "SELECT DISTINCT s.id, DB.DBA.XQ_SEQUENCE_AGG(m.measure_value) AS measure_sequence FROM spatial_data s INNER JOIN measurements m ON s.id = m.spatial_id WHERE m.measure_value IS NULL OR m.measure_value > 10 GROUP BY s.id ORDER BY aggregated_value ASC;",
+        "SELECT s.id, bif:st_within(s.location, ST_GeomFromText('POLYGON((0 0, 20 0, 20 20, 0 20, 0 0))')) AS is_within, DB.DBA.XQ_SEQUENCE_AGG(COALESCE(m.measure_value, 0)) AS measurement_cumulative FROM spatial_data s LEFT JOIN measurements m ON s.id = m.spatial_id WHERE s.value > 0 GROUP BY s.id HAVING COUNT(m.measure_value) > 1;",
+        "SELECT DB.DBA.XQ_SEQUENCE_AGG(st_within_check) FROM (SELECT bif:st_within(location, ST_GeomFromText('POINT(30 30)')) AS st_within_check FROM spatial_data) AS subquery WHERE st_within_check IS TRUE;",
+        "INSERT INTO measurements (id, spatial_id, measurement_date, measure_value) VALUES (4, 3, '2023-03-01', 0.0000001);",
+        "SELECT DB.DBA.XQ_SEQUENCE_AGG(measure_value) FROM measurements WHERE measurement_date BETWEEN '2023-01-01' AND '2023-02-01' AND measure_value IS NOT NULL;",
+        "SELECT DB.DBA.XQ_SEQUENCE_AGG(DISTINCT NULLIF(value, 0)) AS non_zero_values FROM spatial_data WHERE value IS NOT NULL;"
+    ]
+}

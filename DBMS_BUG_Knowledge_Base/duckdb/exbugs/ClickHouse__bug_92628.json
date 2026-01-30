@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/92628",
+  "title": "Inconsistent Float64 values when inserting equivalent numeric literals (scientific vs decimal notation)",
+  "description": "### Company or project name\n_No response_\n### Describe the unexpected behaviour\nWhen inserting numeric literals into a Float64 column, ClickHouse stores different values depending on how the same numeric value is written (scientific notation vs decimal literal).\nAlthough the two literals are mathematically equivalent, they result in different stored values and different query results. This is unexpected and problematic for data ingestion pipelines.\n### Which ClickHouse versions are affected?\n25.11.2.24 (clickhouse-jdbc-0.9.4-all.jar)\n### How to reproduce\n```sql\nDROP TABLE IF EXISTS v;\nCREATE TABLE v\n(\nvalue Float64\n)\nENGINE = MergeTree\nORDER BY tuple();\nINSERT INTO v VALUES (5.54874E+7);\nINSERT INTO v VALUES (55487400);\nSELECT value FROM v;\n```\n### Observed behavior\nThe two rows are not equal, and the query output may look like:\n```\n55487400\n55487400.00000001\n```\nDespite representing the same numeric value, ClickHouse treats them as different.\n### Expected behavior\nBoth inserts should result in the same stored value, since:\n```mathematica\n5.54874E+7 == 55487400\n```\nAt minimum, ClickHouse should parse numeric literals consistently just like MySQL, regardless of whether scientific notation or decimal notation is used.\n### Why this is a problem\nThis behavior is surprising and causes real issues in practice:\n* ETL tools, JDBC drivers, or JSON serializers may emit numbers in scientific notation or fixed decimal format depending on context.\n* Re-ingesting the same dataset through different paths can produce different stored values.\n* This breaks idempotency assumptions for ingestion pipelines and makes equality checks unreliable.\nFrom a user’s perspective, two equivalent numeric literals should not produce different results at insert time.",
+  "date": "2025-12-19T06:15:22Z",
+  "vulnerable_version": "25.11.2.24",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS test_float64;",
+    "CREATE TABLE test_float64 (value DOUBLE, description VARCHAR);",
+    "INSERT INTO test_float64 VALUES (1.23456789E+10, 'Scientific notation'), (12345678900.0, 'Decimal notation');",
+    "INSERT INTO test_float64 VALUES (NULL, 'NULL value'), (5.0, 'Simple float');",
+    "SELECT value, description FROM test_float64 WHERE value IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Inconsistent storage of Float64 from different numeric notations"
+  ]
+}

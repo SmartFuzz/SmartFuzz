@@ -1,0 +1,11 @@
+CREATE TABLE spark_bar_test (`value` Int64, `frequency` Int64, `event_date` Date) ENGINE = MergeTree ORDER BY event_date;
+INSERT INTO spark_bar_test VALUES (1, 10, '2020-01-01'), (3, 15, '2020-01-02'), (5, -5, '2020-01-02'), (2, 20, '2020-01-03'), (8, 25, '2020-01-03'), (4, 0, '2020-01-04'), (5, 30, '2020-01-04'), (6, NULL, '2020-01-05');
+SELECT sparkbar(5)(event_date, NULLIF(frequency, 0)) FROM spark_bar_test GROUP BY event_date HAVING SUM(frequency) > 0;
+SELECT event_date, sparkbar(4)(event_date, frequency) FROM (SELECT event_date, frequency FROM spark_bar_test WHERE frequency IS NOT NULL AND frequency > 0) GROUP BY event_date;
+SELECT sparkbar(3, toDate('2020-01-01'), toDate('2020-01-05'))(event_date, SUM(CASE WHEN value < 5 THEN frequency END)) FROM spark_bar_test WHERE value > -1 GROUP BY event_date HAVING event_date AND value IS NOT NULL;
+CREATE TABLE join_test (`id` Int64, `event_date` Date) ENGINE = MergeTree ORDER BY event_date;
+INSERT INTO join_test VALUES (1, '2020-01-01'), (2, '2020-01-02'), (3, '2020-01-01'), (4, '2020-01-03');
+SELECT sparkbar(5)(j.event_date, SUM(if(s.frequency IS NULL, 1, s.frequency))) FROM join_test AS j JOIN spark_bar_test AS s ON j.event_date = s.event_date WHERE j.id AND j.event_date IS NOT NULL GROUP BY j.event_date;
+SELECT event_date, sparkbar(6)(event_date, frequency) FROM (SELECT event_date, frequency FROM spark_bar_test WHERE frequency > -1) GROUP BY event_date HAVING event_date AND SUM(frequency) > 0;
+SELECT sparkbar(8)(event_date, SUM(frequency)) FROM spark_bar_test WHERE frequency != 0 AND (value < 5 AND value > 1) GROUP BY event_date;
+SELECT sparkbar(3)(event_date, COUNT(value))  FROM (SELECT event_date, value, COUNT(value) AS frequency FROM spark_bar_test GROUP BY event_date, value HAVING value IS NOT NULL) WHERE event_date AND frequency > 0 GROUP BY event_date;

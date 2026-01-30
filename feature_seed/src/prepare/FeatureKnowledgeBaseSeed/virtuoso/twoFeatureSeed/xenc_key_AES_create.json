@@ -1,0 +1,16 @@
+{
+    "function": "xenc_key_AES_create",
+    "operator": "SPARQL Logical ||",
+    "sql_array": [
+        "CREATE TABLE keys (id INT PRIMARY KEY, key_name VARCHAR(50), key_value VARBINARY(256));",
+        "INSERT INTO keys (id, key_name, key_value) VALUES (1, 'session_key_1', xenc_key_AES_create('ses_key', 128, 'mysecret'));",
+        "CREATE TABLE sessions (session_id INT PRIMARY KEY, user_id INT, key_id INT, created_at TIMESTAMP, FOREIGN KEY (key_id) REFERENCES keys(id));",
+        "INSERT INTO sessions (session_id, user_id, key_id, created_at) SELECT 1, 1, k.id, CURRENT_TIMESTAMP FROM keys k WHERE k.key_name = 'session_key_1';",
+        "SELECT s.session_id, s.user_id, xenc_key_AES_create(s.key_id, 128, NULL) AS session_key FROM sessions s WHERE s.user_id = (SELECT user_id FROM sessions WHERE session_id = 1);",
+        "WITH key_info AS (SELECT key_name, xenc_key_AES_create(key_name, 128, 'hardcoded') AS key_val FROM keys) SELECT ki.key_name FROM key_info ki WHERE ki.key_val IS NOT NULL || ki.key_name = 'session_key_1';",
+        "SELECT COUNT(*) AS valid_sessions FROM sessions s JOIN keys k ON s.key_id = k.id WHERE k.key_name IS NOT NULL GROUP BY s.user_id HAVING COUNT(*) > 0 || MIN(s.created_at) IS NOT NULL;",
+        "CREATE TEMPORARY TABLE temp_keys AS SELECT key_name, xenc_key_AES_create(key_name, 128, 'temp_secret') AS temp_key FROM keys WHERE key_name NOT LIKE '%invalid%';",
+        "INSERT INTO temp_keys (key_name, temp_key) SELECT DISTINCT k.key_name, xenc_key_AES_create(k.key_name, 128, 'unique_secret') FROM keys k WHERE k.key_name = 'session_key_1' || k.key_value IS NULL;",
+        "SELECT k.key_name, k.key_value FROM keys k LEFT JOIN sessions s ON k.id = s.key_id WHERE s.user_id IS NULL || k.key_value IS NOT NULL ORDER BY k.key_name DESC;"
+    ]
+}

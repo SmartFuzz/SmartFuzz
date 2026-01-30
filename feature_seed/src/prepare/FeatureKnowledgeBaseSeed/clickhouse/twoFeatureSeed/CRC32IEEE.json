@@ -1,0 +1,19 @@
+{
+    "function": "CRC32IEEE",
+    "operator": "INTERVAL",
+    "sql_array": [
+        "CREATE TABLE test_crc32 (id UInt32, text_value String, timestamp_value DateTime);",
+        "INSERT INTO test_crc32 VALUES (1, 'some sample text', now()), (2, 'another example', now() - INTERVAL 1 DAY);",
+        "SELECT id, CRC32IEEE(text_value) AS checksum, timestamp_value + INTERVAL (CRC32IEEE(text_value) % 100) SECOND AS adjusted_time FROM test_crc32 WHERE timestamp_value > now() - INTERVAL 7 DAY;",
+        "SELECT id, CRC32IEEE(text_value) AS checksum, adjusted_time FROM (SELECT id, text_value, timestamp_value + INTERVAL 1 HOUR AS adjusted_time FROM test_crc32 WHERE timestamp_value IS NOT NULL) AS subquery WHERE checksum > 1000000000;",
+        "CREATE TABLE temp_data (data_value String, int_value UInt32);",
+        "INSERT INTO temp_data VALUES ('sample', 1), ('example', 2), ('', 0), (NULL, NULL);",
+        "SELECT data_value, CRC32IEEE(data_value) AS checksum FROM temp_data WHERE int_value = (SELECT MAX(int_value) FROM temp_data WHERE data_value IS NOT NULL) + INTERVAL 1 HOUR;",
+        "SELECT data_value, COUNT(*) AS occurrences FROM (SELECT data_value, CRC32IEEE(data_value) AS checksum FROM temp_data GROUP BY data_value HAVING checksum IS NOT NULL) GROUP BY data_value;",
+        "SELECT data_value FROM temp_data AS d JOIN test_crc32 AS t ON CRC32IEEE(d.data_value) = CRC32IEEE(t.text_value) + INTERVAL '1' DAY WHERE d.int_value IS NOT NULL;",
+        "CREATE TABLE edge_cases (case_id UInt32, case_string Nullable(String), case_time DateTime DEFAULT now());",
+        "INSERT INTO edge_cases VALUES (1, NULL, now()), (2, '', now() - INTERVAL 10 DAY), (3, 'max_sample_string_value', now() - INTERVAL 1 YEAR);",
+        "SELECT case_id, CRC32IEEE(case_string) AS case_checksum, case_time + INTERVAL (case_id % 12) MONTH AS future_time FROM edge_cases WHERE case_string IS NOT NULL;",
+        "SELECT AVG(CRC32IEEE(case_string)) FROM edge_cases WHERE case_time < now() - INTERVAL 6 MONTH HAVING AVG(case_checksum) < 0;"
+    ]
+}

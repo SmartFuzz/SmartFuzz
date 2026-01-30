@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/64854",
+  "title": "Query Triggers Runtime Error, Forcibly Terminating User Session",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n```sql\nDROP TABLE IF EXISTS t0;\nCREATE TABLE t0 (c1 FLOAT8, c2 DOUBLE, UNIQUE (c2, c1));\nSELECT t0.c1 AS ca1, t0.c1 AS ca2, t0.c2 AS ca3 FROM t0 WHERE ((t0.c2) IN (SELECT t0.c1 AS ca4 FROM t0)) NOT IN (((t0.c1 IS FALSE)), ((((BINARY (NULL ^ TRUE)) NOT REGEXP ((BINARY BIT_LENGTH((DEFAULT(t0.c2))) >> 17))) IS NOT TRUE)));\nSELECT * from t0 WHERE c1 = 1.0;\n```\n```shell\nWelcome to the MySQL monitor.  Commands end with ; or \\g.\nYour MySQL connection id is 2097212\nServer version: 8.0.11-TiDB-v8.5.0-20251119-e96f28c TiDB Server (Apache License 2.0) Community Edition, MySQL 8.0 compatible\n\nCopyright (c) 2000, 2023, Oracle and/or its affiliates.\n\nOracle is a registered trademark of Oracle Corporation and/or its\naffiliates. Other names may be trademarks of their respective\nowners.\n\nType 'help;' or '\\h' for help. Type '\\c' to clear the current input statement.\n\nmysql> DROP TABLE IF EXISTS t0;\nQuery OK, 0 rows affected (0.02 sec)\n\nmysql> CREATE TABLE t0 (c1 FLOAT8, c2 DOUBLE, UNIQUE (c2, c1));\nQuery OK, 0 rows affected (0.01 sec)\n\nmysql> SELECT t0.c1 AS ca1, t0.c1 AS ca2, t0.c2 AS ca3 FROM t0 WHERE ((t0.c2) IN (SELECT t0.c1 AS ca4 FROM t0)) NOT IN (((t0.c1 IS FALSE)), ((((BINARY (NULL ^ TRUE)) NOT REGEXP ((BINARY BIT_LENGTH((DEFAULT(t0.c2))) >> 17))) IS NOT TRUE)));\nERROR 1105 (HY000): runtime error: index out of range [-1]\nmysql>\nmysql> SELECT * from t0 WHERE c1 = 1.0;\nERROR 2013 (HY000): Lost connection to MySQL server during query\nNo connection. Trying to reconnect...\nConnection id:    2097214\nCurrent database: test\n\nEmpty set (0.01 sec)\n```\n\n### 2. What did you expect to see? (Required)\nThe query should execute without errors and return an empty set as the table is empty. \n### 3. What did you see instead (Required)\nThe user session was forcibly terminated by the server. \n### 4. What is your TiDB version? (Required)\n\nRelease Version: v8.5.0-20251119-e96f28c\nEdition: Community\nGit Commit Hash: e96f28c6511204001765668332a2c3d62d3d6fc3\nGit Branch: heads/refs/tags/v8.5.0-20251119-e96f28c\nUTC Build Time: 2025-11-19 15:51:41\nGoVersion: go1.23.3\nRace Enabled: false\nCheck Table Before Drop: false\nStore: unistore \n",
+  "date": "2025-12-04T08:23:10Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t1;",
+    "CREATE TABLE t1 (id Int32, value Float64, description String);",
+    "INSERT INTO t1 (id, value, description) VALUES (1, 1.5, 'test'), (2, NULL, 'null value'), (3, 2.5, 'another test');",
+    "SELECT * FROM t1 WHERE value IN (SELECT value FROM t1 WHERE description IS NOT NULL) AND id NOT IN (SELECT id FROM t1 WHERE value IS NULL);",
+    "SELECT COUNT(*) FROM t1 WHERE value > (SELECT AVG(value) FROM t1 WHERE value IS NOT NULL);"
+  ],
+  "key_bug_features": [
+    "Query with complex subquery causes session termination"
+  ]
+}

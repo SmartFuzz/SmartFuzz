@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id SERIAL PRIMARY KEY, value TEXT, timestamp_col TIMESTAMP(6));
+INSERT INTO test_table (value, timestamp_col) VALUES ('Test value 1', timestamp(6) '2020-01-01 00:00:00.000001'), (NULL, timestamp(6) '2020-02-01 00:00:00.000002'), ('Test value 2', timestamp(6) '2020-03-01 00:00:00.000003');
+SELECT count(value) AS non_null_count FROM (SELECT value, timestamp_col FROM test_table WHERE value IS NOT NULL) AS subquery;
+SELECT count(value) AS non_null_count, COUNT(timestamp_col) AS timestamp_count FROM test_table WHERE timestamp_col IS NOT NULL GROUP BY value HAVING count(value) > 0;
+CREATE TABLE related_table (related_id SERIAL PRIMARY KEY, test_id INTEGER REFERENCES test_table(id), related_value VARCHAR(255));
+INSERT INTO related_table (test_id, related_value) VALUES (1, 'Related data 1'), (NULL, 'Related data 2');
+SELECT count(rt.related_value) AS related_count FROM related_table rt JOIN test_table tt ON rt.test_id = tt.id WHERE tt.value IS NOT NULL GROUP BY tt.value HAVING COUNT(rt.related_value) > 0;
+SELECT tt.value, count(tt.value) OVER (PARTITION BY tt.value) AS value_count FROM test_table tt WHERE count(tt.value) > 0;
+SELECT count(t.value) AS total_count FROM (SELECT value, timestamp_col FROM test_table WHERE timestamp_col < timestamp(6) '2020-04-01 00:00:00.000000') AS t WHERE t.value != '';
+SELECT COUNT(*) AS null_count FROM test_table WHERE timestamp_col IS NULL;
+SELECT count(value) FROM (SELECT DISTINCT value FROM test_table WHERE value IS NOT NULL AND timestamp_col IS NOT NULL) AS distinct_values;

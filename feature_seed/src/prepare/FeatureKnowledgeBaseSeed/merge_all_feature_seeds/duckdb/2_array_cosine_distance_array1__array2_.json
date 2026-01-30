@@ -1,0 +1,11 @@
+CREATE TABLE test_arrays (id INTEGER PRIMARY KEY, array_data FLOAT[], vec_data FLOAT[]);
+INSERT INTO test_arrays VALUES (1, ARRAY[1.0, 2.0, 3.0], ARRAY[2.0, 3.0, 1.0]), (2, ARRAY[4.0, NULL, 5.0], ARRAY[1.0, 1.0, 1.0]), (3, ARRAY[1.0, 2.0, 3.0], ARRAY[4.0, 5.0, 6.0]);
+SELECT id, array_cosine_distance(array_data, vec_data) AS distance FROM test_arrays WHERE array_data IS NOT NULL AND vec_data IS NOT NULL;
+SELECT a.id, array_cosine_distance(a.array_data, (SELECT b.vec_data FROM test_arrays b WHERE b.id = a.id)) AS distance FROM test_arrays a;
+SELECT id, array_cosine_distance(array_data, vec_data) AS distance FROM test_arrays GROUP BY id HAVING distance < array_cosine_distance(ARRAY[1.0, 1.0, 1.0], ARRAY[2.0, 2.0, 2.0]);
+SELECT id, array_data, vec_data FROM test_arrays WHERE (array_cosine_distance(array_data, vec_data) <= (SELECT array_cosine_distance(ARRAY[10.0, 10.0, 10.0], ARRAY[20.0, 20.0, 20.0]) )*0.5);
+SELECT id, array_cosine_distance(array_data, vec_data) AS distance, (array_data <=> vec_data) AS list_distance FROM test_arrays WHERE distance > 0.5;
+SELECT id, array_cosine_distance(array_data, ARRAY[1.0, 2.0, 3.0]) AS distance, COUNT(*) OVER (PARTITION BY distance) AS count FROM test_arrays;
+CREATE TEMP TABLE temp_arrays AS SELECT id, array_data, vec_data FROM test_arrays WHERE array_data IS NOT NULL;
+INSERT INTO temp_arrays SELECT id, ARRAY[3.0, 3.0, 3.0], ARRAY[4.0, 4.0, 4.0] FROM test_arrays WHERE id = 1;
+SELECT array_cosine_distance(a.array_data, b.array_data) AS overall_distance FROM temp_arrays a JOIN temp_arrays b ON a.id <> b.id;

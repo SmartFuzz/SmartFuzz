@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=105904",
+  "title": "CHAR_LENGTH treats unicode variation selector wrongly",
+  "description": "Unicode variation selector is treated 1 char by CHAR_LENGTH.\n\nFor example, x'E8919BF3A08481', \"葛󠄁\" is just 1 char, but CHAR_LENGTH returns 2.\nhttps://dev.mysql.com/doc/refman/8.0/en/string-functions.html#function_char-length\nHow to repeat:\nmysql80 8> CREATE TABLE t1 (val VARCHAR(32) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci);\r\nQuery OK, 0 rows affected (0.02 sec)\r\n\r\nmysql80 8> INSERT INTO t1 VALUES (x'E8919BF3A08481');\r\nQuery OK, 1 row affected (0.02 sec)\r\n\r\nmysql80 8> SELECT val, LENGTH(val), CHAR_LENGTH(val), HEX(SUBSTR(val, 1, 1)) AS left_hex, HEX(SUBSTR(val, 2, 1)) AS right_hex FROM t1;\r\n+---------+-------------+------------------+----------+-----------+\r\n| val     | LENGTH(val) | CHAR_LENGTH(val) | left_hex | right_hex |\r\n+---------+-------------+------------------+----------+-----------+\r\n| 葛󠄁      |           7 |                2 | E8919B   | F3A08481  |\r\n+---------+-------------+------------------+----------+-----------+\r\n1 row in set (0.00 sec)\n\n----\r\n\r\nx'F3A08481' is unicode-variation-selector-18.\r\n\r\n-\nhttps://unicode-table.com/en/E0101/\nSuggested fix:\nCHAR_LENGTH should return 1.",
+  "date": "2021-12-15 09:33:00",
+  "vulnerable_version": "ALL",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (id INTEGER PRIMARY KEY, val NVARCHAR(64) NOT NULL);",
+    "INSERT INTO t2 (val) VALUES (CAST(x'E8919BF3A08481' AS NVARCHAR)), (CAST(x'E8919BF3A08481' AS NVARCHAR)), (NULL);",
+    "SELECT id, val, OCTET_LENGTH(val) AS byte_length, CHAR_LENGTH(val) AS char_length FROM t2 WHERE val IS NOT NULL;",
+    "CREATE TABLE t3 (ref_id INTEGER, FOREIGN KEY (ref_id) REFERENCES t2(id));",
+    "INSERT INTO t3 (ref_id) VALUES (1), (2), (NULL);"
+  ],
+  "key_bug_features": [
+    "CHAR_LENGTH miscounts unicode variation selector as multiple characters"
+  ]
+}

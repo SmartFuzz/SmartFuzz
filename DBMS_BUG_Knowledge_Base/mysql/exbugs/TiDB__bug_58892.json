@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/58892",
+  "title": "Range frame type in window function not considers peers",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n\n```sql\ndrop table if exists test.t1;\ncreate table test.t1 (p int, o int, v int);\ninsert into test.t1 values (0, 0, -1), (1, 0, -1), (1, 1, 0), (1, 1, 1), (1, 1, 4), (1, 1, 5), (1, 3, 4), (1, 6, 6), (1, 6, 3), (1, 6, 8), (1, 6, 0), (1, 6, 1), (1, 6, 2), (1, 6, 4), (1, 7, -5), (1, 8, 3), (1, 8, 1), (1, 8, 6), (1, 8, 1), (1, 8, 4), (1, 8, 9), (1, 18, 1), (1, 30, 30), (1, null, 1), (1, null, 2), (1, null, 3), (1, null, 4);\n```\n\n### 2. What did you expect to see? (Required)\n\n```\nmysql> select p, o, v, last_value(v) over (partition by p order by o) as l from t1;\n+------+------+------+------+\n| p    | o    | v    | l    |\n+------+------+------+------+\n|    0 |    0 |   -1 |   -1 |\n|    1 | NULL |    1 |    4 |\n|    1 | NULL |    2 |    4 |\n|    1 | NULL |    3 |    4 |\n|    1 | NULL |    4 |    4 |\n|    1 |    0 |   -1 |   -1 |\n|    1 |    1 |    0 |    5 |\n|    1 |    1 |    1 |    5 |\n|    1 |    1 |    4 |    5 |\n|    1 |    1 |    5 |    5 |\n|    1 |    3 |    4 |    4 |\n|    1 |    6 |    6 |    4 |\n|    1 |    6 |    3 |    4 |\n|    1 |    6 |    8 |    4 |\n|    1 |    6 |    0 |    4 |\n|    1 |    6 |    1 |    4 |\n|    1 |    6 |    2 |    4 |\n|    1 |    6 |    4 |    4 |\n|    1 |    7 |   -5 |   -5 |\n|    1 |    8 |    3 |    9 |\n|    1 |    8 |    1 |    9 |\n|    1 |    8 |    6 |    9 |\n|    1 |    8 |    1 |    9 |\n|    1 |    8 |    4 |    9 |\n|    1 |    8 |    9 |    9 |\n|    1 |   18 |    1 |    1 |\n|    1 |   30 |   30 |   30 |\n+------+------+------+------+\n```\n\n### 3. What did you see instead (Required)\n\n```\nmysql> select p, o, v, last_value(v) over (partition by p order by o) as l from t1;\n+------+------+------+------+\n| p    | o    | v    | l    |\n+------+------+------+------+\n|    1 | NULL |    4 |    4 |\n|    1 | NULL |    3 |    3 |\n|    1 | NULL |    2 |    2 |\n|    1 | NULL |    1 |    1 |\n|    1 |    0 |   -1 |   -1 |\n|    1 |    1 |    5 |    5 |\n|    1 |    1 |    4 |    4 |\n|    1 |    1 |    1 |    1 |\n|    1 |    1 |    0 |    0 |\n|    1 |    3 |    4 |    4 |\n|    1 |    6 |    6 |    6 |\n|    1 |    6 |    3 |    3 |\n|    1 |    6 |    8 |    8 |\n|    1 |    6 |    0 |    0 |\n|    1 |    6 |    1 |    1 |\n|    1 |    6 |    2 |    2 |\n|    1 |    6 |    4 |    4 |\n|    1 |    7 |   -5 |   -5 |\n|    1 |    8 |    3 |    3 |\n|    1 |    8 |    1 |    1 |\n|    1 |    8 |    6 |    6 |\n|    1 |    8 |    1 |    1 |\n|    1 |    8 |    4 |    4 |\n|    1 |    8 |    9 |    9 |\n|    1 |   18 |    1 |    1 |\n|    1 |   30 |   30 |   30 |\n|    0 |    0 |   -1 |   -1 |\n+------+------+------+------+\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\nnightly(https://github.com/pingcap/tidb/commit/c44672e0c51c4e50391ffc43902c980eef4c64cb)\n",
+  "date": "2025-01-13T09:27:26Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS test.t2;",
+    "CREATE TABLE test.t2 (id INT PRIMARY KEY, value DECIMAL(10, 2), status VARCHAR(10), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test.t2 VALUES (1, 10.50, 'active'), (2, 20.75, 'inactive'), (3, NULL, 'active'), (4, 15.00, 'inactive'), (5, 25.00, NULL);",
+    "SELECT id, value, (SELECT value FROM test.t2 t2_sub WHERE t2_sub.status = t2.status ORDER BY created_at DESC LIMIT 1) AS last_val FROM test.t2 t2;",
+    "SELECT id, value, IFNULL(value, 0) AS value_coalesced FROM test.t2 WHERE value IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Range frame type in window function ignores peer values"
+  ]
+}

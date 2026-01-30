@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/52290",
+  "title": "Unexpected values appeared in select query statements that should logically imply each other",
+  "description": "## Bug Report\r\n\r\nIn theory,the result of sql2(distinct)  ∈  the result of sql1\r\n\r\nhowever,in sql2  any return couldn't we find after adding >,which seems like a logical bug\r\n\r\n### 1. Minimal reproduce step (Required)\r\n’‘’create table\r\n```\r\nCREATE TABLE table_3_utf8_undef (\r\n  `col_decimal(40, 20)_key_unsigned` DECIMAL(40, 20) UNSIGNED,\r\n  `col_char(20)_key_signed` CHAR(20),\r\n  PRIMARY KEY (`col_decimal(40, 20)_key_unsigned`),\r\n  KEY (`col_char(20)_key_signed`)\r\n) CHARACTER SET utf8;\r\nINSERT INTO table_3_utf8_undef (`col_decimal(40, 20)_key_unsigned`, `col_char(20)_key_signed`) VALUES\r\n(1, '3\t'),\r\n(12.991, '1'),\r\n(47.1515, 'w');\r\n```\r\n'''sql1\r\n```\r\nSELECT \r\n      (!`f5`) AS `f1`\r\n    FROM \r\n      (SELECT `col_decimal(40, 20)_key_unsigned` AS `f5`\r\n       FROM `table_3_utf8_undef` \r\n      ) AS `t1`\r\n    HAVING \r\n       ((`f1`) = ANY (SELECT `col_char(20)_key_signed` FROM `table_3_utf8_undef` )); \r\n```\r\n'''sql2\r\n```\r\nSELECT \r\n      (!`f5`) AS `f1`\r\n    FROM \r\n      (SELECT `col_decimal(40, 20)_key_unsigned` AS `f5`\r\n       FROM `table_3_utf8_undef` \r\n      ) AS `t1`\r\n    HAVING \r\n      ((`f1`) >= ANY (SELECT `col_char(20)_key_signed` FROM `table_3_utf8_undef` ));    \r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n'''sql1\r\n```\r\nf1 \r\n----\r\n  0 \r\n  0 \r\n  0 \r\n(3 rows)\r\n```\r\n\r\n'''sql2\r\nsome value instead of nothing\r\n### 3. What did you see instead (Required)\r\n\r\n'''sql2\r\n```\r\n(0 rows)\r\n```\r\n### 4. What is your TiDB version? (Required)\r\n8.0.11-TiDB-v8.0.0\r\n\r\nCould you please confirm whether the simplification process we applied has been helpful for developers in diagnosing and addressing this issue?\r\n",
+  "date": "2024-04-01T11:51:59Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE table_4_mixed_types (id INTEGER PRIMARY KEY, name TEXT, score REAL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO table_4_mixed_types (id, name, score) VALUES (1, 'Alice', 85.50), (2, 'Bob', 90.00), (3, 'Charlie', NULL);",
+    "SELECT name FROM table_4_mixed_types WHERE score IS NOT NULL AND score >= 80.00;",
+    "SELECT name FROM table_4_mixed_types WHERE score IS NOT NULL AND score >= (SELECT AVG(score) FROM table_4_mixed_types WHERE score IS NOT NULL);",
+    "SELECT COUNT(*) AS total FROM table_4_mixed_types HAVING total > 0;"
+  ],
+  "key_bug_features": [
+    "HAVING clause with >= operator in SQL query"
+  ]
+}

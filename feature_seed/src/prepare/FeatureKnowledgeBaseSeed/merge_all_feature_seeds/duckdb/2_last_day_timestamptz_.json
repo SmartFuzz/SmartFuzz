@@ -1,0 +1,11 @@
+CREATE TABLE test_dates (id INT, event_time TIMESTAMPTZ, duration_days INT);
+INSERT INTO test_dates VALUES (1, TIMESTAMPTZ '2023-03-01 12:00:00-05', 31), (2, TIMESTAMPTZ '2023-02-01 12:00:00-05', NULL), (3, TIMESTAMPTZ '2023-01-15 12:00:00-05', 0);
+SELECT id, last_day(event_time) + duration_days AS final_day FROM test_dates WHERE duration_days IS NOT NULL;
+SELECT id, event_time, last_day(event_time + INTERVAL '1 day' * COALESCE(duration_days, 30)) AS last_event_day FROM test_dates WHERE event_time IS NOT NULL ORDER BY last_event_day;
+SELECT id, last_day(event_time), last_day(event_time + (duration_days || ' days')::INTERVAL) FROM test_dates WHERE duration_days IS NOT NULL;
+WITH temp_dates AS (SELECT id, last_day(event_time) AS last_event FROM test_dates) SELECT id, last_event, last_event + 5 AS next_event FROM temp_dates;
+SELECT td.id, td.event_time, LAST_DAY(td.event_time) OVER (PARTITION BY td.duration_days ORDER BY td.event_time) AS last_day_partitioned FROM test_dates td;
+CREATE TABLE join_test (ref_id INT, date_col TIMESTAMPTZ);
+INSERT INTO join_test VALUES (1, TIMESTAMPTZ '2023-02-28 12:00:00-05'), (1, TIMESTAMPTZ '2023-03-31 12:00:00-05'), (2, TIMESTAMPTZ '2023-03-01 12:00:00-05');
+SELECT tt.id, tt.event_time, LAST_DAY(tt.event_time + jt.ref_id) AS last_combined_day FROM test_dates tt JOIN join_test jt ON jt.ref_id = tt.id WHERE jt.date_col IS NOT NULL;
+SELECT jt.ref_id, COUNT(*) AS count_days, LAST_DAY(MIN(tt.event_time)) AS last_day_of_min_events FROM join_test jt JOIN test_dates tt ON jt.ref_id = tt.id GROUP BY jt.ref_id HAVING count_days > 1;

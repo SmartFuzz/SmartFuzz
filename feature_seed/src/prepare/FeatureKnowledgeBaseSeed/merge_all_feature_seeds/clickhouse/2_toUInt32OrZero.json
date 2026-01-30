@@ -1,0 +1,11 @@
+CREATE TABLE fuzz_test (id UInt32, value String);
+INSERT INTO fuzz_test VALUES (1, '32'), (2, 'abc'), (3, '0'), (4, '4294967296'), (5, '-10'), (6, '123.45'), (7, '0xc0fe'), (8, 'NaN'), (9, 'Inf'), (10, '');
+SELECT id, toUInt32OrZero(value) AS converted_value, CASE WHEN toUInt32OrZero(value) > 0 THEN 'Positive' ELSE 'Non-Positive' END AS value_status FROM fuzz_test;
+SELECT id, value, toUInt32OrZero(value) AS converted_value FROM fuzz_test WHERE toUInt32OrZero(value) > 10;
+CREATE TABLE other_test (other_id UInt32, fuzz_id UInt32, FOREIGN KEY fuzz_id REFERENCES fuzz_test(id));
+INSERT INTO other_test VALUES (1, 1), (2, 2), (3, 3);
+SELECT f.id, f.value, toUInt32OrZero(f.value) > o.other_id AS is_greater FROM fuzz_test f JOIN other_test o ON f.id = o.fuzz_id WHERE f.value IS NOT NULL;
+SELECT id, value, toUInt32OrZero(value), AVG(toUInt32OrZero(value)) OVER (PARTITION BY CASE WHEN toUInt32OrZero(value) > 0 THEN 1 ELSE 0 END) AS average FROM fuzz_test GROUP BY id, value;
+SELECT id, COUNT(*) AS non_positive_count FROM fuzz_test WHERE toUInt32OrZero(value) <= 0 GROUP BY id HAVING non_positive_count > 0;
+SELECT f.id, f.value, toUInt32OrZero(value) AS converted_value FROM fuzz_test f WHERE toUInt32OrZero(value) IN (SELECT toUInt32OrZero(value) FROM fuzz_test WHERE id > 5);
+SELECT f.id, f.value, toUInt32OrZero(value) AS converted_value FROM fuzz_test f ORDER BY (toUInt32OrZero(value) > 15) DESC, f.id ASC;

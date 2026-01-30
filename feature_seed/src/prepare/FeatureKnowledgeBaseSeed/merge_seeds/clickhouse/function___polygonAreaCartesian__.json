@@ -1,0 +1,15 @@
+CREATE TABLE polygons (id UInt64, points Array(Array(tuple(Float64, Float64))));
+INSERT INTO polygons VALUES (1, [[(0., 0.), (0., 5.), (5., 5.), (5., 0.)]], (2, [[(1., 1.), (1., 4.), (4., 4.), (4., 1.)]]));
+SELECT id, polygonAreaCartesian(points) FROM polygons WHERE id = 1;
+SELECT id, polygonAreaCartesian(points) FROM polygons WHERE id = 1 AND id IN (SELECT id FROM polygons WHERE id > 0);
+SELECT polygonAreaCartesian(ARRAY(SELECT points FROM polygons WHERE id = 2));
+SELECT id, polygonAreaCartesian([[[(0., 0.), (0., 0.), (0., 0.), (0., 0.)]]]) FROM polygons WHERE id = 1;
+SELECT polygonAreaCartesian([[[(1., 2.), (3., 4.), (5., 2.), (2., 1.)]]]);
+SELECT polygonAreaCartesian([[[(0., 0.), (0., 1.), (1., 1.), (1., 0.)]]]), polygonAreaCartesian([[[(5., 5.), (5., 6.), (6., 6.), (6., 5.)]]]);
+WITH polygon AS (SELECT points FROM polygons WHERE id = 1) SELECT polygonAreaCartesian((SELECT points FROM polygon));
+CREATE TABLE temp_polygons (id UInt64, area Float64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO temp_polygons SELECT id, polygonAreaCartesian(points) FROM polygons;
+SELECT SUM(area) FROM temp_polygons;
+SELECT COUNT(*) FROM polygons WHERE polygonAreaCartesian(points) > 0;
+SELECT id, polygonAreaCartesian([[[(2., 2.), (2., 3.), (3., 3.), (3., 2.)]]]) AS area FROM polygons HAVING area > 0;
+DROP TABLE polygons;

@@ -1,0 +1,37 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/86123",
+  "title": "Vertical merge of Nested arrays corrupts data",
+  "vulnerable_database": "ClickHouse",
+  "date": "2025-08-25T13:00:09Z",
+  "vulnerable_version": "",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nVertical merging of nested arrays results in silent data corruption, while horizontal merging works fine. The example for reproducing the error will show that the data is completely lost, but on product data we also see a variant when the data is replaced by data from another order by key. Also at the end there will be a workaround in which everything is merged ok.\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nhttps://fiddle.clickhouse.com/b52d196b-57db-45e8-a67e-d861f130393a\n1) Create table\n```sql\nCREATE TABLE bug (\nid UInt32,\n`n1.nums`Array(UInt32),\n`n1.numsplus`Array(UInt32),\n`n2.nums`Array(UInt32),\n`n2.numsplus`Array(UInt32)\n) ENGINE=ReplacingMergeTree() ORDER BY (id)\nSETTINGS\nmin_bytes_for_wide_part = 1, -- wide parts instead of compact\nvertical_merge_algorithm_min_rows_to_activate = 1,\nvertical_merge_algorithm_min_bytes_to_activate = 1,\nvertical_merge_algorithm_min_columns_to_activate = 1; -- vertical merge instead of horizontal\n```\n2) Disable merges (for test)\n```sql\nSYSTEM STOP MERGES bug;\n```\n3) Insert data\n```sql\nINSERT INTO bug (id, `n1.nums`, `n1.numsplus`, `n2.nums`, `n2.numsplus`)\nVALUES (1, [1,1,1], [2,2,2], [11,11,11], [22,22,22]);\nINSERT INTO bug (id, `n1.nums`, `n1.numsplus`, `n2.nums`, `n2.numsplus`)\nVALUES (2, [2,2,2], [3,3,3], [22,22,22], [33,33,33]);\nINSERT INTO bug (id, `n1.nums`, `n1.numsplus`, `n2.nums`, `n2.numsplus`)\nVALUES (3, [3,3,3], [4,4,4], [33,33,33], [44,44,44]);\nINSERT INTO bug (id, `n1.nums`, `n1.numsplus`, `n2.nums`, `n2.numsplus`)\nVALUES (4, [4,4,4], [5,5,5], [44,44,44], [55,55,55]);\nINSERT INTO bug (id, `n1.nums`, `n1.numsplus`, `n2.nums`, `n2.numsplus`)\nVALUES (5, [5,5,5], [6,6,6], [55,55,55], [66,66,66]);\nINSERT INTO bug (id, `n1.nums`, `n1.numsplus`, `n2.nums`, `n2.numsplus`)\nVALUES (6, [6,6,6], [7,7,7], [66,66,66], [77,77,77]);\nINSERT INTO bug (id, `n1.nums`, `n1.numsplus`, `n2.nums`, `n2.numsplus`)\nVALUES (7, [7,7,7], [8,8,8], [77,77,77], [88,88,88]);\nINSERT INTO bug (id, `n1.nums`, `n1.numsplus`, `n2.nums`, `n2.numsplus`)\nVALUES (8, [8,8,8], [9,9,9], [88,88,88], [99,99,99]);\n```\n4) Add nested arrays\n```sql\nALTER TABLE bug ADD COLUMN `n1.urls` Array(Array(String));\nALTER TABLE bug ADD COLUMN `n1.domains` Array(Array(String)) DEFAULT arrayMap(x -> arrayMap(y -> domain(y), x), `n1.urls`);",
+  "poc": [
+    "CREATE TABLE bug (\n  id UInt32, \n  `n1.nums`Array(UInt32),\n  `n1.numsplus`Array(UInt32),\n  `n2.nums`Array(UInt32),\n  `n2.numsplus`Array(UInt32)\n\n) ENGINE=ReplacingMergeTree() ORDER BY (id)\n  SETTINGS \n  min_bytes_for_wide_part = 1, -- wide parts instead of compact\n  vertical_merge_algorithm_min_rows_to_activate = 1,\n  vertical_merge_algorithm_min_bytes_to_activate = 1,\n  vertical_merge_algorithm_min_columns_to_activate = 1;",
+    "SYSTEM STOP MERGES bug;",
+    "INSERT INTO bug (id, `n1.nums`, `n1.numsplus`, `n2.nums`, `n2.numsplus`)\nVALUES (1, [1,1,1], [2,2,2], [11,11,11], [22,22,22]);",
+    "INSERT INTO bug (id, `n1.nums`, `n1.numsplus`, `n2.nums`, `n2.numsplus`)\nVALUES (2, [2,2,2], [3,3,3], [22,22,22], [33,33,33]);",
+    "INSERT INTO bug (id, `n1.nums`, `n1.numsplus`, `n2.nums`, `n2.numsplus`)\nVALUES (3, [3,3,3], [4,4,4], [33,33,33], [44,44,44]);",
+    "INSERT INTO bug (id, `n1.nums`, `n1.numsplus`, `n2.nums`, `n2.numsplus`)\nVALUES (4, [4,4,4], [5,5,5], [44,44,44], [55,55,55]);",
+    "INSERT INTO bug (id, `n1.nums`, `n1.numsplus`, `n2.nums`, `n2.numsplus`)\nVALUES (5, [5,5,5], [6,6,6], [55,55,55], [66,66,66]);",
+    "INSERT INTO bug (id, `n1.nums`, `n1.numsplus`, `n2.nums`, `n2.numsplus`)\nVALUES (6, [6,6,6], [7,7,7], [66,66,66], [77,77,77]);",
+    "INSERT INTO bug (id, `n1.nums`, `n1.numsplus`, `n2.nums`, `n2.numsplus`)\nVALUES (7, [7,7,7], [8,8,8], [77,77,77], [88,88,88]);",
+    "INSERT INTO bug (id, `n1.nums`, `n1.numsplus`, `n2.nums`, `n2.numsplus`)\nVALUES (8, [8,8,8], [9,9,9], [88,88,88], [99,99,99]);",
+    "ALTER TABLE bug ADD COLUMN `n1.urls` Array(Array(String));",
+    "ALTER TABLE bug ADD COLUMN `n1.domains` Array(Array(String)) DEFAULT arrayMap(x -> arrayMap(y -> domain(y), x), `n1.urls`);",
+    "SYSTEM START MERGES bug;",
+    "system.errors\nORDER BY last_error_time DESC\nLIMIT 1;",
+    "ALTER TABLE bug MODIFY COLUMN `n1.domains` Array(Array(String)) DEFAULT arrayMap(x -> arrayMap(y -> domain(y), CAST(x AS Array(String))), `n1.urls`);",
+    "ALTER TABLE bug ADD COLUMN `n1.urls` Array(Array(String)) DEFAULT arrayMap(x -> [], `n1.nums`);",
+    "ALTER TABLE bug ADD COLUMN `n1.domains` Array(Array(String)) DEFAULT arrayMap(x -> arrayMap(y -> domain(y), CAST(x AS Array(String))), `n1.urls`);"
+  ],
+  "key_bug_features": [
+    "Vertical merging of nested arrays causes data corruption"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE bug_test (id UInt32, `n1.nums` Array(Int32), `n1.numsplus` Array(Int32), `n2.nums` Array(Int32), `n2.numsplus` Array(Int32), `n3.dates` Array(Date)) ENGINE=MergeTree() ORDER BY (id);",
+    "INSERT INTO bug_test (id, `n1.nums`, `n1.numsplus`, `n2.nums`, `n2.numsplus`, `n3.dates`) VALUES (1, [1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12], [toDate('2023-01-01'), toDate('2023-01-02'), toDate('2023-01-03')]);",
+    "INSERT INTO bug_test (id, `n1.nums`, `n1.numsplus`, `n2.nums`, `n2.numsplus`, `n3.dates`) VALUES (2, [4, 5, 6], [7, 8, 9], [10, 11, 12], [13, 14, 15], [toDate('2023-01-04'), toDate('2023-01-05'), toDate('2023-01-06')]);",
+    "ALTER TABLE bug_test ADD COLUMN `n1.urls` Array(Array(String));",
+    "SELECT id, arrayJoin(`n1.nums`) AS nums, arrayJoin(`n1.numsplus`) AS numsplus FROM bug_test WHERE id = 1;"
+  ]
+}

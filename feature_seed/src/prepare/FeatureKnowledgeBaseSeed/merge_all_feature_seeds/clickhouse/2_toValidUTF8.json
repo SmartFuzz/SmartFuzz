@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id UInt32, name String, value String, created_at DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, 'valid_name', '\x61\xF0\x80\x80\x80b', now()), (2, 'invalid_name', '\x80\x80\x80\x80\x80', now());
+SELECT id, toValidUTF8(name), toValidUTF8(value) FROM test_table WHERE value = (SELECT toValidUTF8(name) FROM test_table WHERE id = 1);
+SELECT id, (toValidUTF8(name), toValidUTF8(value)) AS valid_data FROM test_table;
+SELECT id, COUNT(*) FROM (SELECT toValidUTF8(value) AS valid_value FROM test_table GROUP BY valid_value HAVING valid_value != '');
+SELECT id, NULLIF(toValidUTF8(value), '') AS valid_value FROM test_table WHERE value IS NOT NULL ORDER BY valid_value;
+SELECT id, toValidUTF8(CONCAT(value, 'extra')) AS combined_value FROM test_table WHERE created_at >= now() - INTERVAL 1 DAY;
+SELECT id, (toValidUTF8(name), NULLIF(toValidUTF8(value), '') AS valid_value) FROM test_table WHERE (id, created_at) IN (SELECT id, created_at FROM test_table WHERE value IS NOT NULL);
+INSERT INTO test_table SELECT id, toValidUTF8(name), toValidUTF8(value), created_at FROM (SELECT id, name, value, created_at FROM test_table WHERE toValidUTF8(value) IS NOT NULL) AS subquery;
+CREATE TABLE temp_table AS SELECT id, toValidUTF8(value) AS normalized_value FROM test_table WHERE value != '\x00' ORDER BY normalized_value;

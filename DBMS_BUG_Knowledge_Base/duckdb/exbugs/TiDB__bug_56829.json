@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/56829",
+  "title": "The index data and table data of the TTL table are inconsistent",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n1. startup a TiDB cluster;\r\n2. create table `cache`;\r\n```sql\r\nCREATE TABLE `cache` (\r\n  `cache_key` varchar(512) NOT NULL,\r\n  `cache_value` json NOT NULL,\r\n  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,\r\n  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\r\n  `expires` int(11) DEFAULT '-1' COMMENT 'cache will expire after n seconds',\r\n  `expired_at` datetime GENERATED ALWAYS AS (if(`expires` > 0, date_add(`updated_at`, interval `expires` second), date_add(`updated_at`, interval 99 year))) VIRTUAL,\r\n  PRIMARY KEY (`cache_key`) /*T![clustered_index] CLUSTERED */,\r\n  KEY `idx_c_on_created_at` (`created_at`),\r\n  KEY `idx_c_on_expired_at` (`expired_at`),\r\n  KEY `idx_expired_at` (`expired_at`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin /*T![ttl] TTL=`expired_at` + INTERVAL 0 DAY */ /*T![ttl] TTL_ENABLE='ON' */ /*T![ttl] TTL_JOB_INTERVAL='15m' */\r\n```\r\n3. run the following command\r\n```go\r\nfunc main() {\r\n\t// Open a connection to the database.\r\n\t// Replace the parameters with your own values for the database.\r\n\tdb, err := sql.Open(\"mysql\", \"root@tcp(localhost:4000)/test\")\r\n\tif err != nil {\r\n\t\tfmt.Println(\"Error connecting to the database:\", err)\r\n\t\treturn\r\n\t}\r\n\tdefer db.Close()\r\n\r\n\tfor i := 0; i < 1000000; i++ {\r\n\t\tdateStr := time.Now().Format(\"2006-01-02 15:04:05\")\r\n\t\tsqlStr := fmt.Sprintf(\"INSERT INTO `cache` (`cache_key`, `cache_value`, `created_at`, `updated_at`, `expires`) VALUES ('%s', '\\\"%s\\\"', '%s', '%s', %d) ON DUPLICATE KEY UPDATE expires = expires + 1\", dateStr, dateStr, dateStr, dateStr, 60)\r\n\t\t_, err = db.Exec(sqlStr)\r\n\t\tif err != nil {\r\n\t\t\tpanic(err)\r\n\t\t}\r\n\t\tif i%10 == 0 {\r\n\t\t\toldTime := time.Now().Add(-time.Minute).Format(\"2006-01-02 15:04:05\")\r\n\t\t\tupdateStr := fmt.Sprintf(\"UPDATE `cache` set `updated_at` = '%s' where `cache_key` = '%s'\", dateStr, oldTime)\r\n\t\t\t_, err = db.Exec(updateStr)\r\n\t\t\tif err != nil {\r\n\t\t\t\tpanic(err)\r\n\t\t\t}\r\n\t\t}\r\n\t\ttime.Sleep(500 * time.Millisecond)\r\n\t}\r\n}\r\n```\r\n4. admin check table `cache`;\r\n\r\n### 2. What did you expect to see? (Required)\r\nadmin check table should be ok.\r\n\r\n### 3. What did you see instead (Required)\r\n![image](https://github.com/user-attachments/assets/9f53ca59-3ed3-4ef7-989c-d1c28d6a8e91)\r\n\r\n### 4. What is your TiDB version? (Required)\r\nrelease-7.5\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2024-10-25T03:13:41Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE cache_test (cache_key VARCHAR(512) NOT NULL, cache_value JSON NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, expires INTEGER DEFAULT -1, expired_at TIMESTAMP GENERATED ALWAYS AS (CASE WHEN expires > 0 THEN updated_at + INTERVAL expires SECOND ELSE updated_at + INTERVAL 99 YEAR END) VIRTUAL, PRIMARY KEY (cache_key));",
+    "INSERT INTO cache_test (cache_key, cache_value, created_at, updated_at, expires) VALUES ('key1', '{\"value\": \"data1\"}', NOW(), NOW(), 60);",
+    "INSERT INTO cache_test (cache_key, cache_value, created_at, updated_at, expires) VALUES ('key2', '{\"value\": \"data2\"}', NOW(), NOW(), -1) ON CONFLICT(cache_key) DO UPDATE SET expires = 120;",
+    "UPDATE cache_test SET updated_at = NOW() WHERE cache_key = 'key1';",
+    "SELECT * FROM cache_test WHERE expires > 0 AND expired_at < NOW();"
+  ],
+  "key_bug_features": [
+    "Inconsistent index and table data in TTL table"
+  ]
+}

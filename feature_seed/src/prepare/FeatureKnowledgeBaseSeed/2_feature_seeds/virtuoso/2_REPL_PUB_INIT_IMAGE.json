@@ -1,0 +1,16 @@
+CREATE TABLE publications (id INT PRIMARY KEY, publication_geom GEOMETRY, data TEXT);
+INSERT INTO publications (id, publication_geom, data) VALUES (1, ST_GeomFromText('POINT(1 1)', 0), 'Sample Data 1');
+CREATE TABLE subscriptions (id INT PRIMARY KEY, subscription_geom GEOMETRY);
+INSERT INTO subscriptions (id, subscription_geom) VALUES (1, ST_GeomFromText('POINT(1 2)', 0));
+SELECT DB.DBA.REPL_PUB_INIT_IMAGE('publications', 'pub_image.log', 1000000) WHERE bif:st_intersects(publication_geom, (SELECT subscription_geom FROM subscriptions WHERE id = 1));
+SELECT partitioned.id, COUNT(*) FROM (SELECT id FROM publications WHERE bif:st_intersects(publication_geom, (SELECT subscription_geom FROM subscriptions WHERE id = 1))) AS partitioned GROUP BY id HAVING COUNT(*) > 0;
+CREATE TABLE temp_logs (log_file TEXT, processed BOOLEAN DEFAULT FALSE);
+INSERT INTO temp_logs (log_file) VALUES (REPLACE('pub_image.log', '.', '.1')), (REPLACE('pub_image.log', '.', '.2'));
+SELECT DB.DBA.REPL_PUB_INIT_IMAGE('publications', (SELECT log_file FROM temp_logs WHERE processed = FALSE LIMIT 1), 500000) FROM DUAL;
+UPDATE temp_logs SET processed = TRUE WHERE log_file = 'pub_image.log.1';
+SELECT bif:st_intersects(NULL, (SELECT subscription_geom FROM subscriptions WHERE id = 1)) AS NullCheck;
+INSERT INTO publications (id, publication_geom, data) VALUES (2, ST_GeomFromText('LINESTRING(0 0, 1 1)', 0), 'Sample Data 2') ON CONFLICT (id) DO NOTHING;
+SELECT COUNT(*) FROM publications WHERE bif:st_intersects(publication_geom, ST_GeomFromText('POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))', 0));
+SELECT DB.DBA.REPL_PUB_INIT_IMAGE('publications', 'pub_logs.log', (SELECT MAX(data_length) FROM (SELECT LENGTH(data) AS data_length FROM publications)));
+CREATE TEMPORARY TABLE geom_data AS SELECT ST_GeomFromText('POINT(2 2)', 0) AS geom;
+SELECT DB.DBA.REPL_PUB_INIT_IMAGE('publications', 'point_image.log', 1) WHERE bif:st_intersects(publication_geom, (SELECT geom FROM geom_data));

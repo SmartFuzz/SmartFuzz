@@ -1,0 +1,23 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/335",
+  "title": "Cannot delete triple with non-ASCII characters in literal with language tag",
+  "vulnerable_database": "Virtuoso",
+  "date": "2015-02-09 14:13:49",
+  "vulnerable_version": "",
+  "description": "Reproducing is about as easy as could be. Insert data with:\ninsert into graph <http://test/3807dd61-b064-11e4-8385-7831c1bfeec2> {\n  <http://test/3> <http://test/name> \"\\u00F8\"@no.\n  <http://test/3> <http://test/age> 3.\n}\n\nNow check that it's there:\nselect * where { graph <http://test/3807dd61-b064-11e4-8385-7831c1bfeec2> {\n  ?s ?p ?o\n  }\n}\n\nTwo triples, literal with its nice ø and the language tag. Everything fine.\nThen delete both triples:\nWITH <http://test/3807dd61-b064-11e4-8385-7831c1bfeec2> DELETE {\n  <http://test/3> <http://test/name> \"\\u00F8\"@no.\n  <http://test/3> <http://test/age> 3.\n}\n\nThis reports back that 2 (or less) triples have been deleted, which is perfect. Then verify that they're gone:\nselect * where { graph <http://test/3807dd61-b064-11e4-8385-7831c1bfeec2> {\n  ?s ?p ?o\n  }\n}\n\nUnfortunately, the \"ø\"@no is not gone. If you do this whole sequence with just \"ø\" (without the @no) it works as expected. Makes no difference whether you use SPARQL endpoint over HTTP or if you do this via JDBC (with \"SPARQL \" in front of all statements).",
+  "poc": [
+    "insert into graph <http://test/3807dd61-b064-11e4-8385-7831c1bfeec2> {\n  <http://test/3> <http://test/name> \"\\u00F8\"@no.\n  <http://test/3> <http://test/age> 3.\n}",
+    "select * where { graph <http://test/3807dd61-b064-11e4-8385-7831c1bfeec2> {\n  ?s ?p ?o\n  }\n}",
+    "WITH <http://test/3807dd61-b064-11e4-8385-7831c1bfeec2> DELETE {\n  <http://test/3> <http://test/name> \"\\u00F8\"@no.\n  <http://test/3> <http://test/age> 3.\n}"
+  ],
+  "key_bug_features": [
+    "Deleting triples with non-ASCII characters fails"
+  ],
+  "bug_features_seed": [
+    "CREATE GRAPH <http://test/graph1>;",
+    "INSERT INTO graph <http://test/graph1> { <http://test/1> <http://test/name> \"Test\"@en. };",
+    "INSERT INTO graph <http://test/graph1> { <http://test/2> <http://test/name> \"ø\"@no. };",
+    "WITH <http://test/graph1> DELETE { <http://test/2> <http://test/name> \"ø\"@no. };",
+    "SELECT * WHERE { GRAPH <http://test/graph1> { ?s ?p ?o } };"
+  ]
+}

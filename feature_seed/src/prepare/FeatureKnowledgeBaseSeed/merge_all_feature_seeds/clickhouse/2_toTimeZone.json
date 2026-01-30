@@ -1,0 +1,11 @@
+CREATE TABLE test_timestamps (id UInt32, event_time DateTime64(3, 'UTC'), event_type String);
+INSERT INTO test_timestamps VALUES (1, '2023-01-01 12:00:00.123', 'start'), (2, '2023-01-01 18:30:00.456', 'end');
+SELECT id, toTimeZone(event_time, 'Asia/Tokyo') AS tokyo_time, toTimeZone(event_time, 'Europe/London') AS london_time FROM test_timestamps;
+SELECT id, toTimeZone(event_time, 'UTC') AS utc_time, toTypeName(utc_time) AS type_utc, toInt32(utc_time) AS int32_utc FROM test_timestamps WHERE toInt32(toTimeZone(event_time, 'America/New_York')) > 0;
+SELECT arrayJoin([1, 2, 3]) AS num, toTimeZone(toDateTime('2023-01-01 00:00:00.000', 'UTC'), 'America/Los_Angeles') AS la_time FROM test_timestamps;
+SELECT id, toTimeZone(event_time, 'Pacific/Auckland') AS auckland_time FROM test_timestamps WHERE event_type IN (SELECT event_type FROM test_timestamps WHERE event_time < '2023-01-01 15:00:00');
+SELECT id, array[toTimeZone(event_time, 'Asia/Yekaterinburg'), toTimeZone(event_time, 'US/Samoa')] AS times FROM test_timestamps;
+CREATE TABLE test_boundaries (time_val DateTime64(9), str_val String);
+INSERT INTO test_boundaries VALUES ('2023-01-01 01:00:00.123456789', 'normal'), ('2023-01-01 01:00:00.000000000', 'zero'), ('2023-01-01 01:00:00.999999999', 'high');
+SELECT id, toTimeZone(time_val, 'Asia/Kolkata') AS kolkata_time FROM test_boundaries WHERE time_val IN (SELECT time_val FROM test_boundaries WHERE str_val = 'normal');
+SELECT id, arrayConcat([toTypeName(toTimeZone(time_val, 'UTC'))], [toTypeName(toTimeZone(time_val, 'Europe/Berlin'))]) AS time_types FROM test_boundaries GROUP BY id HAVING count(time_val) > 1;

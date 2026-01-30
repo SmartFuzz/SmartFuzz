@@ -1,0 +1,17 @@
+{
+    "function": "seriesPeriodDetectFFT",
+    "operator": "a != ANY (subquery)",
+    "sql_array": [
+        "CREATE TABLE time_series_test (id UInt32, values Array(Float64)) ENGINE = Memory;",
+        "INSERT INTO time_series_test VALUES (1, [1, 4, 6, 1, 4, 6, 1, 4, 6, 1, 4]), (2, [3, 5, 7, 3, 5, 7]), (3, [1, 1, 1, 1, 1]), (4, [NULL, 2, NULL, 2, NULL]), (5, [1.1, 1.2, 1.3, 1.1]), (6, [99999999, NULL, -99999999, 0]);",
+        "SELECT id, seriesPeriodDetectFFT(values) AS period FROM time_series_test WHERE seriesPeriodDetectFFT(values) != ANY (SELECT DISTINCT period FROM (SELECT id, seriesPeriodDetectFFT(values) AS period FROM time_series_test));",
+        "SELECT id, seriesPeriodDetectFFT(arrayMap(x -> x + NULL, values)) AS period FROM time_series_test WHERE values[1] != ANY (SELECT distinct x FROM time_series_test ARRAY JOIN values AS x);",
+        "SELECT id, seriesPeriodDetectFFT(arrayMap(x -> abs(x), values)) AS period FROM time_series_test GROUP BY period HAVING period IS NOT NULL;",
+        "SELECT id, seriesPeriodDetectFFT(values) AS period FROM time_series_test WHERE seriesPeriodDetectFFT(values) != ANY (SELECT seriesPeriodDetectFFT(values) FROM (SELECT values FROM time_series_test WHERE id IN (1, 2)));",
+        "SELECT id, seriesPeriodDetectFFT([1, 1, 1, 1]) AS const_period FROM time_series_test WHERE const_period != ANY (SELECT seriesPeriodDetectFFT(values) FROM time_series_test WHERE values IS NOT NULL) ORDER BY const_period DESC;",
+        "CREATE TABLE temp_series (val Float64) ENGINE = Memory;",
+        "INSERT INTO temp_series VALUES (1.1), (2.2), (3.3), (4.4), (NULL), (6.6);",
+        "SELECT seriesPeriodDetectFFT(arrayJoin((SELECT arrayMap(v -> IF(v IS NULL, 0, v), groupArray(val)) FROM temp_series))) AS period FROM temp_series;",
+        "SELECT id, seriesPeriodDetectFFT(values) AS period FROM time_series_test WHERE period != ANY (SELECT seriesPeriodDetectFFT(arrayMap(x -> x + 1.0, values)) FROM time_series_test WHERE id < 3);"
+    ]
+}

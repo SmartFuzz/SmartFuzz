@@ -1,0 +1,10 @@
+CREATE TABLE test_tuples (id Int32, tuple_num Tuple(Int32, Int32, Int32), tuple_mod Tuple(Int32, Int32, Int32));
+INSERT INTO test_tuples VALUES (1, (15, 10, 5), (5, 3, 2)), (2, (30, 25, 20), (0, 3, 4)), (3, (NULL, 15, 9), (1, NULL, 3));
+SELECT id, tupleModulo(tuple_num, tuple_mod) AS remainders FROM test_tuples WHERE tuple_num.1 IS NOT NULL AND tuple_mod.2 IS NOT NULL;
+SELECT id, tupleModulo((30, 25, NULL), (5, 0, 4)) AS remainders FROM test_tuples;
+SELECT id, tupleModulo((15, 10, 5), (4, 2, 0)) AS remainders FROM (SELECT * FROM test_tuples WHERE (id % 2) = 1) AS tt;
+WITH (tupleAvg := (SELECT AVG(num) FROM (SELECT arrayJoin(tuple_num) AS num FROM test_tuples))) SELECT id, tupleModulo(tuple_num, (2, 2, 2)) FROM test_tuples WHERE tupleAvg > 5;
+CREATE TABLE temp_table AS SELECT id, tuple_num, tuple_mod FROM test_tuples WHERE id < 3;
+INSERT INTO temp_table VALUES (4, (99, 80, 70), (10, 0, 5));
+SELECT id, tupleModulo(tuple_num, tuple_mod) AS remainders FROM temp_table GROUP BY id HAVING remainders.1 < 5;
+SELECT id, COUNT(*) FROM (SELECT tuple_num, tupleModulo(tuple_num, (1, 2, 3)) AS mod_values FROM temp_table) GROUP BY tuple_num HAVING mod_values.2 IS NOT NULL;

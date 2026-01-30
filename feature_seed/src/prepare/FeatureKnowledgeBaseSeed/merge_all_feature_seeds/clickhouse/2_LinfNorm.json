@@ -1,0 +1,9 @@
+CREATE TABLE test_vectors (id UInt32, values Array(Float32), category String);
+INSERT INTO test_vectors VALUES (1, [1.0, -2.0, 3.0], 'A'), (2, [], 'B'), (3, [NULL], 'C');
+SELECT id, LinfNorm(values) AS max_value FROM test_vectors WHERE id GLOBAL NOT IN (SELECT id FROM test_vectors WHERE category = 'B');
+SELECT id, LinfNorm((SELECT arrayJoin(values) FROM test_vectors WHERE category = 'A')) AS norm FROM test_vectors GROUP BY id HAVING norm GLOBAL NOT IN (SELECT LinfNorm(values) FROM test_vectors WHERE id = 2);
+SELECT id, LinfNorm(values) AS norm_value FROM (SELECT id, arrayFill(-1.5, 3) AS values FROM test_vectors WHERE id = (SELECT max(id) FROM test_vectors)) GROUP BY id HAVING norm_value GLOBAL NOT IN (SELECT LinfNorm([3, -4, 2]) FROM test_vectors);
+SELECT id, LinfNorm(values) AS norm_value FROM (SELECT id, arrayFilter(x -> x IS NOT NULL, values) AS values FROM test_vectors) GROUP BY id HAVING norm_value GLOBAL NOT IN (SELECT LinfNorm((1.5, NULL)) FROM test_vectors);
+CREATE TABLE temp_data AS SELECT id, LinfNorm(values) AS max_norm FROM test_vectors ENGINE = Memory;
+INSERT INTO temp_data SELECT id, values FROM test_vectors WHERE category != 'B';
+SELECT id FROM temp_data WHERE max_norm GLOBAL NOT IN (SELECT LinfNorm([NULL]) FROM temp_data) AND max_norm > 0.5 GROUP BY id ORDER BY max_norm DESC;

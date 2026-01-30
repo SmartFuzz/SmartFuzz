@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/65027",
+  "title": "planner: prefix index can lose to table full scan",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n```\ncreate table tx(\n  a text collate utf8mb4_general_ci, \n  index ia3(a(3)), \n  index ia10(a(10)), \n  index ia(a(100))\n);\n\ninsert into tx values('aaAAaaaAAAabbc'), ('AaAaAaAaAaAbBC'), ('AAAaabbBBbbb'), ('AAAaabbBBbbbccc');\ninsert into tx values('b'), ('bBb'), ('Bb'), ('bA'), ('BBBB'), ('BBBBBDDDDDdd'), ('bbbbBBBBbbBBR'), ('BBbbBBbbBBbbBBRRR');\n```\n\n### 2. What did you expect to see? (Required)\n\nIf you don't collect statistics (do not run ANALYZE) - the index will be chosen:\n```\ntidb> explain select * from tx where a = 'aaa';\n+-------------------------------+---------+-----------+------------------------+-----------------------------------------------------------------------------+\n| id                            | estRows | task      | access object          | operator info                                                               |\n+-------------------------------+---------+-----------+------------------------+-----------------------------------------------------------------------------+\n| IndexLookUp_9                 | 10.00   | root      |                        |                                                                             |\n| ├─IndexRangeScan_6(Build)     | 10.00   | cop[tikv] | table:tx, index:ia3(a) | range:[\"\\x00A\\x00A\\x00A\",\"\\x00A\\x00A\\x00A\"], keep order:false, stats:pseudo |\n| └─Selection_8(Probe)          | 10.00   | cop[tikv] |                        | eq(test.tx.a, \"aaa\")                                                        |\n|   └─TableRowIDScan_7          | 10.00   | cop[tikv] | table:tx               | keep order:false, stats:pseudo                                              |\n+-------------------------------+---------+-----------+------------------------+-----------------------------------------------------------------------------+\n```\nThis is the desired plan.\n\n### 3. What did you see instead (Required)\n\nIf you run ANALYZE - TableFullScan wins:\n```\ntidb> analyze table tx;\nQuery OK, 0 rows affected, 1 warning (0.039 sec)\n\ntidb> explain select * from tx where a = 'aaa';\n+-------------------------+---------+-----------+---------------+----------------------+\n| id                      | estRows | task      | access object | operator info        |\n+-------------------------+---------+-----------+---------------+----------------------+\n| TableReader_8           | 1.00    | root      |               | data:Selection_7     |\n| └─Selection_7           | 1.00    | cop[tikv] |               | eq(test.tx.a, \"aaa\") |\n|   └─TableFullScan_6     | 16.00   | cop[tikv] | table:tx      | keep order:false     |\n+-------------------------+---------+-----------+---------------+----------------------+\n3 rows in set (0.011 sec)\n```\n\n### 4. What is your TiDB version? (Required)\n\nmaster branch\n\n",
+  "date": "2025-12-15T00:18:50Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE tx2 (id INT PRIMARY KEY, a TEXT, b VARCHAR(50) NOT NULL, c DATE DEFAULT NULL);",
+    "INSERT INTO tx2 VALUES (1, 'abcDEFghi', 'test1', '2023-01-01');",
+    "INSERT INTO tx2 VALUES (2, 'ABCdefGHI', 'test2', NULL);",
+    "ANALYZE TABLE tx2;",
+    "EXPLAIN SELECT * FROM tx2 WHERE a = 'abc';"
+  ],
+  "key_bug_features": [
+    "ANALYZE causes TableFullScan to win over index"
+  ]
+}

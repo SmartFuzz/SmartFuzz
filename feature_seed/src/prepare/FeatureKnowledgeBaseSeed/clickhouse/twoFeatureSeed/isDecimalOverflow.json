@@ -1,0 +1,16 @@
+{
+    "function": "isDecimalOverflow",
+    "operator": "a <> b",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, value Decimal32(10, 2));",
+        "INSERT INTO test_table VALUES (1, toDecimal32(99999.99, 2)), (2, toDecimal32(100000.00, 2)), (3, toDecimal32(-99999.99, 2)), (4, toDecimal32(0, 2));",
+        "SELECT id, value, isDecimalOverflow(value, 5) AS overflow_check FROM test_table WHERE value <> toDecimal32(100000.01, 2);",
+        "SELECT id, value, (isDecimalOverflow(value) <> 0) AS is_overflow FROM (SELECT id, value FROM test_table WHERE id = (SELECT MAX(id) FROM test_table)) HAVING is_overflow = 1;",
+        "SELECT a.id, a.value, b.value AS comparison_value FROM test_table AS a JOIN (SELECT toDecimal32(100000.00, 2) AS value) AS b ON a.value <> b.value WHERE isDecimalOverflow(a.value) = 0;",
+        "WITH (SELECT AVG(value) FROM test_table) AS avg_value SELECT id, value, isDecimalOverflow(value, 10) FROM test_table WHERE value < avg_value;",
+        "CREATE TABLE temp_table AS SELECT id, value FROM test_table WHERE isDecimalOverflow(value) = 1;",
+        "SELECT COUNT(*), MAX(value) as max_value FROM test_table WHERE NOT isDecimalOverflow(value) GROUP BY id HAVING max_value <> toDecimal32(99999.99, 2);",
+        "SELECT id, isDecimalOverflow(value, 6) AS overflow_check FROM test_table WHERE id IN (SELECT id FROM test_table WHERE value <> toDecimal32(99999.99, 2));",
+        "ALTER TABLE test_table ADD COLUMN new_value Decimal32(11, 2);"
+    ]
+}

@@ -1,0 +1,13 @@
+CREATE TABLE test_blobs (id INTEGER PRIMARY KEY, data BLOB, value INTEGER);
+INSERT INTO test_blobs VALUES (1, '\xAA\xBB'::BLOB, 5), (2, '\xCC\xDD'::BLOB, NULL), (3, NULL, 10);
+SELECT id, octet_length(data) + value AS total_length FROM test_blobs WHERE octet_length(data) IS NOT NULL;
+SELECT id, octet_length(data) + (SELECT AVG(value) FROM test_blobs WHERE value IS NOT NULL) AS avg_length FROM test_blobs WHERE data IS NOT NULL;
+SELECT id, octet_length(data) AS blob_length, (SELECT SUM(value) FROM test_blobs) + COALESCE(value, 0) AS adjusted_value FROM test_blobs WHERE data IS NOT NULL;
+SELECT id, octet_length(data) + NULL AS length_with_null FROM test_blobs;
+SELECT id, octet_length(data) + (CASE WHEN value IS NULL THEN 0 ELSE value END) AS final_value FROM test_blobs HAVING final_value > 0;
+SELECT id, octet_length(data) + (SELECT MAX(value) FROM test_blobs) AS max_blob_value FROM test_blobs WHERE data IS NOT NULL;
+CREATE TABLE additional_data (key INTEGER, info BLOB);
+INSERT INTO additional_data VALUES (1, '\xEE\xFF'::BLOB), (2, NULL);
+SELECT a.id, octet_length(a.data) + octet_length(b.info) AS combined_length FROM test_blobs a JOIN additional_data b ON a.value = (SELECT MAX(value) FROM test_blobs) WHERE octet_length(b.info) IS NOT NULL;
+SELECT key, octet_length(info) + 1 AS incremented_length FROM additional_data WHERE info IS NOT NULL GROUP BY key HAVING incremented_length > 2;
+SELECT id, octet_length(data) + (SELECT COUNT(*) FROM test_blobs WHERE data IS NULL) AS length_with_count FROM test_blobs WHERE data IS NOT NULL ORDER BY length_with_count DESC;

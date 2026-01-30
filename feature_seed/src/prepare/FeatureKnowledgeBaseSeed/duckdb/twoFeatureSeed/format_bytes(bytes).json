@@ -1,0 +1,16 @@
+{
+    "function": "format_bytes(bytes)",
+    "operator": "+",
+    "sql_array": [
+        "CREATE TABLE file_sizes (id INTEGER PRIMARY KEY, size_bytes INTEGER NOT NULL);",
+        "INSERT INTO file_sizes (size_bytes) VALUES (16384), (2097152), (104857600), (0), (NULL);",
+        "CREATE TABLE time_series (timestamp_col TIMESTAMP, data_value INTEGER);",
+        "INSERT INTO time_series (timestamp_col, data_value) VALUES (TIMESTAMP '2023-01-01 01:00:00', 100), (TIMESTAMP '2023-01-05 01:00:00', 200), (TIMESTAMP '2023-01-10 01:00:00', 300);",
+        "SELECT format_bytes(MAX(size_bytes)) AS max_human_readable_size, COUNT(*) AS total_files FROM file_sizes WHERE size_bytes IS NOT NULL GROUP BY size_bytes HAVING total_files > 0;",
+        "SELECT t.timestamp_col, t.data_value + (SELECT COALESCE(NULL, 1) from (SELECT SUM(data_value) FROM time_series WHERE data_value IS NOT NULL)) AS adjusted_value FROM time_series t ORDER BY t.timestamp_col DESC;",
+        "SELECT format_bytes(SUM(size_bytes)) AS total_bytes FROM file_sizes WHERE size_bytes IS NOT NULL;",
+        "SELECT t.timestamp_col + INTERVAL (SELECT COUNT(*) FROM time_series) DAY AS future_date FROM time_series t WHERE data_value > (SELECT AVG(data_value) FROM time_series) ORDER BY future_date;",
+        "WITH bytes_summary AS (SELECT format_bytes(size_bytes) AS readable_size FROM file_sizes WHERE size_bytes IS NOT NULL) SELECT readable_size FROM bytes_summary ORDER BY readable_size ASC;",
+        "SELECT t.timestamp_col, t.data_value, format_bytes(t.data_value * 1024) AS formatted_value FROM time_series t JOIN file_sizes f ON f.size_bytes > 1024 WHERE t.data_value IS NOT NULL;"
+    ]
+}

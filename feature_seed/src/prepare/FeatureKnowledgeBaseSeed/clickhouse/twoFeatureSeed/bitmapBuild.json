@@ -1,0 +1,16 @@
+{
+    "function": "bitmapBuild",
+    "operator": "x -> expr",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, values Array(UInt32), score Float64 DEFAULT 0);",
+        "INSERT INTO test_table VALUES (1, [1, 2, 3]), (2, [3, 4, 5]), (3, []), (4, [UInt32(999999), UInt32(1000000)]);",
+        "SELECT id, bitmapBuild(values) AS bm, (values -> x -> x * 2) AS doubled_values FROM test_table;",
+        "SELECT id, bitmapBuild([score, IFNULL(score, 0)]) AS bm_score FROM test_table GROUP BY id HAVING bm_score != bitmapBuild([]);",
+        "SELECT id, values, bitmapBuild(arrayMap(x -> x * 3, values)) AS tripled_bitmap FROM test_table WHERE length(values) > 0;",
+        "WITH (SELECT arrayJoin(values) FROM test_table WHERE id = 1) AS flat_values SELECT bitmapBuild(flat_values) AS flat_bitmap;",
+        "SELECT id, count() AS cnt FROM test_table WHERE bitmapBuild(values) != bitmapBuild([]) GROUP BY id HAVING cnt > 0;",
+        "CREATE TABLE temp_table AS SELECT id, values, (values -> x -> x + 1) AS incremented FROM test_table WHERE score = 0; DROP TABLE temp_table;",
+        "SELECT id, bitmapBuild(values) AS bm, (SELECT sum(arrayJoin(values)) FROM test_table WHERE id < 3) AS total_sum FROM test_table GROUP BY id;",
+        "SELECT id, bitmapBuild([1, 2, NULL]) AS bm_with_nulls FROM test_table WHERE bitmapBuild([length(values)] + toUInt32(NULL)) IS NOT NULL;"
+    ]
+}

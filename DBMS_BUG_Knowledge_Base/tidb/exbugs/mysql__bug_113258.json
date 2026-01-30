@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=113258",
+  "title": "TLS 1.3 tests fail",
+  "description": "On macOS, 8.2.0 debug build:\r\n$ ./mtr rpl.rpl_tlsv13\r\n...\r\n[ 25%] rpl.rpl_tlsv13 'mix'                      [ fail ]\r\n        Test ended at 2023-11-28 16:33:17\r\n\r\nCURRENT_TEST: rpl.rpl_tlsv13\r\nmysqltest: At line 176: Error condition reached in include/wait_for_slave_param.inc\r\nIn included file ./include/wait_for_slave_param.inc: 177\r\nincluded from ./include/wait_for_slave_io_to_start.inc: 48\r\nincluded from ./include/wait_for_slave_to_start.inc: 34\r\nincluded from ./include/start_slave.inc: 45\r\nincluded from /Users/laurynas/vilniusdb/mysql-8.2.0/mysql-test/suite/rpl/t/rpl_tlsv13.test: 59\r\n\r\nThe result from queries just before the failure was:\r\n14\t./slave-relay-bin-channel_1.000001\t4\t\t0\t0\t0\t1\tchannel_1\tNULL\tNULL\t0\tSTREAM\tOFF\t\r\n14\t./slave-relay-bin-my_channel.000001\t4\tmaster-bin.000001\t157\t0\t4\t1\tmy_channel\tNULL\tNULL\t0\tSTREAM\tOFF\t\r\n\r\n**** slave_master_info on server_2 ****\r\nSELECT * FROM mysql.slave_master_info;\r\nNumber_of_lines\tMaster_log_name\tMaster_log_pos\tHost\tUser_name\tUser_password\tPort\tConnect_retry\tEnabled_ssl\tSsl_ca\tSsl_capath\tSsl_cert\tSsl_cipher\tSsl_key\tSsl_verify_server_cert\tHeartbeat\tBind\tIgnored_server_ids\tUuid\tRetry_count\tSsl_crl\tSsl_crlpath\tEnabled_auto_position\tChannel_name\tTls_version\tPublic_key_path\tGet_public_key\tNetwork_namespace\tMaster_compression_algorithm\tMaster_zstd_compression_level\tTls_ciphersuites\tSource_connection_auto_failover\tGtid_only\r\n33\t\t4\t127.0.0.1\troot\t\t13000\t1\t0\t\t\t\t\t\t0\t30\t\t0\t\t10\t\t\t0channel_1\t\t\t0\t\tuncompressed\t3\tNULL\t0\t0\r\n33\tmaster-bin.000001\t157\t127.0.0.1\treplssl\tpassword\t13000\t60\t1\t\t\t\t\t\t0\t30\t\t0\t106a9526-8dfb-11ee-b805-79ca8a54082a\t10\t\t\t0\tmy_channel\t\t\t0\t\tuncompressed\t3\tTLS_AES_128_CCM_8_SHA256\t0\t0\r\n\r\n**** mysql.gtid_executed on server_2 ****\r\nSELECT * FROM mysql.gtid_executed;\r\nsource_uuid\tinterval_start\tinterval_end\r\n\r\nrpl_topology=1->2\r\nextra debug info if any: ''\r\nconnection default;\r\n1 tests executed in this mtr thread: rpl.rpl_tlsv13\r\nlast error log entry: SERVER_1:<none>; SERVER_2:<Thread: 19 Error: MY-010584: Replica I/O for channel 'my_channel': Error connecting to source 'replssl@127.0.0.1:13000'. This was attempt 1/10, with a delay of 60 seconds between attempts. Message: SSL connection error: error:0A0000B5:SSL routines::no ciphers available, Error_code: MY-002026>\r\nrpl error summary: SERVER_2:( RECEIVERS:(CHANNEL:<my_channel> ERROR:<Error connecting to source 'replssl@127.0.0.1:13000'. This was attempt 1/10, with a delay of 60 seconds between attempts. Message: SSL connection error: error:0A0000B5:SSL routines::no ciphers available>))\r\nconnection slave;\nHow to repeat:\nSee above",
+  "date": "2023-11-28 14:34:00",
+  "vulnerable_version": "8.2.0, 8.3.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR(255) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table (id, name) VALUES (1, 'Test Entry');",
+    "SELECT * FROM test_table WHERE id = (SELECT MAX(id) FROM test_table);",
+    "UPDATE test_table SET name = NULL WHERE id = 1;",
+    "SELECT COUNT(*) FROM test_table WHERE name IS NULL;"
+  ],
+  "key_bug_features": [
+    "SSL connection error due to no ciphers available"
+  ]
+}

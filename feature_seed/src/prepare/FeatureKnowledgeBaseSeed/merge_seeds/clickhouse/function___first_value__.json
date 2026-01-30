@@ -1,0 +1,18 @@
+DROP TABLE IF EXISTS salaries;
+CREATE TABLE salaries (team String, player String, salary UInt32, position String) Engine = Memory;
+INSERT INTO salaries FORMAT Values ('Port Elizabeth Barbarians', 'Gary Chen', 196000, 'F'), ('New Coreystad Archdukes', 'Charles Juarez', 190000, 'F'), ('Port Elizabeth Barbarians', 'Michael Stanley', 100000, 'D'), ('New Coreystad Archdukes', 'Scott Harrison', 180000, 'D'), ('Port Elizabeth Barbarians', 'Robert George', 195000, 'M'), ('South Hampton Seagulls', 'Douglas Benson', 150000, 'M'), ('South Hampton Seagulls', 'James Henderson', 140000, 'M');
+SELECT player, salary, first_value(player) OVER (ORDER BY salary DESC) AS highest_paid_player FROM salaries;
+DROP TABLE IF EXISTS teams;
+CREATE TABLE teams (team_name String, foundation_year UInt32) Engine = Memory;
+INSERT INTO teams FORMAT Values ('Port Elizabeth Barbarians', 2001), ('New Coreystad Archdukes', 1995), ('South Hampton Seagulls', 2010);
+SELECT team_name, player, first_value(player) OVER (PARTITION BY team ORDER BY salary DESC) AS top_player FROM salaries JOIN teams ON salaries.team = teams.team_name;
+SELECT team, first_value(salary) OVER (PARTITION BY team ORDER BY salary DESC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS first_salary FROM salaries;
+SELECT team, player, first_value(salary) OVER (PARTITION BY team ORDER BY salary DESC RESPECT NULLS) AS first_salary FROM salaries;
+SELECT team, first_value(first_salary) OVER (ORDER BY team) AS ultimate_salary FROM (SELECT team, first_value(salary) OVER (PARTITION BY team ORDER BY salary DESC) AS first_salary FROM salaries) AS subquery;
+SELECT DISTINCT team, first_value(player) OVER (PARTITION BY team ORDER BY salary DESC IGNORE NULLS) AS highest_paid FROM salaries;
+WITH ranked_players AS (SELECT player, salary, ROW_NUMBER() OVER (ORDER BY salary DESC) AS rank FROM salaries) SELECT player, first_value(player) OVER (ORDER BY rank) AS first_player FROM ranked_players WHERE rank <= 3;
+DROP TABLE IF EXISTS player_stats;
+CREATE TABLE player_stats (player String, games_played UInt32, salary UInt32) Engine = Memory;
+INSERT INTO player_stats FORMAT Values ('Gary Chen', 30, 196000), ('Charles Juarez', 29, 190000), ('Michael Stanley', 25, 100000);
+SELECT ps.player, first_value(ps.salary) OVER (PARTITION BY ps.player ORDER BY ps.games_played DESC) AS salary_rank FROM player_stats ps JOIN salaries s ON ps.player = s.player;
+SELECT team, first_value(salary) OVER (PARTITION BY team ORDER BY salary DESC ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) AS current_and_previous_salary FROM salaries;

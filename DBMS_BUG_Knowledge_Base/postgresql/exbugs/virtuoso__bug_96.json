@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/96",
+  "title": "Virtuoso 7, filter issue",
+  "description": "Hi,\nI have already contacted the openlink team about this issue some time ago by mail, but I will post it here again to better follow it up.\nThe following query does not give a correct result for ?law.\nActually what happens, is we get:\n\n1  the correct result for ?law\nit is combined with about 30 other (invalid) results matching dcat:theme and other filters. These results reuse the ?law value of the first row (which is incorrect).\n\nInstead, as each of these additional results have a different dct:identifier (or ?law) we need the correct correspondence.\nIn v6.1.6 it is ok. (running same query on same stored data.\nPREFIX dc: <http://purl.org/dc/elements/1.1/>\nPREFIX void:  <http://rdfs.org/ns/void#>\nPREFIX dct:   <http://purl.org/dc/terms/>\nPREFIX dcat:  <http://www.w3.org/ns/dcat#>\nPREFIX wkd:   <http://schema.wolterskluwer.de/>\nPREFIX foaf:  <http://xmlns.com/foaf/0.1/>\nPREFIX skos:  <http://www.w3.org/2004/02/skos/core#>\nPREFIX rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\nPREFIX rdfs:  <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX prov:  <http://www.w3.org/ns/prov>\nSELECT DISTINCT ?law ?title ?issued\nFROM <http://lod2.tenforce.com/wp9/work-dcat/catalog>\nwhere {\n   ?dataset a dcat:Dataset ; dct:title ?title .\n   FILTER(lang(?title) = \"de\")\n   ?dataset dct:identifier ?law ;  dct:issued ?issued .\n   FILTER(regex(str(?law), \"^http://publications.europa.eu/resource/cellar\"))\n   ?dataset dcat:theme <http://eurovoc.europa.eu/3969> .\n   }\nORDER BY ?issued ?title",
+  "date": "2013-10-16 06:58:03",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE datasets (id SERIAL PRIMARY KEY, title VARCHAR(255) NOT NULL, identifier VARCHAR(255), issued DATE, theme VARCHAR(255));",
+    "INSERT INTO datasets (title, identifier, issued, theme) VALUES ('Dataset 1', 'http://publications.europa.eu/resource/cellar/1', '2023-01-01', 'http://eurovoc.europa.eu/3969');",
+    "INSERT INTO datasets (title, identifier, issued, theme) VALUES ('Dataset 2', 'http://publications.europa.eu/resource/cellar/2', '2023-01-02', 'http://eurovoc.europa.eu/3969');",
+    "SELECT DISTINCT identifier AS law, title, issued FROM datasets WHERE theme = 'http://eurovoc.europa.eu/3969' AND issued IS NOT NULL ORDER BY issued, title;",
+    "UPDATE datasets SET title = NULL WHERE id = 1;"
+  ],
+  "key_bug_features": [
+    "Incorrect results due to invalid filtering of ?law values."
+  ]
+}

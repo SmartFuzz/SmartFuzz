@@ -1,0 +1,10 @@
+CREATE TABLE fuzz_test (id UInt32, value String, timestamp DateTime, nested Tuple(a Int32, b Float64), nullable_value Nullable(Int32)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO fuzz_test VALUES (1, 'test1', toDateTime('2023-10-01 15:00:00'), (1, 1.5), NULL), (2, '', toDateTime('2023-10-02 15:00:00'), (2, 2.2), 42);
+SELECT murmurHash2_32(murmurHash2_64(value, id, CAST(timestamp AS String)), id * 2) AS combined_hash FROM fuzz_test WHERE NULLIF(value, '') IS NOT NULL;
+SELECT id, nested, murmurHash2_64(id, value, timestamp) AS hash_value FROM fuzz_test WHERE (SELECT COUNT(*) FROM fuzz_test WHERE value = '') > 0 GROUP BY id, nested HAVING murmurHash2_32(value, nested) % 2 = 0;
+SELECT id, murmurHash2_32(value, nested.b) AS hash_val, (id * 100) + (SELECT COUNT(*) FROM fuzz_test WHERE nested.a > 0) AS additional_value FROM fuzz_test ORDER BY hash_val DESC;
+SELECT id, murmurHash2_32(murmurHash2_64(value, id) * 2, NULLIF(timestamp, toDateTime('2023-01-01 00:00:00'))) AS complex_hash FROM fuzz_test WHERE value != '' AND id < 3;
+SELECT murmurHash2_32(ARRAY(SELECT nested FROM fuzz_test WHERE nested.b < 2.0), id * 3) AS complex_nested_hash FROM fuzz_test GROUP BY id;
+CREATE TABLE temp_fuzz (temp_id UInt32, temp_value String) ENGINE = Memory;
+INSERT INTO temp_fuzz VALUES (1, 'abc'), (2, 'xyz');
+SELECT tf.temp_id, murmurHash2_32(murmurHash2_64(tf.temp_value, CAST(tf.temp_id AS UInt64)), 10) AS temp_hash FROM temp_fuzz tf JOIN fuzz_test ft ON tf.temp_id = ft.id WHERE ft.value <> '';

@@ -1,0 +1,16 @@
+{
+    "function": "xenc_key_3DES_read",
+    "operator": "REGEXP",
+    "sql_array": [
+        "CREATE TABLE test_keys (id INT PRIMARY KEY, key_name VARCHAR(50), key_value VARCHAR(128));",
+        "INSERT INTO test_keys (id, key_name, key_value) VALUES (1, 'Sample Symmetric Key', 'EE/uaFF5N3ZNJWUTR8DYe+OEbwaKQnso'), (2, 'Another Key', NULL), (3, 'Empty Key', '');",
+        "SELECT xenc_key_3DES_read(key_name, key_value) FROM test_keys WHERE key_value IS NOT NULL AND key_value REGEXP '^[A-Za-z0-9+/=]{24,};';",
+        "SELECT xenc_key_3DES_read((SELECT MAX(key_name) FROM test_keys WHERE key_value REGEXP '^[A-Za-z0-9+/=]+$'), 'EE/uaFF5N3ZNJWUTR8DYe+OEbwaKQnso') AS des_key FROM test_keys;",
+        "SELECT id, key_name, COUNT(*) OVER (PARTITION BY key_value) AS value_count FROM test_keys HAVING value_count > 1 AND key_value REGEXP '^.*[0-9].*$';",
+        "CREATE TABLE key_usage (user_id INT, key_id INT, usage_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (key_id) REFERENCES test_keys(id));",
+        "INSERT INTO key_usage (user_id, key_id) VALUES (1, 1), (NULL, 1), (2, 2);",
+        "SELECT ku.user_id, (SELECT COUNT(*) FROM key_usage k WHERE k.key_id = ku.key_id) AS usage_count FROM key_usage ku JOIN test_keys tk ON ku.key_id = tk.id WHERE tk.key_name REGEXP 'Key$';",
+        "SELECT xenc_key_3DES_read(key_name, key_value) FROM test_keys WHERE key_value IS NULL OR key_value = '';",
+        "SELECT DISTINCT key_name FROM test_keys WHERE key_value REGEXP '^[A-F0-9]{32}$' AND key_value IS NOT NULL;"
+    ]
+}

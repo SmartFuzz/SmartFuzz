@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/1158",
+  "title": "sorting with `LIMIT`, `OFFSET`, `MAX`, and subqueries",
+  "description": "hi!\nWhen we want to use order by, with LIMIT and OFFSET, with datasets over 10000 rows, e.g., LIMIT 100 OFFSET 14000 we get error:\n\nVirtuoso 22023 Error SR353: Sorted TOP clause specifies more then 14100 rows to sort. Only 10000 are allowed. Either decrease the offset and/or row count or use a scrollable cursor\n\nIn order to avoid this error we are using subqueries as suggested in Working with SPARQL endpoint constraints via LIMIT & OFFSET\nHowever, there is a problem when using MAX (in group) function. We need MAX because there are some sosa:ObservationCollection with more than one sosa:resultTime/sosa:phenomenonTime and we just need to take one\nFor example, see queries below (you can test in https://www.foodie-cloud.org/sparql)\n\nquery 1 returns the first 100 rows correctly, but the ORDER BY is ignored. Rows are returned in random? order\nthe query 2 returns rows in correct order, but the LIMIT and OFFSET are ignored\n\nIs there a way to make both work properly, where all, ORDER BY, plus LIMIT and OFFSET work properly?\nQuery1\nPREFIX sosa:  <http://www.w3.org/ns/sosa/>\n\nSELECT DISTINCT ?id MAX(?phenomenonTime) as ?p MAX(?resultTime) as ?r\n\nFROM <http://w3id.org/iliad/dataaset/jf-pilot-sample>\n\nWHERE {\n    SELECT DISTINCT ?id ?phenomenonTime ?resultTime\n    WHERE {\n        ?col    a                           sosa:ObservationCollection;\n                sosa:resultTime             ?resultTime;\n                sosa:phenomenonTime         ?phenomenonTime;\n                sosa:hasMember              ?s.\n        ?s      rdf:type/rdfs:subClassOf*   sosa:Observation;\n                sosa:hasResult              ?result.\n\n        BIND(REPLACE(STRAFTER(STR(?s), \"observation/\"), \"/\", \"-\") AS ?id)\n\n    }\n    ORDER BY ?id\n}\nGROUP BY ?id\nLIMIT 100 OFFSET 0\nQuery2\nPREFIX sosa:  <http://www.w3.org/ns/sosa/>\n\nSELECT DISTINCT ?id ?p ?r\n\nFROM <http://w3id.org/iliad/dataaset/jf-pilot-sample>\n\nWHERE {\n    SELECT DISTINCT ?id MAX(?phenomenonTime) as ?p MAX(?resultTime) as ?r\n    FROM <http://w3id.org/iliad/dataaset/jf-pilot-sample>\n    WHERE {\n        ?col    a                           sosa:ObservationCollection;\n                sosa:resultTime             ?resultTime;\n                sosa:phenomenonTime         ?phenomenonTime;\n                sosa:hasMember              ?s.\n        ?s      rdf:type/rdfs:subClassOf*   sosa:Observation;\n                sosa:hasResult              ?result.\n\n        BIND(REPLACE(STRAFTER(STR(?s), \"observation/\"), \"/\", \"-\") AS ?id)\n\n    }\n    GROUP BY ?id\n    ORDER BY ?id\n}\nLIMIT 100 OFFSET 0",
+  "date": "2023-08-29 16:04:47",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE observation_collection (id INTEGER PRIMARY KEY, phenomenon_time TIMESTAMP, result_time TIMESTAMP, has_member VARCHAR);",
+    "INSERT INTO observation_collection (phenomenon_time, result_time, has_member) VALUES (CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'member1'), (CURRENT_TIMESTAMP - INTERVAL '1 day', CURRENT_TIMESTAMP - INTERVAL '1 hour', 'member2'), (CURRENT_TIMESTAMP - INTERVAL '2 days', CURRENT_TIMESTAMP - INTERVAL '2 hours', 'member3');",
+    "SELECT id, MAX(phenomenon_time) AS max_phenomenon_time, MAX(result_time) AS max_result_time FROM observation_collection GROUP BY id ORDER BY max_phenomenon_time LIMIT 100 OFFSET 0;",
+    "SELECT id, MAX(phenomenon_time) AS max_phenomenon_time FROM (SELECT id, phenomenon_time FROM observation_collection WHERE has_member IS NOT NULL) AS subquery GROUP BY id ORDER BY max_phenomenon_time LIMIT 100 OFFSET 20000;",
+    "SELECT DISTINCT id FROM observation_collection WHERE phenomenon_time IS NOT NULL ORDER BY id LIMIT 100 OFFSET 14000;"
+  ],
+  "key_bug_features": [
+    "ORDER BY with LIMIT and OFFSET in large datasets"
+  ]
+}

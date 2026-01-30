@@ -1,0 +1,22 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14812",
+  "title": "Parsing Exception when reading files from s3",
+  "vulnerable_database": "DuckDB",
+  "date": "2024-11-13 13:39:10",
+  "vulnerable_version": "",
+  "description": "### What happens?\r\n\r\nwhen running\r\n```\r\ns3_parq_path=f\"s3://{s3_bucket}/{s3_path}\"\r\ncon.read_parquet(s3_parq_path)\r\n```\r\nthere is no problem\r\nHowever when running (as suggested in duckdb  [docs](https://duckdb.org/docs/data/parquet/overview.html#inserts-and-views))\r\n```\r\nsql_com=f\"\"\"\r\nCREATE TABLE test_trip AS\r\nSELECT *\r\n FROM read_parquet({s3_parq_path});\r\n\"\"\"\r\ncon.sql(sql_com)\r\n```\r\nThere is an error\r\n> ParserException: Parser Error: syntax error at or near \":\"\r\n\r\n\r\n\r\n### To Reproduce\r\n\r\n```\r\nimport duckdb\r\n\r\ns3_bucket=\"BUCKET\"\r\ns3_path=\"PATH/TO/*.parquet\"\r\nparq_path=f\"s3://{s3_bucket}/{s3_path}\"\r\n\r\ncon = duckdb.connect(\":memory:\")\r\ncon.sql(\"\"\"CREATE OR REPLACE SECRET (\r\n    TYPE S3,\r\n    PROVIDER CREDENTIAL_CHAIN\r\n);\"\"\")\r\ncon.read_parquet(parq_path)\r\n```\r\nThis Fails\r\n```\r\nsql_com=f\"\"\"\r\nCREATE TABLE test_trip AS\r\nSELECT *\r\n FROM read_parquet({parq_path});\r\n\"\"\"\r\ncon.sql(sql_com)\r\n```\r\nWith a `ParserException`\r\n> ParserException: Parser Error: syntax error at or near \":\"\r\n\r\n### OS:\r\n\r\nUbuntu 22.04.4 LTS aws instance   ml.t3.2xlarge\r\n\r\n### DuckDB Version:\r\n\r\n1.1.3\r\n\r\n### DuckDB Client:\r\n\r\nPython \r\n\r\n### Hardware:\r\n\r\nPRETTY_NAME=\"Ubuntu 22.04.4 LTS\" NAME=\"Ubuntu\" VERSION_ID=\"22.04\" VERSION=\"22.04.4 LTS (Jammy Jellyfish)\" VERSION_CODENAME=jammy ID=ubuntu ID_LIKE=debian HOME_URL=\"https://www.ubuntu.com/\" SUPPORT_URL=\"https://help.ubuntu.com/\" BUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\" PRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\" UBUNTU_CODENAME=jammy\r\n\r\n### Full Name:\r\n\r\nJoseph Berry\r\n\r\n### Affiliation:\r\n\r\nFairmatic\r\n\r\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\r\n\r\nI have not tested with any build\r\n\r\n### Did you include all relevant data sets for reproducing the issue?\r\n\r\nNo - I cannot share the data sets because they are confidential\r\n\r\n### Did you include all code required to reproduce the issue?\r\n\r\n- [X] Yes, I have\r\n\r\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\r\n\r\n- [X] Yes, I have",
+  "poc": [
+    "CREATE TABLE test_trip AS\r\nSELECT *\r\n FROM read_parquet({s3_parq_path});",
+    "CREATE TABLE test_trip AS\r\nSELECT *\r\n FROM read_parquet({parq_path});"
+  ],
+  "key_bug_features": [
+    "ParserException when using read_parquet in SQL statement"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE test_data (id INTEGER PRIMARY KEY, name VARCHAR, age INTEGER, salary FLOAT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_data (id, name, age, salary) VALUES (1, 'Alice', 30, 70000.50);",
+    "INSERT INTO test_data (id, name, age, salary) VALUES (2, 'Bob', NULL, 50000.00);",
+    "CREATE TABLE test_trip AS SELECT * FROM read_parquet('s3://BUCKET/PATH/TO/*.parquet');",
+    "SELECT * FROM test_data WHERE age IS NULL OR salary > 60000.00;"
+  ]
+}

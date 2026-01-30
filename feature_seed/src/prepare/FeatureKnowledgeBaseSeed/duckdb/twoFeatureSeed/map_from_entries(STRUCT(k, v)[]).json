@@ -1,0 +1,16 @@
+{
+    "function": "map_from_entries(STRUCT(k, v)[])",
+    "operator": "-",
+    "sql_array": [
+        "CREATE TABLE test_table (id INT, data STRUCT<k: INT, v: STRING>);",
+        "INSERT INTO test_table VALUES (1, {k: 5, v: 'val1'}), (2, {k: 3, v: 'val2'}), (3, {k: NULL, v: 'val3'});",
+        "SELECT map_from_entries(ARRAY(SELECT {k: id, v: data.v} FROM test_table WHERE data.k IS NOT NULL)) AS result_map FROM test_table;",
+        "SELECT (TIME '06:02:03' - INTERVAL (SELECT MAX(data.k) FROM test_table WHERE data.k IS NOT NULL) HOUR) AS adjusted_time;",
+        "SELECT id, map_from_entries(ARRAY[{k: id, v: data.v}]) AS generated_map FROM test_table GROUP BY id HAVING map_from_entries(ARRAY[{k: data.k, v: data.v}]) IS NOT NULL;",
+        "CREATE TABLE another_table (ref_id INT, timestamp_col TIMESTAMP);",
+        "INSERT INTO another_table VALUES (1, TIMESTAMP '2023-10-04 10:00:00'), (2, TIMESTAMP '2023-10-05 15:00:00');",
+        "SELECT t1.id, (SELECT COUNT(*) FROM another_table WHERE another_table.ref_id = t1.id AND TIMESTAMP '2023-10-04 10:00:00' - INTERVAL data.k HOUR > timestamp_col) AS count_ref FROM test_table t1;",
+        "WITH temp AS (SELECT id, data.v, map_from_entries(ARRAY[{k: data.k, v: data.v}]) AS map_data FROM test_table) SELECT temp.id, temp.map_data, (TIME '06:59:59' - INTERVAL (SELECT COUNT(*) FROM temp) MINUTE) AS boundary_time FROM temp;",
+        "SELECT id, (SELECT SUM(data.k) FROM test_table WHERE data.k IS NOT NULL) - (SELECT COUNT(*) FROM test_table WHERE data.v = 'val3') AS result FROM test_table JOIN another_table ON test_table.id = another_table.ref_id GROUP BY id HAVING result BETWEEN 1 AND 10;"
+    ]
+}

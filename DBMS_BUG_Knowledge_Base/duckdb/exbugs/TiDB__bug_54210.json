@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/54210",
+  "title": "EXTRACT(YEAR FROM col) partitioning expression does not prune partitions",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n```mysql\r\ncreate table t (a datetime, b varchar(255)) partition by range (extract(year from a)) (partition p2020 values less than (2021), partition p2021 values less than (2022), partition pMax values less than (maxvalue));\r\ninsert into t values ('2020-12-31 23:59:59','2020-12-31 23:59:59'),('2021-01-01', '2021-01-01');\r\nexplain select * from t where a = '2020-12-31 23:59:59';\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\nThat only partition p2020 would be used.\r\n```mysql\r\ntidb> explain select * from t where a = '2020-12-31 23:59:59';\r\n+-------------------------+----------+-----------+-----------------+------------------------------------------+\r\n| id                      | estRows  | task      | access object   | operator info                            |\r\n+-------------------------+----------+-----------+-----------------+------------------------------------------+\r\n| TableReader_7           | 10.00    | root      | partition:p2020 | data:Selection_6                         |\r\n| └─Selection_6       | 10.00    | cop[tikv] |                 | eq(test.t.a, 2020-12-31 23:59:59.000000) |\r\n|   └─TableFullScan_5 | 10000.00 | cop[tikv] | table:t         | keep order:false, stats:pseudo           |\r\n+-------------------------+----------+-----------+-----------------+------------------------------------------+\r\n\r\n```\r\n### 3. What did you see instead (Required)\r\nAll partitions where used.\r\n```mysql\r\ntidb> explain select * from t where a = '2020-12-31 23:59:59';\r\n+-------------------------+----------+-----------+---------------+------------------------------------------+\r\n| id                      | estRows  | task      | access object | operator info                            |\r\n+-------------------------+----------+-----------+---------------+------------------------------------------+\r\n| TableReader_7           | 10.00    | root      | partition:all | data:Selection_6                         |\r\n| └─Selection_6       | 10.00    | cop[tikv] |               | eq(test.t.a, 2020-12-31 23:59:59.000000) |\r\n|   └─TableFullScan_5 | 10000.00 | cop[tikv] | table:t       | keep order:false, stats:pseudo           |\r\n+-------------------------+----------+-----------+---------------+------------------------------------------+\r\n```\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n```\r\ntidb_version(): Release Version: v8.1.0\r\nEdition: Community\r\nGit Commit Hash: 945d07c5d5c7a1ae212f6013adfb187f2de24b23\r\nGit Branch: HEAD\r\nUTC Build Time: 2024-05-21 03:52:40\r\nGoVersion: go1.21.10\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv\r\n```\r\n",
+  "date": "2024-06-25T13:22:28Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (a TIMESTAMP, b VARCHAR(255));",
+    "INSERT INTO t1 VALUES ('2020-01-01 00:00:00', 'New Year 2020'), ('2021-01-01 00:00:00', 'New Year 2021');",
+    "CREATE TABLE t2 (id INT PRIMARY KEY, c1 INT, c2 VARCHAR(100));",
+    "INSERT INTO t2 SELECT 1, 100, 'test' UNION ALL SELECT 2, NULL, 'example';",
+    "SELECT * FROM t1 WHERE a = '2020-01-01 00:00:00';"
+  ],
+  "key_bug_features": [
+    "EXTRACT(YEAR FROM col) does not prune partitions"
+  ]
+}

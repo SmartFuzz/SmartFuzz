@@ -1,0 +1,23 @@
+{
+    "function": "trace_on",
+    "operator": "ILIKE",
+    "sql_array": [
+        "CREATE TABLE TestTable (id INT PRIMARY KEY, name VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, value DECIMAL(10, 2));",
+        "INSERT INTO TestTable (id, name, value) VALUES (1, 'TestValue1', 123.45), (2, 'TestValue2', NULL), (3, 'AnotherTestValue', 987.65);",
+        "SELECT trace_on('user_log', 'failed_log');",
+        "SELECT * FROM TestTable WHERE name ILIKE 'test%';",
+        "SELECT id, name, (CASE WHEN value IS NULL THEN 'No Value' ELSE 'Has Value' END) AS value_status FROM TestTable WHERE name ILIKE '%Value%';",
+        "SELECT id, name FROM TestTable WHERE id IN (SELECT id FROM TestTable WHERE value IS NOT NULL) ILIKE '1%';",
+        "SELECT id, name FROM TestTable WHERE value + 1 > 130 AND name ILIKE 'TestVal%';",
+        "SELECT id, name FROM TestTable WHERE created_at > NOW() - INTERVAL '1 DAY' AND name ILIKE '%' || '2' || '%';",
+        "WITH RankedValues AS (SELECT id, value, ROW_NUMBER() OVER (PARTITION BY name ORDER BY value DESC) as rn FROM TestTable) SELECT id, name FROM RankedValues WHERE rn = 1 AND name ILIKE 'Another%';",
+        "CREATE TABLE NestedTest (parent_id INT, child_id INT, CONSTRAINT fk_parent FOREIGN KEY (parent_id) REFERENCES TestTable(id));",
+        "INSERT INTO NestedTest (parent_id, child_id) VALUES (1, 1), (1, 2), (2, NULL);",
+        "SELECT trace_on('user_log', 'failed_log') FROM TestTable WHERE value IS NOT NULL OR name ILIKE 'Test%';",
+        "SELECT a.id, a.name, b.child_id FROM TestTable a JOIN NestedTest b ON a.id = b.parent_id WHERE b.child_id IS NULL AND a.name ILIKE 'Test%';",
+        "SELECT id, name, COUNT(*) OVER (PARTITION BY name) AS name_count FROM TestTable GROUP BY id, name HAVING COUNT(*) > 1 AND name ILIKE '%Test%';",
+        "ALTER TABLE TestTable ADD COLUMN is_active BOOLEAN DEFAULT TRUE;",
+        "SELECT id, name FROM TestTable WHERE name ILIKE ANY(ARRAY['TestValue1', 'TestValue2', 'NonExistent%']);",
+        "DROP TABLE IF EXISTS NestedTest;"
+    ]
+}

@@ -1,0 +1,12 @@
+CREATE TABLE test_strings (id Int32, text String, notes Array(String));
+INSERT INTO test_strings VALUES (1, 'Hello World', ['greet', 'universe']), (2, 'Clickhouse Testing', ['database', 'sql']);
+SELECT id, multiSearchFirstPositionCaseInsensitiveUTF8(text, ['ell', 'wor', 'TESTING']) AS position FROM test_strings WHERE position NOT IN (SELECT multiSearchFirstPositionCaseInsensitiveUTF8(text, ['hello', 'DATABASE']) FROM test_strings WHERE id = 1);
+CREATE TABLE test_numbers (num Int32, val Float64) ENGINE = MergeTree() ORDER BY num;
+INSERT INTO test_numbers VALUES (1, 1.0), (2, NULL), (3, 3.5), (4, -2.0);
+SELECT num, val FROM test_numbers WHERE val NOT IN (SELECT multiSearchFirstPositionCaseInsensitiveUTF8(CAST(num AS String), ['1', '3']) FROM test_numbers WHERE num IS NOT NULL);
+SELECT id, text FROM test_strings WHERE multiSearchFirstPositionCaseInsensitiveUTF8(text, ['', '   ', 'test']) NOT IN (SELECT CAST(num AS String) FROM test_numbers WHERE val IS NULL);
+SELECT COUNT(*) AS total FROM (SELECT multiSearchFirstPositionCaseInsensitiveUTF8(text, ['Hello', 'Database']) AS position FROM test_strings GROUP BY position HAVING position NOT IN (0, 1));
+CREATE TABLE test_edge_cases (event_time DateTime, description String) ENGINE = MergeTree() ORDER BY event_time;
+INSERT INTO test_edge_cases VALUES (NOW(), 'Empty'), (NOW() - INTERVAL 1 DAY, 'NULL Case'), (NOW() - INTERVAL 2 DAY, 'Overflow Case');
+SELECT event_time, multiSearchFirstPositionCaseInsensitiveUTF8(description, ['empty', NULL]) AS position FROM test_edge_cases WHERE position NOT IN (SELECT multiSearchFirstPositionCaseInsensitiveUTF8(description, ['NULL', 'Overflow']) FROM test_edge_cases);
+SELECT event_time, text, multiSearchFirstPositionCaseInsensitiveUTF8(text, ['Clickhouse', 'SQL']) AS search_position FROM test_strings WHERE search_position NOT IN (SELECT multiSearchFirstPositionCaseInsensitiveUTF8(text, ['?']) FROM test_strings WHERE id < 2);

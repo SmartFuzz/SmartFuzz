@@ -1,0 +1,5 @@
+CREATE TABLE test2 ON CLUSTER default (id Int32, name String, created_at DateTime DEFAULT now()) ENGINE = ReplicatedMergeTree('/clickhouse/tables/{database}/{table}', '{replica}') ORDER BY id;
+CREATE TABLE test2_dist ON CLUSTER default AS test2 ENGINE = Distributed(default, default, test2);
+INSERT INTO test2 SELECT number, concat('Name', number) FROM numbers(100);
+ALTER TABLE test2 ATTACH PARTITION tuple() FROM test2_dist;
+SELECT count(*) FROM test2_dist SETTINGS max_replica_delay_for_distributed_queries=2, fallback_to_stale_replicas_for_distributed_queries=1;

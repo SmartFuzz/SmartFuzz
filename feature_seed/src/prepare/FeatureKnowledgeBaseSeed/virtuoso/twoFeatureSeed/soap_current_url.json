@@ -1,0 +1,21 @@
+{
+    "function": "soap_current_url",
+    "operator": "bif:exec",
+    "sql_array": [
+        "CREATE TABLE resources (id INT PRIMARY KEY, url VARCHAR(255), host VARCHAR(255) DEFAULT NULL);",
+        "INSERT INTO resources (id, url) VALUES (1, 'http://example.com/resource1'), (2, NULL), (3, 'http://example.com/resource2');",
+        "SELECT id, soap_current_url() AS current_url FROM resources WHERE id = 1;",
+        "SELECT id, bif:exec('SELECT url FROM resources WHERE id = 2') AS exec_url FROM resources;",
+        "SELECT r1.id, r1.url, (SELECT soap_current_url() FROM resources WHERE id = r1.id) AS current_url FROM resources r1 WHERE r1.id IS NOT NULL;",
+        "SELECT r1.id, COUNT(*) FROM resources r1 JOIN resources r2 ON r1.id = r2.id GROUP BY r1.id HAVING COUNT(*) > 0;",
+        "SELECT id, soap_current_url() FROM (SELECT id, url AS dynamic_url FROM resources WHERE url IS NOT NULL) AS subquery;",
+        "SELECT r.id, soap_current_url() AS current_url FROM resources r WHERE r.host IS NULL OR r.host = bif:exec('SELECT host FROM resources WHERE id = 1');",
+        "CREATE TEMPORARY TABLE temp_resources AS SELECT id, url FROM resources;",
+        "INSERT INTO temp_resources (id, url) VALUES (4, 'http://example.com/resource3'), (5, 'http://example.com/resource4');",
+        "SELECT id, soap_current_url() AS current_url FROM temp_resources WHERE id IN (SELECT id FROM resources WHERE url LIKE 'http://%');",
+        "SELECT r.id, soap_current_url() AS current_url FROM resources r JOIN temp_resources tr ON r.id = tr.id ORDER BY r.id;",
+        "WITH RECURSIVE resource_cte AS (SELECT id, url FROM resources WHERE url IS NOT NULL UNION SELECT r.id, soap_current_url() FROM resources r JOIN resource_cte rc ON r.id = rc.id) SELECT * FROM resource_cte;",
+        "SELECT r.id, bif:exec('SELECT soap_current_url() FROM resources WHERE id = ' || r.id || ' LIMIT 1') AS dynamic_current_url FROM resources r;",
+        "SELECT r.id, soap_current_url() AS current_url FROM resources r WHERE LENGTH(r.url) > 0 GROUP BY r.url HAVING COUNT(r.id) > 1;"
+    ]
+}

@@ -1,0 +1,16 @@
+CREATE TABLE intervals (id INT, duration INTERVAL);
+INSERT INTO intervals VALUES (1, INTERVAL '14 months'), (2, INTERVAL '2 days'), (3, INTERVAL '1 year 5 months');
+SELECT id, extract('month' FROM duration) AS month_value FROM intervals;
+SELECT id, extract('day' FROM duration) AS day_value FROM intervals WHERE extract('month' FROM duration) > 0;
+CREATE TABLE more_intervals (id INT, start_time TIMESTAMP);
+INSERT INTO more_intervals VALUES (1, TIMESTAMP '2023-01-01 10:00:00'), (2, TIMESTAMP '2022-02-15 15:30:00');
+SELECT intervals.id, extract('month' FROM duration) AS month_value, extract('year' FROM start_time) AS year_value FROM intervals JOIN more_intervals ON intervals.id = more_intervals.id;
+SELECT id, extract('year' FROM duration + duration) AS total_years FROM intervals WHERE extract('month' FROM duration) > 6;
+SELECT intervals.id, extract('month' FROM (duration + INTERVAL '2 months')) AS adjusted_month FROM intervals;
+SELECT id, extract('day' FROM (duration - INTERVAL '1 week')) AS adjusted_day_value FROM intervals WHERE id IN (SELECT id FROM more_intervals WHERE extract('month' FROM extract('month' FROM duration)) < 3);
+CREATE TABLE nested_intervals (id INT, event_time TIMESTAMP, event_duration INTERVAL);
+INSERT INTO nested_intervals VALUES (1, TIMESTAMP '2023-05-01 12:00:00', INTERVAL '3 days'), (2, TIMESTAMP '2023-05-05 14:00:00', INTERVAL '5 days');
+SELECT id, extract('day' FROM event_duration) AS duration_days, (SELECT COUNT(*) FROM nested_intervals WHERE extract('month' FROM event_duration) = 1) AS month_count FROM nested_intervals;
+SELECT id, extract('month' FROM (event_duration + INTERVAL '1 month')) AS incremented_month FROM nested_intervals;
+SELECT id, extract('month' FROM event_duration) + (SELECT extract('month' FROM duration) FROM intervals WHERE intervals.id = nested_intervals.id) AS enriched_month FROM nested_intervals;
+SELECT temp.id, temp.month_value FROM (SELECT id, extract('month' FROM duration) AS month_value FROM intervals) AS temp WHERE month_value < 12;

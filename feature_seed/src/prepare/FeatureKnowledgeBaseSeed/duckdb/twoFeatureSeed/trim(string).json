@@ -1,0 +1,17 @@
+{
+    "function": "trim(string)",
+    "operator": "@>",
+    "sql_array": [
+        "CREATE TABLE test_table (id INTEGER, value VARCHAR(100), values_list LIST<INTEGER>);",
+        "INSERT INTO test_table VALUES (1, '    Apple   ', [1, 2, 3]), (2, '  Banana ', [2, 3, 4]), (3, '   Cherry    ', [4]), (4, NULL, [1]);",
+        "SELECT id, trim(value) AS trimmed_value FROM test_table WHERE trimmed_value @> trim('   A  ')::LIST;",
+        "SELECT id, values_list FROM test_table WHERE values_list @> (SELECT trim(CONCAT('[', id, ']'))::LIST FROM test_table WHERE id > 1);",
+        "WITH filtered AS (SELECT id, trim(value) AS trimmed_value FROM test_table WHERE value IS NOT NULL) SELECT COUNT(*) FROM filtered GROUP BY trimmed_value HAVING COUNT(*) > 1;",
+        "SELECT id, trim(value), values_list FROM test_table WHERE values_list @> (SELECT trim('   2    ')::LIST) OR values_list @> (SELECT trim(CAST(id AS VARCHAR))::LIST FROM test_table WHERE id IS NOT NULL) ORDER BY trimmed_value;",
+        "CREATE TABLE another_table (reference_id INTEGER PRIMARY KEY, info VARCHAR(200));",
+        "INSERT INTO another_table VALUES (1, 'Info for Apple'), (2, 'Info for Banana');",
+        "SELECT a.id, trim(a.value) AS trimmed_value, b.info FROM test_table a JOIN another_table b ON a.id = b.reference_id WHERE values_list @> (SELECT trim('   3  ')::LIST) AND a.value IS NOT NULL;",
+        "CREATE TEMPORARY TABLE temp_table AS SELECT id, trim(value) AS trimmed_value FROM test_table WHERE value IS NOT NULL;",
+        "SELECT trimmed_value, COUNT(*) FROM temp_table GROUP BY trimmed_value HAVING COUNT(*) < (SELECT COUNT(*) FROM test_table);"
+    ]
+}

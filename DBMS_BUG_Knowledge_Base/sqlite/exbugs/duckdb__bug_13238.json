@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/13238",
+  "title": "Scalar function without input parameters",
+  "description": "### What happens?\n\nWhen I register a scalar function without any parameters, the results from the callback are cached even if the function is marked as volatile.\r\n\r\nI now get a data chunk with the correct size, but the query result prints the value of the first execution of the scalar function.\r\n\r\n![image](https://github.com/user-attachments/assets/843f4832-5773-4203-a903-14061225d18a)\r\n\n\n### To Reproduce\n\n```c\r\nstate = duckdb_query(connection, \"CREATE TABLE big_table_1 AS SELECT (greatest(random(), 0.1) * 1000)::BIGINT i FROM range(10) t(i);\", &result);\r\n\r\nauto scalar_function = duckdb_create_scalar_function();\r\nduckdb_scalar_function_set_name(scalar_function, \"my_random\");\r\n\r\nduckdb_scalar_function_set_volatile(scalar_function);\r\nduckdb_scalar_function_set_return_type(scalar_function, duckdb_create_logical_type(DUCKDB_TYPE_INTEGER));\r\nduckdb_scalar_function_set_function(scalar_function, my_random);\r\n\r\nstate = duckdb_register_scalar_function(connection, scalar_function);\r\n\r\nstate = duckdb_query(connection, \"select my_random() from big_table_1;\", &result);\r\n\r\nauto chunk = duckdb_result_get_chunk(result, 0);\r\n\r\nauto vector = duckdb_data_chunk_get_vector(chunk, 0);\r\nauto data = (int32_t*)duckdb_vector_get_data(vector);\r\n\r\nstd::cout << \"Printing values from query result\" << std::endl << std::endl;\r\n\r\nfor (size_t i = 0; i < duckdb_data_chunk_get_size(chunk); i++)\r\n{\r\n\tstd::cout << data[i] << std::endl;\r\n}\r\n```\r\n\r\n```c\r\nvoid my_random(duckdb_function_info, duckdb_data_chunk input, duckdb_vector output) {\r\n\tauto size = duckdb_data_chunk_get_size(input);\r\n\r\n\tauto result_data = (int32_t*)duckdb_vector_get_data(output);\r\n\r\n\tfor (size_t i = 0; i < size; i++)\r\n\t{\r\n\t\tresult_data[i] = rand();\r\n\t}\r\n\r\n\tstd::cout << \"Printing values from scalar function callback\" << std::endl << std::endl;\r\n\r\n\tfor (size_t i = 0; i < size; i++)\r\n\t{\r\n\t\tstd::cout << result_data[i] << std::endl;\r\n\t}\r\n}\r\n```\n\n### OS:\n\nWindows 11 x64\n\n### DuckDB Version:\n\n1.0.1-dev3542\n\n### DuckDB Client:\n\nC Api\n\n### Full Name:\n\nGiorgi Dalakishvili\n\n### Affiliation:\n\nSpace International\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a nightly build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nNot applicable - the reproduction does not require a data set\n\n### Did you include all code required to reproduce the issue?\n\n- [X] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [X] Yes, I have",
+  "date": "2024-07-31 15:18:20",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_table_1 (id INTEGER PRIMARY KEY, value REAL NOT NULL);",
+    "INSERT INTO test_table_1 VALUES (1, NULL), (2, 3.14), (3, 2.71);",
+    "CREATE TABLE test_table_2 AS SELECT id, COALESCE(value, 0) AS value FROM test_table_1;",
+    "SELECT id, ABS(RANDOM() % 1000) AS random_value FROM test_table_2 WHERE value > 0;",
+    "CREATE TABLE boundary_test (num INTEGER CHECK (num >= 0));"
+  ],
+  "key_bug_features": [
+    "Scalar function caching results despite being marked volatile"
+  ]
+}

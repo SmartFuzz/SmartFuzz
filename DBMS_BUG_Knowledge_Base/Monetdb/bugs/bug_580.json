@@ -1,0 +1,25 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/580",
+  "title": "Assertion failure with complex subquery in selectlist",
+  "vulnerable_database": "monetdb",
+  "date": "2020-11-30T08:43:36Z",
+  "vulnerable_version": "Unknown",
+  "description": "",
+  "poc": [
+    "CREATE TABLE \"sys\".\"pwprijs\" (\r\n         \"id\"              int           NOT NULL,\r\n         \"pid\"       int           NOT NULL,\r\n         \"lid\"   int           NOT NULL,\r\n         \"prijs\"           real          NOT NULL,\r\n         \"Time\"            bigint        NOT NULL,\r\n         \"recordtimestamp\" bigint        NOT NULL,\r\n         CONSTRAINT \"pwprijs_id_recordtimestamp_pkey\"\r\n PRIMARY KEY (\"id\", \"recordtimestamp\")\r\n );",
+    "CREATE INDEX \"pwprijs_lid_idx\" ON \"pwprijs\" (\"lid\");",
+    "CREATE INDEX \"pwprijs_pid_idx\" ON \"pwprijs\" (\"pid\");",
+    "CREATE INDEX \"pwprijs_recordtimestamp_idx\" ON \"pwprijs\"\r\n (\"recordtimestamp\");",
+    "SELECT lid,\r\n         AVG(Prijs) as avg_prijs,\r\n         AVG(CASE WHEN RecordTimestamp =\r\n                                 (SELECT\r\n MAX(i.RecordTimestamp)\r\n                                      FROM pwprijs i\r\n                                      WHERE i.pid = 117097\r\n                                      AND i.lid = o.lid)\r\n                        THEN Prijs END) as current_prijs\r\n FROM pwprijs o\r\n WHER pid = 117097\r\n GROUP BY lid;"
+  ],
+  "key_bug_features": [
+    "Assertion failure with complex subquery in selectlist"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE \"sys\".\"product\" (\r\n         \"product_id\"       int           NOT NULL,\r\n         \"product_name\"     varchar(100) NOT NULL,\r\n         \"category_id\"      int           NOT NULL,\r\n         \"price\"           real          NOT NULL,\r\n         \"created_at\"      timestamp     NOT NULL,\r\n         CONSTRAINT \"product_pk\"\r\n PRIMARY KEY (\"product_id\")\r\n );",
+    "CREATE TABLE \"sys\".\"category\" (\r\n         \"category_id\"      int           NOT NULL,\r\n         \"category_name\"    varchar(100) NOT NULL,\r\n         CONSTRAINT \"category_pk\"\r\n PRIMARY KEY (\"category_id\")\r\n );",
+    "INSERT INTO \"sys\".\"category\" (\"category_id\", \"category_name\") VALUES (1, 'Electronics');",
+    "INSERT INTO \"sys\".\"product\" (\"product_id\", \"product_name\", \"category_id\", \"price\", \"created_at\") VALUES (1, 'Smartphone', 1, 699.99, NOW());",
+    "SELECT c.category_name, AVG(p.price) as avg_price, (SELECT MAX(p2.price) FROM \"sys\".\"product\" p2 WHERE p2.category_id = c.category_id) as max_price FROM \"sys\".\"category\" c LEFT JOIN \"sys\".\"product\" p ON c.category_id = p.category_id GROUP BY c.category_name;"
+  ]
+}

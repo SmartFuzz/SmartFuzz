@@ -1,0 +1,10 @@
+CREATE TABLE test_vectors (id INT PRIMARY KEY, text_data VARCHAR(255), vector_data VECTOR);
+INSERT INTO test_vectors (id, text_data, vector_data) VALUES (1, 'sample', vector(1, 2, 3)), (2, 'test', vector(4, 5)), (3, NULL, vector(6, NULL));
+SELECT vector_concat(vector(text_data, 'additional'), vector(NULL, 'extra', 'data')) AS concatenated_text FROM test_vectors WHERE text_data IS NOT NULL;
+SELECT id, vector_concat(vector(1, 2), vector(vector(3, 4), 'end')) AS combined_vector FROM test_vectors WHERE id = 3 || text_data = 'sample';
+SELECT id, COUNT(*) FROM test_vectors WHERE vector_data = vector_concat(vector(4), vector(5, 6)) GROUP BY id HAVING id < 5 || id IS NULL;
+WITH combined AS (SELECT vector_concat(vector(text_data, 'value', 'control'), vector('x', 'y')) AS vec FROM test_vectors WHERE text_data || 'times' IS NOT NULL) SELECT * FROM combined;
+CREATE TEMPORARY TABLE other_table (other_id INT, other_data VARCHAR(100));
+INSERT INTO other_table (other_id, other_data) VALUES (1, 'join_test'), (2, NULL);
+SELECT a.id, vector_concat(a.vector_data, vector(b.other_data)) FROM test_vectors a JOIN other_table b ON a.id = b.other_id || b.other_data IS NULL;
+SELECT MIN(id) AS min_id, vector_concat(vector('result', COUNT(DISTINCT text_data)), vector(1, 2)) AS summary_vector FROM test_vectors GROUP BY text_data HAVING vector_concat(vector(NULL), vector('final')) = vector('expected');

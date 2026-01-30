@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=111189",
+  "title": "Scalar correlated subquery with group by clause mistakenly transformed",
+  "description": "When the subquery_to_derived parameter is set to on, the following SQL1 will be transformed into SQL2. \r\n\r\nSQL1：\r\nSELECT * FROM t1 WHERE (SELECT COUNT(a) FROM t3 WHERE t3.a = t1.a GROUP BY b) > 0;\r\n\r\n==>SQL2：\r\nSELECT `t1`.`a` AS `a`\r\nFROM `t1`\r\n\tJOIN (\r\n\t\tSELECT count(`t3`.`a`) AS `COUNT(a)`, `t3`.`a` AS `a`\r\n\t\tFROM `t3`\r\n\t\tGROUP BY `t3`.`b`, `t3`.`a`\r\n\t\tHAVING count(`t3`.`a`) > 0\r\n\t) `derived_1_2`\r\nWHERE `derived_1_2`.`a` = `t1`.`a`\r\n\r\nIf we execute SQL1 and column b has multiple NDV values, the subquery will have multiple rows of results, SQL will throw an error:\"Subquery returns more than 1 row\". However, when we execute the transformed SQL2, the statement will run normally without capturing any errors.\nHow to repeat:\nCREATE TABLE t1(a INT);\r\nCREATE TABLE t3(a INT, b INT);\r\nINSERT INTO t1 VALUES(1), (2), (3), (4);\r\nINSERT INTO t3 VALUES(1, 3), (2, 3), (1, 4);\r\n\r\nSET optimizer_switch = 'subquery_to_derived=on';\r\nSELECT * FROM t1 WHERE (SELECT COUNT(a) FROM t3 WHERE t3.a = t1.a GROUP BY b) > 0;\r\n+------+\r\n| a    |\r\n+------+\r\n|    1 |\r\n|    1 |\r\n|    2 |\r\n+------+\r\nSET optimizer_switch = 'subquery_to_derived=off';\r\nSELECT * FROM t1 WHERE (SELECT COUNT(a) FROM t3 WHERE t3.a = t1.a GROUP BY b) > 0;\r\nERROR 1242 (21000): Subquery returns more than 1 row",
+  "date": "2023-05-29 15:04:00",
+  "vulnerable_version": "8.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t1(a INT, b VARCHAR(10) NOT NULL);",
+    "CREATE TABLE t3(a INT, b INT, c FLOAT DEFAULT NULL);",
+    "INSERT INTO t1 VALUES(1, 'test1'), (2, 'test2'), (3, 'test3'), (4, 'test4');",
+    "INSERT INTO t3 VALUES(1, 3, NULL), (2, 3, 1.5), (1, 4, 2.5), (1, 3, 3.5);",
+    "SELECT t1.a FROM t1 JOIN (SELECT COUNT(t3.a) AS count_a, t3.a FROM t3 GROUP BY t3.b, t3.a HAVING COUNT(t3.a) > 0) AS derived_1_2 ON derived_1_2.a = t1.a;"
+  ],
+  "key_bug_features": [
+    "Subquery transformation with group by causing multiple row error"
+  ]
+}

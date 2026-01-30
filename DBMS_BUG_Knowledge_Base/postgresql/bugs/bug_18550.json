@@ -1,0 +1,27 @@
+{
+  "url": "https://www.postgresql.org/message-id/18550-d5e047e9a897a889%40postgresql.org",
+  "title": "BUG #18550: Cross-partition update of a former inheritance parent leads to an assertion failure",
+  "vulnerable_database": "postgresql",
+  "date": "2024-07-23 13:00:00",
+  "vulnerable_version": "Unknown",
+  "description": "The following bug has been logged on the website:\nBug reference:      18550\nLogged by:          Alexander Lakhin\nEmail address:      exclusion(at)gmail(dot)com\nPostgreSQL version: 17beta2\nOperating system:   Ubuntu 22.04\nDescription:\nThe following script:\nCREATE TABLE t1 (a int);\nCREATE TABLE t2 () INHERITS (t1);\nDROP TABLE t2;\nCREATE TABLE t (a int) PARTITION BY LIST (a);\nALTER TABLE t ATTACH PARTITION t1 FOR VALUES IN (1);\nINSERT INTO t1 VALUES (1);\nUPDATE t1 SET a = 2 WHERE a = 1\ntriggers an assertion failure (due to t1 is not recognized as a leaf\npartition):\nTRAP: failed Assert(\"rel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE\"),\nFile: \"partdesc.c\", Line: 73, PID: 37464\nExceptionalCondition at assert.c:52:13\nRelationGetPartitionDesc at partdesc.c:83:6\nPartitionDirectoryLookup at partdesc.c:458:11\nExecInitPartitionDispatchInfo at execPartition.c:1128:13\nExecSetupPartitionTupleRouting at execPartition.c:240:9\nExecCrossPartitionUpdate at nodeModifyTable.c:1791:39\nExecUpdateAct at nodeModifyTable.c:2046:7\nExecUpdate at nodeModifyTable.c:2336:12\nExecModifyTable at nodeModifyTable.c:4114:12\nExecProcNodeFirst at execProcnode.c:465:1\nExecProcNode at executor.h:275:1\nExecutePlan at execMain.c:1646:10\nstandard_ExecutorRun at execMain.c:363:3\nExecutorRun at execMain.c:305:1\nProcessQuery at pquery.c:165:5\nPortalRunMulti at pquery.c:1277:5\nPortalRun at pquery.c:795:5\nReproduced on REL_14_STABLE (starting from 8f4a6b9e4) .. master.",
+  "poc": [
+    "CREATE TABLE t1 (a int);",
+    "CREATE TABLE t2 () INHERITS (t1);",
+    "DROP TABLE t2;",
+    "CREATE TABLE t (a int) PARTITION BY LIST (a);",
+    "ALTER TABLE t ATTACH PARTITION t1 FOR VALUES IN (1);",
+    "INSERT INTO t1 VALUES (1);"
+  ],
+  "poc_type": "sql_text",
+  "key_bug_features": [
+    "Cross-partition update of inherited table triggers assertion failure"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t1 (a int, b text NOT NULL);",
+    "CREATE TABLE t2 () INHERITS (t1);",
+    "DROP TABLE t2;",
+    "CREATE TABLE t (a int, c numeric CHECK (c > 0)) PARTITION BY LIST (a);",
+    "ALTER TABLE t ATTACH PARTITION t1 FOR VALUES IN (1);"
+  ]
+}

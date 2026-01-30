@@ -1,0 +1,16 @@
+{
+    "function": "elh_load_handler",
+    "operator": "bif:eval",
+    "sql_array": [
+        "CREATE TABLE handlers (id INT PRIMARY KEY, rfc1766_id VARCHAR(10) NOT NULL, iso639_id VARCHAR(10) NOT NULL, handler_name VARCHAR(255));",
+        "INSERT INTO handlers (id, rfc1766_id, iso639_id, handler_name) VALUES (1, 'en-US', 'en', 'English US'), (2, 'fr-FR', 'fr', 'French'), (3, 'x-ftq-x-any', 'x-any', 'Custom Handler');",
+        "CREATE TABLE test_data (test_id INT PRIMARY KEY, content VARCHAR(255));",
+        "INSERT INTO test_data (test_id, content) VALUES (1, 'Test Content 1'), (2, 'Test Content 2'), (3, NULL);",
+        "SELECT e.id, bif:eval(elh_load_handler(e.handler_name, e.rfc1766_id)) FROM handlers AS e WHERE e.id IN (SELECT t.test_id FROM test_data AS t WHERE t.content IS NOT NULL);",
+        "SELECT DISTINCT e.iso639_id FROM handlers AS e LEFT JOIN test_data AS t ON e.handler_name = 'English US' AND t.content IS NOT NULL WHERE e.rfc1766_id LIKE 'en%';",
+        "SELECT e.id, bif:eval(elh_load_handler(e.handler_name, NULLIF(e.iso639_id, ''))) AS loaded_handler FROM handlers AS e WHERE e.rfc1766_id = 'fr-FR';",
+        "SELECT COUNT(*) OVER (PARTITION BY e.rfc1766_id) AS handler_count FROM handlers AS e WHERE bif:eval(elh_load_handler((SELECT MAX(handler_name) FROM handlers), e.rfc1766_id)) IS NOT NULL;",
+        "UPDATE handlers SET handler_name = bif:eval(elh_load_handler('Testing Handler', 'en-US')) WHERE iso639_id = 'fr';",
+        "SELECT e.handler_name, bif:eval(NULLIF(elh_load_handler(e.handler_name, e.rfc1766_id), '')) AS handler_loaded FROM handlers e WHERE e.id NOT IN (SELECT t.test_id FROM test_data t WHERE t.content IS NULL) ORDER BY e.rfc1766_id DESC;"
+    ]
+}

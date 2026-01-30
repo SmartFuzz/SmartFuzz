@@ -1,0 +1,17 @@
+CREATE TABLE dt(    `timestamp` DateTime('UTC'),    `event_id` UInt8) ENGINE = TinyLog;
+INSERT INTO dt VALUES ('1970-01-01 00:00:00', 1), ('2106-02-07 06:28:15', 2);
+SELECT * FROM dt WHERE timestamp BETWEEN '1970-01-01 00:00:00' AND '2106-02-07 06:28:15';
+SELECT toDateTime(timestamp, 'UTC') AS utc_time, event_id FROM dt;
+CREATE TABLE dt2(`timestamp` DateTime('Asia/Istanbul'), `event_id` UInt8) ENGINE = TinyLog;
+INSERT INTO dt2 VALUES ('2019-01-01 00:00:00', 1), (1546300800, 3);
+SELECT a.timestamp, b.timestamp FROM dt AS a JOIN dt2 AS b ON a.event_id = b.event_id;
+SELECT timestamp, event_id FROM dt WHERE timestamp = toDateTime('2019-01-01 00:00:00', 'UTC') AND event_id IN (1, 2);
+SELECT toDateTime(timestamp, 'Europe/London') AS lon_time, toDateTime(timestamp, 'Asia/Istanbul') AS ist_time FROM dt2 WHERE event_id = 1;
+SELECT toDateTime(now(), 'Asia/Istanbul') AS local_time, toTypeName(timestamp) FROM dt2;
+CREATE TABLE dt3(`event_time` DateTime('Europe/London'), `description` String) ENGINE = MergeTree() ORDER BY event_time;
+INSERT INTO dt3 VALUES (toDateTime('2020-03-29 01:30:00', 'Europe/London'), 'DST Start'), (toDateTime('2020-10-25 01:30:00', 'Europe/London'), 'DST End');
+SELECT event_time, description FROM dt3 WHERE event_time = (SELECT MAX(event_time) FROM dt3);
+SELECT COUNT(*) AS event_count FROM dt3 WHERE event_time >= '2020-01-01 00:00:00';
+SELECT event_time, COUNT(*) FROM dt3 GROUP BY event_time HAVING COUNT(*) > 1;
+SELECT event_time, event_id, timestamp FROM dt CROSS JOIN dt3 WHERE dt.event_id = dt3.event_time;
+SELECT event_time, toUnixTimestamp(event_time) AS unix_epoch FROM dt3 WHERE event_time BETWEEN '2019-01-01 00:00:00' AND '2020-01-01 00:00:00';

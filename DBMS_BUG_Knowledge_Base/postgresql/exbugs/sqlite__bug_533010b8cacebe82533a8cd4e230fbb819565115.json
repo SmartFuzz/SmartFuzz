@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/533010b8ca",
+  "title": "Illegal argument to LIKELIHOOD() does not result in error when combined with \"IN ()\"",
+  "description": "mrigger added on 2019-06-10 18:15:31:\nConsider the following test case:\nCREATE TABLE t1 (c0);\nCREATE INDEX i0 ON t1((LIKELIHOOD(c0, 100) IN ())); -- unexpected: no error\nALTER TABLE t1 RENAME COLUMN c0 TO c1; -- error occurs only here: second argument to likelihood() must be a constant between 0.0 and 1.0\nI would expect that the index cannot be created, since an illegal argument is passed to LIKELIHOOD. However, this is not the case and only when an ALTER TABLE is executed does the illegal parameter result in an error.\nNote that this problem also applies to SELECT queries:\nSELECT * FROM t1 WHERE LIKELIHOOD(c0, 100) IN (); -- unexpected: also no error\nSELECT * FROM t1 WHERE LIKELIHOOD(c0, 100) IS 1 -- expected: second argument to likelihood() must be a constant between 0.0 and 1.0\ndan added on 2019-06-10 19:18:25:\nFixed by [71643deb].\nmrigger added on 2019-06-10 21:58:16:\nI found another, similar bug that was not addressed by the fix:\nCREATE TABLE t0(c0);\nCREATE INDEX i0 ON t0(((LIKELIHOOD(1, 2)) AND ((1 IN ())))); -- unexpected: no error\nALTER TABLE t0 RENAME TO t1; -- -- error occurs only here: second argument to likelihood() must be a constant between 0.0 and 1.0",
+  "date": "2019-06-10 18:15:316.17 years ago",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id SERIAL PRIMARY KEY, value REAL, status TEXT);",
+    "CREATE INDEX idx_test ON test_table (value) WHERE (LIKELIHOOD(value, 0.5) IS NOT NULL);",
+    "INSERT INTO test_table (value, status) VALUES (NULL, 'active');",
+    "SELECT * FROM test_table WHERE LIKELIHOOD(value, 1.5) IS NULL;",
+    "ALTER TABLE test_table RENAME COLUMN status TO state;"
+  ],
+  "key_bug_features": [
+    "LIKELIHOOD() with IN() does not trigger error"
+  ]
+}

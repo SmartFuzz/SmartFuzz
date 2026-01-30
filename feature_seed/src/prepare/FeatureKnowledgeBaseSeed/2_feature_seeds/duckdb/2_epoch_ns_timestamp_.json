@@ -1,0 +1,10 @@
+CREATE TABLE test_time (id INTEGER PRIMARY KEY, ts TIMESTAMP, vals LIST<INTEGER>);
+INSERT INTO test_time VALUES (1, timestamp '2021-08-03 11:59:44.123456', [1, 2, 3]), (2, timestamp '2021-08-05 09:00:00', [3, 4, 5]), (3, NULL, [1, 2]), (4, timestamp '1970-01-01 00:00:01', NULL);
+SELECT id, epoch_ns(ts) AS epoch_nano FROM test_time WHERE vals @> [1, 2] AND NOT ts IS NULL;
+SELECT id, epoch_ns(ts) AS epoch_nano FROM test_time WHERE vals @> (SELECT [3, 4] WHERE EXISTS (SELECT 1));
+SELECT id, epoch_ns(ts) AS epoch_nano FROM test_time WHERE vals @> (SELECT DISTINCT UNNEST(vals) FROM test_time WHERE id = 1) AND ts >= timestamp '2021-01-01';
+SELECT id, COUNT(*) AS count FROM test_time GROUP BY id HAVING epoch_ns(ts) > 0 AND vals @> [5];
+SELECT id, vals, epoch_ns(ts) FROM test_time WHERE vals IS NOT NULL UNION SELECT 4, [6, 7, 8], epoch_ns(ts) FROM test_time WHERE ts IS NULL;
+SELECT id, vals FROM test_time ORDER BY epoch_ns(ts) DESC LIMIT 1;
+WITH temp AS (SELECT epoch_ns(ts) AS epoch_time, id FROM test_time) SELECT id FROM temp WHERE epoch_time > (SELECT MAX(epoch_time) FROM temp);
+DROP TABLE IF EXISTS test_time;

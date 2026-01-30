@@ -1,0 +1,17 @@
+{
+    "function": "s2RectUnion",
+    "operator": "a <> b",
+    "sql_array": [
+        "CREATE TABLE test_geo (id UInt32, s2PointLow UInt64, s2PointHigh UInt64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_geo VALUES (1, 5178914411069187297, 5177056748191934217), (2, 5179062030687166815, 5177056748191934217);",
+        "SELECT id, s2RectUnion(s2PointLow, s2PointHigh, (SELECT s2PointLow FROM test_geo WHERE id = 2), (SELECT s2PointHigh FROM test_geo WHERE id = 2)) AS rectUnion FROM test_geo WHERE s2PointLow <> s2PointHigh;",
+        "CREATE TABLE test_geo_null (id UInt32, s2PointLow Nullable(UInt64), s2PointHigh Nullable(UInt64)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_geo_null VALUES (1, 5178914411069187297, NULL), (2, NULL, 5177056748191934217);",
+        "SELECT id, s2RectUnion(ifNull(s2PointLow, 0), ifNull(s2PointHigh, 0), (SELECT ifNull(s2PointLow, 0) FROM test_geo_null WHERE id = 2), (SELECT ifNull(s2PointHigh, 0) FROM test_geo_null WHERE id = 2)) AS rectUnion FROM test_geo_null WHERE s2PointLow <> s2PointHigh;",
+        "CREATE TABLE temp_geo (id UInt32, s2PointLow UInt64, s2PointHigh UInt64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO temp_geo VALUES (3, 5178914411069187297, 5177056748191934217);",
+        "SELECT DISTINCT id, s2RectUnion(s2PointLow, s2PointHigh, (SELECT MIN(s2PointLow) FROM temp_geo), (SELECT MAX(s2PointHigh) FROM temp_geo)) AS rectUnion FROM test_geo UNION SELECT id, s2RectUnion(s2PointLow, s2PointHigh, (SELECT MIN(s2PointLow) FROM test_geo_null), (SELECT MAX(s2PointHigh) FROM test_geo_null)) AS rectUnion FROM test_geo_null;",
+        "SELECT id, s2RectUnion(s2PointLow, s2PointHigh, s2PointLow, s2PointHigh) AS rectUnion FROM test_geo WHERE s2PointLow <> CAST('0' AS UInt64);",
+        "SELECT id, s2RectUnion(5178914411069187297, IF(s2PointHigh IS NULL, 0, s2PointHigh), 5179062030687166815, 5177056748191934217) AS rectUnion FROM test_geo_null;"
+    ]
+}

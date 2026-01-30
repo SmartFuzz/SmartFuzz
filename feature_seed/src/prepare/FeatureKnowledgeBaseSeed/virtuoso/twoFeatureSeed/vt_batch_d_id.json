@@ -1,0 +1,17 @@
+{
+    "function": "vt_batch_d_id",
+    "operator": "bif:st_overlaps",
+    "sql_array": [
+        "CREATE TABLE documents (id INT PRIMARY KEY, content TEXT, geom GEOMETRY NOT NULL);",
+        "INSERT INTO documents (id, content, geom) VALUES (1, 'First document', ST_GeomFromText('POINT(1 1)', 4326));",
+        "INSERT INTO documents (id, content, geom) VALUES (2, 'Second document', ST_GeomFromText('POINT(2 2)', 4326));",
+        "INSERT INTO documents (id, content, geom) VALUES (3, 'Third document', ST_GeomFromText('POINT(3 3)', 4326));",
+        "SELECT vt_batch_d_id((SELECT id FROM documents WHERE content LIKE '%document%' ORDER BY id ASC)) FROM (SELECT DISTINCT geom FROM documents) AS subquery WHERE bif:st_overlaps(geom, ST_GeomFromText('POLYGON((0 0, 4 0, 4 4, 0 4, 0 0))', 4326));",
+        "SELECT id, content FROM documents WHERE id IN (SELECT id FROM (SELECT id FROM documents) AS temp WHERE bif:st_overlaps(geom, ST_GeomFromText('POINT(1.5 1.5)', 4326))) ORDER BY content;",
+        "UPDATE documents SET geom = ST_GeomFromText('POINT(0 0)', 4326) WHERE id = (SELECT MAX(id) FROM documents);",
+        "SELECT COUNT(*) FROM documents WHERE bif:st_overlaps(geom, ST_GeomFromText('POINT(NULL NULL)', 4326));",
+        "CREATE TABLE temp_document_ids (id INT);",
+        "INSERT INTO temp_document_ids (id) VALUES (SELECT vt_batch_d_id(id) FROM (SELECT id FROM documents ORDER BY id DESC) AS order_by_id);",
+        "SELECT * FROM documents WHERE id IN (SELECT id FROM temp_document_ids) AND (1 = 1) GROUP BY content HAVING COUNT(*) > 0;"
+    ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/19175",
+  "title": "`Function::EraseArgument` and deserialization exception",
+  "description": "### What happens?\n\nHi DuckDB Team,\n\nI’m encountering an assertion failure when using DuckDB 1.4.0 with the `datasketches` extension.\n\n### Error\n\n```\nSerialization Error: Error during bind of function in deserialization: \nAssertion triggered in file \"/Users/rusty/Development/all-extensions/extensions/datasketches/duckdb/src/function/function.cpp\" on line 176: \narguments.size() == bound_function.arguments.size()\n```\n\n### Relevant Code\n\nThe assertion is in `Function::EraseArgument`:\n\n```cpp\nvoid Function::EraseArgument(SimpleFunction &bound_function, vector<unique_ptr<Expression>> &arguments,\n                             idx_t argument_index) {\n    if (bound_function.original_arguments.empty()) {\n        bound_function.original_arguments = bound_function.arguments;\n    }\n>>>    D_ASSERT(arguments.size() == bound_function.arguments.size());\n    D_ASSERT(argument_index < arguments.size());\n    arguments.erase_at(argument_index);\n    bound_function.arguments.erase_at(argument_index);\n}\n```\n\n### What I’m Doing\n\nIn the `datasketches` extension, I call `Function::EraseArgument` to strip out constant arguments from aggregate functions. Example:\n[https://github.com/Query-farm/datasketches/blob/916aaf1a63d56a3384002222d54196360bb0bdb4/src/generated.cpp#L66](https://github.com/Query-farm/datasketches/blob/916aaf1a63d56a3384002222d54196360bb0bdb4/src/generated.cpp#L66)\n\n* I define the aggregate function with arguments `{LogicalType::INTEGER, LogicalType::INTEGER}`.\n* In the bind function, I check if the first argument is constant. If so, I move it into the bind data and remove the argument via `Function::EraseArgument`.\n\n### My Question\n\nThis seems to imply that I need to provide an **additional definition** of the function with `{LogicalType::INTEGER}` (after the constant is removed).\n\n* Is this the correct approach?\n* What if no sensible default exists for the “removed” argument—should I still define the alternate signature?\n\n### How to Reproduce\n\nYou can trigger the exception by:\n\n```sql\nSELECT datasketch_quantiles(16, 5.0::float);\n```\n\non a debug build of DuckDB with the `datasketches` extension.\nAlternatively, run `test_debug` in the `datasketches` repo.\n\nThanks for clarifying the right way to handle this!\n\nCheers,\nRusty\n\n\n### To Reproduce\n\nSee above\n\n### OS:\n\nMacOS\n\n### DuckDB Version:\n\n1.4.0\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nRusty Conover\n\n### Affiliation:\n\nquery.farm\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a stable release\n\n### Did you include all relevant data sets for reproducing the issue?\n\nNo - Other reason (please specify in the issue body)\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "date": "2025-09-28 19:12:00",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_data (id INTEGER PRIMARY KEY, value FLOAT, description VARCHAR(255));",
+    "INSERT INTO test_data (id, value, description) VALUES (1, 5.0, 'Test entry 1'), (2, NULL, 'Test entry 2'), (3, 10.5, 'Test entry 3');",
+    "SELECT value, id::FLOAT FROM test_data WHERE value IS NOT NULL;",
+    "CREATE TABLE additional_data (ref_id INTEGER, amount INTEGER NOT NULL CHECK (amount >= 0));",
+    "INSERT INTO additional_data (ref_id, amount) SELECT id, CAST(value AS INTEGER) FROM test_data WHERE description LIKE 'Test%';"
+  ],
+  "key_bug_features": [
+    "Assertion failure in Function::EraseArgument during deserialization"
+  ]
+}

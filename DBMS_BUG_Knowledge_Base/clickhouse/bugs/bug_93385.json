@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/93385",
+  "title": "arrayJoin usage in doc: generating-test-data#simple-uniform-dataset",
+  "vulnerable_database": "ClickHouse",
+  "date": "2026-01-05T03:55:51Z",
+  "vulnerable_version": "",
+  "description": "### Company or project name\n_No response_\n### Describe the issue\nI'm reading the guides documents and find that\n`arrayJoin(...): randomly selects one of three event types`  is not suitable describe in [https://clickhouse.com/docs/guides/generating-test-data#simple-uniform-dataset](https://clickhouse.com/docs/guides/generating-test-data#simple-uniform-dataset)\nmaybe use example or change docs for arrayJoin?\n```\nINSERT INTO user_events\nSELECT\ngenerateUUIDv4() AS event_id,\nrand() % 10000 AS user_id,\narrayElement(['click','view','purchase'], toUInt32(rand()) % 3 + 1) AS event_type,\nnow() - INTERVAL rand() % 3600*24 SECOND AS event_time\nFROM numbers(1000000);\n```\n### Additional context\n_No response_",
+  "poc": [
+    "INSERT INTO user_events\nSELECT\n  generateUUIDv4() AS event_id,\n  rand() % 10000 AS user_id,\n  arrayElement(['click','view','purchase'], toUInt32(rand()) % 3 + 1) AS event_type,\n  now() - INTERVAL rand() % 3600*24 SECOND AS event_time\nFROM numbers(1000000);"
+  ],
+  "key_bug_features": [
+    "arrayJoin with random event type selection"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE user_events (event_id UUID, user_id UInt32, event_type String, event_time DateTime) ENGINE = MergeTree() ORDER BY event_time;",
+    "INSERT INTO user_events SELECT generateUUIDv4() AS event_id, rand() % 10000 AS user_id, arrayElement(['click','view','purchase'], toUInt32(rand()) % 3 + 1) AS event_type, now() - INTERVAL rand() % 3600*24 SECOND AS event_time FROM numbers(100000);",
+    "CREATE TABLE user_summary (user_id UInt32, event_count UInt32) ENGINE = SummingMergeTree() ORDER BY user_id;",
+    "INSERT INTO user_summary SELECT user_id, count() AS event_count FROM user_events GROUP BY user_id;",
+    "SELECT user_id, event_count FROM user_summary WHERE event_count > 10 ORDER BY event_count DESC;"
+  ]
+}

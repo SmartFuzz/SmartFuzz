@@ -1,0 +1,20 @@
+CREATE TABLE xml_data (id INT PRIMARY KEY, data XML NOT NULL);
+INSERT INTO xml_data (id, data) VALUES (1, '<root><element>Value 1</element></root>');
+INSERT INTO xml_data (id, data) VALUES (2, '<root><element>Value 2</element></root>');
+INSERT INTO xml_data (id, data) VALUES (3, '<root><element>Value 3</element></root>');
+CREATE PROCEDURE test_xslt_fuzz () {
+  DECLARE result VARCHAR;
+DECLARE sheet_name VARCHAR := 'my_stylesheet.xsl';
+DECLARE xml_string VARCHAR := '<root><case>1</case></root>';
+xslt_sheet (sheet_name, xml_tree_doc (xml_tree (file_to_string (sheet_name))));
+result := xslt (sheet_name, xml_tree_doc (xml_tree (xml_string)));
+SELECT result OR NULL FROM dual;
+};
+SELECT * FROM xml_data WHERE xslt ('my_stylesheet.xsl', xml_tree_doc(xml_tree(data))) IS NOT NULL OR id = (SELECT MAX(id) FROM xml_data);
+SELECT id, xml_data.data, COUNT(*) OVER (PARTITION BY xslt('my_stylesheet.xsl', xml_tree_doc(xml_tree(data)))) AS count FROM xml_data GROUP BY id, data HAVING count > 0 OR data LIKE '%Value%';
+CREATE TABLE temp_data (value VARCHAR, num_value INT);
+INSERT INTO temp_data (value, num_value) VALUES (NULL, 10), ('', 20), ('Some Text', NULL);
+SELECT xslt('my_stylesheet.xsl', xml_tree_doc(xml_tree(data))) OR (SELECT MAX(num_value) FROM temp_data WHERE num_value IS NOT NULL) FROM xml_data;
+SELECT id, xslt('my_stylesheet.xsl', xml_tree_doc(xml_tree(data))) AS xslt_out FROM xml_data WHERE xslt_out IS NOT NULL OR id < 0;
+CREATE TEMPORARY TABLE temp_result AS SELECT id, data FROM xml_data WHERE EXISTS (SELECT 1 FROM temp_data WHERE temp_data.value = 'Some Text' OR temp_data.value IS NULL);
+SELECT COUNT(*) FROM temp_data WHERE num_value IS NOT NULL OR (SELECT COUNT(*) FROM xml_data WHERE xslt('my_stylesheet.xsl', xml_tree_doc(xml_tree(data))) IS NULL);

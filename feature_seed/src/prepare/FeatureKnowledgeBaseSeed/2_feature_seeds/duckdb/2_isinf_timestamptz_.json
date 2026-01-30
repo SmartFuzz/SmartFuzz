@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id INTEGER, created_at TIMESTAMPTZ, num_value INTEGER);
+INSERT INTO test_table (id, created_at, num_value) VALUES (1, TIMESTAMPTZ '-infinity', 10), (2, TIMESTAMPTZ 'infinity', 20);
+SELECT id, isinf(created_at) << num_value AS result FROM test_table WHERE num_value <= (SELECT MAX(num_value) FROM test_table);
+SELECT id, isinf(TIMESTAMPTZ '-infinity' << 2) AS infinite_shift FROM test_table WHERE num_value IS NOT NULL;
+SELECT id, created_at, (num_value << 3) AS shifted_num FROM test_table WHERE isinf(created_at) = false ORDER BY shifted_num DESC;
+SELECT id, COUNT(*) OVER (PARTITION BY isinf(created_at) << num_value) AS count_by_infinity FROM test_table WHERE created_at IS NOT NULL;
+CREATE TEMPORARY TABLE temp_table AS SELECT id, isinf(created_at) AS is_infinite FROM test_table;
+SELECT temp.id, temp.is_infinite & (1 << 1) AS bitwise_check FROM temp_table AS temp JOIN test_table AS main ON temp.id = main.id WHERE main.num_value > 0;
+INSERT INTO test_table (id, created_at, num_value) VALUES (3, NULL, 15), (4, TIMESTAMPTZ '2023-01-01 00:00:00+00', 5);
+SELECT id, isinf(created_at) << (COALESCE(num_value, 0) & 15) AS combined_check FROM test_table WHERE id IN (SELECT id FROM test_table WHERE num_value < 16) HAVING combined_check = 0;

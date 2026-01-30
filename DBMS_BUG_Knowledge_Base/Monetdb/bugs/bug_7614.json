@@ -1,0 +1,25 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7614",
+  "title": "Filter function creates a cartesian product when used with a view",
+  "vulnerable_database": "monetdb",
+  "date": "2025-02-20T13:26:47Z",
+  "vulnerable_version": "Unknown",
+  "description": "Join reordering is generating a cross product instead of pushing filter function down.\nThe optimizer is not handling filter functions that require 3 or more relations.",
+  "poc": [
+    "CREATE TABLE t1 (a1 INTEGER, a2 INTEGER, p DOUBLE);",
+    "CREATE TABLE t2 (a1 INTEGER, p DOUBLE);",
+    "CREATE TABLE t3 (a1 INTEGER, a2 INTEGER, p DOUBLE);",
+    "CREATE VIEW t4 AS SELECT t3.a1 AS a1, t3.a2 AS a2, t2.p AS a3, t2.p AS p FROM t3, t2 WHERE t3.a2 = t2.a1;",
+    "SELECT COUNT(*)\nFROM (\n  SELECT t1.a1 AS a1, t1.a2 AS a2, t4.a1 AS a3, t4.a2 AS a4, t4.a3 AS a5, t1.p AS p\n  FROM t1, t4\n  WHERE [t1.a1,t1.a2] maxlev_helper [t4.a1,t4.a2,t4.a3]\n) AS foo;"
+  ],
+  "key_bug_features": [
+    "Filter function with three or more relations causes cross product"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t1 (a1 INTEGER NOT NULL, a2 INTEGER, p DOUBLE CHECK (p >= 0));",
+    "CREATE TABLE t2 (a1 INTEGER PRIMARY KEY, p DOUBLE DEFAULT 0.0);",
+    "CREATE TABLE t3 (a1 INTEGER, a2 INTEGER NOT NULL, p DOUBLE);",
+    "CREATE VIEW t4 AS SELECT t3.a1 AS a1, t3.a2 AS a2, t2.p AS a3 FROM t3 JOIN t2 ON t3.a2 = t2.a1;",
+    "SELECT COUNT(*) FROM (SELECT t1.a1, t1.a2, t4.a1, t4.a2, t4.a3 FROM t1 JOIN t4 ON t1.a1 = t4.a1) AS foo;"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/392",
+  "title": "No results with FILTER EXIST + multiple OPTIONAL",
+  "vulnerable_database": "Virtuoso",
+  "date": "2015-04-29 10:36:11",
+  "vulnerable_version": "",
+  "description": "The following query unexpectedly returns an empty result set on the http://dbpedia.org/sparql endpoint (Virtuoso 7.20).\nprefix dbo: <http://dbpedia.org/ontology/>\n\nselect ?a ?i where {\n\n    ?a a dbo:Automobile .\n\n    filter exists { ?a dbo:manufacturer ?m }\n\n    optional { ?a <http://dbpedia.org/ontology/thumbnail> ?i } # matching\n    optional { ?a <http://xmlns.com/foaf/0.1/depiction> ?i } # matching\n    optional { ?a <http://schema.org/image> ?i } # non-matching\n    optional { ?a <http://xmlns.com/foaf/0.1/logo> ?i } # non-matching\n\n} limit 10\n\nThe OPTIONAL clauses implement the standard  property fallback pattern in order to retrieve a property from multiple non-exclusive predicates with a priority order, but in this case it works as expected only if either:\n\nall patterns match (only optionals 1/2)\nno pattern matches (only optionals 3/4)\nat most on pattern matches and one pattern doesn't match (e.g. only optionals 2/3)\n\nAlmost certainly related to #393.\nPossibly related also to #391.",
+  "poc": [
+    "prefix dbo: <http://dbpedia.org/ontology/>\n\nselect ?a ?i where {\n\n    ?a a dbo:Automobile .\n\n    filter exists { ?a dbo:manufacturer ?m }\n\n    optional { ?a <http://dbpedia.org/ontology/thumbnail> ?i } # matching\n    optional { ?a <http://xmlns.com/foaf/0.1/depiction> ?i } # matching\n    optional { ?a <http://schema.org/image> ?i } # non-matching\n    optional { ?a <http://xmlns.com/foaf/0.1/logo> ?i } # non-matching\n\n} limit 10"
+  ],
+  "key_bug_features": [
+    "FILTER EXIST with multiple OPTIONAL clauses returns empty results"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE automobiles (id INT PRIMARY KEY, manufacturer VARCHAR(255), thumbnail VARCHAR(255), depiction VARCHAR(255), image VARCHAR(255), logo VARCHAR(255));",
+    "INSERT INTO automobiles (id, manufacturer, thumbnail, depiction, image, logo) VALUES (1, 'Toyota', 'toyota_thumbnail.jpg', 'toyota_depiction.jpg', NULL, NULL);",
+    "INSERT INTO automobiles (id, manufacturer, thumbnail, depiction, image, logo) VALUES (2, 'Ford', 'ford_thumbnail.jpg', 'ford_depiction.jpg', NULL, NULL);",
+    "SELECT id, COALESCE(thumbnail, depiction, image, logo) AS image_url FROM automobiles WHERE manufacturer IS NOT NULL;",
+    "SELECT id, COUNT(*) AS optional_count FROM automobiles GROUP BY id HAVING optional_count > 0;"
+  ]
+}

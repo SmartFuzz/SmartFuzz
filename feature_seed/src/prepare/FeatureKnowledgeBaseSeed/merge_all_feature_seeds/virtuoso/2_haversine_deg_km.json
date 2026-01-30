@@ -1,0 +1,10 @@
+CREATE TABLE locations (id INT PRIMARY KEY, latitude DECIMAL(9,6), longitude DECIMAL(9,6));
+INSERT INTO locations VALUES (1, 34.052235, -118.243683), (2, 40.712776, -74.005974), (3, 51.507351, -0.127758), (4, NULL, NULL);
+SELECT id, haversine_deg_km(latitude, longitude, (SELECT MAX(latitude) FROM locations), (SELECT MIN(longitude) FROM locations)) AS distance FROM locations WHERE latitude IS NOT NULL;
+CREATE TABLE geo_pairs (loc1_id INT, loc2_id INT, PRIMARY KEY (loc1_id, loc2_id), FOREIGN KEY (loc1_id) REFERENCES locations(id), FOREIGN KEY (loc2_id) REFERENCES locations(id));
+INSERT INTO geo_pairs VALUES (1, 2), (2, 3), (1, 3), (3, 4);
+SELECT loc1_id, loc2_id, haversine_deg_km((SELECT latitude FROM locations WHERE id = loc1_id), (SELECT longitude FROM locations WHERE id = loc1_id), (SELECT latitude FROM locations WHERE id = loc2_id), (SELECT longitude FROM locations WHERE id = loc2_id)) AS distance FROM geo_pairs WHERE loc1_id IS NOT NULL;
+SELECT loc1_id, loc2_id FROM geo_pairs WHERE bif:st_overlaps((SELECT latitude || ',' || longitude FROM locations WHERE id = loc1_id), (SELECT latitude || ',' || longitude FROM locations WHERE id = loc2_id));
+SELECT loc1_id, loc2_id, COUNT(*) AS overlap_count FROM geo_pairs GROUP BY loc1_id, loc2_id HAVING COUNT(*) > 0;
+WITH distance_calculation AS (SELECT loc1_id, loc2_id, haversine_deg_km((SELECT latitude FROM locations WHERE id = loc1_id), (SELECT longitude FROM locations WHERE id = loc1_id), (SELECT latitude FROM locations WHERE id = loc2_id), (SELECT longitude FROM locations WHERE id = loc2_id)) AS distance FROM geo_pairs) SELECT loc1_id, loc2_id, distance FROM distance_calculation WHERE distance < 1000;
+SELECT distinct loc1_id FROM geo_pairs WHERE loc1_id IS NULL OR loc2_id IS NULL;

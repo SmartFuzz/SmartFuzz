@@ -1,0 +1,17 @@
+CREATE TABLE test_table (id UInt32, value Float64, str_val String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table (id, value, str_val) VALUES (1, 0.0, 'zero'), (2, 1.0, 'one'), (3, 8.0, 'eight'), (4, NULL, 'four'), (5, 16.0, 'sixteen');
+CREATE TABLE derived_table AS SELECT id, log2(value) AS log_value FROM test_table WHERE value IS NOT NULL;
+SELECT id, log_value FROM derived_table WHERE log_value IS NOT NULL AND log_value <= (SELECT log2(4.0));
+SELECT id, log_value FROM derived_table WHERE log_value <= (SELECT log2(value) FROM test_table WHERE id = 3);
+SELECT id, log2(COALESCE(value, 1)) AS adjusted_log FROM test_table GROUP BY id HAVING adjusted_log > 1;
+SELECT t1.id, log2(t1.value) AS log_val FROM test_table t1 JOIN test_table t2 ON t1.id <= t2.id WHERE t2.value IS NOT NULL;
+SELECT id, log2(0.0 + value) FROM test_table WHERE str_val = 'zero' AND log2(value) <= 3 ORDER BY value DESC;
+SELECT COUNT(*) FROM (SELECT id, log2(value) AS log_val FROM test_table GROUP BY id HAVING log_val IS NOT NULL) AS inner_query;
+SELECT AVG(log2(value)) FROM test_table WHERE value IS NOT NULL GROUP BY str_val HAVING AVG(log2(value)) <= 2;
+CREATE TABLE temp_table AS SELECT id, log2(value) AS log_value FROM test_table WHERE value > 0;
+SELECT * FROM temp_table WHERE log_value IS NULL OR log_value <= (SELECT log2(256));
+INSERT INTO temp_table SELECT id, log2(value) FROM test_table WHERE value IS NOT NULL AND NOT EXISTS (SELECT * FROM temp_table WHERE id = test_table.id);
+SELECT DISTINCT id, log2(NULLIF(value, 0)) AS log_val FROM test_table WHERE str_val IS NOT NULL ORDER BY id;
+DROP TABLE IF EXISTS test_table;
+DROP TABLE IF EXISTS derived_table;
+DROP TABLE IF EXISTS temp_table;

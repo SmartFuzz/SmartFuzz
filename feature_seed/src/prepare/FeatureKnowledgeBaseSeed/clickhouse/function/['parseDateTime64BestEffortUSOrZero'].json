@@ -1,0 +1,15 @@
+[
+    "CREATE TABLE dates_test (date_string String) ENGINE = MergeTree() ORDER BY date_string;",
+    "INSERT INTO dates_test VALUES ('12/31/2021'), ('01/01/2022'), ('13/01/2022'), ('02/30/2022'), ('02/29/2020');",
+    "SELECT date_string, parseDateTime64BestEffortUSOrZero(date_string, 3) AS parsed_date FROM dates_test;",
+    "CREATE TABLE more_dates_test AS (SELECT date_string FROM dates_test) ENGINE = MergeTree() ORDER BY date_string;",
+    "SELECT date_string, parseDateTime64BestEffortUSOrZero(date_string, 3) AS parsed_date FROM more_dates_test WHERE parsed_date = '1970-01-01 00:00:00';",
+    "WITH (SELECT arrayJoin(['12/31/2021', '01/01/2022', 'invalid/date', '02/30/2022'])) AS test_dates SELECT test_dates, parseDateTime64BestEffortUSOrZero(test_dates, 3) AS parsed_test_date;",
+    "CREATE TABLE nested_test (id UInt32, date_string String) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO nested_test VALUES (1, '01/02/2022'), (2, 'invalid-date'), (3, '02/29/2020');",
+    "SELECT id, date_string, parseDateTime64BestEffortUSOrZero(date_string, 3) AS parsed_date FROM nested_test WHERE id IN (SELECT id FROM nested_test WHERE date_string LIKE '%2022%') ORDER BY id;",
+    "CREATE TABLE join_test (id UInt32, date_string String) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO join_test VALUES (1, '02/28/2021'), (2, 'invalid-date'), (3, '03/01/2021');",
+    "SELECT a.id, a.date_string, parseDateTime64BestEffortUSOrZero(a.date_string, 3) AS parsed_date FROM join_test AS a JOIN (SELECT id FROM join_test WHERE id > 1) AS b ON a.id = b.id;",
+    "SELECT COUNT(*) FROM dates_test WHERE parseDateTime64BestEffortUSOrZero(date_string, 3) = '1970-01-01 00:00:00';"
+]

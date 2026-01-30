@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id UInt64, value String, created_at DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, 'test1', now()), (2, NULL, now()), (3, 'test3', now());
+SELECT blockNumber(), array(value, id) FROM (SELECT id, value FROM test_table) GROUP BY id, value;
+SELECT blockNumber() AS block_number, arrayJoin(array(id, if(value IS NULL, 0, id))) AS modified_ids FROM test_table WHERE created_at > now() - INTERVAL 7 DAY;
+SELECT blockNumber(), COUNT(*) FROM (SELECT * FROM test_table WHERE id IN (SELECT id FROM system.numbers LIMIT 3)) GROUP BY blockNumber();
+SELECT blockNumber() AS block_num, arraySum(arrayMap(x -> if(x > 2, x, 0), array(id))) FROM test_table HAVING block_num > 0;
+SELECT blockNumber() AS block_number,  array(value) FROM (SELECT blockNumber() AS block_num, value FROM test_table WHERE value != '') HAVING block_num < 3;
+SELECT blockNumber(), arrayJoin(array(value, toString(id)) = array('test1', '1')) AS check_match FROM test_table;
+SELECT blockNumber(), arrayJoin(array(1, NULL, 3)) AS filled_array WHERE filled_array IS NOT NULL;
+CREATE TEMPORARY TABLE temp_table AS SELECT blockNumber() AS block_num, array(value) FROM test_table WHERE id > 1;
+SELECT blockNumber(), COUNT(*) FROM (SELECT value FROM temp_table GROUP BY value) GROUP BY block_num;

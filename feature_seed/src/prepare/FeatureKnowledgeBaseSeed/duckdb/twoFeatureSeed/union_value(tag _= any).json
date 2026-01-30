@@ -1,0 +1,17 @@
+{
+    "function": "union_value(tag := any)",
+    "operator": "-",
+    "sql_array": [
+        "CREATE TABLE test_table (id INTEGER, data VARCHAR, created_at TIMESTAMP);",
+        "INSERT INTO test_table VALUES (1, 'hello', NOW()), (2, 'world', NOW() - INTERVAL 1 DAY), (3, NULL, NULL), (4, '', NOW());",
+        "SELECT id, union_value(data := (SELECT data FROM test_table WHERE id = 1)) - INTERVAL (SELECT COUNT(*) FROM test_table WHERE data IS NOT NULL) HOUR AS time_difference FROM test_table;",
+        "SELECT id, data, union_value(tag := CONCAT(data, ' - modified')) FROM test_table WHERE data IS NOT NULL OR created_at IS NULL;",
+        "SELECT id, UNION_VALUE(tag := (SELECT data FROM test_table WHERE id = 3) - INTERVAL 1 DAY), CASE WHEN data IS NULL THEN 'empty' ELSE data END AS status FROM test_table GROUP BY id HAVING COUNT(*) > 0;",
+        "SELECT id, COUNT(*) AS record_count, union_value(tag := data) FROM test_table WHERE created_at <= NOW() GROUP BY data HAVING record_count > 1 ORDER BY record_count DESC;",
+        "WITH temp AS (SELECT id, union_value(tag := data) AS union_data FROM test_table WHERE id = 2) SELECT union_value(tag := 'aggregate') - INTERVAL 2 DAY AS derived_value FROM temp;",
+        "CREATE TABLE join_table (join_id INTEGER, ref_id INTEGER);",
+        "INSERT INTO join_table VALUES (10, 1), (20, 2), (30, NULL);",
+        "SELECT t.id, t.data, jt.ref_id, union_value(tag := CAST(jt.ref_id AS VARCHAR)) - INTERVAL (SELECT COUNT(*) FROM join_table) HOUR AS adjusted_time FROM test_table t JOIN join_table jt ON t.id = jt.ref_id WHERE jt.ref_id IS NOT NULL;",
+        "SELECT t.id, union_value(tag := (SELECT MAX(COALESCE(data, 'default')) FROM test_table WHERE id = t.id)) FROM test_table t WHERE EXISTS (SELECT 1 FROM join_table WHERE ref_id = t.id) GROUP BY t.id;"
+    ]
+}

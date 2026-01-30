@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/13850",
+  "title": "Binder error when manually materializing a CTE",
+  "description": "### What happens?\n\nThe new automatic CTE materialization mechanism clashes with manually requesting a CTE to be materialized.\r\n\r\n\n\n### To Reproduce\n\nRun\r\n\r\n```sql\r\ncreate table batch (\r\n    entity text,\r\n    start_ts timestamptz,\r\n    duration interval\r\n)\r\n;\r\n\r\ncreate table active_events (\r\n    entity text,\r\n    start_ts timestamptz,\r\n    end_ts timestamptz\r\n)\r\n;\r\n\r\ncreate table active_events as\r\nwith\r\n    new_events as materialized (  -- Does not make much sense in this example, but my original query was a union of a bunch of things\r\n        select\r\n            entity,\r\n            start_ts as start_ts,\r\n            start_ts + duration as end_ts\r\n        from\r\n            batch\r\n    ), events_to_deduplicate as (\r\n        select\r\n            *\r\n        from  -- We need to deduplicate events for old entites with new data\r\n            active_events old\r\n            semi join new_events new on\r\n                old.entity = new.entity\r\n        union all\r\n        select *\r\n        from\r\n            new_events\r\n    ), combined_deduplicated_events as (\r\n        select\r\n            entity,\r\n            min(start_ts) as start_ts,\r\n            max(end_ts) as end_ts\r\n        from\r\n            events_to_deduplicate\r\n        group by\r\n            entity\r\n    ), all_events as (\r\n        select\r\n            entity,\r\n            start_ts,\r\n            end_ts\r\n        from\r\n            combined_deduplicated_events\r\n        where\r\n            end_ts > start_ts\r\n        union all\r\n        select\r\n            *\r\n        from  -- The data we did not need to deduplicate\r\n            active_events old\r\n            anti join new_events new on\r\n                old.entity = new.entity\r\n    )\r\nselect\r\n    *\r\nfrom\r\n    combined_leases\r\n;\r\n```\r\n\r\nand observe a Binder Error: Duplicate alias \"new_events\" in query!\r\n\r\nRemoving the `materialized` clause makes the query pass.\r\n\r\n\n\n### OS:\n\nUbuntu x64 in WSL on Windows 11\n\n### DuckDB Version:\n\nv1.1.0 fa5c2fe15f\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nMíma Hlaváček\n\n### Affiliation:\n\nArista Networks\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a nightly build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nNot applicable - the reproduction does not require a data set\n\n### Did you include all code required to reproduce the issue?\n\n- [X] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [X] Yes, I have",
+  "date": "2024-09-10 13:32:32",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO users (id, name) VALUES (1, 'Alice'), (2, 'Bob'), (3, NULL);",
+    "CREATE TABLE orders (order_id INTEGER PRIMARY KEY, user_id INTEGER REFERENCES users(id), amount DECIMAL(10, 2) CHECK (amount > 0));",
+    "INSERT INTO orders (order_id, user_id, amount) VALUES (101, 1, 150.00), (102, 2, 200.50), (103, 1, NULL);",
+    "CREATE TABLE recent_orders AS SELECT user_id, SUM(amount) AS total_amount FROM orders GROUP BY user_id;"
+  ],
+  "key_bug_features": [
+    "Automatic CTE materialization clashes with manual requests"
+  ]
+}

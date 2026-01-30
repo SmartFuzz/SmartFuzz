@@ -1,0 +1,10 @@
+CREATE TABLE fuzzing_test (id UInt32, ip_address String, data Tuple(num UInt8, text String));
+INSERT INTO fuzzing_test VALUES (1, '2001:0db8:85a3:0000:0000:8a2e:0370:7334', (1, 'Sample Data')), (2, 'invalid_ip', (2, 'Another Sample Data'));
+SELECT toIPv6OrDefault(ip_address, toIPv6('::1')) AS ipv6_address, data.Numerical AS number FROM fuzzing_test AS a JOIN (SELECT id, toIPv6OrDefault('::', toIPv6('::1')) AS default_ipv6) AS b ON a.id = b.id WHERE toIPv6OrDefault(a.ip_address) IS NOT NULL GROUP BY a.id, number HAVING number > 0 ORDER BY number ASC;
+WITH (SELECT toIPv6OrDefault(ip_address) AS ip_check FROM fuzzing_test) AS checked_ip SELECT COUNT(*) AS valid_ips FROM checked_ip WHERE ip_check != '::';
+CREATE TABLE edge_cases (case_id UInt32, edge_ip String DEFAULT '', description String);
+INSERT INTO edge_cases VALUES (1, '', 'Empty string edge case'), (2, '2001:0db8:85a3:0000:0000:8a2e:0370:7334', 'Valid IPv6'), (3, 'invalid_ip', 'Invalid IPv6');
+SELECT case_id, toIPv6OrDefault(edge_ip, toIPv6('::1')) AS result_ip FROM edge_cases WHERE result_ip = '2001:0db8:85a3:0000:0000:8a2e:0370:7334' OR result_ip = '::' GROUP BY case_id ORDER BY result_ip;
+SELECT toIPv6OrDefault(ip_address, toIPv6('::1')) AS valid_ipv6 FROM fuzzing_test WHERE ip_address = NULL;
+SELECT COUNT(*) FROM (SELECT toIPv6OrDefault(ip_address) AS check_ip FROM fuzzing_test) AS validate WHERE check_ip != '::' HAVING count(check_ip) > 0;
+WITH (SELECT COUNT(*) AS total_invalid FROM fuzzing_test WHERE NOT isIPv6(ip_address)) AS invalid_count SELECT total_invalid FROM invalid_count WHERE total_invalid > 0;

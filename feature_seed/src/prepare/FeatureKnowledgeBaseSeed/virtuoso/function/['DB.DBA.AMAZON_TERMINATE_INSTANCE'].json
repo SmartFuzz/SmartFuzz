@@ -1,0 +1,16 @@
+[
+    "CREATE TABLE instance_details (id INT PRIMARY KEY, instance_name VARCHAR(255), access_key VARCHAR(255), sec_token VARCHAR(255));",
+    "INSERT INTO instance_details (id, instance_name, access_key, sec_token) VALUES (1, 'my_instance_of_linux', 'AKIAJI7ZL427TI5EDF5A', 'CGI/UMaXf2LRUctaj/HGJ57UNy/t7fNCshh8wpJg');",
+    "CREATE PROCEDURE test_terminate_instance() { DECLARE access_key, sec_token, p_name VARCHAR; access_key := (SELECT access_key FROM instance_details WHERE id = 1); sec_token := (SELECT sec_token FROM instance_details WHERE id = 1); p_name := (SELECT instance_name FROM instance_details WHERE id = 1); DB.DBA.AMAZON_TERMINATE_INSTANCE(access_key, p_name, sec_token); };",
+    "CALL test_terminate_instance();",
+    "CREATE PROCEDURE test_terminate_instance_idempotence() { DECLARE access_key, sec_token, p_name VARCHAR; access_key := 'AKIAJI7ZL427TI5EDF5A'; sec_token := 'CGI/UMaXf2LRUctaj/HGJ57UNy/t7fNCshh8wpJg'; p_name := 'my_instance_of_linux'; DB.DBA.AMAZON_TERMINATE_INSTANCE(access_key, p_name, sec_token); DB.DBA.AMAZON_TERMINATE_INSTANCE(access_key, p_name, sec_token); };",
+    "CALL test_terminate_instance_idempotence();",
+    "CREATE TABLE user_access (user_id INT, access_key VARCHAR(255), sec_token VARCHAR(255), PRIMARY KEY (user_id));",
+    "INSERT INTO user_access (user_id, access_key, sec_token) VALUES (1, 'AKIAJI7ZL427TI5EDF5A', 'CGI/UMaXf2LRUctaj/HGJ57UNy/t7fNCshh8wpJg');",
+    "CREATE PROCEDURE terminate_instance_for_user(user_id INT) { DECLARE user_key, user_token, p_name VARCHAR; user_key := (SELECT access_key FROM user_access WHERE user_id = user_id); user_token := (SELECT sec_token FROM user_access WHERE user_id = user_id); p_name := 'my_instance_of_linux'; DB.DBA.AMAZON_TERMINATE_INSTANCE(user_key, p_name, user_token); };",
+    "CALL terminate_instance_for_user(1);",
+    "CREATE TABLE test_scenarios (scenario VARCHAR(255));",
+    "INSERT INTO test_scenarios (scenario) VALUES ('normal_case'), ('multiple_terminations'), ('non_existent_instance'), ('null_access_key'), ('null_instance_name'), ('invalid_credentials');",
+    "CREATE PROCEDURE run_test_scenarios() { DECLARE scenario_name VARCHAR; FOR scenario_name IN (SELECT scenario FROM test_scenarios) DO CASE scenario_name WHEN 'normal_case' THEN DB.DBA.AMAZON_TERMINATE_INSTANCE('AKIAJI7ZL427TI5EDF5A', 'my_instance_of_linux', 'CGI/UMaXf2LRUctaj/HGJ57UNy/t7fNCshh8wpJg'); WHEN 'multiple_terminations' THEN DB.DBA.AMAZON_TERMINATE_INSTANCE('AKIAJI7ZL427TI5EDF5A', 'my_instance_of_linux', 'CGI/UMaXf2LRUctaj/HGJ57UNy/t7fNCshh8wpJg'); DB.DBA.AMAZON_TERMINATE_INSTANCE('AKIAJI7ZL427TI5EDF5A', 'my_instance_of_linux', 'CGI/UMaXf2LRUctaj/HGJ57UNy/t7fNCshh8wpJg'); END CASE; END FOR; };",
+    "CALL run_test_scenarios();"
+]

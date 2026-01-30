@@ -1,0 +1,16 @@
+{
+    "function": "http_kill",
+    "operator": "REGEXP",
+    "sql_array": [
+        "CREATE TABLE http_requests (client_ip VARCHAR(15), request_url VARCHAR(255), request_id INT, status VARCHAR(15));",
+        "INSERT INTO http_requests VALUES ('127.0.0.1', '/test.vsp', 1, 'pending'), ('192.168.1.1', '/another.vsp', 2, 'pending'), (NULL, NULL, 3, 'completed');",
+        "SELECT http_kill((SELECT client_ip FROM http_requests WHERE request_id = 1), (SELECT request_url FROM http_requests WHERE request_id = 1), 1) FROM dual WHERE 'pending' REGEXP status;",
+        "SELECT http_kill('192.168.1.1', request_url, request_id) FROM http_requests WHERE request_url REGEXP '^/another.*$' GROUP BY client_ip HAVING COUNT(request_id) > 0;",
+        "SELECT COUNT(*) FROM (SELECT client_ip, request_url, request_id FROM http_requests WHERE request_id IN (SELECT id FROM (SELECT request_id AS id FROM http_requests WHERE client_ip IS NOT NULL) AS subquery) AND request_url NOT REGEXP 'nonexistent') AS filtered_requests;",
+        "CREATE TABLE process_logs (log_id INT PRIMARY KEY, log_details VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO process_logs VALUES (1, 'Request from 127.0.0.1 killed.', CURRENT_TIMESTAMP), (2, 'Request from 192.168.1.1 processed.', CURRENT_TIMESTAMP);",
+        "SELECT log_details FROM process_logs WHERE log_id = (SELECT MAX(log_id) FROM process_logs WHERE log_details REGEXP 'Request.*') LIMIT 1;",
+        "CREATE TABLE temp_requests AS SELECT * FROM http_requests WHERE status IS NULL OR status = 'pending';",
+        "SELECT client_ip, request_id FROM temp_requests WHERE request_id = CAST(NULL AS INT) OR client_ip REGEXP '192\\.168\\..*';"
+    ]
+}

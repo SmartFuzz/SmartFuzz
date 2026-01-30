@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/50583",
+  "title": "final mode scalar agg function does not push down  tiflash, and without warnings",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n```\r\nDROP TABLE IF EXISTS c_t2;\r\nCREATE TABLE `c_t2` (\r\n  `c1` int(11) DEFAULT NULL,\r\n  `c2` varchar(50) DEFAULT NULL,\r\n  `c3` varchar(1) NOT NULL DEFAULT 'N',\r\n  `c4` varchar(32) NOT NULL DEFAULT 'sys',\r\n  `c5` varchar(32) NOT NULL DEFAULT 'sys',\r\n  `c6` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,\r\n  `c7` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,\r\n  `c8` bigint(20) NOT NULL DEFAULT '0',\r\n  `c9` varchar(50) DEFAULT NULL\r\n);\r\nALTER TABLE c_t2 SET TIFLASH REPLICA 1;\r\n\r\nset tidb_allow_mpp=1;set tidb_enforce_mpp=1; set tidb_isolation_read_engines='tiflash';\r\nexplain\r\nselect\r\n    GROUP_CONCAT(\r\n      '\"',\r\n      replace(c9, '*', '_'),\r\n      '\":',\r\n      c1,\r\n      ''\r\n    )\r\nfrom\r\n  c_t2;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\nfinal mode `group_concat` push down tiflash\r\n\r\n### 3. What did you see instead (Required)\r\n```\r\n+--------------------------------+----------+--------------+---------------+---------------------------------------------------------------------------------------+\r\n| id                             | estRows  | task         | access object | operator info                                                                         |\r\n+--------------------------------+----------+--------------+---------------+---------------------------------------------------------------------------------------+\r\n| HashAgg_17                     | 1.00     | root         |               | funcs:group_concat(Column#12 separator \",\")->Column#11                                |\r\n| └─TableReader_19               | 1.00     | root         |               | MppVersion: 2, data:ExchangeSender_18                                                 |\r\n|   └─ExchangeSender_18          | 1.00     | mpp[tiflash] |               | ExchangeType: PassThrough                                                             |\r\n|     └─HashAgg_9                | 1.00     | mpp[tiflash] |               | funcs:group_concat(\"\"\", Column#14, \"\":\", Column#15, \"\" separator \",\")->Column#12      |\r\n|       └─Projection_28          | 10000.00 | mpp[tiflash] |               | replace(test.c_t2.c9, *, _)->Column#14, cast(test.c_t2.c1, var_string(20))->Column#15 |\r\n|         └─TableFullScan_16     | 10000.00 | mpp[tiflash] | table:c_t2    | keep order:false, stats:pseudo                                                        |\r\n+--------------------------------+----------+--------------+---------------+---------------------------------------------------------------------------------------+\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\nGit Commit Hash: 7ba2330394bcfa1dcd321293c2656604c3a664ab\r\n",
+  "date": "2024-01-19T03:52:27Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS c_t3;",
+    "CREATE TABLE `c_t3` ( `id` int(11) NOT NULL AUTO_INCREMENT, `name` varchar(100) DEFAULT NULL, `value` decimal(10,2) DEFAULT NULL, PRIMARY KEY (`id`));",
+    "INSERT INTO c_t3 (name, value) VALUES ('test1', 10.50), ('test2', NULL), ('test3', 20.00);",
+    "SELECT GROUP_CONCAT(CONCAT_WS(':', name, IFNULL(value, 'NULL'))) FROM c_t3;",
+    "ALTER TABLE c_t3 SET REPLICA 1;"
+  ],
+  "key_bug_features": [
+    "final mode group_concat does not push down tiflash"
+  ]
+}

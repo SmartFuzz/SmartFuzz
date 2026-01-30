@@ -1,0 +1,13 @@
+CREATE TABLE test_dates (id UInt32, event_date DateTime, description String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_dates (id, event_date, description) VALUES (1, toDateTime('2023-01-01 00:00:00'), 'New Year'), (2, toDateTime('2024-12-31 23:59:59'), 'End of Year'), (3, toDateTime('2023-06-15 12:30:00'), 'Mid Year');
+SELECT id, addHours(event_date, 5) AS adjusted_event_date FROM test_dates WHERE event_date < addHours(NOW(), 1) ORDER BY adjusted_event_date DESC;
+SELECT id, addHours(event_date, INTERVAL 1 DAY) AS adjusted_event_date FROM test_dates WHERE addHours(event_date, INTERVAL 3 HOUR) IS NOT NULL;
+WITH (SELECT count(*) FROM test_dates) AS total_events SELECT id, description, event_date + INTERVAL total_events DAY AS future_event_date FROM test_dates;
+SELECT id, event_date + INTERVAL CAST('1' AS UInt32) DAY + INTERVAL CAST('5.5' AS Float32) HOUR AS future_event_date FROM test_dates;
+WITH toDateTime('2024-01-01 00:00:00') AS start_date, addHours(start_date, 24) AS end_date SELECT COUNT(*) FROM test_dates WHERE event_date BETWEEN start_date AND end_date;
+SELECT t1.id, t2.description FROM test_dates t1 JOIN test_dates t2 ON addHours(t1.event_date, INTERVAL 12 HOUR) = addHours(t2.event_date, INTERVAL 6 HOUR) WHERE t1.id <> t2.id;
+CREATE TABLE temp_dates (temp_id UInt32, temp_date DateTime, temp_flag Nullable(UInt8)) ENGINE = Memory;
+INSERT INTO temp_dates VALUES (1, toDateTime('2024-01-01 15:00:00'), NULL), (2, toDateTime('2024-01-01 15:30:00'), 1), (3, toDateTime('2024-01-01 16:00:00'), 0);
+SELECT temp_id, addHours(temp_date, -INTERVAL 5 HOUR) AS adjusted_time, IFNULL(temp_flag, 0) AS safe_flag FROM temp_dates HAVING safe_flag = 1;
+SELECT id, (event_date + INTERVAL 2 DAY - event_date) AS interval_test FROM test_dates WHERE (addHours(event_date, 1) - event_date) < INTERVAL 3 HOUR;
+SELECT DISTINCT event_date, addHours(event_date, INTERVAL 15 MINUTE) AS short_event FROM test_dates WHERE addHours(event_date, INTERVAL 2 HOUR) > '2024-01-01 01:00:00' ORDER BY short_event;

@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id UInt32, value String, scale UInt8);
+INSERT INTO test_table VALUES (1, '1234.56789', 5), (2, 'Inf', 10), (3, '0.00000000000001234', 38), (4, 'NaN', 20), (5, '99999999999999999999999999999999999999', 0);
+SELECT id, toDecimal128OrZero(value, scale) AS decimal_value, toTypeName(decimal_value) AS type_name FROM test_table WHERE value GLOBAL IN ('1234.56789', 'Inf', 'NaN', '0.00000000000001234');
+SELECT id, (SELECT count(*) FROM test_table WHERE toDecimal128OrZero(value, scale) > 0) AS positive_count FROM test_table GROUP BY id HAVING positive_count > 0;
+SELECT id, ROUND(SUM(toDecimal128OrZero(value, scale)), scale) AS rounded_sum FROM (SELECT id, value, scale FROM test_table WHERE scale < 38) GROUP BY id ORDER BY rounded_sum DESC;
+SELECT id, CASE WHEN value GLOBAL IN (SELECT value FROM test_table WHERE value != 'Inf') THEN toDecimal128OrZero(value, scale) ELSE 0 END AS final_value FROM test_table;
+INSERT INTO test_table VALUES (6, '', 10), (7, 'NaN', 5);
+SELECT id, toDecimal128OrZero(value, scale) AS decimal_value FROM test_table WHERE decimal_value IS NOT NULL ORDER BY id;
+CREATE TABLE temp_table AS SELECT id, value, scale FROM test_table;
+SELECT id, toDecimal128OrZero(value, scale) AS decimal_value FROM temp_table WINDOW ROWS BETWEEN 1 PRECEDING AND CURRENT ROW;
+SELECT id, AVG(toDecimal128OrZero(value, scale)) OVER (PARTITION BY scale) AS avg_decimal FROM test_table;

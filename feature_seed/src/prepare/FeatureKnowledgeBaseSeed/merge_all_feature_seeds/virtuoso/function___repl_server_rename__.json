@@ -1,0 +1,14 @@
+CREATE TABLE replication_table (id INT, server_name VARCHAR(255), publication_name VARCHAR(255));
+INSERT INTO replication_table (id, server_name, publication_name) VALUES (1, 'demo-pub', 'pub1');
+INSERT INTO replication_table (id, server_name, publication_name) VALUES (2, 'demo-pub', 'pub2');
+CREATE TABLE log_table (log_id INT, action VARCHAR(255), log_time TIMESTAMP);
+INSERT INTO log_table (log_id, action, log_time) VALUES (1, 'server_rename_called', NOW());
+ DB.DBA.REPL_SERVER_RENAME ('demo-pub', 'working-pub');
+SELECT * FROM replication_table WHERE server_name = 'working-pub';
+INSERT INTO replication_table (id, server_name, publication_name) VALUES (3, 'working-pub', 'pub3');
+ DB.DBA.REPL_SERVER_RENAME ('nonexistent-pub', 'future-pub');
+ DB.DBA.REPL_SERVER_RENAME ('demo-pub', 'demo-pub');
+SELECT server_name, COUNT(publication_name) FROM replication_table GROUP BY server_name HAVING COUNT(publication_name) > 1;
+ DB.DBA.REPL_SERVER_RENAME ('working-pub', 'demo-pub');
+UPDATE replication_table SET server_name = 'demo-pub' WHERE server_name = 'nonexistent-pub';
+SELECT server_name FROM replication_table WHERE server_name = ANY (SELECT DISTINCT server_name FROM replication_table WHERE publication_name = 'pub1');

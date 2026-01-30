@@ -1,0 +1,19 @@
+{
+    "function": "toFloat64OrNull",
+    "operator": "-a",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt8, value String);",
+        "INSERT INTO test_table (id, value) VALUES (1, '42.7'), (2, 'abc'), (3, '3.14159'), (4, ''), (5, '0xc0fe');",
+        "SELECT id, toFloat64OrNull(value) AS converted_value, -toFloat64OrNull(value) AS negated_value FROM test_table WHERE toFloat64OrNull(value) IS NOT NULL;",
+        "SELECT id, -toFloat64OrNull(subquery.value) AS negated_value FROM (SELECT value FROM test_table) AS subquery;",
+        "SELECT id, CASE WHEN toFloat64OrNull(value) IS NULL THEN 'Invalid' ELSE toString(-toFloat64OrNull(value)) END AS status FROM test_table;",
+        "SELECT id, -toFloat64OrNull(CONCAT(value, '0')) AS adjusted_value FROM test_table WHERE id IN (SELECT DISTINCT id FROM test_table WHERE toFloat64OrNull(value) IS NOT NULL) HAVING adjusted_value > -10.0;",
+        "CREATE TABLE secondary_table (id UInt8, ref_value String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO secondary_table (id, ref_value) VALUES (1, '0'), (2, '100'), (3, '9999999999999'), (4, '-42.7');",
+        "SELECT st.id, st.ref_value, -toFloat64OrNull(st.ref_value) AS negated_ref_value, (SELECT AVG(-toFloat64OrNull(st.ref_value)) FROM secondary_table) AS avg_negated FROM secondary_table AS st GROUP BY st.id HAVING negated_ref_value < (SELECT MAX(toFloat64OrNull(value)) FROM test_table);",
+        "CREATE TABLE combined_table (id UInt8, value String, ref_value String, CONSTRAINT cn_check CHECK (toFloat64OrNull(ref_value) >= -100 AND toFloat64OrNull(ref_value) <= 100));",
+        "INSERT INTO combined_table (id, value, ref_value) SELECT id, value, ref_value FROM test_table JOIN secondary_table ON test_table.id = secondary_table.id;",
+        "SELECT id, toFloat64OrNull(value) + -toFloat64OrNull(ref_value) AS results FROM combined_table;",
+        "SELECT * FROM combined_table WHERE toFloat64OrNull(value) != -toFloat64OrNull(ref_value) ORDER BY id;"
+    ]
+}

@@ -1,0 +1,15 @@
+CREATE TABLE pentagons (index UInt64);
+INSERT INTO pentagons SELECT index FROM h3GetPentagonIndexes(0);
+INSERT INTO pentagons SELECT index FROM h3GetPentagonIndexes(15);
+SELECT arrayJoin(h3GetPentagonIndexes(5)) AS pentagon_index;
+CREATE TABLE temp_indexes AS SELECT h3GetPentagonIndexes(1) AS indexes;
+SELECT * FROM temp_indexes WHERE indexes[1] IS NOT NULL;
+WITH subquery AS (SELECT * FROM h3GetPentagonIndexes(2)) SELECT count() FROM subquery;
+SELECT x.index, count() FROM (SELECT arrayJoin(h3GetPentagonIndexes(3)) AS index) AS x GROUP BY x.index;
+SELECT arrayJoin(h3GetPentagonIndexes(4)) AS index FROM pentagons LEFT JOIN (SELECT index FROM pentagons WHERE index % 2 = 0) AS even_indexes ON pentagons.index = even_indexes.index;
+CREATE TABLE test_resolutions (resolution UInt8);
+INSERT INTO test_resolutions VALUES (0), (5), (10), (15);
+SELECT resolution, h3GetPentagonIndexes(resolution) AS indexes FROM test_resolutions;
+SELECT resolution, arrayJoin(h3GetPentagonIndexes(resolution)) AS pentagon_index FROM test_resolutions WHERE resolution BETWEEN 0 AND 15;
+SELECT count(DISTINCT index) FROM (SELECT arrayJoin(h3GetPentagonIndexes(5)) AS index) AS temp GROUP BY index;
+CREATE TABLE pentagon_summary AS SELECT resolution, count(*) AS total_indexes FROM (SELECT resolution, arrayJoin(h3GetPentagonIndexes(resolution)) AS index FROM test_resolutions) GROUP BY resolution;

@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=104499",
+  "title": "MySQL auto_inc value changed after a failed insert",
+  "description": "After a failed insert into mysql which change the auto_inc value. The auto_inc value in memory hasn't changed. However, this new auto_inc value has saved into disk.\r\n\r\nThen after restart, the table's auto_inc is set to the new value.\r\n\r\nIf the new auto_inc value is too large, then the insert before restart can be success, however, after restart, the insert is failed.\r\n\r\nbelow is the mtr that reproduce the case.\nHow to repeat:\n--echo # Create table\r\n\r\nCREATE TABLE t1(a INT UNSIGNED AUTO_INCREMENT KEY, b INT not null unique) ENGINE = InnoDB;\r\nINSERT INTO t1 VALUES(null, 1), (null, 2), (null, 3);\r\n\r\n-- error 1062\r\nINSERT INTO t1 VALUES(4294967295, 3);\r\n\r\nINSERT INTO t1 VALUES(4, 4), (5, 5),  (6, 6);\r\n\r\nSELECT * FROM t1;\r\n\r\nSHOW CREATE TABLE t1;\r\n\r\n--echo # Scenario 1: Normal restart\r\n--source include/restart_mysqld.inc\r\n\r\n--echo # We expect persist autoinc is 4294967295\r\n\r\nSHOW CREATE TABLE t1;\r\n\r\nINSERT INTO t1 VALUES(null, 7);\r\nSELECT * FROM t1;\r\ndelete from t1 where b = 7;\r\nalter table t1 AUTO_INCREMENT= 20;\r\n\r\nINSERT INTO t1 VALUES(null, 9);\r\n\r\nSELECT * FROM t1;\r\n\r\nSHOW CREATE TABLE t1;\r\n\r\nDROP TABLE t1;\r\n\r\n=====================================================\r\n\r\nThe mtr result\r\n\r\n----------- MYSQLTEST OUTPUT START -----------\r\n\r\n# Create table\r\nCREATE TABLE t1(a INT UNSIGNED AUTO_INCREMENT KEY, b INT not null unique) ENGINE = InnoDB;\r\nINSERT INTO t1 VALUES(null, 1), (null, 2), (null, 3);\r\nINSERT INTO t1 VALUES(4294967295, 3);\r\nERROR 23000: Duplicate entry '3' for key 't1.b'\r\nINSERT INTO t1 VALUES(4, 4), (5, 5),  (6, 6);\r\nSELECT * FROM t1;\r\na       b\r\n1       1\r\n2       2\r\n3       3\r\n4       4\r\n5       5\r\n6       6\r\nSHOW CREATE TABLE t1;\r\nTable   Create Table\r\nt1      CREATE TABLE `t1` (\r\n  `a` int unsigned NOT NULL AUTO_INCREMENT,\r\n  `b` int NOT NULL,\r\n  PRIMARY KEY (`a`),\r\n  UNIQUE KEY `b` (`b`)\r\n) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci\r\n# Scenario 1: Normal restart\r\n# restart\r\n# We expect persist autoinc is 4294967295\r\nSHOW CREATE TABLE t1;\r\nTable   Create Table\r\nt1      CREATE TABLE `t1` (\r\n  `a` int unsigned NOT NULL AUTO_INCREMENT,\r\n  `b` int NOT NULL,\r\n  PRIMARY KEY (`a`),\r\n  UNIQUE KEY `b` (`b`)\r\n) ENGINE=InnoDB AUTO_INCREMENT=4294967295 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci\r\nINSERT INTO t1 VALUES(null, 7);\r\nSELECT * FROM t1;\r\na       b\r\n1       1\r\n2       2\r\n3       3\r\n4       4\r\n5       5\r\n6       6\r\n4294967295      7\r\ndelete from t1 where b = 7;\r\nalter table t1 AUTO_INCREMENT= 20;\r\nINSERT INTO t1 VALUES(null, 9);\r\nSELECT * FROM t1;\r\na       b\r\n1       1\r\n2       2\r\n        3\r\n▽       4\r\n5       5\r\n6       6\r\n20      9\r\nSHOW CREATE TABLE t1;\r\nTable   Create Table\r\nt1      CREATE TABLE `t1` (\r\n  `a` int unsigned NOT NULL AUTO_INCREMENT,\r\n  `b` int NOT NULL,\r\n  PRIMARY KEY (`a`),\r\n  UNIQUE KEY `b` (`b`)\r\n) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci\r\nDROP TABLE t1;\nSuggested fix:\nMySQL should not change the auto_inc value in disk if the insert is failed..",
+  "date": "2021-07-31 20:35:00",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t2(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, age INTEGER CHECK(age >= 0));",
+    "INSERT INTO t2(name, age) VALUES('Alice', 30), ('Bob', 25), ('Charlie', NULL);",
+    "INSERT INTO t2(id, name, age) VALUES(1, 'David', 40);",
+    "SELECT * FROM t2 WHERE age IS NULL;",
+    "UPDATE t2 SET age = 18 WHERE age IS NULL;"
+  ],
+  "key_bug_features": [
+    "Auto_increment value changes after failed insert operation"
+  ]
+}

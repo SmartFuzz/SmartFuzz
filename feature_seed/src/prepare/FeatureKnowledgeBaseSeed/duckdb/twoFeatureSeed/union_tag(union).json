@@ -1,0 +1,19 @@
+{
+    "function": "union_tag(union)",
+    "operator": "&&",
+    "sql_array": [
+        "CREATE TABLE test_table (id INT, union_col UNION, item_list LIST<INT>);",
+        "INSERT INTO test_table VALUES (1, union_value(k := 'foo'), [1, 2, 3, 4, 5]);",
+        "INSERT INTO test_table VALUES (2, union_value(k := 'bar'), [2, 5, 6]);",
+        "INSERT INTO test_table VALUES (3, union_value(k := 'foo'), [3, 4]);",
+        "INSERT INTO test_table VALUES (4, union_value(k := NULL), [5]);",
+        "SELECT id, union_tag(union_col) AS tag, item_list FROM test_table WHERE item_list && [2, 5];",
+        "SELECT id, SUM(CASE WHEN union_tag(union_col) = 'foo' THEN 1 ELSE 0 END) AS foo_count FROM test_table GROUP BY id HAVING SUM(item_list && [3, 4]) > 0;",
+        "SELECT id, item_list FROM test_table WHERE EXISTS (SELECT 1 FROM test_table t2 WHERE t2.id = test_table.id AND item_list && t2.item_list);",
+        "SELECT id, COUNT(*) OVER (PARTITION BY union_tag(union_col)) AS count_per_tag FROM test_table ORDER BY count_per_tag DESC;",
+        "SELECT id FROM test_table WHERE union_tag(union_col) IS NULL AND union_col IS NULL AND item_list []= [];",
+        "CREATE TABLE another_table (value STRING, num_value DOUBLE, FOREIGN KEY (num_value) REFERENCES test_table (id));",
+        "INSERT INTO another_table VALUES ('text', 1.0), ('another_text', 2.0);",
+        "SELECT a.value, a.num_value FROM another_table a JOIN test_table t ON a.num_value = t.id WHERE item_list && [1, 3, 4];"
+    ]
+}

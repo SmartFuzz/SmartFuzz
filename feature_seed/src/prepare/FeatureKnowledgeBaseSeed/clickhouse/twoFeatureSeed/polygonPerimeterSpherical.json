@@ -1,0 +1,16 @@
+{
+    "function": "polygonPerimeterSpherical",
+    "operator": "a <> b",
+    "sql_array": [
+        "CREATE TABLE test_polygons (id UInt32, shape Array(Nullable(Nested(Point Float64, Float64))), perimeter Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_polygons VALUES (1, [(30.0, -15.0), (30.2, -15.1), (30.4, -15.2)], NULL);",
+        "INSERT INTO test_polygons VALUES (2, [(31.0, -16.0), (31.1, -16.5), (31.2, -16.1)], NULL);",
+        "UPDATE test_polygons SET perimeter = polygonPerimeterSpherical(shape) WHERE id <> 1;",
+        "SELECT id, perimeter, shape FROM test_polygons WHERE perimeter <> (SELECT MAX(perimeter) FROM test_polygons);",
+        "SELECT id, perimeter, shape FROM test_polygons WHERE shape[1] <> (SELECT shape[1] FROM test_polygons WHERE id = 2);",
+        "SELECT id, shape, round(perimeter) AS rounded_perimeter FROM test_polygons WHERE rounded_perimeter <> (SELECT AVG(round(perimeter)) FROM test_polygons);",
+        "SELECT id, polygonPerimeterSpherical(shape) AS perimeter FROM test_polygons GROUP BY id HAVING perimeter <> 0;",
+        "CREATE TEMPORARY TABLE temp_results AS SELECT id, polygonPerimeterSpherical(shape) AS calculated_perimeter FROM test_polygons WHERE id <> (SELECT id FROM test_polygons WHERE shape[1] IS NULL);",
+        "SELECT * FROM test_polygons WHERE perimeter <> (SELECT SUM(calculated_perimeter) FROM temp_results) AND shape[1] IS NOT NULL;"
+    ]
+}

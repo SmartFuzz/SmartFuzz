@@ -1,0 +1,12 @@
+CREATE TABLE test_dates (id INTEGER, event_date DATE, event_name VARCHAR(50));
+INSERT INTO test_dates VALUES (1, DATE '1992-02-15', 'Event A'), (2, DATE '2000-01-01', 'Event B'), (3, DATE NULL, 'Event C');
+CREATE TABLE binary_data (bit_field BITSTRING, id INTEGER);
+INSERT INTO binary_data VALUES ('10101'::BITSTRING, 1), ('11001'::BITSTRING, 2), ('NULL'::BITSTRING, 3);
+SELECT id, event_name, year(event_date) & ('10101'::BITSTRING & '10001'::BITSTRING) AS combined_value FROM test_dates WHERE event_date IS NOT NULL;
+SELECT id, event_name, (year(event_date) | year(event_date)) as year_combined FROM test_dates HAVING year_combined > 2000 OR year_combined IS NULL;
+SELECT td.id, td.event_name, (year(td.event_date) & (SELECT COUNT(*) FROM binary_data WHERE bit_field & '10100'::BITSTRING > '0'::BITSTRING)) AS bitwise_result FROM test_dates td INNER JOIN binary_data bd ON bd.id = td.id WHERE bd.bit_field IS NOT NULL;
+SELECT td.id, MAX(year(td.event_date)) OVER (PARTITION BY event_name) as max_year FROM test_dates td GROUP BY td.id, event_name HAVING max_year > 1990;
+WITH year_filter AS (SELECT id, year(event_date) AS event_year FROM test_dates WHERE event_date IS NOT NULL) SELECT id, event_year & 2020 AS filtered_year FROM year_filter WHERE event_year IS NOT NULL;
+SELECT DISTINCT bd.id, (year(td.event_date) & (SELECT SUM(CASE WHEN bit_field IS NULL THEN 1 ELSE 0 END) FROM binary_data bd2 WHERE bd2.id = bd.id)) AS conditional_sum FROM test_dates td JOIN binary_data bd ON td.id = bd.id;
+ALTER TABLE test_dates ADD COLUMN duration INT;
+UPDATE test_dates SET duration = year(event_date) - 1990 WHERE event_date IS NOT NULL;

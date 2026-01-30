@@ -1,0 +1,17 @@
+{
+    "function": "rtrim(s1, s2)",
+    "operator": "<<",
+    "sql_array": [
+        "CREATE TABLE test_inet (id SERIAL PRIMARY KEY, ip_address INET NOT NULL);",
+        "INSERT INTO test_inet (ip_address) VALUES (inet '192.168.1.1'), (inet '192.168.1.2'), (inet '192.168.1.3');",
+        "CREATE TABLE test_strings (str_id SERIAL PRIMARY KEY, value VARCHAR(255));",
+        "INSERT INTO test_strings (value) VALUES ('example string'), ('another example'), ('test string with trailing aaaa');",
+        "SELECT rtrim(value, 'a') AS trimmed_value FROM test_strings WHERE rtrim(value, 'a') << (SELECT ip_address FROM test_inet WHERE id = 1);",
+        "SELECT rtrim(value, 'e') AS trimmed_value, COUNT(*) FROM test_strings GROUP BY rtrim(value, 'e') HAVING COUNT(*) > 1;",
+        "SELECT rt.trimmed_value FROM (SELECT rtrim(value, 'example') AS trimmed_value FROM test_strings) rt WHERE rt.trimmed_value << inet '192.168.1.0/24';",
+        "SELECT DISTINCT (rtrim(value, '') << (SELECT inet '192.168.1.1' UNION ALL SELECT inet '192.168.1.2')) AS comparison FROM test_strings;",
+        "SELECT rt1.value FROM test_strings rt1 JOIN (SELECT rtrim(value, 'g') AS trimmed_value FROM test_strings) rt2 ON rt1.value << rt2.trimmed_value WHERE rt1.value IS NOT NULL;",
+        "CREATE TEMPORARY TABLE temp_ips AS SELECT ip_address FROM test_inet WHERE ip_address << inet '192.168.1.0/24';",
+        "SELECT rt.value, (SELECT COUNT(*) FROM temp_ips WHERE temp_ips.ip_address << inet '192.168.1.1') AS contained_count FROM test_strings rt WHERE rt.value IS NOT NULL AND rtrim(rt.value, ' ') IS NOT NULL;"
+    ]
+}

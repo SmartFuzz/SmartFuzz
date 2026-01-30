@@ -1,0 +1,11 @@
+CREATE TABLE test_data (id INT PRIMARY KEY, value NUMERIC(10, 5), info VARCHAR(255));
+INSERT INTO test_data (id, value, info) VALUES (1, 123.45678, 'test1'), (2, NULL, 'test2'), (3, 0.00001, 'test3'), (4, 99999.99999, 'test4');
+CREATE TABLE other_data (id INT PRIMARY KEY, value_a INT, value_b INT);
+INSERT INTO other_data (id, value_a, value_b) VALUES (1, 2, 3), (2, NULL, 7), (3, 5, 0);
+SELECT id, sys.corr(value, ~CAST(value_a AS NUMERIC)) AS correlation_result FROM test_data JOIN other_data ON test_data.id = other_data.id WHERE value IS NOT NULL HAVING correlation_result > 0;
+SELECT id, value, info FROM test_data WHERE value = (SELECT MAX(value) FROM test_data WHERE value IS NOT NULL) - ~2;
+SELECT id, sys.corr(value, ~value_a) AS correlation_result FROM test_data INNER JOIN other_data ON test_data.id = other_data.id GROUP BY test_data.id HAVING correlation_result IS NOT NULL;
+SELECT id, value, value_a, sys.corr(value, ~value_a) AS correlation_value, (value + ~0) AS adjusted_value FROM test_data FULL OUTER JOIN other_data ON test_data.id = other_data.id WHERE adjusted_value > 100000;
+SELECT id, value, sys.corr(~value, value_b) AS adjusted_correlation FROM test_data LEFT JOIN other_data ON test_data.id = other_data.id WHERE value_a IS NULL GROUP BY id, value ORDER BY adjusted_correlation DESC;
+SELECT id, sys.corr(value, (SELECT MAX(~value) FROM (SELECT value FROM test_data WHERE value IS NOT NULL) AS subquery)) AS complex_corr FROM test_data WHERE value > 0.0001;
+CREATE TEMPORARY TABLE temp_data AS SELECT id, ~value AS transformed_value FROM test_data WHERE value IS NOT NULL;

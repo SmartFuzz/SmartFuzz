@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id UInt32, value BFloat16, weight Float64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_data (id, value, weight) VALUES (1, 1.0, 0.5), (2, 2.0, 1.5), (3, 3.0, NULL), (4, NULL, 2.0), (5, 4.0, 0.1);
+SELECT id, quantileBFloat16Weighted(0.5, value, weight) - quantileBFloat16Weighted(0.5, value, IF(weight IS NULL, 0, weight)) AS adjusted_quantile FROM test_data GROUP BY id HAVING adjusted_quantile IS NOT NULL;
+SELECT a.id, a.value, a.weight, (SELECT COUNT(*) FROM test_data b WHERE b.value > a.value) - (SELECT COUNT(*) FROM test_data c WHERE c.weight IS NULL) AS ranking FROM test_data a HAVING ranking > 0 ORDER BY ranking DESC;
+SELECT id, value, weight, quantileBFloat16Weighted(0.25, value, weight) + (value - 2.0) * IF(value < 2.0, 1, -1) AS complex_calculation FROM test_data WHERE (value IS NOT NULL OR weight IS NOT NULL) ORDER BY complex_calculation;
+CREATE TABLE temp_data AS SELECT id, quantileBFloat16Weighted(0.75, value, weight) AS quantile_value FROM test_data GROUP BY id;
+SELECT id, value, weight, quantileBFloat16Weighted(0.9, value * 2.0, weight) - quantileBFloat16Weighted(0.1, value, weight) AS difference FROM test_data WHERE value IS NOT NULL ORDER BY difference;
+WITH (SELECT AVG(value) FROM test_data) AS avg_val SELECT id, quantileBFloat16Weighted(0.5, value, weight) - avg_val AS adjusted_value FROM test_data GROUP BY id HAVING adjusted_value IS NOT NULL ORDER BY adjusted_value;
+SELECT t1.id, t1.value, t2.weight FROM test_data t1 JOIN (SELECT id, value AS weight FROM test_data) t2 ON t1.id = t2.id WHERE (t1.value - t2.weight) IS NULL;
+SELECT id, quantileBFloat16Weighted(0.5, value, IF(weight IS NULL, 0, weight)) AS quantile_value FROM test_data HAVING quantile_value BETWEEN 1.0 AND 3.0;

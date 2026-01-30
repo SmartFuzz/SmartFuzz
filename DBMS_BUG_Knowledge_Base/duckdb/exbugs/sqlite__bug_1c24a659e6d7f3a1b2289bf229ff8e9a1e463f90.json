@@ -1,0 +1,21 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/1c24a659e6",
+  "title": "DROP COLUMN leaves behind an index",
+  "description": "drh added on 2021-03-14 01:20:48:\nThe DROP COLUMN statement below works, even though the column is indexed:\n\nCREATE TABLE t1(a,b);\nINSERT INTO t1 VALUES(1,2);\nCREATE INDEX x1 on t1(\"b\");\nALTER TABLE t1 DROP COLUMN b;\n\nSubsequently reopening the database and running \"PRAGMA integrity_check\"\nreports index corruption.  The \"index corruption\" problem can be resolved\nby dropping the (now superfluous) index, so this is perhaps not a serious\nconcern, but it does need to be fixed.\nThe problem was reported by Forum post e37dcf456a.\nIt is perhaps related to ticket [9b78184be266fd70].\ndrh added on 2021-03-14 12:01:09:\nA slightly different example of this problem that is not resolved\nby check-in [7c8aa3812599d58a].\n\nCREATE TABLE t1(a, b, c);\nCREATE UNIQUE INDEX x1 ON t1(\"a\"||\"b\");\nINSERT INTO t1 VALUES(1,2,3),(1,4,5);\nALTER TABLE t1 DROP COLUMN b;\nPRAGMA integrity_check;",
+  "date": "2021-03-14 01:20:484.41 years ago",
+  "vulnerable_version": "3.35.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(a INTEGER, b TEXT, c REAL);",
+    "CREATE INDEX idx_b ON t1(b);",
+    "INSERT INTO t1 VALUES(1, 'test', 3.14), (2, 'example', 2.71);",
+    "CREATE TABLE t1_temp AS SELECT a, c FROM t1;",
+    "DROP TABLE t1;",
+    "ALTER TABLE t1_temp RENAME TO t1;"
+  ],
+  "key_bug_features": [
+    "DROP COLUMN on indexed column causes index corruption"
+  ]
+}

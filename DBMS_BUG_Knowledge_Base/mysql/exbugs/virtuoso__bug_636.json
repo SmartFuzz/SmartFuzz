@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/636",
+  "title": "SPARQL: Using a VALUE clause with one value causes query to hang",
+  "description": "I came across an issue that may actually be related to #400. When the query attached below is run against an instance of Virtuoso (OpenLink Virtuoso  Server\nVersion 07.20.3217-threads for Win64 as of Apr 25 2016) loaded with a large RDF dataset combining the ChEMBL compound pharmacology dataset v.22.1 (see https://www.ebi.ac.uk/rdf/services/chembl/) with our internal datasets, the query hangs (or executes so slowly that it appears to hang). If the VALUES block contains more than one URI (for example, the  in the snippet below is un-commented), the same query executes and returns results in under a second. The query will also return results almost immediately even with just one URI in the VALUES block if the '| :hasTargetComponent' alternate matching pattern is removed. As far as I understand, setting the \"Enable_joins_only = 1\" flag param in the INI file as recommended in responses to issue 400 would not make sense any longer, because it is the default value with 3215+ builds. Please let me know if this is a known issue and whether it is going to be resolved in upcoming releases of Virtuoso server. If not, I will go ahead and collect additional info (db stats, etc) to help pinpoint and resolve the problem. BTW, I think this bug can be reproduced with the Open PHACTS dataset if the chembl graph name in the query is changed to http://www.ebi.ac.uk/chembl, but I have not tried it, since I no longer have an instance of Virtuoso hosting the entire Open PHACTS dataset at hand.\nPREFIX : <http://rdf.abcd.com/terms/abcd#>\nPREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX skos: <http://www.w3.org/2004/02/skos/core#>\nPREFIX cco: <http://rdf.ebi.ac.uk/terms/chembl#>\n\nselect\n?TargetUri\n?Name\n?TypeName\n?TargetComponentNames\n\nfrom <http://www.ebi.ac.uk/chembl_22_1>\nfrom <http://www.w3.org/2002/07/owl#>\nwhere\n{\n\n    ?TargetUri (rdfs:label) ?Name.\n    ?TargetUri a ?TypeUri.\n    ?TypeUri rdfs:label ?TypeName.\n\n\n    optional\n    {\n       select\n       ?TargetUri\n       (group_concat(distinct ?TargetComponentUri; SEPARATOR = ', ') as ?TargetComponentUris)\n       (group_concat(distinct ?TargetComponentName; SEPARATOR = ', ') as ?TargetComponentNames)\n       where\n       {\n          ?TargetUri (cco:hasTargetComponent | :hasTargetComponent) ?TargetComponentUri.\n          ?TargetComponentUri (rdfs:label | skos:altLabel) ?TargetComponentName.\n\n       } group by ?TargetUri\n    }\n\n    values ?TargetUri\n    {\n        <http://rdf.ebi.ac.uk/resource/chembl/target/CHEMBL6143>\n        #<zzz>\n    }\n}",
+  "date": "2017-03-20 21:38:45",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE chembl_targets (id INT PRIMARY KEY, uri VARCHAR(255) NOT NULL, name VARCHAR(255), type_name VARCHAR(255), target_component_names TEXT);",
+    "INSERT INTO chembl_targets (id, uri, name, type_name, target_component_names) VALUES (1, 'http://rdf.ebi.ac.uk/resource/chembl/target/CHEMBL6143', 'Target Name 1', 'Type A', NULL);",
+    "INSERT INTO chembl_targets (id, uri, name, type_name, target_component_names) VALUES (2, 'http://rdf.ebi.ac.uk/resource/chembl/target/CHEMBL6144', 'Target Name 2', 'Type B', 'Component 1, Component 2');",
+    "SELECT * FROM chembl_targets WHERE uri = 'http://rdf.ebi.ac.uk/resource/chembl/target/CHEMBL6143' OR uri IS NULL;",
+    "SELECT COUNT(*) FROM chembl_targets WHERE target_component_names IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Using a VALUE clause with a single URI"
+  ]
+}

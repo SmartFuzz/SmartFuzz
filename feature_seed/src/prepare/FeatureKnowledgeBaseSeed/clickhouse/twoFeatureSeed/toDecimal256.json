@@ -1,0 +1,18 @@
+{
+    "function": "toDecimal256",
+    "operator": "a ? b : c",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, value String, amount Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table (id, value, amount) VALUES (1, '100.50', 100.50), (2, NULL, NULL), (3, '200.60', 200.60), (4, '', 0.0), (5, 'NaN', 1.0);",
+        "SELECT id, toDecimal256(value, 2) AS decimal_value, toDecimal256(amount, 2) AS decimal_amount, CASE WHEN amount IS NULL THEN 'NULL Amount' ELSE 'Valid Amount' END AS amount_status FROM test_table;",
+        "SELECT id, toDecimal256(CASE WHEN amount > 150 THEN value ELSE '0.00' END, 2) AS conditional_decimal_value FROM test_table WHERE amount IS NOT NULL;",
+        "SELECT id, toDecimal256(CASE WHEN value != '' THEN toDecimal256(value, 2) ELSE '0.00' END, 2) AS value_decimal FROM test_table WHERE value IS NOT NULL;",
+        "SELECT t1.id, t1.value, t2.amount, toDecimal256(t2.amount + (CASE WHEN t1.value IS NOT NULL THEN toDecimal256(t1.value, 2) ELSE 0 END), 2) AS total_amount FROM test_table AS t1 INNER JOIN (SELECT id, toDecimal256(amount, 2) AS amount FROM test_table WHERE amount IS NOT NULL) AS t2 ON t1.id = t2.id;",
+        "SELECT id, value, toDecimal256(NULLIF(value, ''), 2) AS safe_decimal_value FROM test_table WHERE value IS NOT NULL;",
+        "SELECT id, toDecimal256(CASE WHEN value IS NULL THEN '0.00' ELSE value END, 2) AS safe_decimal_value FROM test_table;",
+        "CREATE TABLE test_table2 (id UInt32, condition UInt8) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table2 (id, condition) VALUES (1, 1), (2, 0), (3, 1);",
+        "SELECT t1.id, toDecimal256(t1.condition ? value : '0', 2) AS conditional_decimal_value FROM test_table AS t1 JOIN test_table2 AS t2 ON t1.id = t2.id;",
+        "SELECT id, toDecimal256(value, 3) AS higher_precision_value FROM test_table WHERE amount IS NULL OR amount < 150;"
+    ]
+}

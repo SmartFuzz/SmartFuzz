@@ -1,0 +1,15 @@
+CREATE TABLE vad_resources (id INT PRIMARY KEY, sticker_uri VARCHAR(255), base_uri_of_resources VARCHAR(255), result_uri VARCHAR(255), content XML);
+INSERT INTO vad_resources (id, sticker_uri, base_uri_of_resources, result_uri, content) VALUES (1, 'uri:example1', 'uri:base1', 'uri:result1', '<root><a>1</a></root>');
+INSERT INTO vad_resources (id, sticker_uri, base_uri_of_resources, result_uri, content) VALUES (2, NULL, 'uri:base2', 'uri:result2', '<root><a>2</a></root>');
+INSERT INTO vad_resources (id, sticker_uri, base_uri_of_resources, result_uri, content) VALUES (3, 'uri:example3', 'uri:base3', 'uri:result3', '<root><a></a></root>');
+SELECT VAD_PACK(sticker_uri, base_uri_of_resources) FROM vad_resources WHERE id IN (SELECT id FROM vad_resources WHERE result_uri IS NOT NULL);
+SELECT VAD_PACK(sticker_uri, base_uri_of_resources) FROM vad_resources WHERE sticker_uri IS NULL OR result_uri IS NOT NULL;
+SELECT VAD_PACK(CONCAT(sticker_uri, '.vad'), base_uri_of_resources) FROM vad_resources HAVING XML_EXISTS(content);
+SELECT id, VAD_PACK(sticker_uri, base_uri_of_resources) AS package_log FROM vad_resources WHERE id IN (SELECT id FROM vad_resources WHERE sticker_uri IS NOT NULL) GROUP BY id HAVING COUNT(*) > 1;
+SELECT VAD_PACK(XMLAGG(XML_ROOT(content)), base_uri_of_resources) FROM vad_resources WHERE content IS NOT NULL GROUP BY base_uri_of_resources HAVING COUNT(*) > 1;
+CREATE TABLE test_logs (log_id SERIAL PRIMARY KEY, log_message VARCHAR(512));
+INSERT INTO test_logs (log_message) SELECT VAD_PACK(sticker_uri, base_uri_of_resources) FROM vad_resources WHERE LENGHT(sticker_uri) > 0 AND result_uri IS NOT NULL;
+SELECT VAD_PACK(sticker_uri, base_uri_of_resources) FROM vad_resources WHERE base_uri_of_resources LIKE 'uri:%' AND (sticker_uri IS NULL OR LENGTH(sticker_uri) < 5);
+INSERT INTO test_logs (log_message) SELECT VAD_PACK(sticker_uri, base_uri_of_resources) FROM vad_resources WHERE EXISTS (SELECT * FROM vad_resources WHERE result_uri IS NOT NULL AND content IS NOT NULL);
+SELECT VAD_PACK(sticker_uri, base_uri_of_resources) FROM vad_resources WHERE result_uri NOT IN (SELECT DISTINCT(result_uri) FROM vad_resources);
+SELECT VAD_PACK(NULLIF(sticker_uri,''), NULLIF(base_uri_of_resources, '')) FROM vad_resources GROUP BY base_uri_of_resources HAVING MAX(id) IS NOT NULL;

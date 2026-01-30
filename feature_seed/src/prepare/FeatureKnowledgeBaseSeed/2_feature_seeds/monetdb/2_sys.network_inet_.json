@@ -1,0 +1,15 @@
+CREATE TABLE network_test (id SERIAL PRIMARY KEY, ip_address INET NOT NULL, duration INTERVAL);
+INSERT INTO network_test (ip_address, duration) VALUES (inet '192.168.1.5/24', interval '1-6' year to month);
+INSERT INTO network_test (ip_address, duration) VALUES (inet '10.0.0.1/16', interval '0-1' year to month);
+SELECT id, sys.network(ip_address), (EXTRACT(YEAR FROM duration) * 12 + EXTRACT(MONTH FROM duration)) AS total_months FROM network_test WHERE sys.network(ip_address) IS NOT NULL;
+CREATE TABLE another_test (id SERIAL PRIMARY KEY, interval_val INTERVAL);
+INSERT INTO another_test (interval_val) VALUES (interval '1-0' year to month), (interval '0-1' year to month);
+SELECT nt.id, nt.ip_address, nt.duration, at.interval_val FROM network_test nt JOIN another_test at ON nt.duration IS NULL OR nt.duration > at.interval_val GROUP BY nt.id, at.interval_val HAVING nt.duration IS NOT NULL;
+SELECT nt.ip_address, (CASE WHEN (sys.network(nt.ip_address) IS NOT NULL AND nt.duration IS NOT NULL) THEN sys.network(nt.ip_address) ELSE inet '0.0.0.0' END) AS network_val FROM network_test nt;
+CREATE TABLE boundary_cases (id SERIAL PRIMARY KEY, some_value TEXT);
+INSERT INTO boundary_cases (some_value) VALUES (''), (NULL), ('NormalString'), ('12345678901234567890123456789012345678901234567890');
+SELECT bc.id, CASE WHEN LENGTH(some_value) > 30 THEN 'Too Long' ELSE some_value END AS value_check FROM boundary_cases bc WHERE some_value IS NULL OR some_value <> '';
+SELECT nt.id, sys.network(nt.ip_address) AS net_part, nt.duration AS duration_months, (EXTRACT(YEAR FROM nt.duration)*12 + EXTRACT(MONTH FROM nt.duration))::INTEGER AS months_total FROM network_test nt WHERE (sys.network(nt.ip_address)::VARCHAR <> '0.0.0.0' OR nt.duration IS NULL);
+CREATE TEMPORARY TABLE temp_network (temp_ip INET, temp_duration INTERVAL);
+INSERT INTO temp_network (temp_ip, temp_duration) SELECT sys.network(nt.ip_address), nt.duration FROM network_test nt WHERE nt.id < 10;
+SELECT temp.temp_ip, sys.network(temp.temp_ip) AS derived_network FROM temp_network temp ORDER BY derived_network;

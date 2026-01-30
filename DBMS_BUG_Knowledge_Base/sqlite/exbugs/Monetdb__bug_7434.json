@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7434",
+  "title": "MonetDB server crashes in `exp_bin`",
+  "description": "MonetDB server crashes in `exp_bin`.\n\n**To Reproduce**\n```sql\n CREATE TABLE v0 ( v1 REAL );\n SELECT ( NULL IN ( ( SELECT median ( 1 ) ) , ntile ( '<js>null</js>' ) OVER ( ) ) ) AS new_column FROM v0 ;  \n```\n\n**Backtrace of the Crash**\n```c\n#0 0x7f2b90428355 (exp_bin+0x4725)\n#1 0x7f2b9043ad66 (rel2bin_project+0x496)\n#2 0x7f2b9042da39 (subrel_bin+0xc99)\n#3 0x7f2b9042e7e6 (subrel_bin+0x1a46)\n#4 0x7f2b9042e42c (subrel_bin+0x168c)\n#5 0x7f2b9043aac9 (rel2bin_project+0x1f9)\n#6 0x7f2b9042da39 (subrel_bin+0xc99)\n#7 0x7f2b9042cc39 (output_rel_bin+0xb9)\n#8 0x7f2b90477f1f (backend_dumpstmt_body+0x2cf)\n#9 0x7f2b90477b62 (backend_dumpstmt+0x192)\n#10 0x7f2b904153ac (SQLparser+0xe4c)\n#11 0x7f2b90413cbc (SQLengine_+0xa5c)\n#12 0x7f2b904114fe (SQLengine+0x3e)\n#13 0x7f2b9098f2cf (runScenario+0x6f)\n#14 0x7f2b909904de (MSscheduleClient+0xb6e)\n#15 0x7f2b90ac7182 (doChallenge+0x132)\n#16 0x7f2b917f08a7 (thread_starter+0xc7)\n#17 0x7f2b9030b609 (start_thread+0xd9)\n#18 0x7f2b9022e133 (clone+0x43)\n```\n\n**Software versions**\n - MonetDB version number: v11.49.1 (Dec2023)\n - OS and version: Ubuntu 20.04\n - From docker image monetdb/monetdb:Dec2023\n\nAn example of steps to reproduce in docker container (**write the poc into /tmp/test.sql first**):\n```bash\ndocker container rm monetdb_test -f\ndocker run -e MDB_DB_ADMIN_PASS=monetdb --name monetdb_test -itd monetdb/monetdb:Dec2023\ndocker exec monetdb_test bash -c 'echo -n -e \"user=monetdb\\npassword=monetdb\\n\" > /root/.monetdb'\n\nsleep 10\ncat /tmp/test.sql | timeout 5s docker exec -i monetdb_test mclient monetdb     # run test case\n\nif docker exec monetdb_test bash -c \"grep '[m]server5' /proc/*/cmdline -lR\"; then\n    echo \"[INFO] Server normal.\"\nelse\n    echo \"[CRASH] Mserver5 process does NOT exist.\"\nfi\n```\n\nIt can also be reproduced on the docker image `monetdb/dev-builds:default`.\n\n**Issue labeling**\nbug",
+  "date": "2024-01-17T06:48:17Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_table1 (id INTEGER PRIMARY KEY, value REAL, status BOOLEAN);",
+    "INSERT INTO test_table1 (id, value, status) VALUES (1, NULL, 1);",
+    "CREATE TABLE test_table2 (ref_id INTEGER, description TEXT, amount REAL);",
+    "INSERT INTO test_table2 (ref_id, description, amount) VALUES (1, 'Test', 100.50);",
+    "SELECT (CASE WHEN (SELECT AVG(amount) FROM test_table2 WHERE ref_id = 1) IS NULL THEN 1 ELSE 0 END) AS result;"
+  ],
+  "key_bug_features": [
+    "SELECT with NULL and ntile function causes crash"
+  ]
+}

@@ -1,0 +1,40 @@
+CREATE DATABASE nyc_taxi;
+CREATE TABLE nyc_taxi.trips_large (
+    trip_id             INT UNSIGNED,
+    pickup_datetime     DATETIME,
+    dropoff_datetime    DATETIME,
+    pickup_longitude    FLOAT,
+    pickup_latitude     FLOAT,
+    dropoff_longitude   FLOAT,
+    dropoff_latitude    FLOAT,
+    passenger_count     TINYINT UNSIGNED,
+    trip_distance       FLOAT,
+    fare_amount         FLOAT,
+    extra               FLOAT,
+    tip_amount          FLOAT,
+    tolls_amount        FLOAT,
+    total_amount        FLOAT,
+    payment_type        ENUM('CSH', 'CRE', 'NOC', 'DIS', 'UNK'),
+    pickup_ntaname      VARCHAR(255),
+    dropoff_ntaname     VARCHAR(255)
+);
+LOAD DATA INFILE 'path/to/trips_data.tsv' INTO TABLE nyc_taxi.trips_large FIELDS TERMINATED BY '\t' LINES TERMINATED BY '\n' IGNORE 1 LINES;
+CREATE TABLE nyc_taxi.agg_h3_10_large (
+    pickup_latitude FLOAT,
+    pickup_longitude FLOAT,
+    h3_cell BIGINT UNSIGNED,
+    cnt INT UNSIGNED,
+    pickup_ntaname_uniq VARCHAR(255),
+    pickup_ntaname_top_app VARCHAR(255)
+);
+INSERT INTO nyc_taxi.agg_h3_10_large (pickup_latitude, pickup_longitude, h3_cell, cnt, pickup_ntaname_uniq, pickup_ntaname_top_app)
+SELECT
+    pickup_latitude,
+    pickup_longitude,
+    h3_cell,
+    COUNT(*) AS cnt,
+    GROUP_CONCAT(DISTINCT pickup_ntaname) AS pickup_ntaname_uniq,
+    (SELECT GROUP_CONCAT(pickup_ntaname ORDER BY COUNT(*) DESC LIMIT 1000) FROM nyc_taxi.trips_large) AS pickup_ntaname_top_app
+FROM nyc_taxi.trips_large
+GROUP BY pickup_latitude, pickup_longitude, h3_cell;
+SELECT pickup_latitude, pickup_longitude, cnt FROM nyc_taxi.agg_h3_10_large WHERE cnt > 1000;

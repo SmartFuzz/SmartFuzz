@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/f2ad7de056",
+  "title": "Corrupt table created by CREATE TABLE AS followed by compound SELECT",
+  "description": "drh added on 2015-05-20 14:04:47:\nWhen a column has type INT then that column is allowed to store text, but\ntext should only be stored if it does not look like an integer.  If the text\nlooks like an integer then it should be stored as an integer.\nSometimes a table can be created that has an INT column that contains text that\nlooks like an integer.  The following code illustrates:\nCREATE TABLE t1(a INT);\nCREATE TABLE t2(x TEXT);\nINSERT INTO t1 VALUES(1);\nINSERT INTO t1 VALUES('abc');\nINSERT INTO t2 VALUES(2);\nCREATE TABLE t3 AS SELECT * FROM t1 UNION SELECT * FROM t2;\nSELECT * FROM t3\n WHERE typeof(a)='text'\n   AND CAST(CAST(a AS int) AS text)==a;\nThe resulting table t3 contains two rows with text.  The row that contains 'abc' is correct.  But the row containing '2' really should contain a numeric 2.\nThis problem goes back to before version 3.5.1 (circa 2007).  However, the\nproblem became more acute with check-in [10d851353c2abead] (2014-01-02 -\nversion 3.8.3) because that check-in optimized index creation to avoid\n\"unnecessary\" type checking.  With version 3.8.3 and later, the following\nquery gives a different answer with an index than it gives without the index:\nCREATE TABLE t1(a INT);\nCREATE TABLE t2(x TEXT);\nINSERT INTO t1 VALUES(1);\nINSERT INTO t1 VALUES('abc');\nINSERT INTO t2 VALUES(2);\nCREATE TABLE t3 AS SELECT * FROM t1 UNION SELECT * FROM t2;\nSELECT 'without-index', a FROM t3 WHERE a>9;\nCREATE INDEX t3a ON t3(a);\nSELECT 'with-index', a FROM t3 WHERE a>9;\ndrh added on 2015-05-20 15:52:59:\nBelow is a simpler test case that further illustrates the problem.  In this case,\na table with a column of type TEXT ends up holding an INTEGER value, which\nis something that should never happen.\nCREATE TABLE t1(a TEXT);\nCREATE TABLE t2 AS SELECT * FROM t1 UNION ALL SELECT 123;\nSELECT a, typeof(a) FROM t2;",
+  "date": "2015-05-20 14:04:4710.23 years ago",
+  "vulnerable_version": "3.8.10.1",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(a INT);",
+    "CREATE TABLE t2(b TEXT NOT NULL);",
+    "INSERT INTO t1 VALUES(1);",
+    "INSERT INTO t1 VALUES('123');",
+    "CREATE TABLE t3 AS SELECT * FROM t1 UNION SELECT * FROM t2;"
+  ],
+  "key_bug_features": [
+    "CREATE TABLE AS with UNION SELECT causing type inconsistencies"
+  ]
+}

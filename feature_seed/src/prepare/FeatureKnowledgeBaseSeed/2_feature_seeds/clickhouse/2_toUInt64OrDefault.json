@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id UInt64, value String, balance Float64);
+INSERT INTO test_table VALUES (1, '64'), (2, 'abc'), (3, '0xc0fe'), (4, 'NaN'), (5, 'Inf');
+SELECT id, toUInt64OrDefault(value, CAST('99999', 'UInt64')) AS converted_value FROM test_table ORDER BY balance;
+SELECT id, toUInt64OrDefault(value, 0) AS converted_value FROM (SELECT id, value, balance FROM test_table WHERE balance > 0.0) AS sub_query;
+SELECT id, toUInt64OrDefault(value, 100) AS converted_value, arrayJoin([toUInt64OrDefault(value, 0), 1, 2, 3]) AS array_value FROM test_table;
+SELECT id, array(toUInt64OrDefault(value, 0), toUInt64OrDefault(value, 0)) AS array_conversion FROM test_table GROUP BY id HAVING array_conversion[1] > 0 ORDER BY id;
+WITH (SELECT SUM(balance) FROM test_table WHERE toUInt64OrDefault(value, 0) > 100) AS total_balance SELECT id, toUInt64OrDefault(value, CAST('0', 'UInt64')) AS converted_value, total_balance FROM test_table WHERE total_balance IS NOT NULL ORDER BY converted_value DESC;
+SELECT id, toUInt64OrDefault('abc', CAST(NULL, 'UInt64')) AS converted_value, arrayJoin([toUInt64OrDefault(value, 0)]) FROM test_table GROUP BY id HAVING converted_value = 0;
+DELETE FROM test_table WHERE value = '';
+SELECT id, toUInt64OrDefault('[1, 2, 3]', 0) AS converted_array FROM (SELECT arrayJoin([1, 2, 3]) AS elem) AS sub_query GROUP BY id HAVING converted_array > 0;

@@ -1,0 +1,12 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, content VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO test_table (id, content) VALUES (1, 'Test content'), (2, 'Sample data'), (3, NULL);
+SELECT http_proxy('www.example.com', vector('GET /test?param=' || CAST(id AS VARCHAR)), null) AS response FROM test_table WHERE content IS NOT NULL;
+SELECT id, content, http_proxy('www.other.com', vector('POST /submit?data=' || coalesce(content, 'N/A')), null) AS response FROM test_table WHERE id < 5;
+SELECT COUNT(*) OVER (PARTITION BY NULLIF(content, '')) as non_empty_count FROM test_table HAVING non_empty_count > 1;
+SELECT http_proxy('www.complex.com', vector('GET /check?id=' || id || '&date=' || TO_CHAR(created_at, 'YYYY-MM-DD')), null) FROM test_table WHERE EXISTS (SELECT 1 FROM test_table WHERE content IS NOT NULL);
+CREATE TABLE multiple_types (num_col INT, str_col VARCHAR(100), rand_col FLOAT CHECK (rand_col < 100.0));
+INSERT INTO multiple_types (num_col, str_col, rand_col) VALUES (1, 'abc', 99.9), (2, 'def', NULL);
+SELECT http_proxy('www.another-example.com', vector('GET /data?id=' || num_col || '||content=' || str_col), null) AS complex_response FROM multiple_types WHERE str_col IS NOT NULL;
+SELECT id, content || ' - ' || CAST(created_at AS VARCHAR) AS detailed_info FROM test_table ORDER BY created_at DESC;
+SELECT content, COUNT(*) FROM test_table GROUP BY content HAVING COUNT(*) > 1;
+SELECT DISTINCT id, http_proxy('www.final.com', vector('GET /retrieve?id=' || id), null) FROM test_table WHERE id NOT IN (SELECT id FROM test_table WHERE content IS NULL);

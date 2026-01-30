@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/64263",
+  "title": "plan cache can't work after update to v8.5.3",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n```\nCREATE TABLE `table_A` (\n  `column_1` bigint(20) unsigned NOT NULL,\n  `column_2` int(10) unsigned NOT NULL,\n  `column_3` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,\n  `column_4` int(10) unsigned NOT NULL,\n  `column_5` text COLLATE utf8mb4_general_ci DEFAULT NULL,\n  `column_6` datetime NOT NULL,\n  PRIMARY KEY (`column_1`) /*T![clustered_index] CLUSTERED */,\n  KEY `idx_4_6` (`column_4`, `column_6`),\n  KEY `idx_4` (`column_4`),\n  KEY `idx_6` (`column_6`),\n  KEY `idx_4_3_2` (`column_4`, `column_3`, `column_2`),\n  KEY `idx_3_2` (`column_3`, `column_2`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;\n\n\nSET global tidb_opt_fix_control = \"44830:ON\";\nSET tidb_opt_fix_control = \"44830:ON\";\nSET GLOBAL tidb_enable_non_prepared_plan_cache=ON;\nSET tidb_enable_non_prepared_plan_cache=ON;\n\n\nSELECT\n  `column_1`,\n  `column_2`,\n  `column_3`,\n  `column_4`,\n  `column_5`,\n  `column_6`\nFROM\n  `table_A`\nWHERE\n  `column_3` = \"M 5 9 2 9 2 5 4 6 8 4 9\"\n  AND (\n    `column_2` IN (1)\n    OR `column_4` = 121092106\n  )\nORDER BY\n  `column_6` DESC,\n  `column_1` DESC\nLIMIT\n  1000;\n```\n\n### 2. What did you expect to see? (Required)\n```\nmysql> SELECT @@last_plan_from_cache;\n+------------------------+\n| @@last_plan_from_cache |\n+------------------------+\n|                      1 |\n+------------------------+\n1 row in set (0.00 sec)\n```\n\n### 3. What did you see instead (Required)\n```\nmysql> SELECT @@last_plan_from_cache;\n+------------------------+\n| @@last_plan_from_cache |\n+------------------------+\n|                      0 |\n+------------------------+\n1 row in set (0.00 sec)\n\nthere is warning: \n```\n<img width=\"1521\" height=\"256\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/58382026-28c5-403f-b54c-f090db5c69e0\" />\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n853 and master\n",
+  "date": "2025-11-04T10:13:10Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE table_B ( id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, value REAL DEFAULT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP );",
+    "INSERT INTO table_B (name, value) VALUES ('Test A', 123.45);",
+    "INSERT INTO table_B (name, value) VALUES ('Test B', NULL);",
+    "SELECT * FROM table_B WHERE value IS NULL OR value > 100.00;",
+    "SELECT COUNT(*) FROM table_B WHERE created_at >= DATETIME('now', '-1 day');"
+  ],
+  "key_bug_features": [
+    "Non-prepared plan cache not working after version update"
+  ]
+}

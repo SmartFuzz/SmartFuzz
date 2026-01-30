@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, xml_data XML);
+INSERT INTO test_table (id, xml_data) VALUES (1, '<B />'), (2, '<C />');
+SELECT xml_tree_doc_media_type(xslt('file:/x.xsl', xml_data)) AS media_type FROM test_table WHERE 1 IN (SELECT COUNT(*) FROM test_table);
+SELECT media_type FROM (SELECT xml_tree_doc_media_type(xslt('file:/x.xsl', xml_data)) AS media_type FROM test_table) AS subquery WHERE media_type IN ('text/plain', 'application/xml');
+SELECT id, xml_tree_doc_media_type(xslt('file:/x.xsl', xml_data)) AS media_type FROM test_table WHERE xml_tree_doc_media_type(xslt('file:/x.xsl', xml_data)) IN (SELECT 'text/plain' AS type UNION SELECT 'application/xml' AS type);
+CREATE TABLE intermediate_table (value VARCHAR(255) NOT NULL);
+INSERT INTO intermediate_table (value) VALUES ('text/plain'), (NULL), ('application/xml');
+SELECT xml_tree_doc_media_type(xslt('file:/x.xsl', (SELECT xml_data FROM test_table WHERE id IN (SELECT id FROM intermediate_table WHERE value IS NOT NULL)))) AS media_type FROM test_table;
+SELECT xml_tree_doc_media_type(xslt('file:/x.xsl', xml_data)) AS media_type FROM test_table ORDER BY media_type IN (SELECT value FROM intermediate_table WHERE value IS NOT NULL) DESC;
+SELECT COUNT(*) FROM test_table WHERE xml_data IN (SELECT xml_data FROM test_table WHERE xml_data IS NOT NULL);

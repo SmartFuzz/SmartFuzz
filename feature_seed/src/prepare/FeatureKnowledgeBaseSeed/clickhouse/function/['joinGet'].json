@@ -1,0 +1,23 @@
+[
+    "CREATE DATABASE db_test;",
+    "CREATE TABLE db_test.id_val(`id` UInt32, `val` UInt32) ENGINE = Join(ANY, LEFT, id);",
+    "INSERT INTO db_test.id_val VALUES (1, 11), (2, 12), (4, 13);",
+    "SELECT number, joinGet(db_test.id_val, 'val', toUInt32(number)) FROM numbers(4);",
+    "CREATE TABLE db_test.id_val_nulls(`id` UInt32, `val` UInt32) ENGINE = Join(ANY, LEFT, id) SETTINGS join_use_nulls=1;",
+    "INSERT INTO db_test.id_val_nulls VALUES (1, 11), (2, 12), (4, 13);",
+    "SELECT number, joinGet(db_test.id_val_nulls, 'val', toUInt32(number)) FROM numbers(4);",
+    "CREATE TABLE db_test.first_table(id UInt32, val UInt32) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO db_test.first_table VALUES (1, 100), (2, 200), (3, 300);",
+    "CREATE TABLE db_test.second_table(id UInt32, val UInt32) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO db_test.second_table VALUES (1, 10), (3, 30), (4, 40);",
+    "SELECT f.id, f.val, joinGet(db_test.second_table, 'val', f.id) AS second_val FROM db_test.first_table AS f;",
+    "CREATE TABLE db_test.third_table(id UInt32) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO db_test.third_table VALUES (1), (2), (3);",
+    "SELECT t.id, joinGet(db_test.first_table, 'val', t.id) AS val_from_first, joinGet(db_test.second_table, 'val', t.id) AS val_from_second FROM db_test.third_table AS t;",
+    "SELECT t.id, IFNULL(joinGet(db_test.second_table, 'val', t.id), 0) AS val_from_second FROM db_test.third_table AS t;",
+    "CREATE TABLE db_test.fourth_table(id UInt32) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO db_test.fourth_table VALUES (5), (6), (8);",
+    "SELECT t.id, joinGet(db_test.second_table, 'val', t.id) AS val FROM db_test.fourth_table AS t;",
+    "SELECT t.id, joinGet(db_test.first_table, 'val', t.id) AS val, joinGet(db_test.second_table, 'val', t.id) AS second_val FROM db_test.fourth_table AS t LEFT JOIN db_test.first_table AS f ON f.id = t.id;",
+    "SELECT t.id, COALESCE(joinGet(db_test.second_table, 'val', t.id), joinGet(db_test.first_table, 'val', t.id)) AS combined_val FROM db_test.fourth_table AS t;"
+]

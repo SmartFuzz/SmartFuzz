@@ -1,0 +1,15 @@
+CREATE TABLE IF NOT EXISTS train_data(param1 Float64, param2 Float64, target Float64) ENGINE = Memory;
+INSERT INTO train_data VALUES (1.5, 2.5, 3.7), (4.5, 5.5, 6.8), (NULL, 5.0, 6.1), (3.0, NULL, 4.5), (5.0, 1.0, 2.0), (0.0, 1.0, 0.0);
+CREATE TABLE IF NOT EXISTS test_data(param1 Float64, param2 Float64) ENGINE = Memory;
+INSERT INTO test_data VALUES (NULL, 2.5), (1.5, NULL), (3.0, 3.5), (4.0, 5.0);
+CREATE TABLE IF NOT EXISTS your_model ENGINE = Memory AS SELECT stochasticLinearRegressionState(0.01, 0.1, 10, 'Momentum')(target, param1, param2) AS state FROM train_data WHERE target <> 0.0;
+WITH (SELECT state FROM your_model) AS model SELECT evalMLMethod(model, param1, param2) FROM test_data WHERE param1 <> 1.0;
+SELECT state1 + state2 FROM (SELECT stochasticLinearRegressionState(0.001)(target, param1, param2) AS state1 FROM train_data) AS sub1, (SELECT stochasticLinearRegressionState(0.1, 0.2, 20, 'Nesterov')(target, param1, param2) AS state2 FROM train_data WHERE param2 <> 5.5) AS sub2;
+CREATE TABLE IF NOT EXISTS boundary_data(param1 Float64, param2 Float64, target Float64) ENGINE = Memory;
+INSERT INTO boundary_data VALUES (DBMS_LOB.SUBSTR('9999999999999999', 1), DBMS_LOB.SUBSTR('1.7976931348623157E+308', 1), 1.0), (DBMS_LOB.SUBSTR('-9999999999999999', 1), DBMS_LOB.SUBSTR('-1.7976931348623157E+308', 1), 0.0);
+WITH (SELECT stochasticLinearRegressionState(0.01, 0.01, 5, 'SGD')(target, param1, param2) AS state FROM boundary_data) AS model SELECT evalMLMethod(model, param1, param2) FROM test_data WHERE param1 <> -1.0;
+CREATE TABLE IF NOT EXISTS combined_model ENGINE = Memory AS SELECT state FROM (SELECT state1 + state2 FROM (SELECT stochasticLinearRegressionState(0.1, 0.5, 5, 'Adam')(target, param1, param2) AS state1 FROM train_data) UNION ALL (SELECT stochasticLinearRegressionState(0.01)(target, param1, param2) AS state2 FROM train_data WHERE target <> NULL)) AS combined;
+WITH (SELECT state FROM combined_model) AS model SELECT evalMLMethod(model, param1, (param2 + 1.0) <> NULL) FROM test_data;
+CREATE TABLE IF NOT EXISTS complex_data(param1 Nullable(Float64), param2 Nullable(Float64), target Nullable(Float64)) ENGINE = Memory;
+INSERT INTO complex_data VALUES (1.0, 2.0, NULL), (NULL, NULL, NULL), (3.0, 4.0, 5.0);
+WITH (SELECT stochasticLinearRegressionState(0.001, 0.1, 15, 'Momentum')(target, param1, param2) AS state FROM complex_data WHERE param1 <> 3.0) AS model SELECT evalMLMethod(model, IF(param1 <> NULL, param1, 0), param2) FROM complex_data WHERE target <> 5.0;

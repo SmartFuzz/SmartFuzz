@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/58978",
+  "title": "Wrong execution result when remove all parentheses",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n\n```sql\nDROP TABLE IF EXISTS t0;\nCREATE TABLE t0 (\n    id INT AUTO_INCREMENT PRIMARY KEY,\n    c0 DOUBLE,\n    INDEX idx_c0 (c0)\n);\n\nINSERT INTO t0 (c0) VALUES \n(1), (2.5), (10), (18.8), (-2.4), (-1.4134e10);\n\nSELECT *\nFROM t0 \nWHERE c0 * -1 < 0 AND c0 BETWEEN id AND c0 >> 1 > 1 - c0 AND c0 ^ 3 << 2 < 41 \nORDER BY c0;\n\nSELECT *\nFROM t0\nWHERE ((c0 * (-1)) < 0)\n  AND (c0 BETWEEN id AND ((c0 >> 1) > (1 - c0)))\n  AND (((c0 ^ 3) << 2) < 41)\nORDER BY c0;\n```\n\n### 2. What did you expect to see? (Required)\n\nsee the following case:\n\nI noticed that TiDB seems to have issues with default operator precedence. \nAccording to the precedence rules in the manual, adding parentheses results in inconsistencies.\n\n```sql\nINTERVAL\nBINARY, COLLATE\n!\n- (unary minus), ~ (unary bit inversion)\n^\n*, /, DIV, %, MOD\n-, +\n<<, >>\n&\n|\n= (comparison), <=>, >=, >, <=, <, <>, !=, IS, LIKE, REGEXP, IN\nBETWEEN, CASE, WHEN, THEN, ELSE\nNOT\nAND, &&\nXOR\nOR, ||\n= (assignment), :=\n```\n\n### 3. What did you see instead (Required)\n\n```sql\n// TiDB\nmysql> SELECT *\n    -> FROM t0\n    -> WHERE c0 * -1 < 0 AND c0 BETWEEN id AND c0 >> 1 > 1 - c0 AND c0 ^ 3 << 2 < 41\n    -> ORDER BY c0;\n+----+------+\n| id | c0   |\n+----+------+\n|  2 |  2.5 |\n|  3 |   10 |\n+----+------+\n2 rows in set (0.03 sec)\n\nmysql>\nmysql> SELECT *\n    -> FROM t0\n    -> WHERE ((c0 * (-1)) < 0)\n    ->   AND (c0 BETWEEN id AND ((c0 >> 1) > (1 - c0)))\n    ->   AND (((c0 ^ 3) << 2) < 41)\n    -> ORDER BY c0;\nEmpty set (0.04 sec)\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\nmysql> select version();\n+--------------------+\n| version()          |\n+--------------------+\n| 8.0.11-TiDB-v8.5.0 |\n+--------------------+\n1 row in set (0.04 sec)",
+  "date": "2025-01-16T05:47:39Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t0;",
+    "CREATE TABLE t0 (id INTEGER PRIMARY KEY AUTOINCREMENT, c0 REAL);",
+    "INSERT INTO t0 (c0) VALUES (1), (2.5), (10), (18.8), (-2.4), (-14134000000);",
+    "SELECT * FROM t0 WHERE c0 * -1 < 0 AND c0 BETWEEN id AND (c0 / 2) AND (c0 * 8 < 41) ORDER BY c0;",
+    "SELECT * FROM t0 WHERE ((c0 * (-1)) < 0) AND (c0 BETWEEN id AND (c0 / 2)) AND ((c0 * 8) < 41) ORDER BY c0;"
+  ],
+  "key_bug_features": [
+    "Default operator precedence issues with parentheses in SQL queries"
+  ]
+}

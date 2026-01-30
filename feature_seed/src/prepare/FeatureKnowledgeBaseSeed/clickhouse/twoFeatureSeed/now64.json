@@ -1,0 +1,21 @@
+{
+    "function": "now64",
+    "operator": "a <= b",
+    "sql_array": [
+        "CREATE TABLE test_datetime (id UInt32, event_time DateTime64(6), info String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_datetime VALUES (1, now64(3, 'UTC'), 'Test Event 1'), (2, now64(3, 'Asia/Istanbul'), 'Test Event 2');",
+        "SELECT id, event_time, info FROM test_datetime WHERE event_time <= now64(3);",
+        "SELECT id, COUNT(*) FROM test_datetime GROUP BY id HAVING COUNT(*) <= (SELECT COUNT(*) FROM test_datetime WHERE event_time <= now64(6));",
+        "SELECT id, if(event_time <= now64(9), 'Past Event', 'Future Event') as event_status FROM test_datetime ORDER BY event_status;",
+        "CREATE TABLE test_numeric (num UInt32, created_at DateTime64(0)) ENGINE = MergeTree() ORDER BY num;",
+        "INSERT INTO test_numeric VALUES (1, now64(0)), (2, now64(0));",
+        "SELECT num, created_at FROM test_numeric WHERE created_at <= (SELECT now64(3));",
+        "SELECT num, created_at FROM test_numeric WHERE created_at <= toDateTime64('2023-10-01 12:00:00', 0) AND created_at >= (SELECT now64(0));",
+        "CREATE TABLE test_join (a UInt32, b UInt32, c DateTime64(3)) ENGINE = MergeTree() ORDER BY a;",
+        "INSERT INTO test_join VALUES (1, 10, now64(3)), (2, 20, now64(3));",
+        "SELECT j.a, j.b FROM test_join j JOIN test_datetime t ON j.c <= t.event_time WHERE t.id <= 2;",
+        "SELECT j.a, COUNT(*) FROM test_join j WHERE j.c <= (SELECT now64(3)) GROUP BY j.a HAVING COUNT(*) <= 1;",
+        "SELECT j.a, now64(6) AS current_time FROM test_join j WHERE pluck_value := 20; SELECT * FROM test_join WHERE b <= pluck_value;",
+        "SELECT j.a, (SELECT now64(6) FROM test_join) AS time_check FROM test_join j WHERE j.a <= (SELECT j2.a FROM test_join j2 WHERE j2.c <= now64(3) LIMIT 1);"
+    ]
+}

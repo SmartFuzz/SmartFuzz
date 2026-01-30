@@ -1,0 +1,9 @@
+CREATE TABLE test_table (id INT, text_col VARCHAR, num_col INT);
+INSERT INTO test_table (id, text_col, num_col) VALUES (1, '', 0), (2, 'abc', 16), (3, 'hello', NULL), (4, NULL, 4);
+SELECT id, text_col, regexp_replace(text_col, '^[a-z]', upper(substr(text_col, 1, 1))) AS modified_text, (num_col << 2) AS shifted_num FROM test_table WHERE num_col IS NOT NULL;
+SELECT id, text_col, num_col, (SELECT COUNT(*) FROM test_table AS tt WHERE tt.num_col = (num_col << 1)) AS correlated_count FROM test_table WHERE regexp_replace(text_col, 'a', '') <> '';
+CREATE TABLE another_table (id INT, ref_id INT, value VARCHAR);
+INSERT INTO another_table (id, ref_id, value) VALUES (1, 1, 'xyz'), (2, 2, 'hello'), (3, 1, NULL);
+SELECT tt.id, regexp_replace(tt.text_col, '[lo]', '-') AS modified_text, (at.value IS NOT NULL) << 1 AS is_value_present FROM test_table tt JOIN another_table at ON tt.id = at.ref_id WHERE tt.num_col > 4;
+SELECT id, (num_col << 1) AS shifted_num, regexp_replace(text_col, '^$', 'empty') AS text_check FROM test_table GROUP BY id, text_col, (num_col << 1) HAVING text_col IS NOT NULL;
+SELECT tt.id, regexp_replace(tt.text_col, '[aeiou]', '-') AS modified_text, AVG(COALESCE(at.ref_id, 0) << 1) AS avg_shifted FROM test_table tt LEFT JOIN another_table at ON tt.id = at.ref_id GROUP BY tt.id ORDER BY avg_shifted DESC;

@@ -1,0 +1,16 @@
+{
+    "function": "arrayWithConstant(length, elem)",
+    "operator": "a = ALL (subquery)",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, value Float64, text String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table (id, value, text) VALUES (1, 1.5, 'Test'), (2, NULL, 'Edge'), (3, 2.5, NULL), (4, 3.14159, 'Complex');",
+        "SELECT id, value, text FROM test_table WHERE value = ALL (SELECT value FROM test_table WHERE text IS NOT NULL);",
+        "SELECT id, value, arrayWithConstant(3, text) AS constant_array FROM test_table WHERE (value = ALL (SELECT value FROM test_table WHERE text IN (SELECT text FROM test_table WHERE id > 1)));",
+        "SELECT id, COUNT(*) OVER (PARTITION BY arrayWithConstant(2, IF(text IS NULL, 'default', text))) AS partition_count FROM test_table GROUP BY id, value, text HAVING partition_count > 1;",
+        "SELECT id, arrayWithConstant(5, IF(value IS NULL, 0.0, value)) AS filled_array FROM test_table WHERE id IN (SELECT id FROM test_table WHERE text = ALL (SELECT text FROM test_table WHERE id < 3));",
+        "CREATE TABLE temp_table (col1 String, col2 Float64, col3 UInt32) ENGINE = MEMORY;",
+        "INSERT INTO temp_table (col1, col2, col3) VALUES ('a', 2.2, 1), (NULL, NULL, 2), ('c', 3.0, 3);",
+        "SELECT col1, arrayWithConstant(4, col2) AS repeated_values FROM temp_table WHERE col3 = ALL (SELECT col3 FROM temp_table WHERE col1 IS NOT NULL);",
+        "SELECT col1, arrayWithConstant(0, col2) AS zero_array FROM temp_table WHERE col2 = ALL (SELECT col2 FROM temp_table WHERE col1 = 'a');"
+    ]
+}

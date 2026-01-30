@@ -1,0 +1,27 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=102649",
+  "title": "Calling a UDF aggregate function corrupts plugin when a join is involved",
+  "vulnerable_database": "MySQL Server: User-defined functions ( UDF )",
+  "date": "2021-02-18 17:21:00",
+  "vulnerable_version": "8.0.23",
+  "description": "Let's say you have a plugin installed like udf_example that comes with MySQL:\r\nCREATE AGGREGATE FUNCTION my_median RETURNS REAL SONAME 'udf_example.so';\r\n\r\nOr you could use a third party plugin like from here\nhttps://github.com/quantum13/mysql-median-udf\n.\r\n\r\nIf you run an SQL that uses the aggregate function on a single table, it will run no problem, no matter how many times you run it. For example, I have a table called user_values which has these columns:\r\nid:INT\r\nuser_id:INT\r\nvalue:INT\r\n\r\nThe table has two rows:\r\n(1,1,1)\r\n(2,2,10)\r\n\r\nI have a users table as well, obviously:\r\nid:INT\r\nname:VARCHAR(255)\r\n\r\nIt has these two rows:\r\n(1,'Jason')\r\n(2,'Brian')\r\n\r\nRun this SQL:\r\nselect my_median(value) from user_values => 2 (I don't know why the answer is wrong with my_median from udf_example.so. Maybe I am not calling it right. The point is I am trying to demonstrate this error with a library from MySQL so the library itself cannot be blamed. If I use udf_median.so, I get 5.50).\r\n\r\nYou can run that query again and again and get the same result.\r\n\r\nBut, do a table join like this:\r\nselect users.id, my_median(value)\r\nfrom users,user_values\r\nwhere users.id = user_values.user_id\r\ngroup by users.id \r\n\r\nRun it once and it will get back the result set. BUT RUN IT A SECOND TIME: Error Code: 1305. FUNCTION my_median does not exist\r\n\r\nThe library still appears in mysql.func:\r\nselect * from mysql.func => {name: 'my_median', ret: 1, dl: 'udf_example.so', type: 'aggregate'}\r\n\r\nIf I delete the row from mysql.func, install the aggregate function again, I can run that query once again but not a second time.\r\n\r\nThis does not happen in 8.0.21. I skipped 8.0.22 and went straight to 8.0.23 so I don't know if it appeared in 8.0.22 or 8.0.23.\nHow to repeat:\nCreate a database:\r\ncreate database my_database.\r\n\r\nCreate a user table:\r\ncreate table users ( id INT, name VARCHAR(255));\r\n\r\nPopulate it:\r\ninsert into users (id, name) values (1, 'Jason');\r\ninsert into users (id, name) values (1, 'Brian');\r\n\r\nCreate a table with data:\r\ncreate table user_values (id INT, user_id INT, value INT);\r\n\r\nPopulate it\r\ninsert into user_values (id, user_id, value) values (1,1,1);\r\ninsert into user_values (id, user_id, value) values (2,2,10);\r\n\r\nInstall an aggregate UDF. You can use MySQL's udf_example.so:\r\nCREATE AGGREGATE FUNCTION my_median RETURNS REAL SONAME 'udf_example.so';\r\n\r\nProve to yourself it works:\r\nselect my_median(value) from user_values; <= execute again and again and again till you're bored.\r\n\r\nProve to yourself it is fine with aggregation on a single table:\r\nselect user_id, my_median(value) from user_values group by user_id <= execute again and again\r\n\r\nNow, join the two tables and group by:\r\nselect users.id, my_median(value)\r\nfrom users,user_values\r\nwhere users.id = user_values.user_id\r\ngroup by users.id \r\n\r\nRun it once and get no error.\r\n\r\nRun it a second time and get Error Code: 1305. FUNCTION my_median does not exist",
+  "poc": [
+    "create database my_database.\nCreate a user table:\ncreate table users ( id INT, name VARCHAR(255));",
+    "insert into users (id, name) values (1, 'Jason');",
+    "insert into users (id, name) values (1, 'Brian');",
+    "create table user_values (id INT, user_id INT, value INT);",
+    "insert into user_values (id, user_id, value) values (1,1,1);",
+    "insert into user_values (id, user_id, value) values (2,2,10);",
+    "select my_median(value) from user_values;"
+  ],
+  "key_bug_features": [
+    "Calling UDF aggregate function with table join"
+  ],
+  "bug_features_seed": [
+    "CREATE DATABASE my_database;",
+    "CREATE TABLE users (id INT PRIMARY KEY, name VARCHAR(255) NOT NULL);",
+    "INSERT INTO users (id, name) VALUES (1, 'Jason');",
+    "INSERT INTO users (id, name) VALUES (2, 'Brian');",
+    "CREATE TABLE user_values (id INT PRIMARY KEY, user_id INT, value INT CHECK (value >= 0));"
+  ]
+}

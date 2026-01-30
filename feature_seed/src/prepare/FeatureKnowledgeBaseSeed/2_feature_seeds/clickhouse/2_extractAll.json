@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id UInt32, description String, value Float32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table (id, description, value) VALUES (1, 'number: 1, number: 2', 1.5), (2, 'number: 2', NULL), (3, 'empty string', 0.0);
+SELECT id, extractAll(description, '\\d+') AS numbers FROM test_table WHERE extractAll(description, '\\d+') < ['1'];
+SELECT id, description FROM test_table WHERE NULL < extractAll(description, '\\d+') ORDER BY extractAll(description, '\\d+')[1];
+WITH (SELECT avg(value) FROM test_table WHERE value IS NOT NULL) AS avg_value SELECT id, description FROM test_table WHERE value < avg_value AND description != '' ORDER BY extractAll(description, '\\d+')[1];
+SELECT id, extractAll(description, '\\d+') AS matched_numbers FROM test_table WHERE arrayJoin(matched_numbers) < 3 GROUP BY id HAVING count(matched_numbers) > 0;
+CREATE TABLE secondary_table (id UInt32, detail String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO secondary_table (id, detail) VALUES (1, 'detail: 10'), (2, 'detail: 20'), (3, NULL);
+SELECT t.id, extractAll(t.description, '\\d+') AS numbers FROM test_table t JOIN secondary_table s ON t.id < s.id WHERE s.detail IS NOT NULL AND arrayJoin(numbers) <= 2;
+WITH (SELECT count(*) FROM test_table) AS test_count SELECT id, extractAll(description, '\\d+') AS nums FROM test_table WHERE test_count < id AND nums[1] IS NOT NULL ORDER BY nums[1] DESC;

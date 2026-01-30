@@ -1,0 +1,14 @@
+set logging_level='info';
+set variable dataset_size = 122880;
+PRAGMA force_compression='BitPacking';
+CALL enable_logging(level='trace');
+CREATE TABLE test_uncompressed AS SELECT 	case 		when i = 0 or (i % 512 != 0 and (i % 512) < 350 or (i % 512) > 450) 			then false 		else true 	end 	FROM range(getvariable('dataset_size')) tbl(i);
+checkpoint;
+set enable_logging=false;
+SELECT message.split(': ')[2]::INTEGER FROM duckdb_logs where 	message.starts_with('ColumnDataCheckpointer FinalAnalyze') and 	message.contains('test_uncompressed') and 	message.contains('BOOLEAN') and 	message.contains('COMPRESSION_BITPACKING');
+PRAGMA force_compression='roaring';
+set enable_logging=true;
+CREATE TABLE test_roaring AS select * from test_uncompressed;
+checkpoint;
+set enable_logging=false;
+SELECT message.split(': ')[2]::INTEGER FROM duckdb_logs where 	message.starts_with('ColumnDataCheckpointer FinalAnalyze') and 	message.contains('test_roaring') and 	message.contains('BOOLEAN') and 	message.contains('COMPRESSION_ROARING');

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/86931",
+  "title": "Incorrect results with `GROUP BY WITH ROLLUP` and `uniqExact` under specific column values",
+  "description": "### Company or project name\n_No response_\n### Describe the unexpected behaviour\nUsing `uniqExact` with `GROUP BY WITH ROLLUP` sometimes produces incorrect results (occasionally “blinking” between the correct and incorrect value). The incorrect value always matches the summary row.\nObservations:\n- Modifying the column used for grouping (either in SQL, e.g. +1 or `toString`, or before inserting data into the database) makes the bug disappear (at least on the sample dataset).\n- Replacing `uniqExact` with `uniq` or removing `WITH ROLLUP` also makes the bug disappear.\n- Between versions (from 25.6 to 25.8) the behavior varied slightly (e.g. in one version the results were “blinking,” while in another they were consistently incorrect).\n### Which ClickHouse versions are affected?\n25.6.1+ (I've checked every minor version from 25.1 to 25.8)\n### How to reproduce\n**Version:** v25.8.2.29\n**Schema**:\n```\nCREATE DATABASE reproduction\nENGINE = Atomic;\nCREATE TABLE reproduction.tree_nodes\n(\n`date` Date,\n`c1` LowCardinality(String),\n`c2` UInt32,\n)\nENGINE = MergeTree\nPARTITION BY toYYYYMM(date)\nORDER BY (date, c1, c2)\nSETTINGS index_granularity = 8192;\nCREATE TABLE reproduction.hits\n(\n`date` Date,\n`c1` LowCardinality(String),\n`c2` Nullable(UInt32),\n`c3` UInt32,\n`c4` UInt32,\n)\nENGINE = MergeTree\nPARTITION BY toYYYYMM(date)\nORDER BY (date, c1, c3)\nSETTINGS index_granularity = 8192;\n```\n**Sample data**\n[tree_nodes.csv.gz](https://github.com/user-attachments/files/22254670/reproduction.factorized.tree_nodes.csv.gz)\n[hits.csv.gz](https://github.com/user-attachments/files/22254669/reproduction.factorized.hits.csv.gz)\n**Query**\n```\nSELECT\nnt,\nuniqExact(filtered.c2) AS result\nFROM\n(\nSELECT",
+  "date": "2025-09-10T12:45:55Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE DATABASE reproduction_test;",
+    "CREATE TABLE reproduction_test.tree_nodes (date DATE, c1 VARCHAR(255), c2 INT UNSIGNED) ENGINE = OBTree PARTITION BY EXTRACT(YEAR_MONTH FROM date) ORDER BY (date, c1, c2);",
+    "INSERT INTO reproduction_test.tree_nodes VALUES ('2023-01-01', 'node1', 1), ('2023-01-01', 'node2', 2), ('2023-01-01', 'node3', 3);",
+    "SELECT date, COUNT(DISTINCT c2) AS unique_count FROM reproduction_test.tree_nodes GROUP BY date WITH ROLLUP;",
+    "SELECT date, COUNT(DISTINCT c2) AS unique_count FROM reproduction_test.tree_nodes WHERE c2 IS NOT NULL GROUP BY date WITH ROLLUP;"
+  ],
+  "key_bug_features": [
+    "Using uniqExact with GROUP BY WITH ROLLUP produces incorrect results"
+  ]
+}

@@ -1,0 +1,10 @@
+CREATE TABLE test_dates (id UInt32, days_since_year_zero Int32, date_value Date) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_dates (id, days_since_year_zero, date_value) VALUES (1, 0, fromDaysSinceYearZero(0)), (2, -1, fromDaysSinceYearZero(-1)), (3, 739135, fromDaysSinceYearZero(739135));
+SELECT id, date_value FROM test_dates WHERE days_since_year_zero NOT BETWEEN 0 AND 1000;
+SELECT id, fromDaysSinceYearZero(days_since_year_zero) AS converted_date FROM test_dates WHERE days_since_year_zero NOT BETWEEN -1 AND fromDaysSinceYearZero(365);
+CREATE TABLE temp_dates AS SELECT id, fromDaysSinceYearZero(days_since_year_zero) AS date_transformed FROM test_dates HAVING date_transformed NOT BETWEEN '2020-01-01' AND '2023-01-01' ORDER BY id;
+SELECT id, MAX(days_since_year_zero) OVER (PARTITION BY id) AS max_days, fromDaysSinceYearZero(999999) AS high_date FROM test_dates WHERE days_since_year_zero NOT BETWEEN fromDaysSinceYearZero(NULL) AND fromDaysSinceYearZero(50000);
+SELECT id, fromDaysSinceYearZero(days_since_year_zero) AS date_result FROM test_dates WHERE days_since_year_zero NOT BETWEEN -1000000 AND 1000000 AND date_result IS NOT NULL;
+INSERT INTO test_dates (id, days_since_year_zero, date_value) VALUES (4, 1000000, fromDaysSinceYearZero(1000000));
+CREATE TEMPORARY TABLE filtered_dates AS SELECT id FROM test_dates WHERE fromDaysSinceYearZero(days_since_year_zero) NOT BETWEEN '0000-01-01' AND '9999-12-31';
+SELECT id, date_value FROM filtered_dates WHERE date_value NOT BETWEEN fromDaysSinceYearZero(-1) AND fromDaysSinceYearZero(739136);

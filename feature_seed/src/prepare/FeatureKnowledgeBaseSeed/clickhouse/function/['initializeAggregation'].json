@@ -1,0 +1,18 @@
+[
+    "CREATE TABLE aggregate_test (key UInt64, value AggregateFunction(uniq, UInt64)) ENGINE = AggregatingMergeTree() ORDER BY key;",
+    "INSERT INTO aggregate_test VALUES (1, initializeAggregation('uniqState', toUInt64(1))), (2, initializeAggregation('uniqState', toUInt64(2))), (3, initializeAggregation('uniqState', toUInt64(3));",
+    "SELECT finalizeAggregation(value) FROM aggregate_test;",
+    "SELECT key, finalizeAggregation(value) FROM (SELECT key, initializeAggregation('sumState', number) AS value FROM numbers(100) GROUP BY key) GROUP BY key;",
+    "CREATE TABLE metrics (metric_id UInt64, value AggregateFunction(sum, UInt64) DEFAULT initializeAggregation('sumState', toUInt64(0))) ENGINE = AggregatingMergeTree() ORDER BY metric_id;",
+    "INSERT INTO metrics VALUES (1, initializeAggregation('sumState', toUInt64(10))), (2, initializeAggregation('sumState', toUInt64(20))), (3, initializeAggregation('sumState', toUInt64(30)));",
+    "SELECT metric_id, finalizeAggregation(value) FROM metrics;",
+    "SELECT key, finalizeAggregation(value) AS total_value FROM (SELECT number % 10 AS key, initializeAggregation('sumState', number) AS value FROM numbers(100) GROUP BY key) GROUP BY key;",
+    "CREATE TABLE full_test (user_id UInt64, event AggregateFunction(count, UInt64) DEFAULT initializeAggregation('countState', toUInt64(0))) ENGINE = AggregatingMergeTree() ORDER BY user_id;",
+    "INSERT INTO full_test VALUES (1, initializeAggregation('countState', toUInt64(1))), (1, initializeAggregation('countState', toUInt64(1))), (2, initializeAggregation('countState', toUInt64(1)));",
+    "SELECT user_id, finalizeAggregation(event) FROM full_test GROUP BY user_id;",
+    "SELECT finalizeAggregation(state) FROM (SELECT initializeAggregation('avgState', number) AS state FROM numbers(5));",
+    "SELECT key, count(Metric_id) AS total_count FROM (SELECT key, initializeAggregation('countState', toUInt64(1)) AS state FROM (SELECT number % 5 AS key FROM numbers(100)) GROUP BY key) GROUP BY key;",
+    "CREATE TABLE join_test (id UInt64, value AggregateFunction(sum, UInt64)) ENGINE = AggregatingMergeTree() ORDER BY id;",
+    "INSERT INTO join_test VALUES (1, initializeAggregation('sumState', toUInt64(100))), (2, initializeAggregation('sumState', toUInt64(200)));",
+    "SELECT jt.id, finalizeAggregation(jt.value) AS total FROM join_test jt JOIN (SELECT id, initializeAggregation('sumState', toUInt64(50)) AS sum_value FROM numbers(2) GROUP BY id) AS sub ON jt.id = sub.id GROUP BY jt.id;"
+]

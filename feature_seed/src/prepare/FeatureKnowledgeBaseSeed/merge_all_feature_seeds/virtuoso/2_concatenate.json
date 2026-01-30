@@ -1,0 +1,14 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR(255), description TEXT, created_at TIMESTAMP);
+INSERT INTO test_table (id, name, description, created_at) VALUES (1, 'Test', 'Testing description', NOW());
+INSERT INTO test_table (id, name, description, created_at) VALUES (2, 'Edge', NULL, NOW() - INTERVAL '1 day');
+INSERT INTO test_table (id, name, description, created_at) VALUES (3, NULL, 'Another test', NOW() - INTERVAL '1 hour');
+INSERT INTO test_table (id, name, description, created_at) VALUES (4, 'Multi', 'Test with very long description to check string lengths and spacing', NOW() - INTERVAL '1 minute');
+SELECT CONCAT(name, ' - ', (SELECT COUNT(*) FROM test_table t2 WHERE t2.name IS NOT NULL)) AS combined_info FROM test_table WHERE CONCAT(name, ' - ', description) IS NOT NULL;
+SELECT name, COUNT(*) FROM test_table GROUP BY name HAVING CONCAT(name, ' - ', description) IS NOT NULL ORDER BY COUNT(*) DESC;
+SELECT id, SUM(COALESCE(CAST(SUBSTRING(description FROM 1 FOR 5) AS VARCHAR), '')) AS description_length FROM test_table GROUP BY id HAVING SUM(description_length) > 0;
+SELECT * FROM test_table WHERE name IS NOT NULL AND ((id < 5 && CONCAT(name, ' extended') LIKE '%Test%') OR (created_at IS NOT NULL && description IS NULL));
+SELECT DISTINCT CONCAT(name, ' - ', (SELECT MAX(id) FROM test_table)) AS complex_concat FROM test_table WHERE CONCAT(name, ' min_value') IS NOT NULL;
+SELECT CONCAT(name, ' has ', (SELECT COUNT(*) FROM test_table t3 WHERE t3.description IS NULL)) AS info FROM test_table WHERE EXISTS (SELECT * FROM test_table t4 WHERE t4.id = test_table.id && t4.name IS NOT NULL);
+CREATE TABLE test_related (ref_id INT, info VARCHAR(100), FOREIGN KEY (ref_id) REFERENCES test_table(id));
+INSERT INTO test_related (ref_id, info) VALUES (1, 'Related info 1'), (2, 'Related info 2');
+SELECT t.id, CONCAT(t.name, ' | Related: ', (SELECT STRING_AGG(tr.info, ', ') FROM test_related tr WHERE tr.ref_id = t.id)) AS related_info FROM test_table t LEFT JOIN test_related tr ON t.id = tr.ref_id GROUP BY t.id HAVING CONCAT(t.name, ' | Related: ', COALESCE((SELECT STRING_AGG(tr.info, ', ') FROM test_related tr WHERE tr.ref_id = t.id), 'No related')) IS NOT NULL;

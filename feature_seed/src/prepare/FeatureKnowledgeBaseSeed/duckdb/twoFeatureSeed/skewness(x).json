@@ -1,0 +1,17 @@
+{
+    "function": "skewness(x)",
+    "operator": "+",
+    "sql_array": [
+        "CREATE TABLE test_data (id INTEGER, timestamp_col TIME, float_col FLOAT);",
+        "INSERT INTO test_data VALUES (1, TIME '12:30:00', 1.5), (2, TIME '14:30:00', NULL), (3, TIME '16:45:00', 3.5), (4, TIME '18:00:00', -1.0);",
+        "SELECT id, skewness(float_col + 1.0) AS skewed_addition FROM test_data GROUP BY id HAVING skewness(float_col + 1.0) IS NOT NULL;",
+        "SELECT id, skewness(float_col + (timestamp_col + INTERVAL 2 HOUR)) AS complex_skew FROM test_data WHERE skewness(float_col + (timestamp_col + INTERVAL 2 HOUR)) > 0;",
+        "WITH ranked_data AS (SELECT id, skewness(float_col) OVER (PARTITION BY id) AS skew_value FROM test_data) SELECT id, skew_value FROM ranked_data WHERE skew_value IS NOT NULL;",
+        "SELECT t1.id, skewness(float_col + 1.0) AS skewed, t2.timestamp_col FROM test_data t1 JOIN test_data t2 ON t1.id = t2.id + 1 WHERE t1.float_col IS NOT NULL;",
+        "SELECT (SELECT COUNT(*) FROM test_data WHERE float_col + 2.0 > 0) AS positive_count, skewness(float_col + 2.0) AS skew_value FROM test_data GROUP BY float_col HAVING skew_value IS NOT NULL;",
+        "CREATE TABLE temp_table AS SELECT id, float_col FROM test_data WHERE timestamp_col IS NOT NULL;",
+        "SELECT id, skewness(float_col + CASE WHEN timestamp_col IS NOT NULL THEN INTERVAL 1 HOUR ELSE INTERVAL 0 HOUR END) AS skew_case FROM temp_table GROUP BY id;",
+        "INSERT INTO test_data VALUES (5, TIME '00:00:00', 9999999.99), (6, TIME '23:59:59', -9999999.99);",
+        "SELECT id, skewness(NULLIF(float_col, 0) + 10.0) AS skew_with_null FROM test_data GROUP BY id HAVING skew_with_null < 1.5;"
+    ]
+}

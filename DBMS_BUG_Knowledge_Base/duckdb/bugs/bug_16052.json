@@ -1,0 +1,26 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/16052",
+  "title": "Aliases being set inside bind_replace are overwritten",
+  "vulnerable_database": "DuckDB",
+  "date": "2025-02-04 09:24:36",
+  "vulnerable_version": "",
+  "description": "### What happens?\n\nWhen setting the alias of a TableRef inside a bind_replace function, it is overwritten by the `ref.alias` even if this `ref.alias` is empty. \nSpecifically here: \nhttps://github.com/duckdb/duckdb/blob/6264c5c95b9a77d333d04fa9a268e04c52015766/src/planner/binder/tableref/bind_table_function.cpp#L204-L209\nI can set the `ref.alias` earlier like this: https://github.com/cwida/duckpgq-extension/blob/8de232b5ba4df00afdaf7e1f3c0870dfee21c54f/src/core/parser/duckpgq_parser.cpp#L50, but that means I need to check for every possible bind_replace function I have during the initial bind phase, which feels quite hacky. I think the ability to set the alias during the bind_replace and it not being overwritten is a better solution.\n\nPerhaps I am missing something regarding the `ref.alias`, if that's the case please let me know :) \n\n### To Reproduce\n\nTo reproduce: \n\n`git clone --recurse-submodules git@github.com:cwida/duckpgq-extension.git`\n`make GEN=ninja`\n\n```sql\nCREATE TABLE Student(id BIGINT, name VARCHAR);INSERT INTO Student VALUES (0, 'Daniel'), (1, 'Tavneet'), (2, 'Gabor'), (3, 'Peter'), (4, 'David');\nCREATE TABLE know(src BIGINT, dst BIGINT, createDate BIGINT);INSERT INTO know VALUES (0,1, 10), (0,2, 11), (0,3, 12), (3,0, 13), (1,2, 14), (1,3, 15), (2,3, 16), (4,3, 17);\n-CREATE PROPERTY GRAPH pg\nVERTEX TABLES (\n    Student,\n    Foo\n    )\nEDGE TABLES (\n    know    SOURCE KEY ( src ) REFERENCES Student ( id )\n            DESTINATION KEY ( dst ) REFERENCES Student ( id )\n    );\n\nselect a.id, a.name, local_clustering_coefficient from local_clustering_coefficient(pg, student, know), student a where a.id = lcc.id;\n```\n```\nBinder Error: Referenced table \"lcc\" not found!\nCandidate tables: \"a\"\n```\n\n### OS:\n\nmacOS\n\n### DuckDB Version:\n\nv1.2-histrionicus\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nDaniel ten Wolde\n\n### Affiliation:\n\nCentrum Wiskunde & Informatica\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a source build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "poc": [
+    "CREATE TABLE Student(id BIGINT, name VARCHAR);",
+    "INSERT INTO Student VALUES (0, 'Daniel'), (1, 'Tavneet'), (2, 'Gabor'), (3, 'Peter'), (4, 'David');",
+    "CREATE TABLE know(src BIGINT, dst BIGINT, createDate BIGINT);",
+    "INSERT INTO know VALUES (0,1, 10), (0,2, 11), (0,3, 12), (3,0, 13), (1,2, 14), (1,3, 15), (2,3, 16), (4,3, 17);",
+    "select a.id, a.name, local_clustering_coefficient from local_clustering_coefficient(pg, student, know), student a where a.id = lcc.id;",
+    "select a.id, a.name, local_clustering_coefficient\nfrom local_clustering_coefficient(pg, student, know) lcc2, student a\nwhere a.id = lcc2.id;"
+  ],
+  "key_bug_features": [
+    "Alias set in bind_replace is overwritten by ref.alias"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE Course(id BIGINT PRIMARY KEY, title VARCHAR NOT NULL, credits INT CHECK (credits > 0));",
+    "INSERT INTO Course VALUES (1, 'Mathematics', 3), (2, 'Physics', 4), (3, 'Chemistry', 3);",
+    "CREATE TABLE Enrollment(student_id BIGINT REFERENCES Student(id), course_id BIGINT REFERENCES Course(id), enrollment_date DATE DEFAULT CURRENT_DATE);",
+    "INSERT INTO Enrollment VALUES (0, 1, '2023-09-01'), (1, 2, '2023-09-02'), (2, 3, '2023-09-03');",
+    "SELECT e.student_id, e.course_id, c.title FROM Enrollment e JOIN Course c ON e.course_id = c.id WHERE e.student_id IS NOT NULL;"
+  ]
+}

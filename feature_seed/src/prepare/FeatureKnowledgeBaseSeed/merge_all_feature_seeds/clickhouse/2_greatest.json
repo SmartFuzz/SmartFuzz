@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id UInt32, value Nullable(Int32), text Nullable(String), dateValue DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, 2, 'text', now()), (2, NULL, 'sample', now()), (3, 4, NULL, now()), (4, -1, 'another text', now());
+SELECT id, greatest(value, CAST(text AS Int32)) AS greatest_value FROM test_table WHERE greatest(value, CAST(text AS Int32)) IS NOT NULL;
+SELECT id, greatest(COALESCE(value, 0), greatest(NULL, toUInt8(5))) AS greatest_non_null FROM test_table WHERE greatest_non_null IS NOT NULL;
+SELECT id, count(*) FROM (SELECT id, greatest(COALESCE(value, -2147483648), -1) AS greatest_value FROM test_table GROUP BY id HAVING greatest_value > 0) AS subquery WHERE id IS NOT NULL;
+SELECT id, greatest(value, greatest(toNullable(5), NULL)) AS irrational_test FROM test_table WHERE irrational_test IS NOT NULL;
+SELECT id, greatest(greatest(value, 0), NULL) AS complex_nest FROM test_table WHERE complex_nest IS NOT NULL;
+CREATE TABLE temp_nulls (id UInt32, nullableValue Nullable(Int32)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO temp_nulls VALUES (1, NULL), (2, 10), (3, NULL);
+SELECT t1.id, greatest(t1.nullableValue, (SELECT max(nullableValue) FROM temp_nulls WHERE nullableValue IS NOT NULL)) AS max_value FROM temp_nulls t1 WHERE max_value IS NOT NULL;
+SELECT id, greatest(text, toString(dateValue), toString(NULL)) AS combined_max FROM test_table WHERE combined_max IS NOT NULL;

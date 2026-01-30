@@ -1,0 +1,17 @@
+[
+    "CREATE TABLE hits1 (url String, from IPv6) ENGINE = MergeTree() ORDER BY url;",
+    "CREATE TABLE hits2 (url String, from IPv6) ENGINE = MergeTree() ORDER BY from;",
+    "INSERT INTO hits1 (url, from) VALUES ('https://example.com', '2001:db8::1'), ('https://test.com', '2001:db8:abcd:0012::1');",
+    "INSERT INTO hits2 (url, from) VALUES ('https://example.net', '2607:f0d0:1002:51::4'), ('https://example.org', '2001:0db8:85a3:0000:0000:8a2e:0370:7334');",
+    "SELECT url, from FROM hits1 WHERE from = '2001:db8::1';",
+    "SELECT url, from FROM hits2 WHERE from IN (SELECT from FROM hits1);",
+    "SELECT t1.url, t1.from FROM hits1 AS t1 JOIN hits2 AS t2 ON t1.from = t2.from;",
+    "SELECT COUNT(*) FROM hits1 WHERE from LIKE '2001:db8:%';",
+    "SELECT toTypeName(from), hex(from) FROM hits1 UNION ALL SELECT toTypeName(from), hex(from) FROM hits2;",
+    "CREATE TABLE combined AS SELECT url, from FROM hits1 UNION SELECT url, from FROM hits2;",
+    "SELECT url, from FROM combined WHERE from != '2001:db8:abcd:0012::1';",
+    "WITH (SELECT COUNT(*) FROM hits1) AS total_hits SELECT url, from, total_hits FROM hits1;",
+    "INSERT INTO hits1 (url, from) SELECT url, from FROM hits2 WHERE from != '2001:db8:85a3:0000:0000:8a2e:0370:7334';",
+    "SELECT toIPv4('::ffff:192.168.1.1') AS ipv4_conversion, from FROM hits1;",
+    "SELECT from, COUNT(*) AS cnt FROM hits1 GROUP BY from HAVING cnt > 1;"
+]

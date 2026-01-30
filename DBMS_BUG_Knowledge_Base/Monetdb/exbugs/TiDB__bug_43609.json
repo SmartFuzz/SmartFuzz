@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/43609",
+  "title": "UnionExec reports error for IndexMerge with static pruning",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```\r\ncreate table thash(a int, b int, c int, index idx_ac(a, c), index idx_bc(b, c)) PARTITION BY HASH (`a`) PARTITIONS 4;\r\ninsert into thash values (1,2,3);\r\nselect * from thash use index(idx_ac, idx_bc) where a = 1 or b = 1 order by c limit 2;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nget one line result\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n```\r\nmysql> select * from thash use index(idx_ac, idx_bc) where a = 1 or b = 1 order by c limit 2;\r\nERROR 1105 (HY000): Internal error: UnionExec chunk column count mismatch, req: 3, result: 4\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n```\r\nmysql> select tidb_version();\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| tidb_version()                                                                                                                                                                                                                                                                                           |\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| Release Version: v7.2.0-alpha\r\nEdition: Community\r\nGit Commit Hash: b51758efdbd970ece2a511ab29767a0a6bdc6a83\r\nGit Branch: heads/refs/tags/v7.2.0-alpha\r\nUTC Build Time: 2023-05-06 14:33:10\r\nGoVersion: go1.20.3\r\nRace Enabled: false\r\nTiKV Min Version: 6.2.0-alpha\r\nCheck Table Before Drop: false\r\nStore: tikv |\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n1 row in set (0.00 sec)\r\n```\r\n",
+  "date": "2023-05-08T09:12:29Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE thash2(a INT, b VARCHAR(10), c FLOAT, d DATE, PRIMARY KEY(a, b), INDEX idx_cd(c, d));",
+    "INSERT INTO thash2 VALUES (1, 'test', 3.14, '2023-01-01');",
+    "INSERT INTO thash2 VALUES (NULL, 'example', NULL, '2023-01-02');",
+    "SELECT * FROM thash2 WHERE a = 1 OR b = 'test' ORDER BY c LIMIT 2;",
+    "SELECT * FROM thash2 WHERE a IS NULL OR d = '2023-01-02' ORDER BY b DESC;"
+  ],
+  "key_bug_features": [
+    "UnionExec chunk column count mismatch with index usage"
+  ]
+}

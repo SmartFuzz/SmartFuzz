@@ -1,0 +1,16 @@
+CREATE TABLE dav_test_table (id INT, data VARCHAR(255), ctime TIMESTAMP);
+INSERT INTO dav_test_table (id, data, ctime) VALUES (1, 'Test data 1', NOW() - INTERVAL '1 hour');
+INSERT INTO dav_test_table (id, data, ctime) VALUES (2, 'Test data 2', NOW() - INTERVAL '2 hours');
+INSERT INTO dav_test_table (id, data, ctime) VALUES (3, 'Test data 3', NOW());
+REPL_ADD_DAV_CR('/DAV/regress', 'min_ctime', 100, 'min_ctime');
+SELECT id FROM dav_test_table WHERE ctime < (SELECT ctime FROM dav_test_table WHERE id = 2);
+CREATE TABLE dav_conflict_resolvers (resolver_id INT, description VARCHAR(255));
+INSERT INTO dav_conflict_resolvers (resolver_id, description) VALUES (1, 'Simple resolver 1');
+INSERT INTO dav_conflict_resolvers (resolver_id, description) VALUES (2, 'Simple resolver 2');
+SELECT dr.resolver_id FROM dav_conflict_resolvers dr WHERE dr.resolver_id IN (SELECT resolver_id FROM dav_conflict_resolvers WHERE description LIKE '%Simple%');
+REPL_ADD_DAV_CR('/DAV/regress', (SELECT MIN(ctime) FROM dav_test_table), 200, 'min_ctime');
+CREATE TABLE dav_additional_test (test_id INT, test_data VARCHAR(255));
+INSERT INTO dav_additional_test (test_id, test_data) VALUES (1, 'Additional test data 1');
+INSERT INTO dav_additional_test (test_id, test_data) VALUES (2, 'Additional test data 2');
+SELECT * FROM dav_additional_test WHERE test_data IN (SELECT data FROM dav_test_table WHERE id = (SELECT MAX(id) FROM dav_test_table));
+DELETE FROM dav_test_table WHERE id NOT IN (SELECT dr.resolver_id FROM dav_conflict_resolvers dr);

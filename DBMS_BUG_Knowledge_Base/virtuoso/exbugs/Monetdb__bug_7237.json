@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7237",
+  "title": "SELECT with concurrent writes sometimes returns corrupt data",
+  "description": "When performing a SELECT with concurrent writes, there is a rare chance that the SELECT returns corrupt data. \nThis was detected in the following use case:\n 1. A client acquires a timestamp (`current_ts`) that will be used to retrieve data from a table `Test`;\n 2. It uses `current_ts` to get the data with the maximum `ts` such that `ts <= current_ts`, grouping by id. For instance, in the following example, considering that `current_ts = 7`, it would return rows 3 and 4.\n    | # | id | val | ts |\n    |---|----|-----|----|\n    | 1 | u1 | 100 | 0  |\n    | 2 | u1 | 60  | 5  | \n    | 3 | u1 | 52  | 6  |\n    | 4 | u2 | 100 | 0  |\n    | 5 | u2 | 73  | 10 |\n    \n    To achieve that, the following query is used:\n     ```sql\n      SELECT id, val, ts\n      FROM test\n      WHERE (id, ts) IN (\n          SELECT id, max(t.ts)\n          FROM test t\n          WHERE t.ts <= current_ts\n          GROUP BY id\n      )\n    ```\n\n    Since the table is always pre-populated with `ts = 0` and new inserts use existing ids, the query should always return the same number of rows.\n 3. The client then selects a random item and inserts a new row with a different `val` and the next `current_ts`.\n\nThe problem is that sometimes the query in step 2 does not return all rows. In addition, some of the rows are corrupted (e.g. `id` being set to an empty string). This is a small example where the query returned 898 rows instead of 4000:\n| id   | val   | ts |\n|------|-------|----|\n| ''   | 100.0 | 0  |\n| u770 | 100.0 | 0  |\n| ''   | 100.0 | 0  |\n| u771 | 100.0 | 0  |\n\nHowever, immediately executing the same query with the same `current_ts` in the same connection now returns the correct data.\n\n\n**To Reproduce**\n[This gist](https://gist.github.com/nuno-faria/5bb15a84bc93f5d2b745445d4d7b76cc) contains the code to (hopefully) reproduce this error. \nThe method `Test.execute` contains the relevant code. In case the error occurs, it prints `ERROR` to the terminal and logs the data retrieved, as well as the result of retrying that query, in the file `error.txt`. I also leave [here](https://gist.github.com/nuno-faria/47538bbb87602e6e3e27b092a156a22c) a real example of a `error.txt` file: \nUnfortunally, I am not able to narrow the problem down more than this.\n\n**Expected behavior**\nAlways return the same number of rows with the correct values.\n\n**Software versions**\n - MonetDB v11.43.6 Jan22 branch (most recent commit)\n - Ubuntu 20.04 LTS\n - unixODBC 2.3.6, MonetDB ODBC driver installed from source, just like the server\n - Self-installed and compiled\n\n**Additional context**\nSeems to never happen without concurrent inserts. Additionally, there are no error messages in the logs.",
+  "date": "2022-02-02T20:07:12Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE TABLE test (id VARCHAR(255), val DOUBLE, ts INTEGER);",
+    "INSERT INTO test (id, val, ts) VALUES ('u1', 100.0, 0);",
+    "INSERT INTO test (id, val, ts) VALUES ('u1', 60.0, 5);",
+    "INSERT INTO test (id, val, ts) VALUES ('u1', 52.0, 6);",
+    "INSERT INTO test (id, val, ts) VALUES ('u2', 100.0, 0);",
+    "SELECT id, val, ts FROM test WHERE (id, ts) IN (SELECT id, MAX(ts) FROM test WHERE ts <= 7 GROUP BY id);"
+  ],
+  "key_bug_features": [
+    "SELECT with concurrent writes returns corrupt data"
+  ]
+}

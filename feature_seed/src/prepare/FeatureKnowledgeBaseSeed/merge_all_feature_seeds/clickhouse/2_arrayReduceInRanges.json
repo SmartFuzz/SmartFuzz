@@ -1,0 +1,11 @@
+CREATE TABLE test_data (id Int32, values Array(Int32)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_data VALUES (1, [1, 2, 3, 4, 5, NULL, 7]), (2, [2, 4, 6, 8, 10]);
+SELECT arrayReduceInRanges('sum', [(1, 3), (4, 3)], values) AS range_sums FROM test_data WHERE id = 1;
+SELECT id, arrayReduceInRanges('sum', [(1, 5), (2, 4)], values) + 10 AS adjusted_sums FROM test_data;
+SELECT id, values, arrayReduceInRanges('avg', [(1, 3), (1, 5)], values) AS avg_ranges FROM test_data GROUP BY id;
+SELECT id, arrayReduceInRanges('sum', [(1, 5), (1, 10)], values) AS sum_result FROM test_data HAVING sum_result IS NOT NULL;
+CREATE TABLE edge_cases (num String, nums Array(String), val Nullable(Int32)) ENGINE = MergeTree() ORDER BY num;
+INSERT INTO edge_cases VALUES ('one', ['1', '2', 'three'], NULL), ('two', ['4', 'five', '6'], 100);
+SELECT num, arrayReduceInRanges('sum', [(1, 1), (2, 3)], arrayMap(x -> toInt32(x), nums)) AS processed_sum FROM edge_cases;
+SELECT e.num, (arrayReduceInRanges('sum', [(1, 3)], arrayMap(x -> toInt32(x), e.nums)) + e.val) AS total FROM edge_cases e WHERE e.val IS NOT NULL;
+SELECT arrayReduceInRanges('sum', [(1, 5), (NULL, 5)], arrayMap(x -> if(x = 'six', NULL, toInt32(x)), nums)) AS conditional_sum FROM edge_cases;

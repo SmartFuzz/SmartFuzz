@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/86256",
+  "title": "Non-constant input parameters for parameterized views",
+  "description": "### Company or project name\n_No response_\n### Use case\nWe are migrating our analytics infrastructure from SQL Server to ClickHouse. We now have most of our data in ClickHouse, but are still missing some critical features. In this case, we have tables with associated SQL Server functions to find the best match entry based on a number of parameters. For example, one table could store instructions for maintenance actions to be performed, but each actions is dependent on the context (employee skill, equipment, facility, failure reason, etc.). These would be the parameters for the function, which would then find one (LIMIT 1) or more matches (if no limit specified) in the table, ranked by their suitability to the specified context.\nWe tried to do something similar in ClickHouse, by creating parameterized views that could filter/order the underlying table. However, we've hit a limitation when we try to query this for datasets with multiple rows. Imagine that we have a query that returns the current status of multiple equipment in a facility and, for each row, we need to call the view to resolve the most appropriate maintenance action. If there was only one equipment, we could do it like this:\n```\nSELECT * FROM equipment\nLEFT JOIN v_resolve_maintenance_action\n(\nEquipmentName = (SELECT EquipmentName from equipment),\nFailureReason = (SELECT FailureReason from equipment),\n...\n)\nON 1\n```\nHowever, we cannot find a way to make this work for multiple rows.\n### Describe the solution you'd like\nThe best approach for us would be if we could define a table alias and then match the parameters based on the values of that table columns, e.g.:\n```\nSELECT * FROM equipment e\nLEFT JOIN v_resolve_maintenance_action\n(\nEquipmentName = e.EquipmentName,\nFailureReason = e.FailureReason,\n...\n)\nON 1\n```\nThis would return the data in each row for the `equipment` table plus the matching values from the view.\nHere's a minimal viable example that could be used to test this:\n```\nCREATE TABLE table1\n(\nval1 Int32,\nval2 String\n)\nENGINE = Memory\nINSERT INTO table1 (val1, val2) VALUES\n(1, 'one'),\n(2, 'two');\nCREATE VIEW view1 AS\nWITH {val1: Int32} AS p_val1\nSELECT * from table1\nWHERE val1 = p_val1\nCREATE TABLE table2\n(\nval1 Int32\n)\nENGINE = Memory\nINSERT INTO table2 (val1) VALUES",
+  "date": "2025-08-27T08:49:18Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE equipment (EquipmentName VARCHAR(255), FailureReason VARCHAR(255));",
+    "INSERT INTO equipment (EquipmentName, FailureReason) VALUES ('Excavator', 'Hydraulic Failure'), ('Bulldozer', 'Engine Overheat');",
+    "CREATE VIEW v_resolve_maintenance_action AS SELECT * FROM equipment;",
+    "SELECT e.*, v.* FROM equipment e LEFT JOIN v_resolve_maintenance_action v ON e.EquipmentName = v.EquipmentName AND e.FailureReason = v.FailureReason;",
+    "CREATE TABLE maintenance_actions (ActionId INT, ActionDescription VARCHAR(255));"
+  ],
+  "key_bug_features": [
+    "Non-constant input parameters for parameterized views"
+  ]
+}

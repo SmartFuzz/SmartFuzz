@@ -1,0 +1,20 @@
+{
+    "function": "uptime",
+    "operator": "a = ANY (subquery)",
+    "sql_array": [
+        "CREATE TABLE server_stats (id UInt32, server_name String, uptime_value UInt32) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO server_stats VALUES (1, 'Server1', 3600), (2, 'Server2', 7200), (3, 'Server3', 1800);",
+        "CREATE TABLE metrics (server_id UInt32, last_accessed DateTime, active_requests UInt32) ENGINE = MergeTree() ORDER BY server_id;",
+        "INSERT INTO metrics VALUES (1, now() - INTERVAL 1 HOUR, 3), (2, now() - INTERVAL 1 DAY, 5), (3, now() - INTERVAL 30 MINUTE, 1);",
+        "SELECT server_name, uptime() as Uptime, active_requests FROM server_stats JOIN metrics ON server_stats.id = metrics.server_id WHERE uptime() = ANY (SELECT uptime_value FROM server_stats) AND active_requests > 2 ORDER BY active_requests DESC;",
+        "SELECT server_name, COUNT(*) as RequestCount, AVG(uptime()) as AvgUptime FROM server_stats JOIN metrics ON server_stats.id = metrics.server_id GROUP BY server_name HAVING AVG(uptime()) < 5000;",
+        "SELECT last_accessed, uptime() as Uptime FROM metrics WHERE server_id = (SELECT id FROM server_stats WHERE uptime_value = ANY (SELECT uptime_value FROM server_stats WHERE server_name LIKE '%Server%')) AND last_accessed IS NOT NULL ORDER BY last_accessed;",
+        "SELECT uptime_value, server_name FROM server_stats WHERE uptime_value > 0 AND server_name IN (SELECT server_name FROM server_stats WHERE uptime_value < 5000) ORDER BY uptime_value ASC;",
+        "SELECT server_name, uptime() as Uptime FROM server_stats WHERE uptime() IS NOT NULL AND uptime() = ANY (SELECT MAX(uptime_value) FROM server_stats) GROUP BY server_name HAVING Uptime > 3000;",
+        "CREATE TABLE temp_logs (log_id UInt32, message String, created_at DateTime) ENGINE = Memory;",
+        "INSERT INTO temp_logs VALUES (1, 'Uptime Check', now()), (2, 'Request Handling', now()), (3, 'Service Restart', now());",
+        "SELECT COUNT(*) as TotalLogs, uptime() as Uptime FROM temp_logs WHERE created_at > now() - INTERVAL 1 HOUR AND log_id = ANY (SELECT log_id FROM temp_logs);",
+        "ALTER TABLE server_stats ADD COLUMN status String DEFAULT 'active';",
+        "DROP TABLE IF EXISTS temp_logs;"
+    ]
+}

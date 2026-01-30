@@ -1,0 +1,10 @@
+CREATE TABLE users (id INT PRIMARY KEY, email VARCHAR(255), data TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO users (id, email, data) VALUES (1, 'test@example.com', 'just a test');
+INSERT INTO users (id, email, data) VALUES (2, 'user@example.com', NULL);
+SELECT smime_sign(data, file_to_string('thwate_pub.pem'), file_to_string('thwate_pri.pem'), 'very_secret_password', vector(file_to_string('thwate_ca.pem')), 4 * 16 + 1) AS signed_message FROM users WHERE id = 1;
+SELECT user.email, smime_sign('message to sign', file_to_string('thwate_pub.pem'), file_to_string('thwate_pri.pem'), 'pass', vector(file_to_string('thwate_ca.pem')), (SELECT COUNT(*) FROM users)) AS signed_email FROM users WHERE isIRI(email);
+SELECT u1.email, smime_sign(u1.data, file_to_string('thwate_pub.pem'), file_to_string('thwate_pri.pem'), 'secret', vector(file_to_string('thwate_ca.pem')), 1) AS signature FROM users u1 JOIN users u2 ON isIRI(u1.email) AND u1.id != u2.id GROUP BY u1.email HAVING COUNT(u2.email) > 0;
+DROP TABLE IF EXISTS temp_signatures;
+CREATE TEMPORARY TABLE temp_signatures AS SELECT smime_sign(data, file_to_string('thwate_pub.pem'), file_to_string('thwate_pri.pem'), 'hidden_password', vector(file_to_string('thwate_ca.pem')), 256) AS temp_signed FROM users WHERE data IS NOT NULL;
+SELECT *, isIRI(temp_signed) FROM temp_signatures WHERE temp_signed IS NOT NULL ORDER BY created_at DESC;
+WITH signed_messages AS (SELECT smime_sign(data, file_to_string('thwate_pub.pem'), file_to_string('thwate_pri.pem'), 'secret_key', vector(file_to_string('thwate_ca.pem')), 1 + 1) AS signed, email FROM users) SELECT signed FROM signed_messages WHERE isIRI(email);

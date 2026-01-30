@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=105045",
+  "title": "window function returns wrong result",
+  "description": "Window function followed by order by clause, which also has complex select item will give the wrong result.\nHow to repeat:\nmysql> create table t33(a int, b double);\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nmysql> insert into t33 values(1,2.1);\r\nQuery OK, 1 row affected (0.00 sec)\r\n\r\nmysql> insert into t33 values(2,1.4);\r\nQuery OK, 1 row affected (0.00 sec)\r\n\r\nmysql> insert into t33 values(1,2.56);\r\nQuery OK, 1 row affected (0.00 sec)\r\n\r\nmysql> insert into t33 values(2,2.23);\r\nQuery OK, 1 row affected (0.00 sec)\r\n\r\nmysql> select a, round(sum(b),2) as cnt, row_number() over(order by sum(b) desc) as rn from t33 group by a order by rn;\r\n+------+------+----+\r\n| a | cnt | rn |\r\n+------+------+----+\r\n| 1 | 3.63 | 1 |\r\n| 2 | 3.63 | 2 |\r\n+------+------+----+\r\n2 rows in set (0.00 sec)\r\n\r\nAs the same, sum(b)+1 in the select lists will give the wrong results, such as \r\n`select a, sum(b)+1 as cnt, row_number() over(order by sum(b) desc) as rn from t33 group by a order by rn;`\r\n\r\nmysql> select a, sum(b) as cnt, row_number() over(order by sum(b) desc) as rn from t33 group by a order by rn;\r\n+------+------+----+\r\n| a | cnt | rn |\r\n+------+------+----+\r\n| 1 | 4.66 | 1 |\r\n| 2 | 3.63 | 2 |\r\n+------+------+----+\r\n2 rows in set (0.00 sec)\r\n\r\nIf we doesn't use round() function, we will get the right result.\nSuggested fix:\nIn WindowIterator::Read() function, when reaches the end of execution, REF_SLICE_ACTIVE ref_items don't be set correctly. So `SwitchSlice(m_join, m_output_slice)` before return error.",
+  "date": "2021-09-27 06:40:00",
+  "vulnerable_version": "8.0, 8.0.26",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t34(a INT, b DOUBLE PRECISION, c VARCHAR(20), d DATE);",
+    "INSERT INTO t34 VALUES(1, 2.1, 'test1', '2023-01-01');",
+    "INSERT INTO t34 VALUES(2, 1.4, 'test2', '2023-01-02');",
+    "INSERT INTO t34 VALUES(1, 2.56, 'test3', NULL);",
+    "SELECT a, ROUND(SUM(b), 2) AS cnt, ROW_NUMBER() OVER(ORDER BY SUM(b) DESC) AS rn FROM t34 GROUP BY a ORDER BY rn;"
+  ],
+  "key_bug_features": [
+    "Window function with order by and complex select item"
+  ]
+}

@@ -1,0 +1,10 @@
+CREATE TABLE test_hierarchy (id UInt64, parent_id UInt64, value String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_hierarchy VALUES (1, 0, 'root'), (2, 1, 'child1'), (3, 1, 'child2'), (4, 2, 'child1_1'), (5, 2, 'child1_2'), (6, 3, 'child2_1');
+SELECT dictGetDescendants('test_hierarchy', id, 2) AS descendants FROM test_hierarchy WHERE id != ANY (SELECT parent_id FROM test_hierarchy WHERE value LIKE 'child%') LIMIT 10;
+SELECT id, count(*) FROM test_hierarchy GROUP BY id HAVING id != ANY (SELECT dictGetDescendants('test_hierarchy', 1) FROM system.numbers LIMIT 2) ORDER BY count(*) DESC;
+SELECT id, dictGetDescendants('test_hierarchy', id, 0) FROM test_hierarchy WHERE parent_id IS NULL OR parent_id != ANY (SELECT DISTINCT id FROM test_hierarchy WHERE value = '') ORDER BY id;
+CREATE TABLE temp_hierarchy (descendants Array(UInt64)) ENGINE = Memory;
+INSERT INTO temp_hierarchy SELECT dictGetDescendants('test_hierarchy', id, 0) FROM test_hierarchy WHERE id != ANY (SELECT id FROM test_hierarchy WHERE value ILIKE 'child1%') LIMIT 5;
+SELECT * FROM temp_hierarchy WHERE descendants != ANY (SELECT dictGetDescendants('test_hierarchy', 0, 1) FROM system.numbers LIMIT 10);
+SELECT DISTINCT id, dictGetDescendants('test_hierarchy', id, 0) FROM test_hierarchy WHERE id < 4 AND id != ANY (SELECT id FROM test_hierarchy WHERE value ILIKE 'child2_1') ORDER BY id DESC LIMIT 3;
+SELECT id, dictGetDescendants('test_hierarchy', id, 0) FROM test_hierarchy WHERE id != ANY (SELECT id FROM test_hierarchy WHERE parent_id = 0) GROUP BY id HAVING count(*) <= 3;

@@ -1,0 +1,25 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/64519",
+  "title": "query result is wrong when IndexLookUp PushDown with partition table",
+  "vulnerable_database": "tidb",
+  "date": "2025-11-17T08:10:17Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n```sql\ncreate table t3 (id int, a int, b int, c int, primary key(id), index idx(b)) partition by hash (id) partitions 3;\ninsert into t3 values (1,1,1,1), (2,2,2,2);\nselect /*+ index_lookup_pushdown(t3, idx)*/ * from t3 use index(idx) where b>=0 and b<=10;\n```\n\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\n\n```sql\ntest> select /*+ index_lookup_pushdown(t3, idx)*/ * from t3 use index(idx) where b>=0 and b<=10;\n+----+---+---+---+\n| id | a | b | c |\n+----+---+---+---+\n| 1  | 1 | 1 | 1 |\n| 2  | 2 | 2 | 2 |\n+----+---+---+---+\n```\n\n### 3. What did you see instead (Required)\n\n```sql\ntest> select /*+ index_lookup_pushdown(t3, idx)*/ * from t3 use index(idx) where b>=0 and b<=10;\n+----+---+---+---+\n| id | a | b | c |\n+----+---+---+---+\n+----+---+---+---+\n0 rows in set\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n```sql\ntest> select tidb_version();\n+-----------------------------------------------------------+\n| tidb_version()                                            |\n+-----------------------------------------------------------+\n| Release Version: v9.0.0-beta.2.pre-779-ge10a603ea1        |\n| Edition: Community                                        |\n| Git Commit Hash: e10a603ea1bd0865b2b6b3f55066c5ddc68986e9 |\n| Git Branch: HEAD                                          |\n| UTC Build Time: 2025-11-15 10:41:44                       |\n| GoVersion: go1.23.12                                      |\n| Race Enabled: false                                       |\n| Check Table Before Drop: false                            |\n| Store: tikv                                               |\n| Kernel Type: Classic                                      |\n+-----------------------------------------------------------+\n1 row in set\nTime: 0.006s\ntest> select * from information_schema.cluster_info;\n+------+-----------------+-----------------+----------------------------------+------------------------------------------+---------------------+---------------+-----------+\n| TYPE | INSTANCE        | STATUS_ADDRESS  | VERSION                          | GIT_HASH                                 | START_TIME          | UPTIME        | SERVER_ID |\n+------+-----------------+-----------------+----------------------------------+------------------------------------------+---------------------+---------------+-----------+\n| tidb | 127.0.0.1:4000  | 127.0.0.1:10080 | 9.0.0-beta.2.pre-779-ge10a603ea1 | e10a603ea1bd0865b2b6b3f55066c5ddc68986e9 | 2025-11-17 15:36:26 | 32m45.341995s | 804       |\n| pd   | 127.0.0.1:2379  | 127.0.0.1:2379  | 9.0.0-beta.2.pre-183-g697cbd3eb  | 697cbd3eb5573f442a47472f7d30390dead2b68f | 2025-11-17 15:36:16 | 32m55.342003s | 0         |\n| tikv | 127.0.0.1:20160 | 127.0.0.1:20180 | 9.0.0-beta.2                     | e3aaa5e33407ebfcce12ec7e93c590ddd7128e63 | 2025-11-17 15:36:19 | 32m52.342005s | 0         |\n+------+-----------------+-----------------+----------------------------------+------------------------------------------+---------------------+---------------+-----------+\n```\n\n",
+  "poc": [
+    "create table t3 (id int, a int, b int, c int, primary key(id), index idx(b)) partition by hash (id) partitions 3;",
+    "insert into t3 values (1,1,1,1), (2,2,2,2);",
+    "select /*+ index_lookup_pushdown(t3, idx)*/ * from t3 use index(idx) where b>=0 and b<=10;"
+  ],
+  "poc_type": "sql_text",
+  "state": "closed",
+  "key_bug_features": [
+    "IndexLookUp PushDown with partition table query failure"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t4 (id INT, a VARCHAR(10), b DECIMAL(10,2), c TIMESTAMP, PRIMARY KEY(id), INDEX idx_b(b)) PARTITION BY RANGE (id) (PARTITION p0 VALUES LESS THAN (10), PARTITION p1 VALUES LESS THAN (20), PARTITION p2 VALUES LESS THAN (30));",
+    "INSERT INTO t4 VALUES (1, 'test1', 5.50, '2025-11-17 10:00:00'), (2, 'test2', 15.75, '2025-11-17 11:00:00');",
+    "SELECT /*+ index_lookup_pushdown(t4, idx_b)*/ * FROM t4 USE INDEX(idx_b) WHERE b BETWEEN 0 AND 20;",
+    "CREATE TABLE t5 (id INT, d INT DEFAULT NULL, e VARCHAR(20) NOT NULL, f FLOAT, PRIMARY KEY(id), INDEX idx_e(e)) PARTITION BY HASH (id) PARTITIONS 4;",
+    "INSERT INTO t5 VALUES (1, NULL, 'example1', 1.5), (2, 2, 'example2', 2.5);"
+  ]
+}

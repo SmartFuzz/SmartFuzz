@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id UInt32, url String, values Array(UInt8)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_data VALUES (1, 'http://example.com/{subdomain1,subdomain2}/path', [1, 2, 3]), (2, 'http://example.org/{service1|service2}/resource', [4, 5, 6]);
+SELECT url, arrayJoin(values) AS value FROM test_data WHERE value IN (SELECT max(arrayJoin([1, 2, 3, 4])) FROM test_data) GROUP BY url, value HAVING value > 0;
+SELECT GlobsInURL(url) AS generated_urls FROM test_data WHERE id IN (SELECT id FROM test_data WHERE id > 0) ORDER BY generated_urls DESC;
+CREATE TABLE test_data_exploded AS SELECT id, GlobsInURL(url) AS expanded_urls FROM test_data;
+SELECT id, arrayJoin(expanded_urls) AS final_urls FROM test_data_exploded WHERE length(final_urls) > 0 ORDER BY final_urls;
+SELECT id, arrayMap(x -> x + 1, values) AS incremented_values FROM test_data HAVING arrayExists(x -> x > 4, incremented_values);
+SELECT GlobsInURL('http://{test|demo}.{example.org}/path/{1,2}') AS urls FROM test_data HAVING length(urls) <= 10;
+CREATE TABLE temp_logging AS SELECT id, url FROM test_data WHERE url LIKE 'http://example.com/%' WITH NO DATA;
+INSERT INTO temp_logging SELECT id, url FROM test_data WHERE id = (SELECT min(id) FROM test_data);

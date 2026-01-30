@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/90953",
+  "title": "Projection as secondary index feature not working as expected",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nI don't get any results when writing a query that uses a projection following the syntax introduced in 25.11 - https://presentations.clickhouse.com/2025-release-25.11/#14\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\n```sql\nCREATE TABLE uk_price_paid2\n(\nprice UInt32,\ndate Date,\npostcode1 LowCardinality(String),\npostcode2 LowCardinality(String),\ntype Enum8('terraced' = 1, 'semi-detached' = 2, 'detached' = 3, 'flat' = 4, 'other' = 0),\nis_new UInt8,\nduration Enum8('freehold' = 1, 'leasehold' = 2, 'unknown' = 0),\naddr1 String,\naddr2 String,\nstreet LowCardinality(String),\nlocality LowCardinality(String),\ntown LowCardinality(String),\ndistrict LowCardinality(String),\ncounty LowCardinality(String),\nPROJECTION by_time (\n-- works as an index for the main table representation\nSELECT _part_offset ORDER BY date\n)\n)\nENGINE = MergeTree\nORDER BY (postcode1, postcode2, addr1, addr2);\n```\n```sql\nINSERT INTO uk_price_paid2 SELECT *\nFROM file('uk.parquet')\n```\nIf you then run these two queries, they should return the same results:\n```sql\nSELECT *\nFROM uk_price_paid2\nWHERE (date = '2008-11-19') AND (town = 'BARNARD CASTLE')\nSETTINGS optimize_use_projections = 1\nQuery id: a82684fe-1c77-4307-9532-5b1bc7d5e2c8\nOk.\n0 rows in set. Elapsed: 0.006 sec.\n```\n```sql\nSELECT *\nFROM uk_price_paid2\nWHERE (date = '2008-11-19') AND (town = 'BARNARD CASTLE')",
+  "date": "2025-11-27T10:02:37Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE uk_price_paid3 (id UInt32, name String, created_at DateTime, status Enum8('active' = 1, 'inactive' = 2), score Float32, tags Array(String)) ENGINE = MergeTree() ORDER BY (id, created_at);",
+    "INSERT INTO uk_price_paid3 VALUES (1, 'Alice', '2023-01-01 10:00:00', 'active', 95.5, ['tag1', 'tag2']);",
+    "INSERT INTO uk_price_paid3 VALUES (2, 'Bob', '2023-01-02 11:00:00', 'inactive', 85.0, ['tag3']);",
+    "SELECT * FROM uk_price_paid3 WHERE status = 'active';",
+    "SELECT * FROM uk_price_paid3 WHERE created_at > '2023-01-01 00:00:00' AND score < 100.0;"
+  ],
+  "key_bug_features": [
+    "Projection as secondary index not returning expected results"
+  ]
+}

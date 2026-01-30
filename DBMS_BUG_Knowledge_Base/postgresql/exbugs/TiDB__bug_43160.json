@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/43160",
+  "title": "TiKV reports error when executor IndexMerge with order by + limit",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\nUse tikv to execute SQLs below \r\n```\r\ncreate table tcommon(a int, b int, c int, d int auto_increment, primary key(a, c, d), index idx_ac(a, c), index idx_bc(b, c));\r\ninsert into tcommon(a,b,c) values (1,1,1),(2,2,2),(1,1,2),(2,2,1),(1,1,5);\r\nanalyze table tcommon;\r\nselect * from tcommon where a = 1 or b = 2 order by c limit 3;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nno error\r\n\r\n### 3. What did you see instead (Required)\r\nget error msg below\r\n```\r\nERROR 1105 (HY000): [components/tidb_query_executors/src/table_scan_executor.rs:425]: Data is corrupted, missing data for NOT NULL column (offset = 0)\r\n```\r\n### 4. What is your TiDB version? (Required)\r\n\r\nonly on master branch\r\n",
+  "date": "2023-04-18T12:25:48Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE tcomplex(a int, b varchar(255), c float, d date, e timestamp, primary key(a, c), index idx_ab(a, b), index idx_cd(c, d));",
+    "INSERT INTO tcomplex(a, b, c, d, e) VALUES (1, 'test1', 1.1, '2023-01-01', '2023-01-01 10:00:00'), (2, 'test2', 2.2, '2023-01-02', '2023-01-02 11:00:00'), (3, NULL, 3.3, '2023-01-03', '2023-01-03 12:00:00');",
+    "CREATE TABLE tjoin(f int, g int, h int, primary key(f, g));",
+    "INSERT INTO tjoin(f, g, h) VALUES (1, 1, 1), (2, 2, 2), (3, 3, 3);",
+    "SELECT * FROM tcomplex WHERE a = 1 OR b IS NULL ORDER BY c LIMIT 2;"
+  ],
+  "key_bug_features": [
+    "IndexMerge with order by and limit in TiKV"
+  ]
+}

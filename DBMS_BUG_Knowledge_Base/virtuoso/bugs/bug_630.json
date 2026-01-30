@@ -1,0 +1,41 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/630",
+  "title": "TTLP() and R2RML_MAKE_QM_FROM_G() generate a graph that can neither be queried from a procedure nor deleted",
+  "vulnerable_database": "Virtuoso",
+  "date": "2017-03-08 16:43:26",
+  "vulnerable_version": "",
+  "description": "The RDF graph generated using DB.DBA.TTLP() and DB.DBA.R2RML_MAKE_QM_FROM_G() procedures cannot be deleted and the statement for (sparql ...) do {} with a query over it do not iterate.\nFollowing the example in the page Virtuoso R2RMLSupport I have run the proposed script basic.sql that generates a simple graph from a DB table with single row.\nI have used the following code to query the content of the example result graph.\ncreate procedure R2RML.TEST.try() returns integer\n{\n  for (sparql define input:storage \"\"\n    select ?o\n    #from <http://localhost:8890/sparql>\n    from <http://example.com/>\n    where { ?s ?p ?o } LIMIT 5 ) do\n    {\n      string_to_file ('trashMe.txt', \"o\"||'\\n', -1);\n    };\n};\nR2RML.TEST.try();\n\n\nThe code snippet does not iterate over the 3 quads of the graph. If another graph is used (like the one commented out in the code) the iterations are executed.\nI tried as well to use the dump_one_graph() procedure (actually on other R2RML generated graphs, not the one of this example) and I have noticed that the graphs are not dumped.\nI have run the basic.sql example as dba with a Windows Virtuoso Open Source just installed together with the rdb2rdf_dav.vad package.\nMy VOS version is the following.\nVirtuoso Open Source Edition (multi threaded)\nVersion 7.2.4.3217-threads as of Apr 25 2016\nCompiled for Win64 (x86_64-generic-win-64)\nI have tried with the following rdb2rdf_dav.vad packages installed, with both the result is the same.\nhttp://opldownload.s3.amazonaws.com/uda/vad-packages/6.3/virtuoso/rdb2rdf_dav.vad\nhttp://s3.amazonaws.com/opldownload/uda/vad-packages/7.0/rdb2rdf_dav.vad\nBelow is the session with the execution of basic.sql and the CLEAR GRAPH that does not delete the content of the generated graph <http://example.com/>\nSQL> load .\\basic.sql;\nDone. -- 4 msec.\nDone. -- 16 msec.\nDone. -- 0 msec.\nDone. -- 0 msec.\nDone. -- 0 msec.\nSTATE    MESSAGE",
+  "poc": [
+    "create procedure R2RML.TEST.try() returns integer\n{\n  for (sparql define input:storage \"\"\n    select ?o\n    from <http://example.com/>\n    where { ?s ?p ?o } LIMIT 5 ) do\n    {\n      string_to_file ('trashMe.txt', \"o\"||'\\n', -1);\n    };\n};",
+    "R2RML.TEST.try();",
+    "load .\\basic.sql;",
+    "SPARQL drop silent quad map <http://temp/product>;",
+    "RDF_VIEW_SYNC_TO_PHYSICAL ('http://example.com/resource-vgraph', 1, 'http://example.com/resource', 1, 1);",
+    "create procedure R2RML.TEST.try() returns integer\n{\n  for (sparql define input:storage \"http://www.openlinksw.com/schemas/virtrdf#DefaultQuadStorage\"\n    select ?o\n    from <http://example.com/>\n    where { ?s ?p ?o } LIMIT 5 ) do\n    {\n      string_to_file ('trashMe.txt', \"o\"||'\\n', -1);\n    };\n};"
+  ],
+  "key_bug_features": [
+    "RDF graph generated cannot be queried or deleted"
+  ],
+  "bug_feature_seed": [
+    "SQL CREATE TABLE r2rml_src (id INT, val VARCHAR(50));",
+    "SQL INSERT INTO r2rml_src VALUES (1,'v1');",
+    "SQL INSERT INTO r2rml_src VALUES (2,'v2');",
+    "SQL CALL DB.DBA.TTLP('@prefix ex: <http://example.com/> . ex:s1 ex:p \"o1\" . ex:s2 ex:p \"o2\" . ex:s3 ex:p \"o3\" .', '', 'http://example.com/', 0);",
+    "SPARQL SELECT ?s ?p ?o FROM <http://example.com/> WHERE { ?s ?p ?o };",
+    "SQL CREATE PROCEDURE R2RML_TEST_TRY () RETURNS INTEGER { FOR (SPARQL DEFINE input:storage \"\" SELECT ?o FROM <http://example.com/> WHERE { ?s ?p ?o } LIMIT 5) DO { string_to_file('trashMe.txt', cast(?o as varchar)||'\\n', -1); }; RETURN 0; };",
+    "SQL CALL R2RML_TEST_TRY ();",
+    "SPARQL CLEAR GRAPH <http://example.com/>;",
+    "SPARQL SELECT (COUNT(*) AS ?cnt) FROM <http://example.com/> WHERE { ?s ?p ?o };",
+    "SQL CREATE PROCEDURE R2RML_TEST_TRY2 () RETURNS INTEGER { FOR (SPARQL DEFINE input:storage \"http://www.openlinksw.com/schemas/virtrdf#DefaultQuadStorage\" SELECT ?o FROM <http://example.com/> WHERE { ?s ?p ?o } LIMIT 5) DO { string_to_file('trashMe.txt', cast(?o as varchar)||'\\n', -1); }; RETURN 0; };",
+    "SQL CALL R2RML_TEST_TRY2 ();",
+    "SPARQL DROP SILENT GRAPH <http://example.com/>;",
+    "SPARQL SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } };"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR(100), value FLOAT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table (id, name, value) VALUES (1, 'Test Item', 10.5);",
+    "INSERT INTO test_table (id, name, value) VALUES (2, NULL, 20.0);",
+    "INSERT INTO test_table (id, name, value) VALUES (3, 'Another Item', NULL);",
+    "SELECT * FROM test_table WHERE value IS NULL OR name IS NULL;"
+  ]
+}

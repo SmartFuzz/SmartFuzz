@@ -1,0 +1,18 @@
+{
+    "function": "nth_value",
+    "operator": "(x1, x2, ...)",
+    "sql_array": [
+        "DROP TABLE IF EXISTS sales_data; CREATE TABLE sales_data ( product_id UInt32, region String, sales_amount Float64, sale_date Date) Engine = MergeTree() ORDER BY sale_date;",
+        "INSERT INTO sales_data VALUES (1, 'North', 15000.50, '2023-01-10'), (2, 'South', NULL, '2023-01-15'), (3, 'East', 20000.00, '2023-01-20'), (4, 'West', 25000.75, '2023-01-25');",
+        "SELECT region, nth_value(sales_amount, 2) OVER (PARTITION BY region ORDER BY sale_date) AS second_sale, (region, sales_amount) AS sales_tuple FROM (SELECT * FROM sales_data WHERE sales_amount IS NOT NULL);",
+        "SELECT region, sum(sales_amount) AS total_sales, nth_value((product_id, sales_amount), 1) OVER (PARTITION BY region ORDER BY sale_date) AS first_product_sales FROM sales_data GROUP BY region HAVING total_sales > 10000;",
+        "DROP TABLE IF EXISTS employee_data; CREATE TABLE employee_data ( id UInt32, name String, salary UInt32, department String) Engine = Memory;",
+        "INSERT INTO employee_data VALUES (1, 'Alice', 80000, 'HR'), (2, 'Bob', NULL, 'IT'), (3, 'Charlie', 90000, 'IT'), (4, 'David', 95000, 'Finance');",
+        "SELECT id, name, nth_value(salary, 2) OVER (ORDER BY salary DESC) AS second_highest_salary, (id, name) AS employee_tuple FROM (SELECT * FROM employee_data WHERE salary IS NOT NULL) ORDER BY second_highest_salary;",
+        "SELECT department, count(*) AS employee_count, nth_value(salary, 1) OVER (PARTITION BY department ORDER BY salary) AS lowest_salary FROM employee_data GROUP BY department HAVING employee_count > 1;",
+        "CREATE TABLE IF NOT EXISTS temp_sales ( region String, month UInt32, sales Float64) Engine = Memory;",
+        "INSERT INTO temp_sales VALUES ('North', 1, 15000.50), ('South', 1, 12000.00), ('East', 1, NULL), ('West', 1, 17000.75);",
+        "SELECT region, nth_value(sales, 1) OVER (ORDER BY month) AS first_month_sales, (region, month) AS region_months FROM temp_sales WHERE sales IS NOT NULL;",
+        "SELECT region, CAST(nth_value(sales, 1) OVER (ORDER BY month) AS Float64) AS first_sales, (region, month) AS sales_tuple, (sales + 1000) AS projected_sales FROM temp_sales HAVING projected_sales > 12000;"
+    ]
+}

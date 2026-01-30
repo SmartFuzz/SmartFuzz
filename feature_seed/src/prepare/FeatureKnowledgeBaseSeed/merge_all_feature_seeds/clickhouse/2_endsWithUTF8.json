@@ -1,0 +1,11 @@
+CREATE TABLE test_strings (id UInt32, str String, suffix String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_strings VALUES (1, '中国', '\xbd'), (2, '日本', '\xe3\x81\xaf'), (3, '', '\xbd'), (4, 'Hello', 'lo');
+CREATE TABLE test_numbers (num1 Float64, num2 Float64) ENGINE = MergeTree() ORDER BY num1;
+INSERT INTO test_numbers VALUES (1.1, 2.2), (3.3, NULL), (4.4, 5.5), (NULL, NULL);
+SELECT id, endsWithUTF8(str, suffix) AS ends_matches FROM test_strings WHERE endsWithUTF8(str, suffix) = 1;
+SELECT a.id, a.str, a.suffix FROM test_strings a JOIN (SELECT id, str, suffix FROM test_strings WHERE str != '') b ON endsWithUTF8(a.str, b.suffix) = 1;
+SELECT id, endsWithUTF8(str, suffix) * num1 AS calculated_value FROM test_strings LEFT JOIN test_numbers ON id = num1 WHERE calculated_value > 0;
+SELECT COUNT(*) AS match_count FROM (SELECT str, suffix FROM test_strings WHERE endsWithUTF8(str, suffix) GROUP BY str, suffix HAVING match_count > 1) AS subquery;
+SELECT str, num1, endsWithUTF8(str, suffix) * (num1 + 1) AS complex_calculation FROM test_strings FULL OUTER JOIN test_numbers ON num1 IS NOT NULL;
+SELECT id, num1 * (CASE WHEN endsWithUTF8(str, suffix) THEN 1 ELSE 0 END) AS is_end_match FROM test_strings JOIN test_numbers ON id = num2 WHERE num1 IS NOT NULL;
+SELECT str FROM test_strings WHERE length(str) > 0 AND endsWithUTF8(str, suffix) OR (num1 IS NOT NULL AND num1 * 2 = 6);

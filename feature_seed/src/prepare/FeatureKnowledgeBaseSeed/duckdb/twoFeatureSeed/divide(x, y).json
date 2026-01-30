@@ -1,0 +1,16 @@
+{
+    "function": "divide(x, y)",
+    "operator": "-",
+    "sql_array": [
+        "CREATE TABLE test_table (id INTEGER, value NUMERIC, created_at TIMESTAMP);",
+        "INSERT INTO test_table (id, value, created_at) VALUES (1, 10.0, TIMESTAMP '2023-01-01 00:00:00'), (2, 20.0, TIMESTAMP '2023-02-01 12:00:00'), (3, NULL, TIMESTAMP '2023-03-01 18:00:00'), (4, 5.5, TIMESTAMP '2023-04-01 14:00:00');",
+        "WITH interval_table AS (SELECT id, created_at - INTERVAL (divide(value, 2) + 1) DAY AS adjustment FROM test_table WHERE value IS NOT NULL) SELECT id, adjustment FROM interval_table WHERE adjustment < TIMESTAMP '2023-02-01 00:00:00';",
+        "SELECT id, divide(SUM(CASE WHEN value IS NOT NULL THEN value ELSE 0 END), COUNT(id)) AS avg_value FROM test_table GROUP BY id HAVING avg_value > 5;",
+        "SELECT t1.id, t1.value, t1.created_at, t2.adjustment FROM test_table t1 JOIN (SELECT id, created_at - INTERVAL (divide(value, 3) - 1) DAY AS adjustment FROM test_table WHERE value IS NOT NULL) t2 ON t1.id = t2.id WHERE t1.created_at > TIMESTAMP '2023-01-01 00:00:00' AND t2.adjustment IS NOT NULL;",
+        "SELECT id, value, created_at, divide(value::FLOAT, 0) AS divide_by_zero FROM test_table WHERE value IS NOT NULL;",
+        "SELECT id, created_at, (created_at - INTERVAL (divide(COALESCE(value, 0), 2)) DAY) AS adjusted_date FROM test_table WHERE created_at < TIMESTAMP '2023-01-10 00:00:00' ORDER BY adjusted_date;",
+        "CREATE TABLE temp_table (temp_value NUMERIC NOT NULL, temp_time TIMESTAMP);",
+        "INSERT INTO temp_table (temp_value, temp_time) VALUES (1.0, TIMESTAMP '2023-05-01 00:00:00'), (2.0, TIMESTAMP '2023-05-02 00:00:00');",
+        "SELECT t.id, t.value, (t.created_at - INTERVAL (divide(t.value, t2.temp_value) DAY)) AS new_date FROM test_table t JOIN temp_table t2 ON t2.temp_time < t.created_at ORDER BY new_date DESC;"
+    ]
+}

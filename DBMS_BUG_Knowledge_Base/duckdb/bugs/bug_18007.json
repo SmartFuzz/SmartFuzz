@@ -1,0 +1,26 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/18007",
+  "title": "PIVOT with SUM on >20 columns coerces values to HUGEINT despite explicit cast",
+  "vulnerable_database": "DuckDB",
+  "date": "2025-06-22 15:47:01",
+  "vulnerable_version": "",
+  "description": "### What happens?\n\nWhen generating a pivot table with more than 20 columns using the `SUM()` aggregation, DuckDB forces the result into a `HUGEINT` (INT128), even when the values are explicitly cast to a smaller numeric type like `UTINYINT`.\n\nThis behavior does not occur when using `FIRST() `instead of `SUM()`, nor when the pivoted result has 20 columns or fewer.\n\n### To Reproduce\n\n1. Create a table of 20 column names.\n2. Create a matrix table with pairs of columns and assign random values < 250 using `UTINYINT`.\n3. Run a pivot query using `SUM(val)::UTINYINT`.\n4. Observe correct types for 20 columns, and unexpected promotion to `HUGEINT` for 21 columns.\n\n```\nCREATE TABLE cols (c VARCHAR);\nINSERT INTO cols (SELECT 'c'||i FROM range(20) t1(i));\n\nCREATE TABLE matrix (col1 VARCHAR, col2 VARCHAR, val UTINYINT);\nINSERT INTO matrix (SELECT c1.c, c2.c, random()*250 FROM cols c1 JOIN cols c2 ON c1 != c2);\n\n.print 'with 20 lines/cols each value is keept in UTINYINT'\nPIVOT matrix ON col1 USING sum(val)::UTINYINT ORDER BY col2 LIMIT 2;\n\n\n-- adding just one value to cols translate INTO one more line / column\nINSERT INTO cols VALUES ('c20');\nCREATE or replace TABLE matrix (col1 VARCHAR, col2 VARCHAR, val UTINYINT);\nINSERT INTO matrix (SELECT c1.c, c2.c, random()*200 FROM cols c1 JOIN cols c2 ON c1 != c2);\n\n.print 'with 21 lines/cols each value are forced INTO HUGEINT even when CASTING INTO UTINYINT'\nPIVOT matrix ON col1 USING sum(val)::UTINYINT ORDER BY col2 LIMIT 2;\n\n.print 'the problem doesn't occur with first instead of sum'\nPIVOT matrix ON col1 USING first(val)::UTINYINT ORDER BY col2 LIMIT 2;\n```\n\nExpected Behavior:\n\nValues should remain cast to `UTINYINT`, even with more than 20 columns.\n\n### OS:\n\nDebian GNU/Linux 12 (aarch64), Ubuntu 25.04  (x86_64)\n\n### DuckDB Version:\n\n1.3.1, 1.4.0-dev861\n\n### DuckDB Client:\n\nduckdb\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nCyril Chaboisseau\n\n### Affiliation:\n\nnone\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a nightly build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nNo - Other reason (please specify in the issue body)\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "poc": [
+    "CREATE TABLE cols (c VARCHAR);",
+    "INSERT INTO cols (SELECT 'c'||i FROM range(20) t1(i));",
+    "CREATE TABLE matrix (col1 VARCHAR, col2 VARCHAR, val UTINYINT);",
+    "INSERT INTO matrix (SELECT c1.c, c2.c, random()*250 FROM cols c1 JOIN cols c2 ON c1 != c2);",
+    "INSERT INTO cols VALUES ('c20');",
+    "INSERT INTO matrix (SELECT c1.c, c2.c, random()*200 FROM cols c1 JOIN cols c2 ON c1 != c2);"
+  ],
+  "key_bug_features": [
+    "PIVOT with SUM on more than 20 columns"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE cols (c VARCHAR);",
+    "INSERT INTO cols (SELECT 'c'||i FROM range(1, 21));",
+    "CREATE TABLE matrix (col1 VARCHAR, col2 VARCHAR, val UTINYINT NOT NULL CHECK (val < 250));",
+    "INSERT INTO matrix (SELECT c1.c, c2.c, CAST(random()*250 AS UTINYINT) FROM cols c1 JOIN cols c2 ON c1.c != c2);",
+    "PIVOT matrix ON col1 USING SUM(val)::UTINYINT ORDER BY col2 LIMIT 2;"
+  ]
+}

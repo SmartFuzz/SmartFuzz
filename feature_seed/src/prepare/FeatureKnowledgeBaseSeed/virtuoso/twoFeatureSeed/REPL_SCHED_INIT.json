@@ -1,0 +1,20 @@
+{
+    "function": "REPL_SCHED_INIT",
+    "operator": "NOT LIKE",
+    "sql_array": [
+        "CREATE TABLE subscriptions (id INT PRIMARY KEY, status VARCHAR(10) NULL, sync_time TIMESTAMP NULL);",
+        "INSERT INTO subscriptions (id, status, sync_time) VALUES (1, NULL, '2023-01-01 00:00:00'), (2, 'pending', NULL), (3, 'active', '2023-01-02 00:00:00');",
+        "CREATE TABLE sys_scheduled_events (event_id INT PRIMARY KEY, event_desc VARCHAR(255) NOT NULL);",
+        "INSERT INTO sys_scheduled_events (event_id, event_desc) VALUES (100, 'Initial sync for all subscriptions');",
+        "SELECT DB.DBA.REPL_SCHED_INIT() WHERE (SELECT COUNT(*) FROM sys_scheduled_events) NOT LIKE '0';",
+        "SELECT DB.DBA.REPL_SCHED_INIT() WHERE (SELECT sync_time FROM subscriptions WHERE status IS NULL) NOT LIKE '2023-01%';",
+        "WITH valid_subs AS (SELECT id FROM subscriptions WHERE status NOT LIKE 'active') SELECT DB.DBA.REPL_SCHED_INIT() FROM valid_subs;",
+        "SELECT * FROM subscriptions WHERE NOT EXISTS (SELECT * FROM sys_scheduled_events WHERE event_desc NOT LIKE '%sync%') OR DB.DBA.REPL_SCHED_INIT();",
+        "SELECT COUNT(*) FROM subscriptions WHERE (SELECT COUNT(*) FROM sys_scheduled_events WHERE event_desc IS NOT NULL) NOT LIKE '0';",
+        "SELECT DB.DBA.REPL_SCHED_INIT() CONTEXT (SELECT status FROM subscriptions WHERE NOT LIKE 'active') FROM DUAL;",
+        "CREATE TABLE edge_cases (id INT NULL, value VARCHAR(50) NULL);",
+        "INSERT INTO edge_cases (id, value) VALUES (NULL, '');",
+        "SELECT DB.DBA.REPL_SCHED_INIT() WHERE (SELECT MAX(id) FROM edge_cases) NOT LIKE '3';",
+        "SELECT COUNT(*) FROM subscriptions WHERE sync_time IS NOT NULL HAVING NOT MAX(sync_time) NOT LIKE '2023%';"
+    ]
+}

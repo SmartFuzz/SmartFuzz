@@ -1,0 +1,21 @@
+{
+    "function": "toUUID",
+    "operator": "(x1, x2, ...)",
+    "sql_array": [
+        "CREATE TABLE test_uuid_table (id UInt32, uuid_col String, value Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_uuid_table VALUES (1, '61f0c404-5cb3-11e7-907b-a6006ad3dba0', 1.1), (2, '61f0c404-5cb3-11e7-907b-a6006ad3dba1', 2.2), (3, NULL, 3.3);",
+        "SELECT toUUID(uuid_col) AS converted_uuid, (value, id) AS tuple_data FROM test_uuid_table WHERE value IS NOT NULL;",
+        "SELECT toUUID((SELECT uuid_col FROM test_uuid_table WHERE id = 1)) AS correlated_uuid;",
+        "SELECT COUNT(*), toUUID(NULLIF(uuid_col, '')) AS filtered_uuid FROM test_uuid_table GROUP BY filtered_uuid HAVING filtered_uuid IS NOT NULL;",
+        "SELECT SUM(value), toUUID(concat('61f0c404-5cb3-11e7-907b-a6006ad3dba', CAST(id AS String))) AS combined_uuid FROM test_uuid_table GROUP BY combined_uuid;",
+        "SELECT (value, toUUID(uuid_col)) as uuid_tuple FROM test_uuid_table WHERE value > (SELECT MIN(value) FROM test_uuid_table WHERE uuid_col IS NOT NULL);",
+        "WITH (SELECT toUUID(uuid_col) FROM test_uuid_table WHERE id = 2) AS subquery_uuid SELECT * FROM test_uuid_table WHERE uuid_col = subquery_uuid;",
+        "SELECT COUNT(), (SELECT value FROM test_uuid_table WHERE toUUID(uuid_col) = toUUID('61f0c404-5cb3-11e7-907b-a6006ad3dba0')) AS matching_value FROM test_uuid_table;",
+        "CREATE TABLE temp_uuid_table AS SELECT (toUUID(uuid_col), id) AS uuid_id_tuple FROM test_uuid_table WHERE uuid_col IS NOT NULL;",
+        "INSERT INTO temp_uuid_table SELECT toUUID('61f0c404-5cb3-11e7-907b-a6006ad3dba0'), id FROM test_uuid_table WHERE id > 0;",
+        "CREATE TABLE test_edge_cases (edge_id UInt32, edge_value Float64, edge_uuid String) ENGINE = MergeTree() ORDER BY edge_id;",
+        "INSERT INTO test_edge_cases VALUES (1, 0.0, '61f0c404-5cb3-11e7-907b-a6006ad3dba0'), (2, -1.5, ''), (3, 1.5, NULL);",
+        "SELECT edge_id, edge_value, toUUID(edge_uuid) AS edge_converted_uuid FROM test_edge_cases WHERE edge_value BETWEEN -1 AND 1;",
+        "SELECT edge_id, toUUID(CONCAT(edge_uuid, 'extra')) AS extended_uuid FROM test_edge_cases WHERE edge_uuid IS NOT NULL AND edge_value > 0;"
+    ]
+}

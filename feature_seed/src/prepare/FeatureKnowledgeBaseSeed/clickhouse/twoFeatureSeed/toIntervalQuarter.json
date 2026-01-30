@@ -1,0 +1,15 @@
+{
+    "function": "toIntervalQuarter",
+    "operator": "a < b",
+    "sql_array": [
+        "CREATE TABLE test_interval (id Int32, event_date Date, value Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_interval VALUES (1, toDate('2024-01-01'), 10.5), (2, toDate('2024-04-01'), 20.2), (3, toDate('2024-07-01'), NULL);",
+        "SELECT id, event_date + toIntervalQuarter(value) AS quarter_adjusted_date FROM test_interval WHERE event_date < toDate('2024-10-01') AND value IS NOT NULL;",
+        "SELECT AVG(value) AS average_value FROM test_interval WHERE event_date >= toDate('2024-01-01') GROUP BY id HAVING average_value < 15.0;",
+        "WITH toIntervalQuarter(CAST('2' AS Int32)) AS interval_quarter SELECT event_date, (event_date + interval_quarter) AS future_date FROM test_interval WHERE future_date IS NOT NULL;",
+        "SELECT id, COUNT(*) OVER (PARTITION BY toDate(event_date + toIntervalQuarter(1))) AS count_per_quarter FROM test_interval WHERE value IS NOT NULL;",
+        "SELECT a.id AS event_id FROM (SELECT id, event_date + toIntervalQuarter(CAST(value AS Int64)) AS quarter_date FROM test_interval WHERE value IS NOT NULL) AS a WHERE quarter_date < toDate('2024-10-01');",
+        "SELECT DISTINCT id, value, toIntervalQuarter(CAST(NULL AS Int32)) AS invalid_interval FROM test_interval WHERE event_date = toDate('2024-04-01') HAVING value IS NOT NULL;",
+        "SELECT value, event_date FROM test_interval WHERE value + toIntervalQuarter(-1) < 10.0 AND event_date >= toDate('2024-01-01') ORDER BY event_date DESC;"
+    ]
+}

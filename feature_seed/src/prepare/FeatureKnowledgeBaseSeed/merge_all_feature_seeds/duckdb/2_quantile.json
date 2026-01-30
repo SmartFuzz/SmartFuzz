@@ -1,0 +1,8 @@
+CREATE TABLE test_data (id INT, values BITSTRING, measure FLOAT, category VARCHAR);
+INSERT INTO test_data VALUES (1, '1011'::BITSTRING, 0.1, 'A'), (2, '1110'::BITSTRING, 0.5, 'B'), (3, '0000'::BITSTRING, NULL, 'C'), (4, '0011'::BITSTRING, 0.9, 'A');
+SELECT category, quantile(VALUES, 0.5) OVER (PARTITION BY category) AS median, ('10111'::BITSTRING | values) AS bitwise_result FROM test_data GROUP BY category HAVING median IS NOT NULL;
+WITH quantiles AS (SELECT category, quantile(values, LIST[0.25, 0.75]) AS quantile_values FROM test_data GROUP BY category) SELECT category, quantile_values[1] AS upper_quantile, (NULLIF(values, '0000'::BITSTRING) | '1111'::BITSTRING) AS altered_values FROM quantiles JOIN test_data ON test_data.category = quantiles.category WHERE altered_values IS NOT NULL;
+CREATE TABLE temp_data (time_stamp TIMESTAMP, value INT);
+INSERT INTO temp_data VALUES (TIMESTAMP '2023-01-01 01:00:00', 1), (TIMESTAMP '2023-02-01 01:00:00', NULL), (TIMESTAMP '2023-03-01 01:00:00', 3);
+SELECT time_stamp, quantile(value, 0.5) AS median_value, ('0101'::BITSTRING | '0010'::BITSTRING) AS combined_bits FROM temp_data GROUP BY time_stamp HAVING median_value IS NOT NULL;
+SELECT DISTINCT category, (quantile(measure, 0.5) || '1110'::BITSTRING) AS quanta_bits FROM test_data WHERE measure IS NOT NULL ORDER BY quanta_bits;

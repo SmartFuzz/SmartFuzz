@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/1338",
+  "title": "Deletion of large number of graphs",
+  "description": "In my Virtuoso database instance I have around 30k graphs that I want to delete. I've search for an efficient solution but didn't find any so far. Trying to delete so many graphs leads to big performance problems. It would take less time to restart the database from scratch and re-ingest all the 30k graphs.\nI tried with different logics like:\nDELETE FROM rdf_quad WHERE g IN (iri_to_id('graph1', 'graph2')\n\nSPARQL CLEAR GRAPH <graph1>;\nSPARQL CLEAR GRAPH <graph2>;\n\nIn my opinion, the main issue is that when some graphs are removed from the rdf_quad then a re-indexing is triggered and this takes the majority of the computational time. I tried to remove the indexes associated with the table rdf_quad but this was creating inconsistencies.\nThe best approach would be to first remove all the graphs from the rdf_quad table (even in batches it should work), then at the end of the removal we trigger the re-indexing. By doing so we can reduce the overhead be the re-indexing and only execute it the least amount of times possible. It's fine if the database is not accessible during the deletion.\nDo you have any suggestion on how this could be achieved? Or other any recommendations on how to remove a large number of graphs from the database? Thank you.",
+  "date": "2025-01-13 10:23:18",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE test_graphs (id SERIAL PRIMARY KEY, graph_name VARCHAR(255) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_graphs (id, graph_name) VALUES (1, 'graph1'), (2, 'graph2'), (3, 'graph3');",
+    "DELETE FROM rdf_quad WHERE g IN (SELECT graph_name FROM test_graphs WHERE id IN (1, 2));",
+    "DROP INDEX IF EXISTS rdf_quad_index;",
+    "VACUUM FULL rdf_quad;"
+  ],
+  "key_bug_features": [
+    "Deletion of large number of graphs triggers re-indexing overhead"
+  ]
+}

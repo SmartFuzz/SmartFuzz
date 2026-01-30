@@ -1,0 +1,17 @@
+CREATE TABLE backups (id INT PRIMARY KEY, file_prefix VARCHAR(255) NOT NULL, backup_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, status VARCHAR(50));
+INSERT INTO backups (id, file_prefix, status) VALUES (1, 'test_backup_#', 'pending');
+CREATE TABLE changes (id INT PRIMARY KEY, change_type VARCHAR(50) NOT NULL, backup_id INT, FOREIGN KEY (backup_id) REFERENCES backups(id));
+INSERT INTO changes (id, change_type, backup_id) VALUES (1, 'update', 1), (2, 'insert', 1);
+SELECT NOT EXISTS (SELECT * FROM backups WHERE status = 'complete') AS is_backup_in_progress;
+INSERT INTO backups (id, file_prefix, status) VALUES (2, 'test_backup_#', NOT EXISTS (SELECT * FROM changes WHERE backup_id = 1) AND 'completed');
+CREATE TABLE data (id INT, value VARCHAR(255), last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO data (id, value) VALUES (1, '100'), (2, '200'), (3, NULL);
+SELECT NOT (SELECT COUNT(*) FROM data WHERE value IS NULL) < 2 AS null_count_check;
+SELECT backup_online(NOT EXISTS (SELECT * FROM data WHERE id = 4) AND 'backup_prefix_', 500);
+INSERT INTO data (id, value) VALUES (4, '400'), (5, '500');
+SELECT backup_online('dump-20230401_', (SELECT COUNT(*) FROM data) + NOT (SELECT COUNT(*) FROM data WHERE value IS NULL));
+SELECT backup_online(NULLIF((SELECT COUNT(*) FROM changes), 2), 1000);
+ALTER TABLE backups ADD COLUMN backup_time INTERVAL;
+UPDATE backups SET backup_time = '1 day' WHERE status = 'pending' AND NOT EXISTS (SELECT * FROM changes WHERE backup_id = id);
+CREATE TEMPORARY TABLE temp_backup AS SELECT * FROM backups WHERE NOT (status = 'complete');
+SELECT * FROM temp_backup WHERE NOT backup_time IS NULL;

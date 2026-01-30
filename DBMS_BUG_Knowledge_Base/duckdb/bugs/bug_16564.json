@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/16564",
+  "title": "Non-monotonicity (PostgreSQL incompatible) in decimal literals",
+  "vulnerable_database": "DuckDB",
+  "date": "2025-03-08 17:57:30",
+  "vulnerable_version": "",
+  "description": "### What happens?\n\n(This is part 2/3 of breaking down https://github.com/duckdb/duckdb/issues/14779 into independent and suriviving problems)\n\n```sql\nselect '7e-15'::DECIMAL(38,10);\n```\nreturns\n```\n┌─────────────────────────────────┐\n│ CAST('7e-15' AS DECIMAL(38,10)) │\n│         decimal(38,10)          │\n├─────────────────────────────────┤\n│                    0.0000000001 │\n└─────────────────────────────────┘\n```\nbut should return `0`, like PostgreSQL does. Note that DuckDB isn't even monotonic: ` '1e-14'::DECIMAL(38,10);` returns (the correct) `0.0`!\n\n\n### To Reproduce\n\nDuckDB: https://shell.duckdb.org/#queries=v0,select-'7e%2015'%3A%3ADECIMAL(38%2C10)~\nPG: https://www.db-fiddle.com/f/9zoWTQcVwpr1s4NyFYa4yk/0\n\n### OS:\n\n.\n\n### DuckDB Version:\n\n'1.2.2-dev15'\n\n### DuckDB Client:\n\n.\n\n### Hardware:\n\n.\n\n### Full Name:\n\nSoeren Wolfers\n\n### Affiliation:\n\nG-Research\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a nightly build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nNot applicable - the reproduction does not require a data set\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "poc": [
+    "select '7e-15'::DECIMAL(38,10);"
+  ],
+  "key_bug_features": [
+    "Inconsistent decimal casting for scientific notation literals"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INTEGER PRIMARY KEY, value DECIMAL(38,10));",
+    "INSERT INTO test_table (id, value) VALUES (1, '7e-15'::DECIMAL(38,10));",
+    "INSERT INTO test_table (id, value) VALUES (2, '1e-14'::DECIMAL(38,10));",
+    "SELECT id, value FROM test_table WHERE value IS NOT NULL;",
+    "SELECT id, value FROM test_table WHERE value < '1e-10'::DECIMAL(38,10);"
+  ]
+}

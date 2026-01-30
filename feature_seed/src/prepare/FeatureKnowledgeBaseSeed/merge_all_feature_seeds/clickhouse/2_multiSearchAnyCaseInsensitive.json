@@ -1,0 +1,14 @@
+CREATE TABLE test_strings (id UInt32, search_string String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_strings VALUES (1, 'Test String One'), (2, 'Another one'), (3, 'CLICKhouse is great');
+SELECT id, search_string, multiSearchAnyCaseInsensitive(search_string, ['o', 'G', 'C']) AS found FROM test_strings WHERE found ? 1 : 0 = 1;
+SELECT id, COUNT(*) FROM (SELECT id, multiSearchAnyCaseInsensitive(search_string, ['Click', 'strIng']) AS found FROM test_strings) AS sub WHERE found = 1 GROUP BY id HAVING COUNT(found) > 0;
+WITH (SELECT multiSearchAnyCaseInsensitive(search_string, ['missing', 'case', 'sensitive']) AS result FROM test_strings) AS haiku SELECT id ? (multiSearchAnyCaseInsensitive(search_string, ['TEST']) ? 'Found Test' : 'No Test Found') : 'No ID' FROM test_strings;
+CREATE TABLE temp_search (haystack String) ENGINE = MergeTree() ORDER BY haystack;
+INSERT INTO temp_search VALUES ('A very interesting test string!'), ('sensitive data here'), ('Another sensitive string');
+SELECT multiSearchAnyCaseInsensitive(haystack, [NULL, 'Interesting', 'TEST']) AS matches FROM temp_search WHERE (matches ? 1 : 0) = 1;
+SELECT count(*) FROM temp_search WHERE multiSearchAnyCaseInsensitive(haystack, [haystack]) ? haystack : 'not found';
+CREATE TABLE test_numbers (num UInt32) ENGINE = MergeTree() ORDER BY num;
+INSERT INTO test_numbers VALUES (10), (20), (30), (40), (50);
+SELECT num, multiSearchAnyCaseInsensitive(CAST(num AS String), [CAST(10 AS String)]) ? 'Match' : 'No Match' AS match_result FROM test_numbers;
+SELECT id, search_string, multiSearchAnyCaseInsensitive(search_string, [CAST(NULL AS String), 'CLICKHOUSE']) AS case_result FROM test_strings WHERE search_string IS NOT NULL;
+CREATE TABLE test_combined AS SELECT id, search_string, multiSearchAnyCaseInsensitive(search_string, ['Sample', 'Test']) AS search_result FROM test_strings WHERE search_result ? 1 : 0 = 1;

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/61664",
+  "title": "Unexpected Result in Windows Function inTiFlash",
+  "description": "## Bug Report\n\n### 1. Minimal reproduce step (Required)\n\n```sql\nCREATE TABLE t0 (c0 INT);\nINSERT INTO t0 (c0) VALUES (1);\nALTER TABLE t0 SET TIFLASH REPLICA 1;\nSELECT AVG(0) OVER(ORDER BY c0) FROM t0; -- {20813.5040}\n```\nThis query should return `0`, because ```AVG(0)=0```. However, executing the above query with MPP in TiFlash returns a non-zero number, which is unexpected. \n\nThe plan is as follow:\n```sql\nid      estRows task    access object   operator info\nTableReader_25  10000.00        root            MppVersion: 3, data:ExchangeSender_24\n└─ExchangeSender_24     10000.00        mpp[tiflash]            ExchangeType: PassThrough\n  └─Projection_8        10000.00        mpp[tiflash]            Column#4->Column#5\n    └─Window_23 10000.00        mpp[tiflash]            avg(0)->Column#4 over(order by testdb.t0.c0 range between unbounded preceding and current row)\n      └─Sort_14 10000.00        mpp[tiflash]            testdb.t0.c0\n        └─ExchangeReceiver_13   10000.00        mpp[tiflash]\n          └─ExchangeSender_12   10000.00        mpp[tiflash]            ExchangeType: PassThrough, Compression: FAST\n            └─TableFullScan_11  10000.00        mpp[tiflash]    table:t0        keep order:false, stats:pseudo\n```\n\n### 2. What did you expect to see? (Required)\n{0}\n\n### 3. What did you see instead (Required)\n{20813.5040}\n\n### 4. What is your TiDB version? (Required)\n\n`tiup playground nightly --host 0.0.0.0 --kv 3 --tiflash 3`\n```bash\n8.0.11-TiDB-v9.0.0-beta.1.pre-554-gb1a5536a64-dirty\n```\n\n\n",
+  "date": "2025-06-11T07:59:51Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (c1 INT NOT NULL, c2 FLOAT, c3 VARCHAR(50));",
+    "INSERT INTO t1 (c1, c2, c3) VALUES (1, NULL, 'test');",
+    "ALTER TABLE t1 SET OB REPLICA 1;",
+    "SELECT AVG(c2) OVER(ORDER BY c1) FROM t1 WHERE c3 IS NOT NULL;",
+    "SELECT AVG(0) OVER(ORDER BY c1) FROM t1;"
+  ],
+  "key_bug_features": [
+    "Incorrect AVG function result with TiFlash MPP execution"
+  ]
+}

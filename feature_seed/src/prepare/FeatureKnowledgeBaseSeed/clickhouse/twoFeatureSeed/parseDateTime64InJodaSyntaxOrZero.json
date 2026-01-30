@@ -1,0 +1,18 @@
+{
+    "function": "parseDateTime64InJodaSyntaxOrZero",
+    "operator": "a ILIKE s",
+    "sql_array": [
+        "CREATE TABLE test_dates (id UInt32, date_str String, value Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_dates VALUES (1, '2020-01-01T15:00:00.000Z', 10.5), (2, 'invalid-date', 20.0), (3, '', 30.0);",
+        "SELECT id, parseDateTime64InJodaSyntaxOrZero(date_str, 3) AS processed_date FROM test_dates WHERE processed_date ILIKE '%2020%';",
+        "SELECT id, value, (SELECT count() FROM test_dates WHERE date_str <> '') AS non_empty_dates FROM test_dates GROUP BY id, value HAVING processed_date ILIKE '%00%';",
+        "WITH (SELECT parseDateTime64InJodaSyntaxOrZero(date_str, 3) FROM test_dates) AS date_processed SELECT AVG(value) FROM test_dates WHERE date_processed IS NOT NULL;",
+        "CREATE TABLE test_dates_join (id UInt32, date_str String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_dates_join VALUES (1, '2020-01-01'), (2, '2020-01-02');",
+        "SELECT td.id, td.value FROM test_dates td JOIN test_dates_join tdj ON parseDateTime64InJodaSyntaxOrZero(td.date_str, 3) ILIKE tdj.date_str;",
+        "SELECT id, parseDateTime64InJodaSyntaxOrZero(date_str, 6) AS processed_date, value FROM test_dates WHERE processed_date < (SELECT COUNT(*) FROM test_dates WHERE value > 25) ORDER BY processed_date;",
+        "CREATE TABLE test_edge_cases (id UInt32, mixed_values Array(Float64), labels Array(String)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_edge_cases VALUES (1, [1.1, 2.2], ['valid', 'test']), (2, [], ['empty']);",
+        "SELECT id, arrayJoin(mixed_values) AS value, labels[1] AS label FROM test_edge_cases WHERE arrayJoin(mixed_values) ILIKE '%' OR labels[1] ILIKE '%valid%';"
+    ]
+}

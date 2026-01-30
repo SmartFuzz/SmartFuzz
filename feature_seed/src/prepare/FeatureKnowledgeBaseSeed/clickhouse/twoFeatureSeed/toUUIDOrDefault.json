@@ -1,0 +1,16 @@
+{
+    "function": "toUUIDOrDefault",
+    "operator": "(x1, x2, ...)",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, uuid_col UUID, str_col String, default_uuid UUID DEFAULT toUUIDOrDefault('', toUUIDOrDefault('00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000000')));",
+        "INSERT INTO test_table (id, uuid_col, str_col) VALUES (1, toUUIDOrDefault('61f0c404-5cb3-11e7-907b-a6006ad3dba0', '00000000-0000-0000-0000-000000000000')), (2, toUUIDOrDefault('invalid_uuid_format', '00000000-0000-0000-0000-000000000000')), (3, toUUIDOrDefault(NULL, '00000000-0000-0000-0000-000000000000'));",
+        "SELECT id, toUUIDOrDefault(str_col, '00000000-0000-0000-0000-000000000000') AS parsed_uuid, (SELECT count() FROM test_table WHERE uuid_col = '00000000-0000-0000-0000-000000000000') AS default_count FROM test_table WHERE uuid_col = toUUIDOrDefault('61f0c404-5cb3-11e7-907b-a6006ad3dba0', '_DEFAULT_UUID') GROUP BY id HAVING parsed_uuid IS NOT NULL ORDER BY id;",
+        "SELECT id, (SELECT count() FROM test_table t2 WHERE t2.uuid_col = toUUIDOrDefault(t1.str_col, '00000000-0000-0000-0000-000000000000')) AS uuid_matches FROM test_table t1 GROUP BY id HAVING uuid_matches > 1;",
+        "CREATE TABLE temp_table AS SELECT id, toUUIDOrDefault(uuid_col, '11111111-1111-1111-1111-111111111111') AS mapped_uuid FROM test_table WHERE str_col IS NOT NULL;",
+        "INSERT INTO temp_table (id, mapped_uuid) SELECT UUID(), toUUIDOrDefault(NULL, '22222222-2222-2222-2222-222222222222') FROM numbers(10);",
+        "SELECT t1.id, (t1.uuid_col, toUUIDOrDefault(t1.str_col, toUUIDOrDefault('non_uuid_string', '33333333-3333-3333-3333-333333333333'))) FROM test_table t1 JOIN temp_table t2 ON t1.id = t2.id WHERE toUUIDOrDefault(t2.mapped_uuid, '00000000-0000-0000-0000-000000000000') IS NOT NULL;",
+        "SELECT toUUIDOrDefault(CONCAT('61f0c404-5cb3-11e7-907b-a6006ad3dba0', '0000'), cast(NULL AS UUID)) AS combined_uuid;",
+        "SELECT toUUIDOrDefault(toString(id), cast('four_invalid_uuids' AS UUID)) AS uuid_result FROM test_table WHERE id < 5;",
+        "SELECT tuple(toUUIDOrDefault('e7f09a83-0579-4aae-bb85-a39b64c98e68', '44444444-4444-4444-4444-444444444444'), (id, str_col)) FROM test_table WHERE str_col IN (SELECT toString(toUUIDOrDefault(str_col, '00000000-0000-0000-0000-000000000000')) FROM test_table WHERE uuid_col IS NOT NULL);"
+    ]
+}

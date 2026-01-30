@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=101945",
+  "title": "JSON Unsigned Integer out of range for Unsigned Bigint column",
+  "description": "I tried inserting the JSON value of 9223372036854775808 into a bigint unsigned column. It failed with an error:\r\n\r\nmysql [localhost:8022] {msandbox} (test) > insert into tb8 (a) values (cast(9223372036854775808 as json)); -- fails\r\nERROR 1264 (22003): Out of range value for column 'a' at row 1\nHow to repeat:\nHere is the complete testsuite:\r\n\r\ndrop table if exists tb8;\r\ncreate table tb8 (a bigint unsigned);\r\ninsert into tb8 (a) values (9223372036854775808); -- works\r\ninsert into tb8 (a) values (cast(9223372036854775808 as json)); -- fails\r\ninsert into tb8 (a) values (cast(cast(9223372036854775808 as json) as unsigned)); -- works\r\nSELECT JSON_TYPE( cast(9223372036854775808 as json) );\r\nSELECT cast(9223372036854775808 as json) INTO @a;\r\ninsert into tb8 (a) values (@a); -- works\r\nSELECT * FROM tb8;\nSuggested fix:\nI thought this might be an issue because JSON itself has strange numeric values. That's not the case though, I can create a json type and represent this value no problems:\r\n\r\nmysql [localhost:8022] {msandbox} (test) > drop table if exists tjson;\r\nQuery OK, 0 rows affected (0.01 sec)\r\n\r\nmysql [localhost:8022] {msandbox} (test) > create table tjson (a json);\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nmysql [localhost:8022] {msandbox} (test) > INSERT INTO tjson VALUES ('{\"a\": 9223372036854775808}');\r\nQuery OK, 1 row affected (0.00 sec)\r\n\r\nmysql [localhost:8022] {msandbox} (test) > SELECT * FROM tjson;\r\n+----------------------------+\r\n| a                          |\r\n+----------------------------+\r\n| {\"a\": 9223372036854775808} |\r\n+----------------------------+\r\n1 row in set (0.00 sec)",
+  "date": "2020-12-09 22:03:00",
+  "vulnerable_version": "5.7.31, 8.0.22",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS tb9;",
+    "CREATE TABLE tb9 (b INTEGER NOT NULL, c TEXT);",
+    "INSERT INTO tb9 (b, c) VALUES (9223372036854775807, '{\"value\": 9223372036854775808}');",
+    "INSERT INTO tb9 (b, c) VALUES (9223372036854775808, '{\"value\": null}');",
+    "SELECT b, json_extract(c, '$.value') AS extracted_value FROM tb9;"
+  ],
+  "key_bug_features": [
+    "Inserting JSON value exceeding unsigned bigint range"
+  ]
+}

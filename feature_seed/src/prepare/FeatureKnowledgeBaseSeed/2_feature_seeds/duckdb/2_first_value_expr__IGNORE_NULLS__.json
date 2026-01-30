@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id INT, value_string VARCHAR, value_num FLOAT, created_at TIMESTAMP);
+INSERT INTO test_table (id, value_string, value_num, created_at) VALUES (1, 'test', 10.5, '2023-01-01 00:00:00'), (2, NULL, 15.0, '2023-01-02 00:00:00'), (3, 'another', NULL, '2023-01-03 00:00:00');
+SELECT first_value(value_num IGNORE NULLS) OVER (PARTITION BY value_string ORDER BY created_at) || [1, 2, 3] AS result FROM test_table;
+SELECT id, first_value(value_string || [CAST(value_num AS VARCHAR)] IGNORE NULLS) OVER (PARTITION BY id ORDER BY created_at) AS combined_value FROM test_table;
+SELECT id, first_value(value_string) OVER (ORDER BY created_at) || first_value([value_num, 0.0]) OVER (ORDER BY created_at) AS result FROM test_table WHERE value_num IS NOT NULL;
+WITH aggregated AS (SELECT id, first_value(value_string || [value_num]) OVER (PARTITION BY id ORDER BY created_at) AS combined_value FROM test_table) SELECT combined_value FROM aggregated WHERE combined_value IS NOT NULL;
+SELECT t1.id, first_value(t1.value_string) || [t2.value_num] FROM test_table t1 JOIN test_table t2 ON t1.id = t2.id WHERE t1.value_string IS NOT NULL OR t2.value_num IS NOT NULL;
+CREATE TABLE temp_table (ref_id INT, ref_value FLOAT);
+INSERT INTO temp_table (ref_id, ref_value) VALUES (1, 5.0), (2, 6.0);
+SELECT first_value(ref_value) OVER (PARTITION BY ref_id ORDER BY ref_value) || (SELECT [1, 2, 3] FROM temp_table WHERE ref_id = test_table.id) AS nested_result FROM test_table JOIN temp_table ON temp_table.ref_id = test_table.id;
+SELECT first_value(value_num IGNORE NULLS) AS first_num FROM (SELECT id, value_num FROM test_table WHERE value_num IS NULL) AS subq UNION ALL SELECT value_num FROM test_table WHERE value_string = 'test';

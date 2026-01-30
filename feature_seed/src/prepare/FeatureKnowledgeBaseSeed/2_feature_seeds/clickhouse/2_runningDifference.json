@@ -1,0 +1,10 @@
+CREATE TABLE events (EventID UInt32, EventTime DateTime, EventDate Date) ENGINE = MergeTree() ORDER BY EventTime;
+INSERT INTO events VALUES (1, '2016-11-24 10:00:00', '2016-11-24'), (2, '2016-11-24 10:01:00', '2016-11-24'), (3, '2016-11-24 10:02:00', '2016-11-24'), (4, '2016-11-24 10:03:00', '2016-11-24'), (5, '2016-11-24 10:05:00', '2016-11-24');
+SELECT EventID, runningDifference(EventTime) AS delta FROM (SELECT EventID, EventTime FROM events WHERE EventDate = '2016-11-24' ORDER BY EventTime ASC) WHERE delta > INTERVAL 1 MINUTE;
+SELECT EventID, runningDifference(EventTime + INTERVAL 1 HOUR) AS delta FROM events WHERE EventDate = '2016-11-24' AND EventTime < '2016-11-24 10:03:00' GROUP BY EventID HAVING delta IS NOT NULL;
+SELECT EventID, runningDifference(EventTime) + INTERVAL (IFNULL(EventID, 0) % 5, 2) DAY AS adjusted_delta FROM events WHERE EventDate = '2016-11-24' ORDER BY adjusted_delta DESC;
+SELECT e1.EventID, runningDifference(e1.EventTime) AS delta FROM (SELECT EventID, EventTime + INTERVAL rand() % 5 DAY AS EventTime FROM events) AS e1 JOIN events AS e2 ON e1.EventID = e2.EventID WHERE e1.EventTime < e2.EventTime ORDER BY delta;
+SELECT DISTINCT EventID, runningDifference(EventTime) AS delta FROM events WHERE EventID IN (SELECT DISTINCT EventID FROM events WHERE EventDate = '2016-11-24') AND delta != 0 HAVING MIN(delta) > INTERVAL '1' MINUTE;
+CREATE TABLE additional_events (AdditionalID UInt32, StartTime DateTime) ENGINE = MergeTree() ORDER BY StartTime;
+INSERT INTO additional_events VALUES (1, '2016-11-24 10:00:00'), (2, '2016-11-24 10:01:30'), (3, '2016-11-24 10:01:45'), (4, '2016-11-24 10:05:00');
+SELECT ae.AdditionalID, runningDifference(ae.StartTime + INTERVAL 2 HOUR) AS time_diff FROM additional_events ae JOIN events e ON ae.AdditionalID = e.EventID WHERE e.EventDate = '2016-11-24' ORDER BY time_diff;

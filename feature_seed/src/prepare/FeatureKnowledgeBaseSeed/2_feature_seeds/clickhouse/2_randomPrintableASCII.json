@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id UInt32, name String, value Float64, created_at DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, 'Alice', 10.5, now()), (2, 'Bob', NULL, now()), (3, randomPrintableASCII(20), 3.14, now());
+SELECT id, name, value, randomPrintableASCII(30) as random_str FROM test_table WHERE id GLOBAL NOT IN (SELECT id FROM test_table WHERE value IS NULL);
+SELECT id, name, value, (SELECT randomPrintableASCII(20) FROM test_table WHERE id = test_table.id) as inner_random_str FROM test_table WHERE value GLOBAL NOT IN (SELECT value FROM test_table WHERE name = 'Alice');
+SELECT COUNT(*) as total, value, randomPrintableASCII(10) as random_ascii FROM test_table GROUP BY value HAVING total > 1 OR random_ascii IS NOT NULL;
+CREATE TABLE secondary_table (ref UInt32, description String, random_value Float64) ENGINE = MergeTree() ORDER BY ref;
+INSERT INTO secondary_table VALUES (1, randomPrintableASCII(15), 20.5), (2, randomPrintableASCII(15), 15.2);
+SELECT st.ref, st.description, randomPrintableASCII(25) as more_random, tt.value FROM secondary_table st JOIN test_table tt ON st.ref GLOBAL NOT IN (SELECT id FROM test_table WHERE value < 10);
+SELECT value, length(name) as name_length, (SELECT randomPrintableASCII(10) FROM test_table WHERE id = 2) as nested_random FROM test_table WHERE created_at < now() AND name_length GLOBAL NOT IN (SELECT name_length FROM test_table GROUP BY name_length HAVING count(*) > 1);
+SELECT DISTINCT value, name, randomPrintableASCII(5) as rstr FROM test_table WHERE value GLOBAL NOT IN (SELECT value FROM secondary_table WHERE random_value < 15);

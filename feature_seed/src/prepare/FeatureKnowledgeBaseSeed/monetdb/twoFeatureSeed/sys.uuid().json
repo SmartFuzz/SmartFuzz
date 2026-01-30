@@ -1,0 +1,18 @@
+{
+    "function": "sys.uuid()",
+    "operator": "+",
+    "sql_array": [
+        "CREATE TABLE test_data (id uuid DEFAULT sys.uuid(), created_at timestamp DEFAULT current_timestamp, value numeric, metadata text);",
+        "INSERT INTO test_data (value, metadata) VALUES (1.23, 'test1'), (NULL, 'test2'), (5.67, NULL);",
+        "SELECT id, created_at + (interval '1' second * 180) AS future_time FROM test_data WHERE value IS NOT NULL;",
+        "SELECT id, metadata, COUNT(*) OVER (PARTITION BY metadata) AS metadata_count FROM test_data GROUP BY id, metadata HAVING metadata_count > 1;",
+        "SELECT DISTINCT id, (created_at + (interval '1' second * (value::integer * 60))) AS adjusted_time FROM test_data WHERE created_at IS NOT NULL;",
+        "SELECT id, value + (SELECT AVG(value) FROM test_data WHERE value IS NOT NULL) AS adjusted_value FROM test_data;",
+        "SELECT id, created_at, (created_at + (interval '1' second * (SELECT COUNT(*) FROM test_data WHERE value IS NOT NULL))) AS extended_timestamp FROM test_data;",
+        "CREATE TABLE join_test (join_id uuid DEFAULT sys.uuid(), join_value numeric NOT NULL);",
+        "INSERT INTO join_test (join_value) VALUES (8.12), (NULL), (NULL), (15.34);",
+        "SELECT t.id, jt.join_value + (NULLIF((SELECT MIN(value) FROM test_data WHERE value IS NOT NULL), 0)) AS adjusted_value FROM test_data t LEFT JOIN join_test jt ON t.value = jt.join_value;",
+        "SELECT id, MAX(created_at + (interval '1' second * value::integer)) AS max_created_time FROM test_data WHERE value IS NOT NULL GROUP BY id;",
+        "SELECT id, sys.uuid() AS unique_id FROM test_data ORDER BY created_at DESC LIMIT 5;"
+    ]
+}

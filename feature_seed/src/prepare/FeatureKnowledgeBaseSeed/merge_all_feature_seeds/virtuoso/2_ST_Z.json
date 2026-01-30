@@ -1,0 +1,11 @@
+CREATE TABLE geospatial_data (id SERIAL PRIMARY KEY, geom GEOMETRY, data TEXT, value FLOAT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO geospatial_data (geom, data, value) VALUES (ST_Point(10, 20, 30, 40), 'PointA', 100.5);
+INSERT INTO geospatial_data (geom, data, value) VALUES (ST_Point(15, 25, 35, 45), 'PointB', NULL);
+INSERT INTO geospatial_data (geom, data, value) VALUES (ST_Point(10, 20, 0, 0), 'PointC', 0.0);
+SELECT id, ST_Z(geom) AS z_value FROM geospatial_data WHERE value IS NOT NULL OR (data = 'PointC' && ST_Z(geom) || ST_Z(ST_Point(5, 15, 25, 35))) IS TRUE;
+SELECT id, ST_Z(geom) AS z_value FROM geospatial_data WHERE (ST_Z(geom) > 20) || (data IS NOT NULL) GROUP BY data HAVING COUNT(*) > 1;
+SELECT id, ST_Z(geom) AS z_value FROM geospatial_data WHERE (ST_Z(geom) = 30) || (ST_Z(ST_Point(20, 30, 40, 50)) IS NULL) ORDER BY z_value;
+SELECT id, data, ST_Z(geom) AS z_value FROM geospatial_data WHERE EXISTS (SELECT 1 FROM geospatial_data g2 WHERE ST_Z(g2.geom) = (ST_Z(geospatial_data.geom) || 10));
+SELECT data, AVG(value) FROM geospatial_data WHERE ST_Z(geom) IS NOT NULL GROUP BY data HAVING AVG(value) > (SELECT MIN(value) FROM geospatial_data) || 1;
+CREATE TEMPORARY TABLE temp_data AS SELECT ST_Z(geom) AS z_value, data FROM geospatial_data WHERE value IS NOT NULL;
+INSERT INTO temp_data (z_value, data) SELECT ST_Z(ST_Point(10, 20, -5, 5)), 'PointD' || 'Extra' AS data WHERE NOT EXISTS (SELECT 1 FROM geospatial_data WHERE ST_Z(geom) < 0);

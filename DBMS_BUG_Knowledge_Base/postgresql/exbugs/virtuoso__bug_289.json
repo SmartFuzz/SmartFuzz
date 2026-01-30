@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/289",
+  "title": "Incorrect SPARQL Query evaluation",
+  "description": "Commit: 3e7d542\nDatabase: here\nQuery: PREFIX qb: <http://purl.org/linked-data/cube#>\nPREFIX skos:    <http://www.w3.org/2004/02/skos/core#>\nPREFIX druh-duchodu: <http://linked.cssz.cz/resource/pension-kind/>\nPREFIX vek: <http://linked.opendata.cz/generated/resource/age/>\nSELECT DISTINCT ?vek ?kategorie ?prvni ?druhy ?treti\nWHERE {\n?observation a qb:Observation ;\n<http://linked.cssz.cz/ontology/dataset-definitions/penze#vekova-kategorie> ?vek;\nqb:dataSet <http://linked.cssz.cz/dataset/penze/duchody-dle-veku> .\nBIND (IF(?vek IN(vek:Y20T24, vek:Y25T29, vek:Y30T34, vek:Y35T39, vek:Y40T44, vek:Y45T49, vek:Y50T54, vek:Y55T59),1,0) AS ?prvni)\nBIND (IF(?vek = vek:Y60T64,2,0) AS ?druhy)\nBIND (IF(?vek IN (vek:Y65T69, vek:Y70T74, vek:Y75T79, vek:Y80T84, vek:Y85T89, vek:Y_GE90),3,0) AS ?treti)\nBIND (?prvni + ?druhy + ?treti AS ?kategorie)\nFILTER(?kategorie != 0)\n}\n\nResults yield e.g. (notice the ?kateorie = 0 when we explicitly query for ?kategorie != 0):\n\nvek                                              kategorie  prvni   druhy    treti\nhttp://linked.opendata.cz/generated/resource/age/Y50T54 0   0   0   0\nhttp://linked.opendata.cz/generated/resource/age/Y55T59 0   0   0   0\nAlso compare the query result with and without the FILTER line. It also varies in the other variables. Let's focus on http://linked.opendata.cz/generated/resource/age/Y60T64\nWithout filter:\n\nvek                                              kategorie  prvni   druhy    treti\nhttp://linked.opendata.cz/generated/resource/age/Y60T64 2   0   2   0\nWith filter:\n\nvek                                              kategorie  prvni   druhy    treti\nhttp://linked.opendata.cz/generated/resource/age/Y60T64 3   0   0   3\nhttp://linked.opendata.cz/generated/resource/age/Y60T64 0   0   0   0\nhttp://linked.opendata.cz/generated/resource/age/Y60T64 1   1   0   0",
+  "date": "2015-01-12 22:35:08",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE observations (id SERIAL PRIMARY KEY, vek VARCHAR(255), dataset VARCHAR(255));",
+    "INSERT INTO observations (vek, dataset) VALUES ('vek:Y60T64', 'http://linked.cssz.cz/dataset/penze/duchody-dle-veku');",
+    "INSERT INTO observations (vek, dataset) VALUES ('vek:Y50T54', 'http://linked.cssz.cz/dataset/penze/duchody-dle-veku');",
+    "SELECT vek, CASE WHEN vek IN ('vek:Y20T24', 'vek:Y25T29', 'vek:Y30T34', 'vek:Y35T39', 'vek:Y40T44', 'vek:Y45T49', 'vek:Y50T54', 'vek:Y55T59') THEN 1 ELSE 0 END AS prvni, CASE WHEN vek = 'vek:Y60T64' THEN 2 ELSE 0 END AS druhy, CASE WHEN vek IN ('vek:Y65T69', 'vek:Y70T74', 'vek:Y75T79', 'vek:Y80T84', 'vek:Y85T89', 'vek:Y_GE90') THEN 3 ELSE 0 END AS treti FROM observations WHERE vek IS NOT NULL;",
+    "SELECT vek, (CASE WHEN vek IN ('vek:Y20T24', 'vek:Y25T29', 'vek:Y30T34', 'vek:Y35T39', 'vek:Y40T44', 'vek:Y45T49', 'vek:Y50T54', 'vek:Y55T59') THEN 1 ELSE 0 END) + (CASE WHEN vek = 'vek:Y60T64' THEN 2 ELSE 0 END) + (CASE WHEN vek IN ('vek:Y65T69', 'vek:Y70T74', 'vek:Y75T79', 'vek:Y80T84', 'vek:Y85T89', 'vek:Y_GE90') THEN 3 ELSE 0 END) AS kategorie FROM observations HAVING kategorie != 0;"
+  ],
+  "key_bug_features": [
+    "FILTER clause incorrectly evaluates ?kategorie value"
+  ]
+}

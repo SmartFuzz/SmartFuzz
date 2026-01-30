@@ -1,0 +1,26 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/86032",
+  "title": "Expression in condition is evaluated twice in lighweight updates",
+  "vulnerable_database": "ClickHouse",
+  "date": "2025-08-22T13:03:47Z",
+  "vulnerable_version": "",
+  "description": "### Company or project name\nClickHouse Inc.\n### Describe the unexpected behaviour\nExpression in condition is evaluated twice in lightweight updates. It leads to slightly less performance in case of deterministic conditions and may lead to unexpected results with non-deterministic conditions.\n### How to reproduce\nExample:\n```sql\ndrop table if exists test_lwu;\ncreate table test_lwu (a UInt64) engine = MergeTree order by tuple() settings enable_block_number_column = 1, enable_block_offset_column = 1;\ninsert into test_lwu select number from numbers(100);\nset allow_experimental_lightweight_update = 1;\nset lightweight_delete_mode = 'lightweight_update_force';\ndelete from test_lwu where rand() % 10 = 0;\nselect count() from test_lwu;\nselect name, rows from system.parts where table = 'test_lwu' and active;\n```\nPossible output:\n```\n99\nall_1_1_0       100\npatch-f18f7271629a324b0d26b6ad0b83a6c2-all_3_3_0_2      13\n```\nAs you can see, 13 rows are written in the patch part, but only 1 row is deleted from the table. It happens because we firstly filter rows from the table with the condition `rand() % 10 = 0` and update column `_row_exists` with the expression `if (rand() % 10 = 0, 0, _row_exists)`. Since the condition is evaluated twice, we filter rows twice.\n### Expected behavior\nCondition is evaluated only once.",
+  "poc": [
+    "drop table if exists test_lwu;",
+    "create table test_lwu (a UInt64) engine = MergeTree order by tuple() settings enable_block_number_column = 1, enable_block_offset_column = 1;",
+    "insert into test_lwu select number from numbers(100);",
+    "update = 1;",
+    "delete from test_lwu where rand() % 10 = 0;",
+    "system.parts where table = 'test_lwu' and active;"
+  ],
+  "key_bug_features": [
+    "Condition evaluated twice in lightweight updates"
+  ],
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS test_lwu;",
+    "CREATE TABLE test_lwu (a UInt64, b Nullable(String), c Float32 DEFAULT 0.0) ENGINE = MergeTree() ORDER BY a;",
+    "INSERT INTO test_lwu SELECT number, toNullable(toString(number % 5)), number / 2.0 FROM numbers(100);",
+    "SET allow_experimental_lightweight_update = 1;",
+    "DELETE FROM test_lwu WHERE (rand() % 10) = 0;"
+  ]
+}

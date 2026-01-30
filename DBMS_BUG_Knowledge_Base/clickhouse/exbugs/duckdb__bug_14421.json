@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14421",
+  "title": "single process writes corrupt disk database accessed via ATTACH",
+  "description": "### What happens?\n\nAccessing the same on-disk DB directly and via ATTACH in the same process leads to corruption (and other strange behavior).\r\n\r\n`duckdb.duckdb.SerializationException: Serialization Error: Failed to deserialize: field id mismatch, expected: 100, got: 0`\n\n### To Reproduce\n\n```python\r\n\r\nimport duckdb\r\nimport os\r\nimport tempfile\r\n\r\n\r\ndef attach_two() -> None:\r\n    with tempfile.TemporaryDirectory() as tmpdir:\r\n        print(\"Running in \", tmpdir)\r\n\r\n        db1: str = str(os.path.join(tmpdir, \"test_1.db\"))\r\n        db2: str = str(os.path.join(tmpdir, \"test_2.db\"))\r\n\r\n        con1: duckdb.DuckDBPyConnection = duckdb.connect(db1)\r\n        print(con1.execute(\"SELECT * FROM pragma_version();\").fetchall())\r\n        con1.execute(\"CREATE TABLE t1 AS (SELECT 1 AS x)\")\r\n\r\n        con2: duckdb.DuckDBPyConnection = duckdb.connect(db2)\r\n        con2.execute(f\"ATTACH '{db1}' AS db1_from_db2\")\r\n\r\n        con1.execute(\"INSERT INTO t1 VALUES (7);\")\r\n        con1.execute(\"CHECKPOINT;\")\r\n        con2.execute(\"INSERT INTO db1_from_db2.t1 VALUES (8)\")\r\n        con2.execute(\"CHECKPOINT;\")\r\n\r\n        con1.close()\r\n        con2.close()\r\n\r\n        con3: duckdb.DuckDBPyConnection = duckdb.connect(db1)\r\n        print(con3.execute(\"SELECT * FROM t1;\").fetchall())\r\n\r\nattach_two()\r\n```\r\n\r\n\r\n```\r\nRunning in  /var/folders/j0/8fsmx9r57v19gs_t3kv40kl00000gn/T/tmpyndzq19h\r\n[('v1.1.3-dev25', '98d4ad28be')]\r\nTraceback (most recent call last):\r\n  File \"/tmp/attach_fail.py\", line 58, in <module>\r\n    attach_two()\r\n  File \"/tmp/attach_fail.py\", line 28, in attach_two\r\n    con3: duckdb.DuckDBPyConnection = duckdb.connect(db1)\r\n                                      ^^^^^^^^^^^^^^^^^^^\r\nduckdb.duckdb.SerializationException: Serialization Error: Failed to deserialize: field id mismatch, expected: 100, got: 0\r\n```\r\n\r\n```\r\nRunning in  /var/folders/j0/8fsmx9r57v19gs_t3kv40kl00000gn/T/tmpml5f7ia7\r\n[('v1.1.2', 'f680b7d08f')]\r\nTraceback (most recent call last):\r\n  File \"/private/tmp/attach_fail.py\", line 58, in <module>\r\n    attach_two()\r\n  File \"/private/tmp/attach_fail.py\", line 28, in attach_two\r\n    con3: duckdb.DuckDBPyConnection = duckdb.connect(db1)\r\n                                      ^^^^^^^^^^^^^^^^^^^\r\nduckdb.duckdb.SerializationException: Serialization Error: Failed to deserialize: field id mismatch, expected: 100, got: 0\r\n```\n\n### OS:\n\nmacOS 14.6.1\n\n### DuckDB Version:\n\n1.1.2\n\n### DuckDB Client:\n\nPython\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nRob Jackson\n\n### Affiliation:\n\nexaforce.com\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a source build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [X] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [X] Yes, I have",
+  "date": "2024-10-17 10:59:01",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id UInt32, name String, value Float64, created_at DateTime DEFAULT now());",
+    "INSERT INTO test_table (id, name, value) VALUES (1, 'Test A', 10.5);",
+    "INSERT INTO test_table (id, name, value) VALUES (2, 'Test B', NULL);",
+    "SELECT * FROM test_table WHERE value IS NULL;",
+    "CREATE TABLE another_table AS SELECT id, name FROM test_table WHERE value > 5;"
+  ],
+  "key_bug_features": [
+    "Accessing on-disk DB via ATTACH in the same process"
+  ]
+}

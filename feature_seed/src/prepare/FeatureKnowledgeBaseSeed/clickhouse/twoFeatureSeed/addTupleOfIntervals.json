@@ -1,0 +1,15 @@
+{
+    "function": "addTupleOfIntervals",
+    "operator": "a <= b",
+    "sql_array": [
+        "CREATE TABLE test_dates (id UInt32, event_date DateTime, duration Tuple(interval_day Int32, interval_month Int32, interval_year Int32));",
+        "INSERT INTO test_dates VALUES (1, toDateTime('2020-01-01 00:00:00'), (1, 0, 0)), (2, toDateTime('2019-12-31 23:59:59'), (0, 1, 0)), (3, toDateTime('2021-06-15 12:00:00'), (0, 0, 1));",
+        "SELECT id, addTupleOfIntervals(event_date, (INTERVAL duration.1 DAY, INTERVAL duration.2 MONTH, INTERVAL duration.3 YEAR)) AS new_date FROM test_dates WHERE (new_date <= toDateTime('2021-06-15 23:59:59'));",
+        "SELECT id, event_date, new_date FROM (SELECT id, event_date, addTupleOfIntervals(event_date, (INTERVAL duration.1 DAY, INTERVAL duration.2 MONTH, INTERVAL duration.3 YEAR)) AS new_date FROM test_dates) AS sub WHERE new_date <= event_date;",
+        "WITH (SELECT AVG(duration.1) FROM test_dates) AS average_day_interval SELECT id, event_date, addTupleOfIntervals(event_date, (INTERVAL average_day_interval DAY, INTERVAL 0 MONTH, INTERVAL 0 YEAR)) AS modified_date FROM test_dates WHERE modified_date <= toDateTime('2021-01-01 00:00:00');",
+        "CREATE TEMPORARY TABLE temp_dates AS SELECT id, addTupleOfIntervals(event_date, (INTERVAL 1 DAY, INTERVAL 2 MONTH, INTERVAL 0 YEAR)) AS extended_date FROM test_dates WHERE id <= 2;",
+        "SELECT id, extended_date FROM temp_dates WHERE extended_date <= toDateTime('2021-12-31 23:59:59');",
+        "INSERT INTO test_dates VALUES (4, toDateTime('2023-01-01 00:00:00'), (1, 6, 20)), (5, toDateTime('2024-01-01 00:00:00'), (31, 4, 1));",
+        "SELECT id, addTupleOfIntervals(event_date, (INTERVAL 30 DAY, INTERVAL 0 MONTH, INTERVAL 1 YEAR)) AS one_year_later FROM test_dates WHERE event_date <= addTupleOfIntervals(toDateTime('2023-01-01 00:00:00'), (INTERVAL 0 DAY, INTERVAL 0 MONTH, INTERVAL 1 YEAR));"
+    ]
+}

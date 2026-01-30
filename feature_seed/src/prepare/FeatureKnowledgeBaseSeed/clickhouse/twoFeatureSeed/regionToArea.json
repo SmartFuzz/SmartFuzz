@@ -1,0 +1,16 @@
+{
+    "function": "regionToArea",
+    "operator": "a ? b : c",
+    "sql_array": [
+        "CREATE TABLE regions (id UInt32, name String, population UInt32) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO regions (id, name, population) VALUES (1, 'Region A', 1000), (2, 'Region B', 2000), (3, 'Region C', 3000);",
+        "CREATE TABLE cities (id UInt32, name String, region_id UInt32) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO cities (id, name, region_id) VALUES (1, 'City X', 1), (2, 'City Y', 2), (3, 'City Z', NULL);",
+        "SELECT DISTINCT regionToArea(a.id ? regionToArea(toUInt32(b.region_id), 'ua') : 0) FROM regions AS a JOIN cities AS b ON a.id = b.region_id WHERE a.population > 500;",
+        "SELECT a.name, COUNT(b.id) FROM regions AS a LEFT JOIN cities AS b ON a.id = b.region_id GROUP BY a.name HAVING COUNT(b.id) > 0 AND a.id ? b.region_id : -1 = 1;",
+        "WITH (SELECT id FROM regions WHERE id = 2) AS r_id SELECT regionToArea(r_id) AS area_id, regionToArea(toUInt32(r_id) ? 0 : 1, 'ua') AS area_id_val FROM (SELECT DISTINCT id FROM regions) AS r;",
+        "SELECT a.id, COALESCE(regionToArea(a.id), 0) AS area_id, a.name FROM regions AS a WHERE (regionToArea(a.id) > 0) ? a.population : 0 > 1500;",
+        "SELECT regionToArea(NULLIF(b.region_id, 0)), COUNT(*) FROM cities AS b GROUP BY b.region_id;",
+        "SELECT a.id, regionToArea(a.id) as area_id FROM regions a ORDER BY regionToArea(a.id) DESC LIMIT 5;"
+    ]
+}

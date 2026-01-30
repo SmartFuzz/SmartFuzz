@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/59026",
+  "title": "Bug Case in Right Join",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n\n```sql\nDROP TABLE IF EXISTS t0;\nDROP TABLE IF EXISTS t1;\nCREATE TABLE t0(c0 BLOB(66));\nCREATE TABLE t1(c0 CHAR DEFAULT '*');\nINSERT IGNORE INTO t0 VALUES ('0');\n\nSELECT COUNT(*)\nFROM t1\nNATURAL RIGHT JOIN t0\nWHERE (NULL AND t0.c0) ^ (CASE WHEN t1.c0 THEN t0.c0 ELSE TRUE END);\n```\n\n### 2. What did you expect to see? (Required)\n\nTiDB should return 1 rather than 0.\n\n### 3. What did you see instead (Required)\n\n```sql\n-- MySQL 9.1.2\nmysql> SELECT COUNT(*)\n    -> FROM t1\n    -> NATURAL RIGHT JOIN t0\n    -> WHERE (NULL AND t0.c0) ^ (CASE WHEN t1.c0 THEN t0.c0 ELSE TRUE END);\n+----------+\n| COUNT(*) |\n+----------+\n|        1 |\n+----------+\n1 row in set (0.01 sec)\n\n-- TiDB 8.5.0\nmysql> SELECT COUNT(*)\n    -> FROM t1\n    -> NATURAL RIGHT JOIN t0\n    -> WHERE (NULL AND t0.c0) ^ (CASE WHEN t1.c0 THEN t0.c0 ELSE TRUE END);\n+----------+\n| COUNT(*) |\n+----------+\n|        0 |\n+----------+\n1 row in set (0.00 sec)\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n8.5",
+  "date": "2025-01-18T08:04:56Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t2;",
+    "CREATE TABLE t2(c0 INTEGER, c1 TEXT NOT NULL DEFAULT 'default');",
+    "INSERT INTO t2(c0) VALUES (NULL), (1), (2);",
+    "SELECT COUNT(*) FROM t2 LEFT JOIN t1 ON 1=1 WHERE (t2.c0 IS NULL) OR (t2.c1 = 'default');",
+    "SELECT COUNT(*) FROM t1 LEFT JOIN t0 ON 1=1 WHERE (t1.c0 IS NOT NULL) AND (t2.c0 = 1 OR t2.c0 IS NULL);"
+  ],
+  "key_bug_features": [
+    "NATURAL RIGHT JOIN with complex WHERE clause"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=105090",
+  "title": "FK cannot be created when the table has a UNIQUE KEY in a virtual generated col",
+  "description": "When attempting to create an FK on a table that has a virtual generated column, the operation fails if the virtual column has a unique key. \r\n\r\nAn example of this type of table is. \r\n\r\n CREATE TABLE `t_main` (\r\n  `id` int(20) NOT NULL AUTO_INCREMENT,\r\n  `unique_id` varchar(32) GENERATED ALWAYS AS ('1') VIRTUAL ,\r\n  `t_ref_id` bigint(20) NOT NULL,\r\n  PRIMARY KEY (`id`),\r\n  UNIQUE KEY (`unique_id`),\r\n  FOREIGN KEY (`t_ref_id`) REFERENCES t_ref (id)\r\n) ENGINE=InnoDB ; \r\n\r\nERROR 1215 (HY000): Cannot add foreign key constraint\r\n\r\nThe above definition fails, but this other definition does not fail. \r\n\r\nCREATE TABLE `t_main` (\r\n  `id` int(20) NOT NULL AUTO_INCREMENT,\r\n  `unique_id` varchar(32) GENERATED ALWAYS AS ('1') VIRTUAL ,\r\n  `t_ref_id` bigint(20) NOT NULL,\r\n  PRIMARY KEY (`id`),\r\n \t-- UNIQUE KEY (`unique_id`),\r\n \tKEY (`unique_id`),\r\n  FOREIGN KEY (`t_ref_id`) REFERENCES t_ref (id)\r\n) ENGINE=InnoDB ; \r\n\r\nThe problem only affects the latest versions of 5.7 (tested on 5.7.35, 5.7.31, 5.7.29, 5.7.25), in version 8.0.26 there is no problem.\nHow to repeat:\nDROP DATABASE if exists sandbox ;\r\nCREATE DATABASE sandbox;\r\nUSE sandbox;\r\n\r\nDROP TABLE IF EXISTS `t_ref`;\r\nCREATE TABLE `t_ref` (\r\n  `id` bigint(20) NOT NULL AUTO_INCREMENT,\r\n  PRIMARY KEY (`id`)\r\n) ENGINE=InnoDB;\r\n\r\nDROP TABLE IF EXISTS `t_main`;\r\nCREATE TABLE `t_main` (\r\n  `id` int(20) NOT NULL AUTO_INCREMENT,\r\n  `unique_id` varchar(32) GENERATED ALWAYS AS ('1') VIRTUAL ,\r\n  `t_ref_id` bigint(20) NOT NULL,\r\n  PRIMARY KEY (`id`),\r\n  UNIQUE KEY (`unique_id`),\r\n  FOREIGN KEY (`t_ref_id`) REFERENCES t_ref (id)\r\n) ENGINE=InnoDB ; \r\n\r\nThe last DDL fails on \r\n\r\nERROR 1215 (HY000): Cannot add foreign key constraint\nSuggested fix:\n1) Either the documentation is updated to explain this behavior\nhttps://dev.mysql.com/doc/refman/5.7/en/create-table-secondary-indexes.html\nA secondary index may be created on one or more virtual columns or on a combination of virtual columns and regular columns or stored generated columns. Secondary indexes that include virtual columns may be defined as UNIQUE.\r\n\r\n2) or, if there is no technical reason, let the FK definition works as expected.",
+  "date": "2021-09-30 17:23:00",
+  "vulnerable_version": "5.7.35",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t_ref;",
+    "CREATE TABLE t_ref (id INTEGER NOT NULL PRIMARY KEY);",
+    "DROP TABLE IF EXISTS t_main;",
+    "CREATE TABLE t_main (id INTEGER NOT NULL PRIMARY KEY, unique_id TEXT, t_ref_id INTEGER NOT NULL, UNIQUE (unique_id), FOREIGN KEY (t_ref_id) REFERENCES t_ref (id));",
+    "INSERT INTO t_ref (id) VALUES (1);",
+    "INSERT INTO t_main (id, unique_id, t_ref_id) VALUES (1, '1', 1);"
+  ],
+  "key_bug_features": [
+    "FK creation fails with UNIQUE KEY on virtual column"
+  ]
+}

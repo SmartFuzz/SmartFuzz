@@ -1,0 +1,7 @@
+CREATE TABLE test_data (id INT, value_y FLOAT, value_x FLOAT, event_date DATE);
+INSERT INTO test_data VALUES (1, 10.0, 5.0, DATE '2023-01-01'), (2, 20.0, 15.0, DATE '2023-01-05'), (3, NULL, 25.0, DATE '2023-01-10'), (4, 30.0, 35.0, DATE '2023-01-15');
+SELECT covar_samp(value_y, value_x) AS covariance, DATE '2023-01-01' - INTERVAL (SELECT COUNT(*) FROM test_data) DAY AS adjusted_date FROM test_data GROUP BY adjusted_date HAVING adjusted_date < DATE '2023-01-01';
+SELECT id, covar_samp(value_y, value_x) AS sample_covariance, event_date - INTERVAL (MAX(value_x) - MIN(value_x)) DAY AS date_shift FROM test_data WHERE value_x IS NOT NULL GROUP BY id, event_date HAVING sample_covariance IS NOT NULL;
+SELECT AVG(covar_samp(value_y, value_x)) OVER (PARTITION BY event_date - INTERVAL 5 DAY) AS avg_covariance FROM test_data WHERE value_y IS NOT NULL ORDER BY avg_covariance DESC;
+INSERT INTO test_data VALUES (5, 40.0, NULL, DATE '2023-01-20'), (6, NULL, NULL, DATE '2023-01-25');
+SELECT DISTINCT DATE '2023-01-10' - INTERVAL (SELECT COUNT(*) FROM test_data WHERE value_y IS NOT NULL) DAY AS boundary_date, covar_samp(value_y, value_x) FROM test_data WHERE event_date >= boundary_date GROUP BY event_date HAVING COUNT(*) > 1;

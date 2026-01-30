@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/465",
+  "title": "OPTIONAL not working correctly in CONSTRUCT, works OK in SELECT",
+  "description": "Commit: 1b42443\nDatabase: http://linked.opendata.cz/dump/dberr.zip\nIn the database, we have a triple\n<http://linked.opendata.cz/resource/sukl/medicinal-product-packaging/0132829> dcterms:title \"AMOKSIKLAV 1,2 G\"@cs .\n\nUsing the SPARQL endpoint,\nThis works and returns that triple:\nPREFIX r: <http://linked.opendata.cz/resource/sukl/medicinal-product-packaging/0132829>\n\nCONSTRUCT {\n  r: r: ?t .\n}\n WHERE {\n  OPTIONAL {\n    r: dcterms:title ?t .\n  }\n  OPTIONAL {\n    r: skos:prefLabel ?l .\n  }\n}\n\nThis does not work - returns an empty turtle, should have returned the same as above:\nPREFIX r: <http://linked.opendata.cz/resource/sukl/medicinal-product-packaging/0132829>\n\nCONSTRUCT {\n  r: r: ?t , ?l .\n}\n WHERE {\n  OPTIONAL {\n    r: dcterms:title ?t .\n  }\n  OPTIONAL {\n    r: skos:prefLabel ?l .\n  }\n}\n\nHowever, changing CONSTRUCT to SELECT works again (returns ?t and ?l is null):\nPREFIX r: <http://linked.opendata.cz/resource/sukl/medicinal-product-packaging/0132829>\n\nSELECT ?t ?l\n WHERE {\n  OPTIONAL {\n    r: dcterms:title ?t .\n  }\n  OPTIONAL {\n    r: skos:prefLabel ?l .\n  }\n}",
+  "date": "2015-08-20 15:16:58",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE medicinal_products (id INT PRIMARY KEY, title VARCHAR(255), prefLabel VARCHAR(255));",
+    "INSERT INTO medicinal_products (id, title, prefLabel) VALUES (1, 'AMOKSIKLAV 1,2 G', NULL);",
+    "SELECT title, prefLabel FROM medicinal_products WHERE id = 1;",
+    "SELECT title, NULLIF(prefLabel, '') AS prefLabel FROM medicinal_products WHERE id = 1;",
+    "SELECT COALESCE(title, 'No Title') AS title, COALESCE(prefLabel, 'No Label') AS prefLabel FROM medicinal_products WHERE id = 1;"
+  ],
+  "key_bug_features": [
+    "CONSTRUCT with multiple OPTIONAL clauses returning empty results"
+  ]
+}

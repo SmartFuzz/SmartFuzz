@@ -1,0 +1,12 @@
+CREATE TABLE TestTable (id INT PRIMARY KEY, name VARCHAR(100), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO TestTable (id, name) VALUES (1, 'Test 1'), (2, 'Test 2'), (3, NULL);
+SELECT http(sameTerm(name, http('Test 1')), 'output') FROM TestTable WHERE created_at IS NOT NULL;
+SELECT http(sameTerm(name, http_value(NULL, 'no value')), 'output') FROM TestTable WHERE id = 2;
+SELECT id, http(name) AS output FROM TestTable WHERE sameTerm(name, 'Test 1') OR name IS NULL;
+CREATE TABLE AnotherTable (ref_id INT, description VARCHAR(255), amount DECIMAL(10, 2));
+INSERT INTO AnotherTable (ref_id, description, amount) VALUES (1, 'Descr 1', 10.00), (1, 'Descr 2', NULL), (2, 'Descr 3', 0.00);
+SELECT http(sameTerm(T2.description, http('Descr 2')), 'output') FROM AnotherTable AS T2 JOIN TestTable AS T1 ON T2.ref_id = T1.id WHERE T2.amount IS NOT NULL;
+SELECT T1.id, http_value(MAX(T2.amount), 'amount') FROM TestTable T1 LEFT JOIN AnotherTable T2 ON T1.id = T2.ref_id GROUP BY T1.id HAVING SAME_TERM(http_value(MAX(T2.amount), 'amount'), '10.00') OR T1.name IS NULL;
+SELECT http_value(SUM(COALESCE(T2.amount, 0)), 'total') FROM TestTable T1 LEFT JOIN AnotherTable T2 ON T1.id = T2.ref_id GROUP BY T1.id HAVING SUM(T2.amount) IS NOT NULL;
+SELECT http(sameTerm(name, http('Extreme Value')), 'output') FROM (SELECT CAST(9999999999 AS VARCHAR) AS name) AS SubQuery;
+SELECT http(sameTerm(name, http(UNNEST(ARRAY[NULL, 'Edge Case']))), 'output') FROM TestTable WHERE id = 1;

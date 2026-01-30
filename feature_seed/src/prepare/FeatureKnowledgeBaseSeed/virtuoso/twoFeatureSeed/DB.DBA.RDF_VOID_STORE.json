@@ -1,0 +1,18 @@
+{
+    "function": "DB.DBA.RDF_VOID_STORE",
+    "operator": "SIMILAR TO",
+    "sql_array": [
+        "CREATE TABLE graph_data (graph_uri VARCHAR, stats_data VARCHAR);",
+        "INSERT INTO graph_data (graph_uri, stats_data) VALUES ('http://graph1', 'data1'), ('http://graph2', 'data2');",
+        "CREATE TABLE stats_agg (stat_item VARCHAR, count_val INT);",
+        "INSERT INTO stats_agg (stat_item, count_val) VALUES ('Stat1', 10), ('Stat2', 20), ('Stat3', NULL);",
+        "SELECT DB.DBA.RDF_VOID_STORE(graph_uri, 'http://example.com') FROM graph_data WHERE graph_uri SIMILAR TO 'http://graph%' LIMIT 5;",
+        "SELECT * FROM stats_agg WHERE count_val IS NOT NULL AND (stat_item SIMILAR TO 'Stat%') ORDER BY count_val DESC;",
+        "SELECT DB.DBA.RDF_VOID_STORE('http://graph1', CONCAT('http://example.com/stats_', (SELECT MAX(count_val) FROM stats_agg WHERE count_val IS NOT NULL))) FROM dual;",
+        "SELECT DB.DBA.RDF_VOID_STORE('http://graph2', 'http://example.com/stats') AS void_store_output FROM graph_data WHERE EXISTS (SELECT 1 FROM stats_agg WHERE count_val > 15);",
+        "SELECT g.graph_uri, DB.DBA.RDF_VOID_STORE(g.graph_uri, 'http://example.com/stats') FROM graph_data g JOIN stats_agg s ON g.stats_data SIMILAR TO CONCAT('%', s.stat_item, '%') WHERE s.count_val IS NOT NULL GROUP BY g.graph_uri HAVING COUNT(*) > 1;",
+        "CREATE TEMP TABLE temp_data AS SELECT * FROM stats_agg WHERE count_val IS NOT NULL;",
+        "SELECT 1 AS val INTO temp_val FROM dual; INSERT INTO temp_data (stat_item, count_val) SELECT 'NewStat', val FROM dual WHERE val IS NOT NULL;",
+        "SELECT DB.DBA.RDF_VOID_STORE('http://temp_data', 'http://example.com') WHERE 'temp_data' SIMILAR TO 'http://%';"
+    ]
+}

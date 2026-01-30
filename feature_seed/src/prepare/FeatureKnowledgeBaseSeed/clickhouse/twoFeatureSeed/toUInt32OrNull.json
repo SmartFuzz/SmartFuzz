@@ -1,0 +1,19 @@
+{
+    "function": "toUInt32OrNull",
+    "operator": "SELECT NOT a",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, value String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table (id, value) VALUES (1, '42'), (2, 'abc'), (3, '4294967295'), (4, ''), (5, '3.14'), (6, 'NaN');",
+        "SELECT id, toUInt32OrNull(value) AS converted_value, NOT toUInt32OrNull(value) IS NULL FROM test_table;",
+        "SELECT id FROM test_table WHERE NOT toUInt32OrNull(value) IS NULL AND id > 2;",
+        "SELECT id, value, NOT (toUInt32OrNull(value) > 100) AS is_not_greater FROM test_table ORDER BY is_not_greater, id;",
+        "SELECT id, count(*) AS cnt FROM (SELECT id, value, toUInt32OrNull(value) AS converted_value FROM test_table) GROUP BY id HAVING NOT (cnt = 0);",
+        "SELECT id, MAX(toUInt32OrNull(value)) AS max_value FROM test_table WHERE NOT (value = '') GROUP BY id HAVING NOT max_value IS NULL;",
+        "SELECT id, NOT (toUInt32OrNull(value) < 10) AS is_not_less FROM (SELECT id, value FROM test_table WHERE id < 3) AS subquery;",
+        "CREATE TABLE temp_table (value String) ENGINE = Memory;",
+        "INSERT INTO temp_table (value) VALUES ('100'), ('-1'), ('4294967296'), (''), ('Inf'), ('0.1');",
+        "SELECT value, toUInt32OrNull(value) AS converted_value FROM temp_table WHERE NOT (converted_value IS NULL OR converted_value < 0);",
+        "DROP TABLE IF EXISTS test_table;",
+        "DROP TABLE IF EXISTS temp_table;"
+    ]
+}

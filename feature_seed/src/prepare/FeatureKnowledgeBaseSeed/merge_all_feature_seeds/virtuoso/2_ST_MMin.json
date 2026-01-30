@@ -1,0 +1,17 @@
+CREATE TABLE geographies (id INT PRIMARY KEY, shape Geometry, description VARCHAR(255));
+INSERT INTO geographies (id, shape, description) VALUES (1, 'POINT(1 2)'^^<http://www.openlinksw.com/schemas/virtrdf#Geometry>, 'A simple point');
+INSERT INTO geographies (id, shape, description) VALUES (2, 'BOX(0 0, 10 10)'^^<http://www.openlinksw.com/schemas/virtrdf#Geometry>, 'A bounding box');
+SELECT g1.id, bif:st_mmin(g1.shape) AS bounding_box FROM geographies g1 JOIN geographies g2 ON g1.id = g2.id WHERE g2.description ILIKE '%simple%';
+SELECT g.id, bif:st_mmin(g.shape) AS mmin FROM (SELECT * FROM geographies WHERE description IS NOT NULL) g GROUP BY g.id HAVING g.id > 1;
+SELECT g.id, bif:st_mmin(g.shape) AS mmin FROM geographies g WHERE g.shape IS NOT NULL AND g.description ILIKE 'A%';
+SELECT g.id, bif:st_mmin(CASE WHEN g.shape IS NULL THEN 'POINT(0 0)'^^<http://www.openlinksw.com/schemas/virtrdf#Geometry> ELSE g.shape END) AS mmin FROM geographies g;
+SELECT g.id, bif:st_mmin(g.shape) AS bounding_box FROM (SELECT * FROM geographies WHERE CAST(g.shape AS VARCHAR) ILIKE '%point%') g GROUP BY g.id ORDER BY bounding_box;
+CREATE TABLE temp_shapes (temp_id INT, temp_shape Geometry);
+INSERT INTO temp_shapes (temp_id, temp_shape) VALUES (1, 'MULTIPOINT((1 1), (2 2))'^^<http://www.openlinksw.com/schemas/virtrdf#Geometry>);
+SELECT ts.temp_id, bif:st_mmin(ts.temp_shape) AS min_bound FROM temp_shapes ts WHERE ts.temp_shape IS NOT NULL GROUP BY ts.temp_id HAVING ts.temp_id ILIKE '1';
+SELECT g.id, bif:st_mmin(g.shape) AS bounding_box FROM geographies g WHERE bif:st_mmin(g.shape) IS NOT NULL AND g.id = (SELECT MAX(g2.id) FROM geographies g2 WHERE g2.shape ILIKE '%POINT%');
+SELECT g1.id, bif:st_mmin(g1.shape) AS bounding_box FROM geographies g1 LEFT JOIN geographies g2 ON g1.shape ILIKE g2.description WHERE g2.description IS NULL GROUP BY g1.id;
+SELECT g.id, bif:st_mmin(g.shape) AS bounding_box FROM geographies g WHERE bif:st_mmin(g.shape) ILIKE '%BOX%' OR bif:st_mmin(g.shape) IS NULL ORDER BY g.id;
+INSERT INTO geographies (id, shape, description) VALUES (3, 'POLYGON((0 0, 10 0, 10 10, 0 10, 0 0))'^^<http://www.openlinksw.com/schemas/virtrdf#Geometry>, NULL);
+SELECT NULLIF(bif:st_mmin(g.shape), 'POINT(0 0)') AS bounding_box FROM geographies g WHERE g.shape IS NOT NULL;
+SELECT g.id, bif:st_mmin(COALESCE(g.shape, 'POINT(0 0)'^^<http://www.openlinksw.com/schemas/virtrdf#Geometry>)) AS bounding_box FROM geographies g WHERE g.id < 3;

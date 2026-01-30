@@ -1,0 +1,17 @@
+{
+    "function": "now",
+    "operator": "a GLOBAL IN ...",
+    "sql_array": [
+        "CREATE TABLE test_dates (id UInt32, event_time DateTime, timezone String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_dates VALUES (1, now(), 'UTC'), (2, now(), 'Asia/Istanbul');",
+        "SELECT id, event_time, timezone FROM test_dates WHERE event_time GLOBAL IN (SELECT now() - INTERVAL 1 DAY);",
+        "SELECT id, event_time, timezone FROM test_dates WHERE timezone = (SELECT timezone FROM test_dates WHERE id = 1);",
+        "SELECT id, event_time, timezone, now() AS current_time FROM test_dates WHERE event_time = (SELECT max(event_time) FROM test_dates WHERE timezone = 'UTC');",
+        "SELECT id, event_time, timezone FROM test_dates GROUP BY timezone HAVING count(*) > (SELECT count(*) FROM test_dates WHERE timezone = 'Asia/Istanbul') + 1;",
+        "CREATE TABLE temp_test (id UInt32, value String) ENGINE = Memory;",
+        "INSERT INTO temp_test VALUES (1, '2021-01-01'), (2, '2023-10-01');",
+        "SELECT id, value, now() AS current_time FROM temp_test WHERE value GLOBAL IN (SELECT toString(event_time) FROM test_dates);",
+        "SELECT id, event_time, timezone FROM test_dates WHERE event_time > now() - INTERVAL 1 HOUR AND timezone GLOBAL IN (SELECT timezone FROM temp_test WHERE id = 1);",
+        "SELECT id, count(*) as count_events FROM test_dates GROUP BY timezone HAVING count_events > (SELECT count(*) FROM test_dates WHERE event_time < now() - INTERVAL 30 DAY);"
+    ]
+}

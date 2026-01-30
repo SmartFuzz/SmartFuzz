@@ -1,0 +1,24 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14542",
+  "title": "INTERNAL error when using a macro to expand json[] array (`json_each`)",
+  "vulnerable_database": "DuckDB",
+  "date": "2024-10-24 18:59:03",
+  "vulnerable_version": "",
+  "description": "### What happens?\r\n\r\nWhen I use the macro defined below with a `json[]` column, it errors out, but text and json types convert correctly.\r\n\r\nINTERNAL Error: Failed to cast logical operator to type - logical operator type mismatch\r\nThis error signals an assertion failure within DuckDB. This usually occurs due to unexpected conditions or errors in the program's logic.\r\nFor more information, see https://duckdb.org/docs/dev/internal_errors\r\n\r\n### To Reproduce\r\n\r\nFrom the cli:\r\n```sh\r\nduckdb -c \"\r\n  CREATE OR REPLACE MACRO json_each(input) AS\r\n    TABLE (\r\n      SELECT\r\n          CASE json_type (val::json)\r\n          WHEN 'ARRAY' THEN\r\n              unnest(RANGE (json_array_length(val::json)::bigint)) ::varchar\r\n          ELSE\r\n              unnest(json_keys (val::json))\r\n          END AS key,\r\n          json_extract (val::json, key) AS value\r\n      FROM (SELECT input as val)\r\n    );\r\n\r\n  FROM (SELECT '[1,2,3]' as message) CROSS JOIN json_each(message);\r\n  FROM (SELECT '[1,2,3]'::json as message) CROSS JOIN json_each(message);\r\n  FROM (SELECT '[1,2,3]'::json[] as message) CROSS JOIN json_each(message);\r\n  \"\r\n```\r\n\r\nOutput:\r\n```\r\n┌─────────┬─────────┬───────┐\r\n│ message │   key   │ value │\r\n│ varchar │ varchar │ json  │\r\n├─────────┼─────────┼───────┤\r\n│ [1,2,3] │ 0       │ 1     │\r\n│ [1,2,3] │ 1       │ 2     │\r\n│ [1,2,3] │ 2       │ 3     │\r\n└─────────┴─────────┴───────┘\r\n┌─────────┬─────────┬───────┐\r\n│ message │   key   │ value │\r\n│  json   │ varchar │ json  │\r\n├─────────┼─────────┼───────┤\r\n│ [1,2,3] │ 0       │ 1     │\r\n│ [1,2,3] │ 1       │ 2     │\r\n│ [1,2,3] │ 2       │ 3     │\r\n└─────────┴─────────┴───────┘\r\nINTERNAL Error: Failed to cast logical operator to type - logical operator type mismatch\r\nThis error signals an assertion failure within DuckDB. This usually occurs due to unexpected conditions or errors in the program's logic.\r\nFor more information, see https://duckdb.org/docs/dev/internal_errors\r\n```\r\n\r\n### OS:\r\n\r\nlinux\r\n\r\n### DuckDB Version:\r\n\r\n1.0.0, 1.1.0\r\n\r\n### DuckDB Client:\r\n\r\nCLI\r\n\r\n### Hardware:\r\n\r\n_No response_\r\n\r\n### Full Name:\r\n\r\nAshkan Kiani\r\n\r\n### Affiliation:\r\n\r\nJane Street\r\n\r\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\r\n\r\nI have tested with a stable release\r\n\r\n### Did you include all relevant data sets for reproducing the issue?\r\n\r\nYes\r\n\r\n### Did you include all code required to reproduce the issue?\r\n\r\n- [X] Yes, I have\r\n\r\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\r\n\r\n- [X] Yes, I have",
+  "poc": [
+    "SELECT\r\n          CASE json_type (val::json)\r\n          WHEN 'ARRAY' THEN\r\n              unnest(RANGE (json_array_length(val::json)::bigint)) ::varchar\r\n          ELSE\r\n              unnest(json_keys (val::json))\r\n          END AS key,\r\n          json_extract (val::json, key) AS value\r\n      FROM (SELECT input as val)\r\n    );",
+    "SELECT '[1,2,3]' as message) CROSS JOIN json_each(message);",
+    "SELECT '[1,2,3]'::json as message) CROSS JOIN json_each(message);",
+    "SELECT '[1,2,3]'::json[] as message) CROSS JOIN json_each(message);"
+  ],
+  "key_bug_features": [
+    "Using macro with json[] column causes internal error"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE test_json_array (id INTEGER, data json[]);",
+    "INSERT INTO test_json_array VALUES (1, '[{\"key\": \"value1\"}, {\"key\": \"value2\"}]'::json[]);",
+    "CREATE OR REPLACE MACRO json_each(input) AS TABLE (SELECT CASE json_type (val::json) WHEN 'ARRAY' THEN unnest(RANGE (json_array_length(val::json)::bigint)) ::varchar ELSE unnest(json_keys (val::json)) END AS key, json_extract (val::json, key) AS value FROM (SELECT input as val));",
+    "SELECT * FROM (SELECT '[{\"key\": \"value1\"}, {\"key\": \"value2\"}]'::json[] as message) CROSS JOIN json_each(message);",
+    "SELECT * FROM (SELECT '[1,2,3]'::json[] as message) CROSS JOIN json_each(message);"
+  ]
+}

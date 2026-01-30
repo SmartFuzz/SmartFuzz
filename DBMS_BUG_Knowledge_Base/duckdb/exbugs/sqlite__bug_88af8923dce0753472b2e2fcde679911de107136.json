@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/88af8923dc",
+  "title": "",
+  "description": "anonymous added on 2017-08-11 18:42:00:\nIn the lsm1 extension, lsm_insert(): insert a new key/value pair into the database, overwriting any existing entry with the same key (https://sqlite.org/src4/doc/trunk/www/lsmusr.wiki#writing_to_a_database), When I tried to test this case (insert existing entry with the same key) the database size increasing without overwriting any existing entry with the same key. The below test c code illustrate the case:\n\nvoid test(void)\n{\n\tlsm_db *db;\n\tint rc = lsm_new(0, &db);\n\tif( rc != LSM_OK )\n\t\treturn;\n\n\trc = lsm_open(db, \"test.lsmdb\");\n\tif( rc != LSM_OK )\n\t\treturn;\n\n\tDWORD Key = 0x12345678;\n\tchar Val_1[] = \"12345678\";\n\tchar Val_2[] = \"ABCDEFGH\";\n\n\tlsm_begin(db, 1);\n\n\tlsm_insert(db, (void *)&Key, sizeof(Key), Val_1, strlen(Val_1)+1);\n\n\tlsm_insert(db, (void *)&Key, sizeof(Key), Val_2, strlen(Val_2)+1);\n\n\tlsm_commit(db, 0);\n\n\tlsm_cursor *csr;\n\tif( lsm_csr_open(db, &csr) != LSM_OK )\n\t\treturn;\n\n\tint seekrc = lsm_csr_seek(csr, &Key, sizeof(Key), LSM_SEEK_EQ);\n\tint validrc = lsm_csr_valid(csr);\n\tif( seekrc == LSM_OK && validrc )\n\t{\n\t\tchar *pKeyPtr, *pValPtr;\n\t\tint nKey, nVal;\n\t\tlsm_csr_key(csr, (const void **)&pKeyPtr, &nKey);\n\t\tlsm_csr_value(csr, (const void **)&pValPtr, &nVal);\n\n\t\tprintf(\"key = %08X, val = %s\\n\", pKeyPtr, pValPtr);\n\t}\n\tlsm_csr_close(csr);\n\n\tlsm_close(db);\n}",
+  "date": "2017-08-11 18:42:008.00 years ago",
+  "vulnerable_version": "3.20.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INTEGER PRIMARY KEY, value TEXT NOT NULL);",
+    "INSERT INTO test_table (id, value) VALUES (1, 'Initial Value');",
+    "INSERT INTO test_table (id, value) VALUES (1, 'New Value');",
+    "SELECT * FROM test_table WHERE id = 1;",
+    "INSERT INTO test_table (id, value) VALUES (NULL, 'Null Key Value');"
+  ],
+  "key_bug_features": [
+    "Database size increases without overwriting existing key"
+  ]
+}

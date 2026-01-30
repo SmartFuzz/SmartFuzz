@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/45915",
+  "title": "statistics: choose wrong index when no correlate column exist",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```SQL\r\nCREATE TABLE `push_record` (\r\n  `poi_id` bigint(20) NOT NULL,\r\n  `biz_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,\r\n  `template_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,\r\n  `template_data_belong_date` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,\r\n  `send_status` int(11) NOT NULL,\r\n  `is_del` int(11) NOT NULL,\r\n  `add_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\r\n  `update_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\r\n  KEY `idx_poi_id` (`poi_id`),\r\n  KEY `idx_update_time` (`update_time`),\r\n  KEY `idx_biz_name_template_id_template_data_belong_date` (`biz_name`,`template_id`,`template_data_belong_date`),\r\n  UNIQUE KEY `uniq_poi_id_biz_name_template_id_template_data_belong_date` (`poi_id`,`biz_name`,`template_id`,`template_data_belong_date`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci/*!90000 SHARD_ROW_ID_BITS=4 */;\r\n```\r\n```SQL\r\nselect  poi_id,biz_name,template_id,template_data_belong_date,send_status,is_del,add_time,update_time  from push_record \r\n  where biz_name = 'bizReport' and is_del= 0  and template_id = '100181004'  and template_data_belong_date = '2023-05-15'  and send_status in (3) \r\n  order by poi_id asc limit 0, 1000;\r\n```\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\nI dump the statistics, but I cannot paste it here.\r\nBut the problem is, for this query, `idx_biz_name_template_id_template_data_belong_date` is better than `uniq_poi_id_biz_name_template_id_template_data_belong_date`.\r\n\r\n### 3. What did you see instead (Required)\r\nBut the optimizer chooses `uniq_poi_id_biz_name_template_id_template_data_belong_date`. the index range is [NULL, +inf)\r\n\r\n### 4. What is your TiDB version? (Required)\r\nmaster\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2023-08-08T09:32:54Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE push_record_extended ( poi_id bigint NOT NULL, biz_name varchar(255) NOT NULL, template_id varchar(255) NOT NULL, template_data_belong_date date NOT NULL, send_status integer NOT NULL, is_del integer NOT NULL, add_time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, update_time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT idx_biz_name INDEX (biz_name), CONSTRAINT idx_template_id INDEX (template_id), CONSTRAINT uniq_poi_id_biz_name_template_id UNIQUE (poi_id, biz_name, template_id) );",
+    "INSERT INTO push_record_extended (poi_id, biz_name, template_id, template_data_belong_date, send_status, is_del) VALUES (1, 'bizReport', '100181004', '2023-05-15', 3, 0);",
+    "INSERT INTO push_record_extended (poi_id, biz_name, template_id, template_data_belong_date, send_status, is_del) VALUES (2, 'bizReport', '100181005', '2023-05-16', 3, 0);",
+    "SELECT poi_id, biz_name, template_id, template_data_belong_date, send_status FROM push_record_extended WHERE biz_name = 'bizReport' AND is_del = 0 AND template_id = '100181004' AND template_data_belong_date = '2023-05-15' AND send_status IN (3) ORDER BY poi_id ASC LIMIT 1000;",
+    "SELECT COUNT(*) FROM push_record_extended WHERE is_del = 0 AND send_status = 3;"
+  ],
+  "key_bug_features": [
+    "Optimizer chooses incorrect index for query execution"
+  ]
+}

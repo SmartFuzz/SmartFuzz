@@ -1,0 +1,18 @@
+{
+    "function": "extractKeyValuePairsWithEscaping",
+    "operator": "a - b",
+    "sql_array": [
+        "CREATE TABLE test_data (id Int32, info String, value Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_data VALUES (1, 'age:a\\\\x0A', 100.0), (2, 'height:b\\\\n', 200.5), (3, 'weight:c\\\\0', 150.3);",
+        "SELECT id, extractKeyValuePairsWithEscaping(info) AS kv, value FROM test_data WHERE value - (SELECT AVG(value) FROM test_data WHERE id > 1) > 0;",
+        "SELECT id, (extractKeyValuePairsWithEscaping(info) AS kv) - (value / 2) FROM test_data WHERE kv['age'] != NULL;",
+        "SELECT id, value, kv['height'] FROM (SELECT id, extractKeyValuePairsWithEscaping(info) AS kv FROM test_data) AS result WHERE value - 150.5 BETWEEN 10 AND 50;",
+        "CREATE TABLE temp_data AS SELECT id, value, extractKeyValuePairsWithEscaping(info) AS kv FROM test_data WHERE id > 1;",
+        "INSERT INTO temp_data VALUES (4, 300.0, extractKeyValuePairsWithEscaping('age:e\\\\r\\\\t\\\\v')), (5, 0.0, extractKeyValuePairsWithEscaping('height:f\\\\n'));",
+        "SELECT AVG(value) - (SELECT SUM(value) FROM temp_data WHERE kv['height'] IS NOT NULL) AS difference FROM temp_data;",
+        "CREATE TABLE multi_data (col1 String, col2 Int32) ENGINE = MergeTree() ORDER BY col1;",
+        "INSERT INTO multi_data VALUES ('row1', 1), ('row2', 2), ('row3', 3);",
+        "SELECT md.col1, md.col2, td.kv FROM multi_data md JOIN (SELECT id, extractKeyValuePairsWithEscaping(info) AS kv FROM test_data) AS td ON md.col2 - td.value > 0;",
+        "SELECT COUNT(*) FROM (SELECT id, (extractKeyValuePairsWithEscaping(info) AS kv) FROM test_data) AS derived_table GROUP BY kv['age'] HAVING COUNT(*) > 1;"
+    ]
+}

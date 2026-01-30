@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/87841",
+  "title": "`INSERT SELECT` with implicit `GROUP BY` by destination partition key",
+  "description": "### Company or project name\n_No response_\n### Use case\nThere's \"Too many partitions for single INSERT block\" problem for inserts with keys redistribution into partitions.\nIn sample there's a table for 10 years of ordered by some key data that we want to redistribute into partitions by months. IRL there're lots of splits into small parts in partitions on insert that lead to troubles with merges.\n```\nCREATE TABLE table_src\n(\norder Int64,\nrandom_date Date\n)\nENGINE = MergeTree()\nORDER BY order;\nCREATE TABLE table_dst\n(\norder Int64,\nrandom_date Date\n)\nENGINE = MergeTree()\nPARTITION BY toStartOfMonth(random_date)\nORDER BY tuple();\n-- 10 years of random dates in source table\nINSERT INTO table_src\nSELECT number AS order, toDate(rand() % 3650) AS random_date\nFROM numbers(1000000);\n-- leads to 120 months as partitions in dst table - Too many partitions for single INSERT block\nINSERT INTO table_dst\nSELECT * FROM table_src; -- { serverError TOO_MANY_PARTS }\n-- The same INSERT but groupped by dst partition key & splitted into smaller blocks works well\nINSERT INTO table_dst\nSELECT * FROM table_src\nORDER BY toStartOfMonth(random_date)\nSETTINGS min_insert_block_size_rows = 500000;\n```\n### Describe the solution you'd like\n`INSERT SELECT` should have optional implicit `GROUP BY` by destination table's `PARTITION BY` key. So it could buffer some records in buckets, make insert per bucket logic. So there would be one part/partition for insert and no \"Too many partitions for single INSERT block\" problem.\n1. Set to use N buckets for INSERT\n2. When (N+1)'th bucket needed, push the biggest bucket into destination to free one\n### Describe alternatives you've considered\nIt's possible to insert such data avoiding \"Too many partitions for single INSERT block\" with (optimized) intermediate table sorted by destination's partition key. Or just adding `ORDER BY` with `min_insert_block_size_rows`.\n### Additional context\n_No response_",
+  "date": "2025-09-29T15:57:24Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE table_src (order_id BIGINT, random_date DATE, amount DOUBLE PRECISION);",
+    "CREATE TABLE table_dst (order_id BIGINT, random_date DATE, amount DOUBLE PRECISION) PARTITION BY MONTH(random_date);",
+    "INSERT INTO table_src SELECT number AS order_id, CURRENT_DATE - (random() % 3650) AS random_date, random() * 100 AS amount FROM SYSTEM_RANGE(1, 1000000);",
+    "INSERT INTO table_dst SELECT order_id, random_date, amount FROM table_src WHERE amount > 50.0;",
+    "INSERT INTO table_dst SELECT order_id, random_date, amount FROM table_src ORDER BY MONTH(random_date);"
+  ],
+  "key_bug_features": [
+    "`INSERT SELECT` without implicit `GROUP BY` for partition key"
+  ]
+}

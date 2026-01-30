@@ -1,0 +1,11 @@
+CREATE TABLE test_data (id INTEGER, value1 INTEGER, value2 INTEGER, timestamp TIMESTAMP);
+INSERT INTO test_data VALUES (1, 17, 5, CURRENT_TIMESTAMP), (2, NULL, 8, CURRENT_TIMESTAMP), (3, 10, NULL, CURRENT_TIMESTAMP), (4, 255, 255, CURRENT_TIMESTAMP);
+SELECT id, value1, value2, xor(value1, value2) AS xor_value FROM test_data WHERE value1 IS NOT NULL AND value2 IS NOT NULL;
+SELECT id, xor(value1, value2) AS xor_value, INTERVAL 1 HOUR + INTERVAL (value1 % 5) HOUR AS adjusted_time FROM test_data;
+SELECT id, value1, value2, (SELECT COUNT(*) FROM test_data td WHERE td.value1 < test_data.value1) AS rank FROM test_data ORDER BY rank;
+SELECT id, COUNT(*) AS cnt, xor(value1, value2) AS xor_results FROM test_data GROUP BY id HAVING cnt > 1 AND xor_results > 10;
+CREATE TABLE additional_data (id INTEGER, text_value VARCHAR, num_value FLOAT);
+INSERT INTO additional_data VALUES (1, 'string1', 2.5), (2, 'string2', NULL), (3, NULL, 3.0);
+SELECT ad.id, ad.text_value, inter_adjusted AS adjusted FROM additional_data ad JOIN test_data td ON td.id = ad.id WHERE ad.num_value IS NOT NULL AND INTERVAL (td.value1 * 2) HOUR + INTERVAL 1 HOUR > INTERVAL 5 HOUR;
+SELECT td.id, td.value1, td.value2, xor(td.value1, COALESCE(ad.num_value, 0)) AS xor_result FROM test_data td LEFT JOIN additional_data ad ON td.id = ad.id WHERE ad.text_value IS NULL OR ad.text_value != '';
+SELECT id, value1, value2, xor(value1, 255) AS xor_boundary_value, INTERVAL xor(value1, value2) HOUR AS interval_result FROM test_data WHERE value1 > 0 OR value2 IS NOT NULL;

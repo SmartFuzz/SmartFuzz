@@ -1,0 +1,24 @@
+{
+    "function": "name_part",
+    "operator": "bif:exec",
+    "sql_array": [
+        "CREATE TABLE test_table (id INT, name VARCHAR(50), details VARCHAR(100), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO test_table (id, name, details) VALUES (1, 'John Doe', 'First Entry');",
+        "INSERT INTO test_table (id, name, details) VALUES (2, 'Jane Smith', 'Second Entry with \"special\" characters');",
+        "INSERT INTO test_table (id, name, details) VALUES (3, NULL, 'Third Entry with NULL name');",
+        "SELECT name_part(bif:exec('SELECT CONCAT(name, ''.'', details) FROM test_table'), 0) AS schema_part FROM test_table WHERE id = 1;",
+        "SELECT COUNT(*) FROM (SELECT name_part('DB.DB2.TABLE', 0) AS schema_name FROM test_table HAVING COUNT(*) > 0) AS temp_table;",
+        "SELECT name_part(id::text || '.' || name, 1) AS entity_name FROM test_table WHERE created_at > '2021-01-01' ORDER BY entity_name;",
+        "SELECT name_part(bif:exec('SELECT MAX(name) FROM test_table'), 0) AS max_name_part FROM test_table GROUP BY max_name_part HAVING COUNT(*) > 0;",
+        "SELECT bif:exec(CONCAT('SELECT name_part(MAX(details), 0) FROM test_table WHERE id = ', id)) FROM test_table;",
+        "WITH cte AS (SELECT name_part('DB.DBA.SYS', 1) AS db_part FROM test_table) SELECT db_part FROM cte WHERE db_part IS NOT NULL;",
+        "SELECT DISTINCT name_part(CONCAT('schema.db.', COALESCE(name, ''), '.table'), 0) FROM test_table LEFT JOIN (SELECT id FROM test_table WHERE details IS NOT NULL) AS sub ON sub.id = test_table.id;",
+        "SELECT name_part('\"DB\".\"DBA\".\"SYS_USERS\"', CASE WHEN id = 1 THEN 0 ELSE 1 END) AS name_part_case FROM test_table;",
+        "DROP TABLE IF EXISTS temp_data;",
+        "CREATE TEMP TABLE temp_data (info VARCHAR(255));",
+        "INSERT INTO temp_data (info) VALUES (bif:exec('SELECT name FROM test_table WHERE id = 2'));",
+        "SELECT bif:exec('SELECT name_part(info, 1) FROM temp_data WHERE info IS NOT NULL') AS extracted_part;",
+        "ALTER TABLE test_table ADD COLUMN new_column INT DEFAULT 0;",
+        "SELECT name_part(bif:exec('SELECT CONCAT(id, '': '', name) FROM test_table WHERE new_column IS NOT NULL'), 2) FROM test_table ORDER BY id;"
+    ]
+}

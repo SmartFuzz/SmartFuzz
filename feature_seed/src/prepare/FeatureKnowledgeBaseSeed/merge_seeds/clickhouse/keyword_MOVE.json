@@ -1,0 +1,16 @@
+CREATE TABLE source_table (id UInt32, name String) ENGINE = MergeTree() ORDER BY id;
+CREATE TABLE target_table (id UInt32, name String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO source_table VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie');
+MOVE source_table TO target_table;
+CREATE TABLE temp_table (id UInt32, category String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO temp_table SELECT id, name FROM source_table WHERE id > 1;
+MOVE temp_table TO target_table;
+CREATE TABLE user_storage (user_id UInt32, access_level String) ENGINE = MergeTree() ORDER BY user_id;
+INSERT INTO user_storage VALUES (1, 'admin'), (2, 'user'), (3, 'guest');
+MOVE user_storage TO temp_table;
+MOVE (SELECT user_id, access_level FROM user_storage) TO target_table;
+SELECT * FROM target_table WHERE id IN (SELECT id FROM source_table WHERE name LIKE 'A%');
+CREATE TABLE archived_storage (id UInt32, name String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO archived_storage SELECT * FROM target_table WHERE id < 3;
+MOVE archived_storage TO target_table;
+MOVE (SELECT id, name FROM temp_table WHERE category = 'A') TO target_table;

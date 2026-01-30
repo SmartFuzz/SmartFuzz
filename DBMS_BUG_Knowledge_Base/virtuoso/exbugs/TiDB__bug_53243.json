@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/53243",
+  "title": "Multi-valued index should implicitly cast the json type",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```sql\r\nCREATE TABLE t ( id INT PRIMARY KEY, j JSON, INDEX idx_a ((CAST(j->'$.a' AS DATE ARRAY))) );\r\nINSERT INTO t VALUES (1, JSON_OBJECT('a', JSON_ARRAY('2024-05-13', '2020-01-01')));\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\n```sql\r\nmysql> CREATE TABLE t ( id INT PRIMARY KEY, j JSON, INDEX idx_a ((CAST(j->'$.a' AS DATE ARRAY))) );\r\nQuery OK, 0 rows affected (0.02 sec)\r\n\r\nmysql> INSERT INTO t VALUES (1, JSON_OBJECT('a', JSON_ARRAY('2024-05-13', '2020-01-01')));\r\nQuery OK, 1 row affected (0.01 sec)\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n```sql\r\nmysql> CREATE TABLE t ( id INT PRIMARY KEY, j JSON, INDEX idx_a ((CAST(j->'$.a' AS DATE ARRAY))) );\r\nQuery OK, 0 rows affected (0.11 sec)\r\n\r\nmysql> INSERT INTO t VALUES (1, JSON_OBJECT('a', JSON_ARRAY('2024-05-13', '2020-01-01')));\r\nERROR 3903 (HY000): Invalid JSON value for CAST for expression index 'idx_a'\r\n```\r\n\r\nA workaround is manually casting the type to date:\r\n\r\n```sql\r\nmysql> INSERT INTO t VALUES (1, JSON_OBJECT('a', JSON_ARRAY(cast('2024-05-13' as date))));\r\nQuery OK, 1 row affected (0.01 sec)\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n```\r\nmysql> select tidb_version();\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| tidb_version()                                                                                                                                                                                                                               |\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| Release Version: v8.0.0\r\nEdition: Community\r\nGit Commit Hash: 8ba1fa452b1ccdbfb85879ea94b9254aabba2916\r\nGit Branch: HEAD\r\nUTC Build Time: 2024-03-28 14:22:15\r\nGoVersion: go1.21.4\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv |\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n1 row in set (0.00 sec)\r\n```",
+  "date": "2024-05-14T03:25:52Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1 ( id INT PRIMARY KEY, j VARCHAR(4000), INDEX idx_a (CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(j, '\"a\":[', -1), ']', 1) AS DATE)) );",
+    "INSERT INTO t1 VALUES (1, '{\"a\":[\"2024-05-13\", \"2020-01-01\"]}');",
+    "CREATE TABLE t2 ( id INT PRIMARY KEY, j VARCHAR(4000), value INT NOT NULL, INDEX idx_b (CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(j, '\"b\":[', -1), ']', 1) AS DATE)) );",
+    "INSERT INTO t2 VALUES (1, '{\"b\":[\"2023-12-31\", \"2022-06-15\"]}', 100);",
+    "SELECT * FROM t1 JOIN t2 ON t1.id = t2.id WHERE t2.value > 50;"
+  ],
+  "key_bug_features": [
+    "Implicit casting of JSON type in multi-valued index"
+  ]
+}

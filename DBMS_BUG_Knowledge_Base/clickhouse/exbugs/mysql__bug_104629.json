@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=104629",
+  "title": "wrong result when outer join prune partition tables with is null predicate",
+  "description": "select t1 left join (select * from t2) b on xx where b.c is null.\r\n\r\nt2 is a partition table, and the where condition `b.c is null` will used to prune_partitions which make the inner table empty.\r\n\r\nso the result set will be `select t1 left join empty table`.\nHow to repeat:\nCREATE TABLE `bmsql_district` (\r\n   `d_w_id` int NOT NULL,\r\n   `d_id` int NOT NULL,\r\n   `d_ytd` decimal(12,2) DEFAULT NULL,\r\n   `d_tax` decimal(4,4) DEFAULT NULL,\r\n   `d_next_o_id` int DEFAULT NULL,\r\n   `d_name` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\r\n   `d_street_1` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\r\n   `d_street_2` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\r\n   `d_city` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\r\n   `d_state` char(2) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\r\n   `d_zip` char(9) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\r\n   PRIMARY KEY (`d_w_id`,`d_id`)\r\n ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci\r\n /*!50100 PARTITION BY HASH (`d_w_id`)\r\n PARTITIONS 24 */;\r\n\r\nCREATE TABLE `bmsql_warehouse` (\r\n   `w_id` int NOT NULL,\r\n   `w_ytd` decimal(12,2) DEFAULT NULL,\r\n   `w_tax` decimal(4,4) DEFAULT NULL,\r\n   `w_name` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\r\n   `w_street_1` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\r\n   `w_street_2` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\r\n   `w_city` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\r\n   `w_state` char(2) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\r\n   `w_zip` char(9) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\r\n   PRIMARY KEY (`w_id`)\r\n ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci\r\n /*!50100 PARTITION BY HASH (`w_id`)\r\n PARTITIONS 24 */;\n\ninsert into bmsql_warehouse(w_id, w_ytd) values(1,  1010227919.37);\r\ninsert into bmsql_district(d_w_id, d_id, d_ytd) values(1,1, 1010227919.37);\r\n\r\nselect * from (\r\nSELECT d_w_id,\r\n          sum(d_ytd) sdytd\r\n   FROM bmsql_district\r\n   GROUP BY d_w_id\r\n) a left join (\r\nSELECT w_id, w_ytd\r\n   FROM bmsql_warehouse) b\r\non a.d_w_id = b.w_id and a.sdytd=b.w_ytd where b.w_id is null;\nSuggested fix:\nMaybe two ways to fix it:\r\n\r\n1. for the inner table of an outer join, not call prune_partitions. \r\n2. inside prune_partitions, disable is null condition prune.",
+  "date": "2021-08-16 03:08:00",
+  "vulnerable_version": "8.0.25,5.7.35, 8.0.26",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE bmsql_product ( p_id Int32 NOT NULL, p_name String NOT NULL, p_price Decimal(10, 2) NOT NULL, p_category String DEFAULT NULL, PRIMARY KEY (p_id) ) ENGINE = MergeTree() ORDER BY p_id;",
+    "INSERT INTO bmsql_product (p_id, p_name, p_price, p_category) VALUES (1, 'Product A', 19.99, 'Category 1');",
+    "INSERT INTO bmsql_product (p_id, p_name, p_price, p_category) VALUES (2, 'Product B', 29.99, NULL);",
+    "SELECT d_w_id, SUM(d_ytd) AS total_ytd FROM bmsql_district GROUP BY d_w_id HAVING total_ytd > 0;",
+    "SELECT * FROM (SELECT p_id, p_name FROM bmsql_product) AS p LEFT JOIN (SELECT d_w_id FROM bmsql_district) AS d ON p.p_id = d.d_w_id WHERE d.d_w_id IS NULL;"
+  ],
+  "key_bug_features": [
+    "outer join with is null condition on partitioned table"
+  ]
+}

@@ -1,0 +1,17 @@
+CREATE TABLE users (UserID UInt32, Age UInt8) ENGINE = Memory;
+INSERT INTO users VALUES (1, 25), (2, 30), (3, 25), (4, 40);
+SELECT groupBitmap(UserID) AS num FROM users;
+CREATE TABLE orders (OrderID UInt32, UserID UInt32, Amount Float32) ENGINE = Memory;
+INSERT INTO orders VALUES (1, 1, 100.50), (2, 2, 150.75), (3, 1, 200.00), (4, 3, 50.00);
+SELECT groupBitmap(UserID) AS num FROM orders;
+SELECT groupBitmap(UserID) AS num FROM (SELECT UserID FROM users WHERE Age > 20);
+SELECT COUNT(*) AS user_count, groupBitmap(UserID) AS user_bitmap FROM users GROUP BY Age;
+SELECT groupBitmap(UserID) AS num FROM users WHERE UserID IN (SELECT UserID FROM orders WHERE Amount > 100);
+SELECT groupBitmap(UserID) AS num FROM users WHERE UserID IN (SELECT UserID FROM orders GROUP BY UserID HAVING COUNT(OrderID) > 1);
+SELECT groupBitmap(UserID) AS num FROM (SELECT UserID, COUNT(OrderID) AS order_count FROM orders GROUP BY UserID HAVING order_count > 1);
+CREATE TABLE temp AS SELECT UserID FROM users WHERE Age >= 30;
+SELECT groupBitmap(UserID) AS num FROM temp;
+SELECT groupBitmap(UserID) AS num FROM users WHERE UserID BETWEEN 1 AND 3;
+SELECT groupBitmap(UserID) AS num FROM (SELECT UserID, Age FROM users WHERE Age IN (SELECT DISTINCT Age FROM users WHERE Age < 35));
+CREATE TABLE analytical_orders AS SELECT UserID, SUM(Amount) AS total_amount FROM orders GROUP BY UserID;
+SELECT groupBitmap(UserID) AS num FROM analytical_orders WHERE total_amount > 100;

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/414",
+  "title": "SPARQL function ENCODE_FOR_URI not working as specified",
+  "description": "The SPARQL specification for ENCODE_FOR_URI states that\n\nThe ENCODE_FOR_URI function corresponds to the XPath fn:encode-for-uri function. It returns a simple literal with the lexical form obtained from the lexical form of its input after translating reserved characters according to the fn:encode-for-uri function.\n\nIn the spec for fn:encode-for-uri an example is given:\n\nconcat(\"http://www.example.com/\", encode-for-uri(\"~bébé\")) returns \"http://www.example.com/~b%C3%A9b%C3%A9\".\n\nthus running ENCODE_FOR_URI with ~bébé should result in ~b%C3%A9b%C3%A9, but running the following SPARQL shows that Virtuoso does not follow the specification:\n       select encode_for_uri(\"~bébé\") where {}\n\nwhich results in \"~b\\u00E9b\\u00E9%00\". This was also tested using JDBC connection to Virtuoso with same results. However, the ENCODE_FOR_URI does seem to handle some characters. Using the second example from the XPath fn:encode-for-uri specification and running the following SPARQL\n      select encode_for_uri(\"100% organic\") where {}\n\nresults in 100%25%20organic which is correct.\nOther characters that don't work are from the Norwegian alphabet:\n      select encode_for_uri(\"æøåÆØÅ\") where {}\n\nThis was run on Virtuoso version 07.20.3212 on Linux (x86_64-unknown-linux-gnu), Single Server Edition using Virtuoso SPARQL Query Editor",
+  "date": "2015-05-26 13:44:08",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE test_uri_encoding (id Int32, uri_value String) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO test_uri_encoding (id, uri_value) VALUES (1, '~bébé');",
+    "INSERT INTO test_uri_encoding (id, uri_value) VALUES (2, '100% organic');",
+    "INSERT INTO test_uri_encoding (id, uri_value) VALUES (3, 'æøåÆØÅ');",
+    "SELECT replace(replace(replace(replace(replace(replace(uri_value, '~', '%7E'), ' ', '%20'), '%', '%25'), 'æ', '%C3%A6'), 'ø', '%C3%B8'), 'å', '%C3%A5') AS encoded_uri FROM test_uri_encoding WHERE id = 1;"
+  ],
+  "key_bug_features": [
+    "ENCODE_FOR_URI function fails to encode reserved characters"
+  ]
+}

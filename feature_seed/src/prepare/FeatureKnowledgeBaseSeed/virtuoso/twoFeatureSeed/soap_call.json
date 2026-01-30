@@ -1,0 +1,22 @@
+{
+    "function": "soap_call",
+    "operator": "REGEXP",
+    "sql_array": [
+        "CREATE TABLE soap_test (id INT PRIMARY KEY, param_name VARCHAR(255), param_value VARCHAR(255), response_text VARCHAR(500));",
+        "INSERT INTO soap_test VALUES (1, 'fish', 'tuna'), (2, 'mammal', 'dolphin'), (3, 'bird', 'eagle');",
+        "DECLARE ret ANY; ret := soap_call ('example.com', '/SOAP', 'urn:com-openlinksw-virtuoso', 'fishselect', vector ('str', (SELECT param_value FROM soap_test WHERE param_name REGEXP 'mammal')));",
+        "SELECT id, response_text FROM soap_test WHERE param_value REGEXP (SELECT param_value FROM soap_test WHERE param_name = 'fish') AND id IS NOT NULL;",
+        "SELECT COUNT(*) FROM soap_test GROUP BY param_name HAVING COUNT(*) > 1 AND MAX(param_value) REGEXP '^d.*';",
+        "SELECT id, soap_call ('example.com', '/SOAP', 'urn:com-openlinksw-virtuoso', 'fishselect', vector ('str', param_value)) AS response FROM soap_test WHERE param_value IS NOT NULL;",
+        "INSERT INTO soap_test VALUES (4, 'reptile', NULL), (5, 'amphibian', 'frog');",
+        "SELECT id, (SELECT soap_call('example.com', '/SOAP', 'urn:com-openlinksw-virtuoso', 'fishselect', vector ('str', param_value)) FROM soap_test WHERE id = 4) AS response FROM soap_test WHERE param_value IS NULL;",
+        "CREATE TABLE more_soap_test (id INT PRIMARY KEY, param VARCHAR(255), response VARCHAR(500));",
+        "INSERT INTO more_soap_test VALUES (1, 'test1', 'abc'), (2, 'test2', 'def'), (3, 'test3', 'xyz');",
+        "SELECT (SELECT soap_call ('example.com', '/SOAP', 'urn:com-openlinksw-virtuoso', 'fishselect', vector ('str', param)) FROM more_soap_test WHERE param REGEXP 'test[1-3]') AS response WHERE response IS NOT NULL;",
+        "ALTER TABLE soap_test ADD COLUMN response_code INT;",
+        "UPDATE soap_test SET response_code = (SELECT CASE WHEN response_text IS NULL THEN 404 ELSE 200 END) WHERE id = 1;",
+        "DROP TABLE IF EXISTS temp_table;",
+        "CREATE TEMP TABLE temp_table AS SELECT * FROM soap_test WHERE param_value IS NOT NULL;",
+        "SELECT temp.id, temp.param_value, REGEXP temp.param_value AS matched FROM temp_table temp WHERE temp.param_value REGEXP '^t.*';"
+    ]
+}

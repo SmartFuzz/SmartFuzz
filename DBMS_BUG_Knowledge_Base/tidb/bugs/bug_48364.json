@@ -1,0 +1,27 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/48364",
+  "title": "`cast(constant)` does not do constant folding",
+  "vulnerable_database": "tidb",
+  "date": "2023-11-07T10:16:12Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n```\r\nuse test;\r\ndrop table if exists test.t;\r\ncreate table test.t(a json);\r\nexplain select JSON_ARRAY(a, '{\\\"a\\\" : \\\"b\\\", \\\"aa\\\" : \\\"bb\\\"}') from t;\r\nexplain select JSON_ARRAY(null, a) from t;\r\n```\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\nThere is no cast function in the output.\r\n\r\n### 3. What did you see instead (Required)\r\n```\r\nmysql> explain select JSON_ARRAY(a, '{\\\"a\\\" : \\\"b\\\", \\\"aa\\\" : \\\"bb\\\"}') from t;\r\n+-------------------------+----------+-----------+---------------+-----------------------------------------------------------------------------+\r\n| id                      | estRows  | task      | access object | operator info                                                               |\r\n+-------------------------+----------+-----------+---------------+-----------------------------------------------------------------------------+\r\n| Projection_3            | 10000.00 | root      |               | json_array(test.t.a, cast({\"a\" : \"b\", \"aa\" : \"bb\"}, json BINARY))->Column#3 |\r\n| └─TableReader_5         | 10000.00 | root      |               | data:TableFullScan_4                                                        |\r\n|   └─TableFullScan_4     | 10000.00 | cop[tikv] | table:t       | keep order:false, stats:pseudo                                              |\r\n+-------------------------+----------+-----------+---------------+-----------------------------------------------------------------------------+\r\n\r\nmysql> explain select JSON_ARRAY(null, a) from t;\r\n+-------------------------+----------+-----------+---------------+---------------------------------------+\r\n| id                      | estRows  | task      | access object | operator info                         |\r\n+-------------------------+----------+-----------+---------------+---------------------------------------+\r\n| Projection_3            | 10000.00 | root      |               | json_array(<nil>, test.t.a)->Column#3 |\r\n| └─TableReader_5         | 10000.00 | root      |               | data:TableFullScan_4                  |\r\n|   └─TableFullScan_4     | 10000.00 | cop[tikv] | table:t       | keep order:false, stats:pseudo        |\r\n+-------------------------+----------+-----------+---------------+---------------------------------------+\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\nGit Commit Hash: 93bd0fc8dacb5b2e72703e1433f298ac6a6186c4\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "poc": [
+    "use test;",
+    "drop table if exists test.t;",
+    "create table test.t(a json);",
+    "explain select JSON_ARRAY(a, '{\\\"a\\\" : \\\"b\\\", \\\"aa\\\" : \\\"bb\\\"}') from t;",
+    "explain select JSON_ARRAY(null, a) from t;"
+  ],
+  "poc_type": "sql_text",
+  "state": "open",
+  "key_bug_features": [
+    "cast function not removed during JSON_ARRAY execution"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE test.t1 (id INT PRIMARY KEY, data JSON NOT NULL);",
+    "INSERT INTO test.t1 (id, data) VALUES (1, '{\"key1\": \"value1\"}'), (2, '{\"key2\": \"value2\"}');",
+    "CREATE TABLE test.t2 (id INT, value VARCHAR(255) DEFAULT NULL, FOREIGN KEY (id) REFERENCES test.t1(id));",
+    "SELECT JSON_ARRAY(data, CAST('{\"new_key\": \"new_value\"}' AS JSON)) FROM test.t1;",
+    "SELECT JSON_ARRAY(NULL, value) FROM test.t2 WHERE id = 1;"
+  ]
+}

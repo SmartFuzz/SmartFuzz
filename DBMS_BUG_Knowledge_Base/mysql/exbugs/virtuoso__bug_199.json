@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/199",
+  "title": "Virtuoso 7.1 Ignores literals schema",
+  "description": "Given the command:\n                            INSERT {\n                                GRAPH <http://www.example.com/>  {\n<#book2> <http://purl.org/dc/elements/1.1/title>  \"David Copperfield\"^^<http://www.w3.org/2001/XMLSchema#string>.\n<#book2> <http://www.example.com/Int32> 789  .\n<#book2> <http://www.example.com/Double> \"23\"^^<http://www.w3.org/2001/XMLSchema#double> .\n<#book2> <http://www.example.com/Float> \"23\"^^<http://www.w3.org/2001/XMLSchema#float> .\n<#book2> <http://www.example.com/Decimal> \"0\"^^<http://www.w3.org/2001/XMLSchema#decimal>  .\n<#book2> <http://www.example.com/DateTime> \"2014-06-17T12:08:26.7675955+03:00\"^^<http://www.w3.org/2001/XMLSchema#dateTime> .\n\n                                }\n                                }\n\nfollowed by a select returns data without schema (except for string)\n#book2  http://purl.org/dc/elements/1.1/title   \"David Copperfield\"^^<http://www.w3.org/2001/XMLSchema#string>\n#book2  http://www.example.com/Int32    789\n#book2  http://www.example.com/Double   23\n#book2  http://www.example.com/Float    23.0\n#book2  http://www.example.com/Decimal  0\n#book2  http://www.example.com/DateTime     2014-06-17T12:08:26.767595+03:00",
+  "date": "2014-06-17 09:26:04",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE books (id INT PRIMARY KEY, title VARCHAR(255), int_value INT, double_value DOUBLE, float_value FLOAT, decimal_value DECIMAL(10, 2), datetime_value DATETIME);",
+    "INSERT INTO books (id, title, int_value, double_value, float_value, decimal_value, datetime_value) VALUES (1, 'David Copperfield', 789, CAST('23' AS DOUBLE), CAST('23' AS FLOAT), CAST('0' AS DECIMAL(10, 2)), '2014-06-17 12:08:26');",
+    "INSERT INTO books (id, title, int_value, double_value, float_value, decimal_value, datetime_value) VALUES (2, 'Great Expectations', NULL, NULL, NULL, NULL, NULL);",
+    "SELECT id, title, COALESCE(int_value, 0) AS int_value, COALESCE(double_value, 0.0) AS double_value FROM books WHERE int_value IS NOT NULL;",
+    "SELECT id, title, float_value, decimal_value, datetime_value FROM books WHERE datetime_value > '2014-01-01 00:00:00';"
+  ],
+  "key_bug_features": [
+    "INSERT command ignores non-string literal schemas"
+  ]
+}

@@ -1,0 +1,13 @@
+CREATE TABLE test_table (value String);
+INSERT INTO test_table VALUES ('123.456'), ('NaN'), ('Inf'), ('0.000000000000000000000001'), ('9999999999999999999999999999999999999999');
+SELECT toDecimal128OrZero(value, 2) AS decimal_value, toTypeName(decimal_value) FROM test_table;
+SELECT toDecimal128OrZero(toString(sum(value)), 5) AS total_decimal_value FROM (SELECT value FROM test_table WHERE value IS NOT NULL LIMIT 2);
+SELECT a.value, toDecimal128OrZero(a.value, 6) AS converted_value FROM (SELECT value FROM test_table) AS a WHERE NOT (a.value = 'Inf' OR a.value = 'NaN');
+WITH (SELECT value FROM test_table WHERE value LIKE '12%') AS subquery SELECT toDecimal128OrZero(subquery.value, 3) AS decimal_value FROM subquery;
+CREATE TABLE another_table (num String);
+INSERT INTO another_table VALUES ('256'), ('-256'), ('1.2345'), ('0.3333333333333');
+SELECT a.num, toDecimal128OrZero(a.num, 4) AS converted_value FROM another_table AS a JOIN test_table AS t ON a.num = t.value;
+SELECT a.value, b.num, toDecimal128OrZero(a.value, 1) + toDecimal128OrZero(b.num, 1) AS sum_decimal FROM (SELECT value FROM test_table) AS a, (SELECT num FROM another_table) AS b;
+SELECT toDecimal128OrZero(toString(avg(value)), 2) AS avg_decimal_value FROM (SELECT value FROM test_table WHERE value NOT IN ('NaN', 'Inf'));
+WITH (SELECT toDecimal128OrZero('123.45678', 5)) AS decimal_val SELECT decimal_val, toTypeName(decimal_val);
+SELECT toDecimal128OrZero(toString(-9999999999999999999999999999999999999999), 0) AS negative_overflow_value;

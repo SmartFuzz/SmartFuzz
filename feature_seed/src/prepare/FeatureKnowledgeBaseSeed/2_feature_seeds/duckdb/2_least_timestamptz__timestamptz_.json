@@ -1,0 +1,13 @@
+CREATE TABLE test_timestamps (id INTEGER PRIMARY KEY, ts TIMESTAMPTZ, description VARCHAR(100));
+INSERT INTO test_timestamps (id, ts, description) VALUES (1, TIMESTAMPTZ '2023-01-01 10:00:00-05', 'First entry'), (2, TIMESTAMPTZ '2023-01-02 10:00:00-05', 'Second entry'), (3, TIMESTAMPTZ NULL, 'Third entry with NULL');
+SELECT id, least(ts, TIMESTAMPTZ '2023-01-01 09:00:00-05') AS earliest_ts FROM test_timestamps WHERE ts IS NOT NULL;
+SELECT id, ts, (ts - INTERVAL '1 DAY') AS one_day_prior FROM test_timestamps WHERE ts IS NOT NULL AND ts < TIMESTAMPTZ '2023-01-03 00:00:00-05' ORDER BY one_day_prior;
+SELECT id, COUNT(*) AS cnt FROM (SELECT id, least(ts, TIMESTAMPTZ '2023-01-01 05:00:00-05') AS earliest_ts FROM test_timestamps GROUP BY id HAVING earliest_ts IS NOT NULL) sub_query GROUP BY cnt;
+CREATE TABLE test_intervals (id INTEGER PRIMARY KEY, interval_time INTERVAL);
+INSERT INTO test_intervals (id, interval_time) VALUES (1, INTERVAL '5 HOUR'), (2, INTERVAL '10 HOUR'), (3, INTERVAL 'NULL');
+SELECT id, least(TIMESTAMPTZ '2023-01-01 10:00:00-05', TIMESTAMPTZ '2023-01-02 11:00:00-05' - interval_time) AS adjusted_time FROM test_intervals WHERE interval_time IS NOT NULL;
+SELECT t.id, t.ts, (least(t.ts, TIMESTAMPTZ '2023-01-02 10:00:00-05') - INTERVAL '1 HOUR') AS adjusted_ts FROM test_timestamps t JOIN test_intervals i ON t.id = i.id WHERE t.ts IS NOT NULL;
+SELECT id, (ts - INTERVAL '2 HOUR') AS adjusted_time FROM test_timestamps GROUP BY id HAVING adjusted_time < TIMESTAMPTZ '2023-01-01 08:00:00-05';
+CREATE TABLE temp_test (id INTEGER, ts TIMESTAMPTZ);
+INSERT INTO temp_test SELECT id, ts FROM test_timestamps WHERE ts IS NOT NULL;
+SELECT id, least(ts, TIMESTAMPTZ '2023-01-01 10:00:00-05') AS earliest_ts FROM temp_test WHERE ts IS NOT NULL ORDER BY earliest_ts DESC LIMIT 1;

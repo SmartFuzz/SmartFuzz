@@ -1,0 +1,12 @@
+CREATE TABLE test_blobs (id SERIAL PRIMARY KEY, data BLOB);
+INSERT INTO test_blobs (data) VALUES (CAST('Hello, World!' AS BLOB));
+INSERT INTO test_blobs (data) VALUES (CAST(REPEAT(CHR(255), 100000) AS BLOB));
+INSERT INTO test_blobs (data) VALUES (CAST('A' AS BLOB) || CAST('B' AS BLOB) || CAST('C' AS BLOB));
+SELECT id FROM test_blobs WHERE LENGTH(data) > 10;
+CREATE TABLE additional_data (related_id INT, foreign_data BLOB, FOREIGN KEY (related_id) REFERENCES test_blobs(id));
+INSERT INTO additional_data (related_id, foreign_data) VALUES (1, CAST('Some more blob data' AS BLOB));
+SELECT b.id, a.foreign_data FROM test_blobs b JOIN additional_data a ON b.id = a.related_id WHERE LENGTH(a.foreign_data) < 25;
+CREATE TABLE nested_blob_data (id SERIAL PRIMARY KEY, blob_data BLOB);
+INSERT INTO nested_blob_data (blob_data) SELECT data FROM test_blobs WHERE id IN (SELECT id FROM test_blobs WHERE LENGTH(data) < 30);
+SELECT COUNT(*) FROM nested_blob_data WHERE LENGTH(blob_data) > 0;
+SELECT MAX(LENGTH(data)) FROM test_blobs GROUP BY id HAVING COUNT(data) > 1;

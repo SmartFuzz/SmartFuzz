@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/43605",
+  "title": "The plan send to TiFlash is wrong when non prepared plan cache is enable",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```sql\r\ncreate table test.a (id int, value varchar(64));\r\ninsert into test.a values(1,'a'),(2,'b'),(3,'c'),(null,'d');\r\ncreate table test.b (id int, value varchar(64));\r\nalter table test.a set tiflash replica 1;\r\nalter table test.b set tiflash replica 1;\r\nuse test; set @@tidb_isolation_read_engines='tiflash'; set @@tidb_opt_broadcast_cartesian_join=2; select * from a as t1 join a as t2 on 1 = 1;\r\n```\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\n<img width=\"1436\" alt=\"image\" src=\"https://user-images.githubusercontent.com/60744015/236773226-8a7128dd-03c0-4c3f-94a2-87e638469bd0.png\">\r\n\r\nthe qps of selection is always 0.\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nThe qps of selection is not 0.\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n```\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| tidb_version()                                                                                                                                                                                                                                                                                           |\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| Release Version: v7.2.0-alpha\r\nEdition: Community\r\nGit Commit Hash: b51758efdbd970ece2a511ab29767a0a6bdc6a83\r\nGit Branch: heads/refs/tags/v7.2.0-alpha\r\nUTC Build Time: 2023-05-06 14:33:10\r\nGoVersion: go1.20.3\r\nRace Enabled: false\r\nTiKV Min Version: 6.2.0-alpha\r\nCheck Table Before Drop: false\r\nStore: tikv |\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n```",
+  "date": "2023-05-08T08:20:52Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE test.c (id INT PRIMARY KEY, value VARCHAR(64) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test.c VALUES (1, 'x'), (2, 'y'), (3, NULL), (4, 'z');",
+    "CREATE TABLE test.d (id INT, value VARCHAR(64), CONSTRAINT fk_id FOREIGN KEY (id) REFERENCES test.c(id));",
+    "INSERT INTO test.d VALUES (1, 'a'), (2, 'b'), (3, 'c');",
+    "SELECT * FROM test.c t1 JOIN test.d t2 ON t1.id = t2.id WHERE t1.value IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Non prepared plan cache with TiFlash replica enabled"
+  ]
+}

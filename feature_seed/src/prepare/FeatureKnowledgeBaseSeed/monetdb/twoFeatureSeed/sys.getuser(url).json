@@ -1,0 +1,19 @@
+{
+    "function": "sys.getuser(url)",
+    "operator": "<<",
+    "sql_array": [
+        "CREATE TABLE url_data (id SERIAL PRIMARY KEY, url CLOB, subnet INET);",
+        "INSERT INTO url_data (url, subnet) VALUES ('http://user1:password@192.168.1.10/path', inet '192.168.1.0/24');",
+        "INSERT INTO url_data (url, subnet) VALUES ('http://user2:password@10.0.0.5/timezone', inet '10.0.0.0/8');",
+        "SELECT sys.getuser(url) AS username, subnet FROM url_data WHERE sys.getuser(url) IS NOT NULL AND subnet << inet '192.168.1.0/24';",
+        "SELECT id, sys.getuser(url) AS username FROM url_data WHERE (sys.getuser(url) IS NULL OR subnet << inet '10.0.0.0/8') ORDER BY username;",
+        "SELECT COUNT(*) FROM (SELECT sys.getuser(url) AS username, subnet FROM url_data GROUP BY username, subnet HAVING COUNT(*) > 1) AS user_counts;",
+        "SELECT A.id, sys.getuser(A.url) AS username FROM url_data A JOIN url_data B ON sys.getuser(A.url) IS NOT NULL AND A.subnet << B.subnet WHERE B.id IS NULL;",
+        "SELECT DISTINCT sys.getuser(url) FROM url_data WHERE (url IS NOT NULL AND INET '192.168.1.10' << subnet) OR sys.getuser(url) IS NULL;",
+        "SELECT sys.getuser(url), COUNT(*) OVER (PARTITION BY sys.getuser(url)) as user_count FROM url_data WHERE url LIKE 'http://%';",
+        "SELECT sys.getuser( NULLIF(url, '')) AS username FROM url_data HAVING username IS NOT NULL;",
+        "CREATE TABLE temp_table AS SELECT id, sys.getuser(url) FROM url_data WHERE sys.getuser(url) IS NOT NULL;",
+        "INSERT INTO temp_table SELECT id, sys.getuser(url) FROM url_data WHERE url NOT LIKE '';",
+        "SELECT * FROM temp_table WHERE temp_table.id IN (SELECT id FROM url_data WHERE url IS NOT NULL AND sys.getuser(url) IS NULL);"
+    ]
+}

@@ -1,0 +1,18 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, value INT, name VARCHAR(255), created_at TIMESTAMP);
+INSERT INTO test_table (id, value, name, created_at) VALUES (1, 10, 'A', CURRENT_TIMESTAMP);
+INSERT INTO test_table (id, value, name, created_at) VALUES (2, NULL, 'B', CURRENT_TIMESTAMP);
+INSERT INTO test_table (id, value, name, created_at) VALUES (3, 5, 'C', CURRENT_TIMESTAMP);
+INSERT INTO test_table (id, value, name, created_at) VALUES (4, 3, 'D', CURRENT_TIMESTAMP);
+SELECT id, name, value * 2 AS double_value FROM test_table WHERE value IS NOT NULL;
+SELECT id, (SELECT AVG(value) FROM test_table) * 3 AS average_triple_value FROM test_table;
+SELECT id, name, value FROM test_table WHERE value = (SELECT MAX(value) FROM test_table);
+SELECT id, name, value * (SELECT COUNT(*) FROM test_table WHERE value IS NOT NULL) AS total_value FROM test_table;
+SELECT id, name, exec_next() * value AS test_exec_next FROM test_table WHERE value IS NOT NULL;
+SELECT id, name, value, (SELECT COUNT(*) FROM test_table WHERE name IS NULL) FROM test_table GROUP BY name HAVING COUNT(value) > 1;
+SELECT id, name, value, (SELECT SUM(value) FROM test_table WHERE value * 2 > 15) AS total_exceeding FROM test_table WHERE created_at > CURRENT_TIMESTAMP - INTERVAL '1 DAY';
+SELECT id, value, exec_next() * 2 AS inflated_value FROM (SELECT id, value FROM test_table WHERE value < 10 ORDER BY value) AS subquery;
+SELECT id, (value * 0.5) * 3 AS tripled_halved_value FROM test_table WHERE name = 'A' AND created_at BETWEEN CURRENT_TIMESTAMP - INTERVAL '1 HOUR' AND CURRENT_TIMESTAMP;
+CREATE TABLE another_test_table (ref_id INT, total_value FLOAT, FOREIGN KEY (ref_id) REFERENCES test_table(id));
+INSERT INTO another_test_table (ref_id, total_value) SELECT id, SUM(value * 2) FROM test_table GROUP BY id;
+SELECT a.ref_id, a.total_value * (SELECT COUNT(*) FROM test_table WHERE value IS NOT NULL) AS adjusted_value FROM another_test_table a JOIN test_table b ON a.ref_id = b.id;
+SELECT id, value, NULLIF(value, 5) * exec_next() AS nullif_exec_value FROM test_table WHERE created_at > CURRENT_TIMESTAMP - INTERVAL '1 DAY' AND value IS NOT NULL;

@@ -1,0 +1,10 @@
+CREATE TABLE my_table (id INT, name VARCHAR(255), value FLOAT, created_at TIMESTAMP);
+INSERT INTO my_table (id, name, value, created_at) VALUES (1, 'foo', 10.0, NOW()), (2, 'bar', 20.5, NOW());
+SELECT id, name, connection_set('last_query', name) FROM my_table WHERE value LIKE CONCAT(CHAR(37), 'bar', CHAR(37));
+SELECT id, name FROM my_table WHERE connection_set('last_value', value) IS NULL OR connection_set('last_value', value) LIKE '20%';
+SELECT * FROM my_table WHERE id IN (SELECT id FROM my_table WHERE created_at IS NOT NULL AND value >= (SELECT AVG(value) FROM my_table));
+SELECT id, name, value, connection_set('max_value', MAX(value)) FROM my_table GROUP BY id, name HAVING connection_set('max_value', MAX(value)) LIKE '10%';
+CREATE TABLE temp_table (temp_id INT, temp_value FLOAT);
+INSERT INTO temp_table (temp_id, temp_value) VALUES (1, NULL), (2, 15.25);
+SELECT mt.id, mt.name, tt.temp_value, connection_set('global_max', (SELECT MAX(temp_value) FROM temp_table)) FROM my_table mt JOIN temp_table tt ON tt.temp_id = mt.id WHERE connection_set('global_max', (SELECT MAX(temp_value) FROM temp_table)) IS NOT NULL AND connection_set('global_max', (SELECT MAX(temp_value) FROM temp_table)) LIKE '1%';
+UPDATE my_table SET name = 'updated_' || name WHERE connection_set('global_max', NULLIF(value, 0)) LIKE '0%';

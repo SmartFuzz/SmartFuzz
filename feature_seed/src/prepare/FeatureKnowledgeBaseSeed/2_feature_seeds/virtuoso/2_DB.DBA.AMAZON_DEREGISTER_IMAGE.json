@@ -1,0 +1,12 @@
+CREATE TABLE images (image_id VARCHAR(50), status VARCHAR(20), metadata JSON);
+INSERT INTO images (image_id, status, metadata) VALUES ('my_new_image', 'available', json_build_object('size', 'large', 'tags', json_array('tag1', 'tag2')));
+CREATE TABLE instance_records (instance_id VARCHAR(50), image_id VARCHAR(50), launch_time TIMESTAMP DEFAULT NOW(), FOREIGN KEY (image_id) REFERENCES images(image_id));
+INSERT INTO instance_records (instance_id, image_id) VALUES ('i-1234567890abcdef0', 'my_new_image');
+SELECT DB.DBA.AMAZON_DEREGISTER_IMAGE(CAST('AKIAJI7ZL427TI5EDF5A' AS VARCHAR(50)), (SELECT image_id FROM images WHERE status = 'available' LIMIT 1), 'CGI/UMaXf2LRUctaj/HGJ57UNy/t7fNCshh8wpJg');
+SELECT json_array_length((SELECT metadata FROM images WHERE image_id = 'my_new_image')) AS tag_count;
+SELECT COUNT(*) FROM instance_records WHERE image_id = (SELECT image_id FROM images WHERE status IS NULL) GROUP BY image_id HAVING COUNT(*) = 0;
+SELECT image_id FROM images WHERE json_array_length(metadata->'tags') > 0;
+DROP TABLE IF EXISTS temp_images;
+CREATE TEMP TABLE temp_images AS SELECT * FROM images WHERE status = 'available';
+SELECT DB.DBA.AMAZON_DEREGISTER_IMAGE(CAST(NULL AS VARCHAR), (SELECT image_id FROM temp_images WHERE (SELECT json_array_length(metadata) FROM temp_images LIMIT 1) > 0), '');
+SELECT image_id FROM images WHERE status IN (SELECT NULL) ORDER BY json_array_length(metadata) DESC LIMIT 1;

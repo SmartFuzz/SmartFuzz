@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/e651b13418",
+  "title": "DROP TABLE fails for WITHOUT ROWID tables an SQLITE_OMIT_AUTOVACUUM",
+  "description": "drh added on 2017-10-10 13:36:18:\nThe DROP TABLE statement does not work on a WITHOUT ROWID table when\nSQLite is compiled with -DSQLITE_OMIT_AUTOVACUUM.  C code below\ndemonstrates the malfunction.\nThis problem has existed ever since WITHOUT ROWID tables were added\nin release 3.8.2, 2013-12-06.  As SQLITE_OMIT_AUTOVACUUM is not a\nsupported or tested configuration, this ticket is given a low priority.\nThis problem was reported on the sqlite-users mailing list by Bernard Schurdevin.\n#include <stdio.h>\n#include <unistd.h>\n#include \"sqlite3.h\"\n\nstatic int showResults(void *notUsed, int argc, char **argv, char **colv){\n  int i;\n  for(i=0; i<argc; i++){\n    printf(\"%s = %s\\n\", colv[i], argv[i] ? argv[i] : \"NULL\");\n  }\n  return 0;\n}\n\nint main(int argc, char **argv){\n  sqlite3 *db;\n  int rc;\n  char *zErrmsg = 0;\n  unlink(\"x1.db\");\n  rc = sqlite3_open(\"x1.db\", &db);\n  if( rc ){\n    fprintf(stderr, \"cannot open 'x1.db'\\n\");\n    return 1;\n  }\n  sqlite3_exec(db, \n    \"CREATE TABLE foo (num INTEGER PRIMARY KEY,comment TEXT COLLATE NOCASE)\"\n    \" WITHOUT ROWID;\\n\"\n    \"PRAGMA integrity_check;\\n\"\n    \"DROP TABLE foo;\", showResults, 0, &zErrmsg);\n  if( zErrmsg ){\n    fprintf(stderr, \"ERROR: %s\\n\", zErrmsg);\n    sqlite3_free(zErrmsg);\n    zErrmsg = 0;\n  }\n  sqlite3_exec(db,\"PRAGMA integrity_check;\", showResults, 0, &zErrmsg);\n  if( zErrmsg ){\n    fprintf(stderr, \"ERROR: %s\\n\", zErrmsg);\n    sqlite3_free(zErrmsg);\n    zErrmsg = 0;\n  }\n  sqlite3_close(db);\n  return 0;    \n}",
+  "date": "2017-10-10 13:36:187.83 years ago",
+  "vulnerable_version": "3.20.1",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE bar (id INTEGER PRIMARY KEY, value TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO bar (value) VALUES ('test1');",
+    "INSERT INTO bar (value) VALUES (NULL);",
+    "SELECT * FROM bar WHERE value IS NULL;",
+    "DROP TABLE bar;"
+  ],
+  "key_bug_features": [
+    "DROP TABLE fails on WITHOUT ROWID with SQLITE_OMIT_AUTOVACUUM"
+  ]
+}

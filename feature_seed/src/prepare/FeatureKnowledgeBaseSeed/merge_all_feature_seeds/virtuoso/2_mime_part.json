@@ -1,0 +1,12 @@
+CREATE TABLE mime_test (id INT, part1 VARCHAR(255), part2 VARCHAR(255), part3 VARCHAR(255), encoding VARCHAR(50));
+INSERT INTO mime_test VALUES (1, NULL, 'First part', 'text/html', 'base64'), (2, 'Second part', NULL, 'text/plain', NULL);
+SELECT id, MIME_BODY(vector(MIME_PART(NULL, part1, part2, 'Content for first part'), MIME_PART(NULL, NULL, encoding, 'Content for second part'))) AS mime_output FROM mime_test WHERE part1 IS NOT NULL;
+SELECT id, MIME_BODY(vector(MIME_PART(NULL, part1, NULL, 'Content for A'), MIME_PART(NULL, NULL, 'base64', 'Content for B'))) AS mime_output FROM mime_test WHERE id IN (SELECT id FROM mime_test WHERE encoding IS NOT NULL) AND part2 = 'Second part';
+CREATE TABLE additional_mime_test (mime_id INT, mime_data VARCHAR(500));
+INSERT INTO additional_mime_test VALUES (1, 'base64encodedcontent=='), (2, NULL);
+SELECT DISTINCT m.mime_output FROM (SELECT MIME_BODY(vector(MIME_PART(NULL, NULL, encoding, 'Content combined: ' || part1 || ' and ' || part3), MIME_PART(NULL, part2, NULL, 'Mixed content')) AS mime_output FROM mime_test m JOIN additional_mime_test a ON m.id = a.mime_id WHERE m.part3 IS NOT NULL) AS m;
+SELECT mime_id, COUNT(*) FROM additional_mime_test WHERE mime_data IS NOT NULL GROUP BY mime_id HAVING COUNT(*) > 1;
+SELECT MIME_BODY(vector(MIME_PART(NULL, 'Final part', NULL, NULL), MIME_PART(NULL, 'Another part', 'text/plain', 'Final content'))) AS final_mime FROM (SELECT id, part1 FROM mime_test WHERE part2 = 'First part') AS subquery;
+SELECT id, MIME_BODY(vector(MIME_PART(NULL, NULL, NULL, 'Content with NULL part'), MIME_PART(NULL, 'Fallback part', 'base64', 'Fallback content'))) AS mime_output FROM (SELECT * FROM mime_test WHERE part1 IS NULL OR part2 IS NULL) AS nil_check;
+DELETE FROM additional_mime_test WHERE mime_data IS NULL;
+SELECT * FROM mime_test WHERE EXISTS (SELECT 1 FROM additional_mime_test WHERE mime_id = mime_test.id AND mime_data IS NOT NULL);

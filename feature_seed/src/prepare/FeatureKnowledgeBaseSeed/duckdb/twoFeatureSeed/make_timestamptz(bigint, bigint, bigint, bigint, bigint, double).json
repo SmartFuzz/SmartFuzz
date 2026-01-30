@@ -1,0 +1,13 @@
+{
+    "function": "make_timestamptz(bigint, bigint, bigint, bigint, bigint, double)",
+    "operator": "||",
+    "sql_array": [
+        "CREATE TABLE test_table (id INTEGER, timestamp_col BIGINT, nullable_col INTEGER, data_array INTEGER[]);",
+        "INSERT INTO test_table (id, timestamp_col, nullable_col, data_array) VALUES (1, 19920920133427, NULL, ARRAY[1, 2, 3]), (2, 19720101000000, 8, ARRAY[4, 5, 6]), (3, 20991231120000, NULL, ARRAY[7, 8, 9]);",
+        "SELECT id, make_timestamptz(EXTRACT(YEAR FROM NOW()), EXTRACT(MONTH FROM NOW()), EXTRACT(DAY FROM NOW()), 0, 0, 0.0) || (CASE WHEN nullable_col IS NULL THEN ARRAY[10, 11] ELSE data_array END) AS result_array FROM test_table WHERE timestamp_col IS NOT NULL;",
+        "SELECT id, ARRAY(SELECT e FROM unnest(data_array) AS e) || (SELECT make_timestamptz(2000, 12, 31, 23, 59, 59.987654) FROM test_table WHERE id = 1) AS new_array FROM test_table;",
+        "SELECT id, COUNT(*) AS total, ARRAY_AGG(make_timestamptz(timestamp_col / 1000000, 0, 0, 0, 0, 0.0)) AS timestamps FROM test_table GROUP BY id HAVING total > 0;",
+        "SELECT id, make_timestamptz(1992, 9, 20, CORR(timestamp_col, id), 0, 0.0) || (ARRAY[10] || NULL) AS combined_result FROM test_table GROUP BY id ORDER BY combined_result;",
+        "SELECT id, make_timestamptz(year, month, day, hour, minute, precision) || ARRAY[CASE WHEN nullable_col IS NULL THEN NULL ELSE nullable_col END] AS final_output FROM (SELECT 2021 AS year, 8 AS month, 15 AS day, 10 AS hour, 30 AS minute, 123456789.123456 AS precision, id, nullable_col FROM test_table) AS subquery WHERE id = 3;"
+    ]
+}

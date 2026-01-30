@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/59238",
+  "title": "truncate one partition ,the 'create_time' of all partition tables has been updated",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\ncreate partition table\n```sql\nCREATE TABLE t ( a INT, b INT, INDEX idx(b)) \n    PARTITION BY RANGE( a ) (\n    PARTITION p1 VALUES LESS THAN (10000),\n    PARTITION p2 VALUES LESS THAN (20000),\n    PARTITION p3 VALUES LESS THAN (MAXVALUE) ) ;\n```\ncheck the `create_time`\n``` sql\nselect table_name,partition_name,tidb_partition_id,create_time from information_schema.partitions where table_name = 't';\n```\ntruncate one partition `p1`\n```sql\nalter table t truncate partition p1;\n```\ncheck the `create_time` , \n```sql\nselect table_name,partition_name,tidb_partition_id,create_time from information_schema.partitions where table_name = 't';\n```\n\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\n'create_time' of partition `p1` was updated, and `create_time` of other partitions was not updated.\n\n### 3. What did you see instead (Required)\nThe 'creat_time' of all partition tables has been updated\n![Image](https://github.com/user-attachments/assets/432302e6-3a28-4282-b805-5e58b48e641f)\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| tidb_version()                                                                                                                                                                                                                                |\n+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| Release Version: v7.5.3\nEdition: Community\nGit Commit Hash: 70bfd90035cc81e80d78b4f1f76ca4baef8a5756\nGit Branch: HEAD\nUTC Build Time: 2024-07-31 13:17:12\nGoVersion: go1.21.10\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv |\n+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n\n",
+  "date": "2025-02-03T03:09:39Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2 ( id INT PRIMARY KEY, name VARCHAR(100), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ) PARTITION BY RANGE( id ) ( PARTITION p1 VALUES LESS THAN (50), PARTITION p2 VALUES LESS THAN (100), PARTITION p3 VALUES LESS THAN (MAXVALUE) );",
+    "INSERT INTO t2 (id, name) VALUES (1, 'Alice'), (2, 'Bob'), (51, 'Charlie');",
+    "SELECT id, name, created_at FROM t2 WHERE created_at IS NOT NULL;",
+    "ALTER TABLE t2 TRUNCATE PARTITION p1;",
+    "SELECT table_name, partition_name, partition_id, create_time FROM oceanbase_information_schema.partitions WHERE table_name = 't2';"
+  ],
+  "key_bug_features": [
+    "Truncating one partition updates all partition create_times"
+  ]
+}

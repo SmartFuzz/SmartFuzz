@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=101504",
+  "title": "ERROR 3566 (HY000): Access to native function is rejected",
+  "description": "When executing the query below in MySQL 8.0.22, the following error occurs:\r\n\r\nERROR 3566 (HY000): Access to native function 'internal_table_rows' is rejected.\r\n\r\nA very similar error is shown when using other columns as well, for example when replacing TABLE_ROWS with INDEX_LENGTH, but it doesn't occur with columns such as TABLE_NAME.\r\n\r\nIt seems that this change of behavior was introduced in version 8.0.22, as the same query is working properly in previous versions, including 8.0.21.\nHow to repeat:\n1. Install MySQL 8.0.22\r\n2. Run the following demo query:\r\n\r\n(SELECT \r\n\t1\r\nFROM\r\n    (SELECT (@tbls:=1),\r\n            (SELECT 1 FROM information_schema.tables tbls\r\n             WHERE 123 IN (CONCAT_WS(TABLE_ROWS, '')))\r\n    tbls) x);",
+  "date": "2020-11-07 19:05:00",
+  "vulnerable_version": "8.0.22",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INTEGER PRIMARY KEY, name VARCHAR(255), table_rows INTEGER, index_length INTEGER);",
+    "INSERT INTO test_table (id, name, table_rows, index_length) VALUES (1, 'test1', 100, 50);",
+    "INSERT INTO test_table (id, name, table_rows, index_length) VALUES (2, 'test2', NULL, 75);",
+    "SELECT 1 WHERE EXISTS (SELECT 1 FROM test_table WHERE table_rows IS NOT NULL);",
+    "SELECT COUNT(*) FROM test_table WHERE table_rows IS NULL;"
+  ],
+  "key_bug_features": [
+    "Access to native function 'internal_table_rows' is rejected"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+    "function": "javaHashUTF16LE",
+    "operator": "IS NOT NULL",
+    "sql_array": [
+        "CREATE TABLE t_hash (id Int32, text UTF8, nullable_text Nullable(Utf8));",
+        "INSERT INTO t_hash VALUES (1, 'test'), (2, 'clickhouse'), (3, NULL), (4, '');",
+        "SELECT id, javaHashUTF16LE(text) AS hash_value FROM t_hash WHERE text IS NOT NULL;",
+        "SELECT id, javaHashUTF16LE(nullable_text) AS hash_value FROM t_hash WHERE nullable_text IS NOT NULL;",
+        "SELECT id, count(*) FROM t_hash GROUP BY javaHashUTF16LE(text) HAVING count(*) > 1;",
+        "SELECT id, javaHashUTF16LE(convertCharset(text, 'utf-8', 'utf-16le')) AS hash FROM t_hash WHERE id NOT IN (SELECT id FROM t_hash WHERE nullable_text IS NULL);",
+        "SELECT id, javaHashUTF16LE(text) AS hash_value FROM t_hash WHERE text IS NOT NULL UNION SELECT id, javaHashUTF16LE(convertCharset('boundary', 'utf-8', 'utf-16le')) WHERE id = 4;",
+        "SELECT *, CASE WHEN nullable_text IS NOT NULL THEN javaHashUTF16LE(nullable_text) ELSE javaHashUTF16LE('default') END AS hash_value FROM t_hash;",
+        "CREATE TABLE t_join (join_id Int32, join_text UTF8);",
+        "INSERT INTO t_join VALUES (1, 'hash1'), (2, NULL), (3, 'hash2');",
+        "SELECT a.id, a.text, javaHashUTF16LE(a.text) AS hash, b.join_text FROM t_hash a LEFT JOIN t_join b ON javaHashUTF16LE(a.text) = javaHashUTF16LE(b.join_text) WHERE a.text IS NOT NULL;",
+        "SELECT id, text, javaHashUTF16LE(text) AS hash FROM t_hash WHERE IS NOT NULL AND id IN (SELECT join_id FROM t_join WHERE join_text IS NOT NULL);"
+    ]
+}

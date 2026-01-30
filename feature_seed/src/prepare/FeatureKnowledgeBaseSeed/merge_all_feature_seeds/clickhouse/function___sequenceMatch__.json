@@ -1,0 +1,11 @@
+CREATE TABLE events (time DateTime, number UInt8);
+INSERT INTO events VALUES (now(), 1), (now() + interval 1 second, 2), (now() + interval 2 seconds, 1), (now() + interval 3 seconds, 3);
+SELECT sequenceMatch('(?1)(?2)')(time, number = 1, number = 2) FROM events;
+SELECT sequenceMatch('(?1)(?t>1)(?2)')(time, number = 1, number = 2) FROM events;
+SELECT sequenceMatch('(?1)(?t<3)(?2)')(time, number = 1, number = 2) FROM events;
+CREATE TABLE events2 AS events;
+INSERT INTO events2 VALUES (now() + interval 10 seconds, 1), (now() + interval 11 seconds, 2), (now() + interval 12 seconds, 3);
+SELECT sequenceMatch('(?1)(?2)(?t>=10)(?3)')(time, number = 1, number = 2, number = 3) FROM events2;
+WITH (SELECT count(*) FROM events) AS total_events SELECT sequenceMatch('(?1)(?2)')(time, number = 1, number = 2) AS match_result, total_events FROM events;
+SELECT sequenceMatch('(?1)(?t>1)(?2)(?t<10)') FROM (SELECT time, number FROM events ORDER BY time ASC) AS subquery;
+SELECT sequenceMatch('(?1)(?t>60)(?2)(?t>120)') FROM (SELECT time, number FROM events WHERE number IN (1, 2)) AS filtered_events;

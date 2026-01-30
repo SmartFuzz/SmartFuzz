@@ -1,0 +1,9 @@
+CREATE TABLE test_data (id UInt32, x Float64, y Float64, text_value String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_data VALUES (1, 1.0, 1.0, 'valid_text'), (2, NULL, NULL, 'another_text'), (3, -1.0, -1.0, 'n0t_like');
+SELECT id, atan2(y, x) AS angle, text_value FROM test_data WHERE angle NOT LIKE 'invalid_angle%' AND x IS NOT NULL;
+SELECT id, atan2(y, x) AS angle FROM (SELECT id, x, y FROM test_data WHERE x IS NOT NULL AND y IS NOT NULL) AS subquery HAVING angle NOT LIKE 'Pi%';
+SELECT (SELECT COUNT(*) FROM test_data WHERE text_value NOT LIKE '%text%') AS count_of_non_matching, atan2(MAX(y), MIN(x)) AS extreme_angle FROM test_data;
+CREATE TABLE temp_test AS SELECT *, atan2(y, x) AS angle FROM test_data WHERE NOT text_value NOT LIKE '%_text%' AND x != 0;
+INSERT INTO temp_test SELECT id, (x + 1), (y + 1), 'test_' || toString(id) FROM test_data WHERE x IS NOT NULL;
+SELECT DISTINCT angle FROM temp_test GROUP BY angle HAVING angle NOT LIKE '-0.785%';
+DROP TABLE IF EXISTS temp_test;

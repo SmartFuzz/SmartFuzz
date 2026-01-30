@@ -1,0 +1,30 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/80177f0c22",
+  "title": "Incorrect result when join condition uses a table-valued function",
+  "vulnerable_version": "3.22.0",
+  "date": "2018-01-26 22:26:597.54 years ago",
+  "path": "/home/crawl_bugs/sqlite/ticket_output/ticket_info_80177f0c22.json",
+  "poc": [
+    "SELECT statement at the end of the SQL shown below should return a two-row result, but instead returns\nan empty set.\nCREATE TABLE t1(id, json);",
+    "INSERT INTO t1(id,json) VALUES(1,'{\"items\":[3,5]}');",
+    "CREATE TABLE t2(id, json);",
+    "INSERT INTO t2(id,json) VALUES(2,'{\"value\":2}');",
+    "INSERT INTO t2(id,json) VALUES(3,'{\"value\":3}');",
+    "INSERT INTO t2(id,json) VALUES(4,'{\"value\":4}');",
+    "INSERT INTO t2(id,json) VALUES(5,'{\"value\":5}');",
+    "INSERT INTO t2(id,json) VALUES(6,'{\"value\":6}');",
+    "SELECT * FROM t2 CROSS JOIN t1\n WHERE EXISTS(SELECT 1 FROM json_each(t1.json,'$.items') AS Z\n               WHERE Z.value==t2.id);"
+  ],
+  "vulnerable_database": "sqlite",
+  "description": "drh added on 2018-01-26 22:26:59:\nThe SELECT statement at the end of the SQL shown below should return a two-row result, but instead returns\nan empty set.\nCREATE TABLE t1(id, json);\nINSERT INTO t1(id,json) VALUES(1,'{\"items\":[3,5]}');\nCREATE TABLE t2(id, json);\nINSERT INTO t2(id,json) VALUES(2,'{\"value\":2}');\nINSERT INTO t2(id,json) VALUES(3,'{\"value\":3}');\nINSERT INTO t2(id,json) VALUES(4,'{\"value\":4}');\nINSERT INTO t2(id,json) VALUES(5,'{\"value\":5}');\nINSERT INTO t2(id,json) VALUES(6,'{\"value\":6}');\nSELECT * FROM t2 CROSS JOIN t1\n WHERE EXISTS(SELECT 1 FROM json_each(t1.json,'$.items') AS Z\n               WHERE Z.value==t2.id);\nThe problem is that the query planner fails to recognize that the EXISTS\nexpression in the WHERE clause has a dependency on table t1, and so it\ngenerates code for the EXISTS expression after the outer loop over t2\nand before the inner loop over t1 has been run.  This means that the\nt1.json value for the EXISTS expression is incorrect, and an incorrect\nanswer results.\nThis problem appears to have been in the code ever since table-valued\nfunctions were introduced with version 3.9.0 (2015-10-14).\nThis problem was reported on the sqlite-users mailing list by\nJens Alfke.",
+  "key_bug_features": [
+    "JOIN condition uses a table-valued function incorrectly"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t1(id INTEGER PRIMARY KEY, json TEXT NOT NULL);",
+    "INSERT INTO t1(id,json) VALUES(1,'{\"items\":[3,5]}');",
+    "CREATE TABLE t2(id INTEGER PRIMARY KEY, json TEXT NOT NULL);",
+    "INSERT INTO t2(id,json) VALUES(2,'{\"value\":2}');",
+    "SELECT * FROM t2 CROSS JOIN t1 WHERE EXISTS(SELECT 1 FROM json_each(t1.json,'$.items') AS Z WHERE Z.value = t2.id);"
+  ]
+}

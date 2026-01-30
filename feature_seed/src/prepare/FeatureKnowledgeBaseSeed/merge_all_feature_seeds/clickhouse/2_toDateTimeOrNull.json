@@ -1,0 +1,11 @@
+CREATE TABLE test_dates (id UInt32, datetime_str String, extra_str String);
+INSERT INTO test_dates VALUES (1, '2023-01-01 00:00:00', 'valid'), (2, 'invalid_date', NULL), (3, '', 'empty');
+SELECT id, EXTRACT(YEAR FROM toDateTimeOrNull(datetime_str)) AS year_extracted FROM test_dates WHERE datetime_str != '';
+SELECT id, EXTRACT(DAY FROM toDateTimeOrNull(datetime_str)) AS day_extracted FROM test_dates WHERE datetime_str IS NOT NULL AND datetime_str != 'invalid_date' GROUP BY id HAVING day_extracted > 0;
+SELECT id, datetime_str, EXTRACT(MONTH FROM toDateTimeOrNull(datetime_str)) AS month_extracted FROM test_dates WHERE EXTRACT(MONTH FROM toDateTimeOrNull(datetime_str)) IS NOT NULL;
+SELECT id, toDateTimeOrNull(datetime_str) AS datetime_value, EXTRACT(SECOND FROM toDateTimeOrNull(datetime_str)) AS second_extracted FROM test_dates WHERE toDateTimeOrNull(datetime_str) IS NOT NULL ORDER BY second_extracted;
+CREATE TABLE temp_aggregates (agg_date DateTime, agg_value Float64);
+INSERT INTO temp_aggregates VALUES (toDateTimeOrNull('2023-01-01 12:30:00'), 100.5), (toDateTimeOrNull('2022-12-31 23:59:59'), 250.0);
+SELECT t.id, ag.agg_value, EXTRACT(HOUR FROM ag.agg_date) AS hour_extracted FROM test_dates t JOIN temp_aggregates ag ON toDateTimeOrNull(t.datetime_str) <= ag.agg_date ORDER BY hour_extracted DESC;
+SELECT id, toDateTimeOrNull(datetime_str) AS datetime_value, EXTRACT(MINUTE FROM datetime_value) AS minute_extracted FROM test_dates WHERE datetime_value IS NOT NULL HAVING minute_extracted BETWEEN 0 AND 59;
+SELECT id, EXTRACT(DAY FROM toDateTimeOrNull(datetime_str)) as day_extracted FROM (SELECT id, datetime_str FROM test_dates WHERE datetime_str IS NOT NULL AND datetime_str != '') AS valid_dates WHERE day_extracted IS NOT NULL;

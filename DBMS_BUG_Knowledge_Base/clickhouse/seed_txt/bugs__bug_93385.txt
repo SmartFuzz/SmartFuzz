@@ -1,0 +1,5 @@
+CREATE TABLE user_events (event_id UUID, user_id UInt32, event_type String, event_time DateTime) ENGINE = MergeTree() ORDER BY event_time;
+INSERT INTO user_events SELECT generateUUIDv4() AS event_id, rand() % 10000 AS user_id, arrayElement(['click','view','purchase'], toUInt32(rand()) % 3 + 1) AS event_type, now() - INTERVAL rand() % 3600*24 SECOND AS event_time FROM numbers(100000);
+CREATE TABLE user_summary (user_id UInt32, event_count UInt32) ENGINE = SummingMergeTree() ORDER BY user_id;
+INSERT INTO user_summary SELECT user_id, count() AS event_count FROM user_events GROUP BY user_id;
+SELECT user_id, event_count FROM user_summary WHERE event_count > 10 ORDER BY event_count DESC;

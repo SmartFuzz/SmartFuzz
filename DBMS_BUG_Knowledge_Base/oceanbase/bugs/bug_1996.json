@@ -1,0 +1,35 @@
+{
+  "url": "https://github.com/oceanbase/oceanbase/issues/1996",
+  "title": "[Bug]: In `WHERE` clause, `ROUND`ing a  `decimal` type parameter produces unexpected results",
+  "vulnerable_database": "oceanbase",
+  "date": "2024-05-31T10:02:54Z",
+  "vulnerable_version": "Unknown",
+  "description": "master分支版本，`ROUND` `decimal`类型的表达式出现在`WHERE`子句中产生预期之外的结果",
+  "poc": [
+    "insert into t_m (c_ydogyq1, c_reoxwl34) values \r\n  (396667551, 217625229), \r\n  (-368695015, -1288002677), \r\n  (1741309262, -712324340), \r\n  (970953275, -1454379871);",
+    "insert into t_m (c_ydogyq1, c_reoxwl34) values \r\n  (-67297980, 2067893465), \r\n  (-1207838033, -1056992339), \r\n  (-1158059535, -2115635925), \r\n  (-408147330, 697196005);",
+    "SELECT\r\n  ref_1.c_ydogyq1 as p0, \r\n  round(cast(40 as decimal), ref_1.c_ydogyq1) as p2,\r\n  round(cast(40 as decimal), ref_1.c_ydogyq1) = 0 as p3\r\nFROM\r\n  t_m as ref_1\r\nWHERE\r\n  round(cast(40 as decimal), ref_1.c_ydogyq1) = 0\r\n  ;",
+    "SELECT\r\n    ->   ref_1.c_ydogyq1 as p0, \r\n    ->   round(cast(40 as decimal), ref_1.c_ydogyq1) as p2,\r\n    ->   round(cast(40 as decimal), ref_1.c_ydogyq1) = 0 as p3\r\n    -> \r\n    -> FROM\r\n    ->   t_m as ref_1\r\n    -> WHERE\r\n    ->   round(cast(40 as decimal), ref_1.c_ydogyq1) = 0\r\n    ->   ;",
+    "DROP TENANT mysql FORCE;",
+    "DROP RESOURCE POOL pool_for_tenant_mysql;",
+    "CREATE RESOURCE UNIT 4c7g MAX_CPU 4, MIN_CPU 4, MEMORY_SIZE '7G';",
+    "create resource pool pool_test unit='4c7g', unit_num=1, zone_list=('zone1' ,'zone2', 'zone3');",
+    "create tenant test resource_pool_list=('pool_test'), primary_zone='RANDOM',comment 'test tenant', charset='utf8' set ob_tcp_invited_nodes='%', recyclebin=OFF, ob_query_timeout=5000000;",
+    "do\r\n  tag: latest\r\n  include: obd/observer.include.yaml\r\n  global: \r\n    # for default system config used by farm, please see tools/deploy/obd/observer.include.yaml\r\n    # You can also specify the configuration directly below (stored locally, switching the working directory and redeploying will still take effect)\r\n    production_mode: false\r\n    devname: eth0\r\n    syslog_level: 'WARN'\r\n    syslog_io_bandwidth_limit: '30M'\r\n    log_disk_size: '40G'\r\n    max_syslog_file_count: '4'\r\n    cpu_count: '6'\r\n    datafile_size: '10G'\r\n    datafile_next: '5G'\r\n    datafile_maxsize: '30G'\r\n    root_password: ''\r\n    memory_limit: '9G'\r\n    system_memory: '1G'\r\n\r\n```\r\n\r\n单节点租户配置：\r\n```\r\nDROP TENANT mysql FORCE;",
+    "create resource pool pool_test unit='4c7g', unit_num=1, zone_list=('zone1');",
+    "do not modify the content below-->\n---\n**Describe the bug**\r\nIn the master branch version, expressions of type `ROUND` and `decimal` appear in the `WHERE` clause and produce unexpected results.\r\n\r\n**Fast Reproduce Steps(Required)**\r\n\r\n```sql\r\ncreate table t_m (\r\n  c_ydogyq1 int ,\r\n  c_reoxwl34 int,\r\n  primary key(c_reoxwl34, c_ydogyq1),\r\n  unique(c_ydogyq1)) partition by hash(c_ydogyq1) partitions 9;",
+    "with the third column 0 appear in the results.\r\n```\r\nmysql> SELECT\r\n    -> ref_1.c_ydogyq1 as p0,\r\n    -> round(cast(40 as decimal), ref_1.c_ydogyq1) as p2,\r\n    -> round(cast(40 as decimal), ref_1.c_ydogyq1) = 0 as p3\r\n    ->\r\n    -> FROM\r\n    ->t_m as ref_1\r\n    -> WHERE\r\n    -> round(cast(40 as decimal), ref_1.c_ydogyq1) = 0\r\n    -> ;",
+    "create resource pool pool_test unit='4c7g', unit_num=1, zone_list=('zone1','zone2', 'zone3');",
+    "do\r\n  tag: latest\r\n  include: obd/observer.include.yaml\r\n  global:\r\n    # for default system config used by farm, please see tools/deploy/obd/observer.include.yaml\r\n    # You can also specify the configuration directly below (stored locally, switching the working directory and redeploying will still take effect)\r\n    production_mode: false\r\n    devname: eth0\r\n    syslog_level: 'WARN'\r\n    syslog_io_bandwidth_limit: '30M'\r\n    log_disk_size: '40G'\r\n    max_syslog_file_count: '4'\r\n    cpu_count: '6'\r\n    datafile_size: '10G'\r\n    datafile_next: '5G'\r\n    datafile_maxsize: '30G'\r\n    root_password: ''\r\n    memory_limit: '9G'\r\n    system_memory: '1G'\r\n\r\n```\r\n\r\nSingle node tenant configuration:\r\n```\r\nDROP TENANT mysql FORCE;"
+  ],
+  "key_bug_features": [
+    "ROUNDing decimal type in WHERE clause produces unexpected results"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT PRIMARY KEY, value DECIMAL(10, 2), description VARCHAR(255));",
+    "INSERT INTO test_table (id, value, description) VALUES (1, 10.50, 'Test 1'), (2, 20.75, 'Test 2'), (3, NULL, 'Test 3');",
+    "SELECT id, ROUND(value, 1) AS rounded_value FROM test_table WHERE ROUND(value, 1) IS NOT NULL;",
+    "UPDATE test_table SET value = ROUND(value, 0) WHERE id = 2;",
+    "SELECT id, ROUND(COALESCE(value, 0), 1) AS rounded_value FROM test_table WHERE ROUND(COALESCE(value, 0), 1) = 0;"
+  ]
+}

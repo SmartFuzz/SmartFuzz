@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/90240",
+  "title": "Combination of toYYYYMM(date) partitioning and toWeek(date, 3) filtering returns incorrect results",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nhttps://fiddle.clickhouse.com/c3175e2a-85df-4259-af38-35b485959e02\n`toWeek(date, 3)` function returns empty results when filtering on valid week numbers.\nThe same dataset filtered using `toISOWeek(date) / toWeekOfYear(date, 3)` returns rows as expected.\nThis incorrect behavior only affects the last month of year partition (`202512`), which includes weeks `49, 50, 51, 52`\nFiltering weeks in other partitions works correctly\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nFound in version v24.3.4.147-lts\nReproduced in 25.11.1.3506\n```\nCREATE TABLE test_table\n(\n`date` Date,\n`value` String\n)\nENGINE = MergeTree\nPARTITION BY toYYYYMM(date)\nORDER BY date;\nINSERT INTO test_table\nSELECT\n'2026-01-01'::date - toIntervalDay(number % 365) AS date,\nrandomPrintableASCII(10, number) AS value\nFROM numbers(10000);\nSELECT count(*) FROM test_table WHERE toWeek(date, 3) = 48;\n-- returns 196\nSELECT count(*) FROM test_table WHERE toWeek(date, 3) = 49;\n-- returns 0\nSELECT count(*) FROM test_table WHERE toWeek(date) = 49;\n-- returns 196\nSELECT count(*) FROM test_table WHERE toISOWeek(date) = 49;\n-- returns 196\n```\n### Expected behavior\n_No response_\n### Error message and/or stacktrace\n_No response_\n### Additional context\n_No response_",
+  "date": "2025-11-17T18:43:36Z",
+  "vulnerable_version": "25.11.1.3506",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test_table_v2 (id INTEGER, date DATE, value TEXT, category TEXT);",
+    "INSERT INTO test_table_v2 SELECT number, DATE('2026-01-01', '-' || (number % 365) || ' days') AS date, SUBSTR(HEX(RANDOM()), 1, 10) AS value, CASE WHEN number % 2 = 0 THEN 'A' ELSE NULL END AS category FROM (SELECT ROW_NUMBER() OVER () AS number FROM (SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10) LIMIT 10000);",
+    "SELECT COUNT(*) FROM test_table_v2 WHERE strftime('%W', date) = '52' AND category IS NULL;",
+    "SELECT COUNT(*) FROM test_table_v2 WHERE strftime('%W', date) = '49' OR strftime('%W', date, 'weekday 0', '-6 days') = '49';",
+    "SELECT DISTINCT category FROM test_table_v2 WHERE date >= '2026-01-01' AND date < '2026-01-08';"
+  ],
+  "key_bug_features": [
+    "toYYYYMM partitioning with toWeek filtering returns incorrect results"
+  ]
+}

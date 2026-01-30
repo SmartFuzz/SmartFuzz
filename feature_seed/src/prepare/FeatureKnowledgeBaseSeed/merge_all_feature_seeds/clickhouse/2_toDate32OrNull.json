@@ -1,0 +1,9 @@
+CREATE TABLE test_dates (id UInt32, date_str String, value Float64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_dates VALUES (1, '1955-01-01', 10.0), (2, '', 20.0), (3, '2023-01-01', NULL);
+SELECT id, toDate32OrNull(date_str) AS parsed_date, value FROM test_dates WHERE toDate32OrNull(date_str) >= '2020-01-01';
+SELECT id, COUNT(*) FROM test_dates GROUP BY toDate32OrNull(date_str) HAVING toDate32OrNull(date_str) >= '2000-01-01' AND value IS NOT NULL;
+SELECT id, MAX(value) FROM (SELECT id, value, toDate32OrNull(date_str) AS parsed_date FROM test_dates WHERE value IS NOT NULL GROUP BY id, value) WHERE parsed_date >= '1950-01-01' GROUP BY id;
+SELECT a.id, a.value FROM test_dates a JOIN (SELECT id, toDate32OrNull(date_str) AS parsed_date FROM test_dates) b ON b.parsed_date >= '2000-01-01' AND a.value >= 15.0;
+SELECT id FROM test_dates WHERE toDate32OrNull(date_str) < '2000-01-01' OR (toDate32OrNull(date_str) IS NULL AND value IS NOT NULL);
+CREATE TABLE temp_dates AS SELECT id, toDate32OrNull(date_str) AS parsed_date FROM test_dates;
+SELECT parsed_date, COUNT(*) FROM temp_dates WHERE parsed_date IS NULL GROUP BY parsed_date HAVING COUNT(*) > 0;

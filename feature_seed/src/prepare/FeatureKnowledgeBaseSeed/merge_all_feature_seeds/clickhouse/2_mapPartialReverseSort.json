@@ -1,0 +1,10 @@
+CREATE TABLE test_map (key String, value Int32, secondary_value Nullable(Float64));
+INSERT INTO test_map VALUES ('key1', 5, 2.5), ('key2', 10, NULL), ('key3', 3, 1.0);
+SELECT mapPartialReverseSort((k, v) -> v + (CASE WHEN secondary_value IS NOT NULL THEN secondary_value ELSE 0 END), 2, map(key, value)) FROM test_map WHERE value % 2 = 1;
+SELECT key, value, mapPartialReverseSort((k, v) -> v % 3, 1, map(key, value)) AS sorted_map FROM test_map GROUP BY key, value HAVING count(value) > 1;
+SELECT mapPartialReverseSort((k, v) -> v, 3, map(key, value + 1)) AS partial_sorted FROM (SELECT key, value FROM test_map WHERE value IS NOT NULL) WHERE key % 'key2' = 0;
+SELECT mapPartialReverseSort((k, v) -> CAST(NULL AS UInt32), 2, map(key, value)) FROM test_map;
+WITH (SELECT count(*) FROM (SELECT key, value % 2 AS mod_value FROM test_map)) AS cnt SELECT mapPartialReverseSort((k, v) -> v / cnt, 1, map(key, value)) FROM test_map;
+SELECT mapPartialReverseSort((k, v) -> IF(secondary_value IS NULL, 0, secondary_value), 1, map(key, value)) FROM test_map WHERE value > (SELECT AVG(value) FROM test_map WHERE value < 10);
+INSERT INTO test_map VALUES ('key4', 15, 0.0);
+SELECT map(key, value) AS my_map, mapPartialReverseSort((k, v) -> v % 3, 3, map(key, value)) FROM test_map WHERE value < 10;

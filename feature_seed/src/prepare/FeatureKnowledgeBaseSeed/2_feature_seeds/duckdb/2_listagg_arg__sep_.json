@@ -1,0 +1,13 @@
+CREATE TABLE test_table_1 (id INTEGER PRIMARY KEY, data_string VARCHAR(255), data_list ARRAY[INTEGER]);
+INSERT INTO test_table_1 (id, data_string, data_list) VALUES (1, 'A', [1, 2, 3]), (2, 'B', [3, 4, 5]), (3, NULL, [1, 6]), (4, '', [7, 8, NULL]);
+SELECT id, listagg(data_string, ',') AS concatenated_strings FROM test_table_1 GROUP BY id HAVING concatenated_strings IS NOT NULL;
+SELECT id, listagg(data_string, ',') AS concatenated_strings, data_list FROM test_table_1 WHERE data_list && [1, 4] GROUP BY id HAVING concatenated_strings != '' ORDER BY concatenated_strings;
+CREATE TABLE test_table_2 (id INTEGER, value DECIMAL(10, 2), list_col ARRAY[VARCHAR(50)]);
+INSERT INTO test_table_2 (id, value, list_col) VALUES (1, 10.50, ['item1', 'item2']), (2, NULL, ['item3']), (3, 0.00, []), (4, 5.25, ['item4']);
+SELECT t1.id, listagg(t1.data_string || ' - ' || t2.value, '|') AS combined FROM test_table_1 t1 JOIN test_table_2 t2 ON t1.id = t2.id GROUP BY t1.id HAVING combined && ['item1', 'item3'] IS NOT NULL;
+SELECT id, listagg(data_string, '|') AS concatenated_strings FROM test_table_1 WHERE data_list && (SELECT list_col FROM test_table_2 WHERE id = 1) GROUP BY id ORDER BY id DESC;
+SELECT (listagg(data_string, ',') || NULL) AS concat_with_null FROM test_table_1 WHERE data_string IS NOT NULL GROUP BY id HAVING concat_with_null IS NOT NULL;
+SELECT id, listagg(data_string, '|') AS con_str FROM test_table_1 WHERE data_list && [1, NULL] GROUP BY id HAVING count(data_string) > 0 ORDER BY con_str DESC;
+CREATE TABLE test_table_3 (event_date DATE, event_name VARCHAR(100));
+INSERT INTO test_table_3 (event_date, event_name) VALUES ('2023-10-01', 'Event A'), (NULL, 'Event B'), ('2023-10-03', NULL), ('2023-10-04', '');
+SELECT event_date, listagg(event_name, ', ') AS event_names FROM test_table_3 WHERE event_date <= CURRENT_DATE GROUP BY event_date HAVING event_names IS NOT NULL ORDER BY event_date DESC;

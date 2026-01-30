@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id INT, name TEXT, event_date DATE, amount DECIMAL(10, 2));
+INSERT INTO test_table VALUES (1, 'alpha', DATE '2023-01-01', 100.00), (2, 'beta', DATE '2023-01-05', 200.50), (3, 'gamma', DATE '2023-01-10', NULL);
+SELECT id, name, event_date, (amount - 50.00) AS adjusted_amount FROM test_table WHERE name LIKE 'b%' AND event_date - INTERVAL 1 DAY > DATE '2023-01-01';
+SELECT AVG(adjusted_amount) FROM (SELECT id, (amount - 50.00) AS adjusted_amount FROM test_table WHERE event_date IS NOT NULL) AS subquery HAVING adjusted_amount > 0;
+SELECT t1.id, t1.name, DATE '2023-01-01' - INTERVAL (SELECT COUNT(*) FROM test_table t2 WHERE t2.amount IS NOT NULL) DAY AS adjusted_date FROM test_table t1 WHERE t1.name LIKE '%a';
+SELECT (SELECT COUNT(*) FROM test_table WHERE name IS NULL) as null_count, SUM(amount) FROM test_table GROUP BY (event_date - INTERVAL (SELECT MIN(DATEDIFF(event_date, DATE '2023-01-01')) FROM test_table));
+CREATE TABLE temp_table (temp_id INT PRIMARY KEY, temp_name TEXT);
+INSERT INTO temp_table VALUES (1, 'test'), (2, NULL), (3, 'alpha');
+SELECT tt.temp_id, tt.temp_name, CASE WHEN tt.temp_name IS NOT NULL THEN 'Exists' ELSE 'Null' END as name_status FROM temp_table tt WHERE tt.temp_name LIKE 'a%' AND temp_id - 1 > 0;
+SELECT t.id, DENSE_RANK() OVER (PARTITION BY t.event_date ORDER BY t.amount) AS rank FROM test_table t WHERE t.amount IS NOT NULL AND t.name LIKE '%a' ORDER BY rank;

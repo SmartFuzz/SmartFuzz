@@ -1,0 +1,16 @@
+{
+    "function": "bitmapToArray",
+    "operator": "EXISTS",
+    "sql_array": [
+        "CREATE TABLE test_bitmap (id UInt32, data Array(UInt32), bitmap_data Bitmap) ENGINE = Memory;",
+        "INSERT INTO test_bitmap VALUES (1, [1, 2, 3], bitmapBuild([1, 2, 3])), (2, [4, 5, 6], bitmapBuild([4, 5, 6])), (3, [], bitmapBuild([]));",
+        "SELECT EXISTS(SELECT * FROM test_bitmap WHERE bitmapToArray(bitmap_data) = [1, 2, 3]) AS exists_valid, EXISTS(SELECT * FROM test_bitmap WHERE bitmapToArray(bitmap_data) = []) AS exists_empty;",
+        "SELECT COUNT() FROM test_bitmap WHERE EXISTS(SELECT * FROM test_bitmap t2 WHERE bitmapToArray(t2.bitmap_data) >= (SELECT max(arrayJoin(data)) FROM test_bitmap));",
+        "SELECT bitmapToArray(bitmapBuild(arrayJoin(data)) + bitmapBuild([7, 8, 9])) AS extended_bitmap FROM test_bitmap GROUP BY id HAVING COUNT(data) > 0;",
+        "SELECT bitmapToArray(bitmapBuild([1, 2, 3, NULL, 5])) AS bitmap_with_nulls FROM test_bitmap WHERE EXISTS(SELECT 1 FROM test_bitmap WHERE data[1] IS NULL);",
+        "CREATE TABLE test_numbers (id UInt32, number UInt32) ENGINE = Memory;",
+        "INSERT INTO test_numbers VALUES (1, 1), (2, 2), (3, 9), (4, 10);",
+        "SELECT COUNT() FROM test_numbers WHERE EXISTS(SELECT * FROM test_numbers n2 WHERE n2.number < test_numbers.number) AND bitmapToArray(bitmapBuild([1, 2])) = [1, 2];",
+        "SELECT id, count() FROM test_bitmap GROUP BY id HAVING EXISTS(SELECT 1 WHERE id > 2) OR bitmapToArray(bitmap_data) != [] ORDER BY id;"
+    ]
+}

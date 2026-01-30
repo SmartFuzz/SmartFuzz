@@ -1,0 +1,16 @@
+{
+    "function": "runningDifferenceStartingWithFirstValue",
+    "operator": "s1 || s2",
+    "sql_array": [
+        "CREATE TABLE test_table (id Int32, value Float64, category String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table (id, value, category) VALUES (1, 10.0, 'A'), (2, 20.0, 'B'), (3, NULL, 'C'), (4, 30.0, 'A'), (5, 0.0, 'B');",
+        "CREATE TABLE second_table (id Int32, reference String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO second_table (id, reference) VALUES (1, 'Ref1'), (2, 'Ref2'), (3, 'Ref3');",
+        "CREATE TABLE results AS SELECT id, runningDifferenceStartingWithFirstValue(value) AS diff FROM test_table GROUP BY id;",
+        "SELECT t1.id, t1.value || ' - ' || t2.reference AS combined FROM test_table t1 JOIN second_table t2 ON t1.id = t2.id WHERE t1.value IS NOT NULL AND diff > 5.0 ORDER BY combined;",
+        "SELECT id, value, runningDifferenceStartingWithFirstValue(value) AS running_diff FROM (SELECT id, value FROM test_table WHERE category = 'A') AS filtered GROUP BY id WITH ROLLUP HAVING running_diff IS NOT NULL;",
+        "SELECT (SELECT max(value) FROM test_table WHERE category = 'A') || ' - ' || (SELECT reference FROM second_table WHERE id = 1) AS concatenated_result;",
+        "SELECT id, value, IF(value IS NULL, 'No Value', value || ' present') AS value_status FROM test_table ORDER BY id;",
+        "SELECT id, runningDifferenceStartingWithFirstValue(value * 1.0) AS diff FROM test_table GROUP BY id HAVING diff IS NOT NULL;"
+    ]
+}

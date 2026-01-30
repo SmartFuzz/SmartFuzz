@@ -1,0 +1,16 @@
+{
+    "function": "xenc_key_remove",
+    "operator": "NOT BETWEEN",
+    "sql_array": [
+        "CREATE TABLE user_keys (id INT PRIMARY KEY, key_value VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO user_keys (id, key_value) VALUES (1, 'file:dsa.der'), (2, 'another_key'), (3, NULL), (4, '');",
+        "SELECT xenc_key_remove((SELECT key_value FROM user_keys WHERE id = 1)) WHERE 'file:dsa.der' NOT BETWEEN (SELECT MIN(key_value) FROM user_keys) AND (SELECT MAX(key_value) FROM user_keys);",
+        "SELECT xenc_key_remove((SELECT key_value FROM user_keys WHERE key_value IS NOT NULL AND key_value NOT BETWEEN 'A' AND 'Z')) AS removed_key FROM user_keys WHERE key_value IS NOT NULL;",
+        "SELECT xenc_key_remove(key_value) FROM (SELECT key_value FROM user_keys WHERE id NOT BETWEEN 1 AND 2) AS subquery WHERE key_value IS NOT NULL;",
+        "SELECT COUNT(*) FROM user_keys WHERE xenc_key_remove(key_value) IS NULL GROUP BY (SELECT CREATED_AT FROM user_keys WHERE id NOT BETWEEN 1 AND 2) HAVING COUNT(*) > 0;",
+        "SELECT DISTINCT xenc_key_remove(key_value) FROM user_keys WHERE key_value NOT BETWEEN (SELECT key_value FROM user_keys WHERE id = 3) AND (SELECT key_value FROM user_keys WHERE id = 4) AND key_value IS NOT NULL;",
+        "UPDATE user_keys SET key_value = xenc_key_remove(key_value) WHERE key_value NOT BETWEEN 'A' AND CAST(NULL AS VARCHAR);",
+        "SELECT * FROM (SELECT xenc_key_remove(key_value) AS removed_key FROM user_keys WHERE key_value IS NOT NULL AND removed_key NOT BETWEEN 'file:a.txt' AND 'file:z.txt') AS keys WHERE removed_key IS NOT NULL;",
+        "CREATE TEMPORARY TABLE temp_keys AS SELECT id, xenc_key_remove(key_value) AS removed_key FROM user_keys WHERE key_value NOT BETWEEN '' AND 'simple_value';"
+    ]
+}

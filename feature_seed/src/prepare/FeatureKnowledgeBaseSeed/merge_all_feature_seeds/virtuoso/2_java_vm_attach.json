@@ -1,0 +1,12 @@
+CREATE TABLE java_objects (id INT PRIMARY KEY, class_name VARCHAR(255), classpath VARCHAR(512));
+INSERT INTO java_objects (id, class_name, classpath) VALUES (1, 'MyClass', '/usr/local/virtuoso/classes');
+INSERT INTO java_objects (id, class_name, classpath) VALUES (2, 'YourClass', '');
+SELECT id, class_name FROM java_objects WHERE java_vm_attach(classpath, vector(NULL)) IS NOT NULL;
+SELECT a.id, a.class_name FROM java_objects AS a JOIN java_objects AS b ON isIRI(b.class_name) AND a.id = b.id WHERE a.class_name LIKE '%Class%' GROUP BY a.id HAVING COUNT(b.class_name) > 0;
+SELECT COUNT(*) FROM (SELECT DISTINCT id, class_name FROM java_objects WHERE java_vm_attach( '', vector('-Dexample=value')) IS NOT NULL) AS subquery WHERE isIRI(class_name);
+SELECT a.class_name, isIRI(a.class_name) AS is_iri FROM java_objects a WHERE a.classpath IS NOT NULL AND (java_vm_attach(a.classpath, vector('')) IS NULL OR a.classpath LIKE '%.jar');
+CREATE TABLE test_iri_boundary (term VARCHAR(255), example_data INT DEFAULT 0);
+INSERT INTO test_iri_boundary (term, example_data) VALUES (NULL, 1), ('http://example.org', 2), (' ', 3);
+SELECT term, example_data FROM test_iri_boundary WHERE isIRI(term) OR (term IS NULL AND example_data > 0);
+INSERT INTO test_iri_boundary (term, example_data) SELECT DISTINCT term, java_vm_attach(classpath, vector(NULL)) FROM java_objects WHERE classpath != '' AND isIRI(class_name);
+SELECT a.term, COUNT(*) FROM test_iri_boundary a JOIN java_objects b ON isIRI(b.class_name) WHERE a.example_data < 2 GROUP BY a.term HAVING COUNT(a.term) > 1;

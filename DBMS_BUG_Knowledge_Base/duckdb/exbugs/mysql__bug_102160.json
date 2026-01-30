@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=102160",
+  "title": "Simple SELECT query returns different results when an index exists or not",
+  "description": "The simplest SELECT query returns different results when an index exists or not. This happens when comparing the field of integer type with a division expression.\nHow to repeat:\nCREATE TABLE t1 (\r\n  a INT,\r\n  b INT,\r\n  c INT\r\n);\r\n\r\nINSERT INTO t1 VALUES (3, 2, 1), (4, 2, 1), (2, 2, 1);\r\n\r\nroot@localhost:hope_test 8.0.22-rds-dev-debug> SELECT * FROM t1 WHERE a = 7/2;\r\nEmpty set (0.00 sec)\r\n\r\nroot@localhost:hope_test 8.0.22-rds-dev-debug> EXPLAIN SELECT * FROM t1 WHERE a = 7/2;\r\n+----+-------------+-------+------------+------+---------------+------+---------+------+------+----------+-------------+\r\n| id | select_type | table | partitions | type | possible_keys | key  | key_len | ref  | rows | filtered | Extra       |\r\n+----+-------------+-------+------------+------+---------------+------+---------+------+------+----------+-------------+\r\n|  1 | SIMPLE      | t1    | NULL       | ALL  | NULL          | NULL | NULL    | NULL |    3 |    33.33 | Using where |\r\n+----+-------------+-------+------------+------+---------------+------+---------+------+------+----------+-------------+\r\n1 row in set, 1 warning (0.00 sec)\r\n\r\nThe results are different when an index exists as follows:\r\n\r\nCREATE INDEX i1 ON t1(a);\r\nANALYZE TABLE t1;\r\n\r\nroot@localhost:hope_test 8.0.22-rds-dev-debug> SELECT * FROM t1 WHERE a = 7/2;\r\n+------+------+------+\r\n| a    | b    | c    |\r\n+------+------+------+\r\n|    4 |    2 |    1 |\r\n+------+------+------+\r\n1 row in set (0.00 sec)\r\n\r\nroot@localhost:hope_test 8.0.22-rds-dev-debug> EXPLAIN SELECT * FROM t1 WHERE a = 7/2;\r\n+----+-------------+-------+------------+------+---------------+------+---------+-------+------+----------+-------+\r\n| id | select_type | table | partitions | type | possible_keys | key  | key_len | ref   | rows | filtered | Extra |\r\n+----+-------------+-------+------------+------+---------------+------+---------+-------+------+----------+-------+\r\n|  1 | SIMPLE      | t1    | NULL       | ref  | i1            | i1   | 5       | const |    1 |   100.00 | NULL  |\r\n+----+-------------+-------+------------+------+---------------+------+---------+-------+------+----------+-------+\r\n1 row in set, 1 warning (0.00 sec)",
+  "date": "2021-01-06 08:31:00",
+  "vulnerable_version": "8.0.22, 5.7.32",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (x INT, y VARCHAR(10), z FLOAT, PRIMARY KEY (x));",
+    "INSERT INTO t2 VALUES (1, 'test', 1.5), (2, 'example', 2.5), (3, 'sample', 3.5);",
+    "SELECT * FROM t2 WHERE x = CAST(5.0 AS INTEGER) / 2;",
+    "CREATE INDEX idx_y ON t2(y);",
+    "SELECT * FROM t2 WHERE y = 'example' AND z > 2.0;"
+  ],
+  "key_bug_features": [
+    "SELECT query results vary with index presence"
+  ]
+}

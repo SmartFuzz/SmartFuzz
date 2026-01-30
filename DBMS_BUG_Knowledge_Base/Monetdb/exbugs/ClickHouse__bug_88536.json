@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/88536",
+  "title": "`NOT field` incorrectly filters when `field` is an expression in a view over a PK field",
+  "description": "### Describe what's wrong\n`NOT field` incorrectly prunes data when `field` is defined in a view as an expression that prunes data over a table's PK column. See below reproducer.\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nhttps://fiddle.clickhouse.com/3042ef38-7b7c-4883-955d-477ea1067bfc\n```sql\nCREATE TABLE t (val UInt8) ORDER BY (val);\nCREATE VIEW v AS SELECT val, val = 0 AS is_zero FROM t;\n-- When we apply a \"NOT is_zero\" filter on the view:\nINSERT INTO t VALUES (0);  -- does not get pruned, but does not pass the \"NOT is_zero\" filter\nINSERT INTO t VALUES (1);  -- gets pruned\nINSERT INTO t VALUES (0), (2);  -- does not get pruned (as 0 exists in this part), and 2 passes the \"NOT is_zero\" filter: will return 2\n-- See how the Condition is doubly negated \"not((val not in [0, 0]))\"\nEXPLAIN indexes=1 SELECT * FROM v WHERE NOT is_zero;\n/*\nExpression ((Project names + (Projection + (WHERE + (Change column names to column identifiers + (Convert VIEW subquery result to VIEW table structure + (Materialize constants after VIEW subquery + (Project names + (Projection + (Change column names to column identifiers + (Project names + (Projection + Change column names to column identifiers))))))))))))\nFilter (((WHERE + (Change column names to column identifiers + (Convert VIEW subquery result to VIEW table structure + (Materialize constants after VIEW subquery + (Project names + (Projection + (Change column names to column identifiers + (Project names + (Projection + Change column names to column identifiers))))))))))[split])\nReadFromMergeTree (default.t)\nIndexes:\nPrimaryKey\nKeys:\nval\nCondition: not((val not in [0, 0]))\nParts: 2/3\nGranules: 2/3\nSearch Algorithm: generic exclusion search\nRanges: 2\n*/\n-- Yields incorrect result (should be 2, 1)\nSELECT val FROM v WHERE NOT is_zero;\n/* 2 */\n-- Inlining the view definition as a subquery yields the correct result\nSELECT val FROM (SELECT val, val = 0 AS is_zero FROM t) WHERE NOT is_zero;\n/* 2, 1 */\n```",
+  "date": "2025-10-14T15:58:59Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (id INT, val INT NULL);",
+    "CREATE VIEW v2 AS SELECT id, val, val IS NULL AS is_null FROM t2;",
+    "INSERT INTO t2 VALUES (1, NULL), (2, 0), (3, 1);",
+    "SELECT id FROM v2 WHERE NOT is_null;",
+    "INSERT INTO t2 VALUES (4, 2), (5, NULL);"
+  ],
+  "key_bug_features": [
+    "`NOT field` filters incorrectly with view expressions over PK"
+  ]
+}

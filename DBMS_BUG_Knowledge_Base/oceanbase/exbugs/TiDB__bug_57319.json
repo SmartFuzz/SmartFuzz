@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/57319",
+  "title": "Plan Cache: `?*?` leads to unexpected error in Plan Cache",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n```\r\nCREATE TABLE `IDT_MULTI15760STROBJSTROBJ` (\r\n  `COL1` set('^YSQT0]V@9TFN>^WB6G?NG@S8>VYOM;BSC@<BCQ6','T\\NKZQQ=C1@IH9W>64=ZISGS?O[JDFBI5M]QXJYQNSKU>NGAWLXS26LMTZ2YNN`XKIUGKY0IHDWV>E[BJJCABOKH1M^CB5E@DLS7Q88PWZTEAY]1ZQMN5NX[I<KBBK','PXWTHJ?R]P=`Y','OFJHCEKCQGT:MXI7P3[YO4N0DF=2XJWJ4Z9Z;HQ8TMUTZV8YLQAHWJ4BDZHR3A','@[ETQPEKKDD;9INXAQISU0O65J86AWQ2SZ8=ZZW6TKT4GCF_O13QW_S>FIYA983K:E4N77@FINM5HVGQCUCVNF5WLOOOEORAM=_JLMVFURMUASTVDBE','NL3V:J9LM4U5KUCV<RIJ_RKMZ4;CXD_0:K`HCO=P1YNYTHX8KYZRQ?PL01HLNSUC_R7:I5<V[HV0BIDEBZAPT73R7`DP43XXPLQCEI8>R;P','M5=T5FLQEZMPZAXH]4G:TSYYYVQ7O@4S6C3N8WPFKSP;SRD6VW@94BBH8XCT','P]I52Y46F?@RMOOF6;FWDTO`7FIT]R:]ELHD[CNLDSHC7FPBYOOJXLZSBV^5C^AAF6J5BCKE4V9==@H=4C]GMZXPNM','ECIQWH>?MK=ARGI0WVJNIBZFCFVJHFIUYJ:2?2WWZBNBWTPFNQPLLBFP9R_','E<<T9UUF2?XM8TWS_','W[5E_U1J?YSOQISL1KD','M@V^`^8I','5UTEJUZIQJOJU_D6@V2DSVOIK@LUT^E?RTL>_Y9OT@SOPYR72VIJVMBWIVPF@TTBZ@8ZPBZL=LXZF`WM4V2?K>AT','PZ@PR6XN28JL`B','ZOHBSCRMZPOI`IVTSEZAIDAF7DS@1TT20AP9','QLDIOY[Y:JZR@OL__I^@FBO=O_?WOOR:2BE:QJC','BI^TGJ_N<H:7OW8XXITM@FBWDNJ=KA`X:9@BUY4UHKSHFP`EAWR9_QS^HR2AI39MGVXWVD]RUI46SHU=GXAX;RT765X:CU7M4XOD^S9JFZI=HTTS?C0CT','M@HGGFM43C7','@M`IHSJQ8HBTGOS`=VW]QBMLVWN`SP;E>EEXYKV1POHTOJQPGCPVR=TYZMGWABUQR07J8U::W4','N`ZN4P@9T[JW;FR6=FA4WP@APNPG[XQVIK4]F]2>EC>JEIOXC``;;?OHP') DEFAULT NULL,\r\n  `COL2` tinyint DEFAULT NULL,\r\n  `COL3` date DEFAULT NULL,\r\n  KEY `U_M_COL4` (`COL1`,`COL2`) /*!80000 INVISIBLE */,\r\n  KEY `U_M_COL5` (`COL3`,`COL2`) /*!80000 INVISIBLE */\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin\r\n```\r\n[data.csv](https://github.com/user-attachments/files/17714646/data.csv)\r\n**Use` | `Split csv file**\r\n```\r\nprepare stmt from 'SELECT * FROM IDT_MULTI15760STROBJSTROBJ WHERE col2 = ? AND COL2 * ? != ?;';\r\nset @a=126, @b=126, @c=126;\r\nexecute stmt using @a,@b,@c;\r\nset @a=-119, @b=-119, @c=-119;\r\nexecute stmt using @a,@b,@c;\r\nset @a=93, @b=-110, @c=-78;\r\nexecute stmt using @a,@b,@c;\r\nset @a=892849545565, @b=307794851912, @c=-1045704790071;\r\nexecute stmt using @a,@b,@c;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\nempty set\r\n\r\n### 3. What did you see instead (Required)\r\nError 1815 (HY000): expression ne(mul(892849545565, 307794851912), -1045704790071) cannot be pushed down\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\nRelease Version: v8.5.0-alpha-91-g169210aaaa\r\nEdition: Community\r\nGit Commit Hash: 169210aaaaba599d555c689786305c4a297edd7c\r\nGit Branch: HEAD\r\nUTC Build Time: 2024-11-11 17:04:25\r\nGoVersion: go1.23.2\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv",
+  "date": "2024-11-12T10:04:35Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE `TestTable` (id INT PRIMARY KEY, value VARCHAR(255) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO `TestTable` (id, value) VALUES (1, 'Test Value 1');",
+    "INSERT INTO `TestTable` (id, value) VALUES (2, NULL);",
+    "SELECT * FROM `TestTable` WHERE id = ? AND value IS NOT NULL;",
+    "PREPARE stmt FROM 'SELECT * FROM `TestTable` WHERE id = ? AND value LIKE ?';"
+  ],
+  "key_bug_features": [
+    "Using `?*?` in prepared statements causes unexpected errors"
+  ]
+}

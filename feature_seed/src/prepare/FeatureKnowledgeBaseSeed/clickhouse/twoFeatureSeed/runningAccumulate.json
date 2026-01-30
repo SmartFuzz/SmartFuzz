@@ -1,0 +1,17 @@
+{
+    "function": "runningAccumulate",
+    "operator": "INTERVAL",
+    "sql_array": [
+        "CREATE TABLE test_data (id UInt32, ts DateTime, value Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_data VALUES (1, now(), 10.5), (2, now() - INTERVAL 1 DAY, 20.2), (3, now() - INTERVAL 2 DAY, NULL);",
+        "SELECT id, runningAccumulate(sumState(value)) AS cumulative_sum FROM (SELECT id, sumState(value) FROM test_data GROUP BY id ORDER BY id) GROUP BY id;",
+        "SELECT id, ts, value, runningAccumulate(first_state) AS running_first FROM (SELECT id, ts, firstState(value) AS first_state FROM test_data GROUP BY id, ts ORDER BY ts) WHERE value IS NOT NULL;",
+        "SELECT now() AS current_time, current_time + INTERVAL (SELECT COUNT(*) FROM test_data) DAY AS future_time;",
+        "CREATE TABLE temp_data (group_key Int8, item Float32) ENGINE = Memory;",
+        "INSERT INTO temp_data VALUES (1, 100.0), (1, 200.0), (2, NULL), (3, 300.5);",
+        "SELECT group_key, runningAccumulate(sumState(item)) AS accumulated_total FROM (SELECT group_key, sumState(item) FROM temp_data GROUP BY group_key ORDER BY group_key) GROUP BY group_key HAVING group_key > 1;",
+        "SELECT id, runningAccumulate(sumState(value)) AS total_value FROM (SELECT id, sumState(value) FROM (SELECT id, value FROM test_data WHERE value IS NOT NULL) GROUP BY id ORDER BY id) WHERE total_value > 15;",
+        "SELECT id, runningAccumulate(sumState(value & 1)) AS bitwise_running FROM (SELECT id, sumState(value) FROM test_data GROUP BY id HAVING sumState(value) > 10) ORDER BY id;",
+        "SELECT COUNT(*), id, runningAccumulate(sumState(value)) AS running_total FROM (SELECT id, sumState(value) FROM test_data GROUP BY id ORDER BY id) WHERE running_total <= 30 GROUP BY id;"
+    ]
+}

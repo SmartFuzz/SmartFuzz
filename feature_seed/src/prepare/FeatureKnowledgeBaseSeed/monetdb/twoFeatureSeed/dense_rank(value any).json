@@ -1,0 +1,21 @@
+{
+    "function": "dense_rank(value any)",
+    "operator": "^",
+    "sql_array": [
+        "CREATE TABLE test_data (id SERIAL PRIMARY KEY, value INT, nullable_value INT NULL);",
+        "INSERT INTO test_data (value, nullable_value) VALUES (1, NULL), (2, 3), (4, 5), (NULL, 7), (8, NULL);",
+        "SELECT id, dense_rank(value ^ nullable_value) OVER (ORDER BY value) AS ranking FROM test_data WHERE value IS NOT NULL;",
+        "SELECT value, dense_rank((value ^ 8) + 10) OVER (PARTITION BY nullable_value ORDER BY id) AS ranked_value FROM test_data WHERE value IS NOT NULL;",
+        "SELECT id, (dense_rank(value ^ COALESCE(nullable_value, 0)) + 1) * 2 AS adjusted_rank FROM test_data GROUP BY id, value ORDER BY adjusted_rank;",
+        "SELECT id, (SELECT COUNT(*) FROM test_data AS t2 WHERE t2.value > t1.value) AS count_greater, dense_rank((t1.value ^ 15)) FROM test_data AS t1 WHERE t1.value IS NOT NULL;",
+        "CREATE TEMP TABLE temp_data AS SELECT id, value, nullable_value, (value ^ 10) AS xored_value FROM test_data WHERE value IS NOT NULL;",
+        "SELECT id, dense_rank(xored_value ^ 2) OVER (ORDER BY xored_value) FROM temp_data WHERE nullable_value IS NOT NULL;",
+        "SELECT a.id, a.value, a.nullable_value, dense_rank(a.value) AS dense_rank_value FROM test_data a JOIN test_data b ON a.value ^ b.nullable_value < 5 WHERE b.id = 3;",
+        "SELECT id, dense_rank((value ^ (SELECT COUNT(*) FROM test_data)) * 3) OVER (ORDER BY id) AS complex_rank FROM test_data;",
+        "INSERT INTO test_data (value, nullable_value) VALUES (POWER(2, 4) ^ 2, 9);",
+        "SELECT id, dense_rank((value ^ 1) + (nullable_value ^ 7)) OVER (ORDER BY id) AS nested_rank FROM test_data;",
+        "SELECT id, value, (dense_rank(value) / NULLIF(dense_rank(nullable_value), 0)) AS rank_division FROM test_data WHERE nullable_value IS NOT NULL;",
+        "WITH ranked_data AS (SELECT id, dense_rank(value) AS rank FROM test_data WHERE value IS NOT NULL) SELECT id, rank, (rank ^ 5) AS adjusted_rank FROM ranked_data;",
+        "SELECT id, dense_rank(value) OVER (PARTITION BY nullable_value ORDER BY id) AS partitioned_rank, (nullable_value ^ MAX(nullable_value)) AS value_adjustment FROM test_data GROUP BY id, nullable_value;"
+    ]
+}

@@ -1,0 +1,21 @@
+{
+    "function": "formatReadableTimeDelta",
+    "operator": "EXTRACT",
+    "sql_array": [
+        "CREATE TABLE time_deltas (id UInt32, delta_seconds Int64, created_at DateTime);",
+        "INSERT INTO time_deltas VALUES (1, 3600, now()), (2, 86400, now()), (3, 31536000, now());",
+        "SELECT id, formatReadableTimeDelta(delta_seconds) AS readable_delta FROM time_deltas WHERE delta_seconds > 0;",
+        "SELECT id, formatReadableTimeDelta(delta_seconds, 'days', 'seconds') AS readable_delta FROM time_deltas WHERE EXTRACT(YEAR FROM created_at) = 2023;",
+        "SELECT id, formatReadableTimeDelta(delta_seconds) AS readable_delta, EXTRACT(MONTH FROM created_at) AS month FROM time_deltas GROUP BY month, readable_delta HAVING readable_delta LIKE '%hour%';",
+        "SELECT id, formatReadableTimeDelta(delta_seconds, 'seconds', 'nanoseconds') AS detailed_delta FROM time_deltas WHERE delta_seconds IS NOT NULL;",
+        "SELECT id, SUM(delta_seconds) AS total_seconds, formatReadableTimeDelta(total_seconds) AS total_readable FROM time_deltas GROUP BY id HAVING total_seconds >= 0;",
+        "CREATE TABLE date_examples (id UInt32, event_date DateTime);",
+        "INSERT INTO date_examples VALUES (1, '2023-10-01 10:00:00'), (2, '2023-10-02 15:30:45'), (3, NULL);",
+        "SELECT id, EXTRACT(DAY FROM event_date) AS day, formatReadableTimeDelta(EXTRACT(SECOND FROM event_date)) AS seconds FROM date_examples;",
+        "SELECT id, EXTRACT(HOUR FROM event_date) AS hour, formatReadableTimeDelta(60 * hour + 30) AS readable_half_hour FROM date_examples WHERE event_date IS NOT NULL;",
+        "SELECT id, formatReadableTimeDelta(session_duration) AS duration FROM (SELECT id, delta_seconds AS session_duration FROM time_deltas WHERE id > 1) AS sessions;",
+        "WITH delta_id AS (SELECT id, formatReadableTimeDelta(delta_seconds) AS readable FROM time_deltas) SELECT delta_id.id, delta_id.readable, EXTRACT(YEAR FROM created_at) AS year FROM time_deltas JOIN delta_id ON time_deltas.id = delta_id.id WHERE year = 2023;",
+        "CREATE TEMPORARY TABLE temp_time AS SELECT formatReadableTimeDelta(delta_seconds) AS temp_delta FROM time_deltas WHERE delta_seconds < 100000;",
+        "SELECT COUNT(*) FROM temp_time WHERE temp_delta IS NOT NULL;"
+    ]
+}

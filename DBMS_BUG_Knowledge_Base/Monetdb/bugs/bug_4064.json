@@ -1,0 +1,26 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/4064",
+  "title": "Assertion: column not found",
+  "vulnerable_database": "monetdb",
+  "date": "2020-11-30T13:36:17Z",
+  "vulnerable_version": "Unknown",
+  "description": "",
+  "poc": [
+    "create table x (a1 int, prob double);",
+    "create table y (a1 int, prob double);",
+    "create table z (a1 int, prob double);",
+    "with xy as (\r\n SELECT x.a1 as a1, x.prob + y.prob as prob FROM x, y WHERE x.a1=y.a1\r\n UNION ALL\r\n SELECT x.a1 as a1, x.prob as prob FROM x WHERE x.a1 NOT IN (select a1 from y)\r\n UNION ALL\r\n SELECT y.a1 as a1, y.prob as prob FROM y WHERE y.a1 NOT IN (select a1 from x)\r\n );",
+    "SELECT xy.a1 as a1, xy.prob + z.prob as prob FROM xy, z WHERE xy.a1=z.a1\r\n UNION ALL\r\n SELECT xy.a1 as a1, xy.prob as prob FROM xy WHERE xy.a1 NOT IN (select a1 from z)\r\n UNION ALL\r\n SELECT z.a1 as a1, z.prob as prob FROM z WHERE z.a1 NOT IN (select a1 from xy);",
+    "with xy as (\r\n SELECT x.a1 as a1, x.prob + y.prob as prob FROM x, y WHERE x.a1=y.a1\r\n UNION ALL\r\n SELECT x.a1 as a1, x.prob as prob FROM x WHERE x.a1 NOT IN (SELECT x.a1 FROM x, y WHERE x.a1=y.a1)\r\n UNION ALL\r\n SELECT y.a1 as a1, y.prob as prob FROM y WHERE y.a1 NOT IN (SELECT x.a1 FROM x, y WHERE x.a1=y.a1)\r\n )\r\n SELECT xy.a1 as a1, xy.prob + z.prob as prob FROM xy, z WHERE xy.a1=z.a1\r\n UNION ALL\r\n SELECT xy.a1 as a1, xy.prob as prob FROM xy WHERE xy.a1 NOT IN (SELECT xy.a1 FROM xy, z WHERE xy.a1=z.a1)\r\n UNION ALL\r\n SELECT z.a1 as a1, z.prob as prob FROM z WHERE z.a1 NOT IN (SELECT xy.a1 FROM xy, z WHERE xy.a1=z.a1);"
+  ],
+  "key_bug_features": [
+    "Using non-existent column in SELECT statement"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE a (id int PRIMARY KEY, value varchar(50));",
+    "CREATE TABLE b (id int, score double NOT NULL);",
+    "INSERT INTO a (id, value) VALUES (1, 'test1'), (2, 'test2');",
+    "INSERT INTO b (id, score) VALUES (1, 10.5), (2, 20.0);",
+    "SELECT a.id, a.value, b.score FROM a LEFT JOIN b ON a.id = b.id WHERE b.score IS NULL;"
+  ]
+}

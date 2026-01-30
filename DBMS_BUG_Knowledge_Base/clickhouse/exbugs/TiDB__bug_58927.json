@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/58927",
+  "title": "Wrong result of LEAST function in TiDB with MySQL",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n\n```sql\nDROP TABLE IF EXISTS t0;\nCREATE TABLE IF NOT EXISTS t0(c0 TINYINT(200) ZEROFILL PRIMARY KEY UNIQUE) ;\nINSERT IGNORE INTO t0(c0) VALUES(-149547112);\nSELECT SUM(t0.c0) FROM t0 WHERE LEAST(t0.c0, \"0.95\");\n```\n\n### 2. What did you expect to see? (Required)\n\nsee the following case:\n\nThe MySQL manual clarifies that If the arguments comprise a mix of numbers and strings, they are compared as strings.\n\nhttps://dev.mysql.com/doc/refman/9.1/en/comparison-operators.html#function_least\n\n### 3. What did you see instead (Required)\n\n```sql\n// MySQL 8.4.1\nMySQL [test]> select  LEAST(t0.c0, \"0.95\") from t0;\n+----------------------+\n| LEAST(t0.c0, \"0.95\") |\n+----------------------+\n| 0.95                 |\n+----------------------+\n1 row in set (0.00 sec)\n\nMySQL [test]> SELECT SUM(t0.c0) FROM t0 WHERE LEAST(t0.c0, \"0.95\");\n+------------+\n| SUM(t0.c0) |\n+------------+\n|          0 |\n+------------+\n1 row in set (0.00 sec)\n\n// TiDB\nmysql> select LEAST(t0.c0, \"0.95\") from t0;\n+----------------------+\n| LEAST(t0.c0, \"0.95\") |\n+----------------------+\n| 0                    |\n+----------------------+\n1 row in set (0.04 sec)\n\nmysql> SELECT SUM(t0.c0) FROM t0 WHERE LEAST(t0.c0, \"0.95\");\n+------------+\n| SUM(t0.c0) |\n+------------+\n|       NULL |\n+------------+\n1 row in set (0.04 sec)\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\nTiDB v8.5.0",
+  "date": "2025-01-14T12:57:11Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t1;",
+    "CREATE TABLE t1(c1 Int32, c2 String, c3 Float32);",
+    "INSERT INTO t1(c1, c2, c3) VALUES(1, '2.5', NULL), (2, '3.5', 4.0), (3, '0.95', 5.5);",
+    "SELECT LEAST(c1, toFloat32(c2)) FROM t1 WHERE c3 IS NULL;",
+    "SELECT SUM(c1) FROM t1 WHERE LEAST(c1, toFloat32('4.5')) > 0;"
+  ],
+  "key_bug_features": [
+    "LEAST function with mixed number and string arguments"
+  ]
+}

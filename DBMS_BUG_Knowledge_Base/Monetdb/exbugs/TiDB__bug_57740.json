@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/57740",
+  "title": "TiFlash cast as datetime behaves differently with tidb for unnormal cases",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\nprepare data\n```sql\ndrop table if exists t0;\ndrop table if exists t1;\nCREATE TABLE t0(c0 NUMERIC ZEROFILL CHECK (c0) );\nCREATE TABLE t1 LIKE t0;\nINSERT IGNORE  INTO t1(c0) VALUES (-1),(-2), (-3);\nINSERT IGNORE  INTO t0 VALUES (-395169765);\nALTER TABLE t0 SET TIFLASH REPLICA 1;\nALTER TABLE t1 SET TIFLASH REPLICA 1;\n```\nexecute query\n```sql\nSELECT /*+ read_from_storage(tikv[t1]) */  t0.c0 FROM  t1 RIGHT  OUTER JOIN t0 ON (NOT (CAST(CAST(t1.c0 AS SIGNED) AS DATETIME)));\nSELECT /*+ read_from_storage(tiflash[t1]) */  t0.c0 FROM  t1 RIGHT  OUTER JOIN t0 ON (NOT (CAST(CAST(t1.c0 AS SIGNED) AS DATETIME)));\n```\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\nThe results of the two queries are equal.\n\n### 3. What did you see instead (Required)\nQuery1 result:\n![Image](https://github.com/user-attachments/assets/05d4b946-2435-489d-9780-077383fd5f18)\n\nQuery2 result:\n![Image](https://github.com/user-attachments/assets/0afca810-5f2b-4de3-a722-8b46100f5759)\n\n### 4. What is your TiDB version? (Required)\n<!-- Paste the output of SELECT tidb_version() -->\nRelease Version: v8.4.0\nEdition: Community\nGit Commit Hash: https://github.com/pingcap/tidb/commit/1a9f0fa25580907d3266dc3edf000ba24379a600\nGit Branch: HEAD\nUTC Build Time: 2024-11-07 15:18:43\nGoVersion: go1.23.2\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv\n",
+  "date": "2024-11-26T14:06:23Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2(c1 DECIMAL(10,2) NOT NULL CHECK (c1 >= 0));",
+    "INSERT INTO t2(c1) VALUES (1.23), (4.56), (NULL), (-7.89);",
+    "SELECT CAST(c1 AS TIMESTAMP) FROM t2 WHERE c1 IS NOT NULL;",
+    "SELECT t2.c1 FROM t2 WHERE NOT (CAST(CAST(t2.c1 AS INTEGER) AS TIMESTAMP));",
+    "SELECT t2.c1 FROM t2 WHERE NOT (CAST(CAST(t2.c1 AS INTEGER) AS TIMESTAMP));"
+  ],
+  "key_bug_features": [
+    "CAST operation on numeric values as DATETIME"
+  ]
+}

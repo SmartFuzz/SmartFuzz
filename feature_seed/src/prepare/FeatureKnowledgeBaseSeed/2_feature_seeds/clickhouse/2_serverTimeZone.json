@@ -1,0 +1,13 @@
+CREATE TABLE test_timezone (id UInt32, event_time DateTime, description String, timezone String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_timezone VALUES (1, now(), 'Event 1', serverTimeZone()), (2, now(), 'Event 2', serverTimeZone());
+SELECT id, description, timezone FROM test_timezone WHERE description LIKE concat('%', serverTimeZone(), '%') ORDER BY event_time;
+SELECT DISTINCT timezone FROM (SELECT timezone, COUNT(*) as cnt FROM test_timezone GROUP BY timezone HAVING cnt > 1) AS subquery;
+CREATE TABLE test_nulls (id UInt32, name String, age Nullable(UInt32)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_nulls VALUES (1, 'Alice', 30), (2, 'Bob', NULL), (3, '', 25);
+SELECT id, IF(age IS NULL, 'Unknown', CAST(age AS String)) AS age_str FROM test_nulls WHERE name LIKE 'A%' AND age >= 20;
+CREATE TABLE test_join (id UInt32, user_id UInt32, event_time DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_join VALUES (1, 1, now()), (2, 2, now()), (3, NULL, now());
+SELECT tj.id, tn.name, tn.age FROM test_join tj LEFT JOIN test_nulls tn ON tj.user_id = tn.id WHERE tn.age IS NULL OR tn.name LIKE 'B%';
+CREATE TABLE test_boundary (id UInt32, timestamp DateTime, value Float64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_boundary VALUES (1, '2023-01-01 00:00:00', 0.0), (2, '2023-01-01 00:00:01', 1.0), (3, '2023-01-01 00:00:02', -1.0);
+SELECT COUNT(*) FROM test_boundary WHERE timestamp >= toDateTime('2023-01-01 00:00:00') AND value LIKE '-1%' AND serverTimeZone() LIKE '%UTC%';

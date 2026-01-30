@@ -1,0 +1,15 @@
+PRAGMA force_compression = 'bitpacking';
+CREATE TABLE test (a INTEGER, b INTEGER);
+INSERT INTO test VALUES (11, 22), (11, 22), (12, 21), (NULL, NULL);
+CHECKPOINT;
+SELECT compression FROM pragma_storage_info('test') WHERE segment_type ILIKE 'INTEGER' LIMIT 1;
+CREATE TABLE test_bp (a INTEGER);
+INSERT INTO test_bp SELECT 1 FROM range(0, 10000) tbl(i);
+INSERT INTO test_bp SELECT 2 FROM range(0, 10000) tbl(i);
+CHECKPOINT;
+SELECT 	segment_info FROM 	pragma_storage_info('test_bp') WHERE segment_type NOT IN ('VALIDITY');
+PRAGMA force_bitpacking_mode = 'delta_for';
+CREATE OR REPLACE TABLE test_bp (a INTEGER);
+INSERT INTO test_bp SELECT 3*(i // 1000) + (i%10) FROM range(0, 10000) tbl(i);
+CHECKPOINT;
+SELECT 	segment_info FROM 	pragma_storage_info('test_bp') WHERE segment_type NOT IN ('VALIDITY');

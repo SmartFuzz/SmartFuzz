@@ -1,0 +1,13 @@
+CREATE TABLE keys (id INT PRIMARY KEY, key_data VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO keys (id, key_data) VALUES (1, 'ServerPrivate.pfx'), (2, 'ServerPublic.pfx');
+SELECT xenc_key_serialize(key_data, 1) AS serialized_key FROM keys WHERE id BETWEEN 1 AND 2;
+SELECT xenc_key_serialize(key_data, 0) AS serialized_key FROM keys WHERE key_data BETWEEN 'A' AND 'Z' HAVING serialized_key IS NOT NULL;
+SELECT id, xenc_key_serialize(key_data, 1) AS serialized_key FROM keys WHERE created_at IS NULL OR created_at BETWEEN '2023-01-01' AND NOW();
+SELECT k.id, xenc_key_serialize(k.key_data, 1) AS serialized_key FROM keys k JOIN (SELECT id FROM keys WHERE key_data IS NOT NULL) AS sub ON k.id = sub.id;
+SELECT xenc_key_serialize(key_data, (SELECT COUNT(*) FROM keys)) AS serialized_key FROM keys WHERE key_data IN (SELECT key_data FROM keys WHERE key_data BETWEEN 'ServerPrivate.pfx' AND 'ServerPublic.pfx') LIMIT 1;
+SELECT k1.id, xenc_key_serialize(k1.key_data, 1) AS serialized_key FROM keys k1 JOIN keys k2 ON k1.id <> k2.id WHERE k1.key_data BETWEEN k2.key_data AND k2.key_data + 'someValue';
+WITH serialized AS (SELECT xenc_key_serialize(key_data, 1) AS serialized_key FROM keys) SELECT COUNT(*) FROM serialized WHERE serialized_key IS NOT NULL AND serialized_key BETWEEN 'A' AND 'Z';
+CREATE TABLE temp_keys AS SELECT id, xenc_key_serialize(key_data, 1) FROM keys WHERE key_data IS NOT NULL;
+SELECT * FROM temp_keys WHERE serialized_key NOT BETWEEN 'InvalidKey' AND 'AnotherInvalidKey';
+ALTER TABLE keys ADD COLUMN description VARCHAR(255);
+INSERT INTO keys (id, key_data, description) VALUES (3, 'EdgeCaseKey1', NULL), (4, NULL, 'KeyWithNullValue');

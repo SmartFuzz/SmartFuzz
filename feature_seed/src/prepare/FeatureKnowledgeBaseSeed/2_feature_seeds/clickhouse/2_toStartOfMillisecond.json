@@ -1,0 +1,16 @@
+CREATE TABLE test_dates (id Int32, event_time DateTime64(6, 'UTC'), description String);
+INSERT INTO test_dates (id, event_time, description) VALUES (1, toDateTime64('2020-01-01 10:20:30.999999'), 'New Year Event');
+INSERT INTO test_dates (id, event_time, description) VALUES (2, toDateTime64('2020-01-01 10:20:30.123456789', 9), 'New Year Celebration');
+SELECT id, toStartOfMillisecond(event_time) AS rounded_time FROM test_dates WHERE rounded_time <> toStartOfMillisecond(toDateTime64('2020-01-01 10:20:31.999999999', 9));
+WITH (SELECT max(rounded_time) FROM (SELECT toStartOfMillisecond(event_time) AS rounded_time FROM test_dates)) AS max_time SELECT description FROM test_dates WHERE event_time <> max_time;
+CREATE TABLE test_multiple_types (id Int32, created_at DateTime64(3), value Float32, str_value String);
+INSERT INTO test_multiple_types (id, created_at, value, str_value) VALUES (1, toDateTime64('2021-05-01 14:30:59.999', 3), 123.456, 'Value One');
+INSERT INTO test_multiple_types (id, created_at, value, str_value) VALUES (2, toDateTime64('2021-05-01 14:31:59.999', 3), NULL, NULL);
+SELECT id, value, toStartOfMillisecond(created_at) AS rounded_time FROM test_multiple_types WHERE value <> 123.456;
+SELECT id, CASE WHEN created_at IS NULL THEN 'No date' ELSE CAST(toStartOfMillisecond(created_at) AS String) END as result FROM test_multiple_types;
+WITH (SELECT id, value, toStartOfMillisecond(created_at) AS rounded_time FROM test_multiple_types) AS subquery SELECT id FROM subquery WHERE rounded_time <> toStartOfMillisecond(toDateTime64('2021-05-01 14:30:59.999999', 3));
+CREATE TABLE test_fuzz_null (id Int32, event_time DateTime64(9, 'UTC'), notes String);
+INSERT INTO test_fuzz_null (id, event_time, notes) VALUES (1, NULL, 'Note One');
+INSERT INTO test_fuzz_null (id, event_time, notes) VALUES (2, toDateTime64('2021-05-01 14:31:00.000', 9), NULL);
+SELECT CASE WHEN notes IS NOT NULL THEN notes ELSE 'No Note' END AS valid_note FROM test_fuzz_null WHERE event_time <> NULL;
+SELECT id, toStartOfMillisecond(event_time) AS rounded_time FROM test_fuzz_null WHERE rounded_time <> toStartOfMillisecond(toDateTime64('2021-05-01 14:31:59.999999', 9));

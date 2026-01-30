@@ -1,0 +1,19 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/61325",
+  "title": "Stale read autocommit query will not block GC, the `TxnStart` is 0",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\nIn session 1:\n\n```\ncreate table t(a int);\ninsert into t values (1);\nbegin;\nset global tidb_external_ts = @@tidb_current_ts;\ncommit;\nset tidb_enable_external_ts_read = ON;\n\nselect *, sleep(100) from t;\n```\n\nIn session 2:\n\n```\nselect * from information_schema.cluster_processlist;\n```\n\nYou will find that the `TxnStart` is empty for the session 1.\n\n### 2. What did you expect to see? (Required)\n\nThe `TxnStart` is not empty\n\n### 3. What did you see instead (Required)\n\nThe `TxnStart` is empty.\n\n### 4. What is your TiDB version? (Required)\n\n```\nmysql> select tidb_version();\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| tidb_version()                                                                                                                                                                                                                               |\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| Release Version: v8.5.0\nEdition: Community\nGit Commit Hash: d13e52ed6e22cc5789bed7c64c861578cd2ed55b\nGit Branch: HEAD\nUTC Build Time: 2024-12-18 02:26:06\nGoVersion: go1.23.3\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv |\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n1 row in set (0.01 sec)\n```\n\n",
+  "date": "2025-05-26T09:48:31Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1(id Int32, name String, created_at DateTime DEFAULT now());",
+    "INSERT INTO t1 VALUES (1, 'Alice', NULL);",
+    "SELECT * FROM t1 WHERE id = (SELECT MAX(id) FROM t1) AND name IS NOT NULL;",
+    "SELECT sleep(100);"
+  ],
+  "key_bug_features": [
+    "Stale read autocommit query does not block garbage collection"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/55294",
+  "title": "Different div precision between tidb and tiflash",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```\r\ncreate table t(id int, num decimal);\r\ninsert into t values(1,100);\r\nalter table t set tiflash replica 1;\r\nselect /*+ read_from_storage(tikv[t]) */  length(sum(num)/10) from t group by id;\r\nselect /*+ read_from_storage(tiflash[t]) */  length(sum(num)/10) from t group by id;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nThe div result in tidb has the same length with tiflash.\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n```\r\nmysql> select /*+ read_from_storage(tikv[t]) */  length(sum(num)/10) from t group by id;\r\n+---------------------+\r\n| length(sum(num)/10) |\r\n+---------------------+\r\n|                  12 |\r\n+---------------------+\r\n1 row in set (0.00 sec)\r\n\r\nmysql> select /*+ read_from_storage(tiflash[t]) */  length(sum(num)/10) from t group by id;\r\n+---------------------+\r\n| length(sum(num)/10) |\r\n+---------------------+\r\n|                   7 |\r\n+---------------------+\r\n1 row in set (0.04 sec)\r\n\r\nmysql> select /*+ read_from_storage(tikv[t]) */ sum(num)/10 from t group by id union select /*+ read_from_storage(tiflash[t]) */ sum(num)/10 from t group by id;\r\n+-------------+\r\n| sum(num)/10 |\r\n+-------------+\r\n|     10.0000 |\r\n|     10.0000 |\r\n+-------------+\r\n2 rows in set (0.02 sec)\r\n```\r\n\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\nv7.1.5, master\r\n\r\n",
+  "date": "2024-08-08T06:49:30Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1(id INTEGER PRIMARY KEY, num REAL, value REAL);",
+    "INSERT INTO t1 VALUES(1, 100.12345, 50.5), (2, NULL, 75.75);",
+    "SELECT LENGTH(SUM(num)/NULLIF(value, 0)) FROM t1 GROUP BY id;",
+    "SELECT LENGTH(SUM(num)/COALESCE(value, 1)) FROM t1 GROUP BY id;",
+    "SELECT SUM(num)/10 FROM t1 GROUP BY id;"
+  ],
+  "key_bug_features": [
+    "Different div precision between tidb and tiflash"
+  ]
+}

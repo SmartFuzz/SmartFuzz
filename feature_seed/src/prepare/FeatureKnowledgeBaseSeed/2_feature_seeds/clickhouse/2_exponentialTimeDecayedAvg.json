@@ -1,0 +1,9 @@
+CREATE TABLE time_series_data (id UInt32, value Float64, timestamp DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO time_series_data VALUES (1, 10.5, toDateTime('2022-01-01 00:00:00')), (2, 20.5, toDateTime('2022-01-01 01:00:00')), (3, NULL, toDateTime('2022-01-01 02:00:00'));
+SELECT id, value, EXTRACT(HOUR FROM timestamp) AS hour, exponentialTimeDecayedAvg(0.5)(value, timestamp) OVER (ORDER BY timestamp) AS exp_smooth FROM time_series_data;
+CREATE TABLE additional_data (data_id UInt32, event_time DateTime, value Float64) ENGINE = MergeTree() ORDER BY data_id;
+INSERT INTO additional_data VALUES (1, toDateTime('2022-01-01 01:30:00'), 15.0), (2, toDateTime('2022-01-01 02:15:00'), 30.0), (3, NULL, 45.0);
+SELECT a.id, a.value, a.timestamp, EXTRACT(MINUTE FROM a.timestamp) AS minute, exponentialTimeDecayedAvg(1)(IFNULL(b.value, 0), b.event_time) OVER (PARTITION BY a.id ORDER BY a.timestamp) AS exp_avg FROM time_series_data a LEFT JOIN additional_data b ON a.timestamp = b.event_time;
+SELECT a.id, a.value, EXTRACT(DAY FROM a.timestamp) AS day, ROUND(exponentialTimeDecayedAvg(2)(X.y, X.t), 2) AS smoothed_value FROM (SELECT value, timestamp AS t, nt as y FROM (SELECT value, timestamp, number as nt FROM time_series_data) AS temp) AS X WHERE X.y > 15 OR X.y < 10;
+SELECT COUNT(*) FROM time_series_data WHERE value IS NULL OR value = 0;
+SELECT a.id, a.value, EXTRACT(YEAR FROM a.timestamp) AS year, exponentialTimeDecayedAvg(3)(value, timestamp) AS exp_avg_value FROM time_series_data a WHERE value > (SELECT COUNT(*) FROM additional_data);

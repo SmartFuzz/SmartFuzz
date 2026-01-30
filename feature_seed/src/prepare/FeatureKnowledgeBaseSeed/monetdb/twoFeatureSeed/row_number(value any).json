@@ -1,0 +1,17 @@
+{
+    "function": "row_number(value any)",
+    "operator": "<<",
+    "sql_array": [
+        "CREATE TABLE inet_test (id INT PRIMARY KEY, ip INET NOT NULL, value INT);",
+        "INSERT INTO inet_test (id, ip, value) VALUES (1, inet '192.168.1.5', 100), (2, inet '192.168.1.8', 200), (3, inet '192.168.1.15', 300);",
+        "SELECT row_number(ip) OVER (ORDER BY value) AS row_num, ip FROM inet_test WHERE ip << inet '192.168.1/24' ORDER BY row_num;",
+        "CREATE TABLE another_test (id INT PRIMARY KEY, some_ip INET, score INT);",
+        "INSERT INTO another_test (id, some_ip, score) VALUES (1, inet '192.168.1.10', NULL), (2, inet '192.168.1.20', 150);",
+        "SELECT row_number(value) OVER (PARTITION BY some_ip ORDER BY score) AS row_num, some_ip FROM another_test WHERE some_ip << inet '192.168.1/16' AND score IS NOT NULL;",
+        "SELECT A.row_num, A.ip FROM (SELECT row_number(value) OVER (ORDER BY value) AS row_num, ip FROM inet_test WHERE ip << inet '192.168.1/24') AS A JOIN another_test AS B ON A.row_num = B.id;",
+        "SELECT row_number(ip) OVER (ORDER BY value) AS row_num, ip FROM inet_test WHERE (ip << inet '192.168.1/24' OR ip IS NULL) GROUP BY ip, value HAVING row_num > 1;",
+        "CREATE TEMPORARY TABLE testing (key INT PRIMARY KEY, addr INET NOT NULL, val NUMERIC(10, 5));",
+        "INSERT INTO testing (key, addr, val) VALUES (1, inet '192.168.1.5', 12345.67890), (2, inet '192.168.1.6', NULL);",
+        "SELECT row_number(addr) OVER (PARTITION BY val ORDER BY key DESC) AS rn, addr FROM testing WHERE addr << inet '192.168.1/24' OR (val IS NOT NULL AND addr IS NULL);"
+    ]
+}

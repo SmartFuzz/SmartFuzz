@@ -1,0 +1,21 @@
+{
+    "function": "formatReadableDecimalSize",
+    "operator": "a > b",
+    "sql_array": [
+        "CREATE TABLE test_sizes (id UInt32, size_bytes UInt64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_sizes VALUES (1, 1), (2, 1024), (3, 1024 * 1024), (4, 192851925), (5, NULL);",
+        "SELECT id, size_bytes, formatReadableDecimalSize(size_bytes) AS readable_size FROM test_sizes WHERE size_bytes > 0;",
+        "INSERT INTO test_sizes VALUES (6, 0), (7, 5242880), (8, 2147483648);",
+        "SELECT id, size_bytes, formatReadableDecimalSize(size_bytes) AS readable_size FROM test_sizes WHERE readable_size IS NOT NULL;",
+        "SELECT id, size_bytes, formatReadableDecimalSize(size_bytes) AS readable_size FROM test_sizes WHERE (size_bytes > 1024) AND (size_bytes < 2147483648);",
+        "SELECT id, size_bytes, formatReadableDecimalSize(IF(size_bytes IS NULL, 0, size_bytes)) AS readable_size FROM test_sizes;",
+        "CREATE TABLE test_sizes_extended AS test_sizes; ALTER TABLE test_sizes_extended ADD COLUMN extra_bytes Nullable(UInt64);",
+        "UPDATE test_sizes_extended SET extra_bytes = 5000 WHERE id = 1;",
+        "SELECT id, formatReadableDecimalSize(size_bytes + IFNULL(extra_bytes, 0)) AS total_readable FROM test_sizes_extended;",
+        "SELECT id, size_bytes, formatReadableDecimalSize(size_bytes) AS readable_size FROM (SELECT id, size_bytes FROM test_sizes) AS subquery WHERE readable_size > '0 KB';",
+        "SELECT id, size_bytes FROM test_sizes WHERE FORMATReadableDecimalSize(size_bytes) > '1 KB';",
+        "SELECT id, count() AS count_sizes FROM test_sizes GROUP BY readable_size HAVING count_sizes > 1;",
+        "SELECT COUNT(*) FROM (SELECT DISTINCT formatReadableDecimalSize(size_bytes) AS distinct_sizes FROM test_sizes);",
+        "SELECT id, size_bytes, formatReadableDecimalSize(size_bytes) AS readable FROM test_sizes WHERE size_bytes IS NOT NULL AND size_bytes > 1024 ORDER BY readable DESC;"
+    ]
+}

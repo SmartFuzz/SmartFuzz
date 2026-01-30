@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=105017",
+  "title": "Execute a statement with secondary engine, two entries in performance schema",
+  "description": "Execute a statement with secondary engine, there are two entries in performance schema.\r\n\r\nIn sql_parse.cc\r\nstatic void check_secondary_engine_statement(), when statement is restarted in another storage engine the performance schema end the last statement and start a statement again. This make a statement with secondary engine will have two or more entries in performance schema.\r\n\r\n```\r\n1460   // Tell performance schema that the statement is restarted.\r\n1461   MYSQL_END_STATEMENT(thd->m_statement_psi, thd->get_stmt_da());\r\n1462   thd->m_statement_psi = MYSQL_START_STATEMENT(\r\n1463       &thd->m_statement_state, com_statement_info[thd->get_command()].m_key,\r\n1464       thd->db().str, thd->db().length, thd->charset(), nullptr);\r\n```\nHow to repeat:\nAdd testcase in mysql-test/suite/secondary_engine/t/\r\nsecondary_engine_performance.test\r\n\r\n./mtr secondary_engine.secondary_engine_performance\n\n```\r\n--disable_query_log\r\neval INSTALL PLUGIN mock SONAME '$MOCK_PLUGIN';\r\n--enable_query_log\r\n\r\nCREATE TABLE t1(id INT PRIMARY KEY, x INT, y INT);\r\nINSERT INTO t1 VALUES (1, 2, 3), (4, 5, 6), (7, 8, 9);\r\n\r\nALTER TABLE t1 SECONDARY_ENGINE MOCK;\r\nALTER TABLE t1 SECONDARY_LOAD;\r\n\r\nSELECT * FROM t1;\r\nselect SOURCE, SQL_TEXT, DIGEST  from performance_schema.events_statements_history_long where sql_text = \"SELECT * FROM t1\";\r\n\r\nDROP TABLE t1;\r\n--disable_query_log\r\nUNINSTALL PLUGIN mock;\r\n--enable_query_log\r\n```\n\nResult two entries in performance schema.\r\n```\r\n\r\nCREATE TABLE t1(id INT PRIMARY KEY, x INT, y INT);\r\nINSERT INTO t1 VALUES (1, 2, 3), (4, 5, 6), (7, 8, 9);\r\nALTER TABLE t1 SECONDARY_ENGINE MOCK;\r\nALTER TABLE t1 SECONDARY_LOAD;\r\nSELECT * FROM t1;\r\nid\tx\ty\r\nselect SOURCE, SQL_TEXT, DIGEST  from performance_schema.events_statements_history_long where sql_text = \"SELECT * FROM t1\";\r\nSOURCE\tSQL_TEXT\tDIGEST\r\ninit_net_server_extension.cc:96\tSELECT * FROM t1\t533c0a9cf0cf92d2c26e7fe8821735eb4a72c409aaca24f9f281d137427bfa9a\r\nsql_parse.cc:1464\tSELECT * FROM t1\t533c0a9cf0cf92d2c26e7fe8821735eb4a72c409aaca24f9f281d137427bfa9a\r\nDROP TABLE t1;\r\n```\nSuggested fix:\nWill one statement match one entry in performance schema better?",
+  "date": "2021-09-23 09:10:00",
+  "vulnerable_version": "8.0.26",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t2(id Int32, name String, created_at DateTime DEFAULT now());",
+    "INSERT INTO t2 VALUES (1, 'Alice', NULL), (2, 'Bob', '2023-01-01 10:00:00'), (3, 'Charlie', NULL);",
+    "ALTER TABLE t2 ADD COLUMN age Int32 DEFAULT 0;",
+    "UPDATE t2 SET age = 30 WHERE name = 'Alice';",
+    "SELECT name, age FROM t2 WHERE age IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Statement with secondary engine creates multiple performance schema entries"
+  ]
+}

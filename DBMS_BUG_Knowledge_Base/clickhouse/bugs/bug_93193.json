@@ -1,0 +1,25 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/93193",
+  "title": "Wrong query result with old analyzer and filter by `currentDatabase()`",
+  "vulnerable_database": "ClickHouse",
+  "date": "2025-12-29T22:35:08Z",
+  "vulnerable_version": "",
+  "description": "### Company or project name\n_No response_\n### Describe the unexpected behaviour\nWrong query result\n### Which ClickHouse versions are affected?\nidk\n### How to reproduce\n``` sql\nCREATE DATABASE b4891babd5aa2cade4970f4dee43944d;\nUSE b4891babd5aa2cade4970f4dee43944d;\n-- Works otherwise\nSET prefer_localhost_replica=0;\n-- Works otherwise\nSET enable_analyzer=0;\n-- Parallel replicas are not welcome here\nSET enable_parallel_replicas=0;\nSELECT count(), min(number), max(number), avg(number) FROM numbers_mt(1e6) FORMAT NULL SETTINGS log_comment='03777_distributed_with_filter_by_current_db_bug';\nSYSTEM FLUSH LOGS text_log, query_log;\nSELECT\ncount() > 0,\ncount() = countIf(log_comment = '03777_distributed_with_filter_by_current_db_bug')\nFROM remote('127.0.0.{1,2}', system, query_log)\nWHERE (current_database = currentDatabase()) AND (log_comment = '03777_distributed_with_filter_by_current_db_bug') AND (event_date >= yesterday());\nSELECT\ncount() > 0,\ncount() = countIf(log_comment = '03777_distributed_with_filter_by_current_db_bug')\nFROM remote('127.0.0.{1,2}', system, query_log)\nWHERE (current_database = 'b4891babd5aa2cade4970f4dee43944d') AND (log_comment = '03777_distributed_with_filter_by_current_db_bug') AND (event_date >= yesterday());\nDROP DATABASE b4891babd5aa2cade4970f4dee43944d SYNC;\n```\n### Expected behavior\n_No response_\n### Error message and/or stacktrace\n_No response_\n### Additional context\n_No response_",
+  "poc": [
+    "CREATE DATABASE b4891babd5aa2cade4970f4dee43944d;",
+    "SYSTEM FLUSH LOGS text_log, query_log;",
+    "system, query_log)\nWHERE (current_database = currentDatabase()) AND (log_comment = '03777_distributed_with_filter_by_current_db_bug') AND (event_date >= yesterday());",
+    "system, query_log)\nWHERE (current_database = 'b4891babd5aa2cade4970f4dee43944d') AND (log_comment = '03777_distributed_with_filter_by_current_db_bug') AND (event_date >= yesterday());",
+    "DROP DATABASE b4891babd5aa2cade4970f4dee43944d SYNC;"
+  ],
+  "key_bug_features": [
+    "Filter by currentDatabase() in query log"
+  ],
+  "bug_features_seed": [
+    "CREATE DATABASE test_db;",
+    "CREATE TABLE test_db.test_table (id UInt32, name String, created_at DateTime DEFAULT now(), value Float64) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO test_db.test_table (id, name, value) VALUES (1, 'test1', 10.5), (2, 'test2', NULL), (3, 'test3', 20.0);",
+    "SELECT count(), min(value), max(value), avg(value) FROM test_db.test_table WHERE name LIKE 'test%';",
+    "SELECT count() > 0 FROM remote('127.0.0.{1,2}', test_db, test_table) WHERE (current_database = currentDatabase()) AND (created_at >= now() - INTERVAL 1 DAY);"
+  ]
+}

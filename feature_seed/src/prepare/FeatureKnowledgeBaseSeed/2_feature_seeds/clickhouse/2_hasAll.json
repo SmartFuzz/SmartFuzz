@@ -1,0 +1,17 @@
+CREATE TABLE test_arrays (id UInt32, arr1 Array(Int32), arr2 Array(Int32)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_arrays VALUES (1, [1, 2, 3, 4], [2, 3]), (2, [5, 6, 7], [7]), (3, [8, 9], []);
+SELECT id, hasAll(arr1, arr2) AS is_subset FROM test_arrays WHERE arr1 LIKE '%2%';
+SELECT id, hasAll(arr1, arr2) AS is_subset FROM test_arrays WHERE hasAll(arr1, arr2) LIKE '%1%';
+CREATE TABLE test_fuzz (key String, value Nullable(Int32)) ENGINE = MergeTree() ORDER BY key;
+INSERT INTO test_fuzz VALUES ('one', 1), ('two', NULL), ('three', 3);
+SELECT key, value, hasAll([1, 2, NULL], [value]) AS check_subset FROM test_fuzz WHERE check_subset = 1 AND key LIKE 't%';
+SELECT key, value FROM test_fuzz WHERE hasAll(arr1, [1]) = 0 AND key LIKE 'o%';
+CREATE TABLE temp_test (col1 String, col2 Array(Int32)) ENGINE = MergeTree() ORDER BY col1;
+INSERT INTO temp_test VALUES ('test1', [1, 2]), ('test2', [2, 3]), ('test3', [3, 4]);
+SELECT col1, hasAll(col2, [2]) AS contains_two FROM temp_test WHERE col1 LIKE 'test%';
+WITH (SELECT arrayJoin(col2) FROM temp_test WHERE col1 LIKE 'test1') AS values, hasAll(values, [1, 2]) AS is_subset SELECT col1 FROM temp_test HAVING is_subset = 1;
+SELECT COUNT(*) FROM temp_test WHERE hasAll(col2, [4]) LIKE '%0%';
+CREATE TABLE hierarchical (parent String, child String) ENGINE = MergeTree() ORDER BY parent;
+INSERT INTO hierarchical VALUES ('A', 'B'), ('A', 'C'), ('B', 'D'), ('C', NULL);
+SELECT parent, hasAll(arrayJoin([SELECT child FROM hierarchical WHERE parent LIKE 'A']), ['B', 'D']) AS can_satisfy FROM hierarchical GROUP BY parent HAVING can_satisfy = 1;
+WITH (SELECT arrayJoin([1, 2, 3]) AS nums) AS subquery SELECT hasAll(nums, [2]) AS is_contained FROM subquery WHERE is_contained LIKE '1';

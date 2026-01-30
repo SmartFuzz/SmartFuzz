@@ -1,0 +1,12 @@
+CREATE TABLE test_table (id UInt32, value1 Float64, value2 Float64, text_col String, date_col Date);
+INSERT INTO test_table VALUES (1, -1.5, 2.3, 'example1', '2023-01-01'), (2, 4.5, NULL, 'example2', '2023-02-01'), (3, 3.0, 1.1, '', '2023-03-01');
+SELECT id, max2(value1, value2) AS max_value, text_col FROM test_table WHERE text_col GLOBAL IN (SELECT text_col FROM test_table WHERE id < 2) ORDER BY max_value DESC;
+SELECT DISTINCT max2(value1, value2) AS max_value FROM test_table GROUP BY max2(value1, value2) HAVING max_value > 0;
+SELECT a.id, max2(a.value1, a.value2) AS max_value FROM test_table a JOIN test_table b ON a.id = b.id GLOBAL IN (SELECT text_col FROM test_table WHERE value1 < 0) WHERE a.date_col = '2023-03-01' ORDER BY max_value;
+SELECT text_col, COUNT(id) FROM test_table WHERE max2(value1, value2) IS NOT NULL GROUP BY text_col HAVING COUNT(id) > 1;
+CREATE TABLE test_table2 AS SELECT value1, max(value2) AS max_val FROM test_table GROUP BY value1;
+SELECT a.id, max2(a.value1, (SELECT max(value2) FROM test_table2 b WHERE a.id = b.id)) AS max_value FROM test_table a WHERE a.value1 > (SELECT avg(value1) FROM test_table) ORDER BY max_value;
+SELECT a.id, max2(NULLIF(a.value1, 0), a.value2) AS max_value FROM test_table a WHERE a.text_col GLOBAL IN (SELECT text_col FROM test_table WHERE text_col != '') ORDER BY max_value ASC;
+ALTER TABLE test_table ADD COLUMN new_col Float64;
+UPDATE test_table SET new_col = max2(value1, value2) WHERE text_col GLOBAL IN (SELECT text_col FROM test_table WHERE date_col > '2023-01-01');
+DROP TABLE test_table2;

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/59162",
+  "title": "Where clause on right outer join might lead to rows not being fetched",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n```sql\nCREATE TABLE t0(c0 INT);\nINSERT INTO t0 VALUES (1);\nCREATE TABLE t1(c0 INT);\nINSERT INTO t1(c0) VALUES (0);\n\nSELECT\n    t0.c0 AS ref0,\n    t1.c0 AS ref1\nFROM t0\nRIGHT OUTER JOIN t1 ON t0.c0 = t1.c0\nWHERE (t1.c0 AND (t0.c0 != NULL)) IS FALSE;\n```\n\n### 2. What did you expect to see? (Required)\n\n|  ref0 |  ref1   |\n| ----  | ----    |\n| null  | 0       |\n\nThis is also the expected result in MySQL (8.0) and MariaDB (11.5).\n\n### 3. What did you see instead (Required)\n\nno rows\n\nMoreover, the result obtained in the above query is inconsistent with the following:\n\n```sql\nSELECT\n    t0.c0 AS ref0,\n    t1.c0 AS ref1,\n    (t1.c0 AND (t0.c0 != NULL)) IS FALSE AS ref2\nFROM t0\nRIGHT OUTER JOIN t1 ON t0.c0 = t1.c0;\n```\n\nIn this query, the result is:\n\n|  ref0 |  ref1   |  ref2   |\n| ----  | ----    | ----    |\n| null  | 0       | 1       |\n\nThus, the condition in the `WHERE` clause evaluates to true in the 1st row, and the 1st row should be returned in the original query.\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n```\n                      tidb_version()                       \n-----------------------------------------------------------\n Release Version: v8.5.1                                  +\n Edition: Community                                       +\n Git Commit Hash: fea86c8e35ad4a86a5e1160701f99493c2ee547c+\n Git Branch: HEAD                                         +\n UTC Build Time: 2025-01-16 07:40:33                      +\n GoVersion: go1.23.2                                      +\n Race Enabled: false                                      +\n Check Table Before Drop: false                           +\n Store: tikv \n(1 row)\n```\n",
+  "date": "2025-01-23T13:40:47Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2(c0 Int32, c1 String) ENGINE = MergeTree() ORDER BY c0;",
+    "INSERT INTO t2 VALUES (1, 'A'), (2, 'B');",
+    "CREATE TABLE t3(c0 Int32, c1 Int32 DEFAULT 0) ENGINE = MergeTree() ORDER BY c0;",
+    "INSERT INTO t3(c0) VALUES (0), (1);",
+    "SELECT t2.c0 AS ref0, t3.c0 AS ref1 FROM t2 RIGHT JOIN t3 ON t2.c0 = t3.c0 WHERE (t3.c0 IS NOT NULL AND (t2.c0 IS NULL OR t2.c0 < 2));"
+  ],
+  "key_bug_features": [
+    "WHERE clause on right outer join leads to missing rows"
+  ]
+}

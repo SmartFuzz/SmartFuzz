@@ -1,0 +1,21 @@
+{
+    "function": "emptyArrayInt64",
+    "operator": "x -> expr",
+    "sql_array": [
+        "CREATE TABLE test_table (id Int32, val Array(Int64) DEFAULT emptyArrayInt64(), str String, dt DateTime) ENGINE = Memory;",
+        "INSERT INTO test_table (id, val, str, dt) VALUES (1, [1, 2, 3], 'test1', now()), (2, emptyArrayInt64(), 'test2', now()), (3, [NULL], 'test3', now());",
+        "SELECT id, val, str FROM test_table WHERE val -> x -> x + 1 = 4;",
+        "SELECT id, val, str FROM test_table WHERE str = 'test' || (val -> x -> if(x IS NULL, '', toString(x)));",
+        "SELECT id, COUNT(*), SUM(arrayJoin(val)) FROM test_table GROUP BY id HAVING SUM(arrayJoin(val)) = 6;",
+        "SELECT id, str, (val -> x -> arrayJoin(emptyArrayInt64())) AS empty_results FROM test_table WHERE id = 2;",
+        "SELECT id, val, (CASE WHEN val IS NULL THEN 'Empty' ELSE 'Not Empty' END) AS val_status FROM test_table;",
+        "WITH (SELECT val -> x -> toInt64(x) AS converted_vals FROM test_table) AS subquery SELECT id FROM subquery WHERE converted_vals IS NOT NULL;",
+        "CREATE TABLE temp_table AS SELECT id, val, str FROM test_table WHERE dt > now() - INTERVAL 1 DAY;",
+        "INSERT INTO temp_table (id, val, str) VALUES (4, emptyArrayInt64(), 'test4');",
+        "SELECT id, val, (val -> x -> x * 2) AS doubled_vals FROM temp_table WHERE val IS NOT NULL;",
+        "SELECT id, (val -> x -> if(val IS NOT NULL AND length(val) > 0, arraySize(val), 0)) AS val_count FROM temp_table;",
+        "SELECT id, (SELECT COUNT(*) FROM temp_table) AS total_count WHERE id IN (SELECT id FROM temp_table WHERE str LIKE 'test%');",
+        "ALTER TABLE test_table ADD COLUMN new_col Nullable(Int32);",
+        "UPDATE test_table SET new_col = 10 WHERE id = 1;"
+    ]
+}

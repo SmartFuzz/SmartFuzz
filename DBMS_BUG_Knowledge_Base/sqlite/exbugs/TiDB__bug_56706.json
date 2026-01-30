@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/56706",
+  "title": "Error message: Unexpected line break",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n```\r\nCREATE TABLE `PK_MULTI_COL_4820` (\r\n  `COL1` binary(10) NOT NULL,\r\n  `COL2` char(1) NOT NULL,\r\n  `COL3` mediumint(45) NOT NULL,\r\n  PRIMARY KEY (`COL1`(5),`COL2`,`COL3`) /*T![clustered_index] CLUSTERED */,\r\n  UNIQUE KEY `UIDXM` (`COL1`(5),`COL2`),\r\n  UNIQUE KEY `UIDX` (`COL2`),\r\n  KEY `IDX3` (`COL3`),\r\n  KEY `IDXM` (`COL3`,`COL2`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;\r\nselect max(col1), min(col1), count(col1), max(col2), min(col2), count(col2), count(1), count(*) from PK_MULTI_COL_4820 where col2 in (0xFF1C320A347AACB924E9, 0xFF1C320A347AACB924E9, 0xFF1C320A347AACB924E9) group by col1, col2;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\nError messages are displayed on one line\r\nThis is `mysql` return:\r\n`ERROR 3854 (HY000): Cannot convert string '\\xFF\\x1C2\\x0A4z...' from binary to utf8mb4`\r\n\r\n### 3. What did you see instead (Required)\r\nIt looks like TiDB interprets a character as a line break\r\n```\r\nmysql> select max(col1), min(col1), count(col1), max(col2), min(col2), count(col2), count(1), count(*) from PK_MULTI_COL_4820 where col2 in (0xFF1C320A347AACB924E9, 0xFF1C320A347AACB924E9, 0xFF1C320A347AACB924E9) group by col1, col2;\r\nERROR 3854 (HY000): Cannot convert string '\\xFF2\r\n4z...' from binary to utf8mb4\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\nRelease Version: v8.4.0\r\nEdition: Community\r\nGit Commit Hash: 1832b2728d7ae494684bdeb32b4af0a5a927bf89\r\nGit Branch: HEAD\r\nUTC Build Time: 2024-10-15 03:47:37\r\nGoVersion: go1.23.2\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv\r\n",
+  "date": "2024-10-17T09:18:12Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE PK_MULTI_COL_4821 (COL1 BLOB NOT NULL, COL2 TEXT NOT NULL, COL3 INTEGER NOT NULL, PRIMARY KEY (SUBSTR(COL1, 1, 5), COL2, COL3), UNIQUE (SUBSTR(COL1, 1, 5), COL2), UNIQUE (COL2), INDEX IDX3 (COL3), INDEX IDXM (COL3, COL2));",
+    "INSERT INTO PK_MULTI_COL_4821 (COL1, COL2, COL3) VALUES (X'FF1C320A', 'A', 1);",
+    "INSERT INTO PK_MULTI_COL_4821 (COL1, COL2, COL3) VALUES (X'FF1C320B', 'B', 2);",
+    "SELECT max(COL1), min(COL1), count(COL1), max(COL2), min(COL2), count(COL2) FROM PK_MULTI_COL_4821 WHERE COL2 IN ('A', 'B') GROUP BY COL2;",
+    "SELECT COUNT(*) FROM PK_MULTI_COL_4821 WHERE COL3 IS NULL;"
+  ],
+  "key_bug_features": [
+    "TiDB interprets a character as a line break"
+  ]
+}

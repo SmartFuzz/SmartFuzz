@@ -1,0 +1,17 @@
+{
+    "function": "current_localtimestamp()",
+    "operator": "xor",
+    "sql_array": [
+        "CREATE TABLE test_data (id INTEGER, timestamp_col TIMESTAMP, bitstring_col BITSTRING);",
+        "INSERT INTO test_data VALUES (1, current_localtimestamp(), '101'::BITSTRING), (2, current_localtimestamp(), '110'::BITSTRING), (3, current_localtimestamp(), '001'::BITSTRING);",
+        "SELECT id, xor(bitstring_col, '010'::BITSTRING) as xor_result FROM test_data WHERE id IN (SELECT id FROM test_data WHERE timestamp_col > current_localtimestamp() - INTERVAL '1 day') ORDER BY xor_result;",
+        "SELECT id, COUNT(*) FROM (SELECT id, current_localtimestamp() AS local_ts, xor(bitstring_col, '111'::BITSTRING) AS xor_comp FROM test_data GROUP BY id, bitstring_col HAVING xor_comp IS NOT NULL) AS subquery GROUP BY id;",
+        "CREATE TABLE additional_data (id INTEGER, filter_value BOOLEAN);",
+        "INSERT INTO additional_data VALUES (1, TRUE), (2, FALSE), (3, NULL);",
+        "SELECT td.id, A.xor_bits, A.local_time FROM (SELECT id, xor(bitstring_col, '000'::BITSTRING) as xor_bits, current_localtimestamp() AS local_time FROM test_data WHERE id > 0) AS A JOIN additional_data AS ad ON A.id = ad.id WHERE ad.filter_value IS NULL OR ad.filter_value;",
+        "SELECT *, current_localtimestamp() AS current_time_xor FROM (SELECT id, xor(bitstring_col, '111'::BITSTRING) AS xor_val FROM test_data) AS subquery WHERE subquery.xor_val IS NOT NULL;",
+        "WITH temp_data AS (SELECT id, xor(bitstring_col, '101'::BITSTRING) AS xor_val FROM test_data WHERE bitstring_col IS NOT NULL) SELECT *, current_localtimestamp() FROM temp_data WHERE xor_val IS NOT NULL;",
+        "CREATE TEMP TABLE temp_table AS SELECT id, current_localtimestamp() AS current_time, timestamp_col FROM test_data WHERE id < 3;",
+        "SELECT id, xor('100'::BITSTRING, '110'::BITSTRING) AS combined_xor, current_localtimestamp() FROM temp_table WHERE combined_xor IS NOT NULL ORDER BY combined_xor;"
+    ]
+}

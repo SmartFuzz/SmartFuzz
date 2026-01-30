@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/85633",
+  "title": "optimize_functions_to_subcolumns leads to incorrect result for ALIAS columns",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\n```\nCREATE TABLE t\n(\nid String,\nt Array(String),\ns Array(String) ALIAS t\n)\nENGINE = MergeTree()\nORDER BY (id)\nas select '1', ['t'];\nSELECT count() FROM t WHERE not empty(s);\n+-count()-+\n1. |       0 | -- expected 1\n+---------+\nSELECT count() FROM t WHERE not empty(s) settings optimize_functions_to_subcolumns=0;\n+-count()-+\n1. |       1 | -- correct\n+---------+\nSELECT count() FROM t WHERE not empty(s) settings asterisk_include_alias_columns=1;\n+-count()-+\n1. |       0 |  -- expected 1\n+---------+\nSELECT * FROM t WHERE not empty(s) settings asterisk_include_alias_columns=1;\n+-id-+-t-----+-s-----+\n1. | 1  | ['t'] | ['t'] | -- correct\n+----+-------+-------+\n```\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nhttps://fiddle.clickhouse.com/91805b9e-d99e-4714-815c-8475ddb9a86c\n### Expected behavior\n_No response_\n### Error message and/or stacktrace\n_No response_\n### Additional context\n_No response_",
+  "date": "2025-08-14T12:45:36Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id UInt32, data Array(Int32), alias_data Array(Int32)) PARTITION BY HASH(id) PARTITIONS 4;",
+    "INSERT INTO test_table VALUES (1, [10, 20, 30]), (2, [40, 50]);",
+    "SELECT count(*) FROM test_table WHERE array_length(alias_data) > 0;",
+    "SELECT count(*) FROM test_table WHERE array_length(alias_data) > 0;",
+    "SELECT id, alias_data FROM test_table WHERE id = 1;"
+  ],
+  "key_bug_features": [
+    "optimize_functions_to_subcolumns with ALIAS columns"
+  ]
+}

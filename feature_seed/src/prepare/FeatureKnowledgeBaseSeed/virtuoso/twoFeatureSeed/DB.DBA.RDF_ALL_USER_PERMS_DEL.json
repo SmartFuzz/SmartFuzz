@@ -1,0 +1,17 @@
+{
+    "function": "DB.DBA.RDF_ALL_USER_PERMS_DEL",
+    "operator": "XPath Operator: xpath_split",
+    "sql_array": [
+        "CREATE TABLE users (id INT PRIMARY KEY, name VARCHAR(255) NOT NULL, is_active BOOLEAN DEFAULT TRUE);",
+        "INSERT INTO users (id, name) VALUES (1, 'admin'), (2, 'testuser'), (3, NULL), (4, 'nobody');",
+        "CREATE TABLE graphs (graph_id INT PRIMARY KEY, owner_id INT REFERENCES users(id), data XML);",
+        "INSERT INTO graphs (graph_id, owner_id, data) VALUES (1, 1, '<data><value>1</value></data>'), (2, 2, '<data><value>2</value></data>');",
+        "SELECT DB.DBA.RDF_ALL_USER_PERMS_DEL(NULL, 3);",
+        "SELECT DB.DBA.RDF_ALL_USER_PERMS_DEL(name, NULL) FROM users WHERE id = (SELECT MAX(id) FROM users WHERE is_active = TRUE);",
+        "SELECT DB.DBA.RDF_ALL_USER_PERMS_DEL('admin', id) FROM users WHERE is_active = (SELECT CASE WHEN COUNT(*) > 0 THEN TRUE ELSE FALSE END FROM graphs);",
+        "SELECT id, DB.DBA.RDF_ALL_USER_PERMS_DEL(name, id) AS perm_result FROM users WHERE id IN (SELECT DISTINCT owner_id FROM graphs WHERE data IS NOT NULL AND data != '<data></data>');",
+        "SELECT u.id, u.name, COUNT(g.graph_id) FROM users u LEFT JOIN graphs g ON u.id = g.owner_id GROUP BY u.id HAVING COUNT(g.graph_id) > 1;",
+        "SELECT xpath_split(data, '/data/value') FROM graphs WHERE owner_id = (SELECT id FROM users WHERE name = 'admin');",
+        "SELECT xpath_split(data, '/data/value') FROM graphs WHERE data IS NOT NULL AND owner_id = (SELECT id FROM users WHERE name IS NULL) ORDER BY owner_id DESC;"
+    ]
+}

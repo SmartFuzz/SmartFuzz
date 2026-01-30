@@ -1,0 +1,10 @@
+CREATE TABLE key_storage (key_name VARCHAR(255) PRIMARY KEY, key_value BLOB);
+INSERT INTO key_storage (key_name, key_value) VALUES ('kaes', xenc_key_AES_rand_create('kaes', 256));
+INSERT INTO key_storage (key_name, key_value) VALUES ('k3des', xenc_key_3DES_rand_create());
+WITH encrypted AS (SELECT encrypt(ses('data to encrypt'), key_value) AS encrypted_content FROM key_storage WHERE key_name = 'kaes') SELECT decrypt(encrypted_content, 'kaes') FROM encrypted;
+WITH encrypt AS (SELECT encrypt(ses('data with special chars !@#'), key_value) AS encrypted_content FROM key_storage WHERE key_name = 'k3des') SELECT decrypt(encrypted_content, 'k3des') FROM encrypt;
+SELECT decrypt(CASE WHEN key_name = 'kaes' THEN encrypt(ses('another test data'), key_value) END, 'kaes') FROM key_storage WHERE key_name = 'kaes';
+SELECT d.key_name, decrypt(e.encrypted_content, d.key_name) AS decrypted_content FROM (SELECT encrypt(ses('nested test data'), key_value) AS encrypted_content, key_name FROM key_storage) e JOIN key_storage d ON e.key_name = d.key_name;
+SELECT decrypt(encrypt(ses('deeply nested data'), 'kaes'), 'kaes') AS double_encrypted_decrypt;
+WITH temp AS (SELECT encrypt(ses('borderline data 1'), key_value) AS enc_1 FROM key_storage WHERE key_name = 'kaes'), temp2 AS (SELECT encrypt(ses('borderline data 2'), key_value) AS enc_2 FROM key_storage WHERE key_name = 'k3des') SELECT decrypt(enc_1, 'kaes'), decrypt(enc_2, 'k3des') FROM temp, temp2;
+WITH encrypted_data AS (SELECT encrypt(ses(repeat('A', 1024)), key_value) AS long_encrypted_content FROM key_storage WHERE key_name = 'kaes') SELECT decrypt(long_encrypted_content, 'kaes') FROM encrypted_data;

@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id INT, value_clob CLOB, value_int INT);
+INSERT INTO test_table (id, value_clob, value_int) VALUES (1, 'a', 2), (2, NULL, 4), (3, 'b', 8), (4, 'c', 16);
+SELECT sys.group_concat(value_clob, ', ') FROM (SELECT id, value_clob << value_int AS shifted_value FROM test_table WHERE value_int IS NOT NULL) AS sub WHERE shifted_value > 0 GROUP BY id HAVING COUNT(*) > 1;
+SELECT id, sys.group_concat(value_clob, ' | ') FROM test_table GROUP BY id HAVING (id << 1) IN (SELECT DISTINCT id FROM test_table WHERE value_int IS NOT NULL) ORDER BY value_int ASC;
+SELECT (sys.group_concat(value_clob, '-') << value_int) AS result FROM test_table GROUP BY value_int HAVING result IS NOT NULL AND result != '';
+SELECT (SELECT MAX(value_int) FROM test_table) << 2 AS max_shifted_value, sys.group_concat(value_clob, ';
+') FROM (SELECT * FROM test_table WHERE value_clob IS NOT NULL) AS sub GROUP BY max_shifted_value HAVING COUNT(*) > 1;
+CREATE TABLE another_table (id INT PRIMARY KEY, another_clob CLOB, another_int INT);
+INSERT INTO another_table (id, another_clob, another_int) VALUES (1, 'x', 2), (2, 'y', NULL), (3, 'z', 8), (4, NULL, 16);
+SELECT a.id, sys.group_concat(a.another_clob, ', ') FROM another_table a JOIN test_table t ON (a.another_int << t.value_int) IS NOT NULL GROUP BY a.id HAVING COUNT(DISTINCT a.another_clob) > 1;
+SELECT (sys.group_concat(value_clob, '|') << 3) AS combined_result FROM test_table WHERE value_int >= (SELECT MIN(value_int) FROM test_table WHERE value_clob IS NOT NULL);

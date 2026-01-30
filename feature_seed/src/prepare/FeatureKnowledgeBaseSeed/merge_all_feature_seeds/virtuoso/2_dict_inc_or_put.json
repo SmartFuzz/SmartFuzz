@@ -1,0 +1,11 @@
+CREATE TABLE test_dict (key VARCHAR(100) PRIMARY KEY, value INT);
+INSERT INTO test_dict VALUES ('a', 1), ('b', -1), ('c', 5);
+SELECT dict_inc_or_put(dict_new(10), (SELECT COUNT(*) FROM test_dict WHERE value > 0), 1) AS incremented_value;
+SELECT * WHERE { ?s a <test_dict> };
+WITH subquery AS (SELECT key, value FROM test_dict WHERE value IS NOT NULL) SELECT dict_inc_or_put(dict_new(0), (SELECT COUNT(*) FROM subquery WHERE value > 0), MAX(value)) FROM subquery;
+CREATE TEMPORARY TABLE temp_table AS (SELECT key, dict_inc_or_put(dict_new(0), value, 1) AS new_value FROM test_dict WHERE value IS NOT NULL GROUP BY key HAVING new_value > 0);
+SELECT dict_inc_or_put(dict_new(1), (SELECT key FROM temp_table WHERE key IS NOT NULL), 1) AS final_value WHERE key='a' OR key='b';
+SELECT dict_inc_or_put(dict_new(5), (SELECT NULLIF(SUM(value), 0) FROM test_dict), 1) AS check_value;
+INSERT INTO test_dict SELECT 'd', dict_inc_or_put(dict_new(0), 3.1415, 1);
+SELECT dict_inc_or_put(dict_new(0), (SELECT CAST(key AS INT) FROM test_dict WHERE key = 'c'), 2) AS casted_value;
+UPDATE test_dict SET value = dict_inc_or_put(dict_new(0), CAST(value AS VARCHAR), 1) WHERE key='d';

@@ -1,0 +1,19 @@
+{
+    "function": "stddevPopStable",
+    "operator": "a <> b",
+    "sql_array": [
+        "DROP TABLE IF EXISTS test_data; CREATE TABLE test_data(population Float64, population_str String) ENGINE = Log;",
+        "INSERT INTO test_data SELECT randUniform(5.5, 10) AS population, toString(randUniform(5.5, 10)) AS population_str FROM numbers(1000000);",
+        "SELECT stddevPopStable(population) AS stddev, stddevPopStable(toFloat64(NULLIF(population_str, ''))) AS stddev_str FROM test_data WHERE population <> 0.0;",
+        "SELECT stddevPopStable(population * -1) AS stddev_negative FROM test_data GROUP BY population HAVING stddev_negative <> 0.0;",
+        "CREATE TABLE IF NOT EXISTS temp_data AS SELECT * FROM test_data WHERE population IS NOT NULL;",
+        "INSERT INTO temp_data SELECT (randUniform(1, 5) * 2.5) AS population, 'random_string' AS population_str FROM numbers(5000);",
+        "SELECT stddevPopStable(population) AS stddev_pop FROM temp_data WHERE stddev_pop IS NOT NULL HAVING stddev_pop <> (SELECT AVG(stddevPopStable(population)) FROM test_data);",
+        "SELECT stddevPopStable(NULLIF(population_str, '')) AS stddev_str FROM test_data WHERE population <> 5.5;",
+        "DROP TABLE IF EXISTS complex_data; CREATE TABLE complex_data(id Int32, population Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO complex_data SELECT number AS id, randUniform(5, 10) AS population FROM numbers(100);",
+        "SELECT stddevPopStable(population) AS stddev_total FROM complex_data WHERE (population ** 2) <> 0.0 GROUP BY id HAVING stddev_total <> (SELECT stddevPopStable(randUniform(1, 10)) FROM complex_data);",
+        "SELECT DISTINCT CASE WHEN stddevPopStable(population) <> 0 THEN stddevPopStable(population) ELSE NULL END AS conditional_stddev FROM test_data;",
+        "SELECT stddevPopStable(CASE WHEN population_str <> '' THEN toFloat64(population_str) ELSE NULL END) AS stddev_case FROM test_data WHERE population_str <> '' AND population_str IS NOT NULL;"
+    ]
+}

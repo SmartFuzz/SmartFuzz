@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/93209",
+  "title": "Refreshable materialized view not parsable after restart",
+  "description": "### Describe the bug\nEasy to reproduce. Only happens with refreshable materialized views.\n### How to reproduce\nRun:\n```sql\nCREATE TABLE t0 (c0 Int) ENGINE = MergeTree() PRIMARY KEY (c0);\nCREATE MATERIALIZED VIEW v0 REFRESH AFTER 1 MINUTE APPEND TO t0 (c0 Int) AS (((SELECT 1 c0) UNION DISTINCT (SELECT *)) EXCEPT (SELECT 2));\n```\nThen restart the server. The materialized view SQL file cannot be parsed back.\n### Error message and/or stacktrace\nStack trace:\n```\n<Error> Application: Code: 62. DB::Exception: Syntax error (in file store/0cd/0cd747d0-f31f-44c9-82de-2f5eac6b0255/v0.sql): failed at position 234 (2) (line 11, col 8): 2\n. Expected one of: alias cannot be here, end of query: Cannot parse definition from metadata file store/0cd/0cd747d0-f31f-44c9-82de-2f5eac6b0255/v0.sql. (SYNTAX_ERROR), Stack trace (when copying this message, always include the lines below):\n0. contrib/llvm-project/libcxx/include/__exception/exception.h:113: Poco::Exception::Exception(String const&, int) @ 0x00000000266448f2\n1. src/Common/Exception.cpp:136: DB::Exception::Exception(DB::Exception::MessageMasked&&, int, bool) @ 0x000000001629f3e9\n2. src/Common/Exception.h:171: DB::Exception::Exception(String const&, int, String, bool) @ 0x000000000d8c5994\n3. src/Common/Exception.h:179: DB::Exception::createDeprecated(String const&, int, bool) @ 0x000000000d8c58a9\n4. src/Databases/DatabaseOnDisk.cpp:810: DB::DatabaseOnDisk::parseQueryFromMetadata(std::shared_ptr<Poco::Logger>, std::shared_ptr<DB::Context const>, String const&, String const&, bool) @ 0x000000001b783ec5\n5. src/Databases/DatabaseOnDisk.cpp:782: DB::DatabaseOnDisk::parseQueryFromMetadata(std::shared_ptr<Poco::Logger>, std::shared_ptr<DB::Context const>, std::shared_ptr<DB::IDisk>, String const&, bool, bool) @ 0x000000001b77bfc2\n6. src/Databases/DatabaseOrdinary.cpp:271: void std::__function::__policy_func<void (String const&)>::__call_func[abi:se210105]<DB::DatabaseOrdinary::loadTablesMetadata(std::shared_ptr<DB::Context const>, DB::ParsedTablesMetadata&, bool)::$_0>(std::__function::__policy_storage const*, String const&) @ 0x000000001b797cc2\n7. contrib/llvm-project/libcxx/include/__functional/function.h:508: ? @ 0x000000001b7852ab\n8. contrib/llvm-project/libcxx/include/__functional/function.h:508: ? @ 0x00000000163ec4b9\n9. contrib/llvm-project/libcxx/include/__type_traits/invoke.h:0: ThreadFromGlobalPoolImpl<false, true>::ThreadFromGlobalPoolImpl<void (ThreadPoolImpl<ThreadFromGlobalPoolImpl<false, true>>::ThreadFromThreadPool::*)(), ThreadPoolImpl<ThreadFromGlobalPoolImpl<false, true>>::ThreadFromThreadPool*>(void (ThreadPoolImpl<ThreadFromGlobalPoolImpl<false, true>>::ThreadFromThreadPool::*&&)(), ThreadPoolImpl<ThreadFromGlobalPoolImpl<false, true>>::ThreadFromThreadPool*&&)::'lambda'()::operator()() @ 0x00000000163f28a8\n10. contrib/llvm-project/libcxx/include/__functional/function.h:508: ? @ 0x00000000163e99c3\n11. contrib/llvm-project/libcxx/include/__type_traits/invoke.h:0: void* std::__thread_proxy[abi:se210105]<std::tuple<std::unique_ptr<std::__thread_struct, std::default_delete<std::__thread_struct>>, void (ThreadPoolImpl<std::thread>::ThreadFromThreadPool::*)(), ThreadPoolImpl<std::thread>::ThreadFromThreadPool*>>(void*) @ 0x00000000163f054e\n12. ? @ 0x00000000000a3d64\n13. __clone3 @ 0x00000000001373bc\n```",
+  "date": "2025-12-30T11:34:55Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (c1 INT, c2 TEXT, c3 FLOAT8);",
+    "CREATE MATERIALIZED VIEW v1 AS SELECT c1, c2 FROM t1 WHERE c3 > 0.0;",
+    "INSERT INTO t1 (c1, c2, c3) VALUES (1, 'test', 1.5), (2, 'example', NULL), (3, 'sample', -1.0);",
+    "CREATE TABLE t2 (c4 INT, c5 DATE);",
+    "INSERT INTO t2 (c4, c5) VALUES (NULL, '2023-01-01'), (4, '2023-01-02');"
+  ],
+  "key_bug_features": [
+    "Refreshable materialized views fail to parse after server restart."
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/58476",
+  "title": "Index merge wrongly ignore some predicates of generated column",
+  "vulnerable_database": "tidb",
+  "date": "2024-12-23T08:58:13Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n```sql\nCREATE TABLE t3 (\n  id int PRIMARY KEY,\n  c1 varchar(256),\n  c2 varchar(256) GENERATED ALWAYS AS (concat(c1, c1)) VIRTUAL,\n  KEY (id)\n);\n \ninsert into t3(id, c1) values (50, 'c');\n\nSELECT /*+ USE_INDEX_MERGE(`t3`)*/ id FROM `t3` WHERE c2 BETWEEN 'a' AND 'b' GROUP BY id HAVING id < 100 or id > 0;\n```\n\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\n\n```sql\nEmpty set\n```\n\n### 3. What did you see instead (Required)\n\n```sql\nmysql> SELECT /*+ USE_INDEX_MERGE(`t3`)*/ id FROM `t3` WHERE c2 BETWEEN 'a' AND 'b' GROUP BY id HAVING id < 100 or id > 0;\n+----+\n| id |\n+----+\n| 50 |\n+----+\n1 row in set (0.01 sec)\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "poc": [
+    "CREATE TABLE t3 (",
+    "  id int PRIMARY KEY,",
+    "  c1 varchar(256),",
+    "  c2 varchar(256) GENERATED ALWAYS AS (concat(c1, c1)) VIRTUAL,",
+    "  KEY (id)",
+    ");",
+    "insert into t3(id, c1) values (50, 'c');",
+    "SELECT /*+ USE_INDEX_MERGE(`t3`)*/ id FROM `t3` WHERE c2 BETWEEN 'a' AND 'b' GROUP BY id HAVING id < 100 or id > 0;"
+  ],
+  "poc_type": "sql_text",
+  "state": "closed",
+  "key_bug_features": [
+    "Index merge ignores predicates of generated column"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t4 (id int PRIMARY KEY, c1 varchar(256), c2 varchar(256) GENERATED ALWAYS AS (concat(c1, ' - ', c1)) VIRTUAL, c3 int DEFAULT NULL, KEY (c2));",
+    "INSERT INTO t4(id, c1) VALUES (1, 'test1'), (2, 'test2'), (3, 'test3');",
+    "SELECT /*+ USE_INDEX_MERGE(`t4`)*/ id FROM t4 WHERE c2 IS NOT NULL AND c3 BETWEEN 1 AND 3 GROUP BY id HAVING id < 5;",
+    "CREATE TABLE t5 (id int PRIMARY KEY, c1 varchar(256) NOT NULL, c2 int DEFAULT 0, c3 varchar(256) GENERATED ALWAYS AS (IFNULL(c1, '') || c2) VIRTUAL, KEY (c3));",
+    "INSERT INTO t5(id, c1, c2) VALUES (1, 'data', 1), (2, NULL, 2);"
+  ]
+}

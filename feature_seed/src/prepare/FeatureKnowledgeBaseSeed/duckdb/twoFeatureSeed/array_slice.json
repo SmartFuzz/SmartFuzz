@@ -1,0 +1,17 @@
+{
+    "function": "array_slice",
+    "operator": "+",
+    "sql_array": [
+        "CREATE TABLE test_table (id INT, text_col STRING, date_col DATE);",
+        "INSERT INTO test_table VALUES (1, 'DuckDB is fun', DATE '2023-01-01'), (2, NULL, DATE '2023-01-02'), (3, 'SQL testing', DATE '2023-01-03');",
+        "SELECT id, array_slice(text_col, 1, 5) + INTERVAL (CASE WHEN id = 1 THEN 1 ELSE 2 END) DAY AS result_date FROM test_table WHERE text_col IS NOT NULL;",
+        "SELECT id, array_slice(text_col, -3, NULL) AS sliced_text, DATE '2023-01-01' + INTERVAL (id + 1) DAY FROM test_table WHERE id IN (SELECT id FROM test_table WHERE text_col IS NOT NULL) GROUP BY id, sliced_text HAVING sliced_text LIKE '%fun';",
+        "SELECT id, array_slice(text_col, 0, 10) + INTERVAL (d.days) DAY FROM test_table JOIN (VALUES (2), (3)) AS d(days) ON id = d.days WHERE date_col IS NOT NULL;",
+        "CREATE TABLE secondary_table (num INT, related_id INT);",
+        "INSERT INTO secondary_table VALUES (10, 1), (20, 2), (30, 3);",
+        "SELECT st.num, st.related_id, array_slice(tt.text_col, 0, 4) FROM test_table tt JOIN secondary_table st ON tt.id = st.related_id WHERE array_slice(tt.text_col, -1, 1) = 'n' ORDER BY st.num + INTERVAL (st.related_id * 5) DAY;",
+        "SELECT tt.id, array_slice(tt.text_col, 0, 4) AS slice_text, DATE '2023-01-01' + INTERVAL (st.num + coalesce(tt.id, 0)) DAY AS computed_date FROM test_table tt LEFT JOIN secondary_table st ON tt.id = st.related_id WHERE st.num IS NOT NULL GROUP BY slice_text, computed_date HAVING computed_date > DATE '2023-01-05';",
+        "DROP TABLE IF EXISTS test_table;",
+        "DROP TABLE IF EXISTS secondary_table;"
+    ]
+}

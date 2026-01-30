@@ -1,0 +1,18 @@
+CREATE TABLE test_sequence (id bigint PRIMARY KEY, seq_val bigint);
+INSERT INTO test_sequence (id, seq_val) VALUES (1, next_value_for('dwh2', 'seq_9201'));
+CREATE TABLE timestamps_test (event_time timestamp, sequence_val bigint);
+INSERT INTO timestamps_test (event_time, sequence_val) VALUES (timestamp '2023-01-01 00:00:00', next_value_for('dwh2', 'seq_9201'));
+INSERT INTO timestamps_test (event_time, sequence_val) VALUES (timestamp '2023-02-01 12:30:30', next_value_for('dwh2', 'seq_9201'));
+SELECT avg(seq_val) AS average_value FROM (SELECT next_value_for('dwh2', 'seq_9201') as seq_val FROM test_sequence) AS derived_subquery WHERE seq_val > 0;
+SELECT count(*) FROM timestamps_test WHERE event_time < (SELECT timestamp '2023-01-10 00:00:00' + interval '1 day');
+SELECT event_time, seq_val FROM (SELECT event_time, next_value_for('dwh2', 'seq_9201') AS seq_val FROM timestamps_test) AS temp_table WHERE seq_val IS NOT NULL;
+SELECT event_time, seq_val FROM timestamps_test WHERE event_time > timestamp '2023-01-10 00:00:00' AND seq_val = next_value_for('dwh2', 'seq_9201') + 1;
+SELECT COUNT(*) FROM test_sequence WHERE seq_val IS NULL OR seq_val > next_value_for('dwh2', 'seq_9201');
+CREATE TABLE boundary_test (timestamp_col timestamp, seq_col bigint);
+INSERT INTO boundary_test (timestamp_col, seq_col) VALUES (timestamp '1900-01-01 00:00:00', next_value_for('dwh2', 'seq_9201'));
+INSERT INTO boundary_test (timestamp_col, seq_col) VALUES (timestamp '9999-12-31 23:59:59', next_value_for('dwh2', 'seq_9201'));
+SELECT * FROM boundary_test WHERE seq_col = (next_value_for('dwh2', 'seq_9201') - 1) AND timestamp_col < timestamp '2023-01-01 00:00:00';
+DROP TABLE IF EXISTS temp_table;
+CREATE TEMP TABLE temp_table AS SELECT next_value_for('dwh2', 'seq_9201') AS seq_val;
+SELECT * FROM temp_table;
+SELECT seq_val, COUNT(*) FROM (SELECT event_time, next_value_for('dwh2', 'seq_9201') as seq_val FROM timestamps_test) AS seq_table GROUP BY seq_val HAVING COUNT(*) > 0;

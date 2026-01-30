@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/43280",
+  "title": "partition table tiflash replica can't be ready",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n```\r\nCREATE TABLE employees4 (\r\n    id INT NOT NULL,\r\n    fname VARCHAR(30),\r\n    lname VARCHAR(30),\r\n    hired DATE NOT NULL DEFAULT '1970-01-01',\r\n    separated DATE DEFAULT '9999-12-31',\r\n    job_code INT,\r\n    store_id INT NOT NULL\r\n)\r\n\r\nPARTITION BY RANGE (store_id) (\r\n    PARTITION p0 VALUES LESS THAN (6),\r\n    PARTITION p1 VALUES LESS THAN (11),\r\n    PARTITION p2 VALUES LESS THAN (16),\r\n    PARTITION p3 VALUES LESS THAN (21)\r\n);\r\nalter table employees4 set tiflash replica 1;\r\n```\r\n### 2. What did you expect to see? (Required)\r\ntiflash replica ready\r\n### 3. What did you see instead (Required)\r\ntiflash replica not ready\r\ntidb log is as follows\r\n```\r\n[2023/04/21 07:39:16.169 +00:00] [WARN] [tiflash_manager.go:131] [\"region count getting from PD is 0.\"] [tableID=95]\r\n[2023/04/21 07:39:16.169 +00:00] [ERROR] [ddl_tiflash_api.go:501] [\"get tiflash sync progress failed\"] [error=\"region count getting from PD is 0\"] [tableID=95]\r\n```\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\nrelease-7.1\r\n",
+  "date": "2023-04-21T08:16:35Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE employees5 (id INT NOT NULL, fname VARCHAR(50), lname VARCHAR(50), hired DATE NOT NULL DEFAULT '1970-01-01', separated DATE DEFAULT '9999-12-31', job_code INT, store_id INT NOT NULL, salary DECIMAL(10, 2) DEFAULT 0.00);",
+    "ALTER TABLE employees5 PARTITION BY RANGE (store_id) (PARTITION p0 VALUES LESS THAN (5), PARTITION p1 VALUES LESS THAN (10), PARTITION p2 VALUES LESS THAN (15), PARTITION p3 VALUES LESS THAN (20));",
+    "INSERT INTO employees5 (id, fname, lname, hired, separated, job_code, store_id, salary) VALUES (1, 'John', 'Doe', '2023-01-01', NULL, 101, 3, 50000.00);",
+    "INSERT INTO employees5 (id, fname, lname, hired, separated, job_code, store_id, salary) VALUES (2, 'Jane', 'Smith', '2023-02-01', '9999-12-31', 102, 7, NULL);",
+    "SELECT * FROM employees5;"
+  ],
+  "key_bug_features": [
+    "tiflash replica not ready after partition table creation"
+  ]
+}

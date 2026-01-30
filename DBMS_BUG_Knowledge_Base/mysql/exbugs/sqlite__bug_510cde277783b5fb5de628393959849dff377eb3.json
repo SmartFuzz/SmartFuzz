@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/510cde2777",
+  "title": "Endless loop on a query with window functions, ORDER BY, and LIMIT",
+  "description": "drh added on 2018-09-17 14:28:12:\nThe following query hits an assert() in the byte-code engine, or if assert()s\nare disabled, goes into an endless loop in the byte code.\nCREATE TABLE t1(id, b, c);\nINSERT INTO t1 VALUES(1, 'A', 'one');\nINSERT INTO t1 VALUES(2, 'B', 'two');\nINSERT INTO t1 VALUES(3, 'C', 'three');\nINSERT INTO t1 VALUES(4, 'D', 'one');\nINSERT INTO t1 VALUES(5, 'E', 'two');\nSELECT id, b, lead(c,1) OVER(ORDER BY c) AS x FROM t1 WHERE id>1 ORDER BY b LIMIT 1;\nThis problem appears to have been introduced by check-in\n[206720129ed2fa8875a2] which was a fix for ticket\n[9936b2fa443fec03ff25] which was the previous problem of an\nendless loop due to the ORDER BY LIMIT optimization.",
+  "date": "2018-09-17 14:28:126.90 years ago",
+  "vulnerable_version": "3.25.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t2(id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255), value FLOAT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t2(name, value) VALUES('Alpha', 1.1), ('Beta', 2.2), ('Gamma', 3.3), ('Delta', NULL), ('Epsilon', 4.4);",
+    "CREATE TABLE t3(id INT, ref_id INT, description VARCHAR(255), FOREIGN KEY(ref_id) REFERENCES t2(id));",
+    "INSERT INTO t3(id, ref_id, description) VALUES(1, 1, 'First'), (2, 2, 'Second'), (3, 3, 'Third'), (4, NULL, 'Fourth');",
+    "SELECT t2.id, t2.name, (SELECT t3.description FROM t3 WHERE t3.ref_id = t2.id ORDER BY t3.id LIMIT 1 OFFSET 1) AS next_desc FROM t2 WHERE t2.value > 1 ORDER BY t2.name LIMIT 1;"
+  ],
+  "key_bug_features": [
+    "Endless loop with window functions and ORDER BY LIMIT"
+  ]
+}

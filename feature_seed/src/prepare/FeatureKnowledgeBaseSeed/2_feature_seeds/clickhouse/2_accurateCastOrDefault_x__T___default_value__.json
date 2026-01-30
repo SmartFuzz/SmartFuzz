@@ -1,0 +1,10 @@
+CREATE TABLE fuzz_test (id UInt32, value String, amount Int32, created_at DateTime DEFAULT now());
+INSERT INTO fuzz_test (id, value, amount) VALUES (1, '100', 50), (2, '200', -10), (3, NULL, 150);
+SELECT id, accurateCastOrDefault(value, 'UInt8', 255) as casted_value, amount FROM fuzz_test WHERE amount != ANY (SELECT amount FROM fuzz_test WHERE value IS NOT NULL);
+SELECT id, accurateCastOrDefault(0, 'Int8') as default_int8, accurateCastOrDefault(NULL, 'Int32', 1000) as default_int32 FROM fuzz_test GROUP BY id HAVING default_int8 >= 0;
+SELECT id, amount, accurateCastOrDefault(value, 'FixedString(4)', 'Def') as fixed_value FROM fuzz_test WHERE values IS NULL OR amount != ANY (SELECT accurateCastOrDefault(amount, 'Int8') FROM fuzz_test WHERE value != '' ORDER BY id DESC);
+SELECT id, amount, accurateCastOrDefault(amount, 'UInt8') as amount_casted FROM fuzz_test WHERE amount != ANY (SELECT accurateCastOrDefault(0, 'UInt32', 1000) FROM fuzz_test WHERE created_at > now() - INTERVAL 1 DAY GROUP BY id);
+CREATE TABLE temp_fuzz (id Int32, description String) ENGINE = Memory;
+INSERT INTO temp_fuzz (id, description) VALUES (1, 'Test'), (2, 'Another Test'), (3, NULL);
+SELECT t.id, accurateCastOrDefault(t.description, 'FixedString(10)', 'NONE') as desc_fixed, f.amount FROM fuzz_test f JOIN temp_fuzz t ON accurateCastOrDefault(t.id, 'UInt32') != f.id WHERE f.amount != ANY (SELECT amount FROM fuzz_test WHERE amount < 0);
+SELECT id, CASE WHEN amount < 0 THEN accurateCastOrDefault(NULL, 'Int8', 0) ELSE accurateCastOrDefault(value, 'Int8') END as case_casted FROM fuzz_test WHERE ID NOT IN (SELECT accurateCastOrDefault(f.amount, 'Int32') FROM fuzz_test f GROUP BY id);

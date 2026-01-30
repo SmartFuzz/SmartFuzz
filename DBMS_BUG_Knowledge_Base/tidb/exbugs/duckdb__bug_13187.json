@@ -1,0 +1,19 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/13187",
+  "title": "Creating MACRO involving RANGE FRAMING fails with \"Binding error\"",
+  "description": "### What happens?\n\nCreating a MACRO involving [Range Framing](https://duckdb.org/docs/sql/functions/window_functions#range-framing) yields a casting error.\r\n\r\nWriting the same query in a normal SELECT statement without defining a MACRO works fine however.\n\n### To Reproduce\n\n```sql\r\nCREATE MACRO ts_smooth(x, y) AS (\r\n  SELECT avg(y) OVER (\r\n    ORDER BY x ASC RANGE BETWEEN INTERVAL 1 MONTHS PRECEDING AND INTERVAL 1 MONTHS FOLLOWING\r\n  )\r\n);\r\n```\r\n\r\nOutput:\r\n```\r\nBinder Error: Could not choose a best candidate function for the function call \"-(\"NULL\", INTERVAL)\". In order to select one, please add explicit type casts.\r\n        Candidate functions:\r\n        -(DATE, INTERVAL) -> TIMESTAMP\r\n        -(TIME, INTERVAL) -> TIME\r\n        -(TIME WITH TIME ZONE, INTERVAL) -> TIME WITH TIME ZONE\r\n        -(INTERVAL, INTERVAL) -> INTERVAL\r\n```\r\n\r\nThe same works fine however when not defining a MACRO:\r\n```sql\r\nCREATE OR REPLACE TABLE tmp (x DATE, val NUMERIC);\r\n\r\nINSERT INTO tmp VALUES ('2023-01-01', 3);\r\nINSERT INTO tmp VALUES ('2023-01-02', 4);\r\nINSERT INTO tmp VALUES ('2023-01-03', 5);\r\n\r\nSELECT avg(val) OVER (ORDER BY x ASC RANGE BETWEEN INTERVAL 1 MONTHS PRECEDING AND INTERVAL 1 MONTHS FOLLOWING) AS y FROM tmp;\r\n```\n\n### OS:\n\nMS Windows 10, x64\n\n### DuckDB Version:\n\n1.0.0\n\n### DuckDB Client:\n\nWasm\n\n### Full Name:\n\nLukas Schneiderbauer\n\n### Affiliation:\n\nNone\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a stable release\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [X] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [X] Yes, I have",
+  "date": "2024-07-29 11:19:21",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE sales (sale_date DATE, amount DECIMAL(10, 2), category VARCHAR(255));",
+    "INSERT INTO sales VALUES ('2023-01-01', 100.50, 'A');",
+    "INSERT INTO sales VALUES ('2023-01-15', 200.75, 'B');",
+    "SELECT avg(amount) OVER (ORDER BY sale_date ASC RANGE BETWEEN INTERVAL 1 MONTH PRECEDING AND INTERVAL 1 MONTH FOLLOWING) AS average_sales FROM sales WHERE sale_date = '2023-01-01';"
+  ],
+  "key_bug_features": [
+    "Creating MACRO with RANGE FRAMING causes binding error"
+  ]
+}

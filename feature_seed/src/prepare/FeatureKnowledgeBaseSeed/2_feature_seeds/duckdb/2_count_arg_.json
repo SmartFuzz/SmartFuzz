@@ -1,0 +1,12 @@
+CREATE TABLE test_data (id INT, name VARCHAR, created_at DATE);
+INSERT INTO test_data (id, name, created_at) VALUES (1, NULL, DATE '2021-01-01'), (2, 'Alice', DATE '2021-01-02'), (3, 'Bob', DATE '2021-01-02'), (4, 'Charlie', DATE NULL);
+SELECT COUNT(name) + INTERVAL 1 DAY AS plus_one_day FROM (SELECT id, name FROM test_data WHERE created_at IS NOT NULL) AS filtered_names;
+SELECT COUNT(name) AS total_names, COUNT(created_at) + INTERVAL (SELECT COUNT(id) FROM test_data WHERE name IS NULL) DAY AS null_adjusted_dates FROM test_data GROUP BY created_at HAVING total_names > 1;
+SELECT COUNT(*) + (SELECT COUNT(*) FROM test_data WHERE name IS NULL) AS count_with_nulls FROM test_data WHERE created_at = DATE '2021-01-01' GROUP BY created_at HAVING COUNT(name) > 0;
+SELECT id, COUNT(name) OVER (PARTITION BY created_at) + INTERVAL 5 DAY AS adjusted_partition_count FROM test_data WHERE name IS NOT NULL ORDER BY created_at;
+CREATE TABLE another_table (ref_id INT, some_value INT, FOREIGN KEY (ref_id) REFERENCES test_data(id));
+INSERT INTO another_table (ref_id, some_value) VALUES (1, 100), (2, 200), (3, 300), (4, NULL);
+SELECT a.ref_id, COUNT(a.some_value) + INTERVAL COUNT(DISTINCT t.id) DAY AS final_count FROM another_table a JOIN test_data t ON a.ref_id = t.id GROUP BY a.ref_id HAVING final_count IS NOT NULL;
+CREATE TABLE date_test (test_id INT, test_date DATE);
+INSERT INTO date_test (test_id, test_date) VALUES (1, DATE '2021-01-03'), (2, DATE '2021-02-01');
+SELECT COUNT(test_date) + (SELECT COUNT(*) FROM date_test WHERE test_date IS NULL) AS count_dates FROM date_test WHERE test_date >= DATE '2021-01-01';

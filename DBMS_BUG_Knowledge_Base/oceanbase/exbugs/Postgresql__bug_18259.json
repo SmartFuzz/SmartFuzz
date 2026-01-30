@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/18259-6e256429825dd435%40postgresql.org",
+  "title": "BUG #18259: Assertion in ExtendBufferedRelLocal() fails after no-space-left condition",
+  "description": "The following bug has been logged on the website:\nBug reference:      18259\nLogged by:          Alexander Lakhin\nEmail address:      exclusion(at)gmail(dot)com\nPostgreSQL version: 16.1\nOperating system:   Ubuntu 22.04\nDescription:\nThe following script:\nmkdir /tmp/100m\nsudo mount -t tmpfs -o size=100M tmpfs /tmp/100m\nexport PGDATA=/tmp/100m/tmpdb\ninitdb\npg_ctl -l server.log start\ncat << 'EOF' | psql\nCREATE UNLOGGED TABLE filler(a int, b text STORAGE plain);\nINSERT INTO filler SELECT g, repeat('x', 1000) FROM generate_series(1,\n50000) g;\nCREATE TEMP TABLE tbl(a int);\nINSERT INTO tbl SELECT g FROM generate_series(1, 200000) g;\nINSERT INTO tbl SELECT g FROM generate_series(1, 200000) g;\nDROP TABLE filler;\nINSERT INTO tbl SELECT g from generate_series(1, 200000) g;\nEOF\ntriggers an assertion failure following \"no space left\" errors:\n...\nCREATE TABLE\nERROR:  could not extend file \"base/5/t3_16391\": No space left on device\nHINT:  Check free disk space.\nERROR:  could not extend file \"base/5/t3_16391\": No space left on device\nHINT:  Check free disk space.\nDROP TABLE\nserver closed the connection unexpectedly\nThis probably means the server terminated abnormally\nbefore or while processing the request.\nconnection to server was lost\nTRAP: failed Assert(\"buf_state & BM_TAG_VALID\"), File: \"localbuf.c\", Line:\n390, PID: 25978\nThe call stack of the failure is:\nExtendBufferedRelLocal at localbuf.c:391:4\nExtendBufferedRelCommon at bufmgr.c:1801:17\nExtendBufferedRelBy at bufmgr.c:862:9\nRelationAddBlocks at hio.c:342:16\nRelationGetBufferForTuple at hio.c:768:11\nheap_insert at heapam.c:1862:11\nheapam_tuple_insert at heapam_handler.c:253:2\ntable_tuple_insert at tableam.h:1402:1\nExecInsert at nodeModifyTable.c:1138:21\nExecModifyTable at nodeModifyTable.c:3810:12\nExecProcNodeFirst at execProcnode.c:465:1\nExecProcNode at executor.h:274:1\nExecutePlan at execMain.c:1670:10\nstandard_ExecutorRun at execMain.c:365:3\nExecutorRun at execMain.c:310:1\nProcessQuery at pquery.c:165:5\nPortalRunMulti at pquery.c:1277:5\nPortalRun at pquery.c:795:5\nexec_simple_query at postgres.c:1274:10\nPostgresMain at postgres.c:4641:27\nExitPostmaster at postmaster.c:5047:1\nBackendStartup at postmaster.c:4196:5\nServerLoop at postmaster.c:1788:6\nPostmasterMain at postmaster.c:1466:11\nThe first bad commit for this anomaly is 31966b15 (and exactly that commit\nadded the Assert).\nWith debug logging added in this code within ExtendBufferedRelLocal():\nif (found)\n{\nBufferDesc *existing_hdr =\nGetLocalBufferDescriptor(hresult->id);\nuint32      buf_state;\nUnpinLocalBuffer(BufferDescriptorGetBuffer(victim_buf_hdr));\nexisting_hdr = GetLocalBufferDescriptor(hresult->id);\nPinLocalBuffer(existing_hdr, false);\nbuffers[i] = BufferDescriptorGetBuffer(existing_hdr);\nbuf_state = pg_atomic_read_u32(&existing_hdr->state);\nAssert(buf_state & BM_TAG_VALID);\nAssert(!(buf_state & BM_DIRTY));\nbuf_state &= BM_VALID;\npg_atomic_unlocked_write_u32(&existing_hdr->state, buf_state);\n...\nI see that it reached for the second INSERT (and NOSPC error) with\nexisting_hdr->state == 0x2040000, but for the third INSERT I observe\nstate == 0x0.",
+  "date": "2023-12-25 09:00:02",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE test_table(id INT PRIMARY KEY AUTO_INCREMENT, name TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table(name) VALUES ('test1'), ('test2'), (NULL), ('test3');",
+    "CREATE TABLE filler(a INT, b TEXT);",
+    "INSERT INTO filler SELECT g, REPEAT('x', 1000) FROM (SELECT LEVEL g FROM DUAL CONNECT BY LEVEL <= 50000) tmp;",
+    "DROP TABLE IF EXISTS filler;"
+  ],
+  "key_bug_features": [
+    "INSERT INTO tbl after DROP TABLE filler"
+  ]
+}

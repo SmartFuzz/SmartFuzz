@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=107698",
+  "title": "MySQL ODBC 8.0 Unicode Driver Fails to Write 4-Byte Emoji to Database",
+  "description": "This is an extension to this bug here\nhttps://bugs.mysql.com/bug.php?id=104346\nUsing the ODBC Unicode Driver I can successfully read 4 Byte Strings from the database (including emoji) using 8.0.28 and above however writing back to the database results in the following error.\r\n\r\nSystem.Data.Odbc.OdbcException (0x80131937): ERROR [HY000] [MySQL][ODBC 8.0(w) Driver][mysqld-8.0.29]Conversion from collation utf8_general_ci into utf8mb4_unicode_ci impossible for parameter\r\n\r\nIssue is there in 8.0.28 and 8.0.29\r\n\r\nThere seems to be no way that I can find of getting the connector to use UTF8MB4 instead of UTF8 (which is depreciated now anyway)\nHow to repeat:\nCreate a Table\r\n\r\nCREATE TABLE `games` (\r\n  `id` int UNSIGNED NOT NULL COMMENT 'THE GAME ID',\r\n  `name` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='HOLDS DETAILS OF ACTIVE EVENT GAMES';\r\n\r\nINSERT INTO `games` (`id`, `name`) VALUES (NULL, 'Testing 123 🙃');\n\nUsing .NET (Going to use VB this example sorry) and the DSN\r\n\r\n\"DRIVER={MySQL ODBC 8.0 Unicode Driver}; SERVER=127.0.0.1; DATABASE=test; UID=test; PASSWORD=test; PORT=3306; CHARSET=utf8mb4; AUTO_RECONNECT=1; MULTI_STATEMENTS=1;\"\n\n'-- Read Value\r\nUsing mRetrieve As New OdbcCommand(\" SELECT `name` FROM `games` WHERE `id` = 1 \", m_DbConnection)\r\n\r\n\t'-- Read Value\r\n\tDim tName As String = \"\"\r\n\tUsing mReader As OdbcDataReader = mRetrieve.ExecuteReader\r\n\t    If mReader IsNot Nothing AndAlso Not mReader.IsClosed AndAlso mReader.HasRows Then\r\n\t\ttName = mReader.Item(\"name\")\r\n\t    End If\r\n\tEnd Using\r\n\r\n\t'-- Update\r\n\tUsing mWriter As New OdbcCommand(\" UPDATE `games` SET `name` = ? WHERE `id` = 1 \", m_DbConnection)\r\n\t    mWriter.Parameters.AddWithValue(\":NAME\", tName)\r\n\t    mWriter.ExecuteNonQuery()\r\n\tEnd Using\r\n\r\nEnd Using\nSuggested fix:\nMySQL ODBC connector should default to at least utf8_general_ci or allow this parameter to be set.",
+  "date": "2022-06-29 09:22:00",
+  "vulnerable_version": "8.0.29",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE games (id SERIAL PRIMARY KEY, name VARCHAR(512) NOT NULL, release_date DATE NOT NULL);",
+    "INSERT INTO games (name, release_date) VALUES ('Testing 123 🙃', '2023-10-01');",
+    "INSERT INTO games (name, release_date) VALUES ('Another Game 😊', '2023-10-02');",
+    "UPDATE games SET name = 'Updated Game 😎' WHERE id = 1;",
+    "SELECT name FROM games WHERE release_date > '2023-10-01';"
+  ],
+  "key_bug_features": [
+    "ODBC driver fails to write 4-byte emoji to database"
+  ]
+}

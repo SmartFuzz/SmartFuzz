@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/61133",
+  "title": "Should refuse to create expression index with `((null))`",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n\n```\nCREATE TABLE `t` (\n  `id` int,\n  KEY `idx_name` ((null))\n);\nalter table t set tiflash replica 1;\ninsert t values(0);\n```\n\n### 2. What did you expect to see? (Required)\n\nAn expression with `((null))` is meaningless for an index. This could created by accident from the SQL input. TiDB should refuse to create expression index with `((null))`.\nIn mysql 9.3.0/ 8.0.x, mysql also refuse to create expression like this.\n\n```\ndocker pull mysql:latest\ndocker run -itd --rm --name mysql-test -p 3306:3306 -e MYSQL_ROOT_PASSWORD='123456' mysql\n\n\nMySQL root@127.0.0.1:(none)> select version();\n+-----------+\n| version() |\n+-----------+\n| 9.3.0     |\n+-----------+\nMySQL root@127.0.0.1:test> CREATE TABLE `t` (\n                        ->   `id` int,\n                        ->   KEY `idx_name` ((null))\n                        -> );\n(3761, \"The used storage engine cannot index the expression 'NULL'.\")\n\n\ndocker pull mysql:8.0\ndocker run -itd --rm --name mysql-test -p 3306:3306 -e MYSQL_ROOT_PASSWORD='123456' mysql:8.0\nMySQL root@127.0.0.1:test> select version()\n+-----------+\n| version() |\n+-----------+\n| 8.0.42    |\n+-----------+\n1 row in set\nTime: 0.011s\nMySQL root@127.0.0.1:test> CREATE TABLE `t` (\n                        ->   `id` int,\n                        ->   KEY `idx_name` ((null))\n                        -> );\n(3761, \"The used storage engine cannot index the expression 'NULL'.\")\nMySQL root@127.0.0.1:test> set sql_mode = '';\nQuery OK, 0 rows affected\nTime: 0.001s\nMySQL root@127.0.0.1:test> CREATE TABLE `t` (\n                        ->   `id` int,\n                        ->   KEY `idx_name` ((null))\n                        -> );\n(3761, \"The used storage engine cannot index the expression 'NULL'.\")\n```\n\n### 3. What did you see instead (Required)\n\nTiDB accept this kind of invalid expression index. If tiflash replica is created and new rows inserted, it cause TiFlash crashes becuase unexpectedly need to create a \"Nothing\" data type in  the storage layer. https://github.com/pingcap/tiflash/issues/9891\n\n```\nTiDB root@10.2.12.81:test> CREATE TABLE `t2` (\n                        ->   `id` int,\n                        ->   KEY `idx_name` ((null))\n                        -> );\nTiDB root@10.2.12.81:test> show create table t2 \\G\n***************************[ 1. row ]***************************\nTable        | t2\nCreate Table | CREATE TABLE `t2` (\n  `id` int DEFAULT NULL,\n  KEY `idx_name` ((null))\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\nversions since v6.5.0, where expression index is GA\n",
+  "date": "2025-05-15T07:57:49Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (id Int32, name String);",
+    "CREATE TABLE t2 (id Int32 NOT NULL, value Decimal(10, 2));",
+    "CREATE TABLE t3 (id Int32, data String);",
+    "INSERT INTO t1 (id, name) VALUES (1, 'test');",
+    "SELECT * FROM t1;"
+  ],
+  "key_bug_features": [
+    "Creating expression index with ((null))"
+  ]
+}

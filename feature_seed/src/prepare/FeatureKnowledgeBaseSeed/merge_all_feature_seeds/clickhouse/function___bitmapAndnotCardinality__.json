@@ -1,0 +1,16 @@
+CREATE TABLE test_table (id UInt32, bm1 AggregateFunction(bitmap, UInt32), bm2 AggregateFunction(bitmap, UInt32));
+INSERT INTO test_table VALUES (1, bitmapBuild([1, 2, 3])), (2, bitmapBuild([3, 4, 5])), (3, bitmapBuild([]));
+SELECT bitmapAndnotCardinality(bitmapBuild([1, 2, 3]), bitmapBuild([])) AS res;
+SELECT bitmapAndnotCardinality(bitmapBuild([]), bitmapBuild([])) AS res;
+SELECT bitmapAndnotCardinality(bitmapBuild([1, 2, 3]), bitmapBuild([2, 3, 4])) AS res;
+SELECT bitmapAndnotCardinality(bitmapBuild([5, 6, 7]), bitmapBuild([6, 7, 8])) AS res;
+SELECT bitmapAndnotCardinality(bm1, bm2) FROM test_table GROUP BY id;
+SELECT id, bitmapAndnotCardinality(bm1, bm2) AS res FROM (SELECT id, bitmapBuild([1, 2, 3]) AS bm1, bitmapBuild([2, 4, 5]) AS bm2 FROM test_table) GROUP BY id;
+CREATE TABLE temp_table AS SELECT bitmapBuild([1, 2, 3]) AS bm1, bitmapBuild([3, 4, 5]) AS bm2;
+SELECT bitmapAndnotCardinality(bm1, bm2) FROM temp_table;
+SELECT bitmapAndnotCardinality(bitmapBuild([1, 2]), bitmapBuild([2, 3])) AS res;
+WITH bitmapBuild([1, 3, 5]) AS bm1, bitmapBuild([2, 3, 6]) AS bm2 SELECT bitmapAndnotCardinality(bm1, bm2) AS res;
+SELECT bitmapAndnotCardinality(bitmapBuild([1]), bitmapBuild([1, 2, 3, 4])) AS res;
+CREATE TABLE complex_table (id UInt32, bm AggregateFunction(bitmap, UInt32));
+INSERT INTO complex_table SELECT id, bitmapBuild(arrayJoin([1, 2, 3, 4, 5])) FROM numbers(5);
+SELECT bitmapAndnotCardinality(bitmapBuild([1, 2]), bitmapMerge(bm)) FROM complex_table GROUP BY id;

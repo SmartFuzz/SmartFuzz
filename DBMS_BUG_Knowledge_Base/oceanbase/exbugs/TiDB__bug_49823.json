@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/49823",
+  "title": "index buckets bound couldn't decode itself out with corresponding index column type.",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n```\r\nuse test\r\ncreate table t(a datetime, b int, index ia(a,b));\r\ninsert into t value('2023-12-27',1),(null, 2),('2023-12-28',3),(null,4);\r\nanalyze table t with 0 topn;\r\nexplain select * from t where a > 1;\r\nshow stats_buckets where db_name = 'test';\r\n```\r\nAND mock the code in v6.5.4 showExec\r\n```\r\n// ValueToString converts a possible encoded value to a formatted string. If the value is encoded, then\r\n// idxCols equals to number of origin values, else idxCols is 0.\r\nfunc ValueToString(vars *variable.SessionVars, value *types.Datum, idxCols int, idxColumnTypes []byte) (string, error) {\r\n\tif idxCols == 0 {\r\n\t\treturn value.ToString()\r\n\t}\r\n\tvar loc *time.Location\r\n\tif vars != nil {\r\n\t\tloc = vars.Location()\r\n\t}\r\n\t// Ignore the error and treat remaining part that cannot decode successfully as bytes.\r\n\tdecodedVals, remained, err := codec.DecodeRange(value.GetBytes(), idxCols, idxColumnTypes, loc)\r\n\t// Ignore err explicit to pass errcheck.\r\n        // mock the code here, rather than ignore it!!!\r\n\tif err != nil {\r\n\t\tpanic(err.Error())\r\n\t}\r\n\tif len(remained) > 0 {\r\n\t\tdecodedVals = append(decodedVals, types.NewBytesDatum(remained))\r\n\t}\r\n\tstr, err := types.DatumsToString(decodedVals, true)\r\n\treturn str, err\r\n}\r\n```\r\n\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\nshow stats_buckets where table_name =  'xxx' and column_name = 'xxx'\\G\r\n\r\n\r\n### 3. What did you see instead (Required)\r\nshow stats_buckets successfully\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\npanic with recovery with msg: invalid encoded key flag 0\r\n\r\n",
+  "date": "2023-12-27T03:32:44Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR(100), created_at DATETIME, value DECIMAL(10, 2), status TINYINT);",
+    "INSERT INTO test_table (id, name, created_at, value, status) VALUES (1, 'Test A', '2023-12-27 10:00:00', 100.50, 1), (2, 'Test B', NULL, 200.00, 0), (3, 'Test C', '2023-12-28 11:00:00', NULL, 1), (4, 'Test D', NULL, NULL, 0);",
+    "CREATE INDEX idx_created_at ON test_table (created_at);",
+    "SELECT * FROM test_table WHERE created_at IS NULL OR value > 150.00;",
+    "SELECT * FROM ob_stats_buckets WHERE table_name = 'test_table' AND column_name = 'created_at';"
+  ],
+  "key_bug_features": [
+    "index buckets decoding with invalid encoded key flag"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/91741",
+  "title": "Query condition cache doesn't work properly with `parallel_replicas_mode='sampling_key'`",
+  "description": "```sql\nCREATE TABLE test_max_parallel_replicas_lr (timestamp UInt64) ENGINE = MergeTree ORDER BY (intHash32(timestamp)) SAMPLE BY intHash32(timestamp) SETTINGS index_granularity=1;\nINSERT INTO test_max_parallel_replicas_lr select number as timestamp from system.numbers limit 100;\nSET enable_parallel_replicas = 1;\nSET parallel_replicas_mode='sampling_key';\nSET max_parallel_replicas = 2;\nSET parallel_replicas_for_non_replicated_merge_tree = 1;\nSET use_query_condition_cache = 1;\nselect count() FROM remote('127.0.0.{2|3}', currentDatabase(), test_max_parallel_replicas_lr) WHERE timestamp > 0;\n┌─count()─┐\n1. │      56 │\n└─────────┘\nselect count() FROM remote('127.0.0.{2|3}', currentDatabase(), test_max_parallel_replicas_lr) WHERE timestamp > 0;\n┌─count()─┐\n1. │       1 │\n└─────────┘\n```\nThe correct result is `99`:\n```sql\nselect count() FROM remote('127.0.0.{2|3}', currentDatabase(), test_max_parallel_replicas_lr) WHERE timestamp > 0;\n┌─count()─┐\n1. │      99 │\n└─────────┘\n```",
+  "date": "2025-12-08T20:26:18Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test_parallel_replicas (id UInt32, value String, timestamp DateTime) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO test_parallel_replicas SELECT number, toString(number) AS value, now() FROM dual WHERE number < 100;",
+    "CREATE TABLE test_parallel_replicas_2 (id UInt32, value Nullable(String), timestamp DateTime) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO test_parallel_replicas_2 SELECT number, CASE WHEN number % 2 = 0 THEN toString(number) ELSE NULL END AS value, now() FROM dual WHERE number < 100;",
+    "SELECT COUNT(*) FROM test_parallel_replicas WHERE value IS NOT NULL AND timestamp > NOW() - INTERVAL '1' DAY;"
+  ],
+  "key_bug_features": [
+    "Query condition cache with parallel replicas mode sampling_key"
+  ]
+}

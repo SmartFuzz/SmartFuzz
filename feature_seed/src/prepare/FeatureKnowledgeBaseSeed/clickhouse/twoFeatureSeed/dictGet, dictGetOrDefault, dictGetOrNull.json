@@ -1,0 +1,16 @@
+{
+    "function": "dictGet, dictGetOrDefault, dictGetOrNull",
+    "operator": "a NOT LIKE s",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, text_column String, date_column DateTime, num_column Nullable(UInt32)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table VALUES (1, 'test1', now(), 100), (2, 'test2', now() - INTERVAL 1 DAY, NULL), (3, 'test3', now() - INTERVAL 2 DAY, 200), (4, 'sample', now() - INTERVAL 3 DAY, NULL);",
+        "SELECT dictGetOrDefault('ext-dict-test', 'c1', (SELECT id FROM test_table WHERE date_column NOT LIKE '2023-10-01 00:00:00'), toUInt32(id * 10)) AS val FROM test_table;",
+        "SELECT id, dictGet('ext-dict-mult', ('c1', 'c2'), (SELECT id FROM test_table WHERE text_column NOT LIKE 'test%')) AS val FROM test_table WHERE dictHas('ext-dict-mult', id) AND (date_column > now() - INTERVAL 1 DAY);",
+        "SELECT (id, date_column), dictGetOrNull('range_key_dictionary', 'value', id, date_column) AS dict_value, dictGetOrNull('range_key_dictionary', 'value_nullable', id, date_column) AS dict_nullable_value FROM test_table WHERE text_column NOT LIKE '%sample%' GROUP BY id, date_column HAVING dict_value IS NOT NULL;",
+        "SELECT id, dictGetOrDefault('ext-dict-test', 'c1', id + 1, toUInt32(num_column * 10)) AS dict_value, (SELECT COUNT(*) FROM test_table WHERE text_column NOT LIKE '%test%') AS text_count FROM test_table WHERE num_column IS NOT NULL ORDER BY text_count;",
+        "CREATE DICTIONARY temp_dict (key UInt64, attr1 String, attr2 UInt32) PRIMARY KEY key SOURCE(CLICKHOUSE(HOST 'localhost' PORT tcpPort() TABLE 'test_table')) LIFETIME(MIN 1 MAX 1000) LAYOUT(FLAT);",
+        "SELECT dictGetOrNull('temp_dict', 'attr1', id + 1) AS dict_attr1, dictGetOrNull('temp_dict', 'attr2', id + 1) AS dict_attr2 FROM test_table WHERE (num_column NOT LIKE '' OR text_column NOT LIKE '');",
+        "SELECT id, (id * 100 + num_column IS NULL) AS complex_check FROM test_table WHERE (num_column NOT LIKE 200 OR text_column IS NOT NULL) HAVING complex_check > 0;",
+        "SELECT dictGet('ext-dict-mult', ('c1', 'c2'), (SELECT id FROM test_table WHERE num_column NOT LIKE %)) AS nested_dict_val FROM test_table HAVING dictGetOrNull('ext-dict-mult', 'c1', 2) NOT LIKE 'sample';"
+    ]
+}

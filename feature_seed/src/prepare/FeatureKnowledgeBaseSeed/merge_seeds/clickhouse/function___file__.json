@@ -1,0 +1,15 @@
+CREATE TABLE test_table (data String) ENGINE = Memory;
+INSERT INTO test_table SELECT file('*.txt');
+INSERT INTO test_table SELECT file('file_with_default.txt', 'default_value');
+INSERT INTO test_table SELECT file('this_file_does_not_exist.txt', 'fallback_value');
+INSERT INTO test_table SELECT file('subdir/*.txt');
+INSERT INTO test_table SELECT file('subdir/{file1,file2}.txt');
+INSERT INTO test_table SELECT file('file{1..3}.txt');
+CREATE TABLE test_table2 (id UInt32, description String) ENGINE = Memory;
+INSERT INTO test_table2 VALUES (1, 'test'), (2, 'example');
+INSERT INTO test_table2 SELECT id, file('*.log') FROM test_table WHERE data IS NOT NULL;
+CREATE TABLE final_table AS SELECT id, file('*.txt', 'missing_data') AS file_content FROM test_table2;
+SELECT description, file('other_file.txt') FROM test_table2 WHERE id IN (SELECT id FROM test_table2 WHERE description = 'test');
+CREATE TABLE complex_table (id UInt32, content String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO complex_table SELECT id, file('complex{1..5}.json') FROM test_table2;
+SELECT id, content FROM complex_table WHERE content LIKE '%keyword%';

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/42619",
+  "title": "TABLE_STORAGE_STATS table doesn't properly handle partitioned table",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\nWhen getting information for the partitioned table, it doesn't get information for each partition respectively.\r\nIt only uses the global table id.\r\n\r\n```sql\r\nuse test;\r\nCREATE TABLE `t` (\r\n  `a` int(11) DEFAULT NULL,\r\n  `b` int(11) DEFAULT NULL,\r\n  `c` int(11) DEFAULT NULL,\r\n  KEY `ia` (`a`),\r\n  KEY `ib` (`b`),\r\n  KEY `ic` (`c`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin\r\nPARTITION BY RANGE (`a`)\r\n(PARTITION `p0` VALUES LESS THAN (300),\r\n PARTITION `p1` VALUES LESS THAN (600),\r\n PARTITION `p2` VALUES LESS THAN (900),\r\n PARTITION `p3` VALUES LESS THAN (MAXVALUE)) ;\r\n```\r\nAnd insert some data into this table.\r\n```sql\r\nselect * from information_schema.TABLE_STORAGE_STATS where table_schema='test' and table_name='t';\r\n```\r\n\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nProperly return the information for the partitions.\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nOnly data related to table id 88 is returned.\r\n\r\n```\r\n+--------------+------------+----------+------------+--------------+--------------------+------------+------------+\r\n| TABLE_SCHEMA | TABLE_NAME | TABLE_ID | PEER_COUNT | REGION_COUNT | EMPTY_REGION_COUNT | TABLE_SIZE | TABLE_KEYS |\r\n+--------------+------------+----------+------------+--------------+--------------------+------------+------------+\r\n| test         | t          |       88 |          1 |            1 |                  1 |          1 |          0 |\r\n+--------------+------------+----------+------------+--------------+--------------------+------------+------------+\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\nmaster\r\n\r\n",
+  "date": "2023-03-27T14:48:08Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2 ( id INT NOT NULL, name VARCHAR(255), value DECIMAL(10,2), PRIMARY KEY (id));",
+    "INSERT INTO t2 (id, name, value) VALUES (1, 'test1', 100.50);",
+    "INSERT INTO t2 (id, name, value) VALUES (2, 'test2', NULL);",
+    "SELECT * FROM t2;",
+    "SELECT COUNT(*) FROM t2 WHERE value IS NULL OR value < 50;"
+  ],
+  "key_bug_features": [
+    "TABLE_STORAGE_STATS fails to retrieve partitioned table information"
+  ]
+}

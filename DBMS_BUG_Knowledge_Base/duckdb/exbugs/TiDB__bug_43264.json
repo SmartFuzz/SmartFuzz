@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/43264",
+  "title": "information_schema.columns shows wrong type `var_string` instead of `varchar` for view",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\nSimilar to issue #17096, there is a `var_string` type in the `DATA_TYPE` column of the `information_schema.columns` table, but MySQL returns it as `varchar` type.\r\n\r\n```sql\r\nCREATE TABLE User (\r\n    id INT PRIMARY KEY,\r\n    first_name VARCHAR(255) NOT NULL,\r\n    last_name VARCHAR(255) NULL\r\n);\r\n\r\nCREATE VIEW Schwuser AS\r\nSELECT\r\n    u.id,\r\n    CONCAT(u.first_name, ' ', u.last_name) AS name\r\nFROM User u;\r\n\r\nselect DATA_TYPE from information_schema.columns where TABLE_NAME = 'Schwuser' and column_name = 'name';\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nMySQL:\r\n\r\n```\r\n+-----------+\r\n| DATA_TYPE |\r\n+-----------+\r\n| varchar   |\r\n+-----------+\r\n1 row in set (0.15 sec)\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nTiDB:\r\n\r\n```\r\n+------------+\r\n| DATA_TYPE  |\r\n+------------+\r\n| var_string |\r\n+------------+\r\n1 row in set (0.27 sec\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n```\r\n*************************** 1. row ***************************\r\ntidb_version(): Release Version: v7.0.0\r\nEdition: Community\r\nGit Commit Hash: 7376954cd868dbc44fc3015c9ef89c53749339a7\r\nGit Branch: heads/refs/tags/v7.0.0\r\nUTC Build Time: 2023-03-29 13:22:40\r\nGoVersion: go1.20.2\r\nRace Enabled: false\r\nTiKV Min Version: 6.2.0-alpha\r\nCheck Table Before Drop: false\r\nStore: tikv\r\n1 row in set (0.00 sec)\r\n```",
+  "date": "2023-04-20T15:16:21Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE Employee (id INT PRIMARY KEY, name VARCHAR(100) NOT NULL, email VARCHAR(255) UNIQUE);",
+    "CREATE VIEW EmployeeView AS SELECT id, name FROM Employee WHERE name IS NOT NULL;",
+    "SELECT COLUMN_NAME, DATA_TYPE FROM information_schema.columns WHERE TABLE_NAME = 'EmployeeView' AND COLUMN_NAME = 'name';",
+    "INSERT INTO Employee (id, name, email) VALUES (1, 'John Doe', 'john@example.com');",
+    "SELECT COUNT(*) FROM EmployeeView WHERE name LIKE 'J%';"
+  ],
+  "key_bug_features": [
+    "information_schema.columns shows var_string instead of varchar"
+  ]
+}

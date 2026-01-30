@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/60960",
+  "title": "Unexpected Result for RIGHT() function in MPP Execution",
+  "description": "## Bug Report\n\n### 1. Minimal reproduce step (Required)\n\n```sql\nCREATE TABLE t0(c0 CHAR(1));\nINSERT t0 VALUES('1');\nALTER TABLE t0 SET TIFLASH REPLICA 1;\nSELECT * FROM t0 WHERE RIGHT(c0, -1 | 0); -- 0 row, but 1 rows after several seconds\n```\nThis query should return 0 row if we execute the query immediately after `ALTER` statements. It is expected that `RIGHT(c0, -1 | 0)` should not be true. In this case, it uses TiKV storage:\n```bash\nmysql> EXPLAIN SELECT * FROM t0 WHERE RIGHT(c0, -1 | 0);\n+-------------------------+----------+-----------+---------------+-------------------------------------------+\n| id                      | estRows  | task      | access object | operator info                             |\n+-------------------------+----------+-----------+---------------+-------------------------------------------+\n| TableReader_7           | 8000.00  | root      |               | data:Selection_6                          |\n| └─Selection_6           | 8000.00  | cop[tikv] |               | right(dbtest.t0.c0, 18446744073709551615) |\n|   └─TableFullScan_5     | 10000.00 | cop[tikv] | table:t0      | keep order:false, stats:pseudo            |\n+-------------------------+----------+-----------+---------------+-------------------------------------------+\n```\n\nHowever, if we wait until the tables `t0` and `t1` are copied into TIFLASH (5 seconds in my machine) and then execute the query, it returns 1 row.\n```bash\nmysql> EXPLAIN SELECT * FROM t0 WHERE RIGHT(c0, -1 | 0);\n+----------------------------+----------+--------------+---------------+----------------------------------------------------------+\n| id                         | estRows  | task         | access object | operator info                                            |\n+----------------------------+----------+--------------+---------------+----------------------------------------------------------+\n| TableReader_16             | 8000.00  | root         |               | MppVersion: 3, data:ExchangeSender_15                    |\n| └─ExchangeSender_15        | 8000.00  | mpp[tiflash] |               | ExchangeType: PassThrough                                |\n|   └─Selection_14           | 8000.00  | mpp[tiflash] |               | right(dbtest.t0.c0, 18446744073709551615)                |\n|     └─TableFullScan_13     | 10000.00 | mpp[tiflash] | table:t0      | pushed down filter:empty, keep order:false, stats:pseudo |\n+----------------------------+----------+--------------+---------------+----------------------------------------------------------+\n```\nThe 1 row is unexpected.\n\n### 2. What did you expect to see? (Required)\n{}\n\n### 3. What did you see instead (Required)\n{1}\n\n### 4. What is your TiDB version? (Required)\n\n`tiup playground nightly --host 0.0.0.0 --kv 3 --tiflash 3`\n```bash\n8.0.11-TiDB-v9.0.0-beta.1.pre-554-gb1a5536a64-dirty\n```\n\n\n",
+  "date": "2025-05-01T19:31:52Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1(c1 VARCHAR(10) NOT NULL, c2 INTEGER DEFAULT 0);",
+    "INSERT INTO t1 VALUES('test', NULL), ('example', 5);",
+    "SELECT * FROM t1 WHERE RIGHT(c1, -2 | 0) IS NULL;",
+    "SELECT * FROM t1 WHERE RIGHT(c1, 0) IS NULL;",
+    "SELECT COUNT(*) FROM t1;"
+  ],
+  "key_bug_features": [
+    "RIGHT() function with negative length in query"
+  ]
+}

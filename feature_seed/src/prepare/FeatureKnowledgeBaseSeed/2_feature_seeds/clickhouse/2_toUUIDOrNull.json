@@ -1,0 +1,12 @@
+CREATE TABLE test_uuids (id UInt32, uuid_str String, value Float64);
+INSERT INTO test_uuids (id, uuid_str, value) VALUES (1, '61f0c404-5cb3-11e7-907b-a6006ad3dba0', 2.0), (2, 'invalid-uuid', 3.5), (3, '', 0.0);
+SELECT id, toUUIDOrNull(uuid_str) AS parsed_uuid, value * 10 AS multiplied_value FROM test_uuids WHERE value * 10 > 5;
+SELECT id, toUUIDOrNull(uuid_str) AS parsed_uuid FROM (SELECT id, uuid_str FROM test_uuids WHERE value IS NOT NULL) WHERE parsed_uuid IS NOT NULL;
+WITH (SELECT AVG(value) AS avg_value FROM test_uuids) AS avg_data SELECT id, toUUIDOrNull(uuid_str) AS parsed_uuid FROM test_uuids WHERE value * avg_data.avg_value > 1.5;
+CREATE TABLE test_aggregates (group_id UInt32, uuid_str String);
+INSERT INTO test_aggregates (group_id, uuid_str) VALUES (1, 'b12b0e93-c90a-4f16-a71f-12105786eebf'), (1, 'invalid-uuid'), (2, NULL);
+SELECT group_id, COUNT(*) AS total, SUM(toUUIDOrNull(uuid_str) IS NOT NULL) AS valid_uuids FROM test_aggregates GROUP BY group_id HAVING total > 1;
+CREATE TABLE test_join (join_id UInt32, value Float64);
+INSERT INTO test_join (join_id, value) VALUES (1, 5.0), (2, NULL);
+SELECT a.join_id, a.value * COALESCE(b.value, 1) AS adjusted_value FROM test_join a LEFT JOIN test_uuids b ON a.join_id = b.id;
+SELECT id, toUUIDOrNull(uuid_str) AS parsed_uuid FROM (SELECT id, uuid_str FROM test_uuids WHERE toUUIDOrNull(uuid_str) IS NOT NULL) ORDER BY parsed_uuid ASC;

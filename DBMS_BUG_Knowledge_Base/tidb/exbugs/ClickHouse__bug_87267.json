@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/87267",
+  "title": "Parametrized view in some case start not work with disabled analyzer",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nParametrized view start not work with disabled analyzer and view created on cluster\nproblem find in ch v25.8.2.29\nprevious all works in v25.5.x\nprevious created param views working, if it recreate its become broken with disabled analyzer\nThis problem because many prod queries can be exists with disabled analyzer (during some occured bugs in it, its often disabled)\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\n```\ndrop database if exists my_db on cluster analytics;\ncreate database my_db on cluster analytics;\nCREATE TABLE my_db.my_table on cluster analytics ENGINE = ReplicatedMergeTree ORDER BY id AS SELECT number as id FROM numbers(3);\nCREATE VIEW my_db.my_view1  on cluster analytics AS\nWITH\n{param_id:Int64}         as param_id\nSELECT * FROM my_db.my_table\nwhere id=param_id;\nCREATE VIEW my_db.my_view2 on cluster analytics AS\nwith\ncte as (\nSELECT * FROM my_db.my_view1(param_id={param_id:Int64})\n)\nselect * from cte;\n```\nworked query:\n```\nselect * from my_db.my_view2(\nparam_id=1)\nsettings allow_experimental_analyzer = 1;\n```\nfailed query:\n```\nselect * from my_db.my_view2(\nparam_id=1)\nsettings allow_experimental_analyzer = 0; --failed\n```\n### Expected behavior\nall worked as before\n### Error message and/or stacktrace\n```\n2025.09.18 11:02:05.913792 [ 7100 ] {fa7b5dd2-afb4-4350-835f-ab7dd6a50b02} <Error> executeQuery: Code: 46. DB::Exception: Unknown table function my_db.my_view1:  or incorrect parameterized view. (UNKNOWN_FUNCTION) (version 25.8.2.29 (official build)) (from 10.8.50.22:52992) (in query: select * from my_db.my_view2( param_id=1) settings allow_experimental_analyzer = 0), Stack trace (when copying this message, always include the lines below):\n0. DB::Exception::Exception(DB::Exception::MessageMasked&&, int, bool) @ 0x00000000133a211f\n1. DB::Exception::Exception(String&&, int, String, bool) @ 0x000000000c84f4ce\n2. DB::Exception::Exception(PreformattedMessage&&, int) @ 0x000000000c84ef80\n3. DB::Exception::Exception<String const&>(int, FormatStringHelperImpl<std::type_identity<String const&>::type>, String const&) @ 0x000000000daff02b\n4. DB::TableFunctionFactory::get(std::shared_ptr<DB::IAST> const&, std::shared_ptr<DB::Context const>) const @ 0x000000001618d468\n5. DB::Context::executeTableFunction(std::shared_ptr<DB::IAST> const&, DB::ASTSelectQuery const*) @ 0x0000000017c76dfe",
+  "date": "2025-09-18T11:10:07Z",
+  "vulnerable_version": "25.8.2.29",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "DROP DATABASE IF EXISTS test_db;",
+    "CREATE DATABASE test_db;",
+    "CREATE TABLE test_db.test_table (id BIGINT, name VARCHAR(255), created_at DATETIME) ENGINE=InnoDB;",
+    "CREATE VIEW test_db.test_view1 AS SELECT id, name FROM test_db.test_table WHERE created_at > NOW() - INTERVAL 1 DAY;",
+    "SELECT * FROM test_db.test_view1 WHERE id = CAST(NULL AS SIGNED);"
+  ],
+  "key_bug_features": [
+    "Parametrized view fails with disabled analyzer setting"
+  ]
+}

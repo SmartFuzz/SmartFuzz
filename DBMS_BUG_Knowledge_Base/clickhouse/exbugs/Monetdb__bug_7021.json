@@ -1,0 +1,19 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7021",
+  "title": "savepoints crash mserver5",
+  "description": "Running two transactions with a `release savepoint` in each of them crashes `mserver5` at:\n```\n0x00007ffff62d6ff5 in idx_destroy (i=0xdbdbdbdbdbdbdbdb)\n    at /home/vagrant/shared/monetdb/mdb-src/Oct2020/sql/storage/store.c:185\n185\t\tif (--(i->base.refcnt) > 0)\n```\n\n**To Reproduce**\nRun the following queries to get the crash:\n```\nstart transaction;\ncreate table savepointtest (id int, primary key(id));\nsavepoint name1;\ninsert into savepointtest values(1), (2), (3);\nsavepoint name2;\ninsert into savepointtest values(4), (5), (6);\ninsert into savepointtest values(7), (8), (9);\nsavepoint name3;\nrelease savepoint name3;\nselect * from savepointtest;\ncommit;\n\nstart transaction;\ncreate table savepointtest (id int, primary key(id));\nsavepoint name1;\ninsert into savepointtest values(1), (2), (3);\nsavepoint name2;\ninsert into savepointtest values(4), (5), (6);\ninsert into savepointtest values(7), (8), (9);\nsavepoint name3;\nrelease savepoint name1;\nselect * from savepointtest;\ncommit;\n```\nNote that, if we release savepoint \"name2\" instead of \"name3\" in the first transaction, `mserver5` doesn't crash.\n\n**Expected behavior**\nNo crash. The second transaction should abort since the table `savepointtest` already exists.\n\n**Software versions**\n - MonetDB version number [v11.39.8 (hg id: 0a97056b6c89), also happens with Oct2020-SP1 but the behavior is different]\n - OS and version: [e.g. Ubuntu 20.04.1]\n - Mercurial source code",
+  "date": "2020-12-09T08:25:07Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE TABLE savepointtest1 (id Int32, name String, created_at DateTime DEFAULT now());",
+    "INSERT INTO savepointtest1 VALUES (1, 'Alice', NULL), (2, 'Bob', NULL);",
+    "INSERT INTO savepointtest1 (id, name) VALUES (3, 'Charlie');",
+    "SELECT * FROM savepointtest1;"
+  ],
+  "key_bug_features": [
+    "releasing savepoint in concurrent transactions causes crash"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=114475",
+  "title": "COUNT(1) vs SUM of partial counts",
+  "description": "I have a table t(k1 int, k2 int, f varchar(4000) )\r\nwith 3M rows, size in disk 10GB\r\n\r\nrunning\r\n        select count(1) from t;\r\ntakes 30 minutes.\r\n\r\nrunning\r\n        select sum(a) from (select count(1) a, k1 from test.t4 group by 2) as b;\r\ntakes 1 minute.\r\n\r\nFor a table of half the size both sqls run in 10 seconds.\r\n\r\nI can reproduce this on different windows pc's, but not on a Linux box.\nHow to repeat:\ncreate schema test;\r\ndrop table if exists test.h; \r\ndrop table if exists test.t4; \r\nCREATE TABLE test.t4 (k1 int NOT NULL,k2 int not null\r\n , f varchar(4000) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,\r\n  PRIMARY KEY (k1,k2)\r\n ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin \r\n ROW_FORMAT=COMPRESSED;\r\n\r\ncreate table test.h (i int);\r\ninsert into test.h values (0),(1),(2),(3),(4),(5),(6),(7),(8),(9);\r\ninsert into test.t4 (k1,k2,f) select 0 , \r\n h0.i+10*h1.i+100*h2.i+1000*h3.i+10000*h4.i, SPACE(4000)\r\n from test.h h0,test.h h1,test.h h2,test.h h3,test.h h4;\r\ninsert into test.t4 (k1,k2,f) SELECT (SELECT 1+max(k1) from test.t4) + k1,k2,f \r\nfrom test.t4;\r\ninsert into test.t4 (k1,k2,f) SELECT (SELECT 1+max(k1) from test.t4) + k1,k2,f from test.t4;\r\ninsert into test.t4 (k1,k2,f) SELECT (SELECT 1+max(k1) from test.t4) + k1,k2,f from test.t4;\r\ninsert into test.t4 (k1,k2,f) SELECT (SELECT 1+max(k1) from test.t4) + k1,k2,f from test.t4;\r\nselect sum(a) from (select count(1) a, k1 from test.t4 group by 2) as b;\r\nselect count(1) from test.t4;\r\ninsert into test.t4 (k1,k2,f) SELECT (SELECT 1+max(k1) from test.t4) + k1,k2,f from test.t4;\r\nselect sum(a) from (select count(1) a, k1 from test.t4 group by 2) as b;\r\nselect count(1) from test.t4;\r\ninsert into test.t4 (k1,k2,f) SELECT (SELECT 1+max(k1) from test.t4) + k1,k2,f from test.t4;\r\nselect sum(a) from (select count(1) a, k1 from test.t4 group by 2) as b;\r\nselect count(1) from test.t4;\r\ninsert into test.t4 (k1,k2,f) SELECT (SELECT 1+max(k1) from test.t4) + k1,k2,f from test.t4;\r\nselect sum(a) from (select count(1) a, k1 from test.t4 group by 2) as b;\r\nselect count(1) from test.t4;",
+  "date": "2024-03-25 15:24:00",
+  "vulnerable_version": "8.0.35",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test.t5 (id UInt32, value Decimal(10,2), description String, created_at DateTime DEFAULT now()) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO test.t5 (value, description) VALUES (NULL, 'Test entry 1'), (123.45, 'Test entry 2'), (678.90, 'Test entry 3');",
+    "SELECT COUNT(*) FROM test.t5 WHERE value IS NOT NULL;",
+    "SELECT SUM(value) FROM test.t5 WHERE value > 100.00;",
+    "SELECT COUNT(DISTINCT description) FROM test.t5;"
+  ],
+  "key_bug_features": [
+    "COUNT(1) query performance on large tables"
+  ]
+}

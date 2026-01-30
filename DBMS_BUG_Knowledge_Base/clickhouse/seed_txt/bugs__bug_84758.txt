@@ -1,0 +1,23 @@
+CREATE TABLE genai_eva_trace.otel_traces_main_for_sampling_extended
+(
+    `trace_id` String,
+    `feature` String,
+    `account_id` String,
+    `extension_id` String,
+    `start_timestamp` DateTime64(9),
+    `status` Nullable(String)
+)
+ENGINE = MergeTree
+PARTITION BY toDate(start_timestamp)
+ORDER BY (feature,
+ account_id,
+ extension_id,
+ start_timestamp,
+ cityHash64(trace_id))
+SAMPLE BY cityHash64(trace_id)
+TTL toDate(start_timestamp) + toIntervalDay(7)
+SETTINGS index_granularity = 8192;
+INSERT INTO genai_eva_trace.otel_traces_main_for_sampling_extended (trace_id, feature, account_id, extension_id, start_timestamp, status) VALUES ('1', 'featureA', 'account1', 'ext1', now(), NULL);
+INSERT INTO genai_eva_trace.otel_traces_main_for_sampling_extended (trace_id, feature, account_id, extension_id, start_timestamp, status) VALUES ('2', 'featureB', 'account2', 'ext2', now(), 'active');
+SELECT * FROM genai_eva_trace.otel_traces_main_for_sampling_extended SAMPLE 0;
+SELECT COUNT(*) FROM genai_eva_trace.otel_traces_main_for_sampling_extended WHERE status IS NULL;

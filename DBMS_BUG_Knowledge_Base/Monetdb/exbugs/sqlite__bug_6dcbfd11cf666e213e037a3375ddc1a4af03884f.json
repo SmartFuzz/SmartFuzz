@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/6dcbfd11cf",
+  "title": "Incorrect query result due to the SeekScan optimization",
+  "description": "drh added on 2021-06-25 14:27:25:\nIn the SQL below, the first query (with the NOT INDEXED clause) gets the\ncorrect answer, but the second query does not:\n\nCREATE TABLE t1(a,b,c);\nCREATE INDEX t1abc ON t1(a,b,c);\nCREATE INDEX t1bca on t1(b,c,a);\nINSERT INTO t1 VALUES(56,1119,1115);\nINSERT INTO t1 VALUES(57,1147,1137);\nINSERT INTO t1 VALUES(100,1050,1023);\nINSERT INTO t1 VALUES(101,1050,1023);\nANALYZE sqlite_schema;\nINSERT INTO sqlite_stat1 VALUES('t1','t1abc','358677 2 2 1');\nINSERT INTO sqlite_stat1 VALUES('t1','t1bca','358677 4 2 1');\nANALYZE sqlite_schema;\nSELECT * FROM t1 NOT INDEXED\n WHERE (b = 1137 AND c IN (97, 98))\n    OR (b = 1119 AND c IN (1115, 1023));\nSELECT * FROM t1\n WHERE (b = 1137 AND c IN (97, 98))\n    OR (b = 1119 AND c IN (1115, 1023));\n\nThis problem was reported to us by private email from Frank Aurich.\ndrh added on 2021-06-25 14:49:38:\nProblem was introduced by the OP_SeekScan optimization of\ncheck-in [4a43430fd23f8835].  It thus affects version 3.34.0, 3.35.0,\nand 3.36.0.\nThe first OR-clause term is leaving the t1bca cursor in an unusual\nstate which causes the OP_SeekScqan opcode in the\nsecond OR-clause term to malfunction.  The\nsolution is to fix the OP_ReopenIdx opcode so that it clears the\ncursor.\nFixed by check-in [d4bf5243f2bf0a2b].",
+  "date": "2021-06-25 14:27:254.13 years ago",
+  "vulnerable_version": "3.36.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t2(id INT PRIMARY KEY, name VARCHAR(255), value FLOAT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t2(name, value) VALUES('Test1', 123.45);",
+    "INSERT INTO t2(name, value) VALUES('Test2', NULL);",
+    "SELECT * FROM t2 WHERE value IS NOT NULL AND id IN (SELECT id FROM t2 WHERE name LIKE 'Test%');",
+    "SELECT * FROM t2 WHERE (value < 100 AND name IS NOT NULL) OR (value > 200 AND created_at < TIMESTAMP '2023-01-01 00:00:00');"
+  ],
+  "key_bug_features": [
+    "OP_SeekScan optimization causing incorrect query results"
+  ]
+}

@@ -1,0 +1,16 @@
+CREATE TABLE bindings (id INT PRIMARY KEY, name VARCHAR(255), data BLOB, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO bindings (id, name, data) VALUES (1, 'test1', NULL), (2, 'test2', 'data2'), (3, 'test3', 'data3');
+DELETE FROM bindings WHERE id NOT IN (SELECT id FROM bindings WHERE data IS NULL);
+SELECT * FROM bindings WHERE id NOT IN (SELECT id FROM bindings WHERE created_at < NOW() - INTERVAL '1 DAY');
+SELECT id, COUNT(*) FROM bindings GROUP BY id HAVING COUNT(*) NOT IN (SELECT COUNT(*) FROM bindings);
+CREATE TEMPORARY TABLE temp_bindings AS SELECT name FROM bindings WHERE name NOT IN ('test2');
+SELECT * FROM temp_bindings WHERE name NOT IN (SELECT name FROM bindings WHERE data IS NOT NULL);
+SELECT id FROM bindings WHERE NOT EXISTS (SELECT 1 FROM temp_bindings WHERE temp_bindings.name = bindings.name);
+SELECT DISTINCT id FROM bindings WHERE NOT IN (SELECT MIN(id) FROM bindings GROUP BY name HAVING COUNT(name) > 1);
+CALL uddi_delete_binding((SELECT STRING_AGG(CAST(id AS VARCHAR), ',') FROM bindings WHERE created_at > NOW() - INTERVAL '1 DAY' AND name NOT IN (SELECT name FROM bindings WHERE data IS NOT NULL)));
+INSERT INTO bindings (id, name, data) VALUES (4, 'test4', 'test data'), (5, 'test5', NULL);
+SELECT * FROM bindings WHERE NOT (id IN (SELECT id FROM bindings WHERE data IS NULL));
+ALTER TABLE bindings ADD COLUMN status BOOLEAN DEFAULT TRUE;
+CREATE TABLE additional_bindings (binding_id INT, status VARCHAR(20));
+INSERT INTO additional_bindings (binding_id, status) SELECT id, CASE WHEN data IS NOT NULL THEN 'active' ELSE 'inactive' END FROM bindings;
+SELECT b.id, 'Status:' || ab.status FROM bindings b JOIN additional_bindings ab ON b.id = ab.binding_id WHERE b.created_at IS NOT NULL AND b.id NOT IN (1, 2);

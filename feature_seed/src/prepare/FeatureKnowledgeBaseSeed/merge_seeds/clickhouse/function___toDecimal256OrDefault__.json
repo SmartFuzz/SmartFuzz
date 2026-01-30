@@ -1,0 +1,14 @@
+CREATE TABLE test_table (value String, scale UInt8);
+INSERT INTO test_table VALUES ('0.12345', 5), ('123.456', 3), ('-1.23456789', 7), ('0.999999999999999999999999999', 0);
+SELECT toDecimal256OrDefault(value, scale) AS decimal_value, toTypeName(decimal_value) FROM test_table;
+SELECT toDecimal256OrDefault('1.15', 2) AS a, toTypeName(a);
+SELECT toDecimal256OrDefault('Inf', 2, CAST('-1', 'Decimal256(2)')) AS b, toTypeName(b);
+SELECT toDecimal256OrDefault('NaN', 0, CAST('10', 'Decimal256(0)')) AS c, toTypeName(c);
+SELECT toDecimal256OrDefault('256789012345678901234567890123456789012345678901234567890123456789012345678901234567890', 1) AS d, toTypeName(d);
+SELECT toDecimal256OrDefault('1E100', 0) AS e, toTypeName(e);
+SELECT toDecimal256OrDefault('0.001', 3) AS f, toTypeName(f) WHERE f < 1;
+SELECT (SELECT toDecimal256OrDefault(value, scale) FROM test_table WHERE value = '123.456') + (SELECT toDecimal256OrDefault('0.025', 2));
+CREATE TABLE another_table (num String, scale UInt8);
+INSERT INTO another_table VALUES ('0.004', 3), ('1000.123', 2);
+SELECT toDecimal256OrDefault(num, scale, CAST('0', 'Decimal256(2)')) FROM another_table;
+SELECT a.decimal_value, b.num FROM (SELECT toDecimal256OrDefault(value, scale) AS decimal_value FROM test_table) AS a JOIN another_table AS b ON a.decimal_value > 0;

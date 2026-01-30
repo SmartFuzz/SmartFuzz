@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/89606",
+  "title": "Unexpected exception behavior with brace expression and s3 and S3Cluster table function",
+  "vulnerable_database": "ClickHouse",
+  "date": "2025-11-05T22:45:06Z",
+  "vulnerable_version": "25.10.1.3832",
+  "description": "### Company or project name\n_No response_\n### Describe the unexpected behaviour\nSimilarly to what was described [here](https://github.com/ClickHouse/ClickHouse/issues/88920), ClickHouse behaves differently when importing a single file or the same file twice using brace expression.\nClickHouse throws a parsing exception when importing a single file, but not with multiple files with brace expression.\n### Which ClickHouse versions are affected?\nReproduced on `25.10.1.3832`\n### How to reproduce\nCreate a parquet file as follows:\n```python\nimport pandas as pd\ndata_1 = {\n\"ts\" : [\"2020-01-01 14:00:00+00:00\"]\n}\ndf_1 = pd.DataFrame(data_1)\ndf_1.to_parquet(\"output.parquet\", index=False)\n```\nCheck the file:\n```\nDESCRIBE TABLE s3('http://minio:9000/test/output.parquet', 'minio', 'minio123', 'Parquet')\nQuery id: ad53ca7a-0e83-4250-a607-d2d956223c2c\n┌─name─┬─type─────────────┬─default_type─┬─default_expression─┬─comment─┬─codec_expression─┬─ttl_expression─┐\n1. │ ts   │ Nullable(String) │              │                    │         │                  │                │\n└──────┴──────────────────┴──────────────┴────────────────────┴─────────┴──────────────────┴────────────────┘\nSELECT version()\n┌─version()────┐\n1. │ 25.10.1.3832 │\n└──────────────┘\nCREATE TABLE test\n(\n`ts` DateTime64(9, 'UTC')\n)\nORDER BY tuple();\n```\n# S3\n## Insert nr.1 - With a single file ClickHouse throws a parsing exception\n```sql\nINSERT INTO test (ts) SELECT ts\nFROM s3('http://minio:9000/test/output.parquet', 'minio', 'minio123')\nQuery id: c6a148a0-e470-4d0e-9110-5e6f41d5486e\nElapsed: 0.022 sec.\nReceived exception from server (version 25.10.1):\nCode: 6. DB::Exception: Received from localhost:9000.\nDB::Exception: Cannot parse string '2020-01-01 14:00:00+00:00' as DateTime64(9, 'UTC'): syntax error at position 19 (parsed just '2020-01-01 14:00:00'):\nwhile converting column `ts` from type String to type DateTime64(9, 'UTC'): (in file/uri test/output.parquet):\nWhile executing ParquetBlockInputFormat: While executing ReadFromObjectStorage. (CANNOT_PARSE_TEXT)\n```\n## Insert nr.2 - With brace expression ClickHouse doesn't throw the exception\n```sql\nINSERT INTO test (ts) SELECT ts",
+  "poc": [
+    "CREATE TABLE test\n(\n    `ts` DateTime64(9, 'UTC')\n)\nORDER BY tuple();"
+  ],
+  "key_bug_features": [
+    "Parsing exception with single file vs brace expression"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE test_single_file (ts DateTime64(9, 'UTC')) ENGINE = MergeTree() ORDER BY tuple();",
+    "INSERT INTO test_single_file (ts) SELECT ts FROM s3('http://minio:9000/test/output.parquet', 'minio', 'minio123');",
+    "CREATE TABLE test_brace_expression (ts DateTime64(9, 'UTC')) ENGINE = MergeTree() ORDER BY tuple();",
+    "INSERT INTO test_brace_expression (ts) SELECT ts FROM s3('http://minio:9000/test/output.parquet', 'minio', 'minio123') UNION ALL SELECT ts FROM s3('http://minio:9000/test/output.parquet', 'minio', 'minio123');",
+    "CREATE TABLE test_nullable (ts Nullable(DateTime64(9, 'UTC'))) ENGINE = MergeTree() ORDER BY tuple();"
+  ]
+}

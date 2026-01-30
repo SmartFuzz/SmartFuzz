@@ -1,0 +1,5 @@
+CREATE TABLE default.t1 ON CLUSTER '{cluster}' (id Int, c Nullable(String)) ENGINE = MergeTree() ORDER BY id;
+CREATE TABLE default.t1_d ON CLUSTER '{cluster}' AS default.t1 ENGINE = Distributed('{cluster}', 'default', t1, rand());
+INSERT INTO default.t1_d (id, c) VALUES (1, 'same'), (2, NULL), (3, 'different');
+SELECT id, c, dictGet('default.d0', 'd', id) AS d, CASE WHEN c IS NULL THEN 'NULL VALUE' WHEN c = 'same' THEN 'MATCH' END AS filter_value FROM default.t1_d;
+SELECT id, c, dictGet('default.d0', 'd', id) AS d, CASE WHEN c = 'different' AND d = 'alpha' THEN 'SHOULD NOT HAPPEN' WHEN c = 'same' THEN 'SHOULD ALWAYS HAPPEN' END AS filter_value FROM default.t1_d;

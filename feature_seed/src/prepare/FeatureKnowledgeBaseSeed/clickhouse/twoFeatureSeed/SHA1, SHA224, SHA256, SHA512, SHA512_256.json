@@ -1,0 +1,20 @@
+{
+    "function": "SHA1, SHA224, SHA256, SHA512, SHA512_256",
+    "operator": "a <= b",
+    "sql_array": [
+        "CREATE TABLE test_hashing (id UInt32, text String, value FixedString(32));",
+        "INSERT INTO test_hashing (id, text) VALUES (1, 'abc'), (2, 'def'), (3, NULL), (4, '');",
+        "SELECT id, SHA256(COALESCE(text, 'default')) AS hash_value FROM test_hashing WHERE id <= 3 ORDER BY id;",
+        "SELECT id, value FROM (SELECT id, SHA1(text) AS value FROM test_hashing WHERE text IS NOT NULL) AS subquery WHERE id <= (2 + 1);",
+        "SELECT id, text, SHA224(CONCAT(text, 'test')) AS hash_value FROM test_hashing WHERE text IS NOT NULL AND (SELECT COUNT(*) FROM test_hashing WHERE id <= id) <= 2;",
+        "CREATE TABLE test_complex (id UInt32, value String, hash FixedString(64));",
+        "INSERT INTO test_complex (id, value) VALUES (1, 'xyz'), (2, 'abc'), (3, NULL);",
+        "SELECT id, hash FROM (SELECT id, SHA512(value) AS hash FROM test_complex GROUP BY id HAVING COUNT(value) <= 1) AS temp WHERE id <= 3;",
+        "SELECT id, (SHA512(CONCAT(text, 'test')) <= SHA256(CONVERT(id, String))) AS comparison_result FROM test_hashing;",
+        "SELECT SHA256(NULLIF(text, '')) AS hash_value FROM test_hashing WHERE id <= 4 HAVING hash_value IS NOT NULL;",
+        "SELECT id, SHA1(IF(text IS NULL OR text = '', 'empty', text)) AS hash_value FROM test_hashing;",
+        "CREATE TABLE temp_table AS SELECT id, SHA512(value) AS hashed_value FROM test_complex WHERE value IS NOT NULL;",
+        "SELECT MAX(id) FROM (SELECT id, (SHA512(value) <= SHA256(CONVERT(id, String))) AS comparison FROM test_complex GROUP BY id) AS subquery;",
+        "SELECT id FROM (SELECT id, value, SHA256(text) AS hash_value FROM test_hashing) AS inner_query WHERE (SELECT COUNT(*) FROM test_hashing) <= id;"
+    ]
+}

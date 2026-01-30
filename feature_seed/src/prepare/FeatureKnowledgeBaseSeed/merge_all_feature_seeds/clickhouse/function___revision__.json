@@ -1,0 +1,11 @@
+SELECT revision();
+CREATE TABLE test_table (id UInt32, value String) ENGINE = Memory;
+INSERT INTO test_table VALUES (1, 'test1'), (2, 'test2');
+SELECT id, revision() FROM test_table;
+SELECT id, (SELECT revision()) AS current_revision FROM test_table WHERE id = 1;
+WITH (SELECT revision() AS rev) AS current_revision SELECT * FROM test_table WHERE id < 3 AND rev = revision();
+CREATE TABLE revision_check AS SELECT revision() AS server_revision;
+SELECT server_revision FROM revision_check WHERE server_revision = (SELECT revision());
+CREATE TABLE nested_revision (id UInt32, revision UInt32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO nested_revision VALUES (1, (SELECT revision()));
+SELECT (SELECT revision() + 1) AS updated_revision, value FROM test_table WHERE id IN (SELECT id FROM test_table WHERE value LIKE 'test%');

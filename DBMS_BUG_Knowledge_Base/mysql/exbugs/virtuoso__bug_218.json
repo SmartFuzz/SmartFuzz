@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/218",
+  "title": "Subproperty inference problem",
+  "description": "Consider the ontology\n:aProperty      a owl:ObjectProperty .\n:aSuperProperty a owl:ObjectProperty .\n\n:aProperty rdfs:subPropertyOf :aSuperProperty .\n\n:aSubject :aProperty :aObject .\n:aSubject :aProperty :anotherObject .\n\nRunning the command in iSQL\nrdfs_rule_set('http://test.com/ruleset', 'http://test.com/my_graph/');\n\nThe query\nDEFINE input:inference <http://test:/ruleset>\nPREFIX test: <http://test:/base/>\nSELECT * WHERE {\n  <http://test.com/my_graph/aSubject> ?p ?o .\n}\n\nis expected to return FOUR RESULTS by using basic RDFS inference.\nBut what Virtuoso returns only THREE RESULTS.\nURLs are shortened for legibility purpose only.\n\n\n\no\n\n\n\n\ntest:aSubProperty\ntest:aObject\n\n\ntest:aProperty\ntest:aObject\n\n\ntest:aProperty\ntest:anotherObject\n\n\n\nThese FOUR results should be:\n\nThe results matched with triples with :aSubject and the property :aSubProperty.\n\n\n\n\no\n\n\n\n\ntest:aSubProperty\ntest:aObject\n\n\ntest:aSubProperty\ntest:anotherObject\n\n\n\n\nThe two inferred results with the property :aProperty\n\n\n\n\no\n\n\n\n\ntest:aProperty\ntest:aObject\n\n\ntest:aProperty\ntest:anotherObject\n\n\n\nWhat happened here is:\nFrom the second entry on, Virtuoso only considers the super property and \"forgets\" the following triple that should be matched in the query.\n:aSubject`` :aSubProperty :anotherObject\n\nThis triple is a materialized triple in the N3 example above.\nIt is even more harmful that the query does not represent the actual model itself.\nIf it was missing the inferred triples, it would be less harmful, given that the query result is inconsistent with the database data explicitly stated.",
+  "date": "2014-07-25 14:03:20",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE my_graph (subject VARCHAR(255), predicate VARCHAR(255), object VARCHAR(255));",
+    "INSERT INTO my_graph (subject, predicate, object) VALUES ('http://test.com/my_graph/aSubject', 'http://test.com/my_graph/aProperty', 'http://test.com/my_graph/aObject');",
+    "INSERT INTO my_graph (subject, predicate, object) VALUES ('http://test.com/my_graph/aSubject', 'http://test.com/my_graph/aProperty', 'http://test.com/my_graph/anotherObject');",
+    "INSERT INTO my_graph (subject, predicate, object) VALUES ('http://test.com/my_graph/aProperty', 'http://test.com/my_graph/aSuperProperty', NULL);",
+    "SELECT * FROM my_graph WHERE subject = 'http://test.com/my_graph/aSubject';",
+    "SELECT COUNT(*) FROM my_graph WHERE subject = 'http://test.com/my_graph/aSubject';"
+  ],
+  "key_bug_features": [
+    "Virtuoso ignores materialized triples in RDFS inference"
+  ]
+}

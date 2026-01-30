@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id UInt32, timestamp DateTime, value Float64, text String) ENGINE = Memory;
+INSERT INTO test_table VALUES (1, now(), 3.14, 'test'), (2, now() + INTERVAL 4 DAY, NULL, 'string'), (3, now() - INTERVAL 1 MONTH, 1.0e10, '123'), (4, now(), 0.0, '');
+SELECT id, reinterpretAsUInt128(value) AS reinterpreted_value, timestamp + INTERVAL 1 HOUR AS modified_time FROM test_table WHERE value IS NOT NULL;
+SELECT id, COUNT(*) AS value_count FROM (SELECT reinterpretAsUInt128(value) AS reinterpreted_value FROM test_table WHERE text NOT NULL GROUP BY reinterpreted_value) GROUP BY id HAVING value_count > 1;
+SELECT id, CASE WHEN timestamp IS NULL THEN 'No timestamp' ELSE toTypeName(timestamp) END AS timestamp_type FROM test_table;
+SELECT id, timestamp + INTERVAL toInt32(value) DAY AS future_time FROM test_table WHERE value BETWEEN 0 AND 30 ORDER BY future_time;
+CREATE TABLE temp_table AS (SELECT id, value_data, reinterpretAsUInt128(value) As value_as_uint128 FROM (SELECT id, value + 1 AS value_data FROM test_table WHERE value IS NOT NULL));
+INSERT INTO temp_table SELECT id, value FROM test_table WHERE reinterpretAsUInt128(value) < toUInt128(100);
+SELECT id, COUNT(*) AS altered_count FROM (SELECT id, reinterpretAsUInt128(value) + INTERVAL 1 MONTH AS new_value FROM test_table GROUP BY id, value) GROUP BY id HAVING altered_count > 0;
+SELECT reinterpretAsUInt128(NULL) AS test_nullable_reinterpretation, COUNT() FROM test_table GROUP BY test_nullable_reinterpretation HAVING test_nullable_reinterpretation IS NOT NULL;

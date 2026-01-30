@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id INT, value FLOAT, timestamp_col TIMESTAMP, interval_col INTERVAL);
+INSERT INTO test_table (id, value, timestamp_col, interval_col) VALUES (1, 10.5, TIMESTAMP '2023-10-01 12:00:00', INTERVAL '1 DAY'), (2, 15.0, TIMESTAMP '2023-10-02 12:00:00', INTERVAL '2 DAY'), (3, NULL, TIMESTAMP '2023-10-03 12:00:00', INTERVAL '3 DAY'), (4, 20.5, TIMESTAMP '2023-10-04 12:00:00', INTERVAL '4 DAY');
+SELECT max_by(value, timestamp_col + interval_col) AS max_value FROM test_table GROUP BY id HAVING max_value IS NOT NULL;
+SELECT id, max_by(value, timestamp_col + INTERVAL (CASE WHEN value IS NOT NULL THEN 5 ELSE 0 END) DAY) AS adjusted_value FROM test_table GROUP BY id;
+SELECT id, max_by(value, (timestamp_col + INTERVAL '3 DAY') + INTERVAL 1 MONTH) AS future_value FROM test_table WHERE timestamp_col IS NOT NULL;
+CREATE TABLE join_test (join_id INT, join_value FLOAT);
+INSERT INTO join_test (join_id, join_value) VALUES (1, 30.5), (2, 25.0);
+SELECT t1.id, max_by(t1.value, t1.timestamp_col + INTERVAL (t2.join_value + 1) DAY) AS max_adj FROM test_table t1 INNER JOIN join_test t2 ON t1.id = t2.join_id GROUP BY t1.id;
+WITH max_values AS (SELECT id, max_by(value, timestamp_col + INTERVAL '5 HOURS') AS max_val FROM test_table GROUP BY id) SELECT * FROM max_values WHERE max_val > 15.0;
+SELECT id, max_by(value, timestamp_col + INTERVAL (SELECT AVG(join_value) FROM join_test)) AS complex_max FROM test_table GROUP BY id HAVING complex_max IS NOT NULL;

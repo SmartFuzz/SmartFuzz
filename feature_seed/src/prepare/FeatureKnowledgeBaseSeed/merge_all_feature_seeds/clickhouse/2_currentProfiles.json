@@ -1,0 +1,11 @@
+CREATE TABLE user_profiles (id Int32, settings_profile String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO user_profiles VALUES (1, 'default'), (2, 'custom'), (3, NULL);
+SELECT id, settings_profile FROM user_profiles WHERE settings_profile NOT LIKE currentProfiles()[1] OR settings_profile IS NULL;
+SELECT id, settings_profile FROM user_profiles WHERE settings_profile NOT LIKE (SELECT arrayJoin(currentProfiles())) ORDER BY id;
+SELECT id, settings_profile FROM user_profiles WHERE NOT (settings_profile NOT LIKE '') AND id < 3;
+SELECT settings_profile, COUNT(*) FROM user_profiles GROUP BY settings_profile HAVING settings_profile NOT LIKE currentProfiles()[0] OR settings_profile IS NULL;
+SELECT id, settings_profile FROM user_profiles WHERE id NOT IN (SELECT id FROM user_profiles WHERE settings_profile NOT LIKE 'custom') ORDER BY settings_profile;
+SELECT id, settings_profile FROM user_profiles WHERE NOT (settings_profile NOT LIKE concat('profile_', CAST(id AS String))) OR settings_profile IS NULL;
+CREATE TABLE temp_profiles AS SELECT id, currentProfiles() AS profile_list FROM user_profiles;
+INSERT INTO temp_profiles SELECT id, arrayJoin(currentProfiles()) FROM user_profiles WHERE settings_profile IS NOT NULL;
+SELECT id FROM user_profiles WHERE (settings_profile NOT LIKE ANY(SELECT settings_profile FROM temp_profiles)) AND settings_profile IS NOT NULL ORDER BY id;

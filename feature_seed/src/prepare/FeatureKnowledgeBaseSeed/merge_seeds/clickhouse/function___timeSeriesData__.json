@@ -1,0 +1,16 @@
+CREATE TABLE db_name.time_series_table ENGINE=TimeSeries DATA data_table;
+CREATE TABLE db_name.time_series_table ENGINE=TimeSeries DATA INNER UUID '01234567-89ab-cdef-0123-456789abcdef';
+CREATE TABLE data_table (ts DateTime, value Float32) ENGINE = MergeTree() ORDER BY ts;
+INSERT INTO data_table VALUES (NOW(), 100.0), (NOW() - INTERVAL 1 DAY, 150.5);
+SELECT * FROM timeSeriesData(db_name.time_series_table);
+SELECT * FROM timeSeriesData('db_name.time_series_table');
+SELECT * FROM timeSeriesData('db_name', 'time_series_table');
+SELECT a.ts, a.value FROM data_table a JOIN timeSeriesData(db_name.time_series_table) b ON a.ts = b.ts;
+SELECT COUNT(*) FROM timeSeriesData(db_name.time_series_table) WHERE value > 150;
+WITH (SELECT AVG(value) FROM timeSeriesData(db_name.time_series_table)) AS avg_value SELECT * FROM data_table WHERE value > avg_value;
+SELECT a.ts, a.value FROM (SELECT * FROM timeSeriesData(db_name.time_series_table)) AS a WHERE a.value < 200;
+SELECT a.*, b.* FROM data_table a LEFT JOIN timeSeriesData(db_name.time_series_table) b ON a.ts = b.ts WHERE b.value IS NOT NULL;
+CREATE TABLE new_table AS SELECT * FROM timeSeriesData(db_name.time_series_table);
+CREATE TABLE statistics ENGINE=MergeTree() ORDER BY ts AS SELECT ts, COUNT(value) AS count_value FROM timeSeriesData(db_name.time_series_table) GROUP BY ts;
+INSERT INTO statistics SELECT ts, COUNT(value) FROM timeSeriesData(db_name.time_series_table) GROUP BY ts;
+SELECT ts, SUM(value) OVER (ORDER BY ts ROWS BETWEEN 5 PRECEDING AND CURRENT ROW) AS running_total FROM timeSeriesData(db_name.time_series_table);

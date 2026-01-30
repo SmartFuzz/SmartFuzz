@@ -1,0 +1,59 @@
+CREATE OR REPLACE LOADER FUNCTION my_loader(file_path STRING) LANGUAGE PYTHON {
+    import csv
+    with open(file_path, 'r') as f:
+        reader = csv.reader(f)
+        for row in reader:
+            emit.emit(row)
+};
+CREATE LOADER csv_loader(filepath STRING) LANGUAGE PYTHON {
+    import csv
+    with open(filepath) as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            emit.emit(row)
+};
+CREATE OR REPLACE LOADER user_data_loader(data_file STRING, num_columns INTEGER) LANGUAGE PYTHON {
+    import pandas as pd
+    data = pd.read_csv(data_file)
+    for index, row in data.iterrows():
+        emit.emit(row.tolist())
+};
+CREATE LOADER xml_data_loader(file_name STRING) LANGUAGE PYTHON {
+    import xml.etree.ElementTree as ET
+    tree = ET.parse(file_name)
+    root = tree.getroot()
+    for elem in root:
+        emit.emit([child.text for child in elem])
+};
+CREATE LOADER json_array_loader(json_file STRING) LANGUAGE PYTHON {
+    import json
+    with open(json_file) as f:
+        data = json.load(f)
+        for item in data:
+            emit.emit(item)
+};
+CREATE OR REPLACE LOADER advanced_loader(filename STRING, schema_name STRING) LANGUAGE PYTHON {
+    import json
+    f = open(filename)
+    data = json.load(f)
+    for item in data:
+        emit.emit(item['value'], item['type'], schema_name)
+    f.close()
+};
+CREATE LOADER multi_source_loader(source1 STRING, source2 STRING) LANGUAGE PYTHON {
+    import json
+    f1 = open(source1)
+    f2 = open(source2)
+    data1 = json.load(f1)
+    data2 = json.load(f2)
+    for item1, item2 in zip(data1, data2):
+        emit.emit(item1, item2)
+    f1.close()
+    f2.close()
+};
+CREATE OR REPLACE LOADER complex_loader(data_string STRING) LANGUAGE PYTHON {
+    import json
+    data = json.loads(data_string)
+    for record in data:
+        emit.emit(record['id'], record['name'], record['attributes']['attr1'], record['attributes']['attr2'])
+};

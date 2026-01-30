@@ -1,0 +1,16 @@
+{
+    "function": "h3GetPentagonIndexes",
+    "operator": "a GLOBAL NOT IN ...",
+    "sql_array": [
+        "CREATE TABLE geo_data (id UInt32, pentagon_index UInt64, resolution UInt8) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO geo_data VALUES (1, 0, 3), (2, 1, 3), (3, 2, 3);",
+        "SELECT h3GetPentagonIndexes(resolution) AS indexes FROM geo_data WHERE resolution = 3 GLOBAL NOT IN (SELECT resolution FROM geo_data WHERE pentagon_index IS NULL);",
+        "SELECT id, h3GetPentagonIndexes(resolution) AS pentagon_indexes FROM geo_data WHERE pentagon_index NOT IN (SELECT pentagon_index FROM geo_data WHERE resolution = 3) GROUP BY id ORDER BY id;",
+        "SELECT id, arrayJoin(h3GetPentagonIndexes(resolution)) AS pentagon_indexes FROM geo_data WHERE resolution BETWEEN 0 AND 15 HAVING pentagon_indexes GLOBAL NOT IN (SELECT pentagon_index FROM geo_data WHERE id = 1);",
+        "CREATE TABLE test_data (val String, num UInt8) ENGINE = MergeTree() ORDER BY val;",
+        "INSERT INTO test_data VALUES ('abc', 0), ('def', 3), ('ghi', 15);",
+        "SELECT h3GetPentagonIndexes(num) AS indexes FROM test_data WHERE num GLOBAL NOT IN (SELECT num FROM test_data WHERE val = 'def') AND val IS NOT NULL;",
+        "SELECT h3GetPentagonIndexes(CAST(NULL AS UInt8)) AS empty_index FROM test_data WHERE num = 0 GLOBAL NOT IN (SELECT num FROM test_data WHERE num IS NOT NULL);",
+        "SELECT h3GetPentagonIndexes(num) AS indexes FROM test_data GROUP BY num HAVING indexes GLOBAL NOT IN (SELECT h3GetPentagonIndexes(3) FROM geo_data) ORDER BY indexes;"
+    ]
+}

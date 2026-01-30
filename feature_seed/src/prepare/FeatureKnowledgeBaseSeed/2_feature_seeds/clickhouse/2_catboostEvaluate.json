@@ -1,0 +1,7 @@
+CREATE TABLE model_data (id UInt32, feature_1 Float64, feature_2 String, feature_3 DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO model_data VALUES (1, 0.5, 'example_value', '2023-01-01 00:00:00'), (2, NULL, '', '2023-01-02 00:00:00'), (3, 1.5, 'another_value', '2023-01-03 00:00:00');
+CREATE TABLE predictions AS SELECT id, catboostEvaluate('/path/to/model.bin', feature_1, feature_2, feature_3) AS prediction FROM model_data;
+SELECT id, prediction FROM predictions WHERE prediction NOT LIKE 'negative%' OR feature_2 NOT LIKE 'example%';
+SELECT id, SUM(prediction) OVER (PARTITION BY feature_2) AS total_prediction FROM (SELECT id, catboostEvaluate('/path/to/model.bin', feature_1, feature_2) AS prediction FROM model_data WHERE feature_3 NOT LIKE '') ORDER BY total_prediction DESC;
+SELECT id, feature_1, feature_2, feature_3, catboostEvaluate('/path/to/model.bin', feature_1, CONCAT(feature_2, 'suffix')) AS advanced_prediction FROM model_data WHERE feature_1 > 0 AND feature_2 NOT LIKE 'sample%' GROUP BY id, feature_1, feature_2, feature_3 HAVING advanced_prediction NOT LIKE '%test%';
+WITH (SELECT AVG(feature_1) FROM model_data WHERE feature_2 IS NOT NULL) AS avg_feat1 SELECT id, feature_1, feature_2, catboostEvaluate('/path/to/model.bin', feature_1, feature_2) AS prediction FROM model_data WHERE feature_1 < (SELECT avg_feat1) NOT LIKE 'NULL';

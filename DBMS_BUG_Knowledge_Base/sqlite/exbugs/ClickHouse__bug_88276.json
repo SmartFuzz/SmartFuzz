@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/88276",
+  "title": "ALIAS statement in query does not return correct cols for distributed table",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nWhen using ALIAS fields in distributed queries with sorting, data from column does not match.\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\n```\nCREATE DATABASE test ON CLUSTER '{cluster}';\nCREATE TABLE test.t_local ON CLUSTER '{cluster}' (\nid String,\nc1 String,\nc2 String,\nd1 String ALIAS concat(c1, '-d1'),\nd2 String ALIAS concat(c2, '-d2')\n)\nENGINE = MergeTree()\nORDER BY id;\nCREATE TABLE test.t ON CLUSTER '{cluster}'\nAS test.t_local\nENGINE = Distributed('{cluster}', 'test', t_local, rand());\nINSERT INTO test.t (id, c1, c2) VALUES\n('1', 'id1-1', 'id2-1'),\n('2', 'id1-2', 'id2-2'),\n('3', 'id1-1', 'id2-1'),\n('4', 'id1-2', 'id2-2');\nSELECT id, d1, d2 FROM test.t;\nSELECT id, d1, d2 FROM test.t ORDER BY c1;\nDROP DATABASE test ON CLUSTER '{cluster}'\n```\n### Expected behavior\nselect 1 ( no order )\n```\n┌─id─┬─d1───────┬─d2───────┐\n1. │ 1  │ id1-1-d1 │ id2-1-d2 │\n2. │ 4  │ id1-2-d1 │ id2-2-d2 │\n3. │ 2  │ id1-2-d1 │ id2-2-d2 │\n4. │ 3  │ id1-1-d1 │ id2-1-d2 │\n└────┴──────────┴──────────┘\n```\nselect 2 (order by):\n```\n┌─id─┬─d1───────┬─d2───────┐\n1. │ 1  │ id2-1-d2 │ id1-1-d1 │\n2. │ 3  │ id2-1-d2 │ id1-1-d1 │\n3. │ 4  │ id2-2-d2 │ id1-2-d1 │\n4. │ 2  │ id2-2-d2 │ id1-2-d1 │\n└────┴──────────┴──────────┘\n```\nIn column d1 data from column d2 and vice versa.",
+  "date": "2025-10-09T06:29:55Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test_fuzz_t_local (id INTEGER, c1 TEXT, c2 TEXT, d1 TEXT, d2 TEXT);",
+    "INSERT INTO test_fuzz_t_local (id, c1, c2) VALUES (1, 'id1-1', 'id2-1'), (2, NULL, 'id2-2'), (3, 'id1-1', NULL), (4, 'id1-2', 'id2-2');",
+    "INSERT INTO test_fuzz_t_local (id, d1, d2) SELECT id, COALESCE(c1, 'NULL') || '-d1', c2 || '-d2' FROM test_fuzz_t_local;",
+    "SELECT id, d1, d2 FROM test_fuzz_t_local ORDER BY d2;",
+    "DROP TABLE test_fuzz_t_local;"
+  ],
+  "key_bug_features": [
+    "ALIAS fields in distributed queries with sorting"
+  ]
+}

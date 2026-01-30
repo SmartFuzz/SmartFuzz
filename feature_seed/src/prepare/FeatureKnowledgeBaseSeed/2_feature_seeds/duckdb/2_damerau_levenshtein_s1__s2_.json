@@ -1,0 +1,13 @@
+CREATE TABLE test_strings (id INTEGER PRIMARY KEY, str1 VARCHAR, str2 VARCHAR);
+INSERT INTO test_strings (id, str1, str2) VALUES (1, 'abc', 'abc'), (2, 'abcd', 'abdc'), (3, 'test', 'tset'), (4, NULL, 'test'), (5, '', 'not empty');
+SELECT id, damerau_levenshtein(str1, str2) AS lev_distance FROM test_strings WHERE str1 IS NOT NULL;
+SELECT id, damerau_levenshtein(str1, str2) AS lev_distance, str1 <=> str2 AS similarity FROM test_strings WHERE str1 IS NOT NULL;
+SELECT id, (damerau_levenshtein(str1, str2) <= 3) AS within_distance FROM test_strings;
+SELECT id, LEAST(damerau_levenshtein(str1, str2), 5) AS min_distance FROM test_strings;
+SELECT id, str1, str2 FROM test_strings WHERE damerau_levenshtein(str1, str2) IS NULL;
+CREATE TABLE additional_data (id INTEGER PRIMARY KEY, str_arr LIST<VARCHAR>);
+INSERT INTO additional_data (id, str_arr) VALUES (1, ['abc', 'def']), (2, ['abc', 'de', 'fgh']), (3, NULL);
+SELECT ad.id, ad.str_arr <=> ARRAY(SELECT str1 FROM test_strings WHERE str1 IS NOT NULL) AS cosine_similarity FROM additional_data ad WHERE ad.str_arr IS NOT NULL;
+SELECT ad.id, (SELECT damerau_levenshtein(str1, str2) FROM test_strings AS ts WHERE ts.id = ad.id) AS distance FROM additional_data AS ad;
+SELECT id, (damerau_levenshtein(str1, str2) <=> damerau_levenshtein('test', 'tset')) AS distance_comparison FROM test_strings WHERE str1 IS NOT NULL;
+SELECT id, str1, str2, CASE WHEN damerau_levenshtein(str1, str2) < 3 THEN 'Close' ELSE 'Far' END AS distance_category FROM test_strings;

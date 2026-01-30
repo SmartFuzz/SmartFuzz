@@ -1,0 +1,17 @@
+{
+    "function": "groupArrayMovingSum",
+    "operator": "a != ANY (subquery)",
+    "sql_array": [
+        "CREATE TABLE test_data (id UInt8, value Float32, date_created DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_data VALUES (1, 10.5, now()), (2, 20.0, now()), (3, NULL, now()), (4, 30.5, now()), (5, 40.1, now());",
+        "SELECT groupArrayMovingSum(value)(2) AS moving_sum FROM test_data WHERE id != ANY (SELECT id FROM test_data WHERE value IS NULL);",
+        "SELECT id, groupArrayMovingSum(value)(3) AS moving_sum FROM test_data GROUP BY id HAVING moving_sum != ANY (SELECT min(value) FROM test_data WHERE value > 35.0);",
+        "CREATE TABLE temp_data (x Int32, y String, z Decimal32(2)) ENGINE = Memory;",
+        "INSERT INTO temp_data VALUES (1, '10', 10.25), (2, '20.123', 20.00), (3, 'NULL', 30.50);",
+        "SELECT groupArrayMovingSum(y)(2) AS string_moving_sum FROM (SELECT CAST(y AS Float32) FROM temp_data WHERE x != ANY (SELECT x FROM temp_data WHERE z IS NULL));",
+        "SELECT groupArrayMovingSum(COALESCE(CAST(y AS Float32), 0))(1) FROM temp_data GROUP BY x HAVING x != ANY (SELECT DISTINCT x FROM temp_data WHERE y = 'NULL');",
+        "SELECT a.id, groupArrayMovingSum(a.value)(3) AS moving_sum FROM test_data a JOIN test_data b ON a.id != b.id WHERE b.value > 20 GROUP BY a.id HAVING moving_sum != ANY (SELECT groupArrayMovingSum(value)(2) FROM test_data);",
+        "CREATE TABLE final_table (column1 Float64, column2 UInt8) ENGINE = MergeTree() ORDER BY column1;",
+        "INSERT INTO final_table SELECT groupArrayMovingSum(value)(2), id FROM test_data GROUP BY id HAVING id != ANY (SELECT id FROM test_data WHERE value > 40.0);"
+    ]
+}

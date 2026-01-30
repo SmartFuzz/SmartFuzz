@@ -1,0 +1,14 @@
+CREATE TABLE encryption_test( `id` UInt64, `comment` String, `secret` String) ENGINE = Memory;
+INSERT INTO encryption_test VALUES (1, 'aes-256-ecb no IV', encrypt('aes-256-ecb', 'Secret Data', '12345678910121314151617181920212')), (2, 'aes-256-cbc with IV', encrypt('aes-256-cbc', 'Secret Data 2', '12345678910121314151617181920212', 'iviviviviviviviv'));
+SELECT comment, hex(secret) FROM encryption_test WHERE comment LIKE 'aes-256-%';
+CREATE TABLE data_test( `data` UInt8, `description` String) ENGINE = Memory;
+INSERT INTO data_test VALUES (0, 'No Data'), (1, 'Data Present'), (NULL, 'Missing Data');
+SELECT dt.description, et.comment FROM data_test dt JOIN encryption_test et ON dt.data = 1 WHERE dt.description LIKE et.comment;
+SELECT DISTINCT comment, hex(secret) FROM encryption_test WHERE secret IS NOT NULL;
+SELECT comment, hex(secret) FROM encryption_test WHERE comment LIKE concat('%', 'no IV', '%') AND secret LIKE '5%';
+CREATE TABLE critical_data( `value` Int32) ENGINE = Memory;
+INSERT INTO critical_data VALUES (1), (2), (3), (4), (5);
+SELECT count(*) FROM critical_data WHERE value = (SELECT max(value) FROM critical_data) HAVING count(*) > 1;
+SELECT comment, hex(secret) FROM encryption_test WHERE comment LIKE '%' || (SELECT description FROM data_test WHERE data IS NULL LIMIT 1);
+WITH (SELECT avg(value) FROM critical_data) AS avg_val SELECT comment, hex(secret) FROM encryption_test WHERE comment LIKE '%' || CAST(avg_val AS String);
+SELECT comment, hex(secret) FROM encryption_test WHERE comment LIKE (SELECT distinct concat('%', description, '%') FROM data_test) LIMIT 1;

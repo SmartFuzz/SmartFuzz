@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id INT, data_map MAP<INT, INT>, event_date DATE, interval_days INT);
+INSERT INTO test_table VALUES (1, map([100, 200], [1, 2]), DATE '1992-03-22', 5), (2, map([300, 400], [3, 4]), DATE '2023-10-01', 11);
+SELECT id, map_extract(data_map, 100) AS extracted_value, event_date + INTERVAL (SELECT AVG(interval_days) FROM test_table) DAY AS modified_date FROM test_table WHERE map_extract(data_map, 100) IS NOT NULL;
+SELECT id, extracted_value, modified_date FROM (SELECT id, map_extract(data_map, 300) AS extracted_value, event_date + INTERVAL (SELECT SUM(interval_days) FROM test_table WHERE id = 2) DAY AS modified_date FROM test_table) AS subquery WHERE extracted_value IS NOT NULL;
+SELECT t1.id, map_extract(t1.data_map, 100) AS value_100, t2.interval_days FROM test_table AS t1 JOIN test_table AS t2 ON t1.id = t2.id WHERE map_extract(t1.data_map, 200) IS NULL HAVING COUNT(*) > 0;
+CREATE TABLE other_table (user_id INT, date_joined DATE, hours_worked INT);
+INSERT INTO other_table VALUES (1, DATE '2020-01-01', 100), (2, DATE '2019-01-01', 200);
+SELECT ot.user_id, ot.date_joined, t.event_date, map_extract(t.data_map, 100) AS map_value FROM other_table AS ot LEFT JOIN test_table AS t ON ot.user_id = t.id WHERE map_value IS NULL OR ot.date_joined + INTERVAL (SELECT MIN(interval_days) FROM test_table) DAY > t.event_date;
+WITH DateAdjustments AS (SELECT id, event_date + INTERVAL 2 DAY AS adjusted_date FROM test_table) SELECT da.id, map_extract(t.data_map, 100) AS value_100, da.adjusted_date FROM DateAdjustments AS da JOIN test_table AS t ON da.id = t.id WHERE map_extract(t.data_map, 100) IS NOT NULL ORDER BY da.adjusted_date;
+DROP TABLE test_table;
+DROP TABLE other_table;

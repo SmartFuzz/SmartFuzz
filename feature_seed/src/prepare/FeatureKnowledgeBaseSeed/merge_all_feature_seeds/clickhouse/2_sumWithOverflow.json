@@ -1,0 +1,12 @@
+CREATE TABLE employees(`id` UInt32, `name` String, `salary` UInt16) ENGINE = Log;
+INSERT INTO employees VALUES (1, 'Alice', 1500), (2, 'Bob', 2000), (3, 'Charlie', 2500);
+SELECT id, salary, NOT sumWithOverflow(salary) as neg_overflow FROM employees GROUP BY id;
+SELECT id, NOT sumWithOverflow(salary + CAST('10000' AS UInt16)) AS boundary_test FROM employees GROUP BY id HAVING boundary_test > 0;
+CREATE TABLE departments(`dept_id` UInt8, `dept_name` String) ENGINE = Log;
+INSERT INTO departments VALUES (1, 'HR'), (2, 'Engineering');
+SELECT e.id, NOT (SELECT sumWithOverflow(salary) FROM employees INNER JOIN departments ON id % 2 = dept_id) AS neg_salary_overflow FROM employees e;
+SELECT e.id, e.salary, NOT e.salary AS neg_salary FROM employees e ORDER BY e.salary + (NULLIF(e.salary, 0) / 2) DESC;
+SELECT d.dept_name, sumWithOverflow(e.salary) AS total_salary, NOT (sumWithOverflow(e.salary) > 50000) AS exceeds_budget FROM employees e JOIN departments d ON e.id % d.dept_id = 0 GROUP BY d.dept_name HAVING total_salary > 1000;
+SELECT CAST(e.salary AS Float64), NOT sumWithOverflow(e.salary) AS neg_overflow FROM employees e WHERE e.salary <= (SELECT MAX(salary) FROM employees) ORDER BY e.salary ASC;
+CREATE TABLE temp_employees AS SELECT *, NOT salary > 2000 AS salary_check FROM employees;
+SELECT *, sumWithOverflow(CASE WHEN salary_check THEN salary ELSE 0 END) AS conditional_sum FROM temp_employees GROUP BY id;

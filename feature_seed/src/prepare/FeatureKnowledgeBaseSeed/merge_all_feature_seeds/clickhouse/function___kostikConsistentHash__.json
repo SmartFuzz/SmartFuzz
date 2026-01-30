@@ -1,0 +1,15 @@
+CREATE TABLE test_kostik (key UInt64, buckets UInt16);
+INSERT INTO test_kostik VALUES (16045690984833335023, 2);
+INSERT INTO test_kostik VALUES (16045690984833335024, 3);
+INSERT INTO test_kostik VALUES (16045690984833335025, 4);
+INSERT INTO test_kostik VALUES (16045690984833335026, 32768);
+SELECT kostikConsistentHash(key, buckets) FROM test_kostik;
+SELECT key, kostikConsistentHash(key, buckets) AS hash_value FROM test_kostik WHERE buckets > 2;
+SELECT key, COUNT(*) AS occurrences FROM test_kostik GROUP BY kostikConsistentHash(key, buckets) HAVING occurrences > 1;
+CREATE TABLE test_kostik_nested AS (SELECT key, buckets FROM test_kostik WHERE buckets < 4);
+SELECT key, kostikConsistentHash(key, buckets) AS hash FROM test_kostik_nested;
+SELECT k1.key, k2.key, kostikConsistentHash(k1.key, k1.buckets) AS hash1, kostikConsistentHash(k2.key, k2.buckets) AS hash2 FROM test_kostik k1 JOIN test_kostik k2 ON k1.buckets = k2.buckets;
+WITH (SELECT MAX(buckets) FROM test_kostik) AS max_buckets SELECT key, kostikConsistentHash(key, max_buckets) AS hash FROM test_kostik;
+CREATE TABLE test_kostik_final AS SELECT key, kostikConsistentHash(key, 32768) AS consistent_hash FROM test_kostik;
+SELECT COUNT(*) FROM test_kostik_final WHERE consistent_hash = kostikConsistentHash(16045690984833335023, 32768);
+SELECT DISTINCT kostikConsistentHash(key, buckets) FROM test_kostik ORDER BY 1;

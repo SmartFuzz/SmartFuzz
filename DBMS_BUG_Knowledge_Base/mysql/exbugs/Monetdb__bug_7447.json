@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7447",
+  "title": "Unexpected result when using `BETWEEN` in `INNER JOIN`",
+  "description": "Consider the test cases below. It is unexpected that the third query returns empty table, since the second query returns `true`, which means that the `WHERE` clause in the third query should be evaluated to `true` and thus return the in the table after join.\n\n**To Reproduce**\n\n```sql\nDROP TABLE t0 CASCADE;\nDROP TABLE t1 CASCADE;\n\nCREATE TABLE t0(c0 INTEGER, c1 BOOLEAN, PRIMARY KEY(c0));\nCREATE TABLE t1(c1 INTEGER);\nINSERT INTO t1 (c1) VALUES (null);\nINSERT INTO t0 (c0, c1) VALUES (-1, false);\n\n\nSELECT t0.c0 FROM t0 INNER  JOIN t1 ON (t0.c1 NOT BETWEEN t1.c1 AND t0.c0); -- -1\nSELECT (t1.c1>1) IS NULL FROM t0 INNER  JOIN t1 ON (t0.c1 NOT BETWEEN t1.c1 AND t0.c0); -- true\nSELECT t0.c0 FROM t0 INNER  JOIN t1 ON (t0.c1 NOT BETWEEN t1.c1 AND t0.c0) WHERE (t1.c1>1) IS NULL;\n-- expected: -1\n-- actual: empty table\n```\n\n**Expected behavior**\nAs mentioned above\n\n**Screenshots**\nN/A\n\n**Software versions**\nBuild from source:\n\n```\n> docker exec monetdb-test mserver5 --version --dbname=monetdb\nMonetDB 5 server 11.50.0 (hg id: 25da4f1) (64-bit, 128-bit integers)\nThis is an unreleased version\nCopyright (c) 1993 - July 2008 CWI\nCopyright (c) August 2008 - 2023 MonetDB B.V., all rights reserved\nVisit https://www.monetdb.org/ for further information\nFound 503.5GiB available memory, 128 available cpu cores\nLibraries:\nCompiled by: @08cc21708292 (x86_64-pc-linux-gnu)\nCompilation: /usr/bin/cc \nLinking    : /usr/bin/ld\n```\n\n**Issue labeling**\nBug\n\n**Additional context**\nAdd any other context about the problem here.",
+  "date": "2024-01-24T15:47:05Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t2;",
+    "CREATE TABLE t2(c0 INT, c1 BOOLEAN, c2 FLOAT, PRIMARY KEY(c0));",
+    "INSERT INTO t2 (c0, c1, c2) VALUES (1, true, 1.5), (2, false, NULL), (3, true, 2.5);",
+    "SELECT t2.c0 FROM t2 INNER JOIN t1 ON (t2.c1 NOT BETWEEN t1.c1 AND t2.c2);",
+    "SELECT t2.c0 FROM t2 WHERE (t2.c2 IS NULL) AND (t2.c1 = true);"
+  ],
+  "key_bug_features": [
+    "INNER JOIN with NOT BETWEEN condition returning unexpected results"
+  ]
+}

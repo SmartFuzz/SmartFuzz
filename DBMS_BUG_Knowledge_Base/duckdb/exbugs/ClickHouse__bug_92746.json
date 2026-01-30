@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/92746",
+  "title": "Query loses “merge sorted streams” optimization when querying through a VIEW over Distributed table",
+  "description": "### Company or project name\n_No response_\n### Describe the unexpected behaviour\nWhen running an ORDER BY … DESC LIMIT query directly on a Distributed table, ClickHouse uses the efficient plan with\nSorting (Merge sorted streams … for ORDER BY).\nHowever, running the logically equivalent query through a VIEW defined as a simple projection over the same Distributed table (e.g. CREATE VIEW v AS SELECT … FROM distributed_table) produces a different plan:\n•\textra VIEW-expansion steps (Convert VIEW subquery result…, Materialize constants…)\n•\tloss of sorted-stream property\n•\tfallback to Sorting (Sorting for ORDER BY) above the read\nThis results in a significantly slower query, despite identical SQL semantics and data sources.\n### Which ClickHouse versions are affected?\nLatest\n### How to reproduce\n```\nDROP DATABASE IF EXISTS repro ON CLUSTER '{cluster}';\nCREATE DATABASE repro ON CLUSTER '{cluster}';\n-- Local replicated table\nCREATE TABLE repro.events_shard ON CLUSTER '{cluster}'\n(\norg_id String,\nevent_time DateTime,\nid UInt64,\nmsg String\n)\nENGINE = ReplicatedMergeTree\nPARTITION BY toYYYYMMDD(event_time)\nORDER BY (org_id, event_time, id);\n-- Distributed table\nCREATE TABLE repro.events ON CLUSTER '{cluster}' AS repro.events_shard\nENGINE = Distributed('{cluster}', repro, events_shard, cityHash64(org_id));\n-- View that is \"just select from the distributed table\"\nCREATE VIEW repro.events_view ON CLUSTER '{cluster}' AS\nSELECT org_id, event_time, id, msg\nFROM repro.events;\n-- Data\nINSERT INTO repro.events\nSELECT\ntoString(number % 100) AS org_id,\nnow() - (number % 200000) AS event_time,\nnumber AS id,\nconcat('m', toString(number)) AS msg\nFROM numbers(2000000);\n-- A) Direct distributed query\nEXPLAIN\nSELECT id, event_time, msg\nFROM repro.events\nWHERE event_time >= now() - INTERVAL 2 HOUR AND event_time <= now()\nORDER BY event_time DESC\nLIMIT 200;\n-- B) Same query through the view",
+  "date": "2025-12-20T16:04:42Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS test_db.sample_table;",
+    "CREATE TABLE test_db.sample_table (id BIGINT, name VARCHAR, created_at TIMESTAMP, score DOUBLE) AS SELECT * FROM (VALUES (0, '', NOW(), 0.0)) AS t(id, name, created_at, score);",
+    "CREATE VIEW test_db.sample_view AS SELECT id, name, created_at FROM test_db.sample_table WHERE score > 50.0;",
+    "INSERT INTO test_db.sample_table SELECT number, concat('Name', toString(number)), NOW(), number % 100 FROM range(100);",
+    "SELECT id, name, created_at FROM test_db.sample_view ORDER BY created_at DESC LIMIT 10;"
+  ],
+  "key_bug_features": [
+    "Querying through a VIEW loses merge sorted streams optimization"
+  ]
+}

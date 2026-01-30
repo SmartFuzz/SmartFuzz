@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14595",
+  "title": "GROUP BY ALL includes window functions, causing binder error",
+  "description": "### What happens?\r\n\r\nWhen using GROUP BY ALL, DuckDB incorrectly includes columns with window functions in the GROUP BY clause. This leads to a Binder Error: Cannot group on a window clause.\r\n\r\n### To Reproduce\r\n\r\n1. Create a sample table:\r\n\r\n```sql\r\nCREATE TABLE sample_data AS SELECT * FROM (\r\n    VALUES (1, 'A', 100),\r\n           (2, 'B', 200),\r\n           (3, 'A', 300),\r\n           (4, 'B', 400)\r\n) AS t(id, category, value);\r\n```\r\n\r\n2. Run a query with GROUP BY ALL and a window function:\r\n\r\n```sql\r\nSELECT category,\r\n       value,\r\n       ROW_NUMBER() OVER (PARTITION BY category) AS row_num\r\nFROM sample_data\r\nGROUP BY ALL;\r\n```\r\n\r\n**Expected Behavior:** GROUP BY ALL should exclude columns with window functions (`row_num` here) from the GROUP BY clause.\r\n\r\n**Actual Behavior:** The query fails with a Binder Error: Cannot group on a window clause.\r\n\r\n### OS:\r\n\r\nWindows 11 (x64)\r\n\r\n### DuckDB Version:\r\n\r\n1.1.2\r\n\r\n### DuckDB Client:\r\n\r\nCLI\r\n\r\n### Hardware:\r\n\r\n_No response_\r\n\r\n### Full Name:\r\n\r\nFabian Roßhirt\r\n\r\n### Affiliation:\r\n\r\nIBIS Prof. Thome AG\r\n\r\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\r\n\r\nI have tested with a stable release\r\n\r\n### Did you include all relevant data sets for reproducing the issue?\r\n\r\nYes\r\n\r\n### Did you include all code required to reproduce the issue?\r\n\r\n- [X] Yes, I have\r\n\r\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\r\n\r\n- [X] Yes, I have",
+  "date": "2024-10-28 14:59:21",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_data (id INTEGER, category VARCHAR(1), value INTEGER);",
+    "INSERT INTO test_data VALUES (1, 'X', 150), (2, 'Y', 250), (3, 'X', 350), (4, 'Y', 450), (5, NULL, 550);",
+    "SELECT category, value, COUNT(*) OVER (PARTITION BY category) AS count_per_category FROM test_data;",
+    "CREATE TABLE boundary_data (id INTEGER PRIMARY KEY, amount DECIMAL(10, 2) NOT NULL CHECK (amount >= 0));",
+    "INSERT INTO boundary_data (id, amount) VALUES (1, 0.00), (2, 9999999999.99);",
+    "SELECT amount, ROW_NUMBER() OVER (ORDER BY amount) AS row_num FROM boundary_data;"
+  ],
+  "key_bug_features": [
+    "GROUP BY ALL includes columns with window functions"
+  ]
+}

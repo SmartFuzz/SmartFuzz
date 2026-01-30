@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id INT, x FLOAT, y FLOAT, value STRING);
+INSERT INTO test_data VALUES (1, 5.0, 10.0, 'a'), (2, NULL, 20.0, 'b'), (3, 10.0, NULL, 'c'), (4, -5.0, 15.0, NULL), (5, 0.0, 25.0, 'e');
+SELECT regr_count(y, x) AS regression_count FROM (SELECT x // NULL AS x_div, y FROM test_data) AS derived_table GROUP BY x_div HAVING x_div IS NOT NULL;
+SELECT REGR_COUNT(y, x) FROM (SELECT x // 2 AS x_div FROM test_data WHERE value IS NOT NULL) AS subquery GROUP BY x_div HAVING x_div < 3;
+CREATE TABLE additional_data (id INT, coeff FLOAT);
+INSERT INTO additional_data VALUES (1, 1.5), (2, 2.5), (3, NULL), (4, -1.0);
+SELECT a.id, regr_count(a.y, a.x) AS count, SUM(a.x // COALESCE(b.coeff, 1.0)) AS adjusted_division FROM test_data a JOIN additional_data b ON a.id = b.id GROUP BY a.id HAVING count > 0;
+SELECT regr_count(y, x) FROM (SELECT x // (y + 1) AS division_result, y FROM test_data WHERE y IS NOT NULL) AS r WHERE division_result > 0;
+WITH data_agg AS (SELECT x // -1 AS x_neg, y FROM test_data) SELECT regr_count(y, x_neg) FROM data_agg WHERE y IS NOT NULL;
+SELECT COUNT(*) FROM (SELECT DISTINCT regr_count(y, x // 3) FROM test_data GROUP BY x) AS unique_counts WHERE regr_count IS NOT NULL;

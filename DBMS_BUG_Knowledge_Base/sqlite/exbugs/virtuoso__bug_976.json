@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/976",
+  "title": "Internal error: ssg_print_box_as_sql_atom (): bad mode",
+  "description": "While working on a study comparing different approaches to query the neXtProt dataset, I have observed that Virtuoso returns wrong results in some cases.\nIf I create the table —\ncreate table nextprot.entry_bases\n(\n    id                  varchar not null,\n    existence           varchar not null,\n    primary key(id)\n);\n\n\n— and define the mapping —\nxml_set_ns_decl('', 'http://nextprot.org/rdf#', 2);\nxml_set_ns_decl('iri', 'http://bioinfo.iocb.cz/rdf/quad-storage/linked-data-view/iri-class/nextprot#', 2);\n\nsparql create iri class iri:entry \"http://nextprot.org/rdf/entry/%U\"(in id varchar not null) option (bijection).;\nsparql create iri class iri:schema \"http://nextprot.org/rdf#%U\"(in id varchar not null) option (bijection).;\n\nsparql create quad storage virtrdf:NeXtProtQuadStorage\n    from DB.nextprot.entry_bases as entry_bases\n{\n  create virtrdf:nextprot as graph iri (\"http://nextprot.org/rdf\")\n  {\n    iri:entry(entry_bases.id)\n      :existence iri:schema(entry_bases.existence).\n  }\n};\n\n— then the SPARQL query —\nsparql\ndefine input:storage virtrdf:NeXtProtQuadStorage\nselect * where {\n  ?entry :existence ?level.\n  filter (?level != :Evidence_at_protein_level).\n};\n\n— returns the error —\nSQ074: Line 6: SP031: SPARQL compiler: Internal error: ssg_print_box_as_sql_atom (): bad mode\nAs a workaround, the iri() function can be used, and the following query works as expected:\nsparql\ndefine input:storage virtrdf:NeXtProtQuadStorage\nselect * where {\n  ?entry :existence ?level.\n  filter (iri(?level) != :Evidence_at_protein_level).\n};",
+  "date": "2021-07-27 11:51:58",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE nextprot_entry_bases (id TEXT NOT NULL, existence TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(id));",
+    "INSERT INTO nextprot_entry_bases (id, existence) VALUES ('entry1', 'Evidence_at_protein_level');",
+    "INSERT INTO nextprot_entry_bases (id, existence) VALUES ('entry2', NULL);",
+    "SELECT * FROM nextprot_entry_bases WHERE existence IS NOT NULL;",
+    "SELECT * FROM nextprot_entry_bases WHERE existence != 'Evidence_at_protein_level' OR existence IS NULL;"
+  ],
+  "key_bug_features": [
+    "SPARQL query with filter on existence level"
+  ]
+}

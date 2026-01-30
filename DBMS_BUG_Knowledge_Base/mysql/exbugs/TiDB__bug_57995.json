@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/57995",
+  "title": "TiFlash treats '+0' and '-0' as different key when do hash join",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n\n```sql\nDROP TABLE IF EXISTS t0;\nDROP TABLE IF EXISTS t1;\n\nCREATE TABLE IF NOT EXISTS t0 (\n    c0 FLOAT PRIMARY KEY NOT NULL,\n    c1 INT,\n    c2 VARCHAR(500)\n);\n\nCREATE TABLE IF NOT EXISTS t1 LIKE t0;\n\nINSERT INTO t0 (c2, c1, c0) VALUES (\"eVt%\", 1, -1.088348796E9);\nINSERT INTO t0 (c2, c1, c0) VALUES (\"abc\", 2, -2.088348796E9);\nINSERT INTO t0 (c2, c1, c0) VALUES (\"xyz\", 3, -3.088348796E9);\nINSERT INTO t0 (c2, c1, c0) VALUES (\"eVt%\", 4, -41.088348796E9);\n\nINSERT INTO t1 (c0, c1, c2) VALUES (0.390985317943897, 1, '_w');\nINSERT INTO t1 (c0, c1, c2) VALUES (0.490123456789012, 1, '_x');\nINSERT INTO t1 (c0, c1, c2) VALUES (0.590123456789012, 2, '_y');\nINSERT INTO t1 (c0, c1, c2) VALUES (0.190985317943891, 3, '_z');\nINSERT INTO t1 (c0, c1, c2) VALUES (0.20985317943892, 2, '_w11');\nALTER TABLE t0 SET TIFLASH REPLICA 1;\nALTER TABLE t1 SET TIFLASH REPLICA 1;\n```\n\n### 2. What did you expect to see? (Required)\n\nThe same behavior between two queries\n\n### 3. What did you see instead (Required)\n\n```sql\nmysql> SELECT /*+ READ_FROM_STORAGE(tikv[t0]) */\n    ->     t0.c0, t0.c1, t0.c2\n    -> FROM\n    ->     t0\n    -> WHERE\n    ->     EXISTS (\n    ->         SELECT /*+ READ_FROM_STORAGE(tikv[t1]) */ 1\n    ->         FROM t1\n    ->         WHERE\n    ->             t0.c1 = t1.c1\n    ->             AND (ROUND(t1.c2 - 0.5, 0)) = (((t0.c0 || '') AND t0.c2))\n    ->     )\n    -> GROUP BY t0.c0, t0.c1, t0.c2\n    -> HAVING t0.c1 > 0\n    -> ORDER BY t0.c1 DESC LIMIT 10;\n+-------------+------+------+\n| c0          | c1   | c2   |\n+-------------+------+------+\n| -3088348700 |    3 | xyz  |\n| -2088348800 |    2 | abc  |\n| -1088348800 |    1 | eVt% |\n+-------------+------+------+\n3 rows in set, 9 warnings (0.05 sec)\n\nmysql> SELECT /*+ READ_FROM_STORAGE(tiflash[t0]) */\n    ->     t0.c0, t0.c1, t0.c2\n    -> FROM\n    ->     t0\n    -> WHERE\n    ->     EXISTS (\n    ->         SELECT /*+ READ_FROM_STORAGE(tiflash[t1]) */ 1\n    ->         FROM t1\n    ->         WHERE\n    ->             t0.c1 = t1.c1\n    ->             AND (ROUND(t1.c2 - 0.5, 0)) = (((t0.c0 || '') AND t0.c2))\n    ->     )\n    -> GROUP BY t0.c0, t0.c1, t0.c2\n    -> HAVING t0.c1 > 0\n    -> ORDER BY t0.c1 DESC LIMIT 10;\nEmpty set (0.04 sec)\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\nTiDB v8.4.0\n",
+  "date": "2024-12-04T14:44:53Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE IF NOT EXISTS t2 (c0 FLOAT PRIMARY KEY NOT NULL, c1 INT, c2 VARCHAR(500) DEFAULT NULL);",
+    "INSERT INTO t2 (c0, c1, c2) VALUES (0.0, 1, 'zero');",
+    "INSERT INTO t2 (c0, c1, c2) VALUES (0.0, 2, 'negative zero');",
+    "SELECT * FROM t2 WHERE c0 IN (0.0, -0.0);",
+    "SELECT COUNT(*) FROM t2 WHERE c1 IS NULL;"
+  ],
+  "key_bug_features": [
+    "TiFlash treats '+0' and '-0' as different keys"
+  ]
+}

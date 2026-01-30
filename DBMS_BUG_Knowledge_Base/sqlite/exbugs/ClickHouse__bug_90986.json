@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/90986",
+  "title": "ROW POLICY does not respect FINAL",
+  "description": "Example: https://fiddle.clickhouse.com/225424c2-872a-4ee4-a118-3d20b99639b6\n```\ncreate table tab (x UInt32, y String, version UInt32) engine = ReplacingMergeTree(version) order by x;\ninsert into tab values (1, 'aaa', 1), (2, 'bbb', 1);\ninsert into tab values (1, 'ccc', 2);\nCREATE ROW POLICY pol1 ON default.tab USING y != 'ccc' TO default;\nselect * from tab final;\n```\nCurrent result\n```\n1\taaa\t1\n2\tbbb\t1\n```\nShould be\n```\n2\tbbb\t1\n```\nThis happens because the row policy filter is applied before FINAL.\nLet's add a setting that allows applying the row policy after FINAL. If the expression depends only on columns in ORDER BY, apply it always before FINAL as usual.",
+  "date": "2025-11-27T14:50:52Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE tab2 (a INTEGER, b REAL, c TEXT, d DATE);",
+    "INSERT INTO tab2 VALUES (1, 1.1, 'test', '2023-01-01'), (2, 2.2, NULL, '2023-01-02'), (3, 3.3, 'example', '2023-01-03');",
+    "CREATE TABLE pol2 AS SELECT * FROM tab2 WHERE b > 2.0;",
+    "SELECT * FROM tab2 WHERE b > 2.0;",
+    "SELECT * FROM tab2 WHERE c IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Row policy filter applied before FINAL"
+  ]
+}

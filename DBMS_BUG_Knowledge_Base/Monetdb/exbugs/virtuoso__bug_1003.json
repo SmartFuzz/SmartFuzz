@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/1003",
+  "title": "Options datatype and language are ignored by Literal classes",
+  "description": "It seems that Virtuoso ignores datatype and language options in create Literal class statements.\nIf I create the table —\ncreate table \"TEST\".\"TEST\".\"EXAMPLE\"(\n  id integer primary key,\n  name VARCHAR(100)\n);\n\ninsert soft \"TEST\".\"TEST\".\"EXAMPLE\" values (1, 'Virtuoso');\n\n— and define the mapping —\nsparql\nprefix virtrdf: <http://www.openlinksw.com/schemas/virtrdf#>\ncreate IRI class <class:id> \"http://example.com/entity/%d\" (in id integer) .\ncreate Literal class <class:lang> \"%s\" (in name varchar) option (lang \"en\") .\ncreate Literal class <class:type> \"%s\" (in name varchar) option (datatype <http://example.com/mystring> ) .\ncreate quad storage virtrdf:Example from \"TEST\".\"TEST\".\"EXAMPLE\" as tbl {\n  create <http://temp/example> as graph <http://example.com/> {\n    <class:id> (tbl.\"id\")\n      <http://example.com/test1> <class:lang> (tbl.\"name\") ;\n      <http://example.com/test2> <class:type> (tbl.\"name\") .\n  }\n};\n\n— then the SPARQL query —\nsparql define input:storage virtrdf:Example\nselect ?P ?O (datatype(?O) as ?datatype) (lang(?O) as ?lang) where { ?S ?P ?O };\n\n--- returns the result ---\n\n\n\nP  LONG VARCHAR\nO  LONG VARCHAR\ndatatype  LONG VARCHAR\nlang  LONG VARCHAR\n\n\n\n\nhttp://example.com/test1\nVirtuoso\nhttp://www.w3.org/2001/XMLSchema#string\nBLOB 0 chars\n\n\nhttp://example.com/test2\nVirtuoso\nhttp://www.w3.org/2001/XMLSchema#string\nBLOB 0 chars\n\n\n\nHowever, the result ---\n\n\n\nP  LONG VARCHAR\nO  LONG VARCHAR\ndatatype  LONG VARCHAR\nlang  LONG VARCHAR\n\n\n\n\nhttp://example.com/test1\nVirtuoso\nhttp://www.w3.org/1999/02/22-rdf-syntax-ns#langString\nen\n\n\nhttp://example.com/test2\nVirtuoso\nhttp://example.com/mystring\n\n\n\n\n--- should be returned.",
+  "date": "2022-01-21 13:41:08",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE \"TEST\".\"TEST\".\"EXAMPLE_1\"(id integer primary key, name VARCHAR(100), age integer, created_at TIMESTAMP);",
+    "INSERT INTO \"TEST\".\"TEST\".\"EXAMPLE_1\" VALUES (1, 'Virtuoso', 5, CURRENT_TIMESTAMP);",
+    "CREATE TABLE \"TEST\".\"TEST\".\"EXAMPLE_2\"(id integer primary key, description LONG VARCHAR, is_active BOOLEAN);",
+    "INSERT INTO \"TEST\".\"TEST\".\"EXAMPLE_2\" VALUES (1, 'Test description', TRUE);",
+    "SELECT e1.name, e2.description FROM \"TEST\".\"TEST\".\"EXAMPLE_1\" e1 JOIN \"TEST\".\"TEST\".\"EXAMPLE_2\" e2 ON e1.id = e2.id WHERE e1.age IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Ignoring datatype and language options in Literal class"
+  ]
+}

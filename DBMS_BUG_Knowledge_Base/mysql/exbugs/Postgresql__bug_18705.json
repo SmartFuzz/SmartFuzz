@@ -1,0 +1,21 @@
+{
+  "url": "https://www.postgresql.org/message-id/18705-29cc90ff31682f19%40postgresql.org",
+  "title": "BUG #18705: Segmentation fault when create brin index on user-defined type.",
+  "description": "The following bug has been logged on the website:\nBug reference:      18705\nLogged by:          shenzheng\nEmail address:      503699317(at)qq(dot)com\nPostgreSQL version: 15.5\nOperating system:   centos\nDescription:\ncreate table t_sva(sva text);\ninsert into t_sva values( 1118090878 );\ninsert into t_sva values( 2345010477 );\ncreate or replace function normalize_si(text) RETURNS text AS $$ BEGIN\nRETURN\nsubstring($1,9,2) || substring($1,7,2) || substring($1,5,2) ||\nsubstring($1,1,4);\nEND;$$ LANGUAGE plpgsql IMMUTABLE;\ncreate or replace function si_lt(text,text) RETURNS boolean AS $$ BEGIN\nRETURN\nnormalize_si($1) < normalize_si($2);\nEND;$$ LANGUAGE plpgsql IMMUTABLE;\ncreate or replace function si_le(text,text) RETURNS boolean AS $$ BEGIN\nRETURN\nnormalize_si($1) <= normalize_si($2);\nEND;$$ LANGUAGE plpgsql IMMUTABLE;\ncreate or replace function si_ge(text,text) RETURNS boolean AS $$ BEGIN\nRETURN\nnormalize_si($1) >= normalize_si($2);\nEND;$$ LANGUAGE plpgsql IMMUTABLE;\ncreate or replace function si_gt(text,text) RETURNS boolean AS $$ BEGIN\nRETURN\nnormalize_si($1) > normalize_si($2);\nEND;$$ LANGUAGE plpgsql IMMUTABLE;\ncreate operator <# (PROCEDURE = si_lt, LEFTARG=text, RIGHTARG=text);\ncreate operator <=# (PROCEDURE = si_le, LEFTARG=text, RIGHTARG=text);\ncreate operator >=# (PROCEDURE = si_ge, LEFTARG=text, RIGHTARG=text);\ncreate operator ># (PROCEDURE = si_gt, LEFTARG=text, RIGHTARG=text);\ncreate or replace function si_same(text,text) RETURNS int AS $$ BEGIN IF\nnormalize_si($1) < normalize_si($2) THEN RETURN -1;\nELSIF normalize_si($1) > normalize_si($2) THEN RETURN +1;\nELSE RETURN 0;\nEND IF;\nEND; $$ LANGUAGE plpgsql IMMUTABLE;\nCREATE OPERATOR CLASS sva_special_ops FOR TYPE text using brin AS OPERATOR 1\n<#,\nOPERATOR 2 <=#, OPERATOR 3 >=#, OPERATOR 4 >#, function 1\nsi_same(text,text);\nCREATE INDEX idx_special1 ON t_sva using brin(sva sva_special_ops);\nOUTPUT：\npostgres=# CREATE INDEX idx_special1 ON t_sva using brin(sva\nsva_special_ops);\nserver closed the connection unexpectedly\nThis probably means the server terminated abnormally\nbefore or while processing the request.\nThe connection to the server was lost. Attempting reset: Failed.\nThe connection to the server was lost. Attempting reset: Failed.\n!?>\n!?>",
+  "date": "2024-11-14 02:40:27",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE t_sva(sva VARCHAR(255) NOT NULL, id INT AUTO_INCREMENT PRIMARY KEY);",
+    "INSERT INTO t_sva(sva) VALUES('1118090878'), ('2345010477'), (NULL);",
+    "CREATE FUNCTION normalize_si(sva VARCHAR(255)) RETURNS VARCHAR(255) BEGIN RETURN CONCAT(SUBSTRING(sva,9,2), SUBSTRING(sva,7,2), SUBSTRING(sva,5,2), SUBSTRING(sva,1,4));",
+    "END;",
+    "SELECT normalize_si(sva) FROM t_sva;",
+    "CREATE INDEX idx_special1 ON t_sva(sva);"
+  ],
+  "key_bug_features": [
+    "create index on user-defined type using brin"
+  ]
+}

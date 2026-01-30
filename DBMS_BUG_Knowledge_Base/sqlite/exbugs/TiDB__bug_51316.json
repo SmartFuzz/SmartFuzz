@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/51316",
+  "title": "partition pruning leads to different partition when `utf8mb4_general_ci ` is set",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n```\r\ncreate table t(col varchar(32) COLLATE utf8mb4_general_ci DEFAULT NULL) PARTITION BY KEY (`col`) PARTITIONS 7;\r\nexplain select * from t where col = 'linpin';\r\nexplain select * from t where col = 'LINPIN';\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nThe query above should be pruned to the same partition.\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n```\r\nmysql> explain select * from t where col = 'linpin';\r\n+-------------------------+----------+-----------+-----------------------+--------------------------------+\r\n| id                      | estRows  | task      | access object         | operator info                  |\r\n+-------------------------+----------+-----------+-----------------------+--------------------------------+\r\n| TableReader_8           | 10.00    | root      |                       | data:Selection_7               |\r\n| └─Selection_7           | 10.00    | cop[tikv] |                       | eq(test.t.col, \"linpin\")       |\r\n|   └─TableFullScan_6     | 10000.00 | cop[tikv] | table:t, partition:p4 | keep order:false, stats:pseudo |\r\n+-------------------------+----------+-----------+-----------------------+--------------------------------+\r\n3 rows in set, 1 warning (0.01 sec)\r\n\r\nmysql> explain select * from t where col = 'LINPIN';\r\n+-------------------------+----------+-----------+-----------------------+--------------------------------+\r\n| id                      | estRows  | task      | access object         | operator info                  |\r\n+-------------------------+----------+-----------+-----------------------+--------------------------------+\r\n| TableReader_8           | 10.00    | root      |                       | data:Selection_7               |\r\n| └─Selection_7           | 10.00    | cop[tikv] |                       | eq(test.t.col, \"LINPIN\")       |\r\n|   └─TableFullScan_6     | 10000.00 | cop[tikv] | table:t, partition:p3 | keep order:false, stats:pseudo |\r\n+-------------------------+----------+-----------+-----------------------+--------------------------------+\r\n3 rows in set, 1 warning (0.00 sec)\r\n\r\n```\r\n\r\n`partition:p4` and `partition:p3`, they are not same.\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\nmaster\r\n",
+  "date": "2024-02-26T07:23:02Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1(col1 TEXT DEFAULT NULL);",
+    "INSERT INTO t1(col1) VALUES ('test'), ('TEST'), (NULL), ('boundary'), ('');",
+    "SELECT * FROM t1 WHERE col1 = 'test';",
+    "SELECT * FROM t1 WHERE col1 = 'TEST';",
+    "SELECT * FROM t1 WHERE col1 IS NULL;"
+  ],
+  "key_bug_features": [
+    "partition pruning with utf8mb4_general_ci collation"
+  ]
+}

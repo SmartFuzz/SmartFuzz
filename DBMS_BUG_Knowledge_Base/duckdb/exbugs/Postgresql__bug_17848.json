@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/17848-fbeac774e88c0183%40postgresql.org",
+  "title": "BUG #17848: Deadlock when running ANALYZE on a table while REINDEX INDEX CONCURRENTLY is running",
+  "description": "The following bug has been logged on the website:\nBug reference:      17848\nLogged by:          Marcin Barczyński\nEmail address:      mba(dot)ogolny(at)gmail(dot)com\nPostgreSQL version: 13.10\nOperating system:   Ubuntu\nDescription:\nIn order to reproduce, first prepare the data:\nDROP TABLE IF EXISTS demo;\nCREATE TABLE demo(val BIGINT);\nCREATE INDEX demo_idx ON demo(val);\nINSERT INTO demo SELECT val FROM generate_series(1, 10000000) val;\nNow, in one terminal run:\nq=# REINDEX INDEX CONCURRENTLY demo_idx;\nAnd immediately in the other:\nq=# ANALYZE demo;\nWhen REINDEX INDEX CONCURRENTLY is about to finish, it fails with:\nERROR:  deadlock detected\nDETAIL:  Process 762797 waits for ShareLock on virtual transaction 4/32405;\nblocked by process 752318.\nProcess 752318 waits for ShareUpdateExclusiveLock on relation 202300 of\ndatabase 58517; blocked by process 762797.\nHINT:  See server log for query details.",
+  "date": "2023-03-16 19:47:53",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS demo;",
+    "CREATE TABLE demo(val BIGINT, name TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "CREATE INDEX demo_idx ON demo(val);",
+    "INSERT INTO demo(val, name) SELECT val, 'Name ' || val FROM range(1, 10000000);",
+    "ANALYZE demo;"
+  ],
+  "key_bug_features": [
+    "ANALYZE running during REINDEX INDEX CONCURRENTLY"
+  ]
+}

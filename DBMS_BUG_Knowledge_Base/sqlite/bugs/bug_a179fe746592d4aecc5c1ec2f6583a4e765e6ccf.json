@@ -1,0 +1,34 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/a179fe7465",
+  "title": "Incorrect output order on a join with an ORDER BY",
+  "vulnerable_version": "3.7.16",
+  "date": "2013-03-26 15:36:5112.38 years ago",
+  "path": "/home/crawl_bugs/sqlite/ticket_output/ticket_info_a179fe7465.json",
+  "poc": [
+    "select pgr.productgroupid, r.stationgroupid, sum(quantity)\nfrom tmp_duration d, productgrouprelation pgr, stationgrouprelation r  where d.productid = pgr.productid  and d.stationid = r.stationid group by r.stationgroupid, pgr.productgroupid;",
+    "select pgr.productgroupid, r.stationgroupid, sum(quantity)\nfrom tmp_duration d, productgrouprelation pgr, stationgrouprelation r  where d.productid = pgr.productid  and d.stationid = r.stationid group by pgr.productgroupid, r.stationgroupid;",
+    "CREATE TABLE t1(a, b, PRIMARY KEY(a,b));",
+    "INSERT INTO t1 VALUES(1,1),(1,2);",
+    "CREATE TABLE t2(x, y, PRIMARY KEY(x,y));",
+    "INSERT INTO t2 VALUES(3,3),(4,4);",
+    "SELECT a, x FROM t1, t2 ORDER BY 1, 2;",
+    "INSERT INTO t3 VALUES(1),(1);",
+    "CREATE INDEX t3a ON t3(a);",
+    "CREATE TABLE t4(x);",
+    "INSERT INTO t4 VALUES(3),(4);",
+    "CREATE INDEX t4x ON t4(x);",
+    "SELECT a, x FROM t3, t4 ORDER BY 1, 2;"
+  ],
+  "vulnerable_database": "sqlite",
+  "description": "nobody added on 2013-03-26 15:36:51:\nIn the query below, there are multiple rows with the same combination of group by columns:\nselect pgr.productgroupid, r.stationgroupid, sum(quantity)\nfrom tmp_duration d, productgrouprelation pgr, stationgrouprelation r  where d.productid = pgr.productid  and d.stationid = r.stationid group by r.stationgroupid, pgr.productgroupid\n\nresults in\nFun EB 13 \nFun EB 12 \nFun EB 1862\nGK EB 4 \nGK EB 2 \nGK EB 505 \nGK EB 5 \nGK EB 26 \nGK EB 6 \nGK EB 155 \nGK EB 4284 \nGK EB 1781 \n\nReversing the group by columns to \"pgr.productgroupid, r.stationgroupid\" will give the correct result:\nFun EB 1887 \nGK EB 6768 \n\nThis effect is also in 3.7.15.2. Version 3.7.2 is ok.\ndrh added on 2013-03-27 11:39:51:\nThe ORDER BY clause on the final SELECT of the following script does not work:\nCREATE TABLE t1(a, b, PRIMARY KEY(a,b));\nINSERT INTO t1 VALUES(1,1),(1,2);\nCREATE TABLE t2(x, y, PRIMARY KEY(x,y));\nINSERT INTO t2 VALUES(3,3),(4,4);\nSELECT a, x FROM t1, t2 ORDER BY 1, 2;\nThis script is a reduction of the same bug that causes the problem\nin the initial bug report above.\nThis problem was introduced to trunk by check-in [956e4d7f8958e706] on\n2012-10-03 and first appeared in release 3.7.15.\ndrh added on 2013-03-27 14:28:13:\nAnother test case is shown below.  This one uses single-column indices\nonly.\nCREATE TABLE t3(a);\nINSERT INTO t3 VALUES(1),(1);\nCREATE INDEX t3a ON t3(a);\nCREATE TABLE t4(x);\nINSERT INTO t4 VALUES(3),(4);\nCREATE INDEX t4x ON t4(x);\nSELECT a, x FROM t3, t4 ORDER BY 1, 2;",
+  "key_bug_features": [
+    "ORDER BY clause not functioning correctly on join queries"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE products(id INTEGER PRIMARY KEY, name TEXT NOT NULL, category_id INTEGER);",
+    "CREATE TABLE categories(id INTEGER PRIMARY KEY, name TEXT NOT NULL);",
+    "INSERT INTO categories VALUES(1, 'Electronics'), (2, 'Books'), (3, 'Clothing');",
+    "INSERT INTO products VALUES(1, 'Laptop', 1), (2, 'Novel', 2), (3, 'T-shirt', 3), (4, 'Smartphone', 1), (5, 'Magazine', 2);",
+    "SELECT c.name, COUNT(p.id) FROM categories c LEFT JOIN products p ON c.id = p.category_id GROUP BY c.name ORDER BY c.name;"
+  ]
+}

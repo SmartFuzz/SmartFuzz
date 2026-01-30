@@ -1,0 +1,16 @@
+CREATE TABLE test_table (id UInt32, values Array(Int32), nullable_value Nullable(Int32));
+INSERT INTO test_table VALUES (1, [1, 2, 3]), (2, NULL), (3, [4, 5, 6]);
+SELECT if(arrayElement(values, id), arrayElement(values, id), 0) AS result FROM test_table;
+SELECT id, if(NULL, arrayElement(values, 1), 0) AS result FROM test_table WHERE id = 1;
+SELECT id, values, if(length(values) = 0, 'Empty', 'Not Empty') AS array_status FROM test_table;
+SELECT id, if(arrayElement(values, 2) IS NULL, 0, arrayElement(values, 2)) AS safe_access FROM test_table WHERE id = 3;
+CREATE TABLE test_table2 (id UInt32, value Nullable(Int32));
+INSERT INTO test_table2 VALUES (1, 10), (2, NULL), (3, 20);
+SELECT t1.id, if(t1.value = 10, 'Ten', 'Not Ten') AS value_description FROM test_table2 AS t1 JOIN test_table AS t2 ON t1.id = arrayElement(t2.values, 1) WHERE t1.value IS NOT NULL;
+SELECT id, if(arrayElement(values, 1) = 2, sum(values), count(values)) AS aggregation_test FROM test_table GROUP BY id HAVING if(arrayElement(values, 2) IS NULL, 1, 0) = 1;
+SELECT id, count() AS cnt FROM test_table2 GROUP BY id HAVING if(AVG(value) IS NULL, 0, AVG(value)) > 0;
+CREATE TABLE test_table3 (group_id UInt32, data Array(Nullable(String)));
+INSERT INTO test_table3 VALUES (1, ['A', 'B', NULL]), (2, [NULL, NULL, 'C']);
+SELECT group_id, count() AS total, if(arrayElement(data, 1) IS NULL, 'No Data', arrayElement(data, 1)) AS first_non_null FROM test_table3 GROUP BY group_id HAVING total > 0;
+SELECT if(count(data) > 0, arrayElement(data, 2), 'Fallback') AS second_item FROM test_table3 GROUP BY group_id;
+SELECT id, if(arrayElement(data, id % 3) IS NOT NULL, arrayElement(data, id % 3), 'Default') AS retrieved_value FROM test_table3 JOIN (SELECT * FROM numbers(3)) AS num ON id = num.number;

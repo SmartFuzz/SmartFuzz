@@ -1,0 +1,11 @@
+CREATE TABLE test_dates (id Int32, event_date DateTime64(3), title String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_dates (id, event_date, title) VALUES (1, '2024-01-01 00:00:00', 'New Year'), (2, '2024-01-01 12:00:00', 'Lunch'), (3, NULL, 'Null Event');
+SELECT addMinutes(event_date, 30) AS updated_time FROM test_dates WHERE title ILIKE 'New%';
+SELECT id, addMinutes(event_date, 100) AS delayed_time FROM test_dates WHERE title ILIKE 'Lunch' AND addMinutes(event_date, 30) IS NOT NULL;
+SELECT id, event_date, addMinutes(event_date, -60) AS past_time FROM test_dates WHERE event_date IS NOT NULL AND title ILIKE '%Event';
+SELECT id, event_date, addMinutes(NULLIF(title, 'Null Event'), 45) AS adjusted_time FROM test_dates WHERE adjusted_time IS NOT NULL;
+WITH (SELECT MAX(event_date) FROM test_dates) AS max_event_date, (SELECT MIN(event_date) FROM test_dates) AS min_event_date SELECT addMinutes(max_event_date, 60) AS one_hour_later, addMinutes(min_event_date, -60) AS one_hour_earlier;
+SELECT addMinutes('2023-12-31 23:59:00', 1) AS next_minute, title FROM test_dates WHERE title ILIKE '%';
+CREATE TEMPORARY TABLE temp_dates AS SELECT id, addMinutes(event_date, 10) AS modified_time FROM test_dates WHERE event_date IS NOT NULL;
+SELECT id, modified_time FROM temp_dates WHERE modified_time ILIKE '%2024%' AND id IN (SELECT id FROM test_dates WHERE event_date IS NOT NULL);
+SELECT addMinutes(addMinutes(event_date, 10), -20) AS event_adjusted FROM test_dates WHERE title ILIKE 'Lunch' GROUP BY event_adjusted HAVING event_adjusted IS NOT NULL;

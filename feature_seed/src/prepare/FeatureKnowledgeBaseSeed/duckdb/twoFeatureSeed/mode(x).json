@@ -1,0 +1,16 @@
+{
+    "function": "mode(x)",
+    "operator": "-",
+    "sql_array": [
+        "CREATE TABLE test_data (id INT, value TIMESTAMP, frequency INT DEFAULT 1);",
+        "INSERT INTO test_data (id, value, frequency) VALUES (1, TIMESTAMP '2023-01-01 12:00:00', 5), (2, TIMESTAMP '2023-01-02 12:00:00', 3), (3, TIMESTAMP '1999-12-31 23:59:59', 5), (4, NULL, 2);",
+        "SELECT mode(value) OVER (PARTITION BY frequency) AS most_frequent, (SELECT MAX(value) - INTERVAL '1 DAY' FROM test_data) AS max_minus_one_day FROM test_data GROUP BY frequency;",
+        "SELECT value, mode(value) FROM (SELECT id, value - INTERVAL (SELECT COUNT(*) FROM test_data) DAY AS adjusted_value FROM test_data WHERE value IS NOT NULL) AS subquery GROUP BY adjusted_value;",
+        "SELECT mode(value) AS frequent_value FROM (SELECT NULL AS value UNION ALL SELECT TIMESTAMP '2023-02-01 00:00:00') AS values UNION ALL SELECT CURRENT_TIMESTAMP - INTERVAL 10 DAY;",
+        "CREATE TABLE temp_data (ts TIMESTAMP, count INT);",
+        "INSERT INTO temp_data (ts, count) VALUES (TIMESTAMP '2022-01-01 00:00:00', 5), (TIMESTAMP '2022-01-01 00:00:00' - INTERVAL '1 DAY', 5), (CURRENT_TIMESTAMP, NULL);",
+        "SELECT mode(count) FROM temp_data WHERE ts < (CURRENT_TIMESTAMP - INTERVAL '2 DAY') OR count IS NULL GROUP BY COUNT(ts);",
+        "SELECT mode(ts) OVER (ORDER BY count) AS most_frequent_ts FROM temp_data WHERE count IS NOT NULL;",
+        "SELECT (mode(value) - INTERVAL (SELECT MIN(count) FROM temp_data)) AS adjusted_frequent_value FROM test_data WHERE value IS NOT NULL HAVING adjusted_frequent_value IS NOT NULL;"
+    ]
+}

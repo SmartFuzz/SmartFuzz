@@ -1,0 +1,15 @@
+CREATE TABLE rdf_subscriptions (id INTEGER PRIMARY KEY, subscription_name VARCHAR(255), user_name VARCHAR(255), password VARCHAR(255));
+INSERT INTO rdf_subscriptions (id, subscription_name, user_name, password) VALUES (1, 'demo-rdf-srv', 'repl_user', 'repl_passwd');
+CREATE TABLE rdf_operations (operation_id INTEGER PRIMARY KEY, subscription_id INTEGER, operation_type VARCHAR(10), operation_date TIMESTAMP, FOREIGN KEY (subscription_id) REFERENCES rdf_subscriptions(id));
+INSERT INTO rdf_operations (operation_id, subscription_id, operation_type, operation_date) VALUES (1, 1, 'INSERT', NOW());
+INSERT INTO rdf_operations (operation_id, subscription_id, operation_type, operation_date) VALUES (2, 1, 'DELETE', NOW() + INTERVAL 1 DAY);
+SELECT * FROM rdf_operations WHERE subscription_id = (SELECT id FROM rdf_subscriptions WHERE subscription_name = 'demo-rdf-srv');
+SELECT COUNT(*) FROM rdf_operations WHERE operation_type = 'INSERT' AND subscription_id = (SELECT id FROM rdf_subscriptions WHERE user_name = 'repl_user');
+SELECT COUNT(*) AS total_operations FROM rdf_operations WHERE subscription_id = (SELECT id FROM rdf_subscriptions WHERE subscription_name = 'demo-rdf-srv') AND operation_date BETWEEN NOW() - INTERVAL '1 DAY' AND NOW();
+DB.DBA.RDF_REPL_SYNC ('demo-rdf-srv', 'repl_user', 'repl_passwd');
+UPDATE rdf_subscriptions SET password = 'new_repl_passwd' WHERE user_name = 'repl_user';
+DELETE FROM rdf_operations WHERE operation_date < NOW() - INTERVAL '7 DAYS';
+SELECT a.operation_id, b.subscription_name FROM rdf_operations a JOIN rdf_subscriptions b ON a.subscription_id = b.id WHERE b.user_name = 'repl_user' AND a.operation_type = 'DELETE';
+INSERT INTO rdf_operations (operation_id, subscription_id, operation_type, operation_date) SELECT operation_id + 2, subscription_id, 'INSERT', NOW() FROM rdf_operations WHERE subscription_id = 1;
+CREATE INDEX idx_subscription ON rdf_subscriptions(subscription_name);
+SELECT a.operation_id, a.operation_type FROM rdf_operations a WHERE a.operation_id IN (SELECT operation_id FROM rdf_operations WHERE operation_type = 'INSERT') ORDER BY a.operation_date DESC;

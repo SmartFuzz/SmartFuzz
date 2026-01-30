@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=116762",
+  "title": "Optimizer gives 'Impossible where' without considering field collation",
+  "description": "Hello,\r\n  Recently we find a case about select query. Under certain connection collation, when query with `c1 = 'abc'` we can get resultset, when query with `a='abc '` we can also get resultset, but when query with `a='abc' and a = 'abc '` we get empty resultset, which is unreasonable.\nHow to repeat:\n[yxxdb_8036@localhost ~]$ mysql -uroot -p'db1x@NJ+1' -S ~/bin/mysql1.sock test\r\nmysql: [Warning] Using a password on the command line interface can be insecure.\r\nReading table information for completion of table and column names\r\nYou can turn off this feature to get a quicker startup with -A\r\n\r\nWelcome to the MySQL monitor.  Commands end with ; or \\g.\r\nYour MySQL connection id is 13\r\nServer version: 8.0.36 Source distribution\r\n\r\nCopyright (c) 2000, 2024, Oracle and/or its affiliates.\r\n\r\nOracle is a registered trademark of Oracle Corporation and/or its\r\naffiliates. Other names may be trademarks of their respective\r\nowners.\r\n\r\nType 'help;' or '\\h' for help. Type '\\c' to clear the current input statement.\r\n\r\nmysql> CREATE TABLE `t_varchar` (\r\n    ->   `id` int NOT NULL AUTO_INCREMENT,\r\n    ->   `c1` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,\r\n    ->   PRIMARY KEY (`id`)\r\n    -> ) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;\r\nQuery OK, 0 rows affected (0.01 sec)\r\n\r\nmysql> insert into t_varchar (c1) values ('abc');\r\nQuery OK, 1 row affected (0.00 sec)\r\n\r\nmysql> insert into t_varchar (c1) values ('abc ');\r\nQuery OK, 1 row affected (0.00 sec)\r\n\r\nmysql> insert into t_varchar (c1) values ('abc  ');\r\nQuery OK, 1 row affected (0.01 sec)\r\n\r\nmysql> set names utf8mb4 collate utf8mb4_0900_ai_ci;\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nmysql> select *,length(c1) from t_varchar where c1 = 'abc';\r\n+----+-------+------------+\r\n| id | c1    | length(c1) |\r\n+----+-------+------------+\r\n|  7 | abc   |          3 |\r\n|  8 | abc   |          4 |\r\n|  9 | abc   |          5 |\r\n+----+-------+------------+\r\n3 rows in set (0.00 sec)\r\n\r\nmysql> select *,length(c1) from t_varchar where c1 = 'abc ';\r\n+----+-------+------------+\r\n| id | c1    | length(c1) |\r\n+----+-------+------------+\r\n|  7 | abc   |          3 |\r\n|  8 | abc   |          4 |\r\n|  9 | abc   |          5 |\r\n+----+-------+------------+\r\n3 rows in set (0.00 sec)\r\n\r\n# 3 rows of resultset expected, actually empty\r\nmysql> select *,length(c1) from t_varchar where c1 = 'abc' and c1 = 'abc ';\r\nEmpty set (0.00 sec)\r\n\r\nmysql>",
+  "date": "2024-11-24 09:01:00",
+  "vulnerable_version": "8.0.36, 8.0.40, 8.4.3",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t_mixed (id SERIAL PRIMARY KEY, c1 VARCHAR(10) COLLATE \"utf8mb4_bin\" DEFAULT NULL, c2 INT DEFAULT NULL);",
+    "INSERT INTO t_mixed (c1, c2) VALUES ('abc', 1);",
+    "INSERT INTO t_mixed (c1, c2) VALUES ('abc ', 2);",
+    "INSERT INTO t_mixed (c1, c2) VALUES ('abc  ', NULL);",
+    "SELECT *, LENGTH(c1) FROM t_mixed WHERE c1 = 'abc' AND c2 IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Query with conflicting string comparisons returns empty resultset"
+  ]
+}

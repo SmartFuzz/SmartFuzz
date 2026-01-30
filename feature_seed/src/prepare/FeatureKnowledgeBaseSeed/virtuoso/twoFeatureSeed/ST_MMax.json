@@ -1,0 +1,16 @@
+{
+    "function": "ST_MMax",
+    "operator": "bif:st_overlaps",
+    "sql_array": [
+        "CREATE TABLE geo_shapes (id SERIAL PRIMARY KEY, shape GEOMETRY, description TEXT);",
+        "INSERT INTO geo_shapes (shape, description) VALUES (ST_MMax('POINT(1 1)'^^<http://www.openlinksw.com/schemas/virtrdf#Geometry>), 'Single Point'), (ST_MMax('BOX(0 0, 4 4)'^^<http://www.openlinksw.com/schemas/virtrdf#Geometry>), 'Bounding Box'), (ST_MMax('LINESTRING(0 0, 4 4)'^^<http://www.openlinksw.com/schemas/virtrdf#Geometry>), 'Line String');",
+        "SELECT s.id, s.shape, bif:st_overlaps(s.shape, ST_MMax('POLYGON((0 0, 4 0, 4 4, 0 4, 0 0))'^^<http://www.openlinksw.com/schemas/virtrdf#Geometry>)) AS overlaps FROM geo_shapes s WHERE overlaps IS TRUE;",
+        "SELECT id, ST_MMax(shape) AS bbox FROM geo_shapes WHERE shape IS NOT NULL GROUP BY id HAVING ST_MMax(shape) IS NOT NULL;",
+        "SELECT sg.id, sg.shape, bif:st_overlaps(sg.shape, ST_MMax(sj.shape)) AS overlaps FROM geo_shapes sg JOIN geo_shapes sj ON bif:st_overlaps(sg.shape, sj.shape) WHERE sg.id <> sj.id ORDER BY overlaps DESC;",
+        "SELECT id, ST_MMax(shape) AS max_shape FROM (SELECT id, shape FROM geo_shapes WHERE description LIKE '%Point%') AS subquery GROUP BY id HAVING ST_MMax(shape) IS NOT NULL;",
+        "CREATE TABLE test_shapes (id SERIAL PRIMARY KEY, shape GEOMETRY NOT NULL CHECK (shape IS NOT NULL), elevation FLOAT);",
+        "INSERT INTO test_shapes (shape, elevation) VALUES (ST_MMax('POLYGON((1 1, 1 2, 2 2, 2 1, 1 1))'^^<http://www.openlinksw.com/schemas/virtrdf#Geometry>), NULL), (ST_MMax('MULTIPOINT((1 2), (2 3))'^^<http://www.openlinksw.com/schemas/virtrdf#Geometry>), 1.5);",
+        "SELECT COUNT(*) FROM test_shapes WHERE ST_MMax(shape) IS NOT NULL GROUP BY elevation HAVING SUM(elevation) > 1;",
+        "SELECT sg.id, bif:st_overlaps(sg.shape, ST_MMax('POLYGON((0 0, 5 0, 5 5, 0 5, 0 0))'::geography)) AS overlapping FROM test_shapes sg WHERE sg.shape IS NOT NULL AND sg.elevation IS NOT NULL;"
+    ]
+}

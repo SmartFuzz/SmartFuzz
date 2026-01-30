@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14948",
+  "title": "duckdb.duckdb.InternalException: INTERNAL Error: InFilter constant cannot be NULL - use IsNullFilter instead",
+  "description": "### What happens?\n\nSimple join fails with internal error.\n\n### To Reproduce\n\n```python\r\nimport duckdb\r\n\r\n\r\ndef infilter() -> None:\r\n    con: duckdb.DuckDBPyConnection \r\n\r\n    with duckdb.connect() as con:\r\n        print(con.execute(\"SELECT * FROM pragma_version();\").fetchall())\r\n        v: list = con.execute(\"\"\"\r\n\r\n            CREATE TABLE t1 (s UUID, i VARCHAR);\r\n            INSERT INTO t1 VALUES\r\n                ('619d9199-bc25-41d7-803e-1fa801b4b952'::UUID, NULL),\r\n                ('1ada8361-c20b-4e9f-9c8e-15689039cc75'::UUID, '91'),\r\n                ('f5a8a7d8-6bc5-4337-a296-d52078156051'::UUID, NULL)\r\n            ;\r\n\r\n            CREATE TABLE t2 (v VARCHAR);\r\n            INSERT INTO t2 VALUES\r\n             ('Int',),\r\n             ('91',),\r\n             ('13',),\r\n             ('sst',)\r\n            ;\r\n\r\n            SELECT t1.s\r\n            FROM t1\r\n            LEFT JOIN t2 ON t1.i = t2.v\r\n           ;\r\n        \"\"\").fetchall()\r\n        assert len(v) == 3\r\n\r\n\r\n\r\ninfilter()\r\n```\r\n\r\n```\r\n[('v1.1.4-dev2210', '1a3d614f0e')]\r\nTraceback (most recent call last):\r\n...\r\n    v: list = con.execute(\"\"\"\r\n              ^^^^^^^^^^^^^^^\r\nduckdb.duckdb.InternalException: INTERNAL Error: InFilter constant cannot be NULL - use IsNullFilter instead\r\nThis error signals an assertion failure within DuckDB. This usually occurs due to unexpected conditions or errors in the program's logic.\r\nFor more information, see https://duckdb.org/docs/dev/internal_errors\r\n```\n\n### OS:\n\nmacOS 14.6.1\n\n### DuckDB Version:\n\n1.1.4dev2198\n\n### DuckDB Client:\n\nPython\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nRob Jackson\n\n### Affiliation:\n\nexaforce.com\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a source build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [X] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [X] Yes, I have",
+  "date": "2024-11-22 15:58:50",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (s CHAR(36), i VARCHAR(255), j INT);",
+    "INSERT INTO t1 VALUES ('619d9199-bc25-41d7-803e-1fa801b4b952', NULL, 1), ('1ada8361-c20b-4e9f-9c8e-15689039cc75', '91', 2), ('f5a8a7d8-6bc5-4337-a296-d52078156051', NULL, 3);",
+    "CREATE TABLE t2 (v VARCHAR(255), k BOOLEAN);",
+    "INSERT INTO t2 VALUES ('Int', TRUE), ('91', FALSE), ('13', NULL), ('sst', TRUE);",
+    "SELECT t1.s FROM t1 LEFT JOIN t2 ON t1.i = t2.v WHERE t2.k IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "LEFT JOIN with NULL values in filter condition"
+  ]
+}

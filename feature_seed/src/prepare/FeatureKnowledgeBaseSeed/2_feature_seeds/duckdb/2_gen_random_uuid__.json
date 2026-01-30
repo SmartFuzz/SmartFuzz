@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id UUID, created_at TIMESTAMP, quantity INT, status VARCHAR(50));
+INSERT INTO test_data VALUES (gen_random_uuid(), now(), 10, 'active'), (gen_random_uuid(), now() - INTERVAL '2 DAYS', NULL, 'inactive'), (gen_random_uuid(), now() - INTERVAL '1 WEEK', 5, NULL), (gen_random_uuid(), now() - INTERVAL '1 MONTH', 0, 'completed');
+SELECT id, created_at - INTERVAL (CASE WHEN quantity IS NULL THEN 3 ELSE quantity END) DAY AS adjusted_date FROM test_data WHERE status IS NOT NULL;
+SELECT t1.id, (SELECT COUNT(*) FROM test_data t2 WHERE t1.status = t2.status) as status_count FROM test_data t1 WHERE created_at > now() - INTERVAL '30 DAYS' GROUP BY t1.id HAVING status_count > 1;
+SELECT id, gen_random_uuid() AS random_id, created_at, quantity FROM test_data WHERE quantity IS NOT NULL OR status IS NULL ORDER BY created_at DESC;
+SELECT id, created_at, quantity, status, gen_random_uuid() FROM test_data WHERE (quantity - (SELECT AVG(quantity) FROM test_data WHERE quantity IS NOT NULL)) IS NOT NULL;
+CREATE TABLE additional_data (reference UUID, amount DECIMAL(10, 2), report_date DATE);
+INSERT INTO additional_data VALUES (gen_random_uuid(), 100.50, DATE '2023-01-01'), (gen_random_uuid(), NULL, DATE '2023-01-02'), (gen_random_uuid(), 200.00, DATE '2023-01-03');
+SELECT ad.reference, ad.amount, ad.report_date - INTERVAL (SELECT COUNT(*) FROM test_data WHERE status = 'active') DAY FROM additional_data ad JOIN test_data td ON ad.reference = td.id WHERE td.status IS NOT NULL;
+SELECT a.reference, a.amount, (gen_random_uuid() || a.reference::TEXT) AS combined_id FROM additional_data a WHERE a.amount / NULLIF(a.amount + 1, 0) > 0;

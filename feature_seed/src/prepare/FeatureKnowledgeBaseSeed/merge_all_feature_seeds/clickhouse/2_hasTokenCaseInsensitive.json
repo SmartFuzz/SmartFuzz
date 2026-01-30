@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id UInt32, haystack String, token String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, 'Hello World', 'hello'), (2, 'ClickHouse is Awesome', 'Case'), (3, 'NULL Test', 'null'), (4, '', 'empty');
+SELECT EXISTS(SELECT * FROM test_table WHERE hasTokenCaseInsensitive(haystack, token) = 1);
+SELECT COUNT() FROM test_table WHERE EXISTS(SELECT * FROM test_table AS t2 WHERE hasTokenCaseInsensitive(t2.haystack, t2.token) = 1 AND t2.id = test_table.id);
+SELECT haystack, hasTokenCaseInsensitive(haystack, token) AS token_found FROM test_table WHERE EXISTS(SELECT 1 FROM test_table WHERE id = test_table.id AND hasTokenCaseInsensitive(haystack, token) = 1 AND token IS NOT NULL);
+CREATE TABLE temp_table (value String) ENGINE = MergeTree() ORDER BY value;
+INSERT INTO temp_table VALUES ('Hello'), ('World'), (NULL), ('ClickHouse'), ('awesome');
+SELECT COUNT() FROM temp_table WHERE EXISTS(SELECT 1 FROM temp_table AS t2 WHERE hasTokenCaseInsensitive(value, 'hello') = 1 AND t2.value IS NOT NULL);
+SELECT COUNT(), SUM(value) FROM (SELECT hasTokenCaseInsensitive(haystack, token) AS token_check FROM test_table) WHERE token_check = 1 GROUP BY token_check HAVING SUM(token_check) > 0;
+SELECT EXISTS(SELECT 1 FROM test_table WHERE hasTokenCaseInsensitive(haystack, 'awesome') = 1) AND EXISTS(SELECT 1 FROM temp_table WHERE value IS NULL);
+SELECT haystack FROM test_table WHERE hasTokenCaseInsensitive(haystack, token) = 1 OR EXISTS(SELECT 1 FROM temp_table WHERE value = 'not_found');

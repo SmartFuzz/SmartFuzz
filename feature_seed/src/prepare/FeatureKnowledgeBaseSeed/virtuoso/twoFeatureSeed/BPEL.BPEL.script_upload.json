@@ -1,0 +1,18 @@
+{
+    "function": "BPEL.BPEL.script_upload",
+    "operator": "|| (Concatenate)",
+    "sql_array": [
+        "CREATE TABLE BPEL_Scripts (id INTEGER PRIMARY KEY, script_name VARCHAR(255) NOT NULL, script_content TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO BPEL_Scripts (script_name, script_content) VALUES ('TestFlow1', 'Flow content 1'), ('TestFlow2', 'Flow content 2');",
+        "SELECT BPEL.BPEL.script_upload (BPEL_Scripts.script_name || ' Updated', 'file:/' || BPEL_Scripts.script_name || '.bpel', NULL) FROM BPEL_Scripts WHERE id = 1;",
+        "SELECT BPEL.BPEL.script_upload (BPEL_Scripts.script_name || ' Archived', NULLIF(NULL, NULL), 'dummy content') FROM BPEL_Scripts WHERE script_content IS NOT NULL;",
+        "SELECT BPEL.BPEL.script_upload (BPEL_Scripts.script_name || ' ' || (SELECT COUNT(*) FROM BPEL_Scripts), 'file:/LoanFlow.bpel', NULL) FROM BPEL_Scripts WHERE script_name = '' LIMIT 1;",
+        "CREATE TABLE Test_Data (record_id INTEGER PRIMARY KEY, numeric_value INTEGER CHECK(numeric_value >= 0), script_id INTEGER REFERENCES BPEL_Scripts(id));",
+        "INSERT INTO Test_Data (numeric_value, script_id) VALUES (5, 1), (10, 2), (NULL, 1), (-1, 1);",
+        "SELECT BPEL.BPEL.script_upload ('FilteredScript' || COUNT(*), 'file:/FilteredScript.bpel', NULL) FROM Test_Data WHERE numeric_value IS NOT NULL GROUP BY script_id HAVING AVG(numeric_value) > 5;",
+        "CREATE TABLE LogData (log_id INTEGER PRIMARY KEY, message VARCHAR(255) UNIQUE CHECK(message != ''), log_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO LogData (message) VALUES ('Upload started'), ('Upload completed'), (''), (NULL);",
+        "SELECT BPEL.BPEL.script_upload (BPEL_Scripts.script_name || ' - ' || LogData.message, 'file:/ErrorFlow.bpel', NULL) FROM BPEL_Scripts JOIN LogData ON LogData.log_id = 1;",
+        "SELECT BPEL.BPEL.script_upload (BPEL_Scripts.script_name || ' ' || (NULL || 'Extra Info'), 'file:/InfoFlow.bpel', NULL) FROM BPEL_Scripts WHERE script_content = 'Flow content 1';"
+    ]
+}

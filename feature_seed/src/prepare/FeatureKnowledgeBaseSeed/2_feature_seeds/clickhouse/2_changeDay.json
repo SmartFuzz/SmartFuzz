@@ -1,0 +1,14 @@
+CREATE TABLE test_dates (id UInt32, event_date DateTime, event_value Int32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_dates VALUES (1, '1999-01-01 12:00:00', 100), (2, '2000-02-29 00:00:00', 200), (3, '2020-03-31 15:30:00', 300);
+SELECT id, changeDay(event_date, 5) as updated_date FROM test_dates WHERE changeDay(event_date, 5) < '2021-01-01 00:00:00';
+SELECT id, event_value FROM test_dates WHERE event_value > 150 AND changeDay(event_date, 1) < '2000-03-01';
+CREATE TABLE test_dates_null (id UInt32, event_date Nullable(DateTime), event_value Int32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_dates_null VALUES (1, NULL, 100), (2, '2000-02-29 00:00:00', 200);
+SELECT id FROM test_dates_null WHERE event_date IS NULL OR changeDay(event_date, 1) <> changeDay(NULL, 1);
+SELECT id, changeDay(event_date, 5) as updated_date FROM test_dates_null WHERE updated_date < changeDay(event_date, 30);
+SELECT id, COUNT(*) as count FROM test_dates GROUP BY changeDay(event_date, 5) HAVING count > 1;
+CREATE TABLE temp_dates (id UInt32, event_datetime DateTime64(3), event_value Int32) ENGINE = Memory;
+INSERT INTO temp_dates VALUES (1, '1999-01-01 00:00:00.000', 10), (2, '2001-01-01 00:00:00.001', 20);
+SELECT id, changeDay(event_datetime, 1) FROM temp_dates WHERE changeDay(event_datetime, 1) < '2000-01-01 00:00:00.000';
+SELECT a.id, (changeDay(a.event_date, 5) < b.event_datetime) as comparison_result FROM test_dates a JOIN temp_dates b ON a.event_value = b.event_value;
+SELECT id, changeDay(event_date, 1) as changed_date, event_value FROM test_dates WHERE event_value IS NOT NULL AND changed_date < '2025-01-01';

@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id UInt32, name String, created_at DateTime, scores Array(UInt8));
+INSERT INTO test_table VALUES (1, 'Alice', toDateTime('2023-01-01 10:00:00'), [85, 90]), (2, 'Bob', toDateTime('2023-01-02 10:00:00'), [78, NULL]), (3, 'Charlie', toDateTime('2023-01-03 10:00:00'), []);
+SELECT id, cityHash64(name, toDateTime(created_at), scores[1]) AS hash_value FROM test_table WHERE hash_value IS NOT NULL;
+SELECT id, cityHash64(array(name, 'extra', toString(scores[1])), created_at) AS combined_hash FROM test_table HAVING combined_hash > 0;
+SELECT id, cityHash64(arrayJoin(scores), name) AS score_hash FROM test_table WHERE id IN (SELECT id FROM test_table WHERE ARRAY_LENGTH(scores) > 0);
+CREATE TABLE test_table2 (user_id UInt32, user_name String, user_hash UInt64) ENGINE = MergeTree() ORDER BY user_id;
+INSERT INTO test_table2 SELECT id, name, cityHash64(name, created_at) FROM test_table WHERE scores[1] IS NOT NULL;
+SELECT DISTINCT user_id, cityHash64(array(user_name, toString(user_hash)), user_id) AS final_hash FROM test_table2;
+SELECT user_id, count() AS num_hashes FROM test_table2 GROUP BY user_id HAVING num_hashes > 1;
+SELECT user_id, cityHash64(user_name, toString(user_hash), cityHash64(user_id)) AS complex_hash FROM test_table2 ORDER BY complex_hash DESC;

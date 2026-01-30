@@ -1,0 +1,10 @@
+CREATE TABLE test_table (value String, scale UInt8);
+INSERT INTO test_table VALUES ('123.456', 2), ('abc', 3), ('0.123', 1), ('NaN', 4), ('1.23456789', 5), ('256', 0), ('-1.111', 5), ('0.9999999999', 9), ('Inf', 3);
+SELECT toDecimal32OrZero(value, scale) AS decimal_value FROM test_table;
+SELECT value, toDecimal32OrZero(value, scale) AS decimal_value, toTypeName(decimal_value) FROM test_table WHERE scale BETWEEN 0 AND 9;
+SELECT a.value, toDecimal32OrZero(a.value, a.scale) AS decimal_value, toTypeName(decimal_value) FROM (SELECT '100.01' AS value, 2 AS scale UNION ALL SELECT '123.123456', 5 UNION ALL SELECT 'invalid', 1) AS a;
+SELECT a.value, a.scale, toDecimal32OrZero(a.value, a.scale) AS decimal_value FROM (SELECT '0.1' AS value, 1 UNION ALL SELECT '2.5', 0 UNION ALL SELECT '999999999.999999999', 9) AS a WHERE decimal_value < 0;
+SELECT toDecimal32OrZero(subvalue, scale) FROM (SELECT '1.5' AS subvalue, 4 UNION ALL SELECT '0.01', 3 UNION ALL SELECT 'NaN', 2) AS b WHERE toDecimal32OrZero(subvalue, scale) > 0;
+SELECT a.value, toDecimal32OrZero(SUM(b.value), a.scale) AS total_decimal FROM (SELECT '100.00' AS value, 2 UNION ALL SELECT '200.50', 2) AS a JOIN (SELECT '1.25' AS value, 4 UNION ALL SELECT '3.75', 4) AS b ON a.value = b.value GROUP BY a.value, a.scale;
+CREATE TABLE decimal_test AS SELECT toDecimal32OrZero('255.555', 3) AS dec_value;
+CREATE TABLE join_test AS SELECT a.value, toDecimal32OrZero(b.value, b.scale) AS decimal_value_joined FROM (SELECT '3.14' AS value UNION ALL SELECT '2.71') AS a JOIN (SELECT '1.72', 1 UNION ALL SELECT '16', 0) AS b ON a.value = b.value;

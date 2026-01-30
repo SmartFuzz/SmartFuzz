@@ -1,0 +1,16 @@
+{
+    "function": "exponentialTimeDecayedMax",
+    "operator": "SELECT a AND b",
+    "sql_array": [
+        "CREATE TABLE test_data (id UInt32, value Float64, time DateTime, category String, decay_period Float64);",
+        "INSERT INTO test_data VALUES (1, 10.5, '2023-01-01 00:00:00', 'A', 10.0), (2, 20.0, '2023-01-01 01:00:00', 'B', 10.0), (3, NULL, '2023-01-01 02:00:00', 'A', 5.0), (4, 30.5, '2023-01-01 03:00:00', 'B', 5.0), (5, 40.0, '2023-01-01 04:00:00', 'A', 10.0);",
+        "SELECT id, value, time, IFNULL(value, 0) AS value_adjusted, exponentialTimeDecayedMax(value)(value_adjusted, time) OVER (PARTITION BY category ORDER BY time) AS exp_smooth FROM test_data WHERE (value_adjusted >= 20) AND (category = 'A' OR category = 'B');",
+        "SELECT category, COUNT(*) AS cnt, exponentialTimeDecayedMax(decay_period)(value, time) AS exp_max FROM test_data GROUP BY category HAVING cnt > 1 AND exp_max IS NOT NULL;",
+        "SELECT value, time, exponentialTimeDecayedMax(10)(IF(value > 25, value, NULL), time) AS exp_smoothed FROM test_data WHERE value IS NOT NULL AND value <= 40 ORDER BY time DESC;",
+        "SELECT (SELECT AVG(value) FROM test_data WHERE category = 'A' AND value IS NOT NULL) AS avg_a, (SELECT MAX(value) FROM test_data WHERE category = 'B') AS max_b, exponentialTimeDecayedMax(5)(avg_a, max_b) AS combined_max FROM test_data;",
+        "CREATE TEMPORARY TABLE temp_data AS SELECT value, time, value * 2 AS doubled_value FROM test_data WHERE time >= '2023-01-01 01:00:00';",
+        "SELECT time, exponentialTimeDecayedMax(10.0)(doubled_value, time) FROM temp_data WHERE doubled_value IS NOT NULL OR doubled_value < 10 ORDER BY time DESC;",
+        "SELECT value, category, time, exponentialTimeDecayedMax(1.0)(IF(value IS NULL, 0.0, value), time) AS weighted_max FROM test_data t1 JOIN test_data t2 ON t1.category = t2.category AND t1.time = t2.time WHERE t1.value IS NOT NULL;",
+        "DROP TABLE IF EXISTS test_data;"
+    ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/58794",
+  "title": "Bug case in semi join When having complicated data transformation",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n\n```sql\nDROP TABLE IF EXISTS t0;\nDROP TABLE IF EXISTS t1;\n\nCREATE TABLE t0 (\n    c0 BLOB(338),\n    c1 NUMERIC NOT NULL,\n    c2 NUMERIC UNSIGNED ZEROFILL UNIQUE\n);\n\nCREATE TABLE t1 LIKE t0;\n\nINSERT IGNORE INTO t0 VALUES (NULL, 2025, NULL);\nINSERT INTO t1 (c2, c0, c1) VALUES (2025, '', -2023);\n\nSELECT \n    CRC32(LOG10(t1.c2)) & (0.2 OR IS_IPV4_MAPPED('J'))\nFROM \n    t1 WHERE \n    EXISTS ( SELECT 1 FROM t0);\n```\n\n### 2. What did you expect to see? (Required)\n\nsee the following case:\n\n### 3. What did you see instead (Required)\n\n```sql\n// MySQL 8.4.1\nMySQL [test]> SELECT\n    ->     CRC32(LOG10(t1.c2)) & (0.2 OR IS_IPV4_MAPPED('J'))\n    -> FROM\n    ->     t1\n    -> WHERE\n    ->     EXISTS (\n    ->         SELECT 1\n    ->         FROM t0\n    ->     );\n+----------------------------------------------------+\n| CRC32(LOG10(t1.c2)) & (0.2 OR IS_IPV4_MAPPED('J')) |\n+----------------------------------------------------+\n|                                                  0 |\n+----------------------------------------------------+\n1 row in set (0.01 sec)\n\n// TiDB\nmysql> SELECT\n    ->     CRC32(LOG10(t1.c2)) & (0.2 OR IS_IPV4_MAPPED('J'))\n    -> FROM\n    ->     t1\n    -> WHERE\n    ->     EXISTS (\n    ->         SELECT 1\n    ->         FROM t0\n    ->     );\n+----------------------------------------------------+\n| CRC32(LOG10(t1.c2)) & (0.2 OR IS_IPV4_MAPPED('J')) |\n+----------------------------------------------------+\n|                                                  1 |\n+----------------------------------------------------+\n1 row in set (0.04 sec)\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\nTiDB v8.5.0",
+  "date": "2025-01-08T07:19:01Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t2;",
+    "CREATE TABLE t2 (id INT PRIMARY KEY, value VARCHAR(255) NOT NULL, amount DECIMAL(10, 2) DEFAULT 0);",
+    "INSERT INTO t2 (id, value, amount) VALUES (1, 'test', NULL), (2, 'example', 100.50);",
+    "SELECT COUNT(*) FROM t2 WHERE EXISTS (SELECT 1 FROM t1 WHERE t1.c1 > 2000);",
+    "SELECT SUM(amount) FROM t2 WHERE value IS NOT NULL AND amount < 100.00;"
+  ],
+  "key_bug_features": [
+    "Semi join with complicated data transformation"
+  ]
+}

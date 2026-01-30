@@ -1,0 +1,27 @@
+{
+  "url": "https://www.postgresql.org/message-id/18103-c4386baab8e355e3%40postgresql.org",
+  "title": "BUG #18103: bugs of concurrent merge into when use different join plan",
+  "vulnerable_database": "postgresql",
+  "date": "2023-09-10 12:57:14",
+  "vulnerable_version": "Unknown",
+  "description": "The following bug has been logged on the website:\nBug reference:      18103\nLogged by:          luajk\nEmail address:      luajk(at)qq(dot)com\nPostgreSQL version: 16rc1\nOperating system:   ANY\nDescription:\nUse Case:\ndrop table t1;\ndrop table t2;\ncreate table t1(a int not null, b int);\ncreate table t2(a int not null, b int);\ninsert into t1 values(generate_series(1,3), generate_series(1,3));\ninsert into t2 values(generate_series(1,3), generate_series(1,3));\nexecute in two concurrent sessions and do as following:\nsession1:\nbegin;\nsession2:\nbegin;\nset enable_hashjoin = off;\nset enable_mergejoin = off;\nmerge into t1 p using (select distinct a,b from t2) q on p.a = q.a when\nmatched then update set b = q.b when not matched then insert values(q.a,\nq.b);\nsession1:\nset enable_hashjoin = off;\nset enable_mergejoin = off;\nmerge into t1 p using (select distinct a,b from t2) q on p.a = q.a when\nmatched then update set b = q.b when not matched then insert values(q.a,\nq.b);\nsession2:\ncommit;\nsession1:\nselect count(*) from t1;  -- there are 5 rows;\nhowever:\nsession1:\nbegin;\nsession2:\nbegin;\nset enable_nestloop = off;\nset enable_mergejoin = off;\nmerge into t1 p using (select distinct a,b from t2) q on p.a = q.a when\nmatched then update set b = q.b when not matched then insert values(q.a,\nq.b);\nsession1:\nset enable_nestloop = off;\nset enable_mergejoin = off;\nmerge into t1 p using (select distinct a,b from t2) q on p.a = q.a when\nmatched then update set b = q.b when not matched then insert values(q.a,\nq.b);\nsession2:\ncommit;\nsession1:\nselect count(*) from t1;  -- there are 3 rows;\nnest loop join is the same as merge join in such scenes.",
+  "poc": [
+    "drop table t1;",
+    "drop table t2;",
+    "create table t1(a int not null, b int);",
+    "create table t2(a int not null, b int);",
+    "insert into t1 values(generate_series(1,3), generate_series(1,3));",
+    "insert into t2 values(generate_series(1,3), generate_series(1,3));"
+  ],
+  "poc_type": "sql_text",
+  "key_bug_features": [
+    "concurrent merge with different join plans"
+  ],
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t1;",
+    "DROP TABLE IF EXISTS t2;",
+    "CREATE TABLE t1(a int NOT NULL, b text DEFAULT 'default');",
+    "CREATE TABLE t2(a int NOT NULL, b text DEFAULT 'default');",
+    "INSERT INTO t1 SELECT generate_series(1, 5), 'value' || generate_series(1, 5);"
+  ]
+}

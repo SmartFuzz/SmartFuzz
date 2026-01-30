@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/59279",
+  "title": "Tidb log redaction leaks raw keys to logs",
+  "description": "## Bug Report\n\nWhen tidb log redaction turned on. There are still messages in the log that contains the raw region key information which should have been sanitized. \n\n### 1. Minimal reproduce step (Required)\n\n1. Turn on global log redaction \n`mysql> SHOW VARIABLES LIKE 'tidb_redact_log';`\n+-----------------+-------+\n| Variable_name   | Value |\n+-----------------+-------+\n| tidb_redact_log | ON    |\n+-----------------+-------+\n1 row in set (0.00 sec)\n\n2. Create new table and add dummy data.\n\n```\nCREATE TABLE users (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    name VARCHAR(50),\n    email VARCHAR(100),\n    age INT,\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n);\n```\n\n```\nINSERT INTO users (name, email, age)\nWITH RECURSIVE seq AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM seq WHERE n < 100)\nSELECT CONCAT('User_', n), CONCAT('user', n, '@example.com'), FLOOR(18 + (RAND() * 42)) FROM seq;\n```\n\n\n3. Check tidb logs, you will see the raw data key printed in region split messages. \n\n```\n[2025/02/06 09:39:12.644 -08:00] [INFO] [split_region.go:85] [\"split batch regions request\"] [\"split key count\"=1] [\"batch count\"=1] [\"first batch, region ID\"=48] [\"first split key\"=74800000000000006e]\n[2025/02/06 09:39:12.650 -08:00] [INFO] [split_region.go:187] [\"batch split regions complete\"] [\"batch region ID\"=48] [\"first at\"=74800000000000006e] [\"first new region left\"=\"{Id:287 StartKey:7480000000000000ff6c00000000000000f8 EndKey:7480000000000000ff6e00000000000000f8 RegionEpoch:{ConfVer:5 Version:65} Peers:[id:288 store_id:1  id:289 store_id:5  id:290 store_id:4 ] EncryptionMeta:<nil> IsInFlashback:false FlashbackStartTs:0}\"] [\"new region count\"=1]\n\n```\n### 2. What did you expect to see? (Required)\n\nAll key values redacted. \n\n### 3. What did you see instead (Required)\n\nSee the repro steps. \n\n### 4. What is your TiDB version? (Required)\n\nv6.5, v7.5, v8.1, v8.5\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "date": "2025-02-06T17:48:56Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE orders (order_id INTEGER PRIMARY KEY, user_id INTEGER, product_name VARCHAR(100), quantity INTEGER CHECK (quantity > 0), order_date TIMESTAMP DEFAULT NOW());",
+    "INSERT INTO orders (user_id, product_name, quantity) VALUES (1, 'Product_A', 5), (2, 'Product_B', 10), (3, 'Product_C', 1);",
+    "CREATE TABLE payments (payment_id INTEGER PRIMARY KEY, order_id INTEGER, amount DECIMAL(10, 2), payment_date TIMESTAMP DEFAULT NOW(), FOREIGN KEY (order_id) REFERENCES orders(order_id));",
+    "INSERT INTO payments (order_id, amount) SELECT order_id, 99.99 FROM orders WHERE quantity > 0;",
+    "SELECT o.order_id, p.amount FROM orders o JOIN payments p ON o.order_id = p.order_id WHERE p.amount IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Log redaction fails to sanitize raw region key information"
+  ]
+}

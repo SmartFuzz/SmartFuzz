@@ -1,0 +1,17 @@
+{
+    "function": "getSubcolumn",
+    "operator": "a != b",
+    "sql_array": [
+        "CREATE TABLE t_arr (arr Array(Tuple(subcolumn1 UInt32, subcolumn2 String))) ENGINE = MergeTree ORDER BY tuple();",
+        "INSERT INTO t_arr VALUES ([(1, 'Hello'), (2, 'World')]), ([(3, 'This'), (4, 'is'), (5, 'subcolumn')]);",
+        "SELECT getSubcolumn(arr, 'subcolumn1') AS col1, getSubcolumn(arr, 'subcolumn2') AS col2 FROM t_arr WHERE getSubcolumn(arr, 'subcolumn1') != 1;",
+        "CREATE TABLE another_arr (id UInt32, values Array(Tuple(val1 String, val2 UInt32))) ENGINE = MergeTree ORDER BY id;",
+        "INSERT INTO another_arr VALUES (1, [('Hello', 100), ('World', 200)]), (2, [('This', 300), ('is', 400)]);",
+        "SELECT a.id, getSubcolumn(a.values, 'val2') AS val2_sub, (SELECT AVG(getSubcolumn(values, 'val2')) FROM another_arr WHERE getSubcolumn(values, 'val2') != 0) AS avg_val FROM another_arr a GROUP BY a.id HAVING val2_sub != avg_val;",
+        "SELECT a.id, getSubcolumn(arr, 'subcolumn1') AS col1 FROM t_arr WHERE (SELECT COUNT() FROM another_arr WHERE getSubcolumn(values, 'val1') != 'Hello') > 0;",
+        "CREATE TABLE temp_table AS SELECT Arr, getSubcolumn(arr, 'subcolumn1') AS extracted_col FROM t_arr WHERE getSubcolumn(arr, 'subcolumn2') != 'Hello';",
+        "ALTER TABLE temp_table ADD COLUMN new_col UInt32;",
+        "INSERT INTO temp_table SELECT [1, 2, 3] AS Arr, getSubcolumn(arr, 'subcolumn1') FROM t_arr;",
+        "SELECT DISTINCT extracted_col, new_col FROM temp_table WHERE new_col IS NULL OR extracted_col != 2;"
+    ]
+}

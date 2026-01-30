@@ -1,0 +1,20 @@
+{
+    "function": "enum_first(enum)",
+    "operator": "-",
+    "sql_array": [
+        "CREATE TABLE moods (id INTEGER PRIMARY KEY, mood ENUM('happy', 'sad', 'neutral'));",
+        "INSERT INTO moods (id, mood) VALUES (1, 'happy'), (2, 'sad'), (3, NULL);",
+        "SELECT enum_first(mood) AS first_mood FROM moods WHERE id = 1;",
+        "CREATE TABLE events (event_time TIMESTAMPTZ, mood_id INTEGER REFERENCES moods(id));",
+        "INSERT INTO events (event_time, mood_id) VALUES (TIMESTAMPTZ '2023-01-01 12:00:00 +00:00', 1), (TIMESTAMPTZ '2023-01-02 12:00:00 +00:00', 2);",
+        "SELECT e.event_time - (SELECT enum_first(mood) FROM moods WHERE id = e.mood_id) AS adjusted_event FROM events e;",
+        "INSERT INTO events (event_time, mood_id) VALUES (TIMESTAMPTZ '2023-01-03 12:00:00 +00:00', NULL);",
+        "SELECT e.event_time, enum_first(mood) AS first_mood FROM events e JOIN moods m ON e.mood_id = m.id GROUP BY e.event_time, m.mood HAVING enum_first(mood) IS NOT NULL;",
+        "SELECT e.event_time - TIMESTAMPTZ '2023-01-01 00:00:00 +00:00' AS duration FROM events e WHERE e.mood_id IS NULL;",
+        "SELECT e.event_time, (SELECT COUNT(*) FROM moods WHERE mood_id IS NOT NULL) AS mood_count FROM events e GROUP BY e.event_time;",
+        "CREATE TABLE timestamps (event_time TIMESTAMPTZ NOT NULL);",
+        "INSERT INTO timestamps (event_time) VALUES (TIMESTAMPTZ '2023-01-04 00:00:00 +00:00');",
+        "SELECT MIN(event_time) - (SELECT enum_first(mood) FROM moods WHERE id = 1) AS result FROM timestamps;",
+        "SELECT e.event_time, enum_first(mood) AS first_mood FROM events e JOIN moods m ON e.mood_id = m.id ORDER BY e.event_time DESC;"
+    ]
+}

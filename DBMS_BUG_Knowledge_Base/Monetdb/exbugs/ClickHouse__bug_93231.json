@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/93231",
+  "title": "Alter Statements fail due to Dot Notation used on a JSON column in a Materialized View",
+  "description": "### Company or project name\nBloomberg\n### Describe the unexpected behaviour\nWhen I issue an alter statement on my table, the query fails due to a syntax issue with the materialized view. The materialized view uses dot notation on a JSON column. If I remove that statement, or adjust the statement to use `getSubcolumn` instead, the materialized view syntactically passes and so does the alter statement.\n### Which ClickHouse versions are affected?\n25.11.3.54\n### How to reproduce\n* **Version**: 25.11.3.54\n* **DDL** Statements:\nMain Table:\n```\nSET allow_experimental_json_type = 1;\nDROP DATABASE IF EXISTS dtobs;\nCREATE DATABASE dtobs;\nUSE dtobs;\nCREATE TABLE span_local\n(\nlinks Array(JSON),\ndummy UInt8\n)\nENGINE = MergeTree\nORDER BY tuple();\n-- Target table: ONE column\nCREATE TABLE span_link_local\n(\nlinked_id String\n)\nENGINE = MergeTree\nORDER BY tuple();\n```\nMaterialized View:\n```\nCREATE MATERIALIZED VIEW mv_bad\nTO span_link_local\nAS\nSELECT\nlink.`trace_id` AS linked_id\nFROM\n(\nSELECT arrayJoin(links) AS link\nFROM span_local\n)\nWHERE linked_id IS NOT NULL;\n```\n* **sample data**: not needed\n* **query to run**:\n```\nALTER TABLE span_local DROP COLUMN dummy;\n```\n### Expected behavior",
+  "date": "2025-12-30T15:52:23Z",
+  "vulnerable_version": "25.11.3.54",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "DROP SCHEMA IF EXISTS dtobs CASCADE;",
+    "CREATE SCHEMA dtobs;",
+    "CREATE TABLE dtobs.span_local (links ARRAY(JSON), dummy INT) PRIMARY KEY (dummy);",
+    "CREATE TABLE dtobs.span_link_local (linked_id STRING) PRIMARY KEY (linked_id);",
+    "CREATE MATERIALIZED VIEW dtobs.mv_bad AS SELECT link['trace_id'] AS linked_id FROM (SELECT UNNEST(links) AS link FROM dtobs.span_local) WHERE link['trace_id'] IS NOT NULL;",
+    "ALTER TABLE dtobs.span_local DROP COLUMN dummy;"
+  ],
+  "key_bug_features": [
+    "Dot notation on JSON column in materialized view"
+  ]
+}

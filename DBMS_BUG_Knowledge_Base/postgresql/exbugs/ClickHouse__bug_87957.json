@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/87957",
+  "title": "Unexpected memory shoot up after using match function",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nUsually works fine but in this instance, when used the following regular expression: `'^Gold\\ Futures(\\s+)\\(1000\\ troy\\ oz\\)$'` with match, it caused memory to shoot up.\nThe query was fired on a. distributed table but the query never reached other nodes. When tried to kill via client or console, that also failed.\nThe memory kept increasing till clickhouse crashed. Settings like `max_memory_usage` also failed to stop the query.\n---\nLink to fiddle: https://fiddle.clickhouse.com/ae7279e1-c9ae-4a74-9d8e-d43db09096cd\nHere, with version 25.1.2.3 - I see some times the output returned is \"The string did not match the expected pattern.\" but I also saw a couple of times that the query threw an exception (Tried to read after EOF).\nWhen testing locally, this would cause OOM and crash the server as explained above.\n### Does it reproduce on the most recent release?\nNo\n### How to reproduce\nUse clickhouse version - 25.1.2.3\n---\nCREATE TABLE users (uid Int16, name String, age Int16, dob DateTime) ENGINE=ReplacingMergeTree\nPRIMARY KEY (name, age);\nINSERT INTO users VALUES (1231, 'John', 27, '1998-01-01');\nINSERT INTO users VALUES (6666, 'Ksenia', 28, '1997-01-01');\nINSERT INTO users VALUES (8888, 'Alice', 29, '1996-01-01');\nINSERT INTO users VALUES (4444, 'Gold Futures   (1000 troy oz)', 10, '2015-01-01');\nSELECT * FROM users WHERE match(name, '^Gold\\ Futures(\\s+)\\(1000\\ troy\\ oz\\)$');\n---\n### Expected behavior\nShould give the output row for the corresponding user in this case.\n### Error message and/or stacktrace\n_No response_\n### Additional context\n_No response_",
+  "date": "2025-10-01T03:29:13Z",
+  "vulnerable_version": "25.1.2.3",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE products (pid INT, description TEXT, price DOUBLE PRECISION, created_at TIMESTAMP) WITH (OIDS=FALSE);",
+    "INSERT INTO products VALUES (1, 'Gold Futures   (1000 troy oz)', 1800.50, '2023-01-01 10:00:00');",
+    "INSERT INTO products VALUES (2, 'Silver Futures   (5000 troy oz)', 25.75, '2023-01-02 11:00:00');",
+    "SELECT * FROM products WHERE description ~ '^Gold Futures(\\s+)\\(1000 troy oz\\)$';",
+    "SELECT COUNT(*) FROM products WHERE price > 1000 AND created_at < NOW() - INTERVAL '1 day';"
+  ],
+  "key_bug_features": [
+    "Using match function with specific regular expression"
+  ]
+}

@@ -1,0 +1,15 @@
+CREATE TABLE test_table (user Nullable(String), salary Nullable(Int64), id Int64) ENGINE = Memory;
+INSERT INTO test_table VALUES (NULL, 2000, 1), ('Alice', NULL, 2), ('Bob', 3000, 3), ('Charlie', 1500, 4), (NULL, 1500, 5);
+SELECT argMax(user, salary) FROM test_table WHERE salary = (SELECT max(salary) FROM test_table) AND user IS NOT NULL;
+SELECT argMax(user, tuple(salary, id)) FROM test_table WHERE argMax(user, salary) IS NOT NULL;
+SELECT (argMax(user, salary) = 'Alice') AS is_alice, argMax(user, salary) FROM test_table WHERE salary < 10000;
+CREATE TABLE nested_query_test AS SELECT id, argMax(user, salary) AS max_user FROM test_table GROUP BY id HAVING argMax(salary, id) IS NOT NULL;
+SELECT argMax(tuple(user, id), salary) FROM test_table WHERE user IS NULL OR (salary IS NOT NULL AND id > 0);
+SELECT argMax(user, salary) FROM (SELECT user, salary FROM test_table WHERE id IN (SELECT id FROM test_table WHERE salary IS NOT NULL));
+SELECT argMax(user, salary) AS max_user, max(salary) AS highest_salary FROM test_table GROUP BY (user IS NULL);
+CREATE TABLE edge_case_test (col1 Nullable(Int64), col2 Nullable(Float64)) ENGINE = Memory;
+INSERT INTO edge_case_test VALUES (NULL, 3.5), (1, NULL), (2, 2.5), (3, 4.0);
+SELECT argMax(col1, col2) AS max_col1 FROM edge_case_test WHERE col2 = (SELECT min(col2) FROM edge_case_test WHERE col2 IS NOT NULL);
+SELECT argMax(user, salary = 4000) AS user_over_4000 FROM test_table WHERE salary IS NOT NULL;
+SELECT argMax(user, IF(salary IS NULL, 0, salary)) FROM test_table GROUP BY (salary IS NULL);
+SELECT argMax(user, salary) FROM test_table GROUP BY (salary = 3000) HAVING max(salary) IS NOT NULL;

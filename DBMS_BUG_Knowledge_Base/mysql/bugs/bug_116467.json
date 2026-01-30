@@ -1,0 +1,25 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=116467",
+  "title": "The DML performance of a single connection in MySQL 8 is half that of MySQL 5.7.",
+  "vulnerable_database": "MySQL Server: DML",
+  "date": "2024-10-24 09:00:00",
+  "vulnerable_version": "8.0.39",
+  "description": "I performs an update operation repeatedly 1000 times .\r\nI executed this script on MySQL 8.0.39 and MySQL 5.7.44 ,MySQL 8 takes twice as long as MySQL 5.7 to complete .\r\nThey are used the same server and the same configuration file .(Only one version of MySQL will run at a time)\r\n\r\n-- configuration\r\n-- MySQL 5.7\r\n[mysqld]\r\nport = 3306\r\nsocket = /tmp/mysql.sock\r\nbasedir=/usr/local/software/mysql-5.7.44-linux-glibc2.12-x86_64\r\ndatadir=/dbdata/my57/data\r\nlog-error=/dbdata/my57/err.log\r\n\r\n-- MySQL 8.0\r\n[mysqld]\r\nport = 3306\r\nsocket = /tmp/mysql.sock\r\nbasedir=/usr/local/software/mysql-8.0.39-linux-glibc2.12-x86_64\r\ndatadir=/dbdata/my80/data\r\nlog-error=/dbdata/my80/err.log\n\n-- 5.7 run three times\r\n# python t3.py\r\nTest standard SQL ...\r\nstandar SQL total time : 1.265814 seconds\r\n\r\n# python t3.py\r\nTest standard SQL ...\r\nstandar SQL total time : 1.266818 seconds\r\n\r\n# python t3.py\r\nTest standard SQL ...\r\nstandar SQL total time : 1.291490 seconds\n\n-- 8.0 run three times\r\n# python t3.py\r\nTest standard SQL ...\r\nstandar SQL total time : 2.709134 seconds\r\n\r\n# python t3.py\r\nTest standard SQL ...\r\nstandar SQL total time : 2.687441 seconds\r\n\r\n# python t3.py\r\nTest standard SQL ...\r\nstandar SQL total time : 2.695148 seconds\nHow to repeat:\n-- 1 .create test table\r\ncreate database if not exists test ;\r\nuse test ;\r\ndrop table if exists sequence;\r\ncreate table sequence (\r\n seq_name varchar(100) not null\r\n,current_value int not null\r\n,increment int not null default 1\r\n,primary key (seq_name)\r\n) engine = innodb ;\r\n\r\ninsert into sequence values('genid' ,0 ,1 );\r\n\r\n-- 2. run test python script to get total time\r\nimport pymysql\r\nimport time\r\n\r\nif __name__ == \"__main__\":\r\n    connection = pymysql.connect(\r\n    unix_socket='/tmp/mysql.sock',\r\n    user='user_name',\r\n    password='pwd',\r\n    database='test',\r\n\r\n    )\r\n    cursor = connection.cursor()\r\n\r\n    print(\"Test standard SQL ...\")\r\n    sql_cmd_1 = \"update sequence set current_value = current_value + increment where seq_name = 'genid'\"\r\n    #sql_cmd_2 = \"select current_value from sequence where seq_name = 'genid'\"\r\n    start_time = time.time()\r\n    for i in range(1000):\r\n        cursor.execute(sql_cmd_1)\r\n        #cursor.execute(sql_cmd_2)\r\n        connection.commit()\r\n    end_time = time.time()\r\n    elapsed_time = end_time - start_time\r\n    print(f\"standar SQL total time : {elapsed_time:.6f} seconds \\n\")\r\n\r\n    cursor.close()\r\n    connection.close()",
+  "poc": [
+    "create database if not exists test ;",
+    "use test ;",
+    "drop table if exists sequence;",
+    "create table sequence (\nseq_name varchar(100) not null\n,current_value int not null\n,increment int not null default 1\n,primary key (seq_name)\n) engine = innodb ;",
+    "insert into sequence values('genid' ,0 ,1 );"
+  ],
+  "key_bug_features": [
+    "DML performance degradation in MySQL 8 during repeated updates"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT NOT NULL AUTO_INCREMENT, name VARCHAR(255) NOT NULL, value DECIMAL(10,2) DEFAULT NULL, PRIMARY KEY (id)) ENGINE=InnoDB;",
+    "INSERT INTO test_table (name, value) VALUES ('test1', 10.50);",
+    "INSERT INTO test_table (name, value) VALUES ('test2', NULL);",
+    "UPDATE test_table SET value = value + 5 WHERE name = 'test1';",
+    "SELECT * FROM test_table WHERE value IS NOT NULL ORDER BY value DESC;"
+  ]
+}

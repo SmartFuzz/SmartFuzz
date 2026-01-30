@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id Int32, val String, num Float64) ENGINE = Memory;
+INSERT INTO test_table (id, val, num) VALUES (1, '123', 1.5), (2, 'abc', 2.0), (3, '255', 3.7), (4, '0xc0fe', 4.0), (5, '', NULL);
+SELECT id, toInt128OrZero(val) AS converted_val FROM test_table WHERE converted_val NOT BETWEEN 100 AND 200;
+SELECT id, toInt128OrZero(val) AS converted_val FROM test_table WHERE toInt128OrZero(num) NOT BETWEEN 0 AND 2;
+SELECT id, toInt128OrZero(val) AS converted_val, count(*) FROM test_table GROUP BY converted_val HAVING converted_val NOT BETWEEN 10 AND 300;
+SELECT id, (SELECT AVG(toInt128OrZero(val)) FROM test_table WHERE id < t.id) AS avg_val FROM test_table AS t WHERE avg_val NOT BETWEEN 20 AND 100;
+CREATE TEMPORARY TABLE temp_table AS SELECT id, toInt128OrZero(val) AS temp_val FROM test_table;
+SELECT id FROM temp_table WHERE temp_val NOT BETWEEN (SELECT MIN(temp_val) FROM temp_table) AND (SELECT MAX(temp_val) FROM temp_table);
+INSERT INTO test_table (id, val, num) VALUES (6, '256', 5.5), (7, 'NaN', NULL);
+SELECT id, toInt128OrZero(val) AS converted_val, CASE WHEN converted_val NOT BETWEEN 100 AND 200 THEN 'out of range' ELSE 'in range' END AS range_status FROM test_table;

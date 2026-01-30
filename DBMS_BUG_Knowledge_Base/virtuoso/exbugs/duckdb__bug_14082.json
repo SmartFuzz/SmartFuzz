@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14082",
+  "title": "Inserting a TIMESTAMPTZ into a TIMESTAMP column ignores the time zone",
+  "description": "### What happens?\r\n\r\nIf I have a table with a TIMESTAMP column and I insert a timestamp that includes a timezone it ignores the timezone, so when I read the value and apply a time zone for presentation the values no longer make sense. My assumption was that the TIMESTAMP column was microseconds from epoch based on the docs, so inserting a timestamp with a timezone should still keep the same time since epoch if that's what we're storing\r\n\r\nfrom the docs:\r\n>Timestamps represent points in absolute time, usually called instants. DuckDB represents instants as the number of microseconds (µs) since 1970-01-01 00:00:00+00.\r\n\r\n\r\n\r\n\r\n### To Reproduce\r\n\r\ntest case:\r\n\r\n```sql\r\nCREATE TABLE test(d TIMESTAMP, d2 TIMESTAMPTZ);\r\n\r\nSET timezone = 'UTC';\r\nINSERT INTO test(d, d2) VALUES(now(), now());\r\n\r\nSET timezone = 'Australia/Sydney';\r\nINSERT INTO test(d, d2) VALUES(now(), now());\r\n\r\nSELECT\r\n    d, d at TIME ZONE 'Australia/Sydney' as d_sydney,\r\n    d2, d2 at TIME ZONE 'Australia/Sydney' as d2_sydney\r\nFROM test;\r\n```\r\n\r\noutput:\r\n\r\n```\r\n┌─────────────────────────┬────────────────────────────┬────────────────────────────┬─────────────────────────┐\r\n│            d            │          d_sydney          │             d2             │        d2_sydney        │\r\n│        timestamp        │  timestamp with time zone  │  timestamp with time zone  │        timestamp        │\r\n├─────────────────────────┼────────────────────────────┼────────────────────────────┼─────────────────────────┤\r\n│ 2024-09-24 00:38:01.061 │ 2024-09-24 00:38:01.061+10 │ 2024-09-24 10:38:01.061+10 │ 2024-09-24 10:38:01.061 │\r\n│ 2024-09-24 10:38:01.061 │ 2024-09-24 10:38:01.061+10 │ 2024-09-24 10:38:01.061+10 │ 2024-09-24 10:38:01.061 │\r\n└─────────────────────────┴────────────────────────────┴────────────────────────────┴─────────────────────────┘\r\n```\r\n\r\nMy expectation is that the values for when we cast to the Sydney timezone match in both cases.\r\n\r\n### OS:\r\n\r\nOSX\r\n\r\n### DuckDB Version:\r\n\r\n1.0.0\r\n\r\n### DuckDB Client:\r\n\r\nCLI\r\n\r\n### Hardware:\r\n\r\n_No response_\r\n\r\n### Full Name:\r\n\r\nSugendran Ganess\r\n\r\n### Affiliation:\r\n\r\nOrdermentum\r\n\r\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\r\n\r\nI have tested with a stable release\r\n\r\n### Did you include all relevant data sets for reproducing the issue?\r\n\r\nYes\r\n\r\n### Did you include all code required to reproduce the issue?\r\n\r\n- [X] Yes, I have\r\n\r\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\r\n\r\n- [X] Yes, I have",
+  "date": "2024-09-24 01:02:09",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test2(d TIMESTAMP, d2 TIMESTAMP WITH TIME ZONE, d3 TIMESTAMP NOT NULL);",
+    "INSERT INTO test2(d, d2, d3) VALUES(TIMESTAMP '2024-01-01 12:00:00', TIMESTAMP '2024-01-01 12:00:00+00', TIMESTAMP '2024-01-01 12:00:00');",
+    "INSERT INTO test2(d, d2, d3) VALUES(NOW(), NOW(), TIMESTAMP '2024-01-01 12:00:00');",
+    "SELECT d, d + INTERVAL '5 hours' AS d_ny, d2, d2 AT TIME ZONE 'America/New_York' AS d2_ny FROM test2;",
+    "INSERT INTO test2(d, d2, d3) VALUES(NULL, TIMESTAMP '2024-01-01 12:00:00+10', TIMESTAMP '2024-01-01 12:00:00');"
+  ],
+  "key_bug_features": [
+    "Inserting TIMESTAMPTZ into TIMESTAMP column ignores time zone"
+  ]
+}

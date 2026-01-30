@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/20321",
+  "title": "Floating Point Exception (SIGFPE) in DuckDB with complex window function and subqueries",
+  "description": "### What happens?\n\nDuckDB crashes with a Floating Point Exception (SIGFPE) when executing a complex query involving `ARG_MIN`, `CASE`, `WINDOW FUNCTION`, and `SUBQUERIES`. \n\nThe crash is reproducible in a Docker environment with ASAN enabled, but might not reproduce in a standard Release build if assertions are disabled or if the environment differs.\n\n### To Reproduce\n\n```sql\nSELECT ARG_MIN ( -99999998430674944.000000 + x * 1 , CASE ( SELECT ( printf ( '%s' , NULL ) , ( SELECT 'zebra elephant tiger horse' NOT LIKE 'zebra%elephant%tiger%horse' ORDER BY gen_random_uuid ( ) ) ) FROM ( SELECT 0 UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 ) , repeat ( 1 , 10000 ) ORDER BY argmax ( DISTINCT 'Äañt₡Xá你好世界我' , 72.000000 ) OVER ( ORDER BY - 1 DESC ROWS BETWEEN 6 FOLLOWING AND UNBOUNDED FOLLOWING ) , - ( SELECT corr ( DISTINCT 1 , 1 ) ) DESC LIMIT 2 OFFSET 2 ) WHEN 8 THEN 'MED PKG' WHEN 2 THEN '29' ELSE 'MED P' END ) , IFNULL ( 20.500000 , 2000 ) FROM ( SELECT 0 AS x UNION SELECT 45 UNION SELECT 90 UNION SELECT 135 UNION SELECT ( SELECT NULL ) UNION SELECT 225 UNION SELECT 270 UNION SELECT 315 UNION SELECT 360 ) AS x ;\n```\n\n### OS:\n\nUbuntu 22.04 (Docker)\n\n### DuckDB Version:\n\nv0.10.1 (Source build with ASAN)\n\n### DuckDB Client:\n\nODBC Driver (Reproduced via custom ODBC harness)\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nmao hg\n\n### Affiliation:\n\nIndependent Researcher\n\n### Did you include all relevant configuration (e.g., CPU architecture, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant data sets for reproducing the issue?\n\n- [x] Yes, I have",
+  "date": "2025-12-27 13:17:16",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id SERIAL PRIMARY KEY, value FLOAT8, description VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table (value, description) VALUES (-99999998430674944.000000, 'Initial value'), (20.5, 'Second value'), (NULL, 'Null value');",
+    "SELECT MIN(value + 1) OVER (ORDER BY value) AS min_value, CASE WHEN value IS NULL THEN 'NULL CASE' ELSE 'VALID CASE' END AS case_result FROM test_table;",
+    "SELECT id, value, (SELECT COUNT(*) FROM test_table WHERE value > 0) AS positive_count FROM test_table WHERE value IS NOT NULL;",
+    "SELECT value, COALESCE((SELECT AVG(value) FROM test_table WHERE value IS NOT NULL), 0) AS avg_value FROM test_table ORDER BY value DESC;"
+  ],
+  "key_bug_features": [
+    "Complex query with ARG_MIN and window function"
+  ]
+}

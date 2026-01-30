@@ -1,0 +1,10 @@
+CREATE TABLE spatial_data (id INT PRIMARY KEY, location GEOMETRY, description VARCHAR(255));
+INSERT INTO spatial_data (id, location, description) VALUES (1, POINT(1 1), 'Location A'), (2, POINT(2 2), 'Location B');
+SELECT id, description, REPLACE(description, 'Location', 'Site') AS updated_description, bif:st_distance(location, POINT(0 0)) AS distance FROM spatial_data WHERE bif:st_distance(location, POINT(0 0)) < 5;
+SELECT id, REPLACE(description, 'B', NULL) AS updated_description FROM spatial_data WHERE REPLACE(description, 'B', NULL) IS NOT NULL;
+SELECT id, description, REPLACE(REPLACE(description, 'Location', 'Site'), 'A', '1') AS multi_replaced FROM spatial_data WHERE bif:st_distance(location, POINT(1 1)) < (SELECT MAX(bif:st_distance(location, POINT(0 0))) FROM spatial_data);
+CREATE TABLE bounded_data (id INT PRIMARY KEY, value DECIMAL(10, 2), geom GEOMETRY NOT NULL);
+INSERT INTO bounded_data (id, value, geom) VALUES (1, 0.00, POINT(1 1)), (2, 9999.99, POINT(2 2)), (3, NULL, POINT(3 3));
+SELECT id, REPLACE(CAST(value AS VARCHAR), '0.00', 'Zero') AS string_value FROM bounded_data WHERE value IS NOT NULL;
+SELECT id, REPLACE(REPLACE(description, 'Site', 'Location'), '1', 'A') AS double_replacement FROM spatial_data WHERE id IN (SELECT id FROM bounded_data WHERE value BETWEEN 0 AND (SELECT MAX(value) FROM bounded_data));
+SELECT id, description FROM spatial_data WHERE bif:st_distance(location, POINT(1 1)) > (SELECT AVG(bif:st_distance(location, POINT(1 1))) FROM spatial_data GROUP BY description HAVING COUNT(*) > 1);

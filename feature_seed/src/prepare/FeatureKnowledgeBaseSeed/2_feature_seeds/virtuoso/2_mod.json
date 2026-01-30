@@ -1,0 +1,16 @@
+CREATE TABLE test_data (id INT PRIMARY KEY, value1 INT, value2 INT, xml_data XML);
+INSERT INTO test_data (id, value1, value2, xml_data) VALUES (1, 10, 3, xml_tree_doc('<root><a>-20</a></root>'));
+INSERT INTO test_data (id, value1, value2, xml_data) VALUES (2, NULL, 4, xml_tree_doc('<root><b>0</b></root>'));
+SELECT id, mod(value1, value2) AS mod_result FROM test_data WHERE mod(value1, value2) IS NOT NULL;
+SELECT id, xml_data, mod(CAST(value1 AS VARCHAR), value2) AS mod_with_cast FROM test_data WHERE value2 <> 0;
+SELECT id, xml_data, mod(value1, value2 + NULL) AS mod_with_null FROM test_data HAVING mod(value1, value2 + NULL) IS NOT NULL;
+SELECT id, xml_data, mod((SELECT value1 + value2 FROM test_data WHERE id = 1), (SELECT value1 FROM test_data WHERE id = 2)) AS mod_subquery FROM test_data;
+SELECT xml_data, COALESCE(mod(value1, value2), -1) AS coalesce_result FROM test_data;
+SELECT id, CASE WHEN value1 IS NOT NULL THEN mod(value1, value2) ELSE -1 END AS case_mod_result FROM test_data;
+SELECT id, xml_tree_doc(CONCAT('<root><result>', mod(value1, value2), '</result></root>')) AS xml_result FROM test_data WHERE value2 > 0;
+CREATE TABLE temp_data (temp_id INT, temp_value INT);
+INSERT INTO temp_data (temp_id, temp_value) SELECT id, mod(value1, 2) FROM test_data WHERE value1 IS NOT NULL;
+SELECT temp_id, temp_value FROM temp_data WHERE temp_value IN (SELECT mod(3, 0));
+SELECT temp_id, temp_value, xml_data FROM temp_data AS t JOIN test_data AS d ON t.temp_value = mod(d.value1, d.value2);
+SELECT id, xml_data, mod(9999999999, value2) AS large_number_mod FROM test_data WHERE value2 > 0;
+SELECT id, xml_tree_doc('<root><value>' || mod(value1, value2) || '</value></root>') AS xml_mod_result FROM test_data WHERE value1 IS NOT NULL AND value2 IS NOT NULL;

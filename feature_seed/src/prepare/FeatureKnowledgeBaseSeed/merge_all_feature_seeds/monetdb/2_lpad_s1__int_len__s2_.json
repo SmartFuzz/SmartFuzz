@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, description VARCHAR(50), value NUMERIC, nullable_col VARCHAR(50));
+INSERT INTO test_table (id, description, value, nullable_col) VALUES (1, 'abc', 42.0, NULL), (2, 'def', NULL, 'Test'), (3, '', 100, 'Sample');
+SELECT id, lpad(description || ' - Value: ' || COALESCE(value::VARCHAR, 'N/A'), 10, 'X') AS padded_output FROM test_table WHERE value IS NOT NULL;
+SELECT id, lpad(description, CASE WHEN value IS NOT NULL THEN 6 ELSE 3 END, 'DB') AS padded_description FROM test_table;
+SELECT id, COUNT(*) OVER (PARTITION BY lpad(COALESCE(nullable_col, 'unknown'), 5, 'X')) AS padded_count FROM test_table GROUP BY nullable_col, description;
+SELECT id, lpad('Total: ' || COUNT(*), 15, ' ') AS padded_total FROM test_table GROUP BY lpad(description, 5, ' ') HAVING COUNT(*) > 1;
+SELECT id, lpad(value::VARCHAR, 10, '0') AS padded_value FROM (SELECT id, value FROM test_table WHERE value IS NOT NULL ORDER BY value DESC) AS ordered_values;
+SELECT id, lpad(NULLIF(description, ''), 10, 'X') AS padded_description FROM test_table WHERE description IS NOT NULL;
+SELECT id, COALESCE(lpad(description, 10, ' '), 'Not Found') AS final_description FROM test_table WHERE id NOT IN (SELECT id FROM test_table WHERE description IS NULL);
+CREATE TEMP TABLE temp_table AS SELECT id, lpad(description || ' - ' || value, 20, '0') AS temp_description FROM test_table;

@@ -1,0 +1,17 @@
+{
+    "function": "dictGetAll",
+    "operator": "x -> expr",
+    "sql_array": [
+        "CREATE TABLE test_dict (id Int32, key String) ENGINE = MergeTree() ORDER BY id;",
+        "CREATE DICTIONARY regexp_dict (regexp String, tag String) PRIMARY KEY (regexp) SOURCE (YAMLRegExpTree(PATH '/var/lib/clickhouse/user_files/regexp_tree.yaml')) LAYOUT (regexp_tree);",
+        "INSERT INTO test_dict VALUES (1, 'foobarbaz'), (2, 'example1'), (3, 'example2'), (4, 'test_value');",
+        "SELECT dictGetAll('regexp_dict', ['tag'], arrayJoin((SELECT key FROM test_dict WHERE key LIKE '%baz%' LIMIT 1)) -> lower(key)) AS tags FROM test_dict;",
+        "SELECT id, dictGetAll('regexp_dict', 'tag', key, 3) FROM test_dict WHERE id >= (SELECT min(id) FROM test_dict) ORDER BY id;",
+        "SELECT id, dictGetAll('regexp_dict', tag, id) FROM (SELECT id, key, tag FROM test_dict LEFT JOIN (SELECT dictGetAll('regexp_dict', 'tag', 'example1') AS tag) AS sub ON test_dict.key = sub.tag) AS foo WHERE id < 3;",
+        "SELECT id, count() OVER (PARTITION BY dictGetAll('regexp_dict', 'tag', key, 2)) as tag_count FROM test_dict GROUP BY id HAVING tag_count > 0;",
+        "SELECT dictGetAll('regexp_dict', arrayJoin(['tag', 'tag'] -> concat(tag, '_suffix')), (SELECT key FROM test_dict WHERE id = 1)) AS result FROM test_dict;",
+        "ALTER TABLE test_dict ADD COLUMN new_column Nullable(String);",
+        "INSERT INTO test_dict (id, key, new_column) VALUES (5, 'NULL_example', NULL), (6, 'valid_example', 'tag_value');",
+        "SELECT dictGetAll('regexp_dict', arrayJoin(['tag']), (SELECT key FROM test_dict WHERE new_column IS NULL)) AS tags WHERE length(tags) > 0;"
+    ]
+}

@@ -1,0 +1,14 @@
+CREATE TABLE fuzz_test1 (id UInt32, num_str String, valid_num Int256) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO fuzz_test1 VALUES (1, '128'), (2, '255'), (3, 'abc'), (4, '-256'), (5, '18446744073709551616');
+SELECT id, toInt256OrNull(num_str) AS converted_num FROM fuzz_test1 WHERE EXISTS (SELECT 1 FROM fuzz_test1 WHERE toInt256OrNull(num_str) IS NULL);
+SELECT id, toInt256OrNull(num_str) AS converted_num FROM fuzz_test1 WHERE toInt256OrNull(num_str) IS NOT NULL AND EXISTS (SELECT 1 FROM fuzz_test1 WHERE id = 2 AND toInt256OrNull(num_str) < 300);
+CREATE TABLE fuzz_test2 (group_id UInt32, description String) ENGINE = MergeTree() ORDER BY group_id;
+INSERT INTO fuzz_test2 VALUES (1, 'A'), (2, 'B'), (3, 'C'), (4, NULL);
+SELECT description, EXISTS (SELECT 1 FROM fuzz_test2 WHERE group_id = fuzz_test1.id AND description IS NOT NULL) AS exists_flag FROM fuzz_test1 ORDER BY exists_flag DESC;
+SELECT COUNT() FROM fuzz_test1 WHERE EXISTS (SELECT * FROM fuzz_test2 WHERE group_id = fuzz_test1.id AND toInt256OrNull(description) IS NULL);
+SELECT id, toInt256OrNull(num_str) AS converted_num FROM fuzz_test1 WHERE EXISTS (SELECT COUNT(*) FROM fuzz_test1 WHERE converted_num < 0) GROUP BY id HAVING converted_num IS NULL;
+SELECT id, toInt256OrNull(CONCAT(num_str, '1')) AS extended_num FROM fuzz_test1 WHERE toInt256OrNull(num_str) IN (SELECT DISTINCT toInt256OrNull(num_str) FROM fuzz_test1) ORDER BY extended_num ASC;
+CREATE TABLE fuzz_test3 (id UInt32, num_str String, checked_flag UInt8 DEFAULT 0) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO fuzz_test3 VALUES (1, '100'), (2, '200'), (3, 'abc'), (4, NULL);
+UPDATE fuzz_test3 SET checked_flag = 1 WHERE EXISTS (SELECT 1 FROM fuzz_test1 WHERE toInt256OrNull(num_str) IS NOT NULL AND fuzz_test3.id = fuzz_test1.id);
+SELECT id, checked_flag, toInt256OrNull(num_str) AS converted_num FROM fuzz_test3 WHERE checked_flag = 1 AND EXISTS (SELECT 1 FROM fuzz_test3 WHERE toInt256OrNull(num_str) IS NULL);

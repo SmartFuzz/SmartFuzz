@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id UInt8, value String, date DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table (id, value, date) VALUES (1, '65', '2023-10-01 10:00:00'), (2, '123.45', '2023-10-01 10:10:00'), (3, '', '2023-10-01 10:20:00'), (4, NULL, '2023-10-01 10:30:00');
+SELECT id, reinterpretAsUInt16(toUInt8(id)) AS reinterpret_id, value -> reinterpretAsUInt16(toUInt8(reinterpret_id)) AS lambda_reinterpret FROM test_table WHERE value IS NOT NULL;
+SELECT id, value, reinterpretAsUInt16(toUInt8(arrayJoin([value, '257']))) AS reinterpret_res FROM test_table WHERE reinterpret_res > 0;
+SELECT id, value, reinterpretAsUInt16(value) AS reinterpret_value FROM test_table WHERE id > 0 GROUP BY reinterpret_value HAVING reinterpret_value < 300 ORDER BY reinterpret_value ASC;
+WITH (SELECT toUInt8(count(*)) FROM test_table WHERE value IS NOT NULL) AS total_count SELECT id, value, reinterpretAsUInt16(merge(total_count, reinterpret_id)) AS final_value FROM (SELECT id, reinterpretAsUInt16(toUInt8(id)) AS reinterpret_id FROM test_table) GROUP BY id;
+WITH (SELECT toUInt8(1) AS base_value) SELECT base_value, reinterpretAsUInt16(base_value + 1) AS reinterpret_sum, (base_value + 5) -> reinterpretAsUInt16(base_value) AS lambda_value FROM test_table WHERE id = 1;
+CREATE TABLE temp_table AS test_table WITH NO DATA;
+INSERT INTO temp_table SELECT id, reinterpretAsUInt16(value) AS reinterpret_value, date FROM test_table WHERE date IS NOT NULL AND value != '';
+SELECT id, reinterpretAsUInt16(toUInt8(value)) AS reinterpret_value FROM (SELECT id, value -> (value IS NOT NULL ? value : '') AS safe_value FROM temp_table) WHERE reinterpret_value > 0;

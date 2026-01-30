@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/f2be158c57",
+  "title": "ON CONFLICT on a PK column in a WITHOUT ROWID table does not work",
+  "description": "drh added on 2021-08-18 22:16:34:\nIn a WITHOUT ROWID table, if there is an ON CONFLICT clause on a NOT NULL\nconstraint of a PRIMARY KEY column, then that ON CONFLICT clause is ignored\nand the conflict is always resolved as ABORT.  For example:\n\nCREATE TABLE t1(\n  a INT NOT NULL ON CONFLICT REPLACE DEFAULT 3,\n  b TEXT,\n  c TEXT,\n  PRIMARY KEY(a,b)\n) /*WITHOUT ROWID*/\nINSERT INTO t1(a,b,c) VALUES\n  (1,'two','three'),\n  (NULL,'four','five'),\n  (6,'seven','eight');\nSELECT * FROM t1;\n\nThe code above inserts three rows into the table, with \"a\" values of 1, 3, and 6.\nThe 3 value arises because the \"NOT NULL ON CONFLICT REPLACE\" causes the NULL to\nbe replaced by the default value of 3.  But if you uncomment the \"/WITHOUT ROWID/\nit does not work → the INSERT statement fails with a NOT NULL constraint error\nand no rows are inserted.\nThis problem has apparently always existed in the code, going back to the introduction\nof WITHOUT ROWID in version 3.8.2 (2013-12-06).  The problem was discovered by code\ninspection and has not been observed in the wild.",
+  "date": "2021-08-18 22:16:343.98 years ago",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t2(a INT NOT NULL DEFAULT 5, b TEXT, c REAL, PRIMARY KEY(a, b));",
+    "INSERT INTO t2(a, b, c) VALUES (2, 'one', 1.1), (NULL, 'two', 2.2), (3, 'three', 3.3);",
+    "INSERT INTO t2(a, b, c) VALUES (2, 'one', 1.1), (5, 'four', 4.4);",
+    "SELECT * FROM t2;",
+    "CREATE TABLE t3(x TEXT, y INT, z TEXT DEFAULT 'default', PRIMARY KEY(x, y));"
+  ],
+  "key_bug_features": [
+    "ON CONFLICT clause ignored in WITHOUT ROWID table"
+  ]
+}

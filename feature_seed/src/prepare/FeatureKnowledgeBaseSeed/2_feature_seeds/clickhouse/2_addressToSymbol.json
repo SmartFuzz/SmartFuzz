@@ -1,0 +1,10 @@
+CREATE TABLE test_trace_log (id UInt32, trace UInt64, data String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_trace_log VALUES (1, 94138803686098, 'example1'), (2, 94138803686099, 'example2'), (3, 94138803686100, 'example3');
+SELECT addressToSymbol(trace) AS symbol, arrayJoin([addressToSymbol(trace), addressToSymbol(NULL)]) AS symbols FROM test_trace_log;
+SELECT id, addressToSymbol(trace) AS symbol FROM test_trace_log WHERE trace IN (SELECT trace FROM test_trace_log WHERE id = 2);
+SELECT id, addressToSymbol(arrayReduce('groupArray', arrayMap(x -> addressToSymbol(x), arrayJoin([trace, trace + 1])))) AS aggregated_symbols FROM test_trace_log GROUP BY id HAVING id = 1;
+SELECT id, trace FROM test_trace_log WHERE trace = arrayFirst(x -> x IS NOT NULL, [trace, NULL]);
+CREATE TABLE temp_table AS SELECT addressToSymbol(trace) AS symbol FROM test_trace_log;
+SELECT addressToSymbol(trace), COUNT(*) FROM test_trace_log GROUP BY addressToSymbol(trace) HAVING COUNT(*) > 1;
+SELECT trace, addressToSymbol(trace) AS symbol FROM test_trace_log WHERE LENGTH(addressToSymbol(trace)) > 0;
+ALTER TABLE test_trace_log ADD COLUMN extra_info String DEFAULT '';

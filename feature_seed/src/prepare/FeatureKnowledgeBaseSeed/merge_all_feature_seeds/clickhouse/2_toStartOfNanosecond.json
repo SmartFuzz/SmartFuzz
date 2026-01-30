@@ -1,0 +1,11 @@
+CREATE TABLE test_nanoseconds (id UInt32, event_time DateTime64(9), value Int32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_nanoseconds VALUES (1, toDateTime64('2020-01-01 10:20:30.999999999', 9), 100), (2, toDateTime64('2020-01-01 10:20:30.000000001', 9), 200), (3, toDateTime64('2020-01-01 10:20:29.999999999', 9), 300);
+SELECT id, toStartOfNanosecond(event_time) AS rounded_time FROM test_nanoseconds WHERE rounded_time NOT BETWEEN toStartOfNanosecond(toDateTime64('2020-01-01 10:20:30.000000000', 9)) AND toStartOfNanosecond(toDateTime64('2020-01-01 10:20:31.000000000', 9));
+SELECT id, AVG(value) FROM test_nanoseconds GROUP BY rounded_time HAVING rounded_time NOT BETWEEN toStartOfNanosecond(event_time) AND now();
+CREATE TABLE test_join (join_id UInt32, join_time DateTime64(9)) ENGINE = MergeTree() ORDER BY join_id;
+INSERT INTO test_join VALUES (1, toDateTime64('2020-01-01 10:20:30.999999999', 9)), (2, toDateTime64('2020-01-01 10:20:31.123456789', 9));
+SELECT a.id, a.value, b.join_time FROM test_nanoseconds AS a JOIN test_join AS b ON a.value NOT BETWEEN 50 AND 150 WHERE toStartOfNanosecond(a.event_time) NOT BETWEEN b.join_time AND now();
+WITH (SELECT MAX(event_time) FROM test_nanoseconds) AS max_time SELECT id, toStartOfNanosecond(event_time) AS rounded_time FROM test_nanoseconds WHERE rounded_time NOT BETWEEN max_time AND now();
+SELECT DISTINCT id FROM test_nanoseconds WHERE event_time NOT BETWEEN toStartOfNanosecond(toDateTime64('2020-01-01 10:20:30.999999999', 9)) AND toStartOfNanosecond(toDateTime64('2020-01-01 10:20:35.000000000', 9));
+CREATE TEMPORARY TABLE temp_test AS SELECT * FROM test_nanoseconds WHERE value NOT BETWEEN 150 AND 300;
+INSERT INTO temp_test SELECT * FROM test_nanoseconds WHERE value NOT BETWEEN 100 AND 500;

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/64144",
+  "title": "WEIGHT_STRING of U+FFFD collate utf8mb4_general_ci is changed between v8.5.2 and v8.5.3, leading to silent data-index inconsistency",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n1. Start a tagged playground running v8.5.2 \n\n```sh\ntiup playground v8.5.2 --db 1 --kv 1 --pd 1 --tiflash 0 --without-monitor -T revert61972\n```\n\n2. Create a table with a utf8mb4_general_ci collation index, insert an entry with U+FFFD\n\n```sql\ncreate table test.a (id bigint primary key, name varchar(10) collate utf8mb4_general_ci, key(name));\ninsert into test.a values (1, 'A�B');\nselect weight_string(name) from test.a;\n-- 0x0041FFFD0042\n```\n\n3. Upgrade the playground to v8.5.3\n\n```sh\n# Ctrl+C\ntiup playground v8.5.3 --db 1 --kv 1 --pd 1 --tiflash 0 --without-monitor -T revert61972\n```\n\n4. Check the WEIGHT_STRING. Note that everything after the U+FFFD is truncated.\n\n```sql\nselect name, weight_string(name) from test.a where id = 1;\n-- 'A�B', 0x0041\n```\n\n5. Note that the index cannot be used to look up the affected row\n\n```sql\nselect * from a where name = (select name from a where id = 1);\n-- Empty set\n```\n\n6. Note that deleting the row leads to Error 8141.\n\n```sql\ndelete from test.a where id = 1;\n-- ERROR 8141 (HY000): assertion failed: key: 74800000000000006e5f698000000000000001010041000000000000f9038000000000000001, assertion: Exist, start_ts: 461786157551976449, existing start ts: 0, existing commit ts: 0\n```\n\n7. Note that ADMIN CHECK TABLE is unable to detect any problem.\n\n```sql\nadmin check table a;\n-- Query OK, 0 rows affected\n```\n\n### 2. What did you expect to see? (Required)\n\n### 3. What did you see instead (Required)\n\nEverything after step 4 are unexpected.\n\n### 4. What is your TiDB version? (Required)\n\nv8.5.2 → v8.5.3\n\n",
+  "date": "2025-10-27T14:20:22Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE test.b (id UInt64, description String NOT NULL, age Int32) ENGINE = MergeTree() PRIMARY KEY id;",
+    "INSERT INTO test.b VALUES (1, 'Sample�Text', 25);",
+    "SELECT hex(description) FROM test.b WHERE id = 1;",
+    "SELECT * FROM test.b WHERE description = (SELECT description FROM test.b WHERE id = 1);",
+    "ALTER TABLE test.b DELETE WHERE id = 1;"
+  ],
+  "key_bug_features": [
+    "WEIGHT_STRING truncation for U+FFFD in utf8mb4_general_ci"
+  ]
+}

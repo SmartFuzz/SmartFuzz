@@ -1,0 +1,10 @@
+CREATE TABLE test_dates (id INT, event_date DATE, value INT);
+INSERT INTO test_dates VALUES (1, DATE '1992-09-20', 10), (2, DATE '2000-01-01', 20), (3, NULL, 30);
+SELECT id, date_part('year', event_date) AS event_year, ~value AS negated_value FROM test_dates WHERE event_date IS NOT NULL;
+SELECT id, ~date_part('year', event_date) AS negated_year FROM (SELECT id, event_date FROM test_dates WHERE value > 15) subquery;
+SELECT id, date_part('year', event_date) AS event_year, SUM(~value) OVER (PARTITION BY event_year) AS total_neg_value FROM test_dates GROUP BY id, event_year HAVING total_neg_value IS NOT NULL;
+CREATE TABLE test_joins (id INT, test_id INT, test_value INT);
+INSERT INTO test_joins VALUES (1, 1, 5), (2, 1, 10), (3, 2, 0);
+SELECT d.id, date_part('year', d.event_date) AS year, j.test_value, ~j.test_value AS negated_test_value FROM test_dates d JOIN test_joins j ON d.id = j.test_id WHERE j.test_value < 10;
+SELECT d.id, date_part('year', d.event_date) AS year, j.test_value, ~j.test_value AS negated_test_value FROM test_dates d LEFT JOIN test_joins j ON d.id = j.test_id AND j.test_value > COALESCE(d.value, 0);
+SELECT COALESCE(~MAX(value), 0) AS negated_max_value FROM test_dates WHERE event_date < NOW();

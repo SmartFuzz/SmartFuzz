@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/56640",
+  "title": "TiDB and MySQL behave differently when union all `cast('xxxx' as char)` and a integer",
+  "description": "### 1. Minimal reproduce step (Required)\r\n```sql\r\nselect cast('abcdefghijklmnopqrstuvwxyz' as char) as c1\r\nunion all\r\nselect 1 where false;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n```\r\nmysql> select cast('abcdefghijklmnopqrstuvwxyz' as char) as c1\r\n    -> union all\r\n    -> select 1 where false;\r\n+----------------------------+\r\n| c1                         |\r\n+----------------------------+\r\n| abcdefghijklmnopqrstuvwxyz |\r\n+----------------------------+\r\n1 row in set (0.01 sec)\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n```\r\nmysql> select cast('abcdefghijklmnopqrstuvwxyz' as char) as c1\r\n    -> union all\r\n    -> select 1 where false;\r\n\r\n+----------------------+\r\n| c1                   |\r\n+----------------------+\r\n| abcdefghijklmnopqrst |\r\n+----------------------+\r\n1 row in set, 1 warning (0.00 sec)\r\n\r\nmysql> show warnings;\r\n\r\n+---------+------+------------------------------------------+\r\n| Level   | Code | Message                                  |\r\n+---------+------+------------------------------------------+\r\n| Warning | 1406 | Data Too Long, field len 20, data len 26 |\r\n+---------+------+------------------------------------------+\r\n1 row in set (0.00 sec)\r\n```\r\n\r\n\r\n### 4. What is your TiDB version? (Required)\r\n```\r\nRelease Version: v8.4.0-alpha-370-gf773b6eeb4\r\nEdition: Community\r\nGit Commit Hash: f773b6eeb4593a3e2c998c265f491a016570a426\r\nGit Branch: HEAD\r\nUTC Build Time: 2024-10-11 02:08:09\r\nGoVersion: go1.23.2\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv\r\n```\r\n\r\n\r\n\r\n### about us\r\nWe are the BASS team from the School of Cyber Science and Technology at Beihang University. Our main focus is on system software security, operating systems, and program analysis research, as well as the development of automated program testing frameworks for detecting software defects. Using our self-developed database vulnerability testing tool, we have identified the above-mentioned vulnerabilities in TiDB that may lead to database logic error.",
+  "date": "2024-10-14T12:03:12Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id Int32, name String);",
+    "INSERT INTO test_table (id, name) VALUES (1, 'abcdefghijklmno'), (2, 'pqrstuvwxyz');",
+    "SELECT name AS c1 FROM test_table WHERE id = 1 UNION ALL SELECT toString(1) WHERE false;",
+    "CREATE TABLE another_table (value Int32 NOT NULL, description String);",
+    "INSERT INTO another_table (value, description) VALUES (10, 'Sample description'), (20, NULL);"
+  ],
+  "key_bug_features": [
+    "union all with cast and integer handling differences"
+  ]
+}

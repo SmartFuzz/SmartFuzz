@@ -1,0 +1,13 @@
+CREATE TABLE test_table (id UInt32, value Array(Int32), multiplier Float32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, [1, 2, 3], 2.5), (2, [4, 5, 6], NULL), (3, [], 1.0);
+SELECT array_concat_agg(value) AS concatenated_value FROM (SELECT id, value * multiplier AS value FROM test_table) GROUP BY id HAVING value IS NOT NULL;
+SELECT id, array_concat_agg(value) AS total_value FROM test_table GROUP BY id HAVING total_value[1] IS NOT NULL;
+SELECT id, array_concat_agg(value * multiplier) AS multiplied_arrays FROM (SELECT id, value, CASE WHEN multiplier IS NULL THEN 1 ELSE multiplier END AS multiplier FROM test_table) GROUP BY id ORDER BY id;
+CREATE TABLE temp_table AS SELECT id, array_concat_agg(value) AS array_values FROM test_table GROUP BY id;
+SELECT array_concat_agg(NULLIF(value[1], 0) * multiplier) AS aggregated_product FROM (SELECT id, value FROM test_table WHERE value IS NOT NULL) GROUP BY id;
+SELECT id, array_concat_agg(value) AS final_array FROM (SELECT id, value, arrayFlatten(array_concat_agg(value)) AS flat_array FROM test_table GROUP BY id) HAVING array_length(final_array) > 2;
+SELECT array_concat_agg(value) AS combined_values FROM (SELECT id, value * (multiplier + 1) AS value FROM test_table) WHERE value IS NOT NULL GROUP BY id ORDER BY id;
+CREATE TABLE complex_table (date Date, value Float64) ENGINE = MergeTree() ORDER BY date;
+INSERT INTO complex_table VALUES (toDate('2023-01-01'), 1.5), (toDate('2023-01-02'), 2.5), (toDate('2023-01-03'), NULL);
+SELECT array_concat_agg(value) AS all_values FROM (SELECT value * 10 AS value FROM complex_table WHERE date >= toDate('2023-01-01') AND date <= toDate('2023-01-03')) HAVING value IS NOT NULL;
+SELECT array_concat_agg(COALESCE(value, 0) * multiplier) AS adjusted_values FROM (SELECT id, value, CASE WHEN multiplier > 1 THEN multiplier ELSE 1 END AS multiplier FROM test_table) GROUP BY id;

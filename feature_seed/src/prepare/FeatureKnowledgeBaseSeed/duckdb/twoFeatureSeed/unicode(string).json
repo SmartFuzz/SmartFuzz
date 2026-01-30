@@ -1,0 +1,16 @@
+{
+    "function": "unicode(string)",
+    "operator": "+",
+    "sql_array": [
+        "CREATE TABLE test_table (id INT, name TEXT, created_at TIMESTAMPTZ);",
+        "INSERT INTO test_table (id, name, created_at) VALUES (1, '\u00e2bcd', TIMESTAMPTZ '2023-10-01 12:00:00'), (2, NULL, TIMESTAMPTZ '1992-03-22 01:02:03');",
+        "SELECT id, unicode(name) + 10 AS unicode_plus, created_at + INTERVAL (unicode(name) - 1) DAY AS adjusted_date FROM test_table WHERE unicode(name) > 0 OR (name IS NULL);",
+        "SELECT t.id, unicode(t.name), t.created_at FROM test_table t JOIN (SELECT id, created_at FROM test_table WHERE created_at IS NOT NULL) AS sub ON t.id = sub.id GROUP BY t.id, unicode(t.name), t.created_at HAVING unicode(t.name) IS NOT NULL;",
+        "SELECT id, unicode(name) AS unicode_value, created_at + INTERVAL (CASE WHEN unicode(name) = -1 THEN 0 ELSE unicode(name) END) DAY FROM test_table WHERE unicode(name) IS NOT NULL ORDER BY adjusted_date;",
+        "CREATE TABLE nullable_table (val TEXT NULL);",
+        "INSERT INTO nullable_table (val) VALUES ('a'), (''), (NULL), ('\u00e2');",
+        "SELECT val, unicode(val) + 5 AS unicode_incremented FROM nullable_table WHERE unicode(val) + 3 > 0;",
+        "SELECT t.id, unicode(t.name), (created_at + INTERVAL unicode(t.name) DAY) AS modified_date FROM test_table t WHERE EXISTS (SELECT 1 FROM nullable_table nt WHERE nt.val = t.name AND unicode(nt.val) > 0) ORDER BY modified_date;",
+        "WITH unicode_values AS (SELECT id, unicode(name) AS unicode_val FROM test_table) SELECT uv.unicode_val, COUNT(*) FROM unicode_values uv GROUP BY uv.unicode_val HAVING uv.unicode_val IS NOT NULL;"
+    ]
+}

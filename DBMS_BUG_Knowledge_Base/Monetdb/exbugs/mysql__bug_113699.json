@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=113699",
+  "title": "QEP regression with prefer_ordering_index=off",
+  "description": "With prefer_ordering_index=off, queries without a reference key (\"ref key\") regress to scanning and sorting the full table even though the sort can be avoided. When combined with a LIMIT clause, the regression can make the query even slower because it can't scan in order and return early.\r\n\r\nprefer_ordering_index is meant to control if MySQL chooses an ordering index rather than a non-ordering index. (Even when enabled, MySQL chooses an ordering index only if it costs less than non-ordering: \"index_scan_time < read_time\" in test_if_cheaper_ordering().)\r\n\r\nThe regression occurs when there's no ref key. In this case, prefer_ordering_index should not apply because there's no choice, no preference. But currently the flag does apply, which means certain queries regress to the most expensive plan even though it can (and should) be avoided.\r\n\r\nThe provided patch calls test_if_cheaper_ordering() if prefer_ordering_index=off _AND_ there's no ref key. Currently it does this by checking if \"tab->type() == JT_ALL\", but maybe \"ref_key == -1\" would be better?\r\n\r\nThe result is a far better QEP for certain queries and no changes to other queries. An MTR test case/patch is provided. All original tests still pass.\nHow to repeat:\nLoad Jeremy's orignal test case:\nhttps://bugs.mysql.com/bug.php?id=97001\n--\r\n-- Normal (default)\r\n--\r\nmysql> SET optimizer_switch = \"prefer_ordering_index=off\";\r\nmysql> EXPLAIN SELECT * FROM t ORDER BY id LIMIT 1;\r\n+----+-------------+-------+------------+-------+---------------+---------+---------+------+------+----------+-------+\r\n| id | select_type | table | partitions | type  | possible_keys | key     | key_len | ref  | rows | filtered | Extra |\r\n+----+-------------+-------+------------+-------+---------------+---------+---------+------+------+----------+-------+\r\n|  1 | SIMPLE      | t     | NULL       | index | NULL          | PRIMARY | 8       | NULL |    1 |   100.00 | NULL  |\r\n+----+-------------+-------+------------+-------+---------------+---------+---------+------+------+----------+-------+\r\n1 row in set, 1 warning (22.04 sec)\r\n\r\n--\r\n-- Regression\r\n--\r\nmysql> SET optimizer_switch = \"prefer_ordering_index=off\";\r\nmysql> EXPLAIN SELECT * FROM t ORDER BY id LIMIT 1;\r\n+----+-------------+-------+------------+------+---------------+------+---------+------+--------+----------+----------------+\r\n| id | select_type | table | partitions | type | possible_keys | key  | key_len | ref  | rows   | filtered | Extra          |\r\n+----+-------------+-------+------------+------+---------------+------+---------+------+--------+----------+----------------+\r\n|  1 | SIMPLE      | t     | NULL       | ALL  | NULL          | NULL | NULL    | NULL | 998656 |   100.00 | Using filesort |\r\n+----+-------------+-------+------------+------+---------------+------+---------+------+--------+----------+----------------+\r\n\r\nEven with prefer_ordering_index=off, there's no choice between indexes, so MySQL should use the only possible index to avoid the filesort.\nSuggested fix:\nAttached patches were made on 8.0.35, but they're small so they should apply to all current versions.",
+  "date": "2024-01-21 16:58:00",
+  "vulnerable_version": "8.0, 8.1, 8.2, 8.3",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR(50), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table (id, name) VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie');",
+    "SET optimizer_switch = 'prefer_ordering_index=off';",
+    "SELECT * FROM test_table WHERE id IS NULL OR name = 'Alice' ORDER BY created_at LIMIT 1;",
+    "SELECT * FROM test_table WHERE id > 2 ORDER BY name DESC LIMIT 1;"
+  ],
+  "key_bug_features": [
+    "prefer_ordering_index=off with no ref key"
+  ]
+}

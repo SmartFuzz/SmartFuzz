@@ -1,0 +1,20 @@
+{
+    "function": "arrayAUC",
+    "operator": "a != b",
+    "sql_array": [
+        "CREATE TABLE test_auc (id Int32, score Float64, label Int8) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_auc VALUES (1, 0.1, 0), (2, 0.4, 0), (3, 0.35, 1), (4, 0.8, 1), (5, NULL, 0);",
+        "SELECT arrayAUC(arrayFilter(x -> x != NULL, arrayMap(score -> score, (SELECT score FROM test_auc WHERE label = 1))), arrayFilter(x -> x != NULL, arrayMap(label -> label, (SELECT label FROM test_auc WHERE label = 1)))) AS auc_value;",
+        "SELECT id, score, label FROM test_auc WHERE score != (SELECT MIN(score) FROM test_auc WHERE label = 1) ORDER BY score ASC;",
+        "CREATE TABLE secondary_auc (ref_id Int32, ref_score Float64, ref_label Int8) ENGINE = MergeTree() ORDER BY ref_id;",
+        "INSERT INTO secondary_auc VALUES (1, 0.5, 1), (2, 0.6, 0), (3, 0.7, NULL);",
+        "SELECT arrayAUC(arr_scores, arr_labels) FROM (SELECT arrayJoin(arrayMap(c -> c.score, (SELECT score AS c FROM secondary_auc WHERE ref_label != 0))) AS arr_scores, arrayJoin(arrayMap(c -> c.label, (SELECT label AS c FROM secondary_auc WHERE ref_label != 0))) AS arr_labels) GROUP BY ref_id HAVING COUNT(arr_labels) != 0;",
+        "SELECT ARRAY JOIN arrayMap(x -> x != 0, [NULL, 0.1, 0.9]) AS checks HAVING arrayAUC(arrayFilter(score -> score IS NOT NULL, (SELECT arrayJoin(score) FROM test_auc)), arrayFilter(label -> label IS NOT NULL, (SELECT arrayJoin(label) FROM test_auc))) != (SELECT COUNT(*) FROM test_auc) AND checks;",
+        "CREATE TABLE edge_cases (e_id Int32, e_score Float64, e_label Int8) ENGINE = MergeTree() ORDER BY e_id;",
+        "INSERT INTO edge_cases VALUES (1, 0.0, 1), (2, 1.0, 0), (3, 0.3, 1), (4, -0.1, 1), (5, 0.999999999999999, 0);",
+        "SELECT arrayAUC(arrayMap(x -> CAST(x AS Float64), ARRAY JOIN (SELECT e_score FROM edge_cases)) WHERE e_label = 1, ARRAY JOIN (SELECT e_label FROM edge_cases) WHERE e_label IN (1, 0)) AS boundary_auc WHERE e_id != (SELECT e_id FROM edge_cases WHERE e_score != 0);",
+        "CREATE TABLE temp_join (j_id Int32, j_score Float64, j_label Int8) ENGINE = Memory;",
+        "INSERT INTO temp_join VALUES (1, 0.42, 0), (2, 0.56, 1), (3, 0.73, 1);",
+        "SELECT a.j_id, arrayAUC(arrayFilter(x -> x != 0, arrayMap(score -> score, (SELECT j_score FROM temp_join WHERE j_label = 1))), arrayFilter(label -> label IS NOT NULL, (SELECT j_label FROM temp_join WHERE j_label = 1))) AS auc_value FROM temp_join AS a WHERE EXISTS (SELECT 1 FROM temp_join WHERE a.j_id != j_id AND a.j_score != j_score);"
+    ]
+}

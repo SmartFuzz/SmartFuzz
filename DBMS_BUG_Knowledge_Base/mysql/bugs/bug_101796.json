@@ -1,0 +1,30 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=101796",
+  "title": "Incorrect query result for index_subquery type IN subquery",
+  "vulnerable_database": "MySQL Server: Optimizer",
+  "date": "2020-11-30 08:52:00",
+  "vulnerable_version": "5.6.34, 5.6.50, 5.7.32",
+  "description": "An IN subquery that is executed via index_subquery access method produces wrong result\nHow to repeat:\nDROP TABLE IF EXISTS z_newcreate_tmp;\r\nCREATE TABLE `z_newcreate_tmp` (\r\n  `state` varchar(40) DEFAULT NULL\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8;\r\nINSERT INTO z_newcreate_tmp \r\n\tSELECT '99645' state UNION  ALL\r\n\tSELECT 'Alaska' state;\r\n\r\nDROP TABLE IF EXISTS z_newcreate_tmp1;\r\nCREATE TABLE `z_newcreate_tmp1` (\r\n  `abbreviation` varchar(2) DEFAULT NULL\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8;\r\nINSERT INTO z_newcreate_tmp1(abbreviation) \r\n\tSELECT 'AL';\r\nALTER TABLE z_newcreate_tmp1 ADD INDEX(abbreviation);\r\n\r\nSELECT * FROM z_newcreate_tmp WHERE state NOT IN(SELECT abbreviation FROM z_newcreate_tmp1);\n\n'Alaska' is not in the result",
+  "poc": [
+    "DROP TABLE IF EXISTS z_newcreate_tmp;",
+    "CREATE TABLE `z_newcreate_tmp` (\n`state` varchar(40) DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8;",
+    "INSERT INTO z_newcreate_tmp\nSELECT '99645' state UNION  ALL\nSELECT 'Alaska' state;",
+    "DROP TABLE IF EXISTS z_newcreate_tmp1;",
+    "CREATE TABLE `z_newcreate_tmp1` (\n`abbreviation` varchar(2) DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8;",
+    "INSERT INTO z_newcreate_tmp1(abbreviation)\nSELECT 'AL';",
+    "ALTER TABLE z_newcreate_tmp1 ADD INDEX(abbreviation);",
+    "SELECT * FROM z_newcreate_tmp WHERE state NOT IN(SELECT abbreviation FROM z_newcreate_tmp1);"
+  ],
+  "key_bug_features": [
+    "IN subquery with index_subquery access method produces incorrect results"
+  ],
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS z_test_table;",
+    "CREATE TABLE `z_test_table` (`id` INT NOT NULL AUTO_INCREMENT, `value` VARCHAR(50) DEFAULT NULL, PRIMARY KEY (`id`));",
+    "INSERT INTO z_test_table (value) VALUES ('Test1'), (NULL), ('Test2'), ('AL'), ('99645');",
+    "DROP TABLE IF EXISTS z_abbreviation_table;",
+    "CREATE TABLE `z_abbreviation_table` (`abbreviation` VARCHAR(2) DEFAULT NULL, UNIQUE KEY (`abbreviation`));",
+    "INSERT INTO z_abbreviation_table (abbreviation) VALUES ('AL'), (NULL);",
+    "SELECT * FROM z_test_table WHERE value NOT IN (SELECT abbreviation FROM z_abbreviation_table WHERE abbreviation IS NOT NULL);"
+  ]
+}

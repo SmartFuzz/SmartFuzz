@@ -1,0 +1,16 @@
+{
+    "function": "atan",
+    "operator": "a != ANY (subquery)",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, value Float64, angle Float64) ENGINE = Memory;",
+        "INSERT INTO test_table (id, value, angle) VALUES (1, 0.0, 0.0), (2, 1.0, 1.0), (3, NULL, 2.0), (4, 2.0, NULL);",
+        "SELECT id, value, atan(angle) AS arc_tangent FROM test_table WHERE value != ANY (SELECT value FROM test_table WHERE id != 1);",
+        "SELECT a.id, a.value FROM test_table AS a JOIN (SELECT id, atan(angle) AS arc_tangent FROM test_table) AS b ON a.value != ANY (SELECT arc_tangent FROM (SELECT atan(angle) AS arc_tangent FROM test_table WHERE angle IS NOT NULL));",
+        "SELECT COUNT(*) FROM test_table WHERE atan(value) != ANY (SELECT DISTINCT atan(value) FROM test_table WHERE angle < 0.0);",
+        "CREATE TABLE edge_cases (id UInt32, num String) ENGINE = Memory;",
+        "INSERT INTO edge_cases (id, num) VALUES (1, '2'), (2, 'NULL'), (3, '0'), (4, '3.14');",
+        "SELECT * FROM edge_cases WHERE CAST(num AS Float64) != ANY (SELECT atan(CAST(num AS Float64)) FROM test_table WHERE value != 0.0);",
+        "CREATE TEMPORARY TABLE temp_table AS SELECT id, atan(COALESCE(NULL, 1.0)) AS computed FROM test_table;",
+        "SELECT a.id FROM test_table a JOIN temp_table b ON a.value != ANY (SELECT computed FROM temp_table WHERE id = 1) GROUP BY a.id HAVING COUNT(*) > 0;"
+    ]
+}

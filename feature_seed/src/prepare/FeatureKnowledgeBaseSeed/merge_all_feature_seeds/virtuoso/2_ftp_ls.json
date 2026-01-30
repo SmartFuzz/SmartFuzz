@@ -1,0 +1,16 @@
+CREATE TABLE ftp_test (id INT PRIMARY KEY, name VARCHAR(255), size INT, created_at TIMESTAMP);
+INSERT INTO ftp_test (id, name, size, created_at) VALUES (1, 'file1.txt', 123, '2023-01-01 10:00:00'), (2, 'file2.txt', NULL, '2023-01-01 12:00:00'), (3, '', 256, '2023-01-01 14:00:00');
+SELECT id, name, size / 2 AS half_size FROM ftp_test WHERE size IS NOT NULL;
+SELECT id, name, ftp_ls('ftp.openlinksw.com', 'user_name', 'password', 'virtuoso30') AS ftp_info FROM ftp_test;
+SELECT id, name, size, ftp_ls('ftp.openlinksw.com', 'user_name', 'password', 'virtuoso30') / NULLIF(size, 0) AS ratio FROM ftp_test;
+SELECT id, name, size / (SELECT COUNT(*) FROM ftp_test WHERE size > 0) AS average_size FROM ftp_test WHERE name <> '';
+SELECT id, name FROM ftp_test WHERE size IS NULL OR size / (SELECT AVG(size) FROM ftp_test) > 1;
+SELECT MAX(size) AS max_size, COUNT(*) FROM ftp_test GROUP BY name HAVING MAX(size) > 100;
+SELECT id, name, ftp_ls('ftp.openlinksw.com', 'user_name', 'password', 'virtuoso30') AS ftp_info FROM ftp_test WHERE (size / (CASE WHEN size IS NULL THEN 1 ELSE size END)) > 0;
+INSERT INTO ftp_test (id, name, size, created_at) VALUES (4, 'emptyfile.txt', 0, '2023-01-01 16:00:00');
+SELECT id FROM ftp_test WHERE size / 2 = (SELECT AVG(size) FROM ftp_test);
+ALTER TABLE ftp_test ADD COLUMN description TEXT;
+UPDATE ftp_test SET description = ftp_ls('ftp.openlinksw.com', 'user_name', 'password', 'virtuoso30') WHERE size IS NOT NULL;
+CREATE TABLE ftp_logs (log_id INT PRIMARY KEY, ftp_info TEXT, log_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO ftp_logs (log_id, ftp_info) SELECT id, ftp_ls('ftp.openlinksw.com', 'user_name', 'password', 'virtuoso30') FROM ftp_test;
+DROP TABLE ftp_logs;

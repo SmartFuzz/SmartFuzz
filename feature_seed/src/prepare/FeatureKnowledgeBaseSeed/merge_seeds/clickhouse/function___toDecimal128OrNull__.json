@@ -1,0 +1,12 @@
+CREATE TABLE test_table (id UInt32, value String);
+INSERT INTO test_table VALUES (1, '123.456'), (2, '0.000001'), (3, '-99999.99'), (4, 'NaN'), (5, 'Inf'), (6, '10000000000000000000000000000000000000000000');
+SELECT id, toDecimal128OrNull(value, 2) AS decimal_value FROM test_table WHERE id <= 3;
+SELECT id, toDecimal128OrNull(value, 10) AS decimal_value FROM test_table WHERE value LIKE '-%';
+SELECT DISTINCT toDecimal128OrNull(value, 5) AS decimal_value FROM test_table WHERE value NOT LIKE 'Inf' AND value NOT LIKE 'NaN';
+WITH (SELECT AVG(toDecimal128OrNull(value, 2)) FROM test_table WHERE id < 4) AS avg_value SELECT toDecimal128OrNull(toString(avg_value), 2) AS rounded_avg;
+SELECT id, toDecimal128OrNull(CAST(value AS String), 38) AS decimal_value FROM test_table WHERE id IN (SELECT id FROM test_table WHERE value LIKE '%0.001%');
+CREATE TABLE second_test_table (num UInt32, desc String);
+INSERT INTO second_test_table VALUES (1, 'value1'), (2, 'value2');
+SELECT a.id, a.value, b.desc, toDecimal128OrNull(a.value, 3) AS decimal_value FROM test_table AS a JOIN second_test_table AS b ON a.id = b.num;
+SELECT toTypeName(toDecimal128OrNull('12345667890123456789012345678901234567', 0)) AS type_result;
+SELECT COUNT(*) FROM (SELECT toDecimal128OrNull(value, 1) AS decimal_value FROM test_table GROUP BY id HAVING decimal_value IS NOT NULL);

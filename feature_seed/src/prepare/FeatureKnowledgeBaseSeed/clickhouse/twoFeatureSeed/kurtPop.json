@@ -1,0 +1,17 @@
+{
+    "function": "kurtPop",
+    "operator": "a ILIKE s",
+    "sql_array": [
+        "CREATE TABLE series_with_value_column (id Int32, value Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO series_with_value_column (id, value) VALUES (1, NULL), (2, 1.5), (3, 2.5), (4, 3.5), (5, 4.5), (6, 100.0);",
+        "SELECT kurtPop((CASE WHEN value ILIKE '%' THEN value ELSE 0.0 END)) FROM series_with_value_column;",
+        "CREATE TABLE test_data (col1 String, col2 Float64, col3 Nullable(Int32)) ENGINE = MergeTree() ORDER BY col1;",
+        "INSERT INTO test_data (col1, col2, col3) VALUES ('a', 1.2, NULL), ('b', 2.3, 2), ('c', 3.4, 3), ('d', 4.5, 4), ('e', 0.0, NULL);",
+        "SELECT kurtPop(value) FROM (SELECT col2 FROM test_data WHERE col1 ILIKE 'a' OR col2 IS NOT NULL) AS t;",
+        "SELECT kurtPop(value + (NULLIF(5.0, 5.0) ILIKE '5')) FROM series_with_value_column GROUP BY id HAVING kurtPop(value) >= 0.5;",
+        "SELECT kurtPop((SELECT SUM(value) FROM series_with_value_column WHERE value ILIKE '1%')) AS kurtosis_value FROM series_with_value_column;",
+        "SELECT kurtPop(0.0 + (CASE WHEN (value ILIKE '%') THEN value ELSE 'NULL' END)) FROM series_with_value_column;",
+        "CREATE TABLE temp_data AS SELECT id, value FROM series_with_value_column WHERE value IS NOT NULL;",
+        "SELECT a.id, kurtPop(a.value) FROM temp_data a LEFT JOIN test_data b ON a.id ILIKE b.col1 OR a.value > b.col2 GROUP BY a.id HAVING kurtPop(a.value) IS NOT NULL;"
+    ]
+}

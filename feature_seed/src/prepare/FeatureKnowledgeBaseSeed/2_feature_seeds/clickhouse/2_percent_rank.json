@@ -1,0 +1,8 @@
+CREATE TABLE player_stats (`team` String, `player` String, `salary` Nullable(UInt32), `position` String, `performance_score` Float32) Engine = Memory;
+INSERT INTO player_stats VALUES ('Port Elizabeth Barbarians', 'Gary Chen', 195000, 'F', 2.5), ('New Coreystad Archdukes', 'Charles Juarez', NULL, 'F', 3.0), ('Port Elizabeth Barbarians', 'Michael Stanley', 150000, 'D', 1.5), ('South Hampton Seagulls', 'Douglas Benson', 150000, NULL, 'M', NULL);
+SELECT player, salary, percent_rank() OVER (PARTITION BY position ORDER BY performance_score DESC) AS rank FROM player_stats WHERE salary IS NOT NULL;
+SELECT player, salary, (CASE WHEN salary IS NOT NULL THEN percent_rank() OVER (PARTITION BY team ORDER BY salary DESC) ELSE NULL END) AS rank FROM player_stats;
+SELECT team, AVG(salary) AS average_salary, percent_rank() OVER (ORDER BY AVG(salary) DESC) AS salary_rank FROM player_stats GROUP BY team HAVING IS_NOT_NULL(average_salary) = 1;
+SELECT player, performance_score, percent_rank() OVER (PARTITION BY position ORDER BY performance_score) AS rank FROM player_stats WHERE performance_score IS NOT NULL;
+WITH ranked_players AS (SELECT player, performance_score, percent_rank() OVER (PARTITION BY position ORDER BY performance_score DESC) AS rank FROM player_stats) SELECT * FROM ranked_players WHERE rank IS NOT NULL ORDER BY rank;
+SELECT p.player, p.salary, COUNT(*) > 1 AS multiple_teams FROM player_stats p JOIN player_stats p2 ON p.player = p2.player AND p.team != p2.team GROUP BY p.player, p.salary HAVING COUNT(*) IS NOT NULL;

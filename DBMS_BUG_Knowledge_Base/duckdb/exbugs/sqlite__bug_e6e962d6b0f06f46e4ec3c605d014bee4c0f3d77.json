@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/e6e962d6b0",
+  "title": "sqlite3_blob_reopen() misbehavior on ALTER-ed table",
+  "description": "drh added on 2017-01-25 04:28:49:\nIf ALTER TABLE ADD COLUMN is run to add a column to a table, and then later\nthe sqlite3_blob_open() interface is run successfully on that new column, \nand then sqlite3_blob_reopen() is run to move the sqlite3_blob object to a\ndifferent row where the added column has never been initialized, then the\nsqlite3_blob_reopen() routine does not detect that the column it is\nattempting to open contains a NULL.  This can lead to further problems\ndownstream.  A C program to demonstrate the issue is as follows:\n#include <stdio.h>\n#include \"sqlite3.h\"\n\nint main(int argc, char **argv){\n  sqlite3 *db;\n  sqlite3_blob *pBlob = 0;\n  int rc;\n\n  sqlite3_open(\":memory:\", &db);\n  sqlite3_exec(db,\n    \"CREATE TABLE t1(a INTEGER PRIMARY KEY);\"\n    \"INSERT INTO t1(a) VALUES(1),(2),(5),(7);\"\n    \"ALTER TABLE t1 ADD COLUMN b;\"\n    \"ALTER TABLE t1 ADD COLUMN c;\"\n    \"ALTER TABLE t1 ADD COLUMN d;\"\n    \"UPDATE t1 SET d=zeroblob(15) WHERE a=1;\",\n  0, 0, 0);\n  rc = sqlite3_blob_open(db, 0, \"t1\", \"d\", 1, 1, &pBlob);\n  printf(\"sqlite3_blob_open() returns %d (%s)\\n\", rc, sqlite3_errmsg(db));\n  rc = sqlite3_blob_reopen(pBlob, 2);\n  printf(\"sqlite3_blob_reopen() returns %d (%s)\\n\", rc, sqlite3_errmsg(db));\n  sqlite3_blob_close(pBlob);\n  sqlite3_close(db);\n  return 0;\n}\nIn the program above, the sqlite3_blob_reopen() should fail since it is\nattempting to open a NULL value.  But it returns SQLITE_OK.\nThis problem appears to have always existed in the sqlite3_blob_reopen()\ninterface since it was first added in SQLite 3.7.4 (2010-12-07).",
+  "date": "2017-01-25 04:28:498.54 years ago",
+  "vulnerable_version": "3.16.2",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t2(id INTEGER PRIMARY KEY, name VARCHAR, value DOUBLE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t2(name, value) VALUES('Item1', 10.5), ('Item2', NULL), ('Item3', 20.0);",
+    "ALTER TABLE t2 ADD COLUMN description VARCHAR;",
+    "UPDATE t2 SET description = 'This is item 1' WHERE id = 1;",
+    "SELECT * FROM t2 WHERE value IS NULL;"
+  ],
+  "key_bug_features": [
+    "sqlite3_blob_reopen() fails to detect NULL in new column"
+  ]
+}

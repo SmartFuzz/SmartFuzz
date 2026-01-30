@@ -1,0 +1,14 @@
+CREATE TABLE xml_data (id INT PRIMARY KEY, content XML, schema_type VARCHAR(255));
+INSERT INTO xml_data (id, content, schema_type) VALUES (1, XMLType('<sample/>', 'file://xmlschema/test0001/clean.xsd'), 'file://xmlschema/test0001/clean.xsd');
+INSERT INTO xml_data (id, content, schema_type) VALUES (2, NULL, NULL);
+INSERT INTO xml_data (id, content, schema_type) VALUES (3, XMLType('<sample/>', NULL), NULL);
+SELECT id, XMLType.getSchemaURL(content) AS schema_url FROM xml_data WHERE schema_type IS NOT NULL;
+SELECT id, NOT (schema_type IS NULL OR schema_type = '') AS is_valid_schema FROM xml_data WHERE NOT XMLType.getSchemaURL(content) IS NULL;
+SELECT id, NOT EXISTS (SELECT 1 FROM xml_data WHERE schema_type IS NULL) AS no_null_schema FROM xml_data;
+SELECT id, count(*) OVER() AS total_rows, XMLType.getSchemaURL(content) FROM xml_data GROUP BY id HAVING NOT XMLType.getSchemaURL(content) IS NULL;
+CREATE TABLE nested_xml (id INT PRIMARY KEY, parent_id INT, content XML, FOREIGN KEY (parent_id) REFERENCES xml_data (id));
+INSERT INTO nested_xml (id, parent_id, content) VALUES (1, 1, XMLType('<nestedSample/>', 'file://xmlschema/test0001/nested_schema.xsd'));
+SELECT id, (SELECT COUNT(*) FROM nested_xml AS n WHERE n.parent_id = xml_data.id) AS nested_count FROM xml_data WHERE NOT XMLType.getSchemaURL(content) IS NULL;
+SELECT id, XMLType.getSchemaURL(content), NOT (schema_type IS NULL OR schema_type = '') OVER() AS valid_schemas FROM xml_data;
+DROP TABLE IF EXISTS xml_data;
+DROP TABLE IF EXISTS nested_xml;

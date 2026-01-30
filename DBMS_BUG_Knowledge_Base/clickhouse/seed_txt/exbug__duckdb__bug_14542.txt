@@ -1,0 +1,5 @@
+CREATE TABLE test_json_array (id Int32, data Array(JSON));
+INSERT INTO test_json_array VALUES (1, '[{"key": "value1"}, {"key": "value2"}]');
+CREATE FUNCTION json_each(input String) RETURNS Array(Tuple(key String, value JSON)) AS (SELECT CASE WHEN isArray(JSONExtractArrayRaw(input)) THEN arrayMap(x -> toString(x), range(arrayLength(JSONExtractArrayRaw(input)))) ELSE arrayMap(x -> JSONExtractString(input, x), JSONKeys(input)) END AS key, CASE WHEN isArray(JSONExtractArrayRaw(input)) THEN arrayMap(x -> JSONExtract(input, toString(x)), range(arrayLength(JSONExtractArrayRaw(input)))) ELSE arrayMap(x -> JSONExtract(input, x), JSONKeys(input)) END AS value);
+SELECT * FROM (SELECT '[{"key": "value1"}, {"key": "value2"}]' AS message) CROSS JOIN json_each(message);
+SELECT * FROM (SELECT '[1,2,3]' AS message) CROSS JOIN json_each(message);

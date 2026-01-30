@@ -1,0 +1,16 @@
+{
+    "function": "addDays",
+    "operator": "a NOT BETWEEN b AND c",
+    "sql_array": [
+        "CREATE TABLE test_dates (id Int32, event_date DateTime, description String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_dates VALUES (1, '2024-01-01 12:00:00', 'New Year'), (2, '2024-02-01 00:00:00', 'February start');",
+        "SELECT id, addDays(event_date, 30) AS future_date FROM test_dates WHERE NOT (addDays(event_date, 30) BETWEEN '2024-01-15' AND '2024-01-20');",
+        "WITH (SELECT MIN(event_date) FROM test_dates) AS min_date SELECT id, addDays(min_date, 0) AS unchanged_date FROM test_dates WHERE event_date NOT BETWEEN addDays(min_date, -5) AND addDays(min_date, 5);",
+        "CREATE TABLE secondary_dates (reference_date DateTime64, remarks String) ENGINE = MergeTree() ORDER BY reference_date;",
+        "INSERT INTO secondary_dates VALUES ('2024-01-15 08:00:00', 'Mid-January'), ('2024-03-10 18:30:00', 'March end');",
+        "SELECT d.id, addDays(d.event_date, 15) AS advance_date FROM test_dates d JOIN secondary_dates s ON s.reference_date NOT BETWEEN addDays(d.event_date, -10) AND addDays(d.event_date, 10) GROUP BY d.id, advance_date HAVING advance_date NOT BETWEEN '2024-01-20' AND '2024-01-25';",
+        "SELECT id, addDays(event_date, CAST('5' AS Int32)) AS added_days FROM test_dates WHERE addDays(event_date, 5) NOT BETWEEN addDays(CURRENT_DATE(), -5) AND CURRENT_DATE();",
+        "SELECT id, addDays(event_date, CAST(NULL AS Int32)) AS null_days FROM test_dates WHERE event_date NOT BETWEEN addDays(event_date, 24) AND addDays(event_date, 26);",
+        "WITH addDays('2024-01-01', 5) AS future_date SELECT id FROM test_dates WHERE NOT (event_date BETWEEN future_date AND addDays(future_date, 10));"
+    ]
+}

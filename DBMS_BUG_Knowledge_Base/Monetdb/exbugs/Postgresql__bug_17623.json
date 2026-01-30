@@ -1,0 +1,21 @@
+{
+  "url": "https://www.postgresql.org/message-id/17623-2bef2f4ff7fe8051%40postgresql.org",
+  "title": "BUG #17623: WHERE should be evaluated after FROM clause when operators may throw",
+  "description": "The following bug has been logged on the website:\nBug reference:      17623\nLogged by:          Stamatis Zampetakis\nEmail address:      zabetak(at)gmail(dot)com\nPostgreSQL version: 14.5\nOperating system:   Debian 10.2.1-6\nDescription:\nSteps to reproduce:\nCREATE TABLE emp (empno INT, name VARCHAR, deptno INT);\nINSERT INTO emp VALUES (0, 'Alex', 0);\nINSERT INTO emp VALUES (10, 'Bob', 1);\nCREATE TABLE dept (deptno INT);\nINSERT INTO dept VALUES (1);\nSELECT e.name\nFROM emp e\nINNER JOIN dept d ON e.deptno = d.deptno\nWHERE (10 / e.empno) = 1\nActual output:\nERROR:  division by zero\nExpected output:\nBob\nThe error is caused since the filter condition in the WHERE clause is\nevaluated before the join. Filter push-down is a very common and powerful\noptimization but when there are operators in the WHERE clause that may throw\n(such as division, cast, etc) this optimization is unsafe.\nThe SQL standard (Section 7.4 general rule 1) mandates that WHERE should be\napplied to the result of FROM so in the case above pushing filters below the\njoin seems to violate the standard.\nCiting the standard:\n\"If all optional clauses are omitted, then the result of the <table\nexpression> is the same as the result of the\n<from clause>. Otherwise, each specified clause is applied to the result of\nthe previously specified clause\nand the result of the <table expression> is the result of the application of\nthe last specified clause.\"\nOne of the optional clauses mentioned in the previous paragraph is the\n<where clause>. There seems to be a clearly defined order between the <from\nclause>, which includes inner joins, and the <where clause>.",
+  "date": "2022-09-28 12:22:50",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE emp (empno INT NOT NULL, name VARCHAR(50), deptno INT CHECK (deptno >= 0));",
+    "INSERT INTO emp VALUES (0, 'Alex', 0);",
+    "INSERT INTO emp VALUES (10, 'Bob', 1);",
+    "CREATE TABLE dept (deptno INT PRIMARY KEY, deptname VARCHAR(50));",
+    "INSERT INTO dept VALUES (1, 'Sales');",
+    "SELECT e.name FROM emp e, dept d WHERE e.deptno = d.deptno AND (10 / NULLIF(e.empno, 0)) = 1;"
+  ],
+  "key_bug_features": [
+    "WHERE clause evaluated before FROM clause in joins"
+  ]
+}

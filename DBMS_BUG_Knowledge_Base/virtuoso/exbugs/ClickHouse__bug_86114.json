@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/86114",
+  "title": "Performance with bitmap functions",
+  "description": "### Company or project name\n_No response_\n### Describe the situation\nAfter upgrading to ClickHouse v24.8.14.39, I encountered execution failures when executing test cases. This issue seems to be related to the new query analyzer and bitmap function introduced in v24.3, which slowed down parsing in some scenarios.\n### Which ClickHouse versions are affected?\n24.8.14.39\n### How to reproduce\n1. Create test table:\n```sql\nCREATE TABLE id_table (\nid UInt64\n) ENGINE = MergeTree()\nORDER BY id;\n```\n```sql\nCREATE TABLE bitmap_table (\ntotal UInt64,\nid_bit AggregateFunction(groupBitmap, UInt64),\n) ENGINE = MergeTree()\nORDER BY total;\n```\n2. Insert data:\n```sql\nINSERT INTO id_table\nSELECT number + 1 AS id\nFROM numbers(50000000);\n```\n```sql\nINSERT INTO bitmap_table\nSELECT 1000000 as total, id_bit FROM (\nSELECT groupBitmapState(rand64() % toUInt64(80000000)) as id_bit from numbers(1000000)\n)\nINSERT INTO bitmap_table\nSELECT 6000000 as total, id_bit FROM (\nSELECT groupBitmapState(rand64() % toUInt64(80000000)) as id_bit from numbers(6000000)\n)\n```\n3.Execute query:\n```sql\nSELECT\nbitmapCardinality(\n(\nSELECT\ngroupBitmapState(toUInt64OrDefault(id)) AS id_bitmap\nFROM\nid_table\nWHERE\n(\nbitmapContains(\n(",
+  "date": "2025-08-25T09:25:31Z",
+  "vulnerable_version": "24.8.14.39",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test_table1 (id INTEGER, value VARCHAR, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "CREATE TABLE test_table2 (total FLOAT, id_bit BLOB, description VARCHAR NULL);",
+    "INSERT INTO test_table1 SELECT number AS id, CAST(number AS VARCHAR) AS value, CURRENT_TIMESTAMP FROM (SELECT ROW_NUMBER() OVER () AS number FROM (VALUES (1),(2),(3),(4),(5),(6),(7),(8),(9),(10),(11),(12),(13),(14),(15),(16),(17),(18),(19),(20),(21),(22),(23),(24),(25),(26),(27),(28),(29),(30),(31),(32),(33),(34),(35),(36),(37),(38),(39),(40),(41),(42),(43),(44),(45),(46),(47),(48),(49),(50),(51),(52),(53),(54),(55),(56),(57),(58),(59),(60),(61),(62),(63),(64),(65),(66),(67),(68),(69),(70),(71),(72),(73),(74),(75),(76),(77),(78),(79),(80),(81),(82),(83),(84),(85),(86),(87),(88),(89),(90),(91),(92),(93),(94),(95),(96),(97),(98),(99),(100)) AS temp);",
+    "INSERT INTO test_table2 SELECT 1.5 AS total, CAST(ARRAY_AGG(rand() % 1000) AS BLOB) AS id_bit, NULL AS description FROM (SELECT ROW_NUMBER() OVER () AS number FROM (VALUES (1),(2),(3),(4),(5),(6),(7),(8),(9),(10),(11),(12),(13),(14),(15),(16),(17),(18),(19),(20),(21),(22),(23),(24),(25),(26),(27),(28),(29),(30),(31),(32),(33),(34),(35),(36),(37),(38),(39),(40),(41),(42),(43),(44),(45),(46),(47),(48),(49),(50),(51),(52),(53),(54),(55),(56),(57),(58),(59),(60),(61),(62),(63),(64),(65),(66),(67),(68),(69),(70),(71),(72),(73),(74),(75),(76),(77),(78),(79),(80),(81),(82),(83),(84),(85),(86),(87),(88),(89),(90),(91),(92),(93),(94),(95),(96),(97),(98),(99),(100)) AS temp);",
+    "SELECT COUNT(*) FROM test_table2 WHERE total > 1.0;"
+  ],
+  "key_bug_features": [
+    "New query analyzer and bitmap function performance issue"
+  ]
+}

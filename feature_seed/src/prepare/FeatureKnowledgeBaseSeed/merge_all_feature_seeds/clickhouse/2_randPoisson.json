@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id UInt64, value String, occurrence UInt64, date Date) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table (id, value, occurrence, date) VALUES (1, 'test', randPoisson(5), '2023-01-01'), (2, NULL, randPoisson(10), '2023-01-02'), (3, 'sample', randPoisson(15), '2023-01-03');
+SELECT id, value, occurrence FROM test_table WHERE value NOT LIKE CONCAT('%', TOString(randPoisson(3)), '%') ORDER BY id;
+SELECT id, value, occurrence FROM (SELECT id, value, occurrence FROM test_table WHERE occurrence IS NOT NULL) AS subquery WHERE value NOT LIKE 'sample' ORDER BY id;
+SELECT COUNT(*) FROM (SELECT value, randPoisson(7) as occurrence FROM test_table GROUP BY value HAVING occurrence > 0) AS counted HAVING COUNT(*) NOT LIKE TOString(randPoisson(4));
+SELECT id, value FROM test_table WHERE id NOT IN (SELECT id FROM test_table WHERE occurrence >= randPoisson(5)) ORDER BY id;
+SELECT MAX(occurrence) FROM test_table WHERE value NOT LIKE 'test' AND occurrence NOT LIKE randPoisson(8);
+SELECT value, randPoisson(6) FROM (SELECT value, occurrence FROM test_table WHERE date = '2023-01-01' AND value NOT LIKE '') AS filtered_table GROUP BY value HAVING randPoisson(6) NOT LIKE occurrence;
+SELECT id, value, occurrence FROM (SELECT id, value, occurrence FROM test_table WHERE value NOT LIKE concat('%', 'sample', '%')) AS subquery WHERE id NOT LIKE (SELECT id FROM test_table WHERE occurrence IS NULL);
+ALTER TABLE test_table ADD COLUMN extra_value Float64;
+INSERT INTO test_table (id, value, occurrence, date, extra_value) VALUES (4, 'new_value', randPoisson(20), '2023-01-04', 99.99);

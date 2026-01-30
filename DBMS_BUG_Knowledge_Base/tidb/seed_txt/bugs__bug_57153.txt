@@ -1,0 +1,5 @@
+CREATE TABLE test_cache (cache_key varchar(512) NOT NULL, updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, expired_at datetime GENERATED ALWAYS AS (IF(expires > 0, DATE_ADD(updated_at, INTERVAL expires SECOND), DATE_ADD(updated_at, INTERVAL 99 YEAR))) VIRTUAL, expires int(11), PRIMARY KEY (cache_key), KEY idx_expired_at (expired_at));
+INSERT INTO test_cache(cache_key, expires) VALUES ('2023-01-01 10:00:00', 120) ON DUPLICATE KEY UPDATE expires = expires + 2;
+INSERT INTO test_cache(cache_key, expires) VALUES ('2023-01-01 10:00:00', NULL) ON DUPLICATE KEY UPDATE expires = COALESCE(expires, 0) + 1;
+SELECT * FROM test_cache WHERE expired_at < NOW();
+DELETE FROM test_cache WHERE cache_key = '2023-01-01 10:00:00' AND expires IS NOT NULL;

@@ -1,0 +1,15 @@
+CREATE TABLE tmp (str String) ENGINE = Log;
+CREATE TABLE tmp2 (id UInt32, value String) ENGINE = Log;
+INSERT INTO tmp VALUES ('a'), ('b'), ('c');
+INSERT INTO tmp2 VALUES (1, 'x'), (2, 'y'), (3, 'z');
+SELECT count(DISTINCT t) FROM (SELECT queryID() AS t FROM remote('127.0.0.{1..3}', currentDatabase(), 'tmp') GROUP BY queryID());
+SELECT COUNT(DISTINCT t) FROM (SELECT queryID() AS t FROM remote('127.0.0.{1..3}', currentDatabase(), 'tmp') WHERE str LIKE 'a%' GROUP BY queryID());
+SELECT queryID() AS current_query_id, COUNT(*) FROM (SELECT queryID() FROM remote('127.0.0.{1..3}', currentDatabase(), 'tmp2') GROUP BY queryID()) AS queries;
+SELECT tmp.str, queryID() AS query_id FROM tmp JOIN tmp2 ON tmp.str LIKE concat('%', tmp2.value, '%') GROUP BY tmp.str;
+WITH (SELECT queryID() AS id FROM tmp) AS query_ids SELECT id FROM query_ids WHERE id IS NOT NULL;
+SELECT queryID() AS qid, (SELECT COUNT(*) FROM tmp2) AS total FROM remote('127.0.0.{1..3}', currentDatabase(), 'tmp') GROUP BY qid;
+WITH (SELECT queryID() AS id FROM (SELECT DISTINCT value FROM tmp2)) AS ids SELECT * FROM ids WHERE id LIKE '%a%';
+SELECT DISTINCT queryID() FROM remote('127.0.0.{1..3}', currentDatabase(), 'tmp') UNION SELECT DISTINCT queryID() FROM remote('127.0.0.{1..3}', currentDatabase(), 'tmp2');
+CREATE TABLE complex_tmp AS SELECT tmp.str AS str, queryID() AS query_id FROM tmp GROUP BY str, query_id;
+SELECT query_id, COUNT(*) FROM complex_tmp GROUP BY query_id HAVING COUNT(*) > 1;
+SELECT queryID() as id, (SELECT COUNT(DISTINCT id) FROM tmp2) as total_id_count FROM tmp GROUP BY id;

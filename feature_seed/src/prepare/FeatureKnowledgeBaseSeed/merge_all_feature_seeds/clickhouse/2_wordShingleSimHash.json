@@ -1,0 +1,13 @@
+CREATE TABLE test_strings (id UInt32, text String) ENGINE = Memory;
+INSERT INTO test_strings VALUES (1, 'ClickHouse is a powerful engine for analytical queries.');
+INSERT INTO test_strings VALUES (2, 'ClickHouse is slow for many analytical queries.');
+INSERT INTO test_strings VALUES (3, NULL);
+SELECT id, wordShingleSimHash(text, 3) AS simhash FROM test_strings WHERE text IS NOT NULL;
+SELECT id, simhash FROM (SELECT id, wordShingleSimHash(text, 2) AS simhash FROM test_strings WHERE text IS NOT NULL) AS inner_query WHERE simhash > 0;
+SELECT a.id, b.id, wordShingleSimHash(CONCAT(a.text, ' ', b.text), 3) AS combined_hash FROM test_strings AS a JOIN test_strings AS b ON a.id != b.id WHERE wordShingleSimHash(a.text, 3) GLOBAL IN (SELECT wordShingleSimHash(text, 3) FROM test_strings WHERE text IS NOT NULL);
+WITH (SELECT wordShingleSimHash(text, 1) AS small_hash FROM test_strings WHERE text IS NOT NULL LIMIT 1) AS temp_hash SELECT id FROM test_strings WHERE wordShingleSimHash(text, 3) > temp_hash;
+CREATE TABLE secondary_table (str_value String) ENGINE = Memory;
+INSERT INTO secondary_table VALUES ('ClickHouse'), ('clickhouse'), (NULL), ('');
+SELECT DISTINCT a.id, a.text, wordShingleSimHash(a.text, 3) AS hash_value FROM test_strings AS a JOIN secondary_table AS b ON LOWER(a.text) = LOWER(b.str_value) WHERE wordShingleSimHash(IFNULL(a.text, 'default'), 3) EMPTY TO 0;
+SELECT id, wordShingleSimHash(NULLIF(text, ''), 3) AS hash_value FROM test_strings;
+SELECT text FROM test_strings GROUP BY wordShingleSimHash(text, 3) HAVING COUNT(*) > 1;

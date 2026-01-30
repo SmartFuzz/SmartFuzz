@@ -1,0 +1,21 @@
+{
+    "function": "h3GetUnidirectionalEdgesFromHexagon",
+    "operator": "a = ALL (subquery)",
+    "sql_array": [
+        "CREATE TABLE geo_data (id UInt64, h3_index UInt64, description String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO geo_data VALUES (1, 1248204388774707199, 'Sample hexagon'), (2, 1234567890123456789, 'Another hexagon');",
+        "SELECT h3GetUnidirectionalEdgesFromHexagon(h3_index) AS edges FROM geo_data WHERE id = ANY (SELECT id FROM geo_data WHERE h3_index > 1248204388774707198);",
+        "SELECT h3GetUnidirectionalEdgesFromHexagon(h3_index) FROM geo_data WHERE h3_index = ALL (SELECT h3_index FROM geo_data WHERE description LIKE '%hexagon%');",
+        "CREATE TABLE temp_edges AS SELECT h3_index, h3GetUnidirectionalEdgesFromHexagon(h3_index) AS edges FROM geo_data;",
+        "SELECT COUNT() FROM temp_edges GROUP BY edges HAVING COUNT() > 1;",
+        "SELECT edges FROM (SELECT h3GetUnidirectionalEdgesFromHexagon(h3_index) AS edges FROM geo_data) WHERE edges = ALL (SELECT edges FROM temp_edges);",
+        "SELECT h3GetUnidirectionalEdgesFromHexagon(CAST('1248204388774707199' AS UInt64)) AS edges WHERE 1 = ALL (SELECT 1 FROM geo_data WHERE id IS NOT NULL);",
+        "CREATE TABLE geo_test (id UInt64, value Nullable(UInt64)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO geo_test VALUES (1, NULL), (2, 1248204388774707199);",
+        "SELECT h3GetUnidirectionalEdgesFromHexagon(value) FROM geo_test WHERE value = ALL (SELECT value FROM geo_test WHERE value IS NOT NULL);",
+        "CREATE TABLE edge_cases (id UInt64, h3_index UInt64, nullable_h3 Nullable(UInt64)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO edge_cases VALUES (1, 0, NULL), (2, 18446744073709551615, 1248204388774707199);",
+        "SELECT h3GetUnidirectionalEdgesFromHexagon(MAX(h3_index)) AS max_edge FROM edge_cases WHERE id = ALL (SELECT id FROM edge_cases WHERE h3_index > 0);",
+        "SELECT h3GetUnidirectionalEdgesFromHexagon(0) AS edges WHERE 1 = ANY (SELECT 1 FROM edge_cases WHERE h3_index IS NULL);"
+    ]
+}

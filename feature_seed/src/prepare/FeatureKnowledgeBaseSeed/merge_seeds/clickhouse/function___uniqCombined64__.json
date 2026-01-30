@@ -1,0 +1,16 @@
+CREATE TABLE temp_numbers (number UInt64) ENGINE = MergeTree() ORDER BY number;
+INSERT INTO temp_numbers SELECT number FROM numbers(1e10);
+SELECT uniqCombined64(number) FROM temp_numbers;
+SELECT uniqCombined64(number) FROM temp_numbers WHERE number < 1000;
+SELECT uniqCombined64(number) FROM (SELECT number FROM temp_numbers WHERE number % 2 = 0);
+SELECT uniqCombined64(number) + 10 FROM temp_numbers;
+SELECT x, uniqCombined64(y) FROM (SELECT mod(number, 100) as x, number as y FROM temp_numbers) GROUP BY x;
+SELECT uniqCombined64(number) FROM temp_numbers WHERE number IN (SELECT number FROM (SELECT number FROM temp_numbers WHERE number < 1000));
+CREATE TABLE temp_nested (id UInt64, value UInt64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO temp_nested SELECT number, number % 100 FROM numbers(100);
+SELECT uniqCombined64(value) FROM (SELECT id, value FROM temp_nested WHERE value > 50);
+SELECT uniqCombined64(num) FROM (SELECT number as num FROM temp_numbers UNION ALL SELECT value FROM temp_nested);
+SELECT COUNT(*) as total, uniqCombined64(value) as distinct_values FROM (SELECT value FROM temp_nested GROUP BY id);
+WITH (SELECT uniqCombined64(number) FROM temp_numbers) AS distinct_count SELECT DISTINCT id, distinct_count FROM temp_nested;
+DROP TABLE temp_numbers;
+DROP TABLE temp_nested;

@@ -1,0 +1,16 @@
+{
+    "function": "DB.DBA.AMAZON_STOP_INSTANCE",
+    "operator": "SPARQL ! (NOT)",
+    "sql_array": [
+        "CREATE TABLE instances (id INT PRIMARY KEY, name VARCHAR(255), status VARCHAR(50), access_key VARCHAR(255), sec_token VARCHAR(255));",
+        "INSERT INTO instances (id, name, status, access_key, sec_token) VALUES (1, 'my_instance_of_linux', 'running', 'AKIAJI7ZL427TI5EDF5A', 'CGI/UMaXf2LRUctaj/HGJ57UNy/t7fNCshh8wpJg');",
+        "CREATE PROCEDURE test_amazon_stop_instance() BEGIN DECLARE access_key VARCHAR(255); DECLARE sec_token VARCHAR(255); DECLARE p_name VARCHAR(255); DECLARE count INT; SET access_key = (SELECT access_key FROM instances WHERE id = 1); SET sec_token = (SELECT sec_token FROM instances WHERE id = 1); SET p_name = (SELECT name FROM instances WHERE id = 1); SET count = (SELECT COUNT(*) FROM instances WHERE status != 'stopped'); IF NOT count = 0 THEN DB.DBA.AMAZON_STOP_INSTANCE(access_key, p_name, sec_token); END IF; END;",
+        "SELECT (SELECT DB.DBA.AMAZON_STOP_INSTANCE('AKIAJI7ZL427TI5EDF5A', 'my_instance_of_linux', 'CGI/UMaXf2LRUctaj/HGJ57UNy/t7fNCshh8wpJg') FROM DUAL) AS stop_result WHERE NOT EXISTS (SELECT * FROM instances WHERE status = 'stopped' AND name = 'my_instance_of_linux');",
+        "CREATE TABLE temp_logs (log_id INT PRIMARY KEY, instance_name VARCHAR(255), log_message VARCHAR(255));",
+        "INSERT INTO temp_logs (log_id, instance_name, log_message) VALUES (1, 'my_instance_of_linux', 'Stopping instance');",
+        "SELECT instance_name, log_message FROM temp_logs WHERE log_id IN (SELECT log_id FROM temp_logs WHERE instance_name NOT IN (SELECT name FROM instances WHERE status = 'running'));",
+        "CREATE TEMPORARY TABLE instance_status AS SELECT COUNT(*) AS running_count FROM instances WHERE status = 'running';",
+        "INSERT INTO instance_status (running_count) VALUES (SELECT COUNT(*) FROM instances WHERE status = 'running');",
+        "UPDATE instances SET status = 'stopped' WHERE id = (SELECT id FROM instances WHERE name = 'my_instance_of_linux' AND NOT EXISTS (SELECT * FROM instances WHERE status = 'stopped'));"
+    ]
+}

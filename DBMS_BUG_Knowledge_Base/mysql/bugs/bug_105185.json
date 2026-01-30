@@ -1,0 +1,25 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=105185",
+  "title": "log_queries_not_using_indexes does nothing for full index scan",
+  "vulnerable_database": "MySQL Server: Logging",
+  "date": "2021-10-11 08:36:00",
+  "vulnerable_version": "8.0.25",
+  "description": "A query that uses a full index scan is not logged when log_queries_not_using_indexes is ON.\nHow to repeat:\n1、 create table t1(c1 int, c2 char(255), c3 varchar(1000), primary key(c1,c2), index(c1));\r\n2、insert into t1 values(1,'c21','c31'),(2,'c22','c32'),(3,'c23','c33'),(4,'c24','c34'),(5,'c25','c35');\r\n3、set global slow_query_log=on;\r\n4、set global log_queries_not_using_indexes=on;\r\n5、mysql> explain select c1 from t1 where c2='c21';\r\n+----+-------------+-------+------------+-------+---------------+------+---------+------+------+----------+--------------------------+\r\n| id | select_type | table | partitions | type  | possible_keys | key  | key_len | ref  | rows | filtered | Extra                    |\r\n+----+-------------+-------+------------+-------+---------------+------+---------+------+------+----------+--------------------------+\r\n|  1 | SIMPLE      | t1    | NULL       | index | PRIMARY,c1    | c1   | 4       | NULL |    5 |    20.00 | Using where; Using index |\r\n+----+-------------+-------+------------+-------+---------------+------+---------+------+------+----------+--------------------------+\r\n1 row in set, 1 warning (14.71 sec)\r\n5、select c1 from t1 where c2='c21';\r\n6、check the slow query log, the query above was not logged.",
+  "poc": [
+    "create table t1(c1 int, c2 char(255), c3 varchar(1000), primary key(c1,c2), index(c1));",
+    "insert into t1 values(1,'c21','c31'),(2,'c22','c32'),(3,'c23','c33'),(4,'c24','c34'),(5,'c25','c35');",
+    "set global slow_query_log=on;",
+    "set global log_queries_not_using_indexes=on;",
+    "select c1 from t1 where c2='c21';"
+  ],
+  "key_bug_features": [
+    "log_queries_not_using_indexes does not log full index scans"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t2(c1 INT, c2 CHAR(255), c3 VARCHAR(1000), c4 DATE, PRIMARY KEY(c1, c2), INDEX idx_c2(c2));",
+    "INSERT INTO t2 VALUES(1, 'test1', 'data1', '2023-01-01'), (2, 'test2', 'data2', '2023-01-02'), (3, NULL, 'data3', '2023-01-03');",
+    "SET GLOBAL slow_query_log=ON;",
+    "SET GLOBAL log_queries_not_using_indexes=ON;",
+    "SELECT c1 FROM t2 WHERE c2 IS NULL;"
+  ]
+}

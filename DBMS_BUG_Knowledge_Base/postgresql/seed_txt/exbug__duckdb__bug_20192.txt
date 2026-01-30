@@ -1,0 +1,5 @@
+CREATE TABLE products (id SERIAL PRIMARY KEY, name VARCHAR, description VARCHAR, price DECIMAL(10, 2), created_at TIMESTAMP);
+CREATE TABLE orders (id SERIAL PRIMARY KEY, product_id INTEGER, order_date TIMESTAMP, quantity INTEGER, large_blob BYTEA, FOREIGN KEY (product_id) REFERENCES products(id));
+INSERT INTO products (name, description, price, created_at) SELECT 'Product ' || i, 'Description for product ' || i, ROUND(RANDOM() * 100, 2), '2024-01-01'::TIMESTAMP + (i * INTERVAL '1 DAY') FROM generate_series(1, 10000) AS t(i);
+INSERT INTO orders (product_id, order_date, quantity, large_blob) SELECT (i % 10000) + 1, '2024-02-01'::TIMESTAMP + (i * INTERVAL '1 DAY'), (i % 10) + 1, repeat('y', 2000)::BYTEA FROM generate_series(1, 5000000) AS t(i);
+EXPLAIN ANALYZE SELECT o.product_id, o.large_blob FROM orders o WHERE o.order_date BETWEEN '2024-02-01'::TIMESTAMP AND '2024-04-01'::TIMESTAMP AND o.product_id IN (SELECT p.id FROM products p WHERE p.name LIKE 'Product 5%');

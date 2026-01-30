@@ -1,0 +1,10 @@
+CREATE TABLE web_acl (id INT PRIMARY KEY, client_ip VARCHAR(45), rule VARCHAR(255) NOT NULL);
+INSERT INTO web_acl (id, client_ip, rule) VALUES (1, '192.168.1.1', 'allow'), (2, '10.0.0.1', 'deny'), (3, NULL, 'allow');
+SELECT http_acl_get(client_ip, rule) FROM web_acl WHERE client_ip != '192.168.1.2' AND rule != 'deny';
+SELECT client_ip, COUNT(*) FROM web_acl GROUP BY client_ip HAVING COUNT(*) != 0;
+SELECT http_acl_get(a.client_ip, a.rule) FROM web_acl AS a JOIN web_acl AS b ON a.id != b.id WHERE b.rule IS NOT NULL;
+SELECT a.client_ip FROM web_acl AS a WHERE http_acl_get(a.client_ip, a.rule) != 'deny' AND a.client_ip IS NOT NULL;
+CREATE TABLE requests (request_id SERIAL PRIMARY KEY, client_ip VARCHAR(45), requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO requests (client_ip) VALUES ('192.168.1.2'), (NULL), (''), ('10.0.0.2');
+SELECT http_acl_get(client_ip, 'allow') FROM requests WHERE client_ip IS NULL OR client_ip != '';
+SELECT a.client_ip, http_acl_get(a.client_ip, a.rule) AS access FROM web_acl a JOIN requests r ON a.client_ip != r.client_ip WHERE http_acl_get(r.client_ip, 'deny') != 'allow';

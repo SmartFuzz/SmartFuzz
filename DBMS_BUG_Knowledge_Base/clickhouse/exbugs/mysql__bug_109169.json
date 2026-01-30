@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=109169",
+  "title": "Index merge should favour union over sort_union",
+  "description": "Index merge should favour union over sort_union plans, if they have similar costs, since one requires sorting the rowids whereas the other does not.\nHow to repeat:\ncreate table t (i int, j int, k int, key(i), key(j, k), key(j));\r\ninsert into t (WITH RECURSIVE a (i) AS ( SELECT 0  union all SELECT i+1  from a where i < 9  ), b (i) AS  (SELECT x.i + y.i * 10 + z.i * 100 + w.i * 1000 +  v.i * 10000 FROM a x, a y, a z, a w, a v) SELECT b.i, b.i, b.i from b order by i);\r\nexplain select * from t where i = 0 or j = 2;\r\ndrop table t;\r\n\r\ncreate table t (i int, j int, k int, key(i), key(j), key(j, k));\r\ninsert into t (WITH RECURSIVE a (i) AS ( SELECT 0  union all SELECT i+1  from a where i < 9  ), b (i) AS  (SELECT x.i + y.i * 10 + z.i * 100 + w.i * 1000 +  v.i * 10000 FROM a x, a y, a z, a w, a v) SELECT b.i, b.i, b.i from b order by i);\r\nexplain select * from t where i = 0 or j = 2;\r\ndrop table t;\n\nYou can see that just by changing the order of the definition of indexes, you will get the sort_union vs union. Theoretically, sort_union is most expensive as it requires sorting, so it should be disfavoured.\nSuggested fix:\nConsider rowid_ordered=true when comparing costs in get_key_scans_params",
+  "date": "2022-11-22 19:21:00",
+  "vulnerable_version": "8.0.31",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t (i Int32, j Int32, k Int32, PRIMARY KEY (i), INDEX idx_j (j), INDEX idx_jk (j, k));",
+    "INSERT INTO t (i, j, k) VALUES (NULL, 2, 3), (1, NULL, 4), (2, 2, NULL), (3, 3, 5);",
+    "SELECT * FROM t WHERE i IS NULL OR j = 2;",
+    "CREATE TABLE u (x Int32, y String, z Date, UNIQUE INDEX idx_y (y), INDEX idx_z (z));",
+    "INSERT INTO u (x, y, z) VALUES (1, 'test', '2023-01-01'), (2, 'example', NULL), (3, NULL, '2023-01-03');"
+  ],
+  "key_bug_features": [
+    "Index merge prioritizes sort_union over union plans"
+  ]
+}

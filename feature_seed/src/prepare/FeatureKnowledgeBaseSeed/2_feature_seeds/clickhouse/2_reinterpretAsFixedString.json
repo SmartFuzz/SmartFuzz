@@ -1,0 +1,14 @@
+CREATE TABLE test_table (id UInt32, value Float32, created_at DateTime, name String, fixed_value FixedString(4));
+INSERT INTO test_table (id, value, created_at, name) VALUES (1, 255.0, toDateTime('2022-01-01 10:00:00'), 'Sample1'), (2, 125.5, toDateTime('2023-03-15 15:30:00'), 'Sample2');
+SELECT id, reinterpretAsFixedString(value) || '-' || name AS combined_value FROM test_table WHERE value IS NOT NULL;
+SELECT id, reinterpretAsFixedString(value) || '-' || (SELECT name FROM test_table WHERE id = 1) AS concatenated_value FROM test_table;
+SELECT id, reinterpretAsFixedString(value) || (SELECT reinterpretAsFixedString(created_at) FROM test_table WHERE id = 2) AS date_value FROM test_table;
+SELECT id, COUNT(*) AS count, reinterpretAsFixedString(MAX(value)) || '-' || reinterpretAsFixedString(MIN(value)) AS range_value FROM test_table GROUP BY id HAVING count > 1;
+SELECT id, reinterpretAsFixedString(value + 1.1) || '-' || name AS advanced_concat FROM test_table WHERE created_at < toDateTime('2023-01-01 00:00:00');
+SELECT id, reinterpretAsFixedString(value) || '-' || reinterpretAsFixedString(toDateTime('1970-01-01 01:01:05')) AS fixed_and_date FROM test_table;
+CREATE TABLE another_table (user_id UInt32, user_value Float64);
+INSERT INTO another_table (user_id, user_value) VALUES (1, 255.75), (2, 128.5);
+SELECT a.user_id, reinterpretAsFixedString(a.user_value) || '-' || (SELECT b.value FROM test_table AS b WHERE b.id = a.user_id) AS user_combined FROM another_table AS a;
+INSERT INTO test_table (id, value, created_at, name) VALUES (3, NULL, toDateTime('2024-01-01 08:00:00'), 'Sample3');
+SELECT id, reinterpretAsFixedString(value) || '-' || (NULLIF(created_at, toDateTime('2024-01-01 08:00:00'))) AS null_handling FROM test_table WHERE value IS NOT NULL;
+DROP TABLE test_table;

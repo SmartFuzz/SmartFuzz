@@ -1,0 +1,24 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/1055",
+  "title": "Delete data and Language-tagged strings",
+  "vulnerable_database": "Virtuoso",
+  "date": "2022-07-04 11:58:39",
+  "vulnerable_version": "",
+  "description": "We're having problems with DELETE DATA queries and language-tagged strings.\nIt seems batching statements doesn't work as expected.\nSample data set:\nINSERT DATA\n{\n  GRAPH <http://example.com/graphs/1>\n  {\n    <http://example.com/foo/bar/test/1> <http://purl.org/dc/terms/title> \"hello 1\"@nl.\n  }\n  GRAPH <http://example.com/graphs/1>\n  {\n    <http://example.com/foo/bar/test/1> <http://purl.org/dc/terms/title> \"hello 2\"@nl.\n  }\n  GRAPH <http://example.com/graphs/1>\n  {\n    <http://example.com/foo/bar/test/1> <http://purl.org/dc/terms/title> \"hello 3\"@nl.\n  }\n}\n\nExecuting delete\nDELETE DATA\n{\n  GRAPH <http://example.com/graphs/1>\n  {\n    <http://example.com/foo/bar/test/1> <http://purl.org/dc/terms/title> \"hello 1\"@nl.\n  }\n  GRAPH <http://example.com/graphs/1>\n  {\n    <http://example.com/foo/bar/test/1> <http://purl.org/dc/terms/title> \"hello 2\"@nl.\n  }\n  GRAPH <http://example.com/graphs/1>\n  {\n    <http://example.com/foo/bar/test/1> <http://purl.org/dc/terms/title> \"hello 3\"@nl.\n  }\n}\n\nChecking the result:\nSELECT DISTINCT * {\n   GRAPH ?g {\n       <http://example.com/foo/bar/test/1> ?p ?o.\n   }\n}\n\nNo triples removed\nHowever splitting the batched DELETE DATA as:\nDELETE DATA\n{\n  GRAPH <http://example.com/graphs/1>\n  {\n    <http://example.com/foo/bar/test/1> <http://purl.org/dc/terms/title> \"hello 1\"@nl.\n  }\n}\n\nRemoves the expected triple.\nVirtuoso version\n# virtuoso-t -?\nVirtuoso Open Source Edition (Column Store) (multi threaded)\nVersion 7.2.6.3233-pthreads as of Nov 24 2021 (000000)\nCompiled for Linux (x86_64-pc-linux-gnu)\nCopyright (C) 1998-2021 OpenLink Software\n\nCan anyone reproduce this issue?\nthanks!\nNote: with untyped strings everything behaves as expected",
+  "poc": [
+    "INSERT DATA\n{\n  GRAPH <http://example.com/graphs/1>\n  {\n    <http://example.com/foo/bar/test/1> <http://purl.org/dc/terms/title> \"hello 1\"@nl.\n  }\n  GRAPH <http://example.com/graphs/1>\n  {\n    <http://example.com/foo/bar/test/1> <http://purl.org/dc/terms/title> \"hello 2\"@nl.\n  }\n  GRAPH <http://example.com/graphs/1>\n  {\n    <http://example.com/foo/bar/test/1> <http://purl.org/dc/terms/title> \"hello 3\"@nl.\n  }\n}",
+    "DELETE DATA\n{\n  GRAPH <http://example.com/graphs/1>\n  {\n    <http://example.com/foo/bar/test/1> <http://purl.org/dc/terms/title> \"hello 1\"@nl.\n  }\n  GRAPH <http://example.com/graphs/1>\n  {\n    <http://example.com/foo/bar/test/1> <http://purl.org/dc/terms/title> \"hello 2\"@nl.\n  }\n  GRAPH <http://example.com/graphs/1>\n  {\n    <http://example.com/foo/bar/test/1> <http://purl.org/dc/terms/title> \"hello 3\"@nl.\n  }\n}",
+    "SELECT DISTINCT * {\n   GRAPH ?g {\n       <http://example.com/foo/bar/test/1> ?p ?o.\n   }\n}",
+    "DELETE DATA\n{\n  GRAPH <http://example.com/graphs/1>\n  {\n    <http://example.com/foo/bar/test/1> <http://purl.org/dc/terms/title> \"hello 1\"@nl.\n  }\n}"
+  ],
+  "key_bug_features": [
+    "Batched DELETE DATA queries fail with language-tagged strings"
+  ],
+  "bug_features_seed": [
+    "CREATE GRAPH <http://example.com/graphs/2>;",
+    "INSERT DATA { GRAPH <http://example.com/graphs/2> { <http://example.com/foo/bar/test/2> <http://purl.org/dc/terms/title> \"test 1\"@en. } };",
+    "INSERT DATA { GRAPH <http://example.com/graphs/2> { <http://example.com/foo/bar/test/2> <http://purl.org/dc/terms/title> \"test 2\"@en. } };",
+    "DELETE DATA { GRAPH <http://example.com/graphs/2> { <http://example.com/foo/bar/test/2> <http://purl.org/dc/terms/title> \"test 1\"@en. } };",
+    "SELECT DISTINCT * { GRAPH <http://example.com/graphs/2> { <http://example.com/foo/bar/test/2> ?p ?o. } };"
+  ]
+}

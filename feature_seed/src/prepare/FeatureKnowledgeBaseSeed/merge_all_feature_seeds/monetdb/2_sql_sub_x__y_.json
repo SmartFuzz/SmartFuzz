@@ -1,0 +1,13 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, ip_address INET, value FLOAT);
+INSERT INTO test_table (id, ip_address, value) VALUES (1, inet '192.168.1.10', 5.5), (2, inet '192.168.1.20', NULL), (3, inet '192.168.1.30', 10.0);
+SELECT sql_sub((SELECT MAX(value) FROM test_table WHERE value IS NOT NULL), (SELECT MIN(value) FROM test_table)) AS difference;
+SELECT t1.id, sql_sub(t1.value, t2.value) AS subtracted_value FROM test_table t1 JOIN test_table t2 ON t1.id <> t2.id WHERE t1.value IS NOT NULL AND t2.value IS NOT NULL;
+SELECT COUNT(*) FROM test_table WHERE value IS NOT NULL GROUP BY ip_address HAVING sql_sub(MAX(value), MIN(value)) > 0;
+SELECT * FROM test_table WHERE inet '192.168.1.15' <<= ip_address AND value IS NULL;
+SELECT t1.id, sql_sub(t1.value, sql_sub(t2.value, 3.14)) AS calculated_value FROM test_table t1 JOIN test_table t2 ON t1.id = t2.id + 1 WHERE t1.value > 0 AND t2.value IS NOT NULL;
+SELECT * FROM (SELECT id, sql_sub(value, 2.5) AS adjusted_value FROM test_table) AS subquery WHERE adjusted_value IS NOT NULL;
+SELECT sql_sub(COALESCE(MAX(value), 0), COUNT(*)) AS result FROM test_table GROUP BY ip_address;
+CREATE TABLE another_test_table (id INT PRIMARY KEY, ip_address INET NOT NULL, active BOOLEAN NOT NULL DEFAULT true);
+INSERT INTO another_test_table (id, ip_address, active) VALUES (1, inet '192.168.1.10', true), (2, inet '192.168.1.20', false);
+SELECT A.id, A.ip_address, sql_sub(3.0, A.value) AS offset_value FROM test_table A JOIN another_test_table B ON A.ip_address <<= B.ip_address WHERE B.active;
+SELECT A.id FROM test_table A JOIN another_test_table B ON A.ip_address <<= B.ip_address GROUP BY A.id HAVING sql_sub(COUNT(B.id), 1) = 0;

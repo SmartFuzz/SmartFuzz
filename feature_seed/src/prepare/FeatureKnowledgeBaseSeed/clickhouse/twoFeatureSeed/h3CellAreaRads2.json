@@ -1,0 +1,19 @@
+{
+    "function": "h3CellAreaRads2",
+    "operator": "a + b",
+    "sql_array": [
+        "CREATE TABLE geo_data (id UInt64, h3_index UInt64, value Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO geo_data VALUES (1, 579205133326352383, 1.5), (2, 579205133326352384, NULL), (3, 579205133326352385, 2.3);",
+        "SELECT id, h3CellAreaRads2(h3_index) + value AS area_with_value FROM geo_data WHERE value IS NOT NULL;",
+        "SELECT h3CellAreaRads2(h3_index) AS area, value FROM geo_data HAVING area > 0.0 ORDER BY area DESC;",
+        "SELECT (SELECT h3CellAreaRads2(h3_index) FROM geo_data WHERE id = 1) + (SELECT value FROM geo_data WHERE id = 2) AS correlated_area;",
+        "SELECT id, h3CellAreaRads2(h3_index) + (SELECT AVG(value) FROM geo_data) AS area_avg FROM geo_data GROUP BY id HAVING area_avg IS NOT NULL;",
+        "CREATE TABLE temp_geo_data (h3_index UInt64, area Float64) ENGINE = Memory;",
+        "INSERT INTO temp_geo_data SELECT h3_index, h3CellAreaRads2(h3_index) FROM geo_data WHERE value IS NOT NULL;",
+        "SELECT t1.h3_index, t1.area + t2.area AS combined_area FROM temp_geo_data AS t1 JOIN temp_geo_data AS t2 ON t1.h3_index = t2.h3_index WHERE t1.area IS NOT NULL;",
+        "SELECT h3_index, (h3CellAreaRads2(h3_index) + 0.0) AS area_with_zero FROM geo_data WHERE id IN (SELECT id FROM geo_data WHERE value IS NULL);",
+        "SELECT (SELECT COUNT(*) FROM geo_data WHERE value IS NOT NULL) AS non_null_count, h3CellAreaRads2(h3_index) * (SELECT MAX(value) FROM geo_data WHERE value IS NOT NULL) AS area_scaled FROM geo_data;",
+        "ALTER TABLE geo_data ADD COLUMN new_column String;",
+        "DROP TABLE IF EXISTS temp_geo_data;"
+    ]
+}

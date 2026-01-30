@@ -1,0 +1,11 @@
+CREATE TABLE users (id UUID, name String, created_at DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO users VALUES (generateUUIDv4(), 'Alice', now()), (generateUUIDv4(), 'Bob', now());
+CREATE TABLE orders (order_id UUID, user_id UUID, order_date DateTime) ENGINE = MergeTree() ORDER BY order_id;
+INSERT INTO orders VALUES (generateUUIDv4(), (SELECT id FROM users WHERE name = 'Alice'), now()), (generateUUIDv4(), (SELECT id FROM users WHERE name = 'Bob'), now());
+SELECT user_id, count(*) as order_count FROM orders GROUP BY user_id HAVING order_count > 1;
+SELECT name, (SELECT count(*) FROM orders WHERE user_id = users.id) AS order_count FROM users;
+SELECT u.name, o.order_id FROM users u JOIN orders o ON u.id = o.user_id WHERE o.order_date >= now() - INTERVAL 1 DAY;
+WITH (SELECT count(*) FROM orders) AS total_orders SELECT name, (SELECT count(*) FROM orders WHERE user_id = users.id) / total_orders as order_fraction FROM users;
+CREATE TABLE products (product_id UUID, name String, price Float64) ENGINE = MergeTree() ORDER BY product_id;
+INSERT INTO products VALUES (generateUUIDv4(), 'Product A', 10.50), (generateUUIDv4(), 'Product B', 20.75);
+SELECT p.name, SUM(o.order_amount) as total_revenue FROM products p JOIN orders o ON p.product_id = o.order_id WHERE o.order_date >= now() - INTERVAL 30 DAY GROUP BY p.name HAVING total_revenue > 100;

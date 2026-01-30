@@ -1,0 +1,13 @@
+CREATE TABLE TimezoneTest (event_time DateTime64(3), event_id Int32, description String) ENGINE = MergeTree() ORDER BY event_id;
+INSERT INTO TimezoneTest VALUES ('2021-04-21 10:20:30.123', 1, 'Event A'), ('2021-10-21 12:15:45.456', 2, 'Event B'), ('2021-01-21 09:00:00.000', 3, 'Event C');
+SELECT event_id, timeZoneOffset(event_time) AS Offset_in_seconds, (timeZoneOffset(event_time) + 3600) AS Adjusted_Offset FROM TimezoneTest WHERE (event_time - toDateTime('2021-01-01 00:00:00')) > INTERVAL 0 DAY;
+SELECT event_id, timeZoneOffset(event_time) AS Offset_in_seconds, (Offset_in_seconds - 7200) AS Before_DST FROM (SELECT event_id, event_time, timeZoneOffset(event_time) AS Offset_in_seconds FROM TimezoneTest) WHERE Before_DST > -1;
+SELECT event_id, (timeZoneOffset(event_time) - timeZoneOffset(toDateTime('2021-10-21 10:00:00'))) AS Offset_Difference FROM TimezoneTest WHERE event_time IS NOT NULL;
+SELECT event_id, timeZoneOffset(event_time) AS Offset_in_seconds, (Offset_in_seconds * -1) AS Negative_Offset FROM TimezoneTest GROUP BY event_id, Offset_in_seconds HAVING Negative_Offset > -86400;
+SELECT event_id, (SELECT timeZoneOffset(event_time) FROM TimezoneTest WHERE event_id = 2) AS Specific_Offset FROM TimezoneTest;
+CREATE TABLE TempData AS (SELECT event_id, toDateTime64(event_time, 3) AS event_time_precision FROM TimezoneTest) ENGINE = Memory;
+INSERT INTO TempData VALUES (1, '2021-04-21 10:20:30.123'), (2, '2021-10-21 12:15:45.456');
+SELECT a.event_id, b.Offset_in_seconds FROM TempData AS a JOIN (SELECT event_id, timeZoneOffset(event_time) AS Offset_in_seconds FROM TimezoneTest) AS b ON a.event_id = b.event_id WHERE a.event_time_precision IS NOT NULL;
+SELECT event_id, timeZoneOffset(event_time) AS Offset_in_seconds FROM TimezoneTest ORDER BY Offset_in_seconds;
+SELECT event_id, timeZoneOffset(event_time) AS Offset_in_seconds FROM (SELECT event_id, event_time, timeZoneOffset(event_time) AS Offset_in_seconds FROM TimezoneTest) WHERE Offset_in_seconds IS NOT NULL;
+DROP TABLE TempData;

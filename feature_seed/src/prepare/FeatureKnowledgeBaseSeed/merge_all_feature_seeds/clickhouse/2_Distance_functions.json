@@ -1,0 +1,12 @@
+CREATE TABLE distance_test (id UInt32, point_a Tuple(Float32, Float32), point_b Tuple(Float32, Float32), distance Float32, nullable_point Tuple(Float32, Float32) NULL);
+INSERT INTO distance_test VALUES (1, (1.0, 2.0), (4.0, 6.0), sqrt(power(((4.0-1.0)), 2) + power(((6.0-2.0)), 2))), (NULL, NULL));
+INSERT INTO distance_test VALUES (2, (0.0, 0.0), (3.0, 4.0), sqrt(power(((3.0-0.0)), 2) + power(((4.0-0.0)), 2))), (2.0, 3.0));
+INSERT INTO distance_test VALUES (3, (5.0, 1.0), (1.0, 5.0), sqrt(power(((1.0-5.0)), 2) + power(((5.0-1.0)), 2))), (3.0, NULL));
+SELECT id, point_a, point_b, distance, point_a - point_b AS point_difference FROM distance_test WHERE distance IS NOT NULL;
+SELECT id, sqrt(power(((point_b.1 - point_a.1)), 2) + power(((point_b.2 - point_a.2)), 2)) AS computed_distance FROM distance_test WHERE point_a.1 > 0.0;
+SELECT id, (point_a.1 - point_b.1) AS x_diff, (point_a.2 - point_b.2) AS y_diff, distance FROM distance_test HAVING distance > 5.0 AND (x_diff + y_diff) < 10.0;
+SELECT id, distance, COUNT(*) OVER (PARTITION BY distance) AS distance_count FROM distance_test ORDER BY distance ASC;
+SELECT id, distance, point_a, point_b FROM (SELECT id, point_a, point_b, distance FROM distance_test WHERE distance > ALL (SELECT distance FROM distance_test WHERE id < 3));
+SELECT id, distance, (distance - (SELECT AVG(distance) FROM distance_test)) AS deviation FROM distance_test WHERE distance IS NOT NULL;
+ALTER TABLE distance_test ADD COLUMN point_c Tuple(Float32, Float32) DEFAULT (0.0, 0.0);
+DROP TABLE IF EXISTS distance_test;

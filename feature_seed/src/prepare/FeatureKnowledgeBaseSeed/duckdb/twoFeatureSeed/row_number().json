@@ -1,0 +1,17 @@
+{
+    "function": "row_number()",
+    "operator": "-",
+    "sql_array": [
+        "CREATE TABLE test_table (id BIGINT, timestamp_col TIMESTAMP, value DOUBLE, partition_col VARCHAR);",
+        "INSERT INTO test_table VALUES (1, '2023-01-01 00:00:00', 10.5, 'A'), (2, '2023-01-01 01:00:00', NULL, 'B'), (3, '2023-01-01 02:00:00', 20.5, 'A'), (4, NULL, 30.5, 'B'), (5, '2023-01-01 03:00:00', 40.5, 'C');",
+        "SELECT row_number() OVER (PARTITION BY partition_col ORDER BY timestamp_col) - row_number() OVER (PARTITION BY partition_col ORDER BY value) AS row_diff FROM test_table;",
+        "SELECT partition_col, SUM(value) AS total_value, COUNT(*) AS row_count, row_number() OVER (PARTITION BY partition_col ORDER BY value) AS row_num FROM test_table GROUP BY partition_col HAVING total_value > 15;",
+        "SELECT a.id, a.value, (row_number() OVER (PARTITION BY a.partition_col ORDER BY a.timestamp_col) - INTERVAL 1 HOUR) AS adjusted_row_num FROM test_table a JOIN (SELECT MIN(value) AS min_value FROM test_table WHERE value IS NOT NULL GROUP BY partition_col) b ON a.value > b.min_value;",
+        "SELECT value, (row_number() OVER (PARTITION BY partition_col ORDER BY timestamp_col) * INTERVAL 2 HOUR) AS time_adjust FROM test_table WHERE value IS NOT NULL AND timestamp_col IS NOT NULL;",
+        "WITH temp AS (SELECT partition_col, COUNT(*) AS cnt FROM test_table GROUP BY partition_col) SELECT temp.partition_col, temp.cnt - row_number() OVER (ORDER BY temp.cnt) AS difference FROM temp WHERE cnt > 2;",
+        "CREATE TABLE another_table (section_id INT, created_at TIMESTAMP, score DECIMAL(10,2));",
+        "INSERT INTO another_table VALUES (1, '2023-01-01 01:00:00', NULL), (2, '2023-01-01 01:15:00', 85.5), (3, NULL, 90.0);",
+        "SELECT nt.section_id, nt.score, (row_number() OVER (ORDER BY nt.created_at) - row_number() OVER (ORDER BY nt.score)) AS scoring_diff FROM another_table nt JOIN test_table tt ON nt.section_id = tt.id WHERE nt.score IS NOT NULL;",
+        "SELECT tt.id, tt.value, nt.score, row_number() OVER (PARTITION BY nt.section_id ORDER BY nt.created_at) AS section_row_num, (timestamp_col - INTERVAL (row_number() OVER (PARTITION BY tt.partition_col ORDER BY tt.timestamp_col) + 1) HOUR) AS adjusted_time FROM test_table tt LEFT JOIN another_table nt ON tt.id = nt.section_id WHERE nt.created_at < NOW();"
+    ]
+}

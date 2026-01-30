@@ -1,0 +1,15 @@
+SET wal_autocheckpoint = '1TB';
+PRAGMA disable_checkpoint_on_shutdown;
+CREATE TABLE tbl(     col1 INTEGER,     col2 INTEGER,     idx_col INTEGER,     gen_col INTEGER GENERATED ALWAYS AS (col1 + col2) VIRTUAL,     col5 VARCHAR );
+CREATE UNIQUE INDEX idx_tbl_idx_col ON tbl(idx_col);
+INSERT INTO tbl (col1, col2, idx_col, col5) SELECT r, r * 2, r, 'val' || r::VARCHAR FROM range(0, 1001) t(r);
+DELETE FROM tbl WHERE idx_col % 2 = 0;
+EXPLAIN ANALYZE SELECT idx_col FROM tbl WHERE idx_col = ${i} * 2;
+SELECT EXISTS (SELECT 1 FROM tbl WHERE idx_col = ${i} * 2);
+EXPLAIN ANALYZE SELECT idx_col FROM tbl WHERE idx_col = ${i} * 2 + 1;
+SELECT EXISTS (SELECT 1 FROM tbl WHERE idx_col = ${i} * 2 + 1);
+INSERT INTO tbl (col1, col2, idx_col, col5) VALUES (${i} * 2 + 1, ${i} * 4 + 2, ${i} * 2 + 1, 'duplicate' || (${i} * 2 + 1)::VARCHAR);
+EXPLAIN ANALYZE SELECT idx_col FROM tbl WHERE idx_col = 0;
+SELECT idx_col FROM tbl WHERE idx_col = 0;
+EXPLAIN ANALYZE SELECT idx_col FROM tbl WHERE idx_col = 10;
+SELECT idx_col FROM tbl WHERE idx_col = 10;

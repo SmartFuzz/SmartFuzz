@@ -1,0 +1,5 @@
+CREATE DATABASE IF NOT EXISTS test_db ON CLUSTER '{cluster}';
+CREATE TABLE IF NOT EXISTS test_distr ON CLUSTER '{cluster}' (num Int32, date DateTime, value Float64 DEFAULT 0.0) ENGINE = Distributed('{cluster}', 'default', 'test', cityHash64(num));
+INSERT INTO test_distr SELECT number AS num, now() AS date, number * 1.5 AS value FROM system.numbers LIMIT 100;
+CREATE TABLE IF NOT EXISTS replicated_table ON CLUSTER '{cluster}' (num UInt64, date Date, metric Float64) ENGINE = ReplicatedMergeTree('/clickhouse/tables/{shard}/{database}.{table}', '{replica}') ORDER BY num;
+INSERT INTO replicated_table SELECT num, date, dictGet('test_db.test_dict', 'date', toUInt64(num)) AS metric FROM test_distr WHERE num IS NOT NULL;

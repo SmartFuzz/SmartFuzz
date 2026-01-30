@@ -1,0 +1,12 @@
+CREATE TABLE html_content (id INT PRIMARY KEY, content VARCHAR(1000), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO html_content (id, content) VALUES (1, '<html><head><title>Test</title></head><body><h1>Sample</h1></body></html>');
+INSERT INTO html_content (id, content) VALUES (2, '<html><head><title>Sample</title><link href="style.css"/></head><body><h1>Invalid HTML');
+SELECT tidy_list_errors(content || 'additional text') AS errors FROM html_content WHERE content IS NOT NULL;
+SELECT id, tidy_list_errors(content || (SELECT 'extra invalid html' AS extra)) AS errors FROM html_content WHERE created_at > '2023-01-01' ORDER BY errors;
+SELECT id, tidy_list_errors(NULLIF(content, '') || '<html>End</html>') AS errors FROM html_content HAVING errors IS NOT NULL;
+SELECT id FROM html_content WHERE id IN (SELECT id FROM html_content WHERE lengths = LENGTH(content) - LENGTH(REPLACE(content, '<', '')));
+SELECT tidy_list_errors('Sample HTML ' || content) AS errors FROM html_content WHERE created_at <= CURRENT_TIMESTAMP AND content IS NOT NULL GROUP BY id HAVING errors IS NOT NULL;
+SELECT tidy_list_errors(content || '<footer>Footer Content</footer>') AS errors FROM html_content ORDER BY LENGTH(content);
+CREATE TEMPORARY TABLE temp_html_errors (error_message VARCHAR(255));
+INSERT INTO temp_html_errors (error_message) SELECT tidy_list_errors(content) || ' - ' || id FROM html_content WHERE content IS NOT NULL;
+SELECT * FROM temp_html_errors WHERE error_message IS NOT NULL ORDER BY error_message ASC;

@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/bb4bdb9f7f",
+  "title": "Zeroblob truncated by an index on an expression",
+  "description": "drh added on 2019-01-25 20:01:15:\nWhen a table has an index on an expression, then inserting a zeroblob into\nan indexed column of that table might cause the zeroblob to be truncated.\nCREATE TABLE t1(a,b,c);\nCREATE INDEX t1bbc ON t1(b, b+c);\nINSERT INTO t1(a,b,c) VALUES(1,zeroblob(8),3);\nSELECT a, b, length(b), c FROM t1;\nThe correct answer is\n1,X'0000000000000000',8,3\nBut the answer returned is:\n1,X'',0,3\nThis issue was discovered during internal testing.  There have been no\nreports of this from the wild.",
+  "date": "2019-01-25 20:01:156.54 years ago",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t2(id INTEGER PRIMARY KEY, data BLOB, info VARCHAR NOT NULL DEFAULT 'default');",
+    "CREATE INDEX t2data_info ON t2(data, info);",
+    "INSERT INTO t2(id, data, info) VALUES(1, repeat(chr(0), 16), 'test');",
+    "INSERT INTO t2(id, data, info) VALUES(2, repeat(chr(0), 0), NULL);",
+    "SELECT id, data, length(data), info FROM t2;"
+  ],
+  "key_bug_features": [
+    "Inserting zeroblob into indexed column truncates data"
+  ]
+}

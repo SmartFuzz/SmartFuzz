@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/88803",
+  "title": "MongoDB Table Engine - Segmentation Fault",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nThe ClickHouse process crashes after multiple queries using the MongoDB table engine.\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nThe issue occurs in the latest `25.9.3.48` ClickHouse version, but it was first noticed after upgrading to the `25.4.5.4` version.\nBefore that, it worked as expected.\nThe issue occurs after multiple queries on a table using the `MongoDB` table engine, but it doesn't happen if you simply create the table and not run any queries against it or if you just occasionally run one or two queries.\nTested on the below versions:\n- `25.9.3.48`\n- `25.5.1.2782`\n- `25.4.5.4`\nBelow are some details for the issue, but without the actual names for tables, fields etc:\n`MongoDB` server:\n- Type: Self hosted Replica Set\n- Version: `5.0.31`\n`MongoDB` Named Collection:\n- `mongodb_named_collection`\n- Options specified:\n- user\n- password\n- host\n- Here we specify only the hostname of the primary server, because in versions before `25.4`, it returned empty results when specifying all the hostnames of the replica set.\n- Based on the crash log, this might be related to the issue, because we specify `readPreference=secondary` on the `options` when creating the table.\n- port\n- database as `overridable`\n- collection as `overridable`\n- options as `overridable`\n`MongoDB` ClickHouse table:\n```sql\nCREATE TABLE IF NOT EXISTS test_db.mongodb_source_db_source_collection\n(\n`_id` String,\n`created_datetime` Nullable(DateTime),\n`updated_datetime` DateTime,\n`updated_timestamp` Int64\n)\nENGINE = MongoDB(\nmongodb_named_collection,\ndatabase = 'source_db',\ncollection = 'source_collection',\noptions = 'authSource=admin&readPreference=secondary&replicaSet=replica_set_name&connectTimeoutMS=100000'\n)\n;\n```\nSample query:\n```sql\nSELECT",
+  "date": "2025-10-19T20:21:07Z",
+  "vulnerable_version": "25.9.3.48",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE IF NOT EXISTS test_db.mongodb_source_db_source_collection_1 (_id VARCHAR, created_datetime TIMESTAMP, updated_datetime TIMESTAMP, updated_timestamp BIGINT, status VARCHAR);",
+    "INSERT INTO test_db.mongodb_source_db_source_collection_1 (_id, created_datetime, updated_datetime, updated_timestamp, status) VALUES ('1', NOW(), NOW(), 1623456789, 'active');",
+    "INSERT INTO test_db.mongodb_source_db_source_collection_1 (_id, created_datetime, updated_datetime, updated_timestamp, status) VALUES ('2', NULL, NOW(), 1623456790, 'inactive');",
+    "SELECT COUNT(*) FROM test_db.mongodb_source_db_source_collection_1 WHERE status = 'active';",
+    "SELECT _id, updated_timestamp FROM test_db.mongodb_source_db_source_collection_1 WHERE created_datetime IS NULL OR updated_timestamp > 1623456780;"
+  ],
+  "key_bug_features": [
+    "Multiple queries using MongoDB table engine"
+  ]
+}

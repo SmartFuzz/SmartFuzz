@@ -1,0 +1,17 @@
+{
+    "function": "parseDateTimeBestEffortOrNull",
+    "operator": "a != ALL (subquery)",
+    "sql_array": [
+        "CREATE TABLE test_dates (id Int32, dateString String, nullableDate DateTime Nullable);",
+        "INSERT INTO test_dates VALUES (1, '2023-09-15 12:00:00', NULL), (2, 'InvalidDateString', NULL);",
+        "SELECT id, parseDateTimeBestEffortOrNull(dateString) AS parsed_date FROM test_dates WHERE parsed_date != ALL (SELECT dateString FROM test_dates WHERE dateString IS NOT NULL);",
+        "SELECT id, parsed_date FROM (SELECT id, parseDateTimeBestEffortOrNull(dateString) AS parsed_date FROM test_dates) AS derived WHERE parsed_date IS NOT NULL GROUP BY id, parsed_date HAVING count(*) > 0;",
+        "CREATE TABLE test_joins (id Int32, dateValue Date, valueFloat Float32);",
+        "INSERT INTO test_joins VALUES (1, '2023-09-01', 1.1), (2, '2023-09-05', 2.2), (3, '2023-09-10', NULL);",
+        "SELECT a.id, a.dateString, a.parsed_date, b.valueFloat FROM test_dates AS a JOIN test_joins AS b ON parseDateTimeBestEffortOrNull(a.dateString) != ALL (SELECT dateValue FROM test_joins WHERE valueFloat IS NOT NULL);",
+        "SELECT id, COUNT(*) OVER (PARTITION BY parseDateTimeBestEffortOrNull(dateString)) AS count_per_date FROM test_dates WHERE nullableDate IS NULL HAVING count_per_date = 1;",
+        "CREATE TEMPORARY TABLE tmp_dates AS SELECT id, parseDateTimeBestEffortOrNull(dateString) AS parsed_date FROM test_dates WHERE dateString != '';",
+        "INSERT INTO tmp_dates SELECT id, parseDateTimeBestEffortOrNull(dateString) FROM test_dates WHERE parsed_date != ALL (SELECT dateString FROM test_dates WHERE dateString IS NOT NULL) ORDER BY id;",
+        "SELECT b.id, a.parsed_date FROM (SELECT id, parseDateTimeBestEffortOrNull(dateString) AS parsed_date FROM test_dates) AS a FULL OUTER JOIN (SELECT id, dateValue FROM test_joins) AS b ON a.parsed_date != ALL (SELECT dateValue FROM test_joins) ORDER BY b.id;"
+    ]
+}

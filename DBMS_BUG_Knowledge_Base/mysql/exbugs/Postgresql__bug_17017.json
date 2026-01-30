@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/17017-c37dbbadb77cfde9%40postgresql.org",
+  "title": "BUG #17017: Two versions of the same row of records are returned in one query",
+  "description": "The following bug has been logged on the website:\nBug reference:      17017\nLogged by:          刘沛源\nEmail address:      lpy(dot)henu(at)gmail(dot)com\nPostgreSQL version: 9.6.21\nOperating system:   CentOS Linux release 7.4.1708 (Core)\nDescription:\nSchema and Initial data:\nCreate Table t(a int primary key, b int);\nInsert into t values(1,2);\nInsert into t values(2,3);\nOperation:\nThere are two sessions executing at the same time.\n[Time0, SessonA]\n> Begin;\n> set transaction isolation level repeatable read;\n> Select * from t where a=1;\n[Time1, SessonB]\n> Begin;\n> set transaction isolation level read committed;\n> Delete from t where a=2;\n> Commit;\n[Time2, SessonA]\n> Insert into t values(2,4);\n> Select * from t where a=2;\nHere, we expect PostgreSQL Server to return a row:\n2 3\nHowever, it returns two rows:\n2 4\n2 3",
+  "date": "2021-05-18 13:26:24",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE t(a INT AUTO_INCREMENT PRIMARY KEY, b INT NOT NULL, c TEXT DEFAULT 'default');",
+    "INSERT INTO t(b, c) VALUES(2, 'row1');",
+    "INSERT INTO t(b, c) VALUES(3, 'row2');",
+    "DELETE FROM t WHERE a = 1;",
+    "SELECT * FROM t WHERE b IN (SELECT b FROM t WHERE c IS NOT NULL);"
+  ],
+  "key_bug_features": [
+    "Concurrent sessions with different isolation levels cause duplicate rows"
+  ]
+}

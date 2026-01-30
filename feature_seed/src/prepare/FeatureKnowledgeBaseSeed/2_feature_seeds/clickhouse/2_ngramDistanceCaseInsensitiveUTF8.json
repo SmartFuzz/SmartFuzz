@@ -1,0 +1,10 @@
+CREATE TABLE test_strings (id UInt32, haystack String, needle String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_strings VALUES (1, 'abcde', 'CDE'), (2, '', 'test'), (3, 'ClickHouse', 'clickhouse'), (4, 'boundary', 'bondary');
+SELECT ngramDistanceCaseInsensitiveUTF8(haystack, needle) AS similarity FROM test_strings WHERE similarity IS NOT NULL;
+SELECT EXTRACT(MONTH FROM toDate('2023-10-01')) AS month_value, ngramDistanceCaseInsensitiveUTF8(haystack, needle) AS similarity FROM test_strings HAVING similarity > 0.05;
+SELECT EXTRACT(YEAR FROM toDate('2022-12-31')) AS year, A.similarity FROM (SELECT ngramDistanceCaseInsensitiveUTF8(haystack, needle) AS similarity FROM test_strings WHERE id = 3) A JOIN (SELECT EXTRACT(DAY FROM toDate('2022-12-31')) AS day) B ON A.similarity > 0.1;
+SELECT id, ngramDistanceCaseInsensitiveUTF8(haystack, needle) AS similarity FROM test_strings WHERE similarity < 0.5 GROUP BY id, similarity ORDER BY similarity DESC;
+SELECT id, needle, EXTRACT(HOUR FROM toDateTime('2023-10-01 15:45:00')) AS hour_value FROM test_strings WHERE needle IS NOT NULL AND EXTRACT(DAY FROM toDate('2023-10-01')) = 1;
+SELECT A.id, ngramDistanceCaseInsensitiveUTF8(needle, '') AS similarity FROM (SELECT id, needle FROM test_strings WHERE needle != '') A WHERE EXTRACT(MONTH FROM toDate('2023-09-15')) < 10;
+SELECT EXTRACT(MONTH FROM toDate('2023-04-01')) AS month_value, ngramDistanceCaseInsensitiveUTF8(needle, 'test') AS similarity FROM test_strings HAVING similarity IS NULL OR similarity > 0.2;
+DROP TABLE IF EXISTS test_strings;

@@ -1,0 +1,16 @@
+CREATE TABLE test_partition (date Date, country String, code Int32) ENGINE = MergeTree() PARTITION BY toYYYYMM(date);
+INSERT INTO test_partition VALUES ('2020-01-15', 'Netherlands', 42), ('2020-02-20', 'Netherlands', 21), ('2020-01-25', 'Germany', 33);
+SET use_hive_partitioning = 1;
+SELECT _date, _country, COUNT(*) FROM url('http://data/path/date=*/country=*/code=*/*.parquet') WHERE _country IN (SELECT country FROM test_partition WHERE code = 42) GROUP BY _date, _country HAVING COUNT(*) > 1;
+SET use_hive_partitioning = 1;
+SELECT _country, AVG(code) FROM url('http://data/path/date=*/country=*/code=*/*.parquet') WHERE _date = (SELECT MAX(date) FROM test_partition) AND _country GLOBAL IN (SELECT country FROM test_partition WHERE code < 100) GROUP BY _country HAVING AVG(code) > 20;
+CREATE TABLE nested_partition (id UUID, category String, value Float32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO nested_partition VALUES (generateUUIDv4(), 'A', 3.14), (generateUUIDv4(), 'B', NULL), (generateUUIDv4(), 'A', 2.71);
+SELECT _value FROM url('http://data/path/category=*/value=*/*.parquet') WHERE _category = (SELECT category FROM nested_partition WHERE value IS NOT NULL GLOBAL IN (SELECT value FROM nested_partition WHERE category = 'A')) AND _value IS NOT NULL ORDER BY _value LIMIT 10;
+SET use_hive_partitioning = 1;
+SELECT _date, _country, COUNT(*) AS total FROM url('http://data/path/date=*/country=*/code=*/*.parquet') WHERE _country = 'Netherlands' AND _code = (SELECT MIN(code) FROM test_partition WHERE date = '2020-01-15') GROUP BY _date, _country HAVING total > 0;
+SET use_hive_partitioning = 1;
+SELECT _date, _country, SUM(_code) AS total_codes FROM url('http://data/path/date=*/country=*/code=*/*.parquet') WHERE _country NOT IN (SELECT country FROM test_partition WHERE code > 50) GROUP BY _date, _country HAVING total_codes < 1000;
+CREATE TABLE diverse_types (id Int32, name String, created_at DateTime, is_active UInt8) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO diverse_types VALUES (1, 'Test', '2023-10-01 12:00:00', 1), (2, 'Edge Case', '2023-10-02 12:00:00', 0);
+SELECT _is_active FROM url('http://data/path/created_at=*/is_active=*/*.parquet') WHERE _created_at < toDateTime('2023-10-05 00:00:00') AND _is_active GLOBAL IN (SELECT is_active FROM diverse_types GROUP BY is_active HAVING count() > 0);

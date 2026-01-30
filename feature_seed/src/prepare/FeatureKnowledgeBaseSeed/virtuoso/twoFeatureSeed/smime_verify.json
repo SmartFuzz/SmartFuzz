@@ -1,0 +1,20 @@
+{
+    "function": "smime_verify",
+    "operator": "bif:contains",
+    "sql_array": [
+        "CREATE TABLE email_data (id INT PRIMARY KEY, email_content TEXT, ca_certificate TEXT);",
+        "INSERT INTO email_data (id, email_content, ca_certificate) VALUES (1, file_to_string('signed.eml'), file_to_string('thwate_ca.pem'));",
+        "SELECT id, smime_verify(email_content, vector(ca_certificate), NULL, 1) AS verification_result FROM email_data WHERE bif:contains(email_content, 'signature') AND verification_result IS NOT NULL;",
+        "SELECT id, smime_verify(email_content, vector(ca_certificate), NULL, 1) AS verification_result FROM email_data WHERE bif:contains(email_content, 'signature') HAVING verification_result IS NOT NULL ORDER BY verification_result DESC;",
+        "SELECT id, smime_verify(email_content, vector(ca_certificate), NULL, 1) AS verification_result FROM email_data WHERE verification_result IS NOT NULL ORDER BY LENGTH(email_content) DESC;",
+        "CREATE TABLE analysis_data (analysis_id INT PRIMARY KEY, email_id INT, analysis_result BOOLEAN, FOREIGN KEY (email_id) REFERENCES email_data(id));",
+        "INSERT INTO analysis_data (analysis_id, email_id, analysis_result) SELECT ROW_NUMBER() OVER(), id, smime_verify(email_content, vector(ca_certificate), NULL, 1) IS NOT NULL FROM email_data WHERE NOT EXISTS (SELECT 1 FROM analysis_data WHERE email_id = email_data.id);",
+        "SELECT a.analysis_id, e.id, smime_verify(e.email_content, vector(e.ca_certificate), NULL, 1) AS verification_result FROM analysis_data a JOIN email_data e ON a.email_id = e.id WHERE bif:contains(e.email_content, 'urgent') AND verification_result IS NOT NULL;",
+        "SELECT id, email_content FROM email_data WHERE email_content IS NOT NULL AND bif:contains(email_content, 'false_positive') AND id IN (SELECT email_id FROM analysis_data WHERE analysis_result = TRUE);",
+        "CREATE TEMPORARY TABLE temp_ca (ca_id INT PRIMARY KEY, ca_string TEXT NOT NULL);",
+        "INSERT INTO temp_ca (ca_id, ca_string) VALUES (1, file_to_string('thwate_ca.pem')), (2, 'invalid_certificate_data');",
+        "SELECT e.id, smime_verify(e.email_content, vector(t.ca_string), NULL, 1) AS verification_result FROM email_data e CROSS JOIN temp_ca t WHERE bif:contains(e.email_content, 'email') AND verification_result IS NULL;",
+        "DROP TABLE IF EXISTS email_data;",
+        "DROP TABLE IF EXISTS analysis_data;"
+    ]
+}

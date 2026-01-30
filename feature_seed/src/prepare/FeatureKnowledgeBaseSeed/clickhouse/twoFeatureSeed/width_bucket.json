@@ -1,0 +1,16 @@
+{
+    "function": "width_bucket",
+    "operator": "a GLOBAL IN ...",
+    "sql_array": [
+        "CREATE TABLE test_bucket (id UInt32, value Float64, timestamp DateTime, category String, low_bound Float64, high_bound Float64);",
+        "INSERT INTO test_bucket VALUES (1, 10.15, '2023-01-01 00:00:00', 'A', -8.6, 23), (2, NULL, '2023-01-02 00:00:00', 'B', -10.0, 15.5), (3, 25.0, '2023-01-03 00:00:00', 'C', 0.0, 30.0);",
+        "SELECT id, widthBucket(value, low_bound, high_bound, 18) AS bucket FROM test_bucket WHERE value GLOBAL IN (SELECT value FROM test_bucket WHERE category = 'A') ORDER BY bucket;",
+        "SELECT id, COUNT(*) AS count FROM (SELECT id, widthBucket(value, low_bound, high_bound, 5) AS bucket FROM test_bucket GROUP BY id, bucket HAVING bucket > 0) GROUP BY id HAVING count > 1;",
+        "CREATE TABLE test_bucket_copy AS test_bucket;",
+        "INSERT INTO test_bucket_copy SELECT id, widthBucket(value, low_bound, high_bound, 10) AS modified_value, timestamp, category, low_bound, high_bound FROM test_bucket_copy WHERE value IS NOT NULL;",
+        "SELECT value, widthBucket(value, -10, 50, 25) AS bucket, category FROM test_bucket WHERE category GLOBAL IN (SELECT DISTINCT category FROM test_bucket WHERE low_bound < 0) ORDER BY value;",
+        "SELECT DISTINCT category, MAX(widthBucket(value, low_bound, high_bound, 12)) AS max_bucket FROM test_bucket GROUP BY category HAVING max_bucket IS NOT NULL HAVING max_bucket >= 5;",
+        "SELECT id, widthBucket(value, low_bound, high_bound, 15) AS bucket FROM (SELECT id, value, low_bound, high_bound FROM test_bucket_copy) WHERE bucket = (SELECT MAX(widthBucket(value, low_bound, high_bound, 15)) FROM test_bucket) GLOBAL IN (1, 2);",
+        "SELECT id, widthBucket(10.15, -8.6, 30.0, (SELECT COUNT(*) FROM test_bucket WHERE category = 'C')) AS bucket_val FROM test_bucket WHERE id IN (SELECT id FROM test_bucket_copy WHERE value IS NOT NULL);"
+    ]
+}

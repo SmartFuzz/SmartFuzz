@@ -1,0 +1,13 @@
+CREATE TABLE networks (id SERIAL PRIMARY KEY, subnet INET NOT NULL, data BLOB);
+INSERT INTO networks (subnet, data) VALUES (sys.broadcast(inet '192.168.1.5/24'), blob 'abcd');
+INSERT INTO networks (subnet, data) VALUES (sys.broadcast(inet '10.0.0.1/8'), blob 'ef12');
+SELECT id, subnet, data FROM networks WHERE sys.broadcast(subnet) = sys.broadcast(inet '10.0.0.0/8') AND data IS NOT NULL;
+SELECT id, subnet FROM (SELECT id, subnet, data FROM networks) AS sub WHERE sys.broadcast(subnet) IS NOT NULL;
+SELECT id, COUNT(data) AS data_count FROM networks GROUP BY id HAVING data_count > 0;
+SELECT id FROM networks WHERE data IS NOT NULL AND blob '1234' IS NULL;
+SELECT id, sys.broadcast(inet '172.16.5.1/16') AS broadcast, data FROM networks JOIN (SELECT id, blob '4567' AS data) AS temp ON networks.id = temp.id;
+CREATE TEMPORARY TABLE temp_data (hex_value BLOB);
+INSERT INTO temp_data (hex_value) VALUES (blob 'abcd'), (blob '0000'), (blob 'ffff');
+SELECT n.id, sys.broadcast(n.subnet) FROM networks AS n JOIN temp_data AS t ON n.data = t.hex_value;
+SELECT n.id, (SELECT COUNT(*) FROM networks WHERE data IS NOT NULL) AS total_count FROM networks AS n WHERE sys.broadcast(subnet) IS NOT NULL;
+SELECT id, sys.broadcast(COALESCE(subnet, inet '0.0.0.0/0')) FROM networks WHERE subnet <> inet '0.0.0.0/0';

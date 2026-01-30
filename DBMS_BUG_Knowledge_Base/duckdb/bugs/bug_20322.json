@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/20322",
+  "title": "SIGFPE in DuckDB with RECURSIVE CTE and CUBE aggregation",
+  "vulnerable_database": "DuckDB",
+  "date": "2025-12-27 13:46:54",
+  "vulnerable_version": "",
+  "description": "### What happens?\n\nDuckDB crashes with a Floating Point Exception (SIGFPE) when executing a complex query involving `RECURSIVE CTE`, `CUBE` aggregation, `LIST` functions, and nested subqueries.\n\nThe crash is reproducible in a Docker environment with ASAN enabled.\n\n### To Reproduce\n\n```sql\nSELECT COUNT ( * ) FROM ( WITH RECURSIVE x ( x ) AS ( SELECT UNNEST ( LIST ( x * x * x + x * x ) ) FROM ( SELECT 1 AS x UNION SELECT 2 UNION SELECT 1 UNION SELECT 575 UNION SELECT NULL UNION SELECT 2 ) WHERE x < 7 GROUP BY CUBE ( LIST_EXTRACT ( LIST_VALUE ( 42 , 1 , 44 , 45 ) , -2 ) , x ) UNION SELECT 1 - x FROM x ) SELECT * FROM ( SELECT * FROM x WHERE ( SELECT x FROM x ORDER BY x + x , x LIMIT 1 OFFSET 1 ) GROUP BY x , x HAVING x != 1 AND x = x ) WHERE x <= ( SELECT -869367531 - 3 FROM x ) ) WHERE x < 4 AND x > 1.797693 GROUP BY x ;\n```\n\n### OS:\n\nUbuntu 22.04 (Docker)\n\n### DuckDB Version:\n\nv0.10.1 (Source build with ASAN)\n\n### DuckDB Client:\n\nODBC Driver (Reproduced via custom ODBC harness)\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nmao hg\n\n### Affiliation:\n\nIndependent Researcher\n\n### Did you include all relevant configuration (e.g., CPU architecture, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes",
+  "poc": [
+    "SELECT COUNT ( * ) FROM ( WITH RECURSIVE x ( x ) AS ( SELECT UNNEST ( LIST ( x * x * x + x * x ) ) FROM ( SELECT 1 AS x UNION SELECT 2 UNION SELECT 1 UNION SELECT 575 UNION SELECT NULL UNION SELECT 2 ) WHERE x < 7 GROUP BY CUBE ( LIST_EXTRACT ( LIST_VALUE ( 42 , 1 , 44 , 45 ) , -2 ) , x ) UNION SELECT 1 - x FROM x ) SELECT * FROM ( SELECT * FROM x WHERE ( SELECT x FROM x ORDER BY x + x , x LIMIT 1 OFFSET 1 ) GROUP BY x , x HAVING x != 1 AND x = x ) WHERE x <= ( SELECT -869367531 - 3 FROM x ) ) WHERE x < 4 AND x > 1.797693 GROUP BY x ;"
+  ],
+  "key_bug_features": [
+    "RECURSIVE CTE with CUBE aggregation causes Floating Point Exception"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INTEGER, value FLOAT, name VARCHAR, created_at TIMESTAMP);",
+    "INSERT INTO test_table VALUES (1, 1.5, 'A', CURRENT_TIMESTAMP), (2, 2.5, 'B', CURRENT_TIMESTAMP), (3, NULL, 'C', CURRENT_TIMESTAMP), (4, 3.5, 'D', CURRENT_TIMESTAMP);",
+    "WITH RECURSIVE cte AS (SELECT id, value FROM test_table WHERE value IS NOT NULL UNION ALL SELECT id + 1, value * 2 FROM cte WHERE id < 10) SELECT COUNT(*) FROM cte;",
+    "SELECT COUNT(*) FROM (SELECT value, CUBE(name) FROM test_table GROUP BY value, name) AS aggregated;",
+    "SELECT * FROM test_table WHERE value > (SELECT AVG(value) FROM test_table WHERE value IS NOT NULL) AND created_at < CURRENT_TIMESTAMP - INTERVAL '1 DAY';"
+  ]
+}

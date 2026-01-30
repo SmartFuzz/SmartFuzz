@@ -1,0 +1,17 @@
+{
+    "function": "timeSeriesTags",
+    "operator": "a = ANY (subquery)",
+    "sql_array": [
+        "CREATE TABLE db_name.time_series_table (id UUID, value Float32, created_at DateTime) ENGINE=TimeSeries TAGS tags_table;",
+        "CREATE TABLE db_name.tags_table (tag_key String, tag_value String) ENGINE=MergeTree() ORDER BY tag_key;",
+        "INSERT INTO db_name.tags_table VALUES ('temperature', 'high'), ('pressure', 'low'), ('humidity', NULL);",
+        "INSERT INTO db_name.time_series_table VALUES (UUID('01234567-89ab-cdef-0123-456789abcdef'), 25.5, '2023-10-01 08:00:00'), (UUID('01234567-89ab-cdef-0123-456789abcd00'), 30.0, '2023-10-02 09:00:00');",
+        "SELECT * FROM timeSeriesTags(db_name.time_series_table) WHERE tag_key = ANY (SELECT tag_key FROM db_name.tags_table WHERE tag_value IS NOT NULL);",
+        "SELECT * FROM db_name.time_series_table WHERE created_at = ANY (SELECT created_at FROM db_name.time_series_table WHERE value > 20.0);",
+        "SELECT COUNT(*) FROM db_name.time_series_table WHERE value = ANY (SELECT MAX(value) FROM db_name.time_series_table);",
+        "SELECT t.*, ts.value FROM db_name.tags_table t JOIN db_name.time_series_table ts ON t.tag_value = ANY (SELECT tag_value FROM db_name.tags_table GROUP BY tag_value HAVING COUNT(*) > 1);",
+        "SELECT AVG(value) OVER (PARTITION BY CAST(created_at AS Date) ORDER BY value) AS avg_per_day FROM db_name.time_series_table;",
+        "SELECT tag_key, COUNT(*) FROM db_name.tags_table GROUP BY tag_key HAVING COUNT(*) < ANY (SELECT COUNT(*) FROM db_name.time_series_table WHERE created_at IS NOT NULL);",
+        "SELECT DISTINCT tag_key FROM db_name.tags_table WHERE tag_value IS NULL AND tag_key = ANY (SELECT DISTINCT tag_key FROM db_name.tags_table WHERE tag_value IS NOT NULL);"
+    ]
+}

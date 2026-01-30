@@ -1,0 +1,12 @@
+CREATE TABLE test_strings (id INTEGER PRIMARY KEY, content STRING);
+INSERT INTO test_strings (id, content) VALUES (1, 'HelloWorld'), (2, 'GoodbyeWorld'), (3, 'TestingEndsWith'), (4, NULL), (5, 'A very long string that does not end with test');
+CREATE TABLE test_spatial (location_id INTEGER PRIMARY KEY, geometry STRING);
+INSERT INTO test_spatial (location_id, geometry) VALUES (1, 'POINT(1 1)'), (2, 'POINT(2 2)'), (3, 'POINT(3 3)');
+SELECT id, content FROM test_strings WHERE ends_with(content, (SELECT ends_with('World', 'd') FROM test_strings WHERE id=1)) = 1;
+SELECT ts.id, ts.content, s.location_id FROM test_strings ts JOIN (SELECT location_id FROM test_spatial WHERE bif:st_overlaps(geometry, 'POINT(1 1)')) s ON ends_with(ts.content, 'World') = 1;
+SELECT COUNT(*) FROM (SELECT ts.id, ts.content FROM test_strings ts WHERE ends_with(ts.content, (SELECT ends_with('Testing', 'g') FROM test_strings WHERE id=3)) = 1) AS subquery;
+SELECT SUM(CASE WHEN ends_with(content, 'World') THEN 1 ELSE 0 END) AS world_count FROM test_strings GROUP BY content HAVING world_count > 0;
+SELECT ts.id, ts.content FROM test_strings ts LEFT JOIN test_spatial sp ON bif:st_overlaps(sp.geometry, 'POINT(1 1)') WHERE ends_with(ts.content, 'g') OR content IS NULL;
+UPDATE test_strings SET content = (SELECT CONCAT(content, ' Test') FROM test_strings WHERE id=2) WHERE ends_with(content, 'World') = 1;
+SELECT DISTINCT ts.id, ts.content FROM test_strings ts JOIN (SELECT COUNT(*) as count FROM test_spatial WHERE bif:st_overlaps(geometry, 'POINT(1 1)')) s ON s.count > 0 WHERE ends_with(ts.content, 'g') OR ts.content IS NULL;
+DELETE FROM test_strings WHERE ends_with(content, 'Test') = 1 AND id NOT IN (SELECT id FROM test_spatial WHERE location_id = 1);

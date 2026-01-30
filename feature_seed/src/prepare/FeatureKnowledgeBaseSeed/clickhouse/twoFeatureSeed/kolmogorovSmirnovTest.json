@@ -1,0 +1,14 @@
+{
+    "function": "kolmogorovSmirnovTest",
+    "operator": "a >= b",
+    "sql_array": [
+        "CREATE TABLE test_data (id UInt32, value Float64, sample_index Int8) ENGINE = Memory;",
+        "INSERT INTO test_data VALUES (1, 0.5, 0), (2, 0.7, 0), (3, 0.3, 1), (4, NULL, 1), (5, 0.6, 0);",
+        "SELECT kolmogorovSmirnovTest('greater', 'auto')(value, sample_index) FROM (SELECT value, sample_index FROM test_data WHERE value IS NOT NULL) GROUP BY sample_index HAVING COUNT(*) > 1;",
+        "SELECT kolmogorovSmirnovTest('two-sided', 'asymp')(value, sample_index) FROM (SELECT value, sample_index FROM (SELECT randNormal(0, 10) AS value, 0 AS sample_index FROM numbers(10000) UNION ALL SELECT randNormal(0, 10) AS value, 1 AS sample_index FROM numbers(10000))) WHERE value >= 0 LIMIT 100;",
+        "CREATE TEMPORARY TABLE temp_data AS SELECT id, value FROM test_data WHERE value < 1 AND sample_index = 0;",
+        "SELECT kolmogorovSmirnovTest(CAST('less' AS String), 'exact')(value, sample_index) FROM temp_data GROUP BY sample_index;",
+        "SELECT kolmogorovSmirnovTest('two-sided', 'exact')(random_value.value, random_value.sample_index) FROM (SELECT randUniform(-1, 1) AS random_value, intDiv(number, 500) AS sample_index FROM numbers(10000)) AS random_value WHERE random_value.value >= 0.2;",
+        "SELECT kolmogorovSmirnovTest('greater', 'auto')(value, sample_index) FROM (SELECT value, sample_index FROM (SELECT randUniform(0, 1) AS value, 0 AS sample_index FROM numbers(1000) UNION ALL SELECT randUniform(0, 1) AS value, 1 AS sample_index FROM numbers(1000))) AS combined GROUP BY sample_index HAVING COUNT(value) >= 5;"
+    ]
+}

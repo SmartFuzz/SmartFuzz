@@ -1,0 +1,38 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/1306",
+  "title": "how to realize a knowledge inferencing using owl:sameAs?",
+  "vulnerable_database": "Virtuoso",
+  "date": "2024-07-23 16:43:55",
+  "vulnerable_version": "",
+  "description": "In terms of OpenLink Virtuoso, I want to realize the knowledge inference based on OWL.\nBut I don't know how to realize this for the occasion as below:\nif in an RDF instance graph，there is a triple <InstanceA> <propertyX> <InstanceB>.\nand in an OWL document, there is content as:\n<Instance_a> owl:sameAs <InstanceA>.\n<Instance_b> owl:sameAs <InstanceB>.\n\nthen，what I expect to supplement is:\n<Instance_a> <propertyX> <Instance_b>. --I mean I want to retrieve this triple with the activated inference function.\nRegarding above, I tried operating like this:\n\nPrepare an OWL document in which I asserted <Instance_a> owl:sameAs <InstanceA>.\nAnd\n<Instance_b> owl:sameAs <InstanceB>.\nImport this OWL document to Virtuoso with a GRAPH name\n<http://sampleForReasoning/ontology> for it.\nPrepare another GRAPH named <http://sampleForReasoning/instance> where there is triple that is: <InstanceA> <propertyX> <InstanceB>. And also there are triples including <Instance_a> and <Instance_b>.\nThen create an inference rule that reference the <http://sampleForReasoning/ontology> named graph:\nrdfs_rule_set ('urn:owl.music', 'http://sampleForReasoning/ontology') ;\nThen in the SPARQL interface, I execute:\nDEFINE input:inference 'urn:owl.music'\nSELECT *\nFROM <http://sampleForReasoning/instance>\nWHERE {\n    ?subject <propertyX> ?object.\n}\n\n\nHowever, the result returned is only still <InstanceA> <propertyX> <InstanceB>, there is no inferred triple such as <Instance_a> <propertyX> <Instance_b>.\nHow to solve the problem?\nActually I know how to realize inference in Virtuoso based on T-box (such as classes and properties) to generate latent triples of instances, but here the owl:sameAs is about A-box (instances). Then I just don't know how to deal with it.",
+  "poc": [
+    "SPARQL\nDEFINE input:same-as \"yes\"\nSELECT distinct *\nWHERE\n {GRAPH <http://OWL_sameAs_example>{\n   ?s <http://xmlns.com/foaf/0.1/name> \"Kingsley Idehen\" .}\n };",
+    "TTLP (\n' @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n <#ent1> <http://www.w3.org/2002/07/owl#sameAs> <#ent2> .\n <#ent2> <http://www.w3.org/2002/07/owl#sameAs> <#ent3> .\n <#ent3> <http://www.w3.org/2002/07/owl#sameAs> <#ent4> .\n <#ent1> rdfs:label \"ent1\" .\n', '', 'g-sas', 0);",
+    "SPARQL define input:same-as \"yes\" SELECT ?s FROM <g-sas> WHERE  {    ?s ?p ?o ; ?p1  \"ent1\" };",
+    "SPARQL  SELECT ?s FROM <g-sas> WHERE  {    ?s ?p ?o ; ?p1 \"ent1\" };",
+    "TTLP (\n'@prefix wdt: <http://www.wikidata.org/prop/direct/> .\n <#InstanceA_local> <http://www.w3.org/2002/07/owl#sameAs> <#InstanceA_wiki> .\n <#InstanceB_local> <http://www.w3.org/2002/07/owl#sameAs> <#InstanceB_wiki> .\n <#InstanceA_local> wdt:P136 <#InstanceB_local> .\n', '', 'http://g-sameAs', 0);",
+    "SPARQL\ndefine input:same-as \"yes\"\nprefix wdt: <http://www.wikidata.org/prop/direct/>\nSELECT * FROM <http://g-sameAs>\nWHERE  {\n  ?s ?p ?o ;\n       wdt:P136 <#InstanceB_local> };"
+  ],
+  "key_bug_features": [
+    "Inference not triggering for owl:sameAs relationships"
+  ],
+  "bug_feature_seed": [
+    "SPARQL PREFIX owl: <http://www.w3.org/2002/07/owl#> PREFIX ex: <http://example.org/> INSERT DATA { GRAPH <http://sampleForReasoning/ontology> { ex:Instance_a owl:sameAs ex:InstanceA . ex:Instance_b owl:sameAs ex:InstanceB . } };",
+    "SPARQL PREFIX ex: <http://example.org/> INSERT DATA { GRAPH <http://sampleForReasoning/instance> { ex:InstanceA ex:propertyX ex:InstanceB . } };",
+    "SPARQL PREFIX ex: <http://example.org/> SELECT ?s ?o FROM <http://sampleForReasoning/instance> WHERE { ?s ex:propertyX ?o };",
+    "SPARQL DEFINE input:inference 'urn:owl.music' PREFIX ex: <http://example.org/> SELECT ?s ?o FROM <http://sampleForReasoning/instance> WHERE { ?s ex:propertyX ?o };",
+    "SPARQL DEFINE input:same-as \"yes\" PREFIX ex: <http://example.org/> SELECT ?s ?o FROM <http://sampleForReasoning/instance> WHERE { ?s ex:propertyX ?o };",
+    "SPARQL PREFIX owl: <http://www.w3.org/2002/07/owl#> PREFIX ex: <http://example.org/> INSERT DATA { GRAPH <http://sampleForReasoning/instance> { ex:InstanceA owl:sameAs ex:Instance_a . ex:InstanceB owl:sameAs ex:Instance_b . } };",
+    "SPARQL DEFINE input:same-as \"yes\" PREFIX ex: <http://example.org/> SELECT ?s ?o FROM <http://sampleForReasoning/instance> WHERE { ?s ex:propertyX ?o };",
+    "SPARQL PREFIX ex: <http://example.org/> SELECT ?s ?o FROM <http://sampleForReasoning/instance> WHERE { ?s ex:propertyX ?o FILTER(?s = ex:Instance_a || ?o = ex:Instance_b) };",
+    "SPARQL PREFIX owl: <http://www.w3.org/2002/07/owl#> PREFIX ex: <http://example.org/> SELECT ?x ?y FROM <http://sampleForReasoning/ontology> WHERE { ?x owl:sameAs ?y };",
+    "SPARQL DEFINE input:same-as \"yes\" PREFIX ex: <http://example.org/> SELECT ?s ?p ?o FROM <http://sampleForReasoning/instance> WHERE { ?s ?p ?o };"
+  ],
+  "bug_features_seed": [
+    "CREATE GRAPH <http://sampleForReasoning/ontology>;",
+    "CREATE GRAPH <http://sampleForReasoning/instance>;",
+    "INSERT DATA INTO <http://sampleForReasoning/ontology> { <Instance_a> owl:sameAs <InstanceA> . <Instance_b> owl:sameAs <InstanceB> . };",
+    "INSERT DATA INTO <http://sampleForReasoning/instance> { <InstanceA> <propertyX> <InstanceB> . };",
+    "SELECT * FROM <http://sampleForReasoning/instance> WHERE { ?subject <propertyX> ?object . };"
+  ]
+}

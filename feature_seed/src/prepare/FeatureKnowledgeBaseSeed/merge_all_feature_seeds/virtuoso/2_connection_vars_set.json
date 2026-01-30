@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR(255), value FLOAT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO test_table (id, name, value) VALUES (1, 'test', 12.34), (2, 'example', NULL), (3, 'boundary', 0), (4, '', 999999999999.999);
+SELECT connection_vars_set(vector('first_id', (SELECT MAX(id) FROM test_table)), 'second_name', (SELECT name FROM test_table WHERE id = 2));
+SELECT name, value FROM test_table WHERE value IS NULL OR created_at > NOW() - INTERVAL '1 DAY';
+SELECT MAX(value) AS max_val, MIN(value) AS min_val FROM test_table GROUP BY name HAVING COUNT(*) > 1;
+SELECT id, aref(connection_vars(), 0) AS var_id FROM test_table JOIN (SELECT connection_vars_set(vector('temp_id', id)) AS vars FROM test_table) AS temp_vars ON id = temp_id;
+SELECT xpath_string('//item', '<item><id>1</id><value>12.34</value></item>') AS xml_value WHERE NOT EXISTS (SELECT 1 FROM test_table WHERE value < 0);
+CREATE TABLE other_table (other_id SERIAL PRIMARY KEY, value VARCHAR(200), num_value NUMERIC CHECK(num_value >= 0));
+INSERT INTO other_table (value, num_value) VALUES ('A', 1), ('B', -1), ('C', NULL), (NULL, 5);
+SELECT id, connection_vars_set(vector('set_id', id)) AS set_vars FROM test_table WHERE id IN (SELECT other_id FROM other_table WHERE num_value IS NULL OR num_value < 0);
+SELECT item, xpath_string('//item/value', '<item><value>10</value></item>') as item_value FROM (SELECT name AS item FROM test_table) AS items WHERE item_value LIKE '1%';

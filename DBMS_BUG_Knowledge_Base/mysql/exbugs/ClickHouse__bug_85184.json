@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/85184",
+  "title": "GROUP BY ALL started consuming much more RAM",
+  "description": "### Company or project name\n_No response_\n### Describe the unexpected behaviour\nQueries with aggregation started reporting 100x more RAM usage than earlier versions:\nv25.6.7.23\n```\nSELECT c,b FROM test2e8 GROUP BY ALL\n# First query\n100 rows in set. Elapsed: 0.210 sec. Processed 200.00 million rows, 4.18 GB (952.96 million rows/s., 19.92 GB/s.)\nPeak memory usage: 4.32 MiB.\n# Later queries\n100 rows in set. Elapsed: 0.191 sec. Processed 200.00 million rows, 4.18 GB (1.05 billion rows/s., 21.85 GB/s.)\nPeak memory usage: 380.96 KiB.\n```\nv25.7.1.3997\n```\nSELECT c,b FROM test2e8 GROUP BY ALL\n# First query\n100 rows in set. Elapsed: 0.212 sec. Processed 200.00 million rows, 4.18 GB (941.38 million rows/s., 19.67 GB/s.)\nPeak memory usage: 4.35 MiB.\n# Later queries\n100 rows in set. Elapsed: 0.191 sec. Processed 200.00 million rows, 4.18 GB (1.05 billion rows/s., 21.86 GB/s.)\nPeak memory usage: 417.00 KiB.\n```\nv25.8.1.2656\n```\nSELECT c,b FROM test2e8 GROUP BY ALL\n# First query\n100 rows in set. Elapsed: 0.290 sec. Processed 200.00 million rows, 4.18 GB (688.72 million rows/s., 14.39 GB/s.)\nPeak memory usage: 149.10 MiB.\n# Later queries\n100 rows in set. Elapsed: 0.256 sec. Processed 200.00 million rows, 4.18 GB (780.41 million rows/s., 16.31 GB/s.)\nPeak memory usage: 142.90 MiB.\n```\nThe same can be observed in current `master` branch.\n### Which ClickHouse versions are affected?\n25.8\n### How to reproduce\n```sql\nCREATE TABLE test2e8\nENGINE = MergeTree\nORDER BY a\nAS SELECT\ntoString(number % 1000) AS a,\ntoString(number % 100) AS b,\ntoString(number % 10) AS c,\ntoString(number) AS d\nFROM numbers_mt(2E8);\nSELECT c,b FROM test2e8 GROUP BY ALL;\n```",
+  "date": "2025-08-07T10:36:34Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test2e9 (id INT UNSIGNED, value DOUBLE, name VARCHAR(255));",
+    "INSERT INTO test2e9 (id, value, name) VALUES (1, 1.1, 'A'), (2, 2.2, 'B'), (3, NULL, 'C'), (4, 4.4, 'D');",
+    "CREATE TABLE test2e10 AS SELECT id, value, name FROM test2e9 WHERE value IS NOT NULL;",
+    "SELECT name, COUNT(*) FROM test2e10 GROUP BY name;",
+    "SELECT id, AVG(value) FROM test2e9 GROUP BY id;"
+  ],
+  "key_bug_features": [
+    "GROUP BY ALL causing excessive RAM usage"
+  ]
+}

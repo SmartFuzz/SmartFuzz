@@ -1,0 +1,18 @@
+{
+    "function": "curdate()",
+    "operator": "&",
+    "sql_array": [
+        "CREATE TABLE test_dates (id INT PRIMARY KEY, date_col DATE, int_col INT);",
+        "INSERT INTO test_dates (id, date_col, int_col) VALUES (1, curdate(), 100), (2, curdate() - INTERVAL 1 DAY, 200), (3, NULL, NULL);",
+        "CREATE TABLE test_numbers (id INT PRIMARY KEY, num_col INT);",
+        "INSERT INTO test_numbers (id, num_col) VALUES (1, 15), (2, 32), (3, NULL);",
+        "SELECT t1.id, (curdate() + INTERVAL (t2.num_col & 8) DAY) AS adjusted_date FROM test_dates t1 JOIN test_numbers t2 ON t1.int_col > t2.num_col WHERE t1.date_col IS NOT NULL;",
+        "SELECT id, curdate() AS today, (date_col & (SELECT MAX(num_col) FROM test_numbers)) AS date_int_mask FROM test_dates GROUP BY id HAVING date_col IS NOT NULL;",
+        "SELECT t1.id, curdate(), (91 & (SELECT MAX(num_col) FROM test_numbers)) AS masked_value FROM test_dates t1 LEFT JOIN test_numbers t2 ON t1.int_col IS NULL OR t2.num_col > 0 ORDER BY masked_value DESC;",
+        "CREATE TABLE test_join (id INT PRIMARY KEY, a INT, b INT);",
+        "INSERT INTO test_join (id, a, b) VALUES (1, 10, 5), (2, 20, 15), (3, NULL, NULL);",
+        "SELECT tj.id, (curdate() & t1.int_col) AS masked_date FROM test_join tj JOIN test_dates t1 ON tj.a = t1.int_col WHERE t1.date_col < curdate() OR t1.date_col IS NULL GROUP BY tj.id HAVING masked_date IS NOT NULL;",
+        "SELECT t1.id, curdate(), (SELECT COUNT(*) FROM test_join WHERE a & b > 10) AS count_filtered FROM test_dates t1 WHERE int_col IS NOT NULL AND date_col IS NOT NULL;",
+        "SELECT t1.id, curdate() + INTERVAL (NULLIF((t1.int_col & NULL), 0) OR 1 DAY) AS calculated_date FROM test_dates t1 WHERE t1.int_col IS NOT NULL GROUP BY t1.id HAVING calculated_date IS NOT NULL;"
+    ]
+}

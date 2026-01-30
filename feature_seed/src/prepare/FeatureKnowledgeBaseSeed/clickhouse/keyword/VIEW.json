@@ -1,0 +1,14 @@
+[
+    "CREATE TABLE test_table (id Int32, value String) ENGINE = MergeTree() ORDER BY id;",
+    "CREATE MATERIALIZED VIEW test_view TO test_table AS SELECT number, concat('value_', number) FROM numbers(10);",
+    "ALTER TABLE test_view MODIFY QUERY SELECT number, concat('new_value_', number) FROM numbers(20);",
+    "ALTER TABLE test_view MODIFY QUERY SELECT number, value FROM (SELECT number, concat('changed_value_', number) as value FROM numbers(15));",
+    "CREATE TABLE another_table (id Int32, description String) ENGINE = MergeTree() ORDER BY id;",
+    "CREATE MATERIALIZED VIEW join_view TO another_table AS SELECT t.id, concat('desc_', t.value) FROM test_table t JOIN numbers(10) n ON t.id = n;",
+    "ALTER TABLE join_view MODIFY QUERY SELECT t.id, concat('updated_desc_', t.value) FROM test_table t JOIN (SELECT number FROM numbers(5)) n ON t.id = n.number;",
+    "CREATE MATERIALIZED VIEW refresh_view ENGINE = MaterializedView() TO test_table AS SELECT id, value FROM test_table;",
+    "ALTER TABLE refresh_view MODIFY REFRESH INTERVAL 1 MINUTE;",
+    "ALTER TABLE refresh_view MODIFY QUERY SELECT id, upper(value) FROM test_table;",
+    "CREATE MATERIALIZED VIEW complex_view TO test_table AS SELECT id, arrayJoin(['val1', 'val2']), count() FROM test_table GROUP BY id;",
+    "ALTER TABLE complex_view MODIFY QUERY SELECT id, arrayJoin(['updated_val1', 'updated_val2']), sum() FROM test_table GROUP BY id;"
+]

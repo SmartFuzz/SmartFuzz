@@ -1,0 +1,17 @@
+CREATE TABLE test_backup_context (id INT PRIMARY KEY, data VARCHAR(100));
+INSERT INTO test_backup_context (id, data) VALUES (1, 'test data 1');
+INSERT INTO test_backup_context (id, data) VALUES (2, 'test data 2');
+BACKUP CONTEXT CLEAR;
+SELECT * FROM test_backup_context WHERE id IN (SELECT id FROM test_backup_context WHERE data LIKE 'test%');
+SELECT COUNT(*) FROM (SELECT id, data FROM test_backup_context WHERE data <> 'invalid data') AS valid_data;
+SELECT id, (SELECT COUNT(*) FROM test_backup_context) AS total_count FROM test_backup_context;
+CREATE TABLE additional_context (id INT, context_data VARCHAR(255));
+INSERT INTO additional_context (id, context_data) VALUES (1, 'context 1'), (2, 'context 2');
+SELECT a.id, b.context_data FROM test_backup_context a JOIN additional_context b ON a.id = b.id;
+BACKUP CONTEXT CLEAR;
+BEGIN TRANSACTION;
+INSERT INTO test_backup_context (id, data) VALUES (3, 'test data 3');
+SAVEPOINT before_clear;
+BACKUP CONTEXT CLEAR;
+ROLLBACK TO SAVEPOINT before_clear;
+COMMIT;

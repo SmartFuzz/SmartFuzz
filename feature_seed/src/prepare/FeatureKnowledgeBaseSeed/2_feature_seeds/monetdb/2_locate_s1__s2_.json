@@ -1,0 +1,17 @@
+CREATE TABLE test_table (id INT, start_time TIMESTAMP(6), text_data VARCHAR(255));
+INSERT INTO test_table VALUES (1, timestamp(6) '2020-09-28 18:40:05.123456', 'Example String 1');
+INSERT INTO test_table VALUES (2, timestamp(6) '2020-09-28 18:40:05.654321', 'Sample DB Test');
+INSERT INTO test_table VALUES (3, timestamp(6) '2020-09-28 18:40:05.000000', 'Testing without locating');
+SELECT id, locate('DB', text_data) AS position FROM test_table WHERE locate('DB', text_data) > 0;
+SELECT id, text_data, locate('Test', text_data) AS position FROM test_table WHERE start_time > timestamp(6) '2020-09-28 18:40:00.000000';
+CREATE TABLE another_table (ref_id INT, data VARCHAR(255) NOT NULL DEFAULT 'default');
+INSERT INTO another_table VALUES (1, 'Referenced String');
+SELECT tt.id, tt.text_data, locate('Example', tt.text_data) AS pos, at.data FROM test_table tt JOIN another_table at ON tt.id = at.ref_id WHERE locate(at.data, tt.text_data) > 0;
+SELECT id, SUM(CASE WHEN locate('Test', text_data) > 0 THEN 1 ELSE 0 END) AS test_count FROM test_table GROUP BY id HAVING test_count > 0;
+SELECT id, timestamp(6) '2020-09-28 18:40:00.000000' as new_time, locate('nonexistent', text_data) AS presence FROM test_table WHERE new_time IS NOT NULL;
+SELECT id, text_data, locate(text_data, text_data) AS self_locate_pos FROM test_table;
+SELECT id, text_data, locate(text_data, '') AS empty_locate FROM test_table;
+SELECT id, text_data FROM test_table WHERE locate('String', text_data) IS NULL;
+SELECT tt.id, COUNT(*) OVER (PARTITION BY locate('DB', tt.text_data)) AS counting_presence FROM test_table tt;
+CREATE TEMPORARY TABLE temp_table AS SELECT id, start_time FROM test_table WHERE start_time < timestamp(6) '2020-09-28 19:00:00.000000';
+SELECT * FROM temp_table WHERE locate('Example', (SELECT text_data FROM test_table WHERE id = temp_table.id)) > 0;

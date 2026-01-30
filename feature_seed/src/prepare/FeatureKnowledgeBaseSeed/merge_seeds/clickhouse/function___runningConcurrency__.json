@@ -1,0 +1,14 @@
+CREATE TABLE events (id UInt32, start DateTime, end DateTime) ENGINE = MergeTree() ORDER BY start;
+INSERT INTO events VALUES (1, '2023-10-01 10:00:00', '2023-10-01 11:00:00'), (2, '2023-10-01 10:30:00', '2023-10-01 11:30:00'), (3, '2023-10-01 10:45:00', '2023-10-01 11:15:00'), (4, '2023-10-01 12:00:00', '2023-10-01 13:00:00');
+SELECT start, runningConcurrency(start, end) FROM events;
+SELECT t.id, runningConcurrency(t.start, t.end) FROM (SELECT id, start, end FROM events ORDER BY start ASC) AS t;
+CREATE TABLE multiple_events (id UInt32, start DateTime, end DateTime) ENGINE = MergeTree() ORDER BY start;
+INSERT INTO multiple_events VALUES (1, '2023-10-01 08:00:00', '2023-10-01 09:00:00'), (2, '2023-10-01 09:00:00', '2023-10-01 10:00:00'), (3, '2023-10-01 09:30:00', '2023-10-01 10:30:00');
+SELECT start, runningConcurrency(start, end) FROM (SELECT start, end FROM multiple_events ORDER BY start ASC);
+CREATE TABLE overlapping_events (id UInt32, start DateTime, end DateTime) ENGINE = MergeTree() ORDER BY start;
+INSERT INTO overlapping_events VALUES (1, '2023-10-01 09:00:00', '2023-10-01 10:00:00'), (2, '2023-10-01 09:30:00', '2023-10-01 10:30:00'), (3, '2023-10-01 10:00:00', '2023-10-01 11:00:00');
+SELECT start, runningConcurrency(start, end) FROM overlapping_events ORDER BY start ASC;
+CREATE TABLE more_events (id UInt32, start DateTime, end DateTime) ENGINE = MergeTree() ORDER BY start;
+INSERT INTO more_events VALUES (1, '2023-10-01 07:00:00', '2023-10-01 08:00:00'), (2, '2023-10-01 08:15:00', '2023-10-01 09:15:00'), (3, '2023-10-01 08:45:00', '2023-10-01 09:45:00');
+SELECT t.start, (SELECT runningConcurrency(start, end) FROM more_events WHERE more_events.start <= t.start AND more_events.end > t.start) AS concurrent_events FROM more_events AS t;
+SELECT start, runningConcurrency(start, end) FROM (SELECT * FROM events UNION ALL SELECT * FROM multiple_events) AS all_events ORDER BY start ASC;

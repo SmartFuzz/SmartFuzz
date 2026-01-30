@@ -1,0 +1,11 @@
+CREATE TABLE test_data (id INT, data_map MAP<STRING, INT>, event_date DATE);
+INSERT INTO test_data VALUES (1, MAP {'key1': 10, 'key2': 20, 'key3': 30}, DATE '2023-01-01'), (2, MAP {'key2': 15, 'key3': 25}, DATE '2023-01-02'), (3, MAP {'key1': 5}, DATE '2023-01-03');
+SELECT id, map_contains_entry(data_map, 'key2', 20) AS has_entry, event_date + INTERVAL (3) DAY AS next_event_date FROM test_data WHERE event_date + INTERVAL (1) DAY < DATE '2023-01-05';
+SELECT id, data_map, (SELECT COUNT(*) FROM test_data AS t2 WHERE map_contains_entry(t2.data_map, 'key2', 15)) AS entry_count FROM test_data WHERE event_date = (SELECT MAX(event_date) FROM test_data);
+CREATE TABLE nested_test (nested_id INT, nested_data_map MAP<STRING, INT>, nested_date DATE);
+INSERT INTO nested_test VALUES (1, MAP {'key1': 1, 'key2': 2}, DATE '2023-01-01'), (2, MAP {'key2': NULL, 'key3': 3}, DATE '2023-01-02');
+SELECT nt.nested_id, nt.nested_data_map, nt.nested_date, map_contains_entry(nt.nested_data_map, 'key2', NULL) AS is_null_entry, nt.nested_date + INTERVAL (1) DAY AS updated_date FROM nested_test AS nt GROUP BY nt.nested_id, nt.nested_data_map HAVING updated_date = DATE '2023-01-03';
+SELECT nt.nested_id, nt.nested_data_map, map_contains_entry(nt.nested_data_map, 'key3', 3) AS has_key3, nt.nested_date + INTERVAL (1 * i.day) DAY AS incremented_date FROM nested_test AS nt JOIN (VALUES (1), (2), (5)) AS i(day) ON has_key3 = TRUE;
+SELECT MAX(nt.nested_date) AS max_date, nt.nested_id, (SELECT COUNT(*) FROM nested_test AS nested WHERE map_contains_entry(nested.nested_data_map, 'key1', 1)) AS count_map_entries FROM nested_test AS nt GROUP BY nt.nested_id HAVING map_contains_entry(nt.nested_data_map, 'key2', 2) IS TRUE;
+DROP TABLE IF EXISTS test_data;
+DROP TABLE IF EXISTS nested_test;

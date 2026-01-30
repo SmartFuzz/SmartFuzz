@@ -1,0 +1,23 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14935",
+  "title": "Implicit casting rules of CASE WHEN ?",
+  "vulnerable_database": "DuckDB",
+  "date": "2024-11-21 12:09:46",
+  "vulnerable_version": "",
+  "description": "### Discussed in https://github.com/duckdb/duckdb/discussions/14934\r\n\r\n<div type='discussions-op-text'>\r\n\r\n<sup>Originally posted by **lschneiderbauer** November 21, 2024</sup>\r\nI am observing some unexpected type casting when using CASE WHEN in a query.\r\nWhen using an ENUM inside a CASE WHEN check, the result will be converted to VARCHAR which is unnecessary and wrong in my opinion:\r\n\r\n```sql\r\nCREATE TYPE E1 AS ENUM ('v1', 'v2');\r\nCREATE TABLE t1 (v E1);\r\nINSERT INTO t1 VALUES ('v1');\r\nINSERT INTO t1 VALUES ('v1');\r\nINSERT INTO t1 VALUES ('v1');\r\n\r\n-- This returns a result only if all elements in a column are equal (namely this value), otherwise it should return NULL.\r\nDESCRIBE (SELECT CASE WHEN COUNT(DISTINCT v) == 1 THEN FIRST(v) END AS r FROM t1);\r\n```\r\nOutput:\r\n```\r\n ─────────────┬─────────────┬──────┬─────┬─────────┬───────┐\r\n│ column_name ┆ column_type ┆ null ┆ key ┆ default ┆ extra │\r\n╞═════════════╪═════════════╪══════╪═════╪═════════╪═══════╡\r\n│ r           ┆ VARCHAR     ┆ YES  ┆     ┆         ┆       │\r\n└─────────────┴─────────────┴──────┴─────┴─────────┴───────┘\r\n```\r\n\r\n\r\nI expect that `FIRST(v)` is of the same type as `v` (in this case the ENUM E1), but it is converted to VARCHAR.\r\n\r\nIs that a bug or am I missing something?</div>",
+  "poc": [
+    "CREATE TABLE t1 (v E1);",
+    "INSERT INTO t1 VALUES ('v1');",
+    "SELECT CASE WHEN COUNT(DISTINCT v) == 1 THEN FIRST(v) END AS r FROM t1);"
+  ],
+  "key_bug_features": [
+    "Unexpected ENUM to VARCHAR conversion in CASE WHEN"
+  ],
+  "bug_features_seed": [
+    "CREATE TYPE E2 AS ENUM ('a', 'b', 'c');",
+    "CREATE TABLE t2 (id INTEGER PRIMARY KEY, status E2 NOT NULL);",
+    "INSERT INTO t2 VALUES (1, 'a'), (2, 'b'), (3, 'a');",
+    "SELECT CASE WHEN COUNT(DISTINCT status) = 1 THEN FIRST(status) END AS result FROM t2;",
+    "INSERT INTO t2 VALUES (4, 'c');"
+  ]
+}

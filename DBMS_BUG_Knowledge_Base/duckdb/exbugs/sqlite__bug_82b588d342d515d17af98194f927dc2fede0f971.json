@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/82b588d342",
+  "title": "Assertion `memIsValid(&r.aMem[ii])' failed.",
+  "description": "yongheng added on 2020-03-15 21:01:52:\nPOC:\n---\nCREATE TABLE v0(v1);\nCREATE TABLE v3(v5, v4);\nINSERT INTO v0 VALUES(0);\nCREATE INDEX v9 ON v3(v4, v4, v5);\nSELECT v5 FROM v0 LEFT JOIN v3 ON v4 = NULL AND v5 IN(0);\n---\n\nIt triggers an assertion in debug build of trunk.\ndrh added on 2020-03-16 03:19:13:\nThe assert() was identifying a reference to an uninitialized register\nin the byte-code.  In production builds, uninitialized registers have a\nvalue of NULL.  Whether or not this NULL changed the outcome of the\nOP_IfNoHope opcode in which it occurred makes no difference in the final\noutput.  The correct answer is for the jump to be taken.  \nBut if the OP_IfNoHope falls through,\nthen the OP_IfNotOpen opcode that follows will jump to the same address.\nThe same result is obtained either way.\nIt is good to fix this problem, but the same (correct) answer is obtained\neven without the fix.\nThe fix is to reverse the order of the two opcodes so that the\nOP_IfNotOpen opcode occurs first.  The OP_IfNotOpen opcode will always be\ntaken and thus prevents the OP_IfNoHope opcode\nfrom running when the register is uninitialized.",
+  "date": "2020-03-15 21:01:525.41 years ago",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE test_table1(col1 INTEGER, col2 TEXT, col3 DOUBLE);",
+    "CREATE TABLE test_table2(colA INTEGER PRIMARY KEY, colB INTEGER, colC VARCHAR);",
+    "INSERT INTO test_table1 VALUES(1, 'test', 3.14);",
+    "INSERT INTO test_table2 VALUES(1, NULL, 'example');",
+    "SELECT colB FROM test_table2 LEFT JOIN test_table1 ON colB IS NULL AND col1 IN(1);"
+  ],
+  "key_bug_features": [
+    "SELECT with NULL condition and uninitialized register"
+  ]
+}

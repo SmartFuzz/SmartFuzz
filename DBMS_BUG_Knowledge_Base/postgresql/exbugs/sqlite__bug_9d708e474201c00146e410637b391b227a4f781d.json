@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/9d708e4742",
+  "title": "Debug assertion sqlite3VdbeExec: Assertion `flags3==pIn3->flags' failed (2)",
+  "description": "mrigger added on 2019-12-23 00:08:41:\nConsider the following test case:\nCREATE TABLE t0(c0 INT, CHECK(CASE c0 WHEN c0 THEN 0 END));\nINSERT INTO t0 VALUES('0'); -- sqlite3.c:86300: sqlite3VdbeExec: Assertion `flags3==pIn3->flags' failed.\nWhen compiling with -DSQLITE_DEBUG, the INSERT triggers an assertion error. This bug seems to be a variant of [1b06916e01].\ndrh added on 2019-12-23 02:50:50:\nWe keep ping-ponging between two bits of code:\nassert( flags3==pIn3->flags );\ntestcase( flags3!=pIn3->flags );\nThe first line says that the conditional is always true.  The second line\nsays that the conditional is usually true but that we have a test case\nfor which it is sometimes false.\nThe test-coverage design rules for SQLite are such that if we do not have\na test case for a conditional, it needs to be inside of an assert() (or\na NEVER() or ALWAYS() depending on circumstances).  On the other hand, if we\nbelieve that a conditional can be either true or false, but no branch operations\ndepend on that conditional, we need to have a testcase() macro to prove that\nwe have test cases for both conditions.\nWhen the fuzzer finds new test cases we have to change from (1) to\n(2).  Then as we modify the code generator to deal more gracefully with\nthe strange corner-cases that the fuzzer finds, we have to change from (2)\nback to (1).  And back and forth we go.",
+  "date": "2019-12-23 00:08:415.64 years ago",
+  "vulnerable_version": "3.30.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(c1 TEXT CHECK(c1 IS NOT NULL));",
+    "INSERT INTO t1 VALUES(NULL);",
+    "CREATE TABLE t2(c2 REAL, c3 INT CHECK(c3 >= 0));",
+    "INSERT INTO t2 VALUES(3.14, -1);",
+    "CREATE TABLE t3(c4 INTEGER, c5 INTEGER CHECK(c4 + c5 > 0));"
+  ],
+  "key_bug_features": [
+    "INSERT with CHECK constraint triggers assertion error"
+  ]
+}

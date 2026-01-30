@@ -1,0 +1,6 @@
+CREATE TABLE test_json_array (id INTEGER, data jsonb[]);
+INSERT INTO test_json_array VALUES (1, '[{"key": "value1"}, {"key": "value2"}]'::jsonb[]);
+CREATE OR REPLACE FUNCTION json_each(input jsonb[]) RETURNS TABLE(key varchar, value jsonb) AS $$ BEGIN RETURN QUERY SELECT CASE WHEN jsonb_typeof(val) = 'array' THEN unnest(array_length(val::jsonb, 1))::varchar ELSE unnest(jsonb_object_keys(val)) END AS key, val->key AS value FROM unnest(input) AS val;
+END;
+$$ LANGUAGE plpgsql;
+SELECT * FROM (SELECT '[{"key": "value1"}, {"key": "value2"}]'::jsonb[] as message) AS msg CROSS JOIN json_each(message);

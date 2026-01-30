@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id INTEGER PRIMARY KEY, value_string VARCHAR, value_time TIME, value_date DATE, value_numeric FLOAT, value_null INTEGER);
+INSERT INTO test_table (id, value_string, value_time, value_date, value_numeric, value_null) VALUES (1, '2023-10-05', TIME '06:02:03', DATE '2023-10-05', 100.0, NULL), (2, 'NULL', TIME '10:00:00', NULL, NULL, NULL), (3, '2023-10-06', TIME '12:15:30', DATE '2023-10-06', -50.0, 25);
+CREATE TABLE another_table (ref_id INTEGER REFERENCES test_table(id), interval_time INTERVAL);
+INSERT INTO another_table (ref_id, interval_time) VALUES (1, INTERVAL '3 HOUR'), (2, INTERVAL '1 HOUR'), (3, INTERVAL '30 MINUTE');
+SELECT id, value_time, last_value(value_time - interval_time) OVER (PARTITION BY id ORDER BY value_time) AS last_adjusted_time FROM test_table JOIN another_table ON test_table.id = another_table.ref_id;
+SELECT id, value_numeric, last_value(value_numeric) OVER (ORDER BY value_numeric ASC RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS last_value_numeric FROM test_table WHERE value_numeric IS NOT NULL;
+SELECT id, value_string, last_value(value_time - INTERVAL '1 HOUR' IGNORE NULLS) OVER (ORDER BY value_date) AS last_value_ignored_time FROM test_table ORDER BY value_date;
+WITH adjusted_values AS (SELECT id, value_numeric, last_value(value_numeric * 1.5) OVER (ORDER BY value_numeric) AS adjusted_numeric FROM test_table WHERE value_numeric IS NOT NULL) SELECT id, adjusted_numeric - INTERVAL '15 MINUTE' AS adjusted_time FROM adjusted_values;
+SELECT id, value_null, last_value(value_null) OVER (ORDER BY id ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) AS penultimate_value_null FROM test_table WHERE value_null IS NULL;
+SELECT a.id, last_value(a.value_time - INTERVAL '5 MINUTE') AS adjusted_time FROM test_table a JOIN another_table b ON a.id = b.ref_id GROUP BY a.id ORDER BY a.id;
+SELECT 'Boundary Case' AS case_type, last_value(CASE WHEN value_numeric = 100 THEN value_numeric ELSE 0 END) - INTERVAL '1 HOUR' AS boundary_adjusted FROM test_table WHERE value_numeric IS NOT NULL;

@@ -1,0 +1,19 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/65145",
+  "title": "tidb_enforce_mpp cannot force using the tiflash",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n```\ncreate table t1(a int primary key, b int);\ncreate table t2(a int primary key, b int);\nalter table t1 set tiflash replica 1;\nalter table t2 set tiflash replica 1;\nselect /*+ set_var(tidb_isolation_read_engines='tidb,tiflash'),set_var(tidb_enforce_mpp=on) */ * from t1 join t2 on t1.a=t2.b where t1.a in (1,2);\n\n```\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\n\n```\nTableReader root  MppVersion: 3, data:ExchangeSender\n└─ExchangeSender mpp[tiflash]  ExchangeType: PassThrough\n  └─HashJoin mpp[tiflash]  inner join, equal:[eq(test.t1.a, test.t2.b)]\n    ├─ExchangeReceiver(Build) mpp[tiflash]  \n    │ └─ExchangeSender mpp[tiflash]  ExchangeType: Broadcast, Compression: FAST\n    │   └─TableRangeScan mpp[tiflash] table:t1 range:[1,1], [2,2], keep order:false, stats:pseudo\n    └─TableFullScan(Probe) mpp[tiflash] table:t2 pushed down filter:in(test.t2.b, 1, 2), not(isnull(test.t2.b)), keep order:false, stats:pseudo\n```\n### 3. What did you see instead (Required)\n\n```\n+---------------------------------+----------+--------------+---------------+----------------------------------------------+\n| id                              | estRows  | task         | access object | operator info                                |\n+---------------------------------+----------+--------------+---------------+----------------------------------------------+\n| HashJoin_21                     | 2.50     | root         |               | inner join, equal:[eq(test.t1.a, test.t2.b)] |\n| ├─Batch_Point_Get_28(Build)     | 2.00     | root         | table:t1      | handle:[1 2], keep order:false, desc:false   |\n| └─TableReader_27(Probe)         | 20.00    | root         |               | data:Selection_26                            |\n|   └─Selection_26                | 20.00    | cop[tiflash] |               | in(test.t2.b, 1, 2), not(isnull(test.t2.b))  |\n|     └─TableFullScan_25          | 10000.00 | cop[tiflash] | table:t2      | keep order:false, stats:pseudo               |\n+---------------------------------+----------+--------------+---------------+----------------------------------------------+\n\n```\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "date": "2025-12-19T10:44:53Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t3(c VARCHAR(255) NOT NULL, d FLOAT DEFAULT NULL);",
+    "CREATE TABLE t4(e DATE NOT NULL, f DECIMAL(10,2) DEFAULT 0.00);",
+    "INSERT INTO t3(c, d) VALUES ('test1', 1.5), ('test2', NULL);",
+    "SELECT * FROM t3 JOIN t4 ON t3.d = t4.f WHERE t4.e IN (CURRENT_DATE, DATE_ADD(CURRENT_DATE, INTERVAL -1 DAY));"
+  ],
+  "key_bug_features": [
+    "tidb_enforce_mpp not using tiflash for query execution"
+  ]
+}

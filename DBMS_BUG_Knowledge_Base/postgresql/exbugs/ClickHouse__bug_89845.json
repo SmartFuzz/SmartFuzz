@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/89845",
+  "title": "`Context has expired` with analyzer with PK in subquery",
+  "description": "CI: https://s3.amazonaws.com/clickhouse-test-reports/json.html?PR=86786&sha=281f8f7f8bdc4ac34a7521e60670be1c1271507b&name_0=PR&name_1=AST%20fuzzer%20%28arm_asan%29\nRepro\n```sql\nDROP DICTIONARY IF EXISTS dict;\nDROP TABLE IF EXISTS info;\nDROP TABLE IF EXISTS ids;\nCREATE TABLE info (iid UInt32) ENGINE = MergeTree() ORDER BY iid;\nINSERT INTO info (iid) VALUES (1);\nCREATE TABLE ids (id Int64) ENGINE = MergeTree() ORDER BY ();\nINSERT INTO ids (id) VALUES (1);\nCREATE DICTIONARY dict\n(\nid Int64,\nchildren Array(Int64),\n)\nPRIMARY KEY id\nSOURCE(CLICKHOUSE(QUERY 'SELECT 1 id, [1] children'))\nLAYOUT(DIRECT());\nSELECT iid IN (SELECT arrayJoin(dictGet(dict, 'children', id)) FROM ids)\nFROM\n(\nSELECT * FROM info WHERE toNullable(isNull(14)) AND iid IN (SELECT arrayJoin(dictGet(dict, 'children', id)) FROM ids)\n);\n```",
+  "date": "2025-11-11T11:32:23Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS test_table1;",
+    "CREATE TABLE test_table1 (id INTEGER, value TEXT);",
+    "INSERT INTO test_table1 (id, value) VALUES (1, 'test'), (2, 'example');",
+    "DROP TABLE IF EXISTS test_table2;",
+    "CREATE TABLE test_table2 (ref_id INTEGER, amount DOUBLE PRECISION);",
+    "INSERT INTO test_table2 (ref_id, amount) VALUES (1, 100.5), (2, 200.75);"
+  ],
+  "key_bug_features": [
+    "Context expiration in subquery with primary key"
+  ]
+}

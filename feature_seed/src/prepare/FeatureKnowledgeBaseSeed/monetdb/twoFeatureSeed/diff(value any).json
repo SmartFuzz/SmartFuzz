@@ -1,0 +1,18 @@
+{
+    "function": "diff(value any)",
+    "operator": "interval",
+    "sql_array": [
+        "CREATE TABLE test_diff (id INT, value INTEGER);",
+        "INSERT INTO test_diff (id, value) VALUES (1, 10), (2, 10), (3, 15), (4, NULL);",
+        "SELECT id, value, diff(value) OVER (PARTITION BY value) AS is_different FROM test_diff;",
+        "CREATE TABLE test_interval (start_date DATE, duration VARCHAR(10));",
+        "INSERT INTO test_interval (start_date, duration) VALUES ('2023-01-01', '2-5'), ('2023-01-01', '2-6'), ('2023-01-01', NULL);",
+        "SELECT start_date, interval(duration) AS month_interval FROM test_interval WHERE duration IS NOT NULL;",
+        "SELECT t1.id, t1.value, diff(t1.value) OVER (PARTITION BY t1.id) AS is_different, t2.start_date FROM test_diff t1 LEFT JOIN test_interval t2 ON interval(t2.duration) > t1.value;",
+        "SELECT t1.id, t1.value FROM test_diff t1 WHERE t1.value IS NOT NULL AND EXISTS (SELECT 1 FROM test_interval t2 WHERE interval(t2.duration) = '2 months' AND t2.start_date > '2023-01-01');",
+        "CREATE TABLE test_join (user_id INT, purchase_date DATE);",
+        "INSERT INTO test_join (user_id, purchase_date) VALUES (1, '2023-01-10'), (1, NULL), (2, '2023-01-15');",
+        "SELECT t1.user_id, t1.purchase_date, diff(t1.purchase_date) OVER (PARTITION BY t1.user_id ORDER BY t1.purchase_date) AS is_different FROM test_join t1 WHERE t1.purchase_date IS NOT NULL;",
+        "SELECT t1.*, interval(t2.duration) AS interval_month FROM test_diff t1 JOIN test_interval t2 ON (t1.value < (SELECT MAX(CAST(interval(t2.duration) AS INTEGER)) FROM test_interval) OR t2.duration IS NULL);"
+    ]
+}

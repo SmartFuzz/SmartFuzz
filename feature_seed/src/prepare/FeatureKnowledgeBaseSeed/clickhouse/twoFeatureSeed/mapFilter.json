@@ -1,0 +1,17 @@
+{
+    "function": "mapFilter",
+    "operator": "IS NULL",
+    "sql_array": [
+        "CREATE TABLE test_data (id UInt32, value Nullable(Int32), map_data Map(String, Int32)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_data VALUES (1, 100, map('key1', 1, 'key2', 2)), (2, NULL, map('key3', 3, 'key4', 4)), (3, -50, map('key5', 5, 'key6', NULL));",
+        "SELECT id, mapFilter((k, v) -> v IS NULL, map_data) AS filtered_map FROM test_data WHERE value IS NULL;",
+        "SELECT id, value, mapFilter((k, v) -> (v * 2 > 3) IS NULL, map_data) AS filtered_map FROM test_data WHERE value < 0;",
+        "SELECT id, mapFilter((k, v) -> (value IS NULL AND v % 2 = 0) OR (v IS NOT NULL AND v % 2 <> 0), map_data) AS filtered_map FROM test_data;",
+        "CREATE TABLE temp_data AS SELECT id, value, mapFilter((k, v) -> v IS NOT NULL, map_data) AS not_null_map FROM test_data WHERE value IS NOT NULL;",
+        "SELECT id, mapFilter((k, v) -> (v + 10) IS NULL, map_data) AS invalid_filter FROM temp_data WHERE id IN (SELECT id FROM test_data WHERE mapFilter((k, v) -> v IS NOT NULL, map_data) IS NULL);",
+        "SELECT id, value, mapFilter((k, v) -> (v % 2) IS NOT NULL, map_data) AS even_map FROM test_data HAVING countIf(value IS NULL) > 0;",
+        "CREATE TABLE overload_test (num Nullable(Int32), txt String) ENGINE = MergeTree() ORDER BY num;",
+        "INSERT INTO overload_test VALUES (1, 'test1'), (NULL, 'test2');",
+        "SELECT num IS NULL, mapFilter((k, v) -> (CAST(v AS String) = 'test2') IS NULL, map('key1', txt, 'key2', txt)) AS test_map FROM overload_test WHERE num IS NOT NULL;"
+    ]
+}

@@ -1,0 +1,16 @@
+{
+    "function": "geoDistance",
+    "operator": "SELECT NOT a",
+    "sql_array": [
+        "CREATE TABLE geo_points (id Int32, lon Float64, lat Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO geo_points VALUES (1, -77.0366, 38.8976), (2, -75.1503, 39.9496), (3, -100.0, 45.0);",
+        "SELECT geoDistance(lon, lat, -200.0, 100.0) AS invalid_distance FROM geo_points WHERE NOT (lon = lon AND lat = lat) LIMIT 1;",
+        "SELECT geoDistance(lon, lat, 0, 0) AS zero_distance FROM geo_points WHERE geoDistance(lon, lat, lon, lat) IS NOT NULL GROUP BY lat HAVING NOT (COUNT(*) = 0);",
+        "SELECT a.id, geoDistance(a.lon, a.lat, b.lon, b.lat) AS distance FROM geo_points AS a JOIN geo_points AS b ON a.id < b.id WHERE NOT (geoDistance(a.lon, a.lat, b.lon, b.lat) IS NULL) ORDER BY distance;",
+        "CREATE TABLE geo_results AS SELECT id, NOT (geoDistance(lon, lat, 10.0, 20.0) > 1000) AS within_range FROM geo_points;",
+        "SELECT NOT (SELECT COUNT(*) FROM geo_results) AS count_check WHERE NOT (NOT (count_check = 0));",
+        "INSERT INTO geo_points VALUES (4, NULL, 0);",
+        "SELECT geoDistance(lon, lat, lon, lat) AS self_distance FROM geo_points WHERE NOT (lon IS NULL) AND NOT (lat IS NULL);",
+        "WITH geoDistance(lon, lat, -77.0366, 38.8976) AS calculated_distance, (SELECT COUNT(*) FROM geo_points WHERE lat > 0) AS pos_count SELECT NOT (calculated_distance IS NULL AND pos_count > 2) AS validation FROM geo_points LIMIT 1;"
+    ]
+}

@@ -1,0 +1,16 @@
+{
+    "function": "arrayMap(func, arr1, ...)",
+    "operator": "a = ANY (subquery)",
+    "sql_array": [
+        "CREATE TABLE test_arrays (id UInt32, values Array(Int32), references Array(Int32));",
+        "INSERT INTO test_arrays (id, values, references) VALUES (1, [1, 2, 3], [4, 5, 6]), (2, [NULL, 2, 3], [4, NULL, 6]), (3, [1, 2, NULL], [3, 5, 6]);",
+        "SELECT id, arrayMap(x -> (x + 2), values) AS incremented_values FROM test_arrays WHERE EXISTS (SELECT 1 FROM test_arrays t2 WHERE t2.id = test_arrays.id AND (t2.values[1] = ANY(references));",
+        "SELECT id FROM test_arrays WHERE arrayMap((x, y) -> (x + y), values, references) = ANY(SELECT 10 FROM test_arrays WHERE id > 1);",
+        "SELECT id, arrayMap(x -> (x IS NULL), values) AS null_check FROM test_arrays GROUP BY id HAVING countIf(null_check) > 0;",
+        "CREATE TABLE temp_data (data String);",
+        "INSERT INTO temp_data (data) VALUES ('1'), ('2'), (NULL), ('5');",
+        "SELECT arrayMap(x -> (x), (SELECT arrayMap(y -> (y), (SELECT data FROM temp_data WHERE data IS NOT NULL))) AS sub_arr) AS mapped_array FROM test_arrays;",
+        "SELECT COUNT(*) as count FROM test_arrays WHERE arrayMap(x -> (x * 2), values) = ANY(SELECT value FROM temp_data WHERE data NOT LIKE '') GROUP BY id HAVING count > 0;",
+        "SELECT id, arrayMap(x -> (toString(x)), values) AS string_values FROM test_arrays WHERE arrayMap(y -> (y > 3), references) = ANY(SELECT 0);"
+    ]
+}

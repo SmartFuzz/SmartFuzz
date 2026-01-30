@@ -1,0 +1,10 @@
+CREATE TABLE test_intervals (id UInt32, date_created DateTime, interval_value Interval Day);
+INSERT INTO test_intervals VALUES (1, now(), toIntervalDay(1)), (2, now(), toIntervalDay(3)), (3, now(), toIntervalDay(5));
+SELECT id, subtractInterval(toIntervalDay(5), inner_val) AS adjusted_interval FROM (SELECT id, interval_value AS inner_val FROM test_intervals WHERE id < 3) GROUP BY id, inner_val HAVING adjusted_interval < toIntervalDay(4);
+SELECT id, subtractInterval((toIntervalDay(1), toIntervalDay(2)), INTERVAL 1 DAY) AS new_intervals FROM test_intervals WHERE id = (SELECT max(id) FROM test_intervals);
+SELECT id, (x -> subtractInterval(INTERVAL 7 DAY, toIntervalDay(x))) AS adjusted_intervals FROM (SELECT id FROM test_intervals) HAVING adjusted_intervals IS NOT NULL;
+SELECT id, subtractInterval((INTERVAL 3 MONTH, INTERVAL 15 DAY), (SELECT toIntervalMonth(1) FROM test_intervals WHERE id = 2)) AS final_interval FROM test_intervals WHERE final_interval >= toIntervalDay(0);
+CREATE TABLE temp_dates (date_value DateTime, value UInt32);
+INSERT INTO temp_dates VALUES (now(), 100), (now() + INTERVAL 1 DAY, 200), (NULL, 300);
+SELECT d.date_value, (x -> subtractInterval(toIntervalDay(1), epoch)) AS calculated FROM (SELECT date_value, toUInt32(date_value) AS epoch FROM temp_dates) AS d WHERE calculated IS NOT NULL;
+SELECT ti.id, (SELECT subtractInterval(max(toIntervalMonth(1)), toIntervalMonth(2)) FROM temp_dates WHERE value > 150) AS subtracted_interval FROM test_intervals ti GROUP BY ti.id HAVING subtracted_interval != toIntervalMonth(0);

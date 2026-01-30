@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=109725",
+  "title": "Wrong result for AVG() OVER(ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING)",
+  "description": "The below script exposes an incorrect result for AVG with the window-frame ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING.\n\nThe result is wrong for the second row (it seems to return the SUM, not divided by the count).\r\n\r\nProblem does not exists in 8.0.31 or earlier and also not in 8.0.32 when using RANGE instead of ROWS.\nHow to repeat:\nCREATE TABLE t (\r\n    n INTEGER\r\n);\r\n\r\nINSERT INTO t VALUES (1), (2), (3), (4);\r\n\r\nSELECT n\r\n     , SUM(n)   OVER(ORDER BY n ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING) AS \"sum(n)\"\r\n     , COUNT(*) OVER(ORDER BY n ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING) AS \"count(n)\"\r\n     , AVG(n)   OVER(ORDER BY n ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING) AS \"avg(n)\"\r\n     , SUM(n)   OVER(ORDER BY n ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING)\r\n     / COUNT(*) OVER(ORDER BY n ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING) AS \"sum(n)/count(n)\"\r\n  FROM t\r\n ORDER BY n;\n\n+------+--------+----------+--------+-----------------+\r\n| n    | sum(n) | count(n) | avg(n) | sum(n)/count(n) |\r\n+------+--------+----------+--------+-----------------+\r\n|    1 |      9 |        3 | 3.0000 |          3.0000 |\r\n|    2 |      7 |        2 | 7.0000 |          3.5000 | <-- Column \"avg(n)\" is wrong.\r\n|    3 |      4 |        1 | 4.0000 |          4.0000 |\r\n|    4 |   NULL |        0 |   NULL |            NULL |\r\n+------+--------+----------+--------+-----------------+",
+  "date": "2023-01-20 18:46:00",
+  "vulnerable_version": "8.0.32",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (n INT NOT NULL, m DECIMAL(10, 2) DEFAULT NULL);",
+    "INSERT INTO t1 VALUES (1, 1.50), (2, 2.50), (3, 3.50), (4, 4.50);",
+    "CREATE TABLE t2 (id INT PRIMARY KEY, value VARCHAR(255) NOT NULL);",
+    "INSERT INTO t2 VALUES (1, 'A'), (2, 'B'), (3, 'C'), (4, 'D');",
+    "SELECT t1.n, AVG(t1.m) OVER(ORDER BY t1.n RANGE BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING) AS avg_m, SUM(t1.m) OVER(ORDER BY t1.n RANGE BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING) AS sum_m FROM t1;"
+  ],
+  "key_bug_features": [
+    "AVG() with ROWS BETWEEN 1 FOLLOWING and UNBOUNDED FOLLOWING"
+  ]
+}

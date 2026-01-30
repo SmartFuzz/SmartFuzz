@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id UInt32, value String, created_at DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, '16', now()), (2, 'abc', now()), (3, '65536', now()), (4, '', now()), (5, '3.14'), (6, 'NaN');
+SELECT id, toUInt16OrZero(value) AS converted_value FROM test_table WHERE toUInt16OrZero(value) > 0;
+SELECT id, multiIf(toUInt16OrZero(value) > 0, 'Positive', toUInt16OrZero(value) = 0, 'Zero', 'Invalid') AS classification FROM test_table;
+SELECT id, value, (SELECT toUInt16OrZero(MAX(value)) FROM test_table) AS max_converted_value FROM test_table GROUP BY id, value HAVING toUInt16OrZero(value) < max_converted_value;
+SELECT t1.id, t1.value, toUInt16OrZero(t2.value) AS t2_converted FROM test_table AS t1 JOIN (SELECT id, value FROM test_table WHERE value != '') AS t2 ON t1.id = t2.id AND toUInt16OrZero(t1.value) < 100;
+SELECT id, multiIf(toUInt16OrZero(value) = 0, NULL, toUInt16OrZero(value)) AS transformed_value FROM test_table ORDER BY transformed_value;
+CREATE TABLE test_table_2 (ref_id UInt32, description String, amount Float32, PRIMARY KEY(ref_id)) ENGINE = MergeTree() ORDER BY ref_id;
+INSERT INTO test_table_2 VALUES (1, 'Total Amount', 100.5), (2, 'Zero Amount', 0.0), (3, 'Invalid Float', NaN);
+SELECT tt.id, tt.value, tt2.ref_id, multiIf(toUInt16OrZero(tt2.amount) = 0, 'Zero', 'Non-zero') AS amount_status FROM test_table AS tt JOIN test_table_2 AS tt2 ON tt.id = tt2.ref_id WHERE toUInt16OrZero(tt2.description) = 0;

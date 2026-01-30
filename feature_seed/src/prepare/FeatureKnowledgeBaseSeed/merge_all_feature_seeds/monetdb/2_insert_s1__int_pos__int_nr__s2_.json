@@ -1,0 +1,18 @@
+CREATE TABLE fuzz_test (id INT PRIMARY KEY, text_field VARCHAR(100), num_field INT);
+INSERT INTO fuzz_test VALUES (1, 'abcdef', 10);
+INSERT INTO fuzz_test VALUES (2, NULL, 20);
+INSERT INTO fuzz_test VALUES (3, '', 0);
+SELECT id, text_field, insert(text_field, 2, 1, 'XY') AS modified_text FROM fuzz_test WHERE num_field | 8 = 8;
+SELECT id, insert(text_field, -1, 0, num_field || 'test') AS complex_insert FROM fuzz_test WHERE text_field IS NOT NULL;
+SELECT id, insert(('Hello ' || text_field), 6, 3, 'World') AS nested_insert FROM fuzz_test WHERE (num_field | 5) > 0;
+SELECT id, MAX(num_field) AS max_num, insert(text_field, 0, 1, 'X') AS prefixed_text FROM fuzz_test GROUP BY id HAVING MAX(num_field) | 15 < 25;
+SELECT id, insert(text_field, 5, 2, '') AS empty_insert FROM fuzz_test WHERE EXISTS (SELECT * FROM fuzz_test AS ft WHERE ft.num_field | fuzz_test.num_field = 0);
+CREATE TEMP TABLE temp_fuzz (temp_text VARCHAR(100));
+INSERT INTO temp_fuzz VALUES ('test1'), ('test2'), ('test3');
+SELECT ft.id, insert(ft.text_field, -2, 1, temp.temp_text) AS combined_text FROM fuzz_test AS ft JOIN temp_fuzz AS temp ON ft.num_field | 2 = 2;
+SELECT COUNT(*) AS text_count, insert(text_field, 2, 1, temp.temp_text) FROM fuzz_test JOIN temp_fuzz AS temp ON text_field IS NOT NULL GROUP BY text_field HAVING COUNT(*) | 1 = 1;
+ALTER TABLE fuzz_test ADD COLUMN computed_value INT GENERATED ALWAYS AS (num_field | 4);
+SELECT id, insert(text_field, 1, NULL, 'TEST') AS null_insert FROM fuzz_test;
+CREATE TABLE edge_case (name VARCHAR(50), value INT CHECK(value >= 0));
+INSERT INTO edge_case VALUES ('A', 0), ('B', 1), ('C', NULL);
+SELECT name, insert(name, 1, 1, 'X') FROM edge_case WHERE value IS NULL OR value | 2 > 0;

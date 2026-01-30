@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/df46dfb631",
+  "title": "Assertion fault in self-join with a IN constraint",
+  "description": "drh added on 2019-02-20 01:39:07:\nThe query in the following SQL hits an assertion fault:\nCREATE TABLE IF NOT EXISTS t1(id INTEGER PRIMARY KEY);\nINSERT INTO t1 VALUES(1);\nSELECT a.id FROM t1 AS a JOIN t1 AS b ON a.id=b.id WHERE a.id IN (1,2,3);\nThe problem was reported on the SQLite users mailing list by\nIgnacio Losiggio.  Ignacio ran a bisect and found that the problem\nwas introduced by check-in [e130319317e76119], which means that the\nproblem is new for SQLite version 3.27.\ndrh added on 2019-02-20 12:59:00:\nThe problem was that the same IN operator was being used twice,\nonce as IN_INDEX_LOOP to drive a loop and later as IN_INDEX_EPH to\ndo a membership test.  The first case uses a table-btree and the second\ncase uses an index-btree.  The optimization to reuse the RHS of IN\noperators generated a table-btree for the first case, then tried to reuse\nthat table-btree for the second case, which will not work, and hence the\nerror.\nThe first fix (now on a closed branch) was to disable the IN-operator RHS\nreuse optimization for IN_INDEX_LOOP.  That worked, but it also reduced\nthe number of cases where the IN-operator RHS reuse optimization would apply,\nresulting in some slower queries.  The second fix (now on trunk) marks the\nIN operator as TERM_CODED after it is used as an IN_INDEX_LOOP, then preventing\nit from being reused later for a membership test.\ndrh added on 2019-02-22 21:35:32:\nReopened because the previous fix caused a new problem:\nCREATE TABLE t1(a INTEGER PRIMARY KEY);\nINSERT INTO t1(a) VALUES(1),(2),(3);\nCREATE TABLE t2(x INTEGER PRIMARY KEY, y INT);\nINSERT INTO t2(y) VALUES(2),(3);\nSELECT * FROM t1, t2 WHERE a=y AND y=3;\nThe previous fix caused the final SELECT statement in the code above to\noutput a row where y<>3, in clear violation of the WHERE clause.",
+  "date": "2019-02-20 01:39:076.47 years ago",
+  "vulnerable_version": "3.27.1",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(id INTEGER PRIMARY KEY, value VARCHAR(255));",
+    "INSERT INTO t1(id, value) VALUES(1, 'one'), (2, 'two'), (3, 'three');",
+    "CREATE TABLE t2(x INTEGER PRIMARY KEY, y INTEGER NOT NULL);",
+    "INSERT INTO t2(x, y) VALUES(1, 2), (2, NULL), (3, 3);",
+    "SELECT a.id FROM t1 AS a JOIN t2 AS b ON a.id = b.y WHERE a.id IN (1, 2, 4);"
+  ],
+  "key_bug_features": [
+    "IN operator reused for different btree types"
+  ]
+}

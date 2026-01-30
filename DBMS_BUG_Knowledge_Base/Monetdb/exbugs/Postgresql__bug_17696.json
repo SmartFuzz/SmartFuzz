@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/17696-c1f5b5e52f3e5833%40postgresql.org",
+  "title": "BUG #17696: Creation of deferrable initially deferred constraint breaks before transaction commit",
+  "description": "The following bug has been logged on the website:\nBug reference:      17696\nLogged by:          Roman Garcia\nEmail address:      yzerno(at)gmail(dot)com\nPostgreSQL version: 13.2\nOperating system:   linux ubuntu\nDescription:\nExecuting the following simple script:\nBEGIN;\nCREATE table foo (id integer primary key);\nCREATE TABLE bar(id integer, foo_id integer);\ninsert into foo (id) values (1);\ninsert into bar(id,foo_id) values (1, 2);\nalter table bar add constraint foo_fkey foreign key (foo_id) references\nfoo(id) deferrable initially deferred;\nresults in a constraint violation error at the constraint creation line:\n\" ERROR:  insert or update on table \"bar\" violates foreign key constraint\n\"foo_fkey\" DETAIL:  Key (foo_id)=(2) is not present in table \"foo\". \"\nI would have expected to get this error message later, at transaction commit\n(if no foo with id 2 have been inserted before then) instead of getting it\nat constraint creation, since the point of having an deferrable initially\ndeferred constraint is to move the constraint check when the transaction is\ncommited.\nI found no indication of this behaviour in the documentation, only an\nexample of the opposite case: if there exists an already defined deferrable\ninitially deferred constraint, but we set it to immediate during transaction\nwith SET CONSTRAINTS, then it is checked immediately, which should be\nexpected.",
+  "date": "2022-11-24 15:58:45",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE foo (id INTEGER PRIMARY KEY, name TEXT NOT NULL);",
+    "CREATE TABLE bar (id INTEGER PRIMARY KEY, foo_id INTEGER, value DECIMAL CHECK (value > 0));",
+    "INSERT INTO foo (name) VALUES ('Test');",
+    "INSERT INTO bar (foo_id, value) VALUES (1, 10.5);",
+    "ALTER TABLE bar ADD CONSTRAINT foo_fkey FOREIGN KEY (foo_id) REFERENCES foo(id);"
+  ],
+  "key_bug_features": [
+    "Deferrable initially deferred constraint check occurs prematurely"
+  ]
+}

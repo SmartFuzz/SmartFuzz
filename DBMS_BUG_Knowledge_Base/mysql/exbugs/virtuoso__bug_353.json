@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/353",
+  "title": "Query crashing Virtuoso",
+  "description": "Commit: ebbe27b\nDB: http://fit2.opendata.cz/db/dbbug.zip\nReproducible via SPARQL endpoint and Sesame2 driver.\nFirst, run this query:\nWITH <http://unifiedviews.eu/resource/internal/dataunit/exec/394/dpu/645/du/1/entry/1>\n INSERT {?s ?p ?o} USING <http://unifiedviews.eu/resource/internal/dataunit/exec/394/dpu/671/du/1/entry/3>\nWHERE {?s ?p ?o}\n\nShould return:\ncallret-0\nInsert into <http://unifiedviews.eu/resource/internal/dataunit/exec/394/dpu/645/du/1/entry/1>, 15386 (or less) triples -- done\n\nThen run:\nPREFIX skos: <http://www.w3.org/2004/02/skos/core#>\n\nPREFIX dom: <http://linked.opendata.cz/ontology/domain/vavai/riv/>\n\nWITH <http://unifiedviews.eu/resource/internal/dataunit/exec/394/dpu/645/du/1/entry/1>\n DELETE {\n  ?subject ?p ?title.\n\n} INSERT {\n  ?subject ?p ?_ConceptSubject .\n\n  ?_ConceptSubject a skos:Concept;\n    skos:prefLabel ?title;\n    skos:notation ?_notation;\n    skos:inScheme ?_Scheme.\n\n  ?_Scheme a skos:ConceptScheme;\n    skos:prefLabel ?_SchemeLabel.\n\n} USING <http://unifiedviews.eu/resource/internal/dataunit/exec/394/dpu/645/du/1/entry/1>\nWHERE {\n  ?subject ?p ?title.\n\nBIND( IF( CONTAINS(STR(?title), \" - \") , STRBEFORE(?title, \" - \"), STR(?title)) AS ?_notation)\nBIND(IRI(CONCAT(STR(?p) , \"/\", ENCODE_FOR_URI(?_notation))) AS ?_ConceptSubject)\n\nVALUES (?p ?_Scheme ?_SchemeLabel)  {\n    (dom:vysledekDruh dom:DruhVysledku \"Kód druhu výsledku\")\n    (dom:druhVysledkuVHodnoceni dom:DruhVysledkuVHodnoceni \"Druh výsledku v hodnocení\")\n    (dom:skupinaOboru dom:SkupinaOboru \"Skupina oborů dle Metodiky\")\n    (dom:navaznostiVysledku dom:NavaznostiVysledku \"Seznam návazností výsledku\")\n    (dom:rozsahVyrazeni dom:RozsahVyrazeni \"Rozsah vyřazení sjednoceného výsledku předkladateli\")\n    (dom:obor dom:Obor \"Obor výsledku\")\n  }\n}\n\nThis one should run fast. Instead, it runs for a while and then Virtuoso stops responding, cannot even open the SPARQL endpoint.",
+  "date": "2015-03-11 08:17:07",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table (id, name) VALUES (1, 'Test Entry 1'), (2, 'Test Entry 2'), (3, NULL);",
+    "UPDATE test_table SET name = 'Updated Entry' WHERE id = 2;",
+    "DELETE FROM test_table WHERE id = 3;",
+    "SELECT * FROM test_table WHERE created_at IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "DELETE and INSERT operations with large data sets"
+  ]
+}

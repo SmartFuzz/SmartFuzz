@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/53726",
+  "title": "`select distinct` produces unexpected result",
+  "description": "### 1. Minimal reproduce step (Required)\r\n```sql\r\ncreate table t1 (c1 int primary key);\r\ninsert into t1 (c1) values (575932053), (-258025139);\r\n\r\nSELECT DISTINCT\r\n  cast(c1 as decimal) as c3,\r\n  cast(c1 as signed) as c4\r\nFROM t1;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\nThe two columns should be same, in MySQL:\r\n```\r\nmysql> SELECT DISTINCT \r\n    ->   cast(c1 as decimal) as c3,\r\n    ->   cast(c1 as signed) as c4\r\n    -> FROM t1;\r\n+------------+------------+\r\n| c3         | c4         |\r\n+------------+------------+\r\n| -258025139 | -258025139 |\r\n|  575932053 |  575932053 |\r\n+------------+------------+\r\n2 rows in set (0.00 sec)\r\n```\r\n### 3. What did you see instead (Required)\r\nBut TiDB outputs strange number.\r\n```\r\nmysql> SELECT DISTINCT \r\n    ->   cast(c1 as decimal) as c3,\r\n    ->   cast(c1 as signed) as c4\r\n    -> FROM t1;\r\n+------------+---------------------+\r\n| c3         | c4                  |\r\n+------------+---------------------+\r\n| -258025139 | 1108209533567631369 |\r\n|  575932053 |                   0 |\r\n+------------+---------------------+\r\n2 rows in set (0.01 sec)\r\n```\r\nAfter removing `distinct`, the result is correct:\r\n```\r\nmysql> SELECT\r\n    ->   cast(c1 as decimal) as c3,\r\n    ->   cast(c1 as signed) as c4\r\n    -> FROM t1;\r\n+------------+------------+\r\n| c3         | c4         |\r\n+------------+------------+\r\n| -258025139 | -258025139 |\r\n|  575932053 |  575932053 |\r\n+------------+------------+\r\n2 rows in set (0.00 sec)\r\n```\r\n### 4. What is your TiDB version? (Required)\r\n```\r\nRelease Version: v8.1.0\r\nEdition: Community\r\nGit Commit Hash: 945d07c5d5c7a1ae212f6013adfb187f2de24b23\r\nGit Branch: HEAD\r\nUTC Build Time: 2024-05-21 03:51:57\r\nGoVersion: go1.21.10\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv\r\n```\r\ntopology:\r\n\r\ndistributed.yaml:\r\n```\r\nglobal:\r\n  user: \"tidb\"\r\n  ssh_port: 22\r\n  deploy_dir: \"/tidb-deploy\"\r\n  data_dir: \"/tidb-data\"\r\n\r\npd_servers:\r\n  - host: 10.0.2.31\r\n\r\ntidb_servers:\r\n  - host: 10.0.2.21\r\n\r\ntikv_servers:\r\n  - host: 10.0.2.11\r\n  - host: 10.0.2.12\r\n  - host: 10.0.2.13\r\n\r\nmonitoring_servers:\r\n  - host: 10.0.2.8\r\n\r\ngrafana_servers:\r\n  - host: 10.0.2.8\r\n\r\nalertmanager_servers:\r\n  - host: 10.0.2.8\r\n\r\ntiflash_servers:\r\n  - host: 10.0.2.32\r\n```\r\n\r\n\r\n\r\n### about us\r\nWe are the BASS team from the School of Cyber Science and Technology at Beihang University. Our main focus is on system software security, operating systems, and program analysis research, as well as the development of automated program testing frameworks for detecting software defects. Using our self-developed database vulnerability testing tool, we have identified the above-mentioned vulnerabilities in TiDB that may lead to database logic error.\r\n",
+  "date": "2024-05-31T14:02:26Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (c1 Int32, c2 String, c3 Decimal(10, 2), c4 Float32);",
+    "INSERT INTO t2 (c1, c2, c3, c4) VALUES (1, 'test', 123.45, 678.90), (2, NULL, -258025139.00, NULL);",
+    "SELECT DISTINCT cast(c1 as Int32) as c5, cast(c3 as Decimal(10, 2)) as c6 FROM t2;",
+    "CREATE TABLE t3 (c1 Int32, c2 Int32, c3 Decimal(10, 2) DEFAULT 0);",
+    "INSERT INTO t3 (c1, c2) VALUES (3, 4), (5, NULL);"
+  ],
+  "key_bug_features": [
+    "SELECT DISTINCT with different casts produces unexpected results"
+  ]
+}

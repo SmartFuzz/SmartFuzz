@@ -1,0 +1,19 @@
+{
+    "function": "skewSamp",
+    "operator": "a < b",
+    "sql_array": [
+        "CREATE TABLE testing_skew (id UInt32, value Float32, category String, created_at DateTime);",
+        "INSERT INTO testing_skew VALUES (1, 1.0, 'A', now()), (2, 2.0, 'B', now()), (3, NULL, 'A', now()), (4, 4.0, 'C', now());",
+        "SELECT skewSamp(CASE WHEN value IS NOT NULL THEN value ELSE 0 END) FROM testing_skew WHERE category = 'A';",
+        "SELECT id, skewSamp(value) FROM testing_skew GROUP BY id HAVING skewSamp(value) < (SELECT AVG(value) FROM testing_skew) ORDER BY skewSamp(value);",
+        "CREATE TABLE skew_results AS SELECT skewSamp(value) AS skew FROM testing_skew GROUP BY category;",
+        "SELECT skewSamp(CAST(value AS Float64)) FROM (SELECT value FROM testing_skew WHERE category = 'A' AND value IS NOT NULL);",
+        "SELECT (SELECT COUNT(*) FROM testing_skew WHERE value < 3) AS count_less_3, skewSamp(value) FROM testing_skew;",
+        "CREATE TABLE temp_skew AS SELECT value, category FROM testing_skew WHERE created_at > now() - INTERVAL 30 DAY;",
+        "INSERT INTO temp_skew SELECT 5.0, 'D' UNION ALL SELECT NULL, 'E';",
+        "SELECT skewSamp(CAST(NULLIF(value, 0) AS Float64)) FROM temp_skew WHERE category = 'D' GROUP BY category HAVING count(*) > 1;",
+        "SELECT skewSamp(value) FROM testing_skew WHERE value < 5 AND EXISTS (SELECT 1 FROM testing_skew WHERE value IS NOT NULL);",
+        "SELECT skewSamp(value) FROM (SELECT value, category FROM testing_skew WHERE value IS NOT NULL GROUP BY category) AS sub WHERE category = 'B';",
+        "SELECT id, category, skewSamp(value) OVER (PARTITION BY category ORDER BY id) AS skew_partition FROM testing_skew;"
+    ]
+}

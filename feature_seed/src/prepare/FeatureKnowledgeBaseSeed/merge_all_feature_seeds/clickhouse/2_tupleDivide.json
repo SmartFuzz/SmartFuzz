@@ -1,0 +1,10 @@
+CREATE TABLE test_tuples (id UInt32, values Tuple(UInt32, UInt32, Float32));
+INSERT INTO test_tuples (id, values) VALUES (1, (1, 2, 3.0)), (2, (0, 3, 4.5)), (3, (5, NULL, 7.2));
+SELECT id, tupleDivide(values, (2, 0, 1)) AS result FROM test_tuples WHERE tupleDivide(values, (2, 0, 1)) = (0.5, 'inf', 3.0);
+SELECT id, tupleDivide((max(values.1), min(values.2)), (max(values.1) + 1, 0)) AS result FROM test_tuples GROUP BY id HAVING result = (0, 'inf');
+SELECT id, tupleDivide(tupleDivide(values, (NULL, 3, 1)), (2, 2, 2)) AS result FROM test_tuples WHERE id IN (SELECT id FROM test_tuples WHERE id > 1);
+SELECT (SELECT count() FROM test_tuples WHERE tupleDivide(values, (1, 1, 1)) = (1, 2, 3)) AS subquery_result, tupleDivide((0, 0), (0, 0)) AS inf_check FROM test_tuples;
+CREATE TABLE test_edge_cases (key String, value Float32);
+INSERT INTO test_edge_cases (key, value) VALUES ('min', -1.0), ('max', 1.0), ('empty', 0.0), ('null_value', NULL);
+SELECT key, tupleDivide((value, value), (NULL, 1.0)) FROM test_edge_cases WHERE value = (SELECT MAX(value) FROM test_edge_cases);
+SELECT value, tupleDivide(tupleDivide((value, 0), (0, value)), (1, 1)) AS result FROM test_edge_cases WHERE tupleDivide((value, 0), (0, value)) = (NULL, 'inf');

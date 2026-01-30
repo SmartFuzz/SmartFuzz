@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id INT, value FLOAT, tags LIST<FLOAT>);
+INSERT INTO test_table VALUES (1, 1.0, [1.0, 2.0, NULL]), (2, 2.0, [1.0, 3.0, 4.0]), (3, NULL, [NULL, 5.0, 6.0]), (4, 3.0, []);
+SELECT kahan_sum(value) FROM (SELECT id, value FROM test_table WHERE value IS NOT NULL) AS subquery GROUP BY id HAVING kahan_sum(value) > 2;
+SELECT kahan_sum(value) FROM (SELECT id, value, tags <=> [1.0, 2.0, 3.0] AS cosine_dist FROM test_table) AS dist_table WHERE cosine_dist IS NOT NULL;
+SELECT id, kahan_sum(value) FROM test_table GROUP BY id HAVING kahan_sum(value) <=> [1.0] > 0;
+CREATE TABLE secondary_table (sec_id INT, desc_value VARCHAR, ref_id INT);
+INSERT INTO secondary_table VALUES (1, 'test1', 1), (2, 'test2', 2), (3, 'test3', 3);
+SELECT st.sec_id, st.desc_value, kahan_sum(tt.value) FROM secondary_table st JOIN test_table tt ON st.ref_id = tt.id WHERE tt.value IS NOT NULL GROUP BY st.sec_id, st.desc_value;
+SELECT (SELECT kahan_sum(value) FROM test_table WHERE value IS NOT NULL) AS total_sum, (SELECT kahan_sum(value) FROM test_table WHERE id = 3) AS conditional_sum;
+SELECT kahan_sum(value + (CASE WHEN value IS NULL THEN 0 ELSE value END)) FROM test_table WHERE tags <=> [1.0, 2.0, 3.0] > 0;

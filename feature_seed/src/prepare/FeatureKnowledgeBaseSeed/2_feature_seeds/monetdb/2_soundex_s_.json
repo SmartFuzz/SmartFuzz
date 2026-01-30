@@ -1,0 +1,15 @@
+CREATE TABLE phonetics (id SERIAL PRIMARY KEY, name VARCHAR(100), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO phonetics (name) VALUES ('MonetDB'), ('MySQL'), ('PostgreSQL'), ('SQLite'), (NULL);
+SELECT soundex(name) AS soundex_code, time(6) TO_CHAR(created_at, 'HH24:MI:SS.US') AS time_created FROM phonetics WHERE name IS NOT NULL;
+SELECT p1.name AS first_name, p2.name AS second_name FROM phonetics p1 JOIN phonetics p2 ON soundex(p1.name) = soundex(p2.name) WHERE p1.id <> p2.id;
+SELECT soundex(s) FROM (SELECT name AS s FROM phonetics WHERE name IS NOT NULL) AS subquery;
+SELECT soundex(name) AS soundex_code FROM phonetics WHERE soundex(name) = soundex('MonetDB') HAVING COUNT(*) > 0;
+CREATE TABLE time_test (event_time TIME(6), description VARCHAR(255));
+INSERT INTO time_test (event_time, description) VALUES (time(6) '12:00:00.000000', 'Noon'), (time(6) '00:00:00.000000', 'Midnight'), (time(6) '23:59:59.999999', 'Almost End of Day');
+SELECT description, event_time FROM time_test WHERE event_time > time(6) '09:00:00.000000' ORDER BY event_time DESC;
+SELECT name, time(6) '12:34:56.123456' AS test_time, soundex(name) AS soundex_code FROM phonetics WHERE soundex(name) IS NOT NULL AND created_at IS NOT NULL;
+CREATE TABLE complex_test (id SERIAL PRIMARY KEY, data VARCHAR(255), data_time TIME(6), other_info VARCHAR(255));
+INSERT INTO complex_test (data, data_time, other_info) VALUES ('Edge Case', time(6) '08:00:00.000000', 'Check Soundex'), (NULL, time(6) '18:00:00.000000', NULL);
+SELECT soundex(data) AS code, time(6) '23:59:59.999999' AS boundary_time FROM complex_test WHERE data IS NOT NULL GROUP BY code, boundary_time HAVING COUNT(code) > 1;
+SELECT p.name, time(6) TO_CHAR(CURRENT_TIMESTAMP, 'HH24:MI:SS.US') AS current_time FROM phonetics p WHERE soundex(p.name) IS NOT NULL AND p.created_at BETWEEN CURRENT_DATE - INTERVAL '1 day' AND CURRENT_DATE;
+SELECT p.name, CASE WHEN soundex(p.name) IS NULL THEN 'NULL Soundex' ELSE 'Valid Soundex' END AS soundex_status FROM phonetics p WHERE p.name IS NOT NULL ORDER BY soundex_status;

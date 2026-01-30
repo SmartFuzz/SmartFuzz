@@ -1,0 +1,10 @@
+CREATE TABLE test_vectors (id UInt32, vector Array(Float64), description String, value Float64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_vectors VALUES (1, [1.0, -2.0, 3.0], 'positive and negative mix', 0.0), (2, [], 'empty array', 0.0), (3, [5.5, -4.5], 'boundary case', 0.0), (4, [NULL], 'NULL value in array', 0.0);
+SELECT id, L1Norm(vector) AS l1_norm FROM test_vectors WHERE L1Norm(vector) > value;
+SELECT id, L1Norm(vector) AS l1_norm FROM test_vectors WHERE L1Norm(vector) > (SELECT AVG(value) FROM test_vectors);
+SELECT id, L1Norm(vector) AS l1_norm FROM test_vectors WHERE L1Norm(vector) IS NOT NULL AND vector != [];
+SELECT id, L1Norm(vector) AS l1_norm FROM test_vectors WHERE vector > [0.0] AND vector IS NOT NULL;
+SELECT id, L1Norm(vector) AS l1_norm FROM test_vectors GROUP BY description HAVING L1Norm(vector) > 2.0;
+SELECT COUNT(*) FROM (SELECT id, L1Norm(vector) AS l1_norm FROM test_vectors) AS norm_results WHERE l1_norm > 3.0;
+CREATE TEMPORARY TABLE temp_results AS SELECT id, L1Norm(vector) AS l1_norm FROM test_vectors;
+SELECT t.id, t.l1_norm FROM temp_results t JOIN test_vectors v ON t.id = v.id WHERE t.l1_norm > L1Norm(v.vector);

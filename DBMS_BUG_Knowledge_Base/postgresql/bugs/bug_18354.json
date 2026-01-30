@@ -1,0 +1,24 @@
+{
+  "url": "https://www.postgresql.org/message-id/18354-140864c09686b5a6%40postgresql.org",
+  "title": "BUG #18354: Aborted transaction aborted during cleanup when temp_file_limit exceeded",
+  "vulnerable_database": "postgresql",
+  "date": "2024-02-21 12:00:01",
+  "vulnerable_version": "Unknown",
+  "description": "The following bug has been logged on the website:\nBug reference:      18354\nLogged by:          Alexander Lakhin\nEmail address:      exclusion(at)gmail(dot)com\nPostgreSQL version: 16.2\nOperating system:   Ubuntu 22.04\nDescription:\nThe following script:\nSET temp_file_limit = 100;\nCREATE TABLE t (a text);\nINSERT INTO t VALUES ('test');\nSELECT 'INSERT INTO t SELECT * FROM t RETURNING *' FROM generate_series(1,\n18)\n\\gexec\ntriggers two errors, a warning, and an assertion failure:\nERROR:  temporary file size exceeds temp_file_limit (100kB)\nWARNING:  AbortTransaction while in ABORT state\nERROR:  temporary file size exceeds temp_file_limit (100kB)\nserver closed the connection unexpectedly\nThe backtrace for the first error is:\n2024-02-21 11:40:06.947 UTC|law|regression|65d5e116.13cfcb|LOG:  statement:\nINSERT INTO t SELECT * FROM t RETURNING *\n2024-02-21 11:40:06.999 UTC|law|regression|65d5e116.13cfcb|ERROR:  temporary\nfile size exceeds temp_file_limit (100kB)\n2024-02-21 11:40:06.999 UTC|law|regression|65d5e116.13cfcb|BACKTRACE:\nFileWrite at fd.c:2183:5\nBufFileDumpBuffer at buffile.c:537:18\nBufFileWrite at buffile.c:698:28\nwritetup_heap at tuplestore.c:1513:5\ndumptuples at tuplestore.c:1210:35\ntuplestore_puttuple_common at tuplestore.c:833:4\nMemoryContextSwitchTo at palloc.h:142:23\n(inlined by) tuplestore_puttupleslot at tuplestore.c:722:2\ntstoreReceiveSlot_notoast at tstoreReceiver.c:129:1\nExecutePlan at execMain.c:1701:7\nstandard_ExecutorRun at execMain.c:365:3\nExecutorRun at execMain.c:310:1\nProcessQuery at pquery.c:165:5\nPortalRunMulti at pquery.c:1293:7\nFillPortalStore at pquery.c:1042:8\nPortalRun at pquery.c:763:6\nexec_simple_query at postgres.c:1282:3\nPostgresMain at postgres.c:4641:27\nreport_fork_failure_to_client at postmaster.c:4242:1\nBackendStartup at postmaster.c:4199:22\nServerLoop at postmaster.c:1788:6\nmain at main.c:185:3\nFor the second error:\n2024-02-21 11:40:07.001 UTC|law|regression|65d5e116.13cfcb|ERROR:  temporary\nfile size exceeds temp_file_limit (100kB)\n2024-02-21 11:40:07.001 UTC|law|regression|65d5e116.13cfcb|BACKTRACE:\nFileWrite at fd.c:2183:5\nBufFileDumpBuffer at buffile.c:537:18\nBufFileFlush at buffile.c:723:3\nBufFileClose at buffile.c:419:9\ntuplestore_end at tuplestore.c:459:5\nMemoryContextSwitchTo at palloc.h:142:23\n(inlined by) PortalDrop at portalmem.c:587:3\nAtCleanup_Portals at portalmem.c:907:3\nCleanupTransaction at xact.c:2903:2\nAbortCurrentTransaction at xact.c:3341:18\nPostgresMain at postgres.c:4356:6\nreport_fork_failure_to_client at postmaster.c:4242:1\nBackendStartup at postmaster.c:4199:22\nServerLoop at postmaster.c:1788:6\nmain at main.c:185:3\nFor the failed assertion:\n2024-02-21 11:40:07.001 UTC|law|regression|65d5e116.13cfcb|WARNING:\nAbortTransaction while in ABORT state\nTRAP: failed Assert(\"TransactionIdIsValid(proc->xid)\"), File: \"procarray.c\",\nLine: 680, PID: 1298379\nExceptionalCondition at assert.c:52:13\nProcArrayEndTransactionInternal at procarray.c:742:2\n(inlined by) ProcArrayEndTransaction at procarray.c:689:4\nAbortTransaction at xact.c:2841:5\nAbortCurrentTransaction at xact.c:3340:4\nPostgresMain at postgres.c:4356:6\nreport_fork_failure_to_client at postmaster.c:4242:1\nBackendStartup at postmaster.c:4199:22\nServerLoop at postmaster.c:1788:6\nBackgroundWorkerInitializeConnection at postmaster.c:5604:1\nmain at main.c:185:3\nReproduced on REL_12_STABLE .. master.",
+  "poc": [
+    "SET temp_file_limit = 100;",
+    "CREATE TABLE t (a text);",
+    "INSERT INTO t VALUES ('test');"
+  ],
+  "poc_type": "sql_text",
+  "key_bug_features": [
+    "temporary file size exceeds temp_file_limit"
+  ],
+  "bug_features_seed": [
+    "SET temp_file_limit = 100;",
+    "CREATE TABLE t (a text, b integer, c timestamp DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t (a, b) VALUES ('test', 1);",
+    "INSERT INTO t (a, b) SELECT 'test_' || generate_series(1, 20), generate_series(1, 20);",
+    "SELECT * FROM t WHERE b IS NULL OR c > NOW() - INTERVAL '1 day';"
+  ]
+}

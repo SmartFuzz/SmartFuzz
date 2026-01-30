@@ -1,0 +1,26 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/93231",
+  "title": "Alter Statements fail due to Dot Notation used on a JSON column in a Materialized View",
+  "vulnerable_database": "ClickHouse",
+  "date": "2025-12-30T15:52:23Z",
+  "vulnerable_version": "25.11.3.54",
+  "description": "### Company or project name\nBloomberg\n### Describe the unexpected behaviour\nWhen I issue an alter statement on my table, the query fails due to a syntax issue with the materialized view. The materialized view uses dot notation on a JSON column. If I remove that statement, or adjust the statement to use `getSubcolumn` instead, the materialized view syntactically passes and so does the alter statement.\n### Which ClickHouse versions are affected?\n25.11.3.54\n### How to reproduce\n* **Version**: 25.11.3.54\n* **DDL** Statements:\nMain Table:\n```\nSET allow_experimental_json_type = 1;\nDROP DATABASE IF EXISTS dtobs;\nCREATE DATABASE dtobs;\nUSE dtobs;\nCREATE TABLE span_local\n(\nlinks Array(JSON),\ndummy UInt8\n)\nENGINE = MergeTree\nORDER BY tuple();\n-- Target table: ONE column\nCREATE TABLE span_link_local\n(\nlinked_id String\n)\nENGINE = MergeTree\nORDER BY tuple();\n```\nMaterialized View:\n```\nCREATE MATERIALIZED VIEW mv_bad\nTO span_link_local\nAS\nSELECT\nlink.`trace_id` AS linked_id\nFROM\n(\nSELECT arrayJoin(links) AS link\nFROM span_local\n)\nWHERE linked_id IS NOT NULL;\n```\n* **sample data**: not needed\n* **query to run**:\n```\nALTER TABLE span_local DROP COLUMN dummy;\n```\n### Expected behavior",
+  "poc": [
+    "DROP DATABASE IF EXISTS dtobs;",
+    "CREATE DATABASE dtobs;",
+    "CREATE TABLE span_local\n(\n    links Array(JSON),\n    dummy UInt8\n)\nENGINE = MergeTree\nORDER BY tuple();",
+    "CREATE TABLE span_link_local\n(\n    linked_id String\n)\nENGINE = MergeTree\nORDER BY tuple();",
+    "ALTER TABLE span_local DROP COLUMN dummy;",
+    "DROP VIEW mv_bad;"
+  ],
+  "key_bug_features": [
+    "Dot notation on JSON column in materialized view"
+  ],
+  "bug_features_seed": [
+    "SET allow_experimental_json_type = 1;",
+    "CREATE TABLE span_local (links Array(JSON), dummy UInt8) ENGINE = MergeTree ORDER BY tuple();",
+    "CREATE TABLE span_link_local (linked_id String) ENGINE = MergeTree ORDER BY tuple();",
+    "CREATE MATERIALIZED VIEW mv_bad TO span_link_local AS SELECT link.`trace_id` AS linked_id FROM (SELECT arrayJoin(links) AS link FROM span_local) WHERE linked_id IS NOT NULL;",
+    "ALTER TABLE span_local DROP COLUMN dummy;"
+  ]
+}

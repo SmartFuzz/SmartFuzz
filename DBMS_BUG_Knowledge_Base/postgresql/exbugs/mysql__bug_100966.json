@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=100966",
+  "title": "select count(*) works very slow for uncommitted data",
+  "description": "Hello, dear Verification Team:\r\n  I found that, there are about several times waste of IO in select count(*) when data are uncommitted.\r\n  For committed data( table t1 with 10,000,000 records), `select count(*) from t1` takes 6 seconds, but for uncommitted data, it takes 3 minutes.\r\n  Please reference to `How to repeat` for detail.\nHow to repeat:\n(1) create a table, begin a transaction, and insert many records into the table, donot commit the `insert` command.\r\n \r\n[session 1]\r\nmake a big table which has giant number of records, and, keep the insert command uncommitted.\r\n(any method, here I use `insert into select`).\r\n\r\nmysql> create table user_card_info_hash_3 like user_card_info_hash_2;\r\nQuery OK, 0 rows affected (0.23 sec)\r\n\r\nmysql> begin;\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nmysql> insert into user_card_info_hash_3 select * from user_card_info_hash_2 limit 10000000;\r\nQuery OK, 10000000 rows affected (9 min 33.99 sec)\r\nRecords: 10000000  Duplicates: 0  Warnings: 0\r\n\r\n# here, donot commit the `insert` command\n\n(2) start another session, execute `select count(*)` for the table\r\n\r\n[session 2]\r\nmysql> use test_sj\r\nDatabase changed\r\n\r\nmysql> select count(*) from user_card_info_hash_2;\r\n+----------+\r\n| count(*) |\r\n+----------+\r\n|        0 |\r\n+----------+\r\n1 row in set (3 min 31.31 sec)\n\n(3) commit the `insert command`, and execute `select count(*)` for the table again.\r\n\r\n[session 1]\r\nmysql> commit;\r\n\r\n[session 2]\r\nmysql> select count(*) from user_card_info_hash_2;\r\n+----------+\r\n| count(*) |\r\n+----------+\r\n| 10000000 |\r\n+----------+\r\n1 row in set (6.98 sec)\n\nwe can see that `select count(*)` finishes very soon after commit data;\r\nand `select count(*)` shows huge difference in performance between uncommitted data and commited data.\r\n\r\nNote: the more records, the more obvious.\nSuggested fix:\nIn method `Parallel_reader::Ctx::travers`, we first get a visible version of data, and then check if endpoint of range is reached or not.\r\n  If many records are not visible, endpoint will be passed, and scan will continue until next visible record. If all records in a table are not visible, scan will not stop until end of table index. Then, very much io recource will be wasted.\r\n\r\nfix like this:\r\n\r\n@@ -529,6 +535,7 @@ dberr_t Parallel_reader::Ctx::traverse() {\r\n     }\r\n\r\n     const rec_t *rec = page_cur_get_rec(cur);\r\n+    const rec_t *latest_rec = rec;\r\n\r\n     offsets = rec_get_offsets(rec, index, offsets, ULINT_UNDEFINED, &heap);\r\n\r\n@@ -542,8 +549,10 @@ dberr_t Parallel_reader::Ctx::traverse() {\r\n\r\n     m_block = page_cur_get_block(cur);\r\n\r\n-    if (rec != nullptr && end_tuple != nullptr) {\r\n-      auto ret = end_tuple->compare(rec, index, offsets);\r\n+    /* bug fix: compare with visible record may leads to many times waste of io recource,\r\n+    because we may miss endpoint due to invisibility */\r\n+    if (latest_rec != nullptr && end_tuple != nullptr) {\r\n+      auto ret = end_tuple->compare(latest_rec, index, offsets);",
+  "date": "2020-09-27 03:46:00",
+  "vulnerable_version": "MySQL8.0.18, 8.0.21",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE user_card_info_hash_4 (id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, amount DECIMAL(10, 2) CHECK (amount >= 0));",
+    "BEGIN;",
+    "INSERT INTO user_card_info_hash_4 (name, amount) SELECT CONCAT('User', id), ROUND(RANDOM() * 1000, 2) FROM generate_series(1, 10000000) AS id;",
+    "SELECT COUNT(*) FROM user_card_info_hash_4;",
+    "COMMIT;"
+  ],
+  "key_bug_features": [
+    "select count(*) on uncommitted data causes excessive IO usage"
+  ]
+}

@@ -1,0 +1,10 @@
+CREATE TABLE temperature_data (value Float64, time DateTime);
+INSERT INTO temperature_data VALUES (10, '2020-01-01 00:00:00'), (12, '2020-01-01 01:00:00'), (14, '2020-01-01 02:00:00'), (16, '2020-01-01 03:00:00'), (18, '2020-01-01 04:00:00');
+SELECT exponentialMovingAverage(5)(value, toRelativeHourNum(time)) AS exp_smooth FROM temperature_data ORDER BY time ASC;
+SELECT time, value, exponentialMovingAverage(3)(value, intDiv(toUInt32(time), 3600)) AS exp_smooth FROM temperature_data WHERE value > 10 ORDER BY time ASC;
+WITH (SELECT count() FROM temperature_data) AS total_rows SELECT time, value, exponentialMovingAverage(5)(value, toRelativeHourNum(time)) AS exp_smooth FROM temperature_data WHERE total_rows > 3 ORDER BY time ASC;
+CREATE TABLE another_data (value Float64, time DateTime) ENGINE = Memory AS SELECT number AS value, toDateTime('2020-01-01') + (3600 * number) AS time FROM numbers(10);
+SELECT t1.time, t1.value, exponentialMovingAverage(4)(t1.value, toRelativeHourNum(t1.time)) AS exp_smooth FROM temperature_data t1 JOIN another_data t2 ON t1.time = t2.time WHERE t1.value + t2.value > 20 ORDER BY t1.time ASC;
+SELECT t.time, t.value, round(exponentialMovingAverage(10)(value, toRelativeHourNum(time)), 3) AS exp_smooth FROM (SELECT value, time FROM temperature_data UNION ALL SELECT value, time FROM another_data) t ORDER BY t.time;
+SELECT intDiv(toUInt32(time), 3600) AS timeunit, exponentialMovingAverage(1)(value, timeunit) AS exp_smooth FROM temperature_data GROUP BY timeunit ORDER BY timeunit;
+SELECT activation.time, activation.value, exponentialMovingAverage(5)(activation.value, toRelativeHourNum(activation.time)) AS exp_smooth FROM (SELECT value AS activated_value, time AS activation_time FROM temperature_data WHERE value > 15) AS activation;

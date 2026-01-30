@@ -1,0 +1,5 @@
+CREATE TABLE cache_test (cache_key varchar(512) NOT NULL, cache_value varchar(2048) NOT NULL, created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, expires integer DEFAULT -1, expired_at timestamp AS (CASE WHEN expires > 0 THEN updated_at + expires * INTERVAL '1' SECOND ELSE updated_at + INTERVAL '99' YEAR END) NOT NULL, PRIMARY KEY (cache_key), INDEX idx_created_at (created_at), INDEX idx_expired_at (expired_at));
+INSERT INTO cache_test (cache_key, cache_value, created_at, updated_at, expires) VALUES ('key1', '{"value": "data1"}', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 60);
+INSERT INTO cache_test (cache_key, cache_value, created_at, updated_at, expires) VALUES ('key2', '{"value": "data2"}', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, -1) ON CONFLICT (cache_key) DO UPDATE SET expires = 120;
+UPDATE cache_test SET updated_at = CURRENT_TIMESTAMP WHERE cache_key = 'key1';
+SELECT * FROM cache_test WHERE expires > 0 AND expired_at < CURRENT_TIMESTAMP;

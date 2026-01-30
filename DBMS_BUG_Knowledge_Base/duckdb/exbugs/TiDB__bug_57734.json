@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/57734",
+  "title": "Same query results are inconsistent on TiKV and TiFlash when using complex predicate",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n<!-- a step by step guide for reproducing the bug. -->\n##### It may require multiple executions of the query to reproduce.\nprepare data\n```sql\ndrop table if exists t0;\ndrop table if exists t1;\nCREATE TABLE t0(c0 TINYINT UNSIGNED ZEROFILL , c1 NUMERIC UNSIGNED ZEROFILL  AS ('U') STORED , c2 TEXT(286) )PARTITION BY HASH(c0) PARTITIONS 56;\nCREATE TABLE t1(c0 DOUBLE UNSIGNED ZEROFILL );\nALTER TABLE t0 ADD PRIMARY KEY(c0);\nALTER TABLE t0  ORDER BY c2 DESC, c0 DESC;\nINSERT INTO t1 VALUES (1.935430493E9);\nINSERT IGNORE  INTO t0(c0) VALUES (1291931716);\nALTER TABLE t0 SET TIFLASH REPLICA 1;\nALTER TABLE t1 SET TIFLASH REPLICA 1;\n```\nexecute query\n```sql\nSELECT /*+ read_from_storage(tikv[t0]) */  * FROM t0, t1 WHERE ((((true)OR(t0.c0)))NOT LIKE(((269385965)AND(t0.c0))));\n\nset @@tidb_enforce_mpp=1;\nSELECT /*+ read_from_storage(tiflash[t0]) */  * FROM t0, t1 WHERE ((((true)OR(t0.c0)))NOT LIKE(((269385965)AND(t0.c0))));\n```\n\n### 2. What did you expect to see? (Required)\nThe results of the two queries are equal.\n\n### 3. What did you see instead (Required)\nQuery1 result:\nempty\n\nQuery2 result:\n![Image](https://github.com/user-attachments/assets/be8308d2-c1cf-4131-98be-6a934d2be372)\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\nRelease Version: v8.4.0\nEdition: Community\nGit Commit Hash: https://github.com/pingcap/tidb/commit/1a9f0fa25580907d3266dc3edf000ba24379a600\nGit Branch: HEAD\nUTC Build Time: 2024-11-07 15:18:43\nGoVersion: go1.23.2\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv",
+  "date": "2024-11-26T12:57:34Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2(c0 INT, c1 FLOAT, c2 VARCHAR(255) NOT NULL, c3 DATE DEFAULT NULL);",
+    "INSERT INTO t2(c0, c1, c2) VALUES (1, 1.5, 'test');",
+    "CREATE TABLE t3(c0 BIGINT, c1 DECIMAL(10,2) NOT NULL, c2 TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t3(c0, c1) VALUES (9223372036854775807, 123.45);",
+    "SELECT * FROM t2 JOIN t3 ON t2.c0 = CAST(t3.c0 AS INT) WHERE t2.c1 IS NOT NULL AND t3.c2 IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Inconsistent query results between TiKV and TiFlash"
+  ]
+}

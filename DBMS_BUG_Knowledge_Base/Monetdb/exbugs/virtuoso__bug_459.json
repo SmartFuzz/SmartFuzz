@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/459",
+  "title": "SPARQL: FILTER bound with undefined",
+  "description": "select ?v1 ?v2 where\n{\n  values (?v1 ?v2)\n  {\n     (1 \"one\")\n     (2 \"two\")\n     (3 UNDEF)\n  }\n  FILTER (bound(?v2)).\n}\n\nreturns three rows instead of the expected two (the last row where ?v2 is unbound should not be included in the resultset, since it does not satisfy the filtering condition):\nv1  v2\n1   one\n2   two\n3\nHowever, the following query with the double negation produces the expected result:\nselect ?v1 ?v2 where\n{\n  values (?v1 ?v2)\n  {\n     (1 \"one\")\n     (2 \"two\")\n     (3 UNDEF)\n  }\n  FILTER (!!bound(?v2)).\n}\n\n\nv1  v2\n1   one\n2   two",
+  "date": "2015-08-13 17:48:40",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR(50), value INT);",
+    "INSERT INTO test_table (id, name, value) VALUES (1, 'one', 10), (2, 'two', 20), (3, NULL);",
+    "SELECT id, name FROM test_table WHERE value IS NOT NULL;",
+    "SELECT id, name FROM test_table WHERE NOT (value IS NULL);",
+    "SELECT id, name FROM test_table WHERE id IN (SELECT id FROM test_table WHERE value > 15);",
+    "SELECT id, name FROM test_table WHERE !!(value IS NULL);"
+  ],
+  "key_bug_features": [
+    "FILTER bound with undefined variable in SPARQL query"
+  ]
+}

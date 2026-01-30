@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/60368",
+  "title": "Inconsistent Results and Runtime Error When Querying a View with Different Projections in TiDB",
+  "description": "### 1. Minimal reproduce step (Required)\nThe following SQL statements create a table, insert sample data, and define a view:\n```\nCREATE TABLE `t1` (\n  `c1` int\n);\n\nINSERT INTO `t1` VALUES (1),(2);\n\nCREATE VIEW `v1` ( `c_1`, `c_2`, `c_3`, `c_4`, `c_5`, `c_6`) AS \n  SELECT \n        `ref_0`.`c1` AS `c_1`,\n        2 AS `c_2`,\n        3 AS `c_3`,\n        (NULL)!=((LAST_VALUE(22) OVER (PARTITION BY `ref_0`.`c1` ORDER BY `ref_0`.`c1`))) AS `c_4`,\n        5 AS `c_5`,\n        `ref_0`.`c1` AS `c_6` \n    FROM `t1` AS `ref_0` \n    ORDER BY `c_1`, `c_2`,`c_3`,`c_4`,`c_5`,`c_6` LIMIT 164 ;\n```\n\nThen, executing the following queries produces inconsistent and unexpected behavior:\nQuery 1: Selecting all columns from the view\n```\nselect\n  *\nfrom \n  v1 as ref_0\n```\nOutput:\n```\n+------+-----+-----+------+-----+------+\n| c_1  | c_2 | c_3 | c_4  | c_5 | c_6  |\n+------+-----+-----+------+-----+------+\n|    1 |   2 |   3 | NULL |   5 |    1 |\n|    2 |   2 |   3 | NULL |   5 |    2 |\n+------+-----+-----+------+-----+------+\n2 rows in set (0.00 sec)\n```\nQuery 2: Selecting specific columns (c_1, c_2, c_3, c_4) from the view\n```\nselect  \n  ref_0.c_1 as c_1,\n  ref_0.c_2 as c_2,\n  ref_0.c_3 as c_3,\n  ref_0.c_4 as c_4\nfrom \n  v1 as ref_0\n```\nUnexpected Output:\n```\n+------+-----+-----+------+\n| c_1  | c_2 | c_3 | c_4  |\n+------+-----+-----+------+\n|   22 |   2 |   3 | NULL |\n|   22 |   2 |   3 | NULL |\n+------+-----+-----+------+\n2 rows in set (0.00 sec)\n```\n\nQuery 3: Selecting only c_1 from the view\n```\nselect  \n  ref_0.c_1 as c_1\nfrom \n  v1 as ref_0\n```\n\nUnexpected Error:\n`ERROR 1105 (HY000): runtime error: index out of range [4] with length 2`\n\n### 2. What did you expect to see? (Required)\nThe results should be consistent regardless of the selected columns.\n\nThe second query should return the same c_1 values as the first query (1 and 2), not 22.\n\nThe third query should not cause a runtime error.\n\n### 3. What did you see instead (Required)\nThe second query produced an incorrect c_1 value (22 instead of 1 and 2).\n\nThe third query resulted in a runtime error: index out of range [4] with length 2.\n\n### 4. What is your TiDB version? (Required)\n8.0.11-TiDB\nmaster https://github.com/pingcap/tidb/commit/b6141ec589ed8e73176692dc982a210ad7cf070b\n\nGoVersion: go1.23.4\nRace Enabled: false\nCheck Table Before Drop: false\nStore: unistore |\n\n",
+  "date": "2025-04-02T08:44:51Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE `t2` ( `c1` int, `c2` varchar(10), `c3` float, `c4` datetime, `c5` boolean );",
+    "INSERT INTO `t2` VALUES (1, 'test1', 1.1, '2023-01-01 00:00:00', true), (2, 'test2', 2.2, '2023-01-02 00:00:00', false);",
+    "CREATE VIEW `v2` (`c_a`, `c_b`, `c_c`, `c_d`, `c_e`) AS SELECT `ref_1`.`c1` AS `c_a`, `ref_1`.`c2` AS `c_b`, `ref_1`.`c3` AS `c_c`, (NULL IS NOT NULL) AS `c_d`, `ref_1`.`c5` AS `c_e` FROM `t2` AS `ref_1`;",
+    "SELECT * FROM v2 AS ref_1;",
+    "SELECT ref_1.c_a, ref_1.c_b FROM v2 AS ref_1 WHERE ref_1.c_e = true;"
+  ],
+  "key_bug_features": [
+    "Querying view with different projections produces inconsistent results"
+  ]
+}

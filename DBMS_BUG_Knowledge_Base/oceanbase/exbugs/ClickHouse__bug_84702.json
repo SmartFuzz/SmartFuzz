@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/84702",
+  "title": "null pointer read with rabbitmq table integration",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nI attached a stack trace showing the crash, and I have not been able to repro it since.\nI was using `SET stream_like_engine_allow_direct_select = 1;` to test my first integratin with rabbitmq and `SELECT *` from the rabbitmq table seemingly caused the crash. If I find a way to repro it I will follow up.  (The stack trace suggested I report it)\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\n```\nSELECT version()\nQuery id: 4c3c263b-1d25-4ded-88d1-18e31dad9b32\n┌─version()─┐\n1. │ 25.6.5.41 │\n└───────────┘\n```\n```\n-- {\"stream\":\"!forceOrder@arr\",\"data\":{\"e\":\"forceOrder\",\"E\":1753838280592,\"o\":{\"s\":\"ETHUSDT\",\"S\":\"SELL\",\"o\":\"LIMIT\",\"f\":\"IOC\",\"q\":0.070,\"p\":3753.05,\"ap\":3767.66,\"X\":\"FILLED\",\"l\":0.038,\"z\":0.070,\"T\":1753838280589}}}\nCREATE TABLE cryptodb.rmq_force_orders_flat\n(\n`stream`          LowCardinality(String),\n`data.e`          LowCardinality(String),\n`data.E`          DateTime64(3, 'UTC'),\n`data.o.s`        LowCardinality(String),\n`data.o.S`        LowCardinality(String),\n`data.o.o`        LowCardinality(String),\n`data.o.f`        LowCardinality(String),\n`data.o.q`        Decimal(38,18),\n`data.o.p`        Decimal(38,18),\n`data.o.ap`       Decimal(38,18),\n`data.o.X`        LowCardinality(String),\n`data.o.l`        Decimal(38,18),\n`data.o.z`        Decimal(38,18),\n`data.o.T`        DateTime64(3, 'UTC')\n)\nENGINE = RabbitMQ\nSETTINGS\nrabbitmq_host_port        = 'host:5672',\nrabbitmq_exchange_name    = 'binance.forceorder',\nrabbitmq_routing_key_list = 'forceOrder.#',\nrabbitmq_format           = 'JSONEachRow',\ninput_format_import_nested_json = 1;\n```\n### Expected behavior\n_No response_\n### Error message and/or stacktrace\n```\n2025.07.30 06:06:59.535709 [ 3264392 ] {BgMBSchPool::ba97ca8a-1575-4ee2-9949-a2e234408123} <Error> StorageRabbitMQ (cryptodb.rmq_force_orders_flat): Consumer failed on channel 1_0_odwiyvejigqpjnkyvvhxhjnourhswjgu. Reason: connection lost\n2025.07.30 06:06:59.535772 [ 3264392 ] {BgMBSchPool::ba97ca8a-1575-4ee2-9949-a2e234408123} <Error> StorageRabbitMQ (cryptodb.rmq_force_orders_flat): Channel 1_0_odwiyvejigqpjnkyvvhxhjnourhswjgu received an error: connection lost (usable: false, connected: false)\n2025.07.30 06:06:59.535817 [ 3264392 ] {BgMBSchPool::ba97ca8a-1575-4ee2-9949-a2e234408123} <Error> StorageRabbitMQ (cryptodb.rmq_force_orders_flat): Library error report: connection lost\n2025.07.30 06:07:02.822626 [ 3266366 ] {} <Fatal> BaseDaemon: ########## Short fault info ############",
+  "date": "2025-07-30T06:32:07Z",
+  "vulnerable_version": "25.6.5.41",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE cryptodb.rmq_test_table (id INT UNSIGNED, name VARCHAR(255), created_at TIMESTAMP, amount DECIMAL(10, 2), is_active TINYINT) ENGINE = OBStore;",
+    "INSERT INTO cryptodb.rmq_test_table VALUES (1, 'Test1', CURRENT_TIMESTAMP, 100.50, 1);",
+    "INSERT INTO cryptodb.rmq_test_table VALUES (2, 'Test2', CURRENT_TIMESTAMP, NULL, 0);",
+    "SELECT * FROM cryptodb.rmq_test_table WHERE amount IS NULL OR is_active = 1;",
+    "SELECT id, name, amount + 1.00 AS updated_amount FROM cryptodb.rmq_test_table WHERE created_at > CURRENT_TIMESTAMP - INTERVAL '1' DAY;"
+  ],
+  "key_bug_features": [
+    "SELECT * from rabbitmq table causes null pointer read"
+  ]
+}

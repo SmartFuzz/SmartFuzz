@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/89691",
+  "title": "Logical error when reading part with granule smaller than index_granularity",
+  "description": "### Company or project name\nTencent.\n### Describe what's wrong\nWhen reading from a MergeTree table with parts whose granule contains fewer rows than index_granularity, ClickHouse may throw a LOGICAL_ERROR during query execution.\nThis happens when MergeTreeReaderIndex is used as the first reader in the ReadersChain.\nTwo corner cases have been observed:\n*  Single-granule part — The part has only one granule, and its total number of rows is less than index_granularity.\n*  Last granule smaller than index_granularity — The part’s final granule has fewer rows than index_granularity.\nIn both cases, MergeTreeReaderIndex incorrectly reports index_granularity rows, while the next reader in the chain reads the actual number of rows, causing an internal row count mismatch and a LOGICAL_ERROR during continueReadingChain.\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\n**Single-granule part**\n```\nSET use_skip_indexes_on_data_read=1;\nSET use_skip_indexes = 1;\nSET use_query_condition_cache=0;\nDROP TABLE IF EXISTS tab;\nCREATE TABLE tab\n(\n`i` Int64,\n`s` String,\nINDEX by_s s TYPE bloom_filter(0.001) GRANULARITY 1,\n)\nENGINE = MergeTree\nORDER BY i\nSETTINGS index_granularity = 4,index_granularity_bytes = 0, min_bytes_for_wide_part = 0;\ninsert into tab select 100, 'aaa';\nSELECT i FROM tab WHERE s = 'aaa';\n```\n**Last granule smaller than index_granularity**\n```\nSET use_skip_indexes_on_data_read=1;\nSET use_skip_indexes = 1;\nSET use_query_condition_cache=0;\nDROP TABLE IF EXISTS tab;\nCREATE TABLE tab\n(\n`i` Int64,\n`s` String,\nINDEX by_s s TYPE bloom_filter(0.001) GRANULARITY 1,\n)\nENGINE = MergeTree\nORDER BY i\nSETTINGS index_granularity = 4,index_granularity_bytes = 0, min_bytes_for_wide_part = 0;\nINSERT INTO tab SELECT number, toString(number) FROM numbers(6);\nSELECT i FROM tab WHERE s = '5';\n```\n### Expected behavior\n```Logical error: 'RangeReader read 2 rows, but 4 expected.'.```",
+  "date": "2025-11-07T02:35:18Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS test_table;",
+    "CREATE TABLE test_table (id INT, name VARCHAR(255), age TINYINT, score FLOAT, created_at DATETIME);",
+    "INSERT INTO test_table (id, name, age, score, created_at) VALUES (1, 'Alice', 25, 88.5, NOW()), (2, 'Bob', 30, 92.0, NOW());",
+    "INSERT INTO test_table (id, name, age, score, created_at) SELECT number, CAST(number AS CHAR), number % 100, number / 10.0, NOW() FROM (SELECT 0 AS number UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4);",
+    "SELECT id FROM test_table WHERE name = 'Bob' AND age < 30;"
+  ],
+  "key_bug_features": [
+    "Reading parts with granule smaller than index_granularity"
+  ]
+}

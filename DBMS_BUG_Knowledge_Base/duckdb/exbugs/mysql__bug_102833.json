@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=102833",
+  "title": "Fulltext index error  [ERROR] InnoDB: Duplicate FTS_DOC_ID value on table",
+  "description": "Creating a table then adding a fulltext index, insert some values and then add a virtual column causes the next insert to return to the screen:\r\n\r\nError Code: 1022. Can't write; duplicate key in table 'Test'\r\n\r\non the server it returns:\r\n[ERROR] InnoDB: Duplicate FTS_DOC_ID value on table `Test2`.`Test`\r\n[ERROR] Cannot find index FTS_DOC_ID_INDEX in InnoDB index translation table.\r\n[Warning] Found index FTS_DOC_ID_INDEX in InnoDB index list but not its MySQL index number. It could be an InnoDB internal index.\r\n\r\n...it seems that when the virtual column d is added the INNODB_FT_INDEX_CACHE is cleared and is never written too INNODB_FT_INDEX_TABLE. Then on the subsequent insert there is duplicate key causes the FTS_DOC_ID errors.\r\n\r\nThe following code will reproduce the error, if I run optimize table Test before the alter table it moves the Cache into the Table and all is fine.\r\n\r\nWhen I add another record and then yet another VIRTUAL column it happens again.\r\n\r\nThe only workaround now is to run OPTIMIZE TABLE whenever a new VIRTUAL column is added.\nHow to repeat:\nDROP DATABASE IF EXISTS FTSBug;\r\nCREATE SCHEMA FTSBug DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;\r\n\r\nUSE FTSBug;\r\n\r\nDROP TABLE IF EXISTS `Test`;\r\n\r\nCREATE TABLE `Test` (\r\n  f21 varchar(16) GENERATED ALWAYS AS ('') VIRTUAL,\r\n  f22 varchar(16) GENERATED ALWAYS AS ('') VIRTUAL,\r\n  f20 text,\r\n  KEY `IX_Test_r3` (`f22`)\r\n) ENGINE=InnoDB;\r\n\r\nINSERT INTO Test (f20) VALUES(null);\r\n\r\nCREATE FULLTEXT INDEX IX_DocTract_Test_f20 ON Test(f20);\r\n\r\nINSERT INTO Test (f20) VALUES('one');\r\nINSERT INTO Test (f20) VALUES('two');\r\n\r\nALTER TABLE `Test` ADD COLUMN d varchar(128) GENERATED ALWAYS AS ('hi') VIRTUAL NULL;\r\n\r\nINSERT INTO Test (f20) VALUES('three');\nSuggested fix:\nDon't clear the INNODB_FT_INDEX_CACHE table when adding a VIRTUAL column.\r\n\r\nIf I add a column that is STORED vs VIRTUAL then all works fine and it seems that MYSQL moves the INNODB_FT_INDEX_TABLE entries into the INNODB_FT_INDEX_CACHE so all works fine.",
+  "date": "2021-03-05 18:04:00",
+  "vulnerable_version": "5.7.33",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "DROP SCHEMA IF EXISTS FTSBug;",
+    "CREATE SCHEMA FTSBug;",
+    "CREATE TABLE Test (id INTEGER PRIMARY KEY AUTOINCREMENT, f21 VARCHAR(16), f22 VARCHAR(16), f20 TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO Test (f20) VALUES(NULL), ('one'), ('two');",
+    "ALTER TABLE Test ADD COLUMN d VARCHAR(128);"
+  ],
+  "key_bug_features": [
+    "Adding a virtual column clears INNODB_FT_INDEX_CACHE"
+  ]
+}

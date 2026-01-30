@@ -1,0 +1,16 @@
+{
+    "function": "arrayPushFront",
+    "operator": "(x1, x2, ...)",
+    "sql_array": [
+        "CREATE TABLE test_arrays (id UInt32, arr Array(String), num_arr Array(Int32)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_arrays VALUES (1, ['x', 'y'], [1, 2]), (2, ['a', 'b'], [10, NULL]), (3, [NULL], [INT32_MAX]);",
+        "SELECT id, arrayPushFront(arr, 'start') AS new_arr FROM test_arrays WHERE num_arr[1] IS NOT NULL;",
+        "SELECT id, arrayPushFront(arr, (SELECT concat(arr[1], ' appended') FROM test_arrays WHERE id = 1)) AS new_arr FROM test_arrays;",
+        "SELECT id, arrayPushFront(arr, (SELECT [1, 2, NULL][1] + 5)) AS new_arr FROM test_arrays WHERE arr[2] IS NOT NULL;",
+        "SELECT id, arrayPushFront(arr, arrayJoin(num_arr)) AS new_arr FROM test_arrays GROUP BY id HAVING length(arr) > 1;",
+        "SELECT arrayPushFront(['data', arrayJoin(num_arr)], (SELECT max(arr[1]) FROM test_arrays)) AS combined_data FROM test_arrays;",
+        "SELECT id, (SELECT sum(num_arr) FROM test_arrays WHERE id = t.id) AS sum_num FROM test_arrays AS t GROUP BY id HAVING sum_num > 5;",
+        "SELECT arrayPushFront(arr, 'NULL') AS new_arr FROM test_arrays WHERE arr[1] IS NULL OR arrayLength(num_arr) = 0;",
+        "SELECT id, arrayPushFront(arr, (SELECT min(num_arr) FROM test_arrays WHERE id > t.id)) AS new_arr FROM test_arrays AS t ORDER BY id DESC;"
+    ]
+}

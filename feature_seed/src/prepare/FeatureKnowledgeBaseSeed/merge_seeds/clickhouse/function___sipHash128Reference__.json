@@ -1,0 +1,17 @@
+CREATE TABLE test_hash (input String);
+INSERT INTO test_hash VALUES ('foo'), ('bar'), ('baz');
+SELECT hex(sipHash128Reference(input)) FROM test_hash;
+SELECT hex(sipHash128Reference(CONCAT(input, '\x01', CAST(3 AS String)))) FROM test_hash;
+SELECT hex(sipHash128Reference('test', '\x00', 0));
+SELECT hex(sipHash128Reference('max_param', '\xFF', 255));
+SELECT hex(sipHash128Reference('empty', '\x01', 1)), hex(sipHash128Reference(NULL));
+SELECT a.input, hex(sipHash128Reference(a.input)) FROM (SELECT input FROM test_hash) AS a;
+WITH 'foo' AS param1, '\x01' AS param2, 3 AS param3 SELECT hex(sipHash128Reference(param1, param2, param3));
+CREATE TABLE hash_results AS SELECT input, hex(sipHash128Reference(input)) AS hash_value FROM test_hash;
+SELECT COUNT(*), hex(sipHash128Reference(CONCAT(input, 'test'))) FROM test_hash GROUP BY input;
+SELECT hex(sipHash128Reference(input)), hex(sipHash128Reference('test' || input)) FROM (SELECT input FROM test_hash) AS subquery;
+CREATE TABLE test_join (id UInt32, fname String);
+INSERT INTO test_join VALUES (1, 'foo'), (2, 'bar');
+SELECT hex(sipHash128Reference(j.fname, '\x01', 1)), h.hash_value FROM test_join AS j JOIN (SELECT input, hex(sipHash128Reference(input)) AS hash_value FROM test_hash) AS h ON j.fname = h.input;
+WITH (SELECT hex(sipHash128Reference(input)) FROM test_hash) AS subquery SELECT input, subquery FROM test_hash;
+SELECT hex(sipHash128Reference(CONCAT(input, input, 'test'))) FROM test_hash WHERE input LIKE 'b%';

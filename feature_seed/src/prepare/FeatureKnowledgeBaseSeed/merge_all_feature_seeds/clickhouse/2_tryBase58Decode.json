@@ -1,0 +1,10 @@
+CREATE TABLE test_base58 (id UInt32, encoded_string String, value String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_base58 VALUES (1, '3dc8KtHrwM', tryBase58Decode('3dc8KtHrwM')), (2, 'invalid', tryBase58Decode('invalid'));
+SELECT id, encoded_string, value, tryBase58Decode(encoded_string) as decoded_value FROM test_base58 WHERE decoded_value != '' AND id != 2;
+SELECT id, encoded_string, value FROM test_base58 WHERE value != '' OR (tryBase58Decode(encoded_string) != '');
+SELECT id, COUNT(*) as count FROM (SELECT id, value, tryBase58Decode(encoded_string) as decoded_value FROM test_base58 WHERE value != '') GROUP BY id HAVING count != 0;
+CREATE TABLE test_join (id UInt32, foreign_id UInt32, some_value String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_join VALUES (1, 1, '3dc8KtHrwM'), (2, 1, 'invalid'), (3, 2, '7B3c7723J'), (4, 3, '3'), (5, 2, 'invalid2');
+SELECT b.id, tryBase58Decode(b.some_value) as decoded_value FROM test_join b JOIN test_base58 a ON a.id = b.foreign_id AND tryBase58Decode(a.encoded_string) != '' WHERE decoded_value != '';
+WITH (SELECT AVG(length) FROM (SELECT length(tryBase58Decode(encoded_string)) AS length FROM test_base58 WHERE value != '')) AS avg_length SELECT id, value, tryBase58Decode(encoded_string) AS decoded_value FROM test_base58 WHERE length(decoded_value) > avg_length;
+SELECT id, encoded_string, (tryBase58Decode(encoded_string) != '') AS is_valid FROM test_base58 WHERE encoded_string != '';

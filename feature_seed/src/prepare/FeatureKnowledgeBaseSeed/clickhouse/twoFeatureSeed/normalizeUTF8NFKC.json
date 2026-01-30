@@ -1,0 +1,16 @@
+{
+    "function": "normalizeUTF8NFKC",
+    "operator": "a = ANY (subquery)",
+    "sql_array": [
+        "CREATE TABLE fuzz_test (id UInt32, utf8_string String, numeric_value Float64, nullable_string Nullable(String));",
+        "INSERT INTO fuzz_test VALUES (1, '\u00e2', 123.456, NULL), (2, '', 0.0, 'test'), (3, 'hello', -9876.543, 'NULL'), (4, '\u2135\ud835\udd04\ud835\udd01', 3.14159, NULL);",
+        "SELECT id, normalizeUTF8NFKC(utf8_string) AS normalized, length(normalizeUTF8NFKC(utf8_string)) AS norm_len FROM fuzz_test WHERE numeric_value = ANY (SELECT numeric_value FROM fuzz_test WHERE utf8_string = '');",
+        "SELECT id, MAX(length(utf8_string)) AS max_length FROM fuzz_test GROUP BY id HAVING max_length > 0 AND max_length = ANY (SELECT length(normalizeUTF8NFKC(utf8_string)) FROM fuzz_test WHERE numeric_value < 0);",
+        "SELECT id, normalizeUTF8NFKC(utf8_string) AS nfkc, numeric_value FROM fuzz_test WHERE utf8_string = ANY (SELECT utf8_string FROM fuzz_test WHERE numeric_value = 123.456) ORDER BY nfkc;",
+        "SELECT COUNT(*) FROM fuzz_test WHERE normalizeUTF8NFKC(utf8_string) IS NOT NULL;",
+        "CREATE TABLE temp_test AS SELECT id, normalizeUTF8NFKC(utf8_string) AS norma_str FROM fuzz_test;",
+        "INSERT INTO temp_test SELECT id, 'test' FROM fuzz_test WHERE utf8_string IS NULL OR utf8_string = ANY (SELECT utf8_string FROM fuzz_test WHERE numeric_value > 0);",
+        "SELECT a.id, b.utf8_string FROM fuzz_test AS a JOIN temp_test AS b ON a.id = b.id WHERE b.norma_str = ANY (SELECT normalizeUTF8NFKC(utf8_string) FROM fuzz_test);",
+        "SELECT COUNT(*) FROM fuzz_test WHERE numeric_value = ANY (SELECT numeric_value FROM fuzz_test WHERE utf8_string = normalizeUTF8NFKC('testing'));"
+    ]
+}

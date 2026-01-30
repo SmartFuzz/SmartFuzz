@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/d52a29a9e6",
+  "title": "Unexpected affinity conversion in view",
+  "description": "mrigger added on 2019-08-05 11:27:47:\nConsider the following test case:\nCREATE TABLE t0(c0, c1 TEXT);\nCREATE VIEW v0(c0) AS SELECT SUM(t0.c1) FROM t0;\nINSERT INTO t0(c0, c1) VALUES ('a', 1);\nSELECT * FROM v0, t0 WHERE t0.c1 <= v0.c0; -- unexpected: row is not fetched\nUnexpectedly, the WHERE clause yields false. t0.c1 has TEXT affinity. v0.c0 refers to SUM(t0.c1) and should have no affinity. This can also be verified using the following PRAGMA:\nPRAGMA table_info(v0); -- 0|c0||0||0\nThus, I would expect that v0.c0 is converted to TEXT. However, in this case, the row should have been fetched:\nSELECT * FROM v0, t0 WHERE t0.c1 <= CAST(v0.c0 AS TEXT); -- 1|a|1\ndrh added on 2019-08-05 13:06:14:\nDocumentation changed [1] to\nreflect the actual behavior of the code for the past 10 years.  Current behavior\nwas established in 2009 by check-in\n[33cf83591e6e1387] but the\ndocumentation was 8 years later in 2017 at \n[524ba450fb959a75].\nChanging the code to match the documentation risk breaking programs that\nare already in the field.  Hence, it is better to change the documentation\nto match the code.\ndrh added on 2019-08-05 20:41:11:\nChange of plan:  We will now go back and change the implementation to match\nthe documentation.",
+  "date": "2019-08-05 11:27:476.02 years ago",
+  "vulnerable_version": "3.29.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(c0 Int32, c1 String, c2 Float64);",
+    "INSERT INTO t1(c0, c1, c2) VALUES (1, '10', 10.5);",
+    "CREATE VIEW v1 AS SELECT SUM(t1.c2) AS c0 FROM t1 WHERE t1.c0 > 0;",
+    "SELECT * FROM v1, t1 WHERE t1.c1 <= v1.c0;",
+    "SELECT * FROM v1, t1 WHERE t1.c1 <= CAST(v1.c0 AS String);"
+  ],
+  "key_bug_features": [
+    "Unexpected affinity conversion in view query execution"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+    "function": "histogram",
+    "operator": "a NOT BETWEEN b AND c",
+    "sql_array": [
+        "CREATE TABLE test_histogram (id UInt32, value Nullable(Int32));",
+        "INSERT INTO test_histogram VALUES (1, 5), (2, NULL), (3, 10), (4, 15), (5, 10), (6, 20);",
+        "SELECT histogram(5)(value + (CASE WHEN value IS NULL THEN 0 ELSE value END)) AS hist FROM test_histogram WHERE value NOT BETWEEN 1 AND 20;",
+        "CREATE TABLE test_join (id UInt32, score Int32);",
+        "INSERT INTO test_join VALUES (1, 100), (2, NULL), (3, 200), (4, 150);",
+        "SELECT j.id, histogram(3)(j.score) AS hist FROM test_join j JOIN test_histogram h ON h.id NOT BETWEEN j.score - 10 AND j.score + 10 GROUP BY j.id;",
+        "CREATE TABLE test_edge_cases (value String);",
+        "INSERT INTO test_edge_cases VALUES ('1'), ('10'), ('100'), ('-10'), ('NULL'), ('');",
+        "SELECT histogram(4)(CAST(value AS Int32)) AS hist FROM test_edge_cases WHERE CAST(value AS Nullable(Int32)) NOT BETWEEN 0 AND 50;",
+        "SELECT h.height, bar(h.height, 0, 10, 5) AS bar FROM (SELECT histogram(5)(value) AS hist FROM (SELECT value, id FROM test_histogram WHERE id NOT BETWEEN 1 AND 3) AS subquery) AS h;",
+        "CREATE TABLE test_nulls (id UInt32, score Nullable(Int32));",
+        "INSERT INTO test_nulls VALUES (1, NULL), (2, 5), (3, NULL), (4, 10);",
+        "SELECT histogram(2)(IFNULL(score, 0)) AS hist FROM test_nulls WHERE score NOT BETWEEN -5 AND 10;"
+    ]
+}

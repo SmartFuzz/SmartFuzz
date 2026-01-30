@@ -1,0 +1,10 @@
+CREATE TABLE db_name.time_series_table (event_time DateTime, metric_value Float64) ENGINE=TimeSeries METRICS metrics_table;
+INSERT INTO db_name.time_series_table VALUES (now(), 1.5), (now() - INTERVAL 1 DAY, 2.0), (now() - INTERVAL 2 DAY, NULL), (now() - INTERVAL 3 DAY, 0.0);
+SELECT * FROM timeSeriesMetrics(db_name.time_series_table) WHERE event_time IN (SELECT event_time FROM db_name.time_series_table WHERE metric_value > 1.0);
+SELECT event_time, AVG(metric_value) FROM db_name.time_series_table WHERE metric_value IN (SELECT metric_value FROM db_name.time_series_table WHERE metric_value IS NOT NULL GROUP BY event_time HAVING COUNT(metric_value) > 1) GROUP BY event_time;
+SELECT event_time, COUNT(*) FROM (SELECT event_time, metric_value FROM db_name.time_series_table WHERE metric_value IN (1.5, NULL)) GROUP BY event_time HAVING COUNT(metric_value) > 0;
+CREATE TABLE db_name.metrics_data (time_id DateTime, error_rate Float32) ENGINE=MergeTree() ORDER BY time_id;
+INSERT INTO db_name.metrics_data VALUES (now(), 0.05), (now() - INTERVAL 1 HOUR, NULL), (now() - INTERVAL 2 HOUR, 0.15);
+SELECT time_id, SUM(error_rate) FROM db_name.metrics_data WHERE time_id IN (SELECT event_time FROM timeSeriesMetrics('db_name.time_series_table')) GROUP BY time_id HAVING SUM(error_rate) < 1.0;
+SELECT * FROM db_name.time_series_table WHERE event_time IN (SELECT DISTINCT event_time FROM (SELECT event_time, metric_value FROM db_name.time_series_table WHERE metric_value IS NOT NULL)) ORDER BY event_time DESC;
+SELECT time_id, COUNT(*) FROM (SELECT time_id FROM db_name.metrics_data WHERE error_rate = 0.05 OR error_rate IS NULL) GROUP BY time_id HAVING COUNT(time_id) > 1;

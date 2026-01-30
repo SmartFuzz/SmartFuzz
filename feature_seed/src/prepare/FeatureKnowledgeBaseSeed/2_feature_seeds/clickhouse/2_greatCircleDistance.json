@@ -1,0 +1,11 @@
+CREATE TABLE geo_test (id UInt32, lon1 Float64, lat1 Float64, lon2 Float64, lat2 Float64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO geo_test VALUES (1, 55.755831, 37.617673, -55.755831, -37.617673);
+INSERT INTO geo_test VALUES (2, 180, 90, -180, -90);
+INSERT INTO geo_test VALUES (3, -200, 100, 200, -100);
+SELECT greatCircleDistance(lon1, lat1, lon2, lat2) AS distance, (SELECT COUNT(*) FROM geo_test) AS total_count FROM geo_test WHERE greatCircleDistance(lon1, lat1, lon2, lat2) > 0;
+SELECT id, greatCircleDistance(lon1, lat1, lon2, lat2) AS distance FROM geo_test WHERE (lon1 >= -180 AND lon1 <= 180) AND (lat1 >= -90 AND lat1 <= 90) AND (lon2 IS NOT NULL AND lat2 IS NOT NULL) AND greatCircleDistance(lon1, lat1, lon2, lat2) AND greatCircleDistance(0, 0, lon1, lat1) > 0;
+SELECT id, greatCircleDistance(NULL, lat1, lon2, lat2) AS null_distance FROM geo_test WHERE greatCircleDistance(lon1, lat1, lon2, lat2) IS NOT NULL;
+SELECT greatCircleDistance(lon1, lat1, lon2, lat2) AS distance FROM geo_test WHERE (lon1 != 0 OR lon2 != 0) AND (SELECT COUNT(*) FROM geo_test WHERE id > 0) > 0 AND greatCircleDistance(lon1, lat1, lon2, lat2) BETWEEN 0 AND 20075000;
+SELECT SUM(greatCircleDistance(lon1, lat1, lon2, lat2)) AS total_distance FROM geo_test GROUP BY lat1 HAVING total_distance > 0;
+CREATE TEMPORARY TABLE temp_geo AS SELECT lon1, lat1, lon2, lat2 FROM geo_test WHERE greatCircleDistance(lon1, lat1, lon2, lat2) IS NOT NULL;
+SELECT greatCircleDistance(lon1, lat1, lon2, lat2) AS distance, COUNT(*) AS occurrences FROM temp_geo GROUP BY distance HAVING occurrences > 1 AND distance > 100000;

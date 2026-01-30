@@ -1,0 +1,25 @@
+{
+    "function": "arrayPartialReverseSort([func,] limit, arr, ...)",
+    "operator": "s1 || s2",
+    "sql_array": [
+        "CREATE TABLE test_arrays (id UInt32, values Array(Int32));",
+        "INSERT INTO test_arrays VALUES (1, [5, 3, 8, 1, 4]), (2, [7, 6, 2]), (3, []);",
+        "SELECT id, arrayPartialReverseSort(2, values) AS sorted_values FROM test_arrays;",
+        "SELECT id, arrayPartialReverseSort(2, values || [10, 12, 9]) AS sorted_concat FROM test_arrays;",
+        "CREATE TABLE test_numbers (id UInt32, number_field Float64);",
+        "INSERT INTO test_numbers VALUES (1, 1.1), (2, 2.2), (3, NULL);",
+        "SELECT a.id, arrayPartialReverseSort(2, arrayMap(x -> toInt32(x), values)) || toString(b.number_field) AS combined FROM test_arrays AS a JOIN test_numbers AS b ON a.id = b.id;",
+        "SELECT a.id, arrayPartialReverseSort(2, values) AS sorted_vals FROM test_arrays AS a WHERE a.id IN (SELECT id FROM test_numbers WHERE number_field IS NOT NULL);",
+        "SELECT a.id, arrayPartialReverseSort(2, (SELECT values FROM test_arrays WHERE id = a.id)) AS sorted_subquery FROM test_arrays AS a;",
+        "SELECT id, arrayPartialReverseSort(2, values) AS partial_sorted FROM test_arrays GROUP BY id HAVING length(values) > 0;",
+        "CREATE TABLE test_strings (id UInt32, str_field String);",
+        "INSERT INTO test_strings VALUES (1, 'hello'), (2, NULL), (3, 'world');",
+        "SELECT a.id, arrayPartialReverseSort(2, arrayMap(x -> length(x), [str_field || 's']), 2) AS length_sorted FROM test_strings AS a;",
+        "SELECT a.id, arrayPartialReverseSort(2, values || arrayMap(x -> x * 2, (SELECT number_field FROM test_numbers WHERE id = a.id))) AS combined_reversed FROM test_arrays AS a;",
+        "SELECT a.id, arrayPartialReverseSort(2, values) || (SELECT min(number_field) FROM test_numbers WHERE id = a.id) AS sorted_min FROM test_arrays AS a;",
+        "SELECT id, arrayPartialReverseSort(1, arrayConcat(values, [NULL])) AS single_sorted_nullable FROM test_arrays;",
+        "CREATE TABLE temp_table AS SELECT * FROM test_numbers WHERE number_field IS NOT NULL;",
+        "INSERT INTO temp_table VALUES (4, 3.3);",
+        "SELECT arrayPartialReverseSort(2, arrayMap(x -> x || ' appended', [toString(b.str_field) FROM test_strings AS b])) AS appended_sort FROM temp_table;"
+    ]
+}

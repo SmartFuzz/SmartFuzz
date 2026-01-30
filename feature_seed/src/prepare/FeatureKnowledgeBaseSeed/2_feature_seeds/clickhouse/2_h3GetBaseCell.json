@@ -1,0 +1,11 @@
+CREATE TABLE geo_data (index UInt64, name String) ENGINE = MergeTree() ORDER BY index;
+INSERT INTO geo_data VALUES (612916788725809151, 'Test Hexagon 1'), (612916788725809152, 'Test Hexagon 2'), (612916788725809153, 'Test Hexagon 3');
+SELECT h3GetBaseCell(index) AS base_cell, name FROM geo_data WHERE h3GetBaseCell(index) ILIKE '1';
+SELECT name, h3GetBaseCell(index) AS base_cell FROM geo_data WHERE (h3GetBaseCell(index) ILIKE '2' OR h3GetBaseCell(index) ILIKE '3');
+SELECT AVG(h3GetBaseCell(index)) AS average_base_cell FROM geo_data GROUP BY name HAVING AVG(h3GetBaseCell(index)) > 1;
+CREATE TABLE test_data (id UInt8, data String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_data VALUES (1, 'example'), (2, 'test'), (3, NULL);
+SELECT h3GetBaseCell(index) AS base_cell FROM geo_data WHERE index IN (SELECT id FROM test_data WHERE data ILIKE 'e%');
+SELECT name, h3GetBaseCell(index) AS base_cell, CASE WHEN h3GetBaseCell(index) IS NULL THEN 'null_case' ELSE 'normal' END AS case_type FROM geo_data WHERE h3GetBaseCell(index) ILIKE '1' AND h3GetBaseCell(index) IS NOT NULL;
+SELECT base_cell FROM (SELECT h3GetBaseCell(index) AS base_cell, index FROM geo_data) AS sub WHERE base_cell > 0 ORDER BY base_cell DESC LIMIT 5;
+WITH (SELECT h3GetBaseCell(index) AS base_cell FROM geo_data WHERE h3GetBaseCell(index) ILIKE 'none') AS temp_base_cells SELECT DISTINCT temp_base_cells.base_cell FROM temp_base_cells HAVING temp_base_cells.base_cell IS NOT NULL;

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/13428",
+  "title": "I deleted SEQUENCE from default value of the table but i can't CREATE OR REPLACE SEQUENCE",
+  "description": "### What happens?\n\nHi,\r\n\r\nI have created a sequence and used it as the default value of a column in a table. I want to manually add data to the relevant column in this table and then set the start value of the sequence.\r\n\r\nThe error message: Dependency Error: Cannot drop entry \"seq_personid\" because there are entries that depend on it.\r\ntable \"Persons\" depends on index \"seq_personid\".\r\nUse DROP...CASCADE to drop all dependents.\r\n\r\nI added the sql.\n\n### To Reproduce\n\n```\r\nCREATE SEQUENCE if not exists seq_personid START 1;\r\n\r\nCREATE TABLE if not exists Persons (\r\n    id integer default nextval('seq_personid'),\r\n    name varchar(255) not null\r\n);\r\n\r\ninsert into Persons (name) values('a001');\r\ninsert into Persons (id, name) values(2, 'a002');\r\n\r\nALTER TABLE Persons ALTER COLUMN id SET default 0;\r\n\r\nCREATE or REPLACE SEQUENCE seq_personid START 3;\r\n--Dependency Error: Cannot drop entry \"seq_personid\" because there are entries that depend on it.\r\n--table \"Persons\" depends on index \"seq_personid\".\r\n--Use DROP...CASCADE to drop all dependents.\r\n\r\nALTER TABLE Persons ALTER COLUMN id SET default nextval('seq_personid');\r\n\r\ninsert into Persons (name) values('a003');\r\ninsert into Persons (name) values('a004');\r\n\r\nselect * from persons;\r\n```\n\n### OS:\n\nWindows 11\n\n### DuckDB Version:\n\nv1.0.0\n\n### DuckDB Client:\n\n.NET nuget  and   https://shell.duckdb.org/\n\n### Full Name:\n\nSerdar Didan\n\n### Affiliation:\n\n-\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a stable release\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [X] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [X] Yes, I have",
+  "date": "2024-08-15 03:58:05",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE SEQUENCE seq_orderid START WITH 1;",
+    "CREATE TABLE Orders (order_id integer DEFAULT nextval('seq_orderid'), product_name varchar(255) NOT NULL, quantity integer CHECK (quantity > 0));",
+    "INSERT INTO Orders (product_name, quantity) VALUES ('Product A', 10);",
+    "INSERT INTO Orders (order_id, product_name, quantity) VALUES (2, 'Product B', 5);",
+    "ALTER TABLE Orders ALTER COLUMN order_id SET DEFAULT nextval('seq_orderid');"
+  ],
+  "key_bug_features": [
+    "Cannot recreate sequence due to dependency on table entries."
+  ]
+}

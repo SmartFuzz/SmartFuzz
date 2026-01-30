@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id INTEGER, event_time TIMESTAMP, value FLOAT);
+INSERT INTO test_data VALUES (1, TIMESTAMP '2023-01-01 00:00:00', 5.0), (2, TIMESTAMP '2023-01-02 00:00:00', NULL), (3, TIMESTAMP '-infinity', 10.0), (4, TIMESTAMP 'infinity', 15.0);
+SELECT id, event_time, value, isinf(event_time) AS is_infinite FROM test_data WHERE value / NULLIF(value, 0) IS NOT NULL;
+SELECT id, event_time, value, isinf(event_time) AS is_infinite FROM (SELECT id, event_time, value / 2.0 AS adjusted_value FROM test_data) subquery WHERE adjusted_value > 2.5;
+SELECT id, event_time, value / (SELECT COUNT(*) FROM test_data WHERE value IS NOT NULL) AS result FROM test_data GROUP BY id, event_time HAVING isinf(event_time) = TRUE;
+SELECT id, CASE WHEN value IS NULL THEN 'NULL' ELSE 'NOT NULL' END AS value_status, isinf(event_time) AS is_infinite FROM (SELECT id, event_time, value / 0.01 AS scaled_value FROM test_data) AS inner_query;
+SELECT AVG(value) AS avg_value, COUNT(*) AS total_count FROM (SELECT id, value / 3.0 AS divided_value, event_time FROM test_data WHERE isinf(event_time) = FALSE) AS values_query;
+INSERT INTO test_data SELECT id + 10, event_time, value / 2 FROM test_data WHERE isinf(event_time) = TRUE;
+SELECT t1.id, t2.value AS other_value, isinf(t1.event_time) AS t1_infinite, t1.value / NULLIF(t2.value, 0) AS would_be_infinite FROM test_data AS t1 JOIN test_data AS t2 ON t1.id = t2.id + 1 WHERE isinf(t2.event_time);
+CREATE TEMPORARY TABLE temp_summary AS SELECT id, COUNT(*) / NULLIF(COUNT(value), 0) AS value_ratio, isinf(event_time) AS infinite_time FROM test_data GROUP BY id;

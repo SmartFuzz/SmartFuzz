@@ -1,0 +1,10 @@
+CREATE TABLE time_series (value Float64, time DateTime) ENGINE = MergeTree() ORDER BY time;
+INSERT INTO time_series VALUES (1.0, '2023-10-01 00:00:00'), (0.5, '2023-10-01 01:00:00'), (0.2, '2023-10-01 02:00:00'), (0.3, '2023-10-01 03:00:00'), (0.7, '2023-10-01 04:00:00');
+SELECT time, value, exponentialTimeDecayedAvg(1)(value, time) AS exp_smooth FROM time_series ORDER BY time;
+SELECT t1.time, t1.value, exponentialTimeDecayedAvg(5)(t1.value, t1.time) OVER (ORDER BY t1.time ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS exp_smooth FROM time_series AS t1;
+WITH (SELECT AVG(value) FROM time_series WHERE value < 1) AS avg_value SELECT time, value, exponentialTimeDecayedAvg(10)(value, time) AS exp_smooth FROM time_series WHERE value > avg_value;
+CREATE TABLE additional_series (value Float64, time DateTime) ENGINE = MergeTree() ORDER BY time;
+INSERT INTO additional_series VALUES (1.2, '2023-10-01 00:00:00'), (2.4, '2023-10-01 01:00:00'), (1.8, '2023-10-01 02:00:00');
+SELECT t1.time, t1.value, t2.value, exponentialTimeDecayedAvg(2)(t1.value + t2.value, t1.time) AS exp_smooth FROM time_series AS t1 JOIN additional_series AS t2 ON t1.time = t2.time;
+SELECT time, value, exponentialTimeDecayedAvg(3)(value, time) OVER (ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) AS exp_smooth FROM time_series WHERE time >= '2023-10-01 01:00:00';
+SELECT time, value, exponentialTimeDecayedAvg(7)(value, time) AS exp_smooth FROM (SELECT value, time FROM time_series WHERE value > 0.1) ORDER BY time DESC;

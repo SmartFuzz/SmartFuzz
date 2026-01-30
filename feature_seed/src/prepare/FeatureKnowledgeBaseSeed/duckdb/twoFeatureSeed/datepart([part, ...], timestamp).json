@@ -1,0 +1,18 @@
+{
+    "function": "datepart([part, ...], timestamp)",
+    "operator": "|",
+    "sql_array": [
+        "CREATE TABLE test_data (id INTEGER PRIMARY KEY, timestamp_col TIMESTAMP, numeric_col INTEGER);",
+        "INSERT INTO test_data VALUES (1, TIMESTAMP '2022-03-10 14:30:00', 5), (2, TIMESTAMP '2021-06-15 09:00:00', 10), (3, NULL, 15);",
+        "SELECT datepart(['year', 'month', 'day'], timestamp_col) AS date_parts, numeric_col | 2 AS modified_numeric FROM test_data WHERE numeric_col IS NOT NULL;",
+        "CREATE TABLE additional_data (ref_id INTEGER, value_col INTEGER, FOREIGN KEY (ref_id) REFERENCES test_data(id));",
+        "INSERT INTO additional_data VALUES (1, 8), (2, NULL), (3, 3);",
+        "SELECT d.date_parts, a.value_col | 1 AS modified_value FROM (SELECT datepart(['year', 'month'], timestamp_col) AS date_parts, id FROM test_data WHERE timestamp_col IS NOT NULL) d LEFT JOIN additional_data a ON d.id = a.ref_id WHERE a.value_col IS NOT NULL;",
+        "SELECT SUM(numeric_col) | (SELECT COUNT(*) FROM additional_data) AS combined_result FROM test_data WHERE numeric_col IS NOT NULL;",
+        "SELECT datepart(['year'], timestamp_col) AS year_count, COUNT(*) FROM test_data GROUP BY year_count HAVING year_count | 1 > 2020;",
+        "SELECT d.date_parts, a.value_col | d.numeric_col AS combined_value FROM (SELECT datepart(['year', 'month', 'day'], timestamp_col) AS date_parts, numeric_col FROM test_data) d JOIN additional_data a ON a.ref_id = d.id;",
+        "SELECT datepart(['month'], timestamp_col) AS month_value, (NULLIF(numeric_col, 0) | 2) AS safe_numeric FROM test_data WHERE EXISTS (SELECT * FROM additional_data WHERE additional_data.ref_id = test_data.id);",
+        "SELECT datepart(['day'], timestamp_col) AS day_value, COALESCE((valid_col | 3), 0) FROM (SELECT numeric_col AS valid_col FROM test_data) WHERE valid_col IS NOT NULL AND day_value | 1 > 15;",
+        "SELECT DISTINCT d.date_parts, MIN(numeric_col | 4) OVER (PARTITION BY date_parts) AS min_modified FROM (SELECT datepart(['year', 'month'], timestamp_col) AS date_parts, numeric_col FROM test_data WHERE timestamp_col IS NOT NULL) d;"
+    ]
+}

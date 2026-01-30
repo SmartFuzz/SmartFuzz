@@ -1,0 +1,26 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/52622",
+  "title": "Duplicate entry error with @@auto_increment_increment and @@auto_increment_offset when using AUTO_ID_CACHE=1",
+  "vulnerable_database": "tidb",
+  "date": "2024-04-15T15:47:00Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n1. setup a cluster\r\n\r\ntiup playground --mode tikv-slim\r\n./bin/tidb-server -store=tikv -path=127.0.0.1\r\n\r\n2. set @@auto_increment_increment and @@auto_increment_offset global variable\r\n\r\nset @@global.auto_increment_increment = 66;\r\nset @@global.auto_increment_offset = 9527;\r\n\r\n(exit the mysql client and login again to make the global variable take effect)\r\n\r\n3. create table and insert data\r\n\r\ncreate table t (id int primary key auto_increment, k int) auto_id_cache = 1;\r\ninsert into t (k) values (1),(2),(3);\r\nmysql> select * from t;\r\n+------+------+\r\n| id   | k    |\r\n+------+------+\r\n| 9527 |    1 |\r\n| 9593 |    2 |\r\n| 9659 |    3 |\r\n+------+------+\r\n3 rows in set (0.00 sec)\r\n\r\n\r\n4. restart tidb\r\n\r\n5. show create table and insert data again\r\n\r\nshow create table t;\r\nmysql> insert into t (k) values (4);\r\nERROR 1062 (23000): Duplicate entry '9527' for key 't.PRIMARY'\r\n\r\n\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nNo duplicate entry error\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nDuplicate entry\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\nmaster\r\n\r\n```\r\nmysql> select tidb_version();\r\n+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| tidb_version()                                                                                                                                                                                                                                                            |\r\n+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| Release Version: v8.1.0-alpha-99-g3d82fc5be3-dirty\r\nEdition: Community\r\nGit Commit Hash: 3d82fc5be3a2b319de7e073e8b2b29d8f8f7ae94\r\nGit Branch: master\r\nUTC Build Time: 2024-04-15 14:46:06\r\nGoVersion: go1.21.0\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv |\r\n+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n1 row in set (0.00 sec)\r\n```",
+  "poc": [
+    "set @@global.auto_increment_increment = 66;",
+    "set @@global.auto_increment_offset = 9527;",
+    "create table t (id int primary key auto_increment, k int) auto_id_cache = 1;",
+    "insert into t (k) values (1),(2),(3);"
+  ],
+  "poc_type": "sql_text",
+  "state": "closed",
+  "key_bug_features": [
+    "Duplicate entry error with auto_increment and auto_id_cache"
+  ],
+  "bug_features_seed": [
+    "SET @@global.auto_increment_increment = 66;",
+    "SET @@global.auto_increment_offset = 9527;",
+    "CREATE TABLE t (id INT PRIMARY KEY AUTO_INCREMENT, k INT NOT NULL, v VARCHAR(255) DEFAULT NULL) AUTO_ID_CACHE = 1;",
+    "INSERT INTO t (k, v) VALUES (1, 'test1'), (2, 'test2'), (3, NULL);",
+    "INSERT INTO t (k) SELECT 4 UNION SELECT 5;"
+  ]
+}

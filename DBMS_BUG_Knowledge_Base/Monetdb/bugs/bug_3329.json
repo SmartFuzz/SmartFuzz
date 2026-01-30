@@ -1,0 +1,27 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/3329",
+  "title": "Function AVG fails during runtime in a procedure",
+  "vulnerable_database": "monetdb",
+  "date": "2020-11-30T12:33:10Z",
+  "vulnerable_version": "Unknown",
+  "description": "",
+  "poc": [
+    "CREATE TABLE crmkartastitek (cislo_karty INT, stitek_id INT, stitek_nazev VARCHAR(255), stitek_upresneni VARCHAR(255), stitek_hodnota_decimal DECIMAL);",
+    "CREATE TABLE crmkartapohyby (cislo_karty INT, id_expedice INT, pcena_sd DECIMAL, pohyb VARCHAR(2));",
+    "CREATE TABLE crmkartaaktivita (cislo_karty INT, aktivita INT);",
+    "CREATE TABLE crmregstitek (stitek_id INT, nazev VARCHAR(255), upresneni VARCHAR(255));",
+    "INSERT INTO crmkartastitek (cislo_karty, stitek_id, stitek_nazev, stitek_upresneni, stitek_hodnota_decimal) select cislo_karty,170,'KEO','',round(avg(obrat),2) from (select ckp.cislo_karty, ckp.id_expedice, sum(ckp.pcena_sd) as obrat from crmkartapohyby ckp join crmkartaaktivita ck on ckp.cislo_karty = ck.cislo_karty where ckp.pohyb in ('VR', 'VV') and ck.aktivita between 1 and 3 group by ckp.cislo_karty, ckp.id_expedice) as exp_pripady group by cislo_karty;",
+    "SELECT nazev,upresneni INTO v_stitek_nazev,v_stitek_upresneni FROM crmregstitek WHERE stitek_id = v_stitek_id;",
+    "INSERT INTO crmkartastitek (cislo_karty, stitek_id, stitek_nazev, stitek_upresneni, stitek_hodnota_decimal) select cislo_karty,v_stitek_id,v_stitek_nazev,v_stitek_upresneni,round(avg(obrat),2) from (select ckp.cislo_karty, ckp.id_expedice, sum(ckp.pcena_sd) as obrat from crmkartapohyby ckp join crmkartaaktivita ck on ckp.cislo_karty = ck.cislo_karty where ckp.pohyb in ('VR', 'VV') and ck.aktivita between 1 and 3 group by ckp.cislo_karty, ckp.id_expedice) as exp_pripady group by cislo_karty;"
+  ],
+  "key_bug_features": [
+    "Function AVG fails during runtime in a procedure"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE crmkartastitek (cislo_karty INT NOT NULL, stitek_id INT NOT NULL, stitek_nazev VARCHAR(255), stitek_upresneni VARCHAR(255), stitek_hodnota_decimal DECIMAL CHECK (stitek_hodnota_decimal >= 0));",
+    "CREATE TABLE crmkartapohyby (cislo_karty INT NOT NULL, id_expedice INT, pcena_sd DECIMAL NOT NULL CHECK (pcena_sd >= 0), pohyb VARCHAR(2) CHECK (pohyb IN ('VR', 'VV')));",
+    "INSERT INTO crmkartapohyby (cislo_karty, id_expedice, pcena_sd, pohyb) VALUES (1, 1001, 150.75, 'VR');",
+    "INSERT INTO crmkartapohyby (cislo_karty, id_expedice, pcena_sd, pohyb) VALUES (1, 1002, NULL, 'VV');",
+    "SELECT AVG(pcena_sd) FROM crmkartapohyby WHERE cislo_karty = 1 AND pohyb IS NOT NULL;"
+  ]
+}

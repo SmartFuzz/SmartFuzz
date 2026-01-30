@@ -1,0 +1,24 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/379",
+  "title": "Can't delete triples with typed literals in VOS 7.1",
+  "vulnerable_database": "Virtuoso",
+  "date": "2015-04-24 19:49:53",
+  "vulnerable_version": "",
+  "description": "Hi;\nI am unable to delete a triple whose object is a typed literal. I can use the following SPARQL queries in iSQL to demonstrate the problem.\nI create the triple,\nSPARQL\nINSERT IN GRAPH <http://mine> {\n    <http://mine#s> <http://mine#p> \"Estimated\"^^<http://www.w3.org/2001/XMLSchema#string>\n};\n\nI attempt to delete it,\nSPARQL\nWITH GRAPH <http://mine>\nDELETE {\n    <http://mine#s> <http://mine#p> \"Estimated\"^^<http://www.w3.org/2001/XMLSchema#string>\n} WHERE {\n    <http://mine#s> <http://mine#p> \"Estimated\"^^<http://www.w3.org/2001/XMLSchema#string>\n} ;\n\nbut it's still there:\nSPARQL\nSELECT *\nWHERE {\n    GRAPH <http://mine> {\n        ?s ?p ?o\n    }\n} ;\n\nThis is similar to issue #247, which has been resolved. Thanks to that fix, I can delete the triple like this:\nSPARQL\nWITH GRAPH <http://mine>\nDELETE {\n    <http://mine#s> <http://mine#p> ?o\n} WHERE {\n    <http://mine#s> <http://mine#p> ?o\n} ;\n\nbut this will delete any other triples that have the same subject and predicate -- triples that I want to keep.\nThis also seems similar to issue #198 but is apparently different enough that it is still a problem.\nAny thoughts?\nJim",
+  "poc": [
+    "SPARQL\nINSERT IN GRAPH <http://mine> {\n    <http://mine#s> <http://mine#p> \"Estimated\"^^<http://www.w3.org/2001/XMLSchema#string>\n};",
+    "SPARQL\nWITH GRAPH <http://mine>\nDELETE {\n    <http://mine#s> <http://mine#p> \"Estimated\"^^<http://www.w3.org/2001/XMLSchema#string>\n} WHERE {\n    <http://mine#s> <http://mine#p> \"Estimated\"^^<http://www.w3.org/2001/XMLSchema#string>\n} ;",
+    "SPARQL\nSELECT *\nWHERE {\n    GRAPH <http://mine> {\n        ?s ?p ?o\n    }\n} ;",
+    "SPARQL\nWITH GRAPH <http://mine>\nDELETE {\n    <http://mine#s> <http://mine#p> ?o\n} WHERE {\n    <http://mine#s> <http://mine#p> ?o\n} ;"
+  ],
+  "key_bug_features": [
+    "Unable to delete triples with typed literals in SPARQL"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE triples (subject VARCHAR(255), predicate VARCHAR(255), object VARCHAR(255), object_type VARCHAR(255), PRIMARY KEY (subject, predicate, object));",
+    "INSERT INTO triples (subject, predicate, object, object_type) VALUES ('http://mine#s', 'http://mine#p', 'Estimated', 'http://www.w3.org/2001/XMLSchema#string');",
+    "DELETE FROM triples WHERE subject = 'http://mine#s' AND predicate = 'http://mine#p' AND object = 'Estimated' AND object_type = 'http://www.w3.org/2001/XMLSchema#string';",
+    "SELECT * FROM triples WHERE subject = 'http://mine#s' AND predicate = 'http://mine#p';",
+    "INSERT INTO triples (subject, predicate, object, object_type) VALUES ('http://mine#s', 'http://mine#p', NULL, 'http://www.w3.org/2001/XMLSchema#string');"
+  ]
+}

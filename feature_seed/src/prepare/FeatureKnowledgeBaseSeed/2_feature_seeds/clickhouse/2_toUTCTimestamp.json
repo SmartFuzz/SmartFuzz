@@ -1,0 +1,10 @@
+CREATE TABLE timestamps (event_time DateTime64(3), time_zone String) ENGINE = MergeTree() ORDER BY event_time;
+INSERT INTO timestamps VALUES (toDateTime64('2023-01-01 12:00:00', 3), 'Europe/London'), (toDateTime64('2023-01-01 12:00:00', 3), 'America/New_York'), (toDateTime64('2023-01-01 12:00:00', 3), NULL);
+SELECT toUTCTimestamp(toDateTime64(event_time, 3), time_zone) AS utc_time, EXTRACT(YEAR FROM toDateTime64(event_time, 3)) AS event_year FROM timestamps WHERE time_zone IS NOT NULL;
+SELECT COUNT(*) FROM (SELECT toUTCTimestamp(toDateTime64(event_time, 3), time_zone) AS utc_time FROM timestamps GROUP BY time_zone HAVING COUNT(*) > 1);
+SELECT EXTRACT(MONTH FROM toUTCTimestamp(toDateTime64(event_time, 3), 'Asia/Tokyo')) AS utc_month, COUNT(*) FROM timestamps GROUP BY utc_month ORDER BY utc_month DESC;
+CREATE TABLE event_summary AS SELECT toUTCTimestamp(toDateTime64(event_time, 3), 'Asia/Shanghai') AS utc_time, EXTRACT(DAY FROM event_time) AS event_day FROM timestamps WHERE event_time IS NOT NULL;
+INSERT INTO event_summary SELECT toUTCTimestamp(toDateTime64(event_time, 3), 'America/Los_Angeles'), EXTRACT(DAY FROM toDateTime64(event_time, 3)) FROM timestamps WHERE time_zone IS NOT NULL;
+SELECT utc_time, event_day, COUNT(*) FROM event_summary GROUP BY utc_time, event_day HAVING event_day = 1;
+SELECT t1.utc_time FROM (SELECT toUTCTimestamp(toDateTime64(event_time, 3), time_zone) AS utc_time FROM timestamps) t1 JOIN (SELECT EXTRACT(HOUR FROM toDateTime64('2023-07-01 12:00:00', 3)) AS hour_val) t2 ON t2.hour_val = EXTRACT(HOUR FROM t1.utc_time);
+SELECT toUTCTimestamp(toDateTime64('2023-12-31 23:59:59.999', 3), time_zone) AS end_of_year_time, EXTRACT(SECOND FROM toDateTime64('2023-12-31 23:59:59.999', 3)) AS seconds_val FROM timestamps;

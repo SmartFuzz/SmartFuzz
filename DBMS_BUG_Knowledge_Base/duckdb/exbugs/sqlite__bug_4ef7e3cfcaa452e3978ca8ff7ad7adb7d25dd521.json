@@ -1,0 +1,21 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/4ef7e3cfca",
+  "title": "Name resolution problem in sub-selects within triggers",
+  "description": "nobody added on 2014-03-04 11:21:50:\nWithin a trigger program, if match for a column reference does not match any column in the outermost context and the table name is not \"new\" or \"old\", name resolution may malfunction. If assert() is enabled, an assert() may fail:\nsqlite>  CREATE TABLE x(a);\nsqlite> CREATE TRIGGER t AFTER INSERT ON x BEGIN\n   ...> SELECT * FROM x WHERE abc.a = 1;\n     ...>   END;\nsqlite>   INSERT INTO x VALUES('assert');\nsqlite3: /home/dan/work/sqlite/trunk/src/expr.c:2869: sqlite3ExprCodeTarget: Assertion `pExpr->iTable==0 || pExpr->iTable==1' failed.\nOr, if assert() is not enabled:\nsqlite> CREATE TABLE w(a);\nsqlite> CREATE TABLE x(a);\nsqlite> CREATE TABLE y(a);\nsqlite> CREATE TABLE z(a);\nsqlite> INSERT INTO x(a) VALUES(5);\nsqlite> INSERT INTO y(a) VALUES(10);\nsqlite> CREATE TRIGGER t AFTER INSERT ON w BEGIN\n   ...> INSERT INTO z SELECT (SELECT x.a + y.a FROM y) FROM x;\n   ...> END;\nsqlite> INSERT INTO w VALUES('incorrect');\nsqlite> SELECT * FROM z;\n\nsqlite> SELECT typeof(a) FROM z;\nnull\nsqlite> -- should be an integer value 15\ndrh added on 2014-03-04 13:03:50:\nHere is the test script from above with the command-line shell output\nelided, for clarity of presentation and simplified copy/paste:\nCREATE TABLE w(a);\nCREATE TABLE x(a);\nCREATE TABLE y(a);\nCREATE TABLE z(a);\nINSERT INTO x(a) VALUES(5);\nINSERT INTO y(a) VALUES(10);\nCREATE TRIGGER t AFTER INSERT ON w BEGIN\n  INSERT INTO z SELECT (SELECT x.a+y.a FROM y) FROM x;\nEND;\nINSERT INTO w VALUES('incorrect');\nSELECT a, typeof(a) FROM z; -- should be 15, integer\nBisecting shows that this problem was introduced with the cut-over of support\nfor WITHOUT ROWID tables by check-in [c80e229dd9c12] on 2013-11-07.  The\nproblem appears in releases 3.8.2, 3.8.3, and 3.8.3.1.",
+  "date": "2014-03-04 11:21:5011.44 years ago",
+  "vulnerable_version": "trunk",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE a_table(id INTEGER PRIMARY KEY, value TEXT NOT NULL);",
+    "CREATE TABLE b_table(id INTEGER PRIMARY KEY, ref_id INTEGER, FOREIGN KEY(ref_id) REFERENCES a_table(id));",
+    "CREATE OR REPLACE FUNCTION after_insert_a() RETURNS VOID AS $$ BEGIN INSERT INTO b_table(ref_id) SELECT id FROM a_table WHERE value IS NULL;",
+    "END;",
+    "$$ LANGUAGE plpgsql;",
+    "CREATE TRIGGER after_insert_a_trigger AFTER INSERT ON a_table EXECUTE FUNCTION after_insert_a();"
+  ],
+  "key_bug_features": [
+    "Name resolution failure in trigger sub-selects"
+  ]
+}

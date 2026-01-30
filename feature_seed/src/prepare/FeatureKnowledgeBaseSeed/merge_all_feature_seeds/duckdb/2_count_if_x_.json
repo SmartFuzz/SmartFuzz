@@ -1,0 +1,10 @@
+CREATE TABLE test_dates (id INTEGER, start_date DATE, end_date DATE);
+INSERT INTO test_dates (id, start_date, end_date) VALUES (1, DATE '2023-01-01', DATE '2023-02-01'), (2, DATE '2023-05-01', NULL), (3, DATE '2023-12-31', DATE '2024-01-10');
+CREATE TABLE test_flags (flag BOOLEAN, ref_id INTEGER);
+INSERT INTO test_flags (flag, ref_id) VALUES (TRUE, 1), (FALSE, 2), (NULL, 3);
+SELECT count_if((start_date - end_date) IS NOT NULL) AS valid_counts FROM test_dates GROUP BY start_date;
+SELECT count_if(flag) AS true_count FROM test_flags WHERE ref_id IN (SELECT id FROM test_dates WHERE NOT (start_date < DATE '2023-06-01')) GROUP BY flag HAVING true_count > 0;
+SELECT t.id, count_if(({SELECT count_if(start_date IS NOT NULL) FROM test_dates WHERE id = t.id}) > 1) AS valid_dates_count FROM test_dates t GROUP BY t.id;
+SELECT d.id, count_if((d.start_date - d.end_date) IS NOT NULL AND f.flag IS TRUE) AS valid_flags FROM test_dates d JOIN test_flags f ON d.id = f.ref_id GROUP BY d.id HAVING valid_flags > 0;
+SELECT d.id, count_if((d.start_date - DATE '2023-01-01') < INTERVAL '0 days' AND (SELECT COUNT(*) FROM test_flags WHERE ref_id = d.id AND flag IS TRUE) > 0) AS flag_conditions FROM test_dates d GROUP BY d.id ORDER BY flag_conditions DESC;
+SELECT d.id, count_if(NULL) AS null_test, (NULL - d.start_date) AS null_duration FROM test_dates d HAVING null_duration IS NULL;

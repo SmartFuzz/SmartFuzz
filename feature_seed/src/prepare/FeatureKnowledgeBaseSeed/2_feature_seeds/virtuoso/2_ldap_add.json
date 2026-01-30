@@ -1,0 +1,14 @@
+CREATE TABLE ldap_entries (id INT PRIMARY KEY, dn VARCHAR(255), cn VARCHAR(255), mail VARCHAR(255), sn VARCHAR(255), telephoneNumber VARCHAR(50));
+INSERT INTO ldap_entries VALUES (1, 'cn=John Doe,o=opl,c=BG', 'John', 'john.doe@example.com', 'Doe', '032-947020');
+INSERT INTO ldap_entries VALUES (2, 'cn=Jane Doe,o=opl,c=BG', 'Jane', 'jane.doe@example.com', 'Doe', '032-633710');
+CREATE PROCEDURE sam_ldap_add (IN s1 VARCHAR, IN s2 VARCHAR) BEGIN DECLARE res, vec ANY;
+DECLARE _from_add INTEGER;
+vec := VECTOR ('dn', CONCAT ('cn=', s1, ' ', s2, ',o=opl,c=BG'), 'cn', VECTOR (CONCAT (s1, ' ', s2)), 'mail', VECTOR(CONCAT(CONCAT(s1, '@example.com'), IFNULL(NULL, '')), CONCAT('mail@techno-link.com')), 'sn', VECTOR(s2), 'telephoneNumber', VECTOR('032-947020', '032-633710', '048 850 760'), 'objectClass', VECTOR('inetorgperson'));
+_from_add := ldap_add ('ldap://buba:389', 0, vec, NULL);
+RETURN (_from_add);
+END;
+SELECT * FROM ldap_entries WHERE EXISTS (SELECT 1 FROM ldap_entries WHERE cn = 'John' && sn = 'Doe');
+SELECT cn, phone FROM (SELECT cn, telephoneNumber AS phone FROM ldap_entries WHERE dn IS NOT NULL) AS subquery HAVING phone IS NOT NULL && phone <> '';
+UPDATE ldap_entries SET mail = CASE WHEN LENGTH(cn) > 5 THEN CONCAT(cn, '@example.com') ELSE 'default@example.com' END WHERE id = 1;
+SELECT DISTINCT cn FROM ldap_entries WHERE telephoneNumber IS NOT NULL GROUP BY cn HAVING COUNT(*) > 0 AND cn != 'Jane' && LENGTH(cn) > 2;
+DELETE FROM ldap_entries WHERE id = (SELECT MAX(id) FROM ldap_entries WHERE sn IS NULL && telephoneNumber IS NULL);

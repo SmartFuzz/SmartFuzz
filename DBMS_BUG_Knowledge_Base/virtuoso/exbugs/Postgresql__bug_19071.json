@@ -1,0 +1,21 @@
+{
+  "url": "https://www.postgresql.org/message-id/19071-91078e3db3a9d7bc%40postgresql.org",
+  "title": "BUG #19071: commit b448f1c8d broke LEFT JOIN pushdown",
+  "description": "The following bug has been logged on the website:\nBug reference:      19071\nLogged by:          Anton Ratundalov\nEmail address:      a(dot)ratundalov(at)postgrespro(dot)ru\nPostgreSQL version: 18.0\nOperating system:   Debian 6.1.148-1 (2025-08-26) x86_64 GNU/Linux\nDescription:\nDDL :\n\\c postgres anton 127.0.0.2 65432\nDROP TABLE IF exists a;\nDROP TABLE IF exists b;\nCREATE TABLE IF NOT exists a (c1 integer NOT NULL, c2 text);\nCREATE TABLE IF NOT exists b (c1 integer NOT NULL, c2 text);\n\\c postgres anton 127.0.0.1 65432\nCREATE extension IF NOT exists postgres_fdw;\nCREATE server IF NOT exists s2 FOREIGN data wrapper postgres_fdw\noptions (host '127.0.0.2', port '65432', dbname 'postgres');\nCREATE USER mapping IF NOT exists FOR anton server s2 options (USER\n'anton');\nDROP TABLE IF exists a cascade;\nDROP TABLE IF exists b cascade;\nCREATE TABLE IF NOT exists a (c1 integer NOT NULL, c2 text)\npartition by hash(c1);\nCREATE TABLE IF NOT exists a_p1 partition of a FOR values WITH\n(modulus 2, remainder 0);\nCREATE FOREIGN TABLE IF NOT exists a_p2 partition of a FOR values\nWITH (modulus 2, remainder 1) server s2 options (table_name 'a');\nCREATE TABLE IF NOT exists b (c1 integer NOT NULL, c2 text)\npartition by hash(c1);\nCREATE TABLE IF NOT exists b_p1 partition of b FOR values WITH\n(modulus 2, remainder 0);\nCREATE FOREIGN TABLE IF NOT exists b_p2 partition of b FOR values\nWITH (modulus 2, remainder 1) server s2 options (table_name 'b');\nINSERT INTO a ( c1, c2 ) SELECT i, 'text_'||(i)::text FROM\ngenerate_series(1,6) i;\nINSERT INTO b ( c1, c2 ) SELECT i, 'text_'||(i)::text FROM\ngenerate_series(1,4) i;\nset enable_partitionwise_join TO ON;\nQUERY :\nEXPLAIN( verbose, costs off )\nSELECT * FROM a LEFT JOIN b ON a.c1=b.c1 WHERE a.c1=6;\nPLAN :\nQUERY PLAN\n------------------------------------------------------------------------\nNested Loop Left Join\nOutput: a.c1, a.c2, b.c1, b.c2\n->  Foreign Scan on public.a_p2 a\nOutput: a.c1, a.c2\nRemote SQL: SELECT c1, c2 FROM public.a WHERE ((c1 = 6))\n->  Materialize\nOutput: b.c1, b.c2\n->  Foreign Scan on public.b_p2 b\nOutput: b.c1, b.c2\nRemote SQL: SELECT c1, c2 FROM public.b WHERE ((c1 = 6))\n(10 rows)\nPLAN BEFORE THE CHANGES :\nQUERY\nPLAN\n-------------------------------------------------------------------------------------------------------------------------------------------------------\nForeign Scan\nOutput: a.c1, a.c2, b.c1, b.c2\nRelations: (public.a_p2 a) LEFT JOIN (public.b_p2 b)\nRemote SQL: SELECT r4.c1, r4.c2, r5.c1, r5.c2 FROM (public.a r4 LEFT JOIN\npublic.b r5 ON (((r4.c1 = r5.c1)) AND ((r5.c1 = 6)))) WHERE ((r4.c1 = 6))\n(4 rows)",
+  "date": "2025-10-03 10:11:17",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS a;",
+    "DROP TABLE IF EXISTS b;",
+    "CREATE TABLE a (c1 integer NOT NULL, c2 text, c3 boolean DEFAULT TRUE);",
+    "CREATE TABLE b (c1 integer NOT NULL, c2 text, c3 date);",
+    "INSERT INTO a (c1, c2, c3) VALUES (1, 'text_1', NULL), (2, 'text_2', TRUE), (3, 'text_3', FALSE);",
+    "SELECT * FROM a;"
+  ],
+  "key_bug_features": [
+    "LEFT JOIN pushdown broken by commit b448f1c8d"
+  ]
+}

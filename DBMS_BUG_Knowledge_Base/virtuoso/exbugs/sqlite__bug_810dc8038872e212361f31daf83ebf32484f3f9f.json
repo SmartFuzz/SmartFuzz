@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/810dc80388",
+  "title": "COMMIT command succeeds even though it didn't commit.",
+  "description": "drh added on 2020-06-03 19:24:59:\nFrom the forum discussion,\nin rollback mode, if a COMMIT command fails with SQLITE_BUSY, but is retried\nrepeatedly, it will eventually appear to succeed, when it fact it is still\nbusy and the transaction never committed.\nThis problem appears to have been introduced by check-in [2361b03b61311aab]\nfor version 3.17.0 on 2017-02-13.\nA test program that demonstrates the problem is as follows:\n#include <stdio.h>\n#include \"sqlite3.h\"\n#include <assert.h>\n#include <stdlib.h>\n\nextern int unlink(const char*);\n\nint main(int argc, char **argv){\n  sqlite3 *db1;\n  sqlite3 *db2;\n  sqlite3_stmt *pStmt1;\n  sqlite3_stmt *pStmt2;\n  int i;\n  int rc;\n\n  unlink(\"test.db\");\n  rc = sqlite3_open(\"test.db\", &db1);\n  assert( rc==SQLITE_OK );\n  rc = sqlite3_exec(db1, \n     \"CREATE TABLE t1(a,b,c);\\n\"\n     \"INSERT INTO t1 VALUES(1,2,3),('a','b','c'),(9,8,7);\\n\",\n     0, 0, 0);\n  assert( rc==SQLITE_OK );\n  rc = sqlite3_open(\"test.db\", &db2);\n  assert( rc==SQLITE_OK );\n  rc = sqlite3_prepare_v2(db2, \"SELECT * FROM t1;\", -1, &pStmt2, 0);\n  assert( rc==SQLITE_OK );\n  rc = sqlite3_prepare_v2(db1, \"COMMIT\", -1, &pStmt1, 0);\n  assert( rc==SQLITE_OK );\n\n  /* Thread2 starts reading the database */\n  printf(\"T2 reading....\\n\"); fflush(stdout);\n  rc = sqlite3_step(pStmt2);\n  assert( rc==SQLITE_ROW );\n\n  /* Thread1 tries to update.  Should get blocked */\n  printf(\"T1 writes\\n\"); fflush(stdout);\n  rc = sqlite3_exec(db1, \"BEGIN; INSERT INTO t1 VALUES(99,88,77)\", 0, 0, 0);\n  for(i=0; i<10; i++){\n    rc = sqlite3_step(pStmt1);\n    if( rc!=SQLITE_BUSY ) break;\n    printf(\"  .... busy %d\\n\", i+1);\n  }\n  printf(\"return code from the COMMIT: %d\\n\", rc);\n  rc = sqlite3_finalize(pStmt1);\n  printf(\"return code from sqlite3_finalize(): %d\\n\", rc);\n  printf(\"Database content after COMMIT:\\n\");\n  rc = sqlite3_prepare_v2(db1, \"SELECT * FROM t1;\", -1, &pStmt1, 0);\n  assert( rc==SQLITE_OK );\n  while( sqlite3_step(pStmt1)==SQLITE_ROW ){\n    printf(\"Row:\");\n    for(i=0; i<sqlite3_column_count(pStmt1); i++){\n      printf(\" c[%d]='%s'\", i, sqlite3_column_text(pStmt1,i));\n    }\n    printf(\"\\n\");\n  }\n  sqlite3_finalize(pStmt1);\n  sqlite3_finalize(pStmt2);\n  sqlite3_close(db1);\n  sqlite3_close(db2);\n  return 0;\n}\ndrh added on 2020-06-03 19:31:24:\nTest cases in TH3.",
+  "date": "2020-06-03 19:24:595.19 years ago",
+  "vulnerable_version": "3.32.1",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(id INTEGER, name VARCHAR(255) NOT NULL, value FLOAT DEFAULT 0.0);",
+    "INSERT INTO t1(name, value) VALUES('item1', 10.5), ('item2', NULL), ('item3', 5.0);",
+    "CREATE TABLE t2(ref_id INTEGER, description VARCHAR(255), FOREIGN KEY(ref_id) REFERENCES t1(id));",
+    "INSERT INTO t2(ref_id, description) VALUES(1, 'First item'), (2, 'Second item'), (3, 'Third item');",
+    "SELECT t1.name, t2.description FROM t1 LEFT JOIN t2 ON t1.id = t2.ref_id WHERE t1.value IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "COMMIT command fails with SQLITE_BUSY but appears to succeed"
+  ]
+}

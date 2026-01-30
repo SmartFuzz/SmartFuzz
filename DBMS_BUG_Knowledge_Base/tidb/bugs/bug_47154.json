@@ -1,0 +1,37 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/47154",
+  "title": "EXCHANGE PARTITION issue: report error between list partition and non-empty table",
+  "vulnerable_database": "tidb",
+  "date": "2023-09-21T03:24:17Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\r\n\r\nAn error is reported when exchanging partitions between the list partition table and a non-empty table, and it is incompatible with MySQL behavior\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\nList partition table: \r\n```mysql\r\nCREATE TABLE t1(\r\n`DATE_ID` VARCHAR(10) NOT NULL,\r\nPRIMARY KEY (`DATE_ID`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin\r\nPARTITION BY LIST COLUMNS(`DATE_ID`)\r\n(\r\nPARTITION `P20211231` VALUES IN (\"2021-12-31\"),\r\nPARTITION `P20220100` VALUES IN (\"2022-01-00\"),\r\nPARTITION `P20220131` VALUES IN (\"2022-01-31\")\r\n);\r\n \r\nCREATE TABLE t2(\r\n`DATE_ID` VARCHAR(10) NOT NULL,\r\nPRIMARY KEY (`DATE_ID`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;\r\n \r\nINSERT INTO t2 (`DATE_ID`) VALUES ('2022-01-31');\r\n \r\n-- EXCHANGE PARTITION:\r\nALTER TABLE t1 EXCHANGE PARTITION P20220131 WITH TABLE t2;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\nPartition exchange successful\r\n\r\n\r\n### 3. What did you see instead (Required)\r\nTiDB: \r\nmysql> ALTER TABLE t1 EXCHANGE PARTITION P20220131 WITH TABLE t2;\r\n**ERROR 1737 (HY000): Found a row that does not match the partition**\r\n\r\n\r\nMySQL:\r\n<img width=\"487\" alt=\"image\" src=\"https://github.com/pingcap/tidb/assets/66671526/72d4b10e-b363-4d97-86ea-eb2601d174c1\">\r\n\r\n\r\n### 4. What is your TiDB version? (Required)\r\nv6.5.1\r\n\r\n",
+  "poc": [
+    "CREATE TABLE t1(",
+    "`DATE_ID` VARCHAR(10) NOT NULL,",
+    "PRIMARY KEY (`DATE_ID`)",
+    ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin",
+    "PARTITION BY LIST COLUMNS(`DATE_ID`)",
+    "(",
+    "PARTITION `P20211231` VALUES IN (\"2021-12-31\"),",
+    "PARTITION `P20220100` VALUES IN (\"2022-01-00\"),",
+    "PARTITION `P20220131` VALUES IN (\"2022-01-31\")",
+    ");",
+    "CREATE TABLE t2(",
+    ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;",
+    "INSERT INTO t2 (`DATE_ID`) VALUES ('2022-01-31');",
+    "-- EXCHANGE PARTITION:",
+    "ALTER TABLE t1 EXCHANGE PARTITION P20220131 WITH TABLE t2;"
+  ],
+  "poc_type": "sql_text",
+  "state": "closed",
+  "key_bug_features": [
+    "Exchanging partitions between list partition and non-empty table"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t3(`ID` INT NOT NULL, `VALUE` VARCHAR(20), PRIMARY KEY (`ID`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+    "CREATE TABLE t4(`ID` INT NOT NULL, `VALUE` VARCHAR(20), PRIMARY KEY (`ID`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+    "INSERT INTO t3 (`ID`, `VALUE`) VALUES (1, 'Test1'), (2, 'Test2');",
+    "INSERT INTO t4 (`ID`, `VALUE`) VALUES (3, 'Test3');",
+    "ALTER TABLE t1 EXCHANGE PARTITION P20220131 WITH TABLE t4;"
+  ]
+}

@@ -1,0 +1,13 @@
+[
+    "CREATE TABLE time_series_data (value Float64, time DateTime);",
+    "INSERT INTO time_series_data VALUES (1.0, now() - interval 1 hour), (0.5, now() - interval 30 minute), (0.2, now() - interval 15 minute);",
+    "SELECT time, value, exponentialTimeDecayedCount(10)(time) OVER (ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS exp_smooth FROM time_series_data;",
+    "CREATE TABLE nested_data AS SELECT number AS time, (number % 5) = 0 AS value FROM numbers(100);",
+    "SELECT time, value, exponentialTimeDecayedCount(10)(time) OVER (ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS exp_smooth FROM nested_data;",
+    "SELECT bar(exp_smooth, 0, 20, 50) AS bar, time FROM (SELECT time, exponentialTimeDecayedCount(10)(time) AS exp_smooth FROM time_series_data);",
+    "CREATE TABLE additional_series (value Float64, time DateTime64);",
+    "INSERT INTO additional_series VALUES (2.0, now() - interval 2 hour), (1.5, now() - interval 1 hour), (1.0, now() - interval 30 minute);",
+    "SELECT ts.value, ts.time, exponentialTimeDecayedCount(12)(ts.time) AS exp_smooth FROM time_series_data ts JOIN additional_series ads ON ts.time < ads.time;",
+    "SELECT time, COUNT(value) AS count, exponentialTimeDecayedCount(5)(time) AS exp_smooth FROM (SELECT * FROM time_series_data UNION ALL SELECT * FROM additional_series) GROUP BY time ORDER BY time;",
+    "SELECT value, exponentialTimeDecayedCount(1.5)(time) AS exp_smooth FROM (SELECT value, time FROM time_series_data UNION ALL SELECT value, time FROM additional_series) WHERE value > 1.0;"
+]

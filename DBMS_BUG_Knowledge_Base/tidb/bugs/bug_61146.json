@@ -1,0 +1,36 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/61146",
+  "title": "cannot prune partition by PARTITION BY RANGE (TO_DAYS(`c_datetime`))",
+  "vulnerable_database": "tidb",
+  "date": "2025-05-16T02:18:36Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n```\nCREATE TABLE `t1` (\n  `c_datetime` datetime NOT NULL,\n  `c1` int DEFAULT NULL,\n  `c2` int DEFAULT NULL,\n  PRIMARY KEY (`c_datetime`) /*T![clustered_index] NONCLUSTERED */,\n  KEY `c1` (`c1`),\n  KEY `c2` (`c2`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin\nPARTITION BY RANGE (TO_DAYS(`c_datetime`))\n(PARTITION `p0` VALUES LESS THAN (737821),\n PARTITION `p1` VALUES LESS THAN (737881),\n PARTITION `p2` VALUES LESS THAN (737942),\n PARTITION `p3` VALUES LESS THAN (MAXVALUE))\n\n\nexplain select * from t1 where to_days(t1.c_datetime) <737821\n```\n\n\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\n\n```\n+---------------------+----------+-----------+---------------+-----------------------------------------+\n| id                  | estRows  | task      | access object | operator info                           |\n+---------------------+----------+-----------+---------------+-----------------------------------------+\n| Selection_7         | 8000.00  | root      |               | lt(to_days(test.t1.c_datetime), 737821) |\n| └─TableReader_6     | 10000.00 | root      | partition:p0 | data:TableFullScan_5                    |\n|   └─TableFullScan_5 | 10000.00 | cop[tikv] | table:t1      | keep order:false, stats:pseudo          |\n+---------------------+----------+-----------+---------------+-----------------------------------------+\n```\n\n### 3. What did you see instead (Required)\n\n```\n+---------------------+----------+-----------+---------------+-----------------------------------------+\n| id                  | estRows  | task      | access object | operator info                           |\n+---------------------+----------+-----------+---------------+-----------------------------------------+\n| Selection_7         | 8000.00  | root      |               | lt(to_days(test.t1.c_datetime), 737821) |\n| └─TableReader_6     | 10000.00 | root      | partition:all | data:TableFullScan_5                    |\n|   └─TableFullScan_5 | 10000.00 | cop[tikv] | table:t1      | keep order:false, stats:pseudo          |\n+---------------------+----------+-----------+---------------+-----------------------------------------+\n```\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "poc": [
+    "CREATE TABLE `t1` (",
+    "  `c_datetime` datetime NOT NULL,",
+    "  `c1` int DEFAULT NULL,",
+    "  `c2` int DEFAULT NULL,",
+    "  PRIMARY KEY (`c_datetime`) /*T![clustered_index] NONCLUSTERED */,",
+    "  KEY `c1` (`c1`),",
+    "  KEY `c2` (`c2`)",
+    ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin",
+    "PARTITION BY RANGE (TO_DAYS(`c_datetime`))",
+    "(PARTITION `p0` VALUES LESS THAN (737821),",
+    " PARTITION `p1` VALUES LESS THAN (737881),",
+    " PARTITION `p2` VALUES LESS THAN (737942),",
+    " PARTITION `p3` VALUES LESS THAN (MAXVALUE))",
+    "explain select * from t1 where to_days(t1.c_datetime) <737821"
+  ],
+  "poc_type": "sql_text",
+  "state": "open",
+  "key_bug_features": [
+    "PARTITION BY RANGE (TO_DAYS(`c_datetime`))"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE `t2` ( `id` int NOT NULL AUTO_INCREMENT, `c_datetime` datetime NOT NULL, `c_value` varchar(255) DEFAULT NULL, PRIMARY KEY (`id`), KEY `idx_datetime` (`c_datetime`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin PARTITION BY RANGE (TO_DAYS(`c_datetime`)) (PARTITION `p0` VALUES LESS THAN (737821), PARTITION `p1` VALUES LESS THAN (737881), PARTITION `p2` VALUES LESS THAN (737942), PARTITION `p3` VALUES LESS THAN (MAXVALUE));",
+    "INSERT INTO `t2` (`c_datetime`, `c_value`) VALUES ('2021-01-01 00:00:00', 'Value1');",
+    "INSERT INTO `t2` (`c_datetime`, `c_value`) VALUES (NULL, 'Value2');",
+    "SELECT * FROM `t2` WHERE TO_DAYS(`c_datetime`) < 737821;",
+    "SELECT COUNT(*) FROM `t2` WHERE TO_DAYS(`c_datetime`) IS NULL;"
+  ]
+}

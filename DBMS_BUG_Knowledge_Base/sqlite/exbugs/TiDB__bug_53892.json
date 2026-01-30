@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/53892",
+  "title": "TiKV and TiFlash behave differently when performing division.",
+  "description": "### 1. Minimal reproduce step (Required)\r\n```sql\r\ncreate table t1 ( \r\nc1 int not null ,\r\nc2 int not null ,\r\nprimary key(c1) CLUSTERED);\r\n\r\nalter table t1 set tiflash replica 1;\r\n\r\ninsert into t1 (c1,c2) values (1486109909, -1113200806);\r\n\r\nSELECT /*+ read_from_storage(tiflash[t1]) */ c2, c1, cast( (c2 / cast(c1 as signed)) as decimal) as c2 FROM t1;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n```\r\nmysql> SELECT /*+ read_from_storage(tikv[t1]) */ c2, c1, cast( (c2 / cast(c1 as signed)) as decimal) as c2 FROM t1;\r\n+-------------+------------+------+\r\n| c2          | c1         | c2   |\r\n+-------------+------------+------+\r\n| -1113200806 | 1486109909 |   -1 |\r\n+-------------+------------+------+\r\n1 row in set, 1 warning (0.00 sec)\r\n\r\nmysql> show warnings;\r\n+---------+------+----------------------------------------------+\r\n| Level   | Code | Message                                      |\r\n+---------+------+----------------------------------------------+\r\n| Warning | 1292 | Truncated incorrect DECIMAL value: '-0.7491' |\r\n+---------+------+----------------------------------------------+\r\n1 row in set (0.00 sec)\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n```\r\nmysql> SELECT /*+ read_from_storage(tiflash[t1]) */ c2, c1, cast( (c2 / cast(c1 as signed)) as decimal) as c2 FROM t1;\r\n+-------------+------------+------+\r\n| c2          | c1         | c2   |\r\n+-------------+------------+------+\r\n| -1113200806 | 1486109909 |    1 |\r\n+-------------+------------+------+\r\n1 row in set (0.10 sec)\r\n```\r\n\r\n\r\n### 4. What is your TiDB version? (Required)\r\n```\r\nRelease Version: v8.2.0-alpha-292-g7629a0d\r\nEdition: Community\r\nGit Commit Hash: 7629a0d68595c4d11c25fc059208f3efd838c2c1\r\nGit Branch: HEAD\r\nUTC Build Time: 2024-06-04 03:27:25\r\nGoVersion: go1.21.10\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv\r\n```\r\ntopology:\r\n\r\ndistributed.yaml:\r\n```\r\nglobal:\r\n  user: \"tidb\"\r\n  ssh_port: 22\r\n  deploy_dir: \"/tidb-deploy\"\r\n  data_dir: \"/tidb-data\"\r\n\r\npd_servers:\r\n  - host: 10.0.2.31\r\n\r\ntidb_servers:\r\n  - host: 10.0.2.21\r\n\r\ntikv_servers:\r\n  - host: 10.0.2.11\r\n  - host: 10.0.2.12\r\n  - host: 10.0.2.13\r\n\r\nmonitoring_servers:\r\n  - host: 10.0.2.8\r\n\r\ngrafana_servers:\r\n  - host: 10.0.2.8\r\n\r\nalertmanager_servers:\r\n  - host: 10.0.2.8\r\n\r\ntiflash_servers:\r\n  - host: 10.0.2.32\r\n```\r\n\r\n\r\n\r\n### about us\r\nWe are the BASS team from the School of Cyber Science and Technology at Beihang University. Our main focus is on system software security, operating systems, and program analysis research, as well as the development of automated program testing frameworks for detecting software defects. Using our self-developed database vulnerability testing tool, we have identified the above-mentioned vulnerabilities in TiDB that may lead to database logic error.",
+  "date": "2024-06-08T09:06:05Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (id INTEGER NOT NULL, value REAL, PRIMARY KEY(id));",
+    "INSERT INTO t2 (id, value) VALUES (1, 123.45), (2, -678.90);",
+    "CREATE TABLE t3 (a INTEGER, b INTEGER, c REAL, FOREIGN KEY(a) REFERENCES t2(id));",
+    "INSERT INTO t3 (a, b, c) VALUES (1, 10, 0.5), (2, 20, NULL);",
+    "SELECT b, c, (b / NULLIF(c, 0)) AS division_result FROM t3;"
+  ],
+  "key_bug_features": [
+    "Division operation behaves differently in TiKV and TiFlash."
+  ]
+}

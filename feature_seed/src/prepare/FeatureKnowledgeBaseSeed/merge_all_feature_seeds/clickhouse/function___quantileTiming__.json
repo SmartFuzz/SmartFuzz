@@ -1,0 +1,16 @@
+CREATE TABLE response_times (id UInt32, response_time Float32);
+INSERT INTO response_times VALUES (1, 200.0), (2, 500.0), (3, 15000.0), (4, 800.0), (5, 30000.0);
+SELECT quantileTiming(0.5)(response_time) FROM response_times;
+CREATE TABLE response_times_large AS response_times;
+INSERT INTO response_times_large SELECT number, number * 100 FROM numbers(7000);
+SELECT quantileTiming(0.9)(response_time) FROM response_times_large;
+SELECT quantileTiming(0.01)(response_time) FROM response_times WHERE response_time < 5000;
+CREATE TABLE response_stats AS SELECT id, quantileTiming(0.5)(response_time) AS median_time FROM response_times GROUP BY id;
+SELECT id, median_time FROM response_stats WHERE median_time < 800;
+SELECT quantileTiming(0.5)(response_time) FROM (SELECT response_time FROM response_times WHERE id IN (1, 2, 3));
+SELECT id, quantileTiming(0.75)(response_time) FROM response_times GROUP BY id ORDER BY median_time;
+WITH (SELECT quantileTiming(0.5)(response_time) FROM response_times) AS overall_median SELECT id, overall_median FROM response_times;
+SELECT quantileTiming(0.99)(response_time) FROM response_times WHERE response_time < 30000;
+SELECT quantileTiming(0.5)(response_time) FROM (SELECT response_time FROM (SELECT response_time FROM response_times WHERE response_time > 100) AS temp);
+SELECT avg(response_time) AS average_time, quantileTiming(0.5)(response_time) AS median_time FROM response_times;
+SELECT quantileTiming(0.5)(response_time) FROM response_times WHERE id NOT IN (SELECT id FROM response_times WHERE response_time > 25000);

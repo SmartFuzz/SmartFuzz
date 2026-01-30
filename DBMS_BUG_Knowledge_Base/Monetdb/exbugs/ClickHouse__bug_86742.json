@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/86742",
+  "title": "Projections return stale data after materialized column modification",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nWhen a materialized column is modified using `ALTER TABLE MODIFY COLUMN` and projections are subsequently re-materialized, the projections continue to return stale data from before the column modification. Direct table queries (with projections disabled) return the correct updated data, but queries that use projections return outdated results.\nThis is a silent data correctness issue where users get incorrect query results without any error or warning. The projection appears to cache the old materialized column values and doesn't refresh them properly when `ALTER TABLE MATERIALIZE PROJECTION` is executed after a column modification.\nA reproducer is available at: https://fiddle.clickhouse.com/95ccd7b8-a1e5-4e49-8133-32e1c878f3ce\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nUsing `25.6.2`, but it also happens in the most recent release - `25.8.2.29`\nSteps to reproduce:\n- Create table\n- Insert data into it\n- Add materialized column and materialize it\n- Add projection\n- Update materialized column and materialize it\n- Materialize projection\n- Queries reading from the projection don't reflect the last values of the materialized column\n```sql\nDROP TABLE IF EXISTS job_sample;\nCREATE TABLE job_sample (\nid UInt32,\nposted_at Date,\ndiscovered_at DateTime64(3, 'UTC'),\nurl String,\ntitle String,\ncompany_name String,\ndescription String\n) ENGINE = MergeTree()\nORDER BY (posted_at, discovered_at)\nPARTITION BY toYYYYMM(posted_at);\n-- Insert sample data from S3 parquet file\nINSERT INTO job_sample SELECT * FROM s3('https://media.theirstack.com/jobs/jan-2025-sample.parquet', 'Parquet');\n-- Add materialized column with case-sensitive regex\nALTER TABLE job_sample ADD COLUMN description_matches_python UInt8 MATERIALIZED match(description, 'Python')\nSETTINGS mutations_sync = 2, alter_sync = 2;\nALTER TABLE job_sample MATERIALIZE COLUMN description_matches_python\nSETTINGS mutations_sync = 2, alter_sync = 2;\n-- Check initial matches (case-sensitive \"Python\")\nSELECT company_name, count(*) AS initial_matches\nFROM job_sample\nWHERE description_matches_python = 1\nGROUP BY company_name\nORDER BY count(*) DESC\nLIMIT 10;\n-- Check count for specific company\nSELECT count(*) AS jobs_via_dice_initial\nFROM job_sample\nWHERE company_name = 'Jobs via Dice' AND description_matches_python = 1;\n-- returns 753 (correct data)",
+  "date": "2025-09-05T13:46:47Z",
+  "vulnerable_version": "25.8.2.29",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS job_sample;",
+    "CREATE TABLE job_sample (id INT, posted_at DATE, discovered_at TIMESTAMP, url TEXT, title TEXT, company_name TEXT, description TEXT);",
+    "COPY job_sample FROM 'https://media.theirstack.com/jobs/jan-2025-sample.parquet' USING DELIMITER ',';",
+    "ALTER TABLE job_sample ADD COLUMN description_matches_python INT DEFAULT (CASE WHEN description LIKE '%Python%' THEN 1 ELSE 0 END);",
+    "UPDATE job_sample SET description_matches_python = CASE WHEN description ILIKE '%Python%' THEN 1 ELSE 0 END;"
+  ],
+  "key_bug_features": [
+    "Projections return stale data after column modification"
+  ]
+}

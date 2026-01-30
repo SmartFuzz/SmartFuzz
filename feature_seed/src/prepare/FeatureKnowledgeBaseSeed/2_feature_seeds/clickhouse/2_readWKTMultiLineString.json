@@ -1,0 +1,15 @@
+CREATE TABLE geo_data (id Int32, geom String, value Float64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO geo_data VALUES (1, 'MULTILINESTRING ((1 1, 2 2, 3 3), (4 4, 5 5, 6 6))', 10.5);
+INSERT INTO geo_data VALUES (2, 'MULTILINESTRING ((0 0, 0 1), (1 1, 1 0))', NULL);
+INSERT INTO geo_data VALUES (3, 'MULTILINESTRING EMPTY', 5.5);
+SELECT id, readWKTMultiLineString(geom) AS parsed_geom FROM geo_data WHERE geom IS NOT NULL;
+SELECT id, readWKTMultiLineString(geom) AS parsed_geom FROM geo_data WHERE geom == 'MULTILINESTRING ((1 1, 2 2, 3 3), (4 4, 5 5, 6 6))';
+SELECT id, COUNT(*) FROM geo_data WHERE readWKTMultiLineString(geom) == readWKTMultiLineString('MULTILINESTRING ((1 1, 2 2, 3 3), (4 4, 5 5, 6 6))') GROUP BY id HAVING COUNT(*) > 0;
+SELECT id, readWKTMultiLineString(geom) AS parsed_geom FROM geo_data WHERE value > (SELECT MAX(value) FROM geo_data WHERE value IS NOT NULL) + 1;
+SELECT id, readWKTMultiLineString(CONCAT('MULTILINESTRING ((', CAST(1 AS String), ' ', CAST(1 AS String), '), (', CAST(2 AS String), ' ', CAST(2 AS String), '))')) AS parsed_geom FROM geo_data;
+SELECT id, readWKTMultiLineString(geom) AS parsed_geom FROM geo_data LEFT JOIN (SELECT id, value FROM geo_data WHERE value IS NULL) AS sub ON geo_data.id == sub.id WHERE sub.id IS NULL;
+SELECT DISTINCT id FROM geo_data WHERE readWKTMultiLineString(geom) != readWKTMultiLineString(CONCAT('MULTILINESTRING ((', CAST(-1 AS String), ' ', CAST(-1 AS String), '), (', CAST(-2 AS String), ' ', CAST(-2 AS String), '))'));
+SELECT value FROM geo_data WHERE readWKTMultiLineString(geom) == readWKTMultiLineString('MULTILINESTRING ((0 0, 0 1), (1 1, 1 0))') ORDER BY value DESC;
+DROP TABLE IF EXISTS temp_geo_data;
+CREATE TEMPORARY TABLE temp_geo_data AS SELECT * FROM geo_data WHERE value IS NOT NULL;
+SELECT A.id FROM geo_data AS A JOIN geo_data AS B ON readWKTMultiLineString(A.geom) == readWKTMultiLineString(B.geom) WHERE A.id != B.id;

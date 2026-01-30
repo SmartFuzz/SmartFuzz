@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/17251",
+  "title": "The result of the union of two tables with nocase collation is wrong",
+  "description": "### What happens?\n\nThe result of the union of two tables with nocase collation is wrong.\n\n### To Reproduce\n\n```\ncreate table t1 (id varchar collate nocase);\ncreate table t2 (id varchar collate nocase);\ninsert into t1 values ('a');\ninsert into t2 values ('A');\n```\n\nSince the collation of id in both tables is nocase, 'a' should be equal to 'A'. The result of `select * from t1 union select * from t2;` should be equivalent to `select distinct * from (select * from t1 union select * from t2) d;`\n\nHowever, if we execute the two sql, we get result:\n\n```\nselect * from t1 union select * from t2;\n```\n```\n┌─────────┐\n│   id    │\n│ varchar │\n├─────────┤\n│ A       │\n│ a       │\n└─────────┘\n```\n```\nselect distinct * from (select * from t1 union select * from t2) d;\n```\n```\n┌─────────┐\n│   id    │\n│ varchar │\n├─────────┤\n│ A       │\n└─────────┘\n```\n\nIn the process of generating PhysicalHashAggregate from LogicalSetOperation, the effect of collation is not considered.\n\n\n### OS:\n\nx86_64\n\n### DuckDB Version:\n\n1.2.2\n\n### DuckDB Client:\n\n1.2.2\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nJingqi Tian\n\n### Affiliation:\n\nAlibaba-inc\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a source build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "date": "2025-04-25 09:04:04",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE t3 (id varchar(255), value int);",
+    "CREATE TABLE t4 (id varchar(255), value int);",
+    "INSERT INTO t3 VALUES ('b', 1), ('B', 2);",
+    "INSERT INTO t4 VALUES ('C', 3), ('c', 4);",
+    "SELECT DISTINCT id, value FROM (SELECT id, value FROM t3 UNION SELECT id, value FROM t4) AS d;"
+  ],
+  "key_bug_features": [
+    "Union of tables with nocase collation produces incorrect results"
+  ]
+}

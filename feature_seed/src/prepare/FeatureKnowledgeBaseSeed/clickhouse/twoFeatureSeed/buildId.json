@@ -1,0 +1,14 @@
+{
+    "function": "buildId",
+    "operator": "SELECT a AND b",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, name String, timestamp DateTime, value Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table VALUES (1, 'Test1', '2023-01-01 00:00:00', 1.0), (2, 'Test2', '2023-01-02 00:00:00', NULL), (3, 'Test3', '2023-01-03 00:00:00', 3.5), (4, '', '2023-01-04 00:00:00', 4.0);",
+        "SELECT buildId() AS build_id, id, name, value FROM test_table WHERE (name = 'Test1' AND value IS NOT NULL) OR (name != 'Test2' AND value IS NULL);",
+        "SELECT id, COUNT(*) AS count FROM test_table GROUP BY id HAVING COUNT(id) > 0 AND (buildId() = 'some_value' AND .name != 'Test1');",
+        "SELECT id, value, buildId() AS build_id FROM (SELECT DISTINCT id, value FROM test_table) AS sub WHERE (value IS NOT NULL AND (SELECT count() FROM test_table WHERE value < 2.0)) > 0;",
+        "SELECT id, buildId() AS build_id, SUM(value) OVER (PARTITION BY id ORDER BY timestamp) AS running_total FROM test_table WHERE (buildId() = 'some_value' AND id AND id = 2);",
+        "CREATE TEMPORARY TABLE temp_table AS SELECT id, value FROM test_table WHERE value IS NOT NULL;",
+        "SELECT buildId() AS build_id, temp_table.id FROM temp_table INNER JOIN test_table ON temp_table.id = test_table.id WHERE (buildId() AND temp_table.value > 2.0) AND (test_table.value < 5.0);"
+    ]
+}

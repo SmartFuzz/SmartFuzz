@@ -1,0 +1,11 @@
+CREATE TABLE fuzz_test (id UInt32, event_date Date, value Float64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO fuzz_test VALUES (1, toDate('2020-01-01'), 100.0), (2, toDate('2010-01-01'), 200.0), (3, NULL, 300.0), (4, toDate('2015-05-05'), 400.0), (5, toDate('2023-05-05'), 500.0);
+SELECT id, value, toRelativeYearNum(event_date) AS relative_years FROM fuzz_test WHERE toRelativeYearNum(event_date) < 5;
+SELECT id, value FROM fuzz_test WHERE (SELECT COUNT(*) FROM fuzz_test f2 WHERE f2.value < value) < (SELECT COUNT(*) FROM fuzz_test f3 WHERE f3.value > value);
+SELECT id, MAX(value) AS max_value, MIN(value) AS min_value, toRelativeYearNum(event_date) AS year_diff FROM fuzz_test GROUP BY id HAVING toRelativeYearNum(event_date) < 10;
+SELECT id, value FROM fuzz_test WHERE event_date IS NULL OR (toRelativeYearNum(event_date) < (SELECT MAX(toRelativeYearNum(event_date)) FROM fuzz_test));
+SELECT f1.id, f1.value FROM fuzz_test f1 JOIN fuzz_test f2 ON toRelativeYearNum(f1.event_date) < toRelativeYearNum(f2.event_date) WHERE f2.value < 400.0;
+INSERT INTO fuzz_test VALUES (6, toDate('not_a_date'), 600.0);
+SELECT id, event_date, value FROM fuzz_test WHERE toRelativeYearNum(event_date) < 3 OR CAST(value AS String) = '200.0';
+CREATE TEMPORARY TABLE temp_test AS SELECT id, event_date FROM fuzz_test WHERE value IS NOT NULL;
+SELECT A.id FROM (SELECT id, toRelativeYearNum(event_date) AS year_num FROM temp_test) A WHERE year_num < 10 ORDER BY year_num DESC;

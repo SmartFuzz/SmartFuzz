@@ -1,0 +1,15 @@
+CREATE TABLE test_table (id UInt32, bitmap_col AggregateFunction(bitmapBuild, UInt32));
+INSERT INTO test_table VALUES (1, bitmapBuild([1, 5, 7, 9])), (2, bitmapBuild([2, 3, 4, 5])), (3, bitmapBuild([6, 7, 8, 9]));
+SELECT bitmapContains(bitmap_col, toUInt32(9)) FROM test_table WHERE id = 1;
+SELECT id, bitmapContains(bitmap_col, toUInt32(3)) AS contains_3 FROM test_table;
+SELECT id, bitmapContains(bitmap_col, toUInt32(1)) AS contains_1, bitmapContains(bitmap_col, toUInt32(5)) AS contains_5 FROM test_table WHERE id = 2;
+SELECT id, bitmapContains(bitmap_col, toUInt32(6)) AS contains_6 FROM (SELECT id, bitmap_col FROM test_table WHERE id = 3) AS subquery;
+SELECT id, bitmapContains(bitmapBuild([1, 2, 3, 4, 5]), 10) AS contains_10 FROM test_table;
+WITH (SELECT bitmapBuild([1, 5, 7, 9]) AS b) AS bit_map SELECT bitmapContains(b, toUInt32(7));
+SELECT DISTINCT id FROM test_table WHERE bitmapContains(bitmap_col, toUInt32(2));
+CREATE TABLE other_table (ref UInt32);
+INSERT INTO other_table VALUES (1), (2), (3);
+SELECT test_table.id, bitmapContains(test_table.bitmap_col, toUInt32(other_table.ref)) AS contains_ref FROM test_table JOIN other_table ON (other_table.ref = 1);
+SELECT COUNT() FROM test_table WHERE bitmapContains(bitmap_col, toUInt32(5));
+SELECT id, bitmapContains(bitmapBuild([0, 1, 2, 3]), toUInt32(0)) AS contains_zero FROM test_table;
+SELECT id, bitmapContains(bitmap_col, toUInt32(8)) AS contains_8 FROM test_table WHERE bitmap_col IS NOT NULL;

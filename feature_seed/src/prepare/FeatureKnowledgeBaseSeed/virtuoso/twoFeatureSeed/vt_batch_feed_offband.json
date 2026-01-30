@@ -1,0 +1,17 @@
+{
+    "function": "vt_batch_feed_offband",
+    "operator": "EXISTS",
+    "sql_array": [
+        "CREATE TABLE LEADS (\n  ORG_ID      integer not null,\n  LEAD_ID     integer not null,\n  FREETEXT_ID integer not null,\n  SUBJECT     varchar (255),\n  NAME_FIRST  varchar (30),\n  NAME_LAST   varchar (30),\n  TITLE       varchar (255),\n  primary key (ORG_ID, LEAD_ID));",
+        "INSERT INTO LEADS (ORG_ID, LEAD_ID, FREETEXT_ID, SUBJECT, NAME_FIRST, NAME_LAST, TITLE) VALUES (1, 1, 1, 'Initial Entry', 'John', 'Doe', 'First Title');",
+        "SELECT EXISTS (SELECT * FROM LEADS WHERE FREETEXT_ID > 0);",
+        "SELECT vt_batch_feed_offband (vtb, serialize (vector (SELECT ORG_ID FROM LEADS WHERE FREETEXT_ID = 1)), 0) FROM LEADS;",
+        "SELECT COUNT(*) FROM LEADS WHERE EXISTS (SELECT 1 FROM LEADS WHERE TITLE IS NOT NULL AND SUBJECT IS NOT NULL);",
+        "CREATE TABLE TEMP_LEADS AS SELECT * FROM LEADS WHERE LEAD_ID = 1;",
+        "INSERT INTO TEMP_LEADS SELECT * FROM LEADS WHERE EXISTS (SELECT 1 FROM LEADS WHERE ORG_ID = 1);",
+        "SELECT vt_batch_feed_offband(vtb, serialize(vector(1)), 1) WHERE EXISTS (SELECT 1 FROM LEADS WHERE TITLE = 'First Title');",
+        "CREATE TABLE JOIN_TEST AS SELECT a.ORG_ID, a.LEAD_ID, b.ORG_ID AS JOIN_ORG FROM LEADS a JOIN LEADS b ON a.LEAD_ID = b.LEAD_ID WHERE EXISTS (SELECT 1 FROM LEADS WHERE a.SUBJECT IS NOT NULL);",
+        "INSERT INTO LEADS (ORG_ID, LEAD_ID, FREETEXT_ID, SUBJECT, NAME_FIRST, NAME_LAST, TITLE) VALUES (2, 2, 2, NULL, NULL, NULL, NULL) RETURNING vt_batch_feed_offband(vtb, serialize(vector(2)), 0);",
+        "SELECT FIRST_NAME, LAST_NAME FROM LEADS WHERE EXISTS (SELECT 1 FROM LEADS WHERE FREETEXT_ID BETWEEN 1 AND 2) GROUP BY FIRST_NAME, LAST_NAME HAVING COUNT(DISTINCT FREETEXT_ID) > 1;"
+    ]
+}

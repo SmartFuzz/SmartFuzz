@@ -1,0 +1,16 @@
+CREATE TABLE test_timestamps (id INT PRIMARY KEY, event_time TIMESTAMP WITH TIME ZONE, duration INTERVAL);
+INSERT INTO test_timestamps VALUES (1, make_timestamptz(1667810584123456), INTERVAL '5 DAY');
+INSERT INTO test_timestamps VALUES (2, make_timestamptz(1677810584123456), INTERVAL '3 DAY');
+INSERT INTO test_timestamps VALUES (3, NULL, INTERVAL '1 HOUR');
+SELECT id, event_time + duration AS adjusted_time FROM test_timestamps WHERE event_time IS NOT NULL;
+SELECT id, make_timestamptz(COALESCE(EXTRACT(EPOCH FROM event_time) * 1000000, 0)) + duration AS adjusted_time FROM test_timestamps;
+SELECT id, event_time + INTERVAL (CASE WHEN duration IS NULL THEN '2 DAY' ELSE duration END) AS new_time FROM test_timestamps;
+WITH temp AS (SELECT id, event_time, duration FROM test_timestamps WHERE duration IS NOT NULL) SELECT id, make_timestamptz(EXTRACT(EPOCH FROM event_time) * 1000000) + duration FROM temp;
+WITH RECURSIVE date_series AS (SELECT make_timestamptz(1667810584123456) AS date_value UNION ALL SELECT date_value + INTERVAL '1 DAY' FROM date_series WHERE date_value < make_timestamptz(1677810584123456)) SELECT date_value FROM date_series;
+CREATE TABLE temp_null (id INT, timestamp_col TIMESTAMP WITH TIME ZONE);
+INSERT INTO temp_null VALUES (1, NULL), (2, make_timestamptz(1667810584123456));
+SELECT id, timestamp_col + INTERVAL '7 DAY' FROM temp_null WHERE timestamp_col IS NOT NULL;
+DROP TABLE IF EXISTS combined_test;
+CREATE TABLE combined_test AS SELECT id, event_time + INTERVAL 10 MINUTE AS new_event_time FROM test_timestamps WHERE event_time IS NOT NULL;
+SELECT COUNT(*) AS total_events, MAX(event_time + INTERVAL '5 DAY') AS max_event_time FROM test_timestamps GROUP BY DATE(event_time);
+SELECT id, event_time, make_timestamptz(COALESCE(EXTRACT(EPOCH FROM event_time) * 1000000, 0)) + (duration * 2) AS calculated_time FROM test_timestamps HAVING calculated_time IS NOT NULL ORDER BY calculated_time DESC;

@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/ec32177c99",
+  "title": "Incorrect result with complex OR-connected WHERE and STAT4",
+  "description": "drh added on 2018-01-27 04:10:21:\nThe following script shows a query that gives a different answer with and\nwithout the t1b index.  The difference only appears when SQLite is compiled\nusing the SQLITE_ENABLE_STAT4 option.\nCREATE TABLE t1(a INTEGER PRIMARY KEY, b);\nINSERT INTO t1(a,b) VALUES(1,1),(2,NULL),(3,NULL);\nCREATE VIEW err AS\n  SELECT a\n    FROM t1 X\n  WHERE 2 > (\n    SELECT COUNT(*) FROM t1 Y\n     WHERE ( X.b IS NOT NULL AND Y.b IS NULL )\n        OR ( Y.b < X.b )\n        OR ( X.b IS Y.B AND Y.a > X.a )\n    );\nSELECT * FROM err;\n.print -----------------\nCREATE INDEX t1b ON t1(b);\nSELECT * FROM err;\nBisecting shows this problem first appeared with check-in\n[712267c9c08fdcef] and subsequently in release 3.20.0\non 2017-08-01. The problem was reported on the sqlite-users\nmailing list by Kenichi Ishigaki.\ndrh added on 2018-01-27 04:43:22:\nHere is another demonstration of the same problem that uses two separate\ntables and omits the WHERE clause.  In this example, both queries return\na single row, but the answer is different.  The correct answer is 2, but\nwhen the index is created the answer becomes 0.\nCREATE TABLE t1(a INTEGER PRIMARY KEY, b);\nINSERT INTO t1(a,b) VALUES(1,1);\nCREATE TABLE t2(aa INTEGER PRIMARY KEY, bb);\nINSERT INTO t2(aa,bb) VALUES(1,1),(2,NULL),(3,NULL);\nCREATE VIEW err AS\n  SELECT (\n    SELECT COUNT(*) FROM t2\n     WHERE ( t1.b IS NOT NULL AND t2.bb IS NULL )\n        OR ( t2.bb < t1.b )\n        OR ( t1.b IS t2.bb AND t2.aa > t1.a )\n    )\n    FROM t1;\nSELECT * FROM err;\n.print -----------------\nCREATE INDEX t2b ON t2(bb);\nSELECT * FROM err;",
+  "date": "2018-01-27 04:10:217.54 years ago",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(a INTEGER PRIMARY KEY, b VARCHAR(255) DEFAULT 'default');",
+    "INSERT INTO t1(a, b) VALUES(1, 'value1'), (2, NULL), (3, 'value3');",
+    "CREATE TABLE t2(aa INTEGER PRIMARY KEY, bb FLOAT CHECK(bb >= 0));",
+    "INSERT INTO t2(aa, bb) VALUES(1, 1.5), (2, NULL), (3, -1.0);",
+    "CREATE VIEW err AS SELECT (SELECT COUNT(*) FROM t2 WHERE (t1.b IS NOT NULL AND t2.bb IS NULL) OR (t2.bb < CAST(t1.b AS FLOAT)) OR (t1.b = t2.bb AND t2.aa > t1.a)) FROM t1;"
+  ],
+  "key_bug_features": [
+    "Different results with and without t1b index"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+    "function": "covarPop",
+    "operator": "s1 || s2",
+    "sql_array": [
+        "CREATE TABLE test_series(i UInt32, x_value Float64, y_value Float64) ENGINE = Memory;",
+        "INSERT INTO test_series(i, x_value, y_value) VALUES (1, 5.6, -4.4), (2, -9.6, 3), (3, NULL, -4), (4, 5.3, 9.7), (5, 4.4, 0.037), (6, -8.6, -7.8), (7, 'invalid', 9.3), (8, 7.9, -3.6), (9, -8.2, 0.62), (10, -3, '');",
+        "SELECT covarPop(CAST(s1 || '1.0' AS Float64), y_value) FROM (SELECT x_value, y_value, 'dummy' AS s1 FROM test_series WHERE y_value IS NOT NULL) GROUP BY x_value, y_value HAVING x_value != 0;",
+        "SELECT x_value, y_value, covarPop(x_value, y_value) AS covariance FROM (SELECT x_value, y_value FROM test_series WHERE x_value > 0) WHERE (x_value + 0.1) IS NOT NULL GROUP BY x_value, y_value HAVING covariance > 1;",
+        "CREATE TABLE test_temp(i UInt32, combined String) ENGINE = Memory;",
+        "INSERT INTO test_temp SELECT i, CAST(x_value AS String) || ' - ' || CAST(y_value AS String) FROM test_series WHERE y_value IS NOT NULL;",
+        "SELECT i, covarPop(NULLIF(x_value, -1), NULLIF(y_value, -1)) FROM test_series WHERE x_value > 0 GROUP BY i HAVING covarPop(x_value, y_value) < 2;",
+        "SELECT covarPop((SELECT AVG(x_value) FROM test_series WHERE y_value < 0), (SELECT AVG(y_value) FROM test_series WHERE x_value > 0));",
+        "DROP TABLE IF EXISTS test_series;",
+        "DROP TABLE IF EXISTS test_temp;"
+    ]
+}

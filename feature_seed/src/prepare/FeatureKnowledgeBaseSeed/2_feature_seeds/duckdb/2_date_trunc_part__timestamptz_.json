@@ -1,0 +1,13 @@
+CREATE TABLE test_data (id INT, timestamp_col TIMESTAMPTZ, value DECIMAL(10, 2), info VARCHAR(255), created_at TIMESTAMPTZ DEFAULT NOW());
+INSERT INTO test_data (id, timestamp_col, value, info) VALUES (1, TIMESTAMPTZ '2023-01-01 12:00:00', 10.00, NULL), (2, TIMESTAMPTZ '2023-01-02 13:00:00', NULL, 'Test Entry'), (3, TIMESTAMPTZ '2023-01-03 14:00:00', 20.50, 'Another Entry');
+SELECT id, date_trunc('hour', timestamp_col) + INTERVAL '2 hours' AS adjusted_time FROM test_data WHERE value IS NOT NULL;
+SELECT id, count(*) FROM (SELECT id, date_trunc('day', timestamp_col) + INTERVAL '1 day' AS date_adj FROM test_data GROUP BY date_adj) AS temp_group HAVING count(*) > 1;
+SELECT id, date_trunc('minute', timestamp_col + INTERVAL '1 minute') AS minute_adjusted FROM test_data WHERE information IS NULL;
+SELECT id, date_trunc('day', timestamp_col) AS truncated_day, SUM(value) OVER (PARTITION BY date_trunc('day', timestamp_col)) AS total_value_per_day FROM test_data;
+WITH adjusted_dates AS (SELECT id, timestamp_col + INTERVAL '1 day' AS adjusted FROM test_data) SELECT id, date_trunc('hour', adjusted) AS hour_truncated FROM adjusted_dates WHERE adjusted IS NOT NULL;
+SELECT id, date_trunc('minute', NULLIF(timestamp_col, TIMESTAMPTZ 'epoch')) + INTERVAL '5 minutes' FROM test_data;
+SELECT id, date_trunc('second', (timestamp_col + INTERVAL '3 hours')::TIMESTAMPTZ) AS second_adjusted FROM test_data WHERE created_at > NOW() - INTERVAL '1 day' ORDER BY second_adjusted;
+CREATE TABLE additional_data (data_id INT, timestamp_data TIMESTAMPTZ, extra VARCHAR(255));
+INSERT INTO additional_data (data_id, timestamp_data, extra) VALUES (1, TIMESTAMPTZ '2023-01-01 00:00:00', 'Extra Info');
+SELECT a.data_id, date_trunc('day', a.timestamp_data + INTERVAL '7 days') AS future_date, d.value FROM additional_data a JOIN test_data d ON date_trunc('day', a.timestamp_data) = date_trunc('day', d.timestamp_col);
+SELECT id, date_trunc('day', timestamp_col) + INTERVAL (CASE WHEN value IS NULL THEN '0' ELSE value::TEXT END) DAY AS adjusted_col FROM test_data;

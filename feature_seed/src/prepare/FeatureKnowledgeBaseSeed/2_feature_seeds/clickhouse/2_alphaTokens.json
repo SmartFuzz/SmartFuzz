@@ -1,0 +1,14 @@
+CREATE TABLE test_table (id Int32, name String, value Float64, created_at DateTime DEFAULT now());
+INSERT INTO test_table VALUES (1, 'abc123', 3.14, '2023-01-01 10:00:00'), (2, 'def456', 1.59, '2023-01-02 11:00:00'), (3, 'ghi789', NULL, '2023-01-03 12:00:00');
+SELECT alphaTokens(name || CAST(value AS String) || 'extra', 2) AS tokens FROM test_table WHERE value IS NOT NULL;
+SELECT alphaTokens(name || ' ' || COALESCE(CAST(value AS String), 'NULL'), 5) AS tokens FROM test_table;
+SELECT id, alphaTokens(name || CONCAT('!@#', 'abc'), 3) AS tokens FROM test_table WHERE id > 0 GROUP BY id ORDER BY tokens;
+SELECT name, COUNT(*) AS count FROM (SELECT alphaTokens(name, 1) AS token FROM test_table WHERE id BETWEEN 1 AND 3) AS sub GROUP BY token HAVING count > 1;
+SELECT name, AVG(value) FROM (SELECT alphaTokens(name || ' ' || created_at, 2) AS new_name, value FROM test_table) GROUP BY new_name HAVING AVG(value) IS NOT NULL;
+SELECT id, alphaTokens(CONCAT(name, ' is the value: ', COALESCE(CAST(value AS String), 'unknown')), 3) AS tokens FROM test_table WHERE value > -1.0 ORDER BY id DESC;
+CREATE TABLE temp_test (temp_name String, temp_value Float64) ENGINE = Memory;
+INSERT INTO temp_test SELECT name, value FROM test_table WHERE value IS NULL;
+SELECT alphaTokens(temp_name || ' - ' || temp_value, 2) AS combined_tokens FROM temp_test WHERE temp_value IS NOT NULL;
+ALTER TABLE test_table ADD COLUMN description String;
+UPDATE test_table SET description = 'Test record ' || id;
+SELECT id, alphaTokens(description || '!' || name, 3) AS tokens FROM test_table ORDER BY id;

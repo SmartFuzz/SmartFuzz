@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7201",
+  "title": "Selection of a subquery with a LEFT JOIN returns the wrong result set",
+  "description": "When performing some selections on a subquery with a left join, it causes the join to fail. It requires a combination of specific filters, indexes, and `NOT NULL` properties for it to occur.\n\n**To Reproduce**\nCreate two tables, naturally joined by two columns `x1, x2`, with the first table indexed by `x1, x2` and `x2`, and with `NOT NULL` properties:\n```sql\nCREATE TABLE T1 (x1 int NOT NULL, x2 int NOT NULL, y int NOT NULL);\nCREATE INDEX T1_x1_x2 ON T1 (x1, x2);\nCREATE INDEX T1_x2 ON T1 (x2);\n\nCREATE TABLE T2 (x1 int NOT NULL, x2 int NOT NULL, z int NOT NULL);\nCREATE INDEX T2_x1_x2 ON T2 (x1, x2);\n```\n\nPopulate with some data:\n```sql\nINSERT INTO T1 VALUES (1, 0, 1), (1, 2, 1);\nINSERT INTO T2 VALUES (1, 0, 3), (1, 2, 100);\n```\n\nPerform the subquery first to see that it is working correctly:\n```sql\nSELECT T1.*, T2.x1 as t2_x1, z\nFROM T1 \nLEFT JOIN T2 ON T1.x1 = T2.x1 AND T1.x2 = T2.x2\nWHERE 10 <= T2.z OR T2.z IS NULL; -- (x1, x2, z) = (1, 0, 3) is dropped here, as 10 <= 3 is False\n\nReturns:\n+------+------+------+-------+------+\n| x1   | x2   | y    | t2_x1 | z    |\n+======+======+======+=======+======+\n|    1 |    2 |    1 |     1 |  100 |\n+------+------+------+-------+------+\n```\n\nPerform the filter on the subquery to check that the join fails (`t2_x1` and `z` become null, and the other row is also returned):\n```sql\nSELECT *\nFROM (\n    SELECT T1.*, T2.x1 as t2_x1, z\n    FROM T1 \n    LEFT JOIN T2 ON T1.x1 = T2.x1 AND T1.x2 = T2.x2\n    WHERE 10 <= T2.z OR T2.z IS NULL\n) T\nWHERE T.x1 = 1; -- this filter should return the same row\n\nReturns:\n+------+------+------+-------+------+\n| x1   | x2   | y    | t2_x1 | z    |\n+======+======+======+=======+======+\n|    1 |    0 |    1 |  null | null |\n|    1 |    2 |    1 |  null | null |\n+------+------+------+-------+------+\n```\n\n**Expected behavior**\nReturn the same result as the nested query.\n\n**Software versions**\n- `monetdb -v`: `MonetDB Database Server Toolkit v11.41.11 (Jul2021-SP1)`.\n- OS: `Ubuntu 20.04.3 LTS`;\n- Monetdb installed from release packages with `apt` (packages `monetdb5-sql` and `monetdb-client`);\n\n**Additional context**\nThere are already some things I discovered that should help narrow the issue:\n- Both indexes on T1 must be created, as without one of them the query works. The index on T2 is not relevant;\n- The column x2 of T1 must be tagged with `NOT NULL`. The `NOT NULL` in the other columns is not relevant;\n- There must be a filter after the subquery in one of the columns of T1 (`x1`, `x2`, or `y`). Filters done to `t2_x1` or `z` make the join succeed (e.g., `WHERE T.z = 100`). Likewise, the nested query alone with no filter also returns the correct result;\n- Manually pushing the filter `WHERE T.x1 = 1` to the subquery works correctly;\n- Removing the `T2.z IS NULL` from the subquery also makes the join succeed.",
+  "date": "2021-11-22T16:12:46Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE TABLE T1 (x1 INTEGER NOT NULL, x2 INTEGER NOT NULL, y INTEGER NOT NULL);",
+    "CREATE INDEX T1_x1_x2 ON T1 (x1, x2);",
+    "CREATE INDEX T1_x2 ON T1 (x2);",
+    "CREATE TABLE T2 (x1 INTEGER NOT NULL, x2 INTEGER NOT NULL, z INTEGER NOT NULL);",
+    "INSERT INTO T1 VALUES (1, 0, 1), (1, 2, 1);",
+    "INSERT INTO T2 VALUES (1, 0, 3), (1, 2, 100);"
+  ],
+  "key_bug_features": [
+    "LEFT JOIN fails with specific filters and NOT NULL properties"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/36fae083b4",
+  "title": "Inconsistent interpretation of truth",
+  "vulnerable_version": "",
+  "date": "2018-02-26 15:14:417.45 years ago",
+  "path": "/home/crawl_bugs/sqlite/ticket_output/ticket_info_36fae083b4.json",
+  "poc": [
+    "CREATE TABLE t1(x ANY);",
+    "INSERT INTO t1 VALUES(0.5);",
+    "SELECT x OR (8==9), NOT NOT x, CASE WHEN x THEN 1 ELSE 0 END FROM t1 WHERE x;"
+  ],
+  "vulnerable_database": "sqlite",
+  "description": "drh added on 2018-02-26 15:14:41:\nSQLite does not have a separate Boolean type.  Instead, it interprets\ninteger, floating-point, text, and blob values as true or false.  But\nthe rules for determining truth are not consistent.\nThe ambiguity arises with floating-point values.  Some operations consider\nfloating point values to be true if they are non-zero.  Others consider\nfloating point values to be true if their integer part os non-zero.\nExample:\nCREATE TABLE t1(x ANY);\nINSERT INTO t1 VALUES(0.5);\nSELECT x OR (8==9), NOT NOT x, CASE WHEN x THEN 1 ELSE 0 END FROM t1 WHERE x;\nThe WHERE clause and the CASE statement both consider the value 0.5 to \nbe true, but the OR and NOT operators consider 0.5 to be false.\nThis confusion dates back to before version 3.6.1 (2008-08-06).  The\nproblem was seen during internal source code analysis and has never\ncaused problems in the wild, as far as we are aware.\ndrh added on 2018-02-26 15:28:06:\nThe fix is to interpret floating-point values as true if they are non-zero,\neven if their integer part is zero.",
+  "key_bug_features": [
+    "Inconsistent truth evaluation for floating-point values"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t1(x REAL, y INTEGER, z TEXT);",
+    "INSERT INTO t1 VALUES(0.5, 1, 'true');",
+    "INSERT INTO t1 VALUES(0.0, 0, 'false');",
+    "SELECT x, y, z, x OR (y = 0), NOT NOT x FROM t1 WHERE x IS NOT NULL;",
+    "SELECT CASE WHEN x THEN 'Non-zero' ELSE 'Zero' END AS result FROM t1;"
+  ]
+}

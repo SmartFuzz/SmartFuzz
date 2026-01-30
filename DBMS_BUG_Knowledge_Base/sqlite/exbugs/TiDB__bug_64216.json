@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/64216",
+  "title": "cannot simplify the predicate",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n```\nCREATE TABLE t1 (a int PRIMARY KEY, b int);\nCREATE TABLE t2 (a int PRIMARY KEY, b int);\n\nEXPLAIN FORMAT='brief' SELECT STRAIGHT_JOIN * FROM t1 LEFT JOIN t2 ON t1.a = t2.a WHERE t1.a = t2.a OR t1.a = t2.b;\n```\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\n\nIn Mysql\n\n```\n+----------------------------------------------------------------------------------------------------+\n| EXPLAIN                                                                                            |\n+----------------------------------------------------------------------------------------------------+\n| -> Nested loop inner join  (cost=0.7 rows=1) (actual time=0.172..0.172 rows=0 loops=1)             |\n|     -> Table scan on t1  (cost=0.35 rows=1) (actual time=0.161..0.161 rows=0 loops=1)              |\n|     -> Single-row index lookup on t2 using PRIMARY (a = t1.a)  (cost=0.35 rows=1) (never executed) |\n+----------------------------------------------------------------------------------------------------+\n```\n\n### 3. What did you see instead (Required)\n\n```\nEXPLAIN FORMAT='brief' SELECT STRAIGHT_JOIN * FROM t1 LEFT JOIN t2 ON t1.a = t2.a WHERE t1.a = t2.a OR t1.a = t2.b;\nid\testRows\ttask\taccess object\toperator info\nMergeJoin\t3.84\troot\t\tinner join, left key:join_outer.t1.a, right key:join_outer.t2.a, other cond:or(eq(join_outer.t1.a, join_outer.t2.a), eq(join_outer.t1.a, join_outer.t2.b))\n├─TableReader(Build)\t3.84\troot\t\tdata:Selection\n│ └─Selection\t3.84\tcop[tikv]\t\tor(eq(join_outer.t2.a, join_outer.t2.a), eq(join_outer.t2.a, join_outer.t2.b))\n│   └─TableFullScan\t4.00\tcop[tikv]\ttable:t2\tkeep order:true\n└─TableReader(Probe)\t9.00\troot\t\tdata:TableFullScan\n  └─TableFullScan\t9.00\tcop[tikv]\ttable:t1\tkeep order:true\n```\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "date": "2025-10-31T08:14:33Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t3 (a INTEGER PRIMARY KEY, b TEXT NOT NULL);",
+    "CREATE TABLE t4 (a INTEGER PRIMARY KEY, b REAL DEFAULT NULL);",
+    "INSERT INTO t3 (a, b) VALUES (1, 'test1'), (2, 'test2'), (3, 'test3');",
+    "INSERT INTO t4 (a, b) VALUES (1, 1.1), (2, NULL), (3, 3.3);",
+    "EXPLAIN QUERY PLAN SELECT * FROM t3 LEFT JOIN t4 ON t3.a = t4.a WHERE t3.a = t4.a OR t3.b = 'test2';"
+  ],
+  "key_bug_features": [
+    "LEFT JOIN with OR condition on primary key"
+  ]
+}

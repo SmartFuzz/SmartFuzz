@@ -1,0 +1,10 @@
+CREATE TABLE test_strings (id UInt32, text String) ENGINE = Memory;
+INSERT INTO test_strings VALUES (1, 'ClickHouse'), (2, 'Clickhouse'), (3, 'CLICKHOUSE'), (4, 'Cl'), (5, 'House');
+SELECT id, ngramSimHash(text, 5) AS simhash FROM test_strings WHERE ngramSimHash(text) LIKE ngramSimHash('ClickHouse') AND text LIKE '%House%';
+SELECT id, simhash FROM (SELECT id, ngramSimHash(text, 3) AS simhash FROM test_strings) WHERE simhash NOT LIKE ngramSimHash(CONCAT(text, '') ) OR simhash IS NULL;
+CREATE TABLE test_numeric (id UInt32, num_value UInt8) ENGINE = Memory;
+INSERT INTO test_numeric VALUES (1, 255), (2, 0), (3, 127);
+SELECT id FROM test_numeric WHERE ngramSimHash(toString(num_value)) LIKE '255' AND (num_value = 255 OR num_value IS NULL);
+SELECT t.id, t.text, t.simhash FROM (SELECT id, ngramSimHash(text, 2) AS simhash FROM test_strings) AS t JOIN test_numeric ON t.id LIKE toString(test_numeric.id) WHERE simhash IS NOT NULL;
+SELECT ngramSimHash(toString(NULL), 3) AS null_test WHERE ngramSimHash('test') IS NULL;
+SELECT ngramSimHash(text) AS hash FROM (SELECT id, text FROM test_strings WHERE id IN (SELECT id FROM test_numeric WHERE num_value < 20)) GROUP BY hash HAVING hash LIKE '6';

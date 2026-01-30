@@ -1,0 +1,14 @@
+CREATE TABLE event_log (event_time timestamptz, event_id INT, user_id INT, event_data CLOB);
+INSERT INTO event_log VALUES (timestamptz '2021-01-01 00:00:00', 1, 101, 'User logged in');
+INSERT INTO event_log VALUES (timestamptz '2021-01-01 00:01:00', 2, NULL, 'User logged out');
+INSERT INTO event_log VALUES (timestamptz '2021-01-01 00:02:00', 3, 102, NULL);
+SELECT sys.timestamp_to_str(event_time, '%Y-%m-%d %H:%M:%S') + ' Event ID: ' + event_id::text AS formatted_event FROM event_log WHERE user_id IS NULL;
+SELECT MAX(event_time) + INTERVAL '1 hour' AS max_time_plus_one_hour FROM event_log;
+SELECT COUNT(*) FROM (SELECT DISTINCT event_data FROM event_log WHERE event_time < sys.timestamp_to_str(timestamptz '2021-01-01 00:02:00', '%Y-%m-%d %H:%M:%S')) AS distinct_events;
+SELECT sys.timestamp_to_str(event_time, '%m/%d/%Y %I:%M %p') AS formatted_time, SUM(event_id) + 100 AS total_event_id FROM event_log GROUP BY formatted_time HAVING total_event_id < 400;
+SELECT user_id, COUNT(*) AS event_count FROM event_log GROUP BY user_id HAVING event_count + COALESCE((SELECT COUNT(*) FROM event_log WHERE user_id IS NULL), 0) > 1;
+SELECT sys.timestamp_to_str(event_time, '%Y-%m-%d %H:%M:%S') + ' | ' + (event_id + 1)::text AS combined_info FROM event_log WHERE event_id > (SELECT MAX(event_id) FROM event_log WHERE user_id IS NOT NULL);
+CREATE TEMP TABLE temp_events AS SELECT user_id, COUNT(*) AS count_events FROM event_log GROUP BY user_id;
+ALTER TABLE temp_events ADD COLUMN last_event_time timestamptz;
+UPDATE temp_events SET last_event_time = (SELECT MAX(event_time) FROM event_log WHERE event_log.user_id = temp_events.user_id);
+SELECT sys.timestamp_to_str(last_event_time, '%Y-%m-%d %H:%M') + ' | Events: ' + count_events::text AS user_status FROM temp_events WHERE count_events + 10 > 5;

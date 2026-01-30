@@ -1,0 +1,12 @@
+[
+    "CREATE TABLE test_table (id UInt32, input_string String);",
+    "INSERT INTO test_table VALUES (1, '\\x61\\xF0\\x80\\x80\\x80b'), (2, '\\xF0\\x28\\x8C\\x28'), (3, 'valid string'), (4, '\\x80\\x80\\x80'), (5, '\\xFF\\xFF\\xFF');",
+    "SELECT id, toValidUTF8(input_string) AS valid_string FROM test_table;",
+    "SELECT id, toValidUTF8(input_string) AS valid_string FROM (SELECT input_string FROM test_table WHERE id < 3) AS subquery;",
+    "CREATE TABLE valid_table AS SELECT id, toValidUTF8(input_string) AS valid_string FROM test_table;",
+    "SELECT COUNT(*) FROM valid_table WHERE valid_string = 'a\ufffdb';",
+    "SELECT id FROM test_table WHERE toValidUTF8(input_string) = input_string;",
+    "SELECT id, toValidUTF8('mixed \\x61 characters with invalid \\xF0\\x80\\x80\\x80 and valid ones.\\x61') AS mixed_valid FROM test_table;",
+    "CREATE TABLE invalid_table AS SELECT id, toValidUTF8(input_string) AS valid_string FROM test_table WHERE input_string LIKE '%\\xFF%';",
+    "SELECT id, valid_string FROM invalid_table UNION SELECT id, toValidUTF8(CONCAT(input_string, '\\x80')) FROM test_table WHERE id > 3;"
+]

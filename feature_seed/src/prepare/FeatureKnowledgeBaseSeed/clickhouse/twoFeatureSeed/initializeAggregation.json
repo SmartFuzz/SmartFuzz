@@ -1,0 +1,21 @@
+{
+    "function": "initializeAggregation",
+    "operator": "IS NULL",
+    "sql_array": [
+        "CREATE TABLE test_metrics(key Nullable(UInt64), value AggregateFunction(sum, UInt64) DEFAULT initializeAggregation('sumState', toUInt64(0))) ENGINE = AggregatingMergeTree() ORDER BY key;",
+        "INSERT INTO test_metrics VALUES (NULL, initializeAggregation('sumState', toUInt64(0))), (1, initializeAggregation('sumState', toUInt64(10))), (2, initializeAggregation('sumState', toUInt64(20)));",
+        "SELECT finalizeAggregation(value), key IS NULL FROM test_metrics GROUP BY key HAVING key IS NULL;",
+        "SELECT key, initializeAggregation('uniqState', value IS NULL) AS state FROM test_metrics WHERE value IS NOT NULL OR initializeAggregation('sumState', toUInt64(5)) IS NULL GROUP BY key;",
+        "SELECT key, initializeAggregation('sumState', toUInt64(number)) AS state FROM (SELECT number % 10 AS number FROM numbers(100)) WHERE state IS NULL;",
+        "SELECT finalizeAggregation(value), COUNT(*) FROM (SELECT initializeAggregation('sumState', IF(key IS NULL, 0, value)) AS value FROM test_metrics) GROUP BY value HAVING COUNT(*) > 1;",
+        "SELECT key, toTypeName(initializeAggregation('uniqState', IF(value IS NULL, 0, value))) FROM test_metrics WHERE key IS NOT NULL ORDER BY value;",
+        "CREATE TABLE temp_metrics(key UInt64, value Nullable(UInt64)) ENGINE = MergeTree() ORDER BY key;",
+        "INSERT INTO temp_metrics VALUES (1, NULL), (2, 3), (NULL, 5), (4, NULL);",
+        "SELECT COUNT(*), initializeAggregation('sumState', value) FROM temp_metrics WHERE value IS NOT NULL AND key IS NULL GROUP BY key HAVING initializeAggregation('sumState', value) IS NOT NULL;",
+        "SELECT initializeAggregation('sumState', toUInt64(0)) AS state, IS NULL FROM temp_metrics WHERE key IS NOT NULL;",
+        "SELECT initializeAggregation('sumState', value IS NULL) AS null_sum FROM temp_metrics GROUP BY key HAVING null_sum IS NOT NULL;",
+        "CREATE TABLE complex_metrics(key Nullable(UInt64), value AggregateFunction(sum, UInt64) DEFAULT initializeAggregation('sumState', toUInt64(0))) ENGINE = AggregatingMergeTree() ORDER BY key;",
+        "INSERT INTO complex_metrics SELECT number, initializeAggregation('sumState', number) FROM numbers(10) WHERE number % 2 = 0;",
+        "SELECT finalizeAggregation(value) AS final_value, key IS NULL FROM complex_metrics GROUP BY key HAVING final_value > 0;"
+    ]
+}

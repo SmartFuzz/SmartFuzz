@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7441",
+  "title": "MonetDB server crashes in `is_column_unique`",
+  "description": "MonetDB server crashes in `is_column_unique`.\n\n**To Reproduce**\n```sql\nCREATE TABLE v0 ( v1 INTEGER );\n SELECT 1 IS NOT NULL FROM v0 ORDER BY AVG ( max ( 286 ) ) OVER ( ORDER BY 111 NULLS FIRST ) NULLS LAST ; \n SELECT DISTINCT * FROM v0 AS cor0 WHERE ( 2 ) IN ( v1 / - v1 , v1 ) ;  \n```\n\n**Backtrace of the Crash**\n```c\n#0 0x7f7ab2d92dae (is_column_unique+0x3e)\n#1 0x7f7ab2e7caa0 (bind_col_exp+0x60)\n#2 0x7f7ab2e7bfb6 (rel_base_bind_column+0x196)\n#3 0x7f7ab2e6c64b (rel_bind_column+0x19b)\n#4 0x7f7ab2e1fc7d (rel_column_ref+0xcd)\n#5 0x7f7ab2e2633f (rel_value_exp2+0x41f)\n#6 0x7f7ab2e1a1fc (rel_value_exp+0xdc)\n#7 0x7f7ab2e26c32 (rel_value_exp2+0xd12)\n#8 0x7f7ab2e1a1fc (rel_value_exp+0xdc)\n#9 0x7f7ab2e1d6a8 (rel_in_value_exp+0x2a8)\n#10 0x7f7ab2e21c8e (rel_logical_exp+0x1be)\n#11 0x7f7ab2e34203 (rel_select_exp+0x113)\n#12 0x7f7ab2e2bc20 (rel_subquery+0x5f0)\n#13 0x7f7ab2e2bee3 (rel_selects+0x233)\n#14 0x7f7ab2e12d72 (rel_semantic+0x442)\n#15 0x7f7ab2c07cf3 (sql_symbol2relation+0x93)\n#16 0x7f7ab2c34b84 (SQLparser+0x624)\n#17 0x7f7ab2c33cbc (SQLengine_+0xa5c)\n#18 0x7f7ab2c314fe (SQLengine+0x3e)\n#19 0x7f7ab31af2cf (runScenario+0x6f)\n#20 0x7f7ab31b04de (MSscheduleClient+0xb6e)\n#21 0x7f7ab32e7182 (doChallenge+0x132)\n#22 0x7f7ab40108a7 (thread_starter+0xc7)\n#23 0x7f7ab2b2b609 (start_thread+0xd9)\n#24 0x7f7ab2a4e133 (clone+0x43)\n```\n\n**Software versions**\n - MonetDB version number: v11.49.1 (Dec2023)\n - OS and version: Ubuntu 20.04\n - From docker image monetdb/monetdb:Dec2023\n\nAn example of steps to reproduce in docker container (**write the poc into /tmp/test.sql first**):\n```bash\ndocker container rm monetdb_test -f\ndocker run -e MDB_DB_ADMIN_PASS=monetdb --name monetdb_test -itd monetdb/monetdb:Dec2023\ndocker exec monetdb_test bash -c 'echo -n -e \"user=monetdb\\npassword=monetdb\\n\" > /root/.monetdb'\n\nsleep 10\ncat /tmp/test.sql | timeout 5s docker exec -i monetdb_test mclient monetdb     # run test case\n\nif docker exec monetdb_test bash -c \"grep '[m]server5' /proc/*/cmdline -lR\"; then\n    echo \"[INFO] Server normal.\"\nelse\n    echo \"[CRASH] Mserver5 process does NOT exist.\"\nfi\n```\n\nIt can also be reproduced on the docker image `monetdb/dev-builds:default`.\n\n**Issue labeling**\nbug",
+  "date": "2024-01-17T06:54:13Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE TABLE v1 ( v2 INTEGER NOT NULL, v3 VARCHAR(255) UNIQUE );",
+    "INSERT INTO v1 (v2, v3) VALUES (1, 'test1'), (2, 'test2'), (3, NULL);",
+    "CREATE TABLE v4 ( v5 INTEGER, v6 INTEGER DEFAULT 0 );",
+    "INSERT INTO v4 (v5) VALUES (NULL), (5), (10);",
+    "SELECT v2, v3 FROM v1 WHERE v2 IN (SELECT v5 FROM v4 WHERE v6 IS NOT NULL) ORDER BY v2 DESC;"
+  ],
+  "key_bug_features": [
+    "Crash in `is_column_unique` during complex SQL query execution"
+  ]
+}

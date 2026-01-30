@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id Int32, name String, description String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table (id, name, description) VALUES (1, 'Motörhead', 'A legendary rock band'), (2, 'Queen', ''), (3, '', 'An empty name'), (4, NULL, 'Null Name');
+SELECT positionUTF8(name, 'ö') ? id : (CASE WHEN name IS NULL THEN -1 ELSE 0 END) AS position FROM test_table;
+SELECT id, name, CASE WHEN positionUTF8(name, 'r') > 0 THEN 'Contains R' ELSE 'Does Not Contain R' END AS r_check FROM test_table WHERE name IS NOT NULL;
+SELECT id, description, positionUTF8(description, 'rock') AS rock_position, positionUTF8(name, 'Queen') AS queen_position FROM test_table HAVING rock_position IS NOT NULL OR queen_position IS NOT NULL;
+SELECT id, name, positionUTF8(name, 'Motör') ? 'Found' : 'Not Found' AS motör_check FROM (SELECT * FROM test_table WHERE name IS NOT NULL) AS filtered_table;
+SELECT id, name, CASE WHEN positionUTF8(name, 'A') IS NULL THEN 'No A' ELSE 'Contains A' END AS a_check FROM test_table ORDER BY a_check;
+CREATE TABLE temp_table AS SELECT a.id, positionUTF8(a.name, 'b') FROM (SELECT id, name FROM test_table) AS a WHERE positionUTF8(a.name, 'o') IS NOT NULL;
+SELECT a.id, a.name, IF(positionUTF8(a.name, 'e') > 0, 'Yes', 'No') AS e_found FROM temp_table AS a JOIN test_table AS b ON a.id = b.id WHERE b.description IS NOT NULL;
+INSERT INTO temp_table (id, name) VALUES (5, 'Empty String'), (6, NULL);

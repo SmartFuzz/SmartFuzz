@@ -1,0 +1,22 @@
+{
+    "function": "lead(value any [, offset integer [, default any]])",
+    "operator": "^",
+    "sql_array": [
+        "CREATE TABLE test_data (id INT PRIMARY KEY, value INT, grp VARCHAR(255));",
+        "INSERT INTO test_data (id, value, grp) VALUES (1, 5, 'A'), (2, 10, 'A'), (3, NULL, 'B'), (4, 20, 'B'), (5, 30, 'C');",
+        "SELECT id, lead(value ^ 2, 1, 0) OVER (PARTITION BY grp ORDER BY id) AS lead_value FROM test_data WHERE value IS NOT NULL;",
+        "SELECT id, (value ^ (SELECT MAX(value) FROM test_data WHERE grp = 'B')) AS xor_value FROM test_data WHERE grp IS NOT NULL;",
+        "SELECT grp, COUNT(*) AS cnt, AVG(lead(value, 1, 0) OVER (PARTITION BY grp ORDER BY id)) FROM test_data GROUP BY grp HAVING cnt > 1;",
+        "SELECT id, value, lead(value, CAST(NULL AS INT), 100) FROM test_data WHERE grp = 'C' ORDER BY id;",
+        "CREATE TABLE edge_cases (a INT, b VARCHAR(50), c DATE);",
+        "INSERT INTO edge_cases (a, b, c) VALUES (2147483647, 'string', '2023-10-01');",
+        "INSERT INTO edge_cases (a, b, c) VALUES (1, '', NULL);",
+        "SELECT a, (a ^ COALESCE(NULLIF(b, ''), '0')::INT) AS test_xor FROM edge_cases;",
+        "SELECT lead(a ^ 2, 1, 0) FROM edge_cases WHERE c < CURRENT_DATE - INTERVAL '1 day';",
+        "SELECT value, lead(value, 2, NULL) OVER (ORDER BY id) ^ 1 AS xor_lead FROM test_data WHERE value IS NOT NULL ORDER BY id;",
+        "CREATE TABLE join_tests (start_id INT, end_id INT, value INT, FOREIGN KEY (start_id) REFERENCES test_data(id));",
+        "INSERT INTO join_tests (start_id, end_id, value) VALUES (1, 2, 15), (2, 3, 30);",
+        "SELECT jt.start_id, jt.end_id, (jt.value + lead(jt.value, 1, 10) OVER (ORDER BY jt.start_id)) ^ (SELECT MIN(value) FROM test_data WHERE grp = 'A') AS complex_test FROM join_tests jt WHERE jt.value IS NOT NULL;",
+        "SELECT jt.start_id, (jt.value ^ lead(jt.value, 1, NULL) OVER (ORDER BY jt.start_id)) AS edge_case FROM join_tests jt WHERE jt.end_id IS NOT NULL;"
+    ]
+}

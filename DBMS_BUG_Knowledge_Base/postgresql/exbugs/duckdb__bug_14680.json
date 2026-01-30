@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14680",
+  "title": "DuckDB hangs when COPY command processes NUL (chr(0)) if quote=''",
+  "description": "### What happens?\n\nA NUL (chr(0)) in a string seems to cause DuckDB considerable grief.\r\n\r\n(1) At the CLI\r\n\r\nselect 'a\u0000b';\r\n\r\nsimply hangs, even though `select 'a' || chr(0) || 'b';` produces:\r\na\\0b\r\n\r\n(2) More seriously, the `copy` command can also cause DuckDB to hang:\r\n```\r\ncreate or replace table t as (from values ('a' || chr(0) || 'b') t(i));\r\ncopy t to 'csv2tsv.tsv' (header false, delimiter '\\t', escape '', quote '');\r\n```\r\nNote that this particular problem seems to be triggered by specifying `quote` to be the\r\nempty string.\r\n\n\n### To Reproduce\n\n```\r\ncreate or replace table t as (from values ('a' || chr(0) || 'b') t(i));\r\ncopy t to 'csv2tsv.tsv' (header false, delimiter '\\t', escape '', quote '');\r\n```\n\n### OS:\n\nMacOS\n\n### DuckDB Version:\n\nv1.1.3-dev158\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nPeter Koppstein\n\n### Affiliation:\n\nPrinceton University\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a source build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nNot applicable - the reproduction does not require a data set\n\n### Did you include all code required to reproduce the issue?\n\n- [X] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [X] Yes, I have",
+  "date": "2024-11-03 05:30:47",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INTEGER, name VARCHAR, value BYTEA);",
+    "INSERT INTO test_table VALUES (1, 'test' || E'\\000', NULL);",
+    "CREATE TABLE another_table AS SELECT id, name FROM test_table WHERE value IS NULL;",
+    "COPY test_table TO '/path/to/output.tsv' WITH (FORMAT 'csv', HEADER true, DELIMITER E'\\t', QUOTE E'\\b', ESCAPE E'\\b');",
+    "SELECT * FROM another_table WHERE name LIKE '%' || E'\\000' || '%';"
+  ],
+  "key_bug_features": [
+    "COPY command hangs with NUL character and empty quote"
+  ]
+}

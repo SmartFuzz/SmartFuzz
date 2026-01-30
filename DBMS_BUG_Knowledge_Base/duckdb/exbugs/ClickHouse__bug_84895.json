@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/84895",
+  "title": "Iceberg tables ignore compression algorithms",
+  "description": "### Describe the bug\nEasy to reproduce.\n### How to reproduce\nRun:\n```sql\nCREATE TABLE t0 (c0 Int) ENGINE = IcebergLocal('/var/lib/clickhouse/user_files/f0/', CSV, 'gzip');\nINSERT INTO TABLE t0 (c0) VALUES (1);\nSELECT c0 FROM t0;\n/*\nDB::Exception: inflate failed: data error:\nWhile reading from: /var/lib/clickhouse/user_files/f0/data/data-256610b7-246a-4dab-ae80-2698a1f2c430.parquet:\n(in file/uri /var/lib/clickhouse/user_files/f0/data/data-256610b7-246a-4dab-ae80-2698a1f2c430.parquet):\nWhile executing ParallelParsingBlockInputFormat: While executing ReadFromObjectStorage. (ZLIB_INFLATE_FAILED)\n*/\n```\n### Error message and/or stacktrace\nStack trace:\n```\n<Error> TCPHandler: Code: 354. DB::Exception: inflate failed: data error: While reading from: /var/lib/clickhouse/user_files/f0/data/data-ecbfea69-8b9b-4d24-a2ce-aad400f7ae44.parquet: (in file/uri /var/lib/clickhouse/user_files/f0/data/data-ecbfea69-8b9b-4d24-a2ce-aad400f7ae44.parquet): While executing ParallelParsingBlockInputFormat: While executing ReadFromObjectStorage. (ZLIB_INFLATE_FAILED), Stack trace (when copying this message, always include the lines below):\n0. contrib/llvm-project/libcxx/include/__exception/exception.h:113: Poco::Exception::Exception(String const&, int) @ 0x00000000265c68f2\n1. src/Common/Exception.cpp:116: DB::Exception::Exception(DB::Exception::MessageMasked&&, int, bool) @ 0x000000001409c1a6\n2. src/Common/Exception.h:119: DB::Exception::Exception(PreformattedMessage&&, int) @ 0x000000000cd915ac\n3. src/Common/Exception.h:137: DB::Exception::Exception<char const*, String>(int, FormatStringHelperImpl<std::type_identity<char const*>::type, std::type_identity<String>::type>, char const*&&, String&&) @ 0x0000000012d07eb6\n4. src/IO/ZlibInflatingReadBuffer.cpp:111: DB::ZlibInflatingReadBuffer::nextImpl() @ 0x000000001438bf3a\n5. src/IO/ReadBuffer.h:64: DB::ReadBuffer::next() @ 0x000000000ce9fdc5\n6. src/IO/ReadBuffer.h:114: DB::loadAtPosition(DB::ReadBuffer&, DB::Memory<Allocator<false, false>>&, char*&) @ 0x0000000014182b70\n7. src/Processors/Formats/Impl/CSVRowInputFormat.cpp:524: DB::fileSegmentationEngineCSVImpl(DB::ReadBuffer&, DB::Memory<Allocator<false, false>>&, unsigned long, unsigned long, unsigned long, DB::FormatSettings const&) @ 0x000000001e750d91\n8. contrib/llvm-project/libcxx/include/__functional/function.h:716: ? @ 0x000000001e80c253\n9. contrib/llvm-project/libcxx/include/__type_traits/invoke.h:117: ThreadFromGlobalPoolImpl<true, true>::ThreadFromGlobalPoolImpl<void (DB::ParallelParsingInputFormat::*)(std::shared_ptr<DB::ThreadGroup>), DB::ParallelParsingInputFormat*, std::shared_ptr<DB::ThreadGroup>>(void (DB::ParallelParsingInputFormat::*&&)(std::shared_ptr<DB::ThreadGroup>), DB::ParallelParsingInputFormat*&&, std::shared_ptr<DB::ThreadGroup>&&)::'lambda'()::operator()() @ 0x000000001e80fa1d\n10. contrib/llvm-project/libcxx/include/__functional/function.h:716: ? @ 0x00000000141e29a6\n11. contrib/llvm-project/libcxx/include/__type_traits/invoke.h:117: void* std::__thread_proxy[abi:se190107]<std::tuple<std::unique_ptr<std::__thread_struct, std::default_delete<std::__thread_struct>>, void (ThreadPoolImpl<std::thread>::ThreadFromThreadPool::*)(), ThreadPoolImpl<std::thread>::ThreadFromThreadPool*>>(void*) @ 0x00000000141e93c0\n12. start_thread @ 0x00000000000a27f1\n13. __GI___clone3 @ 0x0000000000133c9c\n```",
+  "date": "2025-08-01T14:34:36Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (c0 INTEGER, c1 VARCHAR, c2 DOUBLE);",
+    "INSERT INTO t1 (c0, c1, c2) VALUES (1, 'test', 3.14);",
+    "CREATE TABLE t2 AS SELECT c0, c2 FROM t1 WHERE c1 IS NOT NULL;",
+    "SELECT c0, c1 FROM t1 WHERE c2 > (SELECT AVG(c2) FROM t1);",
+    "INSERT INTO t1 (c0, c1, c2) VALUES (NULL, 'null_value', NULL);"
+  ],
+  "key_bug_features": [
+    "Iceberg tables ignore specified compression algorithms"
+  ]
+}

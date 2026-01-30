@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7575",
+  "title": "Incorrect BAT properties after mmapped BAT \"leaks\" to disk with restart.",
+  "description": "When a BAT is memory-mapped and gets updated, the updated values \"leak\" to disk (it's an mmap, after all).  The internal copy of the BAT properties are updated, and all is still fine.\nWhen the server restarts before the WAL is processed, the on-disk properties will not have been updated, but the values in the BAT were.  This may lead to a crash.",
+  "date": "2024-09-09T16:13:13Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE TABLE bar (id INTEGER PRIMARY KEY, value VARCHAR(255) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO bar (id, value) VALUES (1, 'test1'), (2, 'test2'), (3, NULL), (4, 'test4');",
+    "UPDATE bar SET value = 'updated' WHERE id IN (SELECT id FROM bar WHERE value IS NOT NULL);",
+    "CREATE TABLE baz AS SELECT id, value FROM bar WHERE created_at < CURRENT_TIMESTAMP;",
+    "SELECT COUNT(*) FROM baz WHERE value LIKE 'up%';"
+  ],
+  "key_bug_features": [
+    "Memory-mapped BAT updates not persisted on server restart"
+  ]
+}

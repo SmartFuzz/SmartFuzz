@@ -1,0 +1,42 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/63898",
+  "title": "Unexpected error `Can't find column Column#3 in schema Column` when construct prepared statement for EXPLAIN",
+  "vulnerable_database": "tidb",
+  "date": "2025-10-10T13:35:52Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\nThe following test case triggers an unexpected error `Can't find column Column#3 in schema Column: [database5r.t0._tidb_rowid] PKOrUK: [] NullableUK: []`\n\n```\nCREATE TABLE t0(c0 CHAR );\nCREATE VIEW v0(c0) AS SELECT ((FIELD(t0.c0, 1))!=(false)) FROM t0;\nPREPARE prepare_query FROM 'EXPLAIN SELECT t0.c0 FROM v0, t0 WHERE ((t0.c0)=(REPLACE(?, v0.c0, ?)))';\n```\n\nI tried this in MySQL and there is no error.\n\n### 2. What did you expect to see? (Required)\n\nNo error.\n\n### 3. What did you see instead (Required)\n\n`Can't find column Column#3 in schema Column: [database5r.t0._tidb_rowid] PKOrUK: [] NullableUK: []`\n\n### 4. What is your TiDB version? (Required)\n\n```\nRelease Version: v9.0.0-beta.2.pre-551-g71caddf56d\\nEdition: Community\\nGit Commit Hash: 71caddf56d9c1887650568101590417558149e3f\\nGit Branch: master\\nUTC Build Time: 2025-09-24 10:56:45\\nGoVersion: go1.23.12\\nRace Enabled: false\\nCheck Table Before Drop: false\\nStore: unistore\\nKernel Type: Classic\n```\n\n",
+  "poc": [
+    "CREATE TABLE t0(c0 CHAR );",
+    "CREATE VIEW v0(c0) AS SELECT ((FIELD(t0.c0, 1))!=(false)) FROM t0;",
+    "PREPARE prepare_query FROM 'EXPLAIN SELECT t0.c0 FROM v0, t0 WHERE ((t0.c0)=(REPLACE(?, v0.c0, ?)))';"
+  ],
+  "poc_type": "sql_text",
+  "state": "open",
+  "key_bug_features": [
+    "EXPLAIN with REPLACE in prepared statement fails"
+  ],
+  "bug_feature_seed": [
+  "DROP VIEW IF EXISTS v0;",
+  "DROP TABLE IF EXISTS t0;",
+  "CREATE TABLE t0(c0 CHAR);",
+  "INSERT INTO t0 VALUES ('1'),('0'),(NULL);",
+  "CREATE VIEW v0(c0) AS SELECT ((FIELD(t0.c0, 1)) != (FALSE)) FROM t0;",
+  "SELECT t0.c0 FROM v0, t0 WHERE (t0.c0 = REPLACE('x', v0.c0, 'y'));",
+  "PREPARE ps1 FROM 'SELECT t0.c0 FROM v0, t0 WHERE (t0.c0 = REPLACE(?, v0.c0, ?))';",
+  "SET @a = 'x', @b = 'y';",
+  "EXECUTE ps1 USING @a, @b;",
+  "DEALLOCATE PREPARE ps1;",
+  "PREPARE ps2 FROM 'EXPLAIN SELECT t0.c0 FROM v0, t0 WHERE (t0.c0 = REPLACE(?, v0.c0, ?))';",
+  "SET @a = 'x', @b = 'y';",
+  "EXECUTE ps2 USING @a, @b;",
+  "DEALLOCATE PREPARE ps2;",
+  "PREPARE ps3 FROM 'EXPLAIN SELECT v0.c0 FROM v0 WHERE REPLACE(?, v0.c0, ?) IS NOT NULL';",
+  "SET @a = 'x', @b = 'y';",
+  "EXECUTE ps3 USING @a, @b;",
+  "DEALLOCATE PREPARE ps3;",
+  "PREPARE ps4 FROM 'EXPLAIN SELECT t0.c0 FROM t0 JOIN v0 ON t0.c0 = REPLACE(?, v0.c0, ?)';",
+  "SET @a = 'x', @b = 'y';",
+  "EXECUTE ps4 USING @a, @b;"
+]
+
+}

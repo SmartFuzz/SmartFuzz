@@ -1,0 +1,11 @@
+CREATE TABLE test_data (id INTEGER PRIMARY KEY, updated_at TIMESTAMP DEFAULT localtime, value DECIMAL(10, 2));
+INSERT INTO test_data (id, value) VALUES (1, 10.5), (2, 20.75), (3, NULL);
+SELECT id, value, localtime - updated_at AS time_diff FROM test_data WHERE value IS NOT NULL;
+SELECT id, value, (localtime - updated_at) - (SELECT localtime FROM test_data WHERE id = 1) AS adjusted_time_diff FROM test_data;
+SELECT id, COUNT(*) AS count, (localtime - MAX(updated_at)) AS latest_diff FROM test_data GROUP BY id HAVING latest_diff IS NOT NULL;
+CREATE TABLE secondary_data (info VARCHAR, value INTEGER);
+INSERT INTO secondary_data (info, value) VALUES ('info1', 5), ('info2', 10);
+SELECT a.id, a.value, b.value - a.value AS difference FROM test_data a JOIN secondary_data b ON a.id = b.value WHERE b.value - a.value IS NOT NULL;
+WITH time_diff AS (SELECT id, localtime - updated_at AS diff FROM test_data) SELECT id FROM time_diff WHERE diff > (SELECT AVG(diff) FROM time_diff);
+SELECT id, IFNULL(value, 0) - (SELECT MAX(value) FROM test_data) AS adjusted_value FROM test_data;
+CREATE OR REPLACE TABLE temporary_table AS SELECT id, localtime - updated_at AS time_diff FROM test_data;

@@ -1,0 +1,15 @@
+CREATE TABLE test_table (id INT, date_col DATE, value_col VARCHAR(255));
+INSERT INTO test_table VALUES (1, DATE '2022-01-01', '10'), (2, DATE '2022-01-02', '20'), (3, DATE '2022-01-03', NULL);
+SELECT id, query_table('test_table').date_col + 1 AS new_date FROM test_table WHERE date_col IS NOT NULL;
+SELECT id, COUNT(value_col) OVER (PARTITION BY query_table('test_table').date_col + 0) AS value_count FROM test_table;
+SELECT id, query_table('test_table').date_col + CAST(NULL AS INT) AS invalid_date FROM test_table;
+SELECT id, value_col, (query_table('test_table').date_col + CAST(value_col AS INT)) AS final_date FROM test_table WHERE value_col IS NOT NULL;
+SELECT id, SUM(COALESCE(value_col, '0')::INTEGER) + query_table('test_table').date_col + 1 AS final_value FROM test_table GROUP BY id HAVING SUM(value_col IS NULL) > 0;
+SELECT id FROM test_table WHERE query_table('test_table').id IN (SELECT id FROM test_table WHERE value_col IS NULL + 1);
+SELECT id, DATE '2023-01-01' + MAX(DATEDIFF(test_table.date_col, DATE '2022-01-01')) FROM test_table GROUP BY id HAVING MAX(DATEDIFF(test_table.date_col, DATE '2022-01-01')) > 0;
+CREATE TABLE another_table (info TEXT);
+INSERT INTO another_table VALUES ('A'), ('B'), (NULL);
+SELECT a.id, query_table('another_table').info || ' - ' || CAST(a.value_col AS TEXT) AS combined_info FROM test_table a JOIN another_table ON a.id = COUNT(*) + 1;
+SELECT CASE WHEN query_table('test_table').value_col IS NULL THEN 'No Value' ELSE query_table('test_table').value_col END AS value_description FROM test_table;
+SELECT query_table('test_table').id, (query_table('test_table').date_col + 3) AS plus_three_days FROM test_table WHERE (query_table('test_table').value_col IS NOT NULL OR query_table('test_table').date_col IS NULL);
+SELECT id, (DATE '1990-01-01' + COUNT(value_col)) AS calculated_date FROM test_table GROUP BY id HAVING COUNT(value_col) < 2;

@@ -1,0 +1,15 @@
+CREATE TABLE test_storage (id UInt32, value String, created_at DateTime) ENGINE = MergeTree ORDER BY id;
+INSERT INTO test_storage VALUES (1, 'first_value', now()), (2, '', now()), (3, NULL, now()), (4, 'fourth_value', now());
+SELECT id, value FROM test_storage WHERE value != ANY (SELECT value FROM test_storage WHERE id = 2);
+SELECT id, value FROM test_storage WHERE id != ANY (SELECT id FROM (SELECT id FROM test_storage WHERE created_at < now() - INTERVAL 1 DAY) AS subquery);
+CREATE TABLE test_storage_hdfs ENGINE = HDFS('hdfs://localhost:9000/path/', 'MyFormat') SETTINGS hdfs_truncate_on_insert = 1;
+INSERT INTO test_storage_hdfs SELECT id, value FROM test_storage WHERE value != ANY (SELECT value FROM test_storage WHERE value IS NOT NULL);
+SELECT id, COUNT(value) AS value_count FROM test_storage GROUP BY id HAVING value_count != ANY (SELECT COUNT(*) FROM test_storage WHERE id IS NOT NULL);
+SELECT id, value FROM test_storage_hdfs WHERE created_at >= '2023-01-01' AND value != ANY (SELECT value FROM test_storage_hdfs WHERE id = 1) ORDER BY created_at;
+INSERT INTO test_storage_hdfs SELECT id, value || ' modified' FROM test_storage WHERE id != ANY (SELECT id FROM test_storage WHERE value = '');
+CREATE TABLE complex_test (id UInt32, ref_id Nullable(UInt32), data String) ENGINE = MergeTree ORDER BY (ref_id, id);
+INSERT INTO complex_test VALUES (1, 1, 'data1'), (2, NULL, 'data2'), (3, 2, NULL), (4, 2, 'data4');
+SELECT ct1.id, ct2.data FROM complex_test AS ct1 JOIN complex_test AS ct2 ON ct1.ref_id != ANY (SELECT ref_id FROM complex_test WHERE data IS NOT NULL) WHERE ct1.data IS NULL;
+SELECT id, ref_id FROM complex_test WHERE id != ANY (SELECT id FROM (SELECT DISTINCT id FROM complex_test WHERE ref_id IS NOT NULL) AS subquery) ORDER BY ref_id;
+ALTER TABLE test_storage ADD COLUMN extra_data String DEFAULT 'default_value';
+SELECT COUNT(*) FROM test_storage WHERE extra_data != ANY (SELECT extra_data FROM test_storage WHERE value = 'some_value');

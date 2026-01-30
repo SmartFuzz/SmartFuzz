@@ -1,0 +1,21 @@
+{
+    "function": "json.isvalid(str)",
+    "operator": "<>",
+    "sql_array": [
+        "CREATE TABLE json_test (id INT PRIMARY KEY, json_data TEXT);",
+        "INSERT INTO json_test VALUES (1, '{\"key\": \"value\"}'), (2, '{\"key\": 123}'), (3, '{\"key\": null}');",
+        "SELECT id, json.isvalid(json_data) AS is_valid FROM json_test WHERE json_data <> '{\"key\": \"value\"}' AND NOT json.isvalid(json_data);",
+        "CREATE TABLE inet_test (id INT PRIMARY KEY, ip_address INET);",
+        "INSERT INTO inet_test VALUES (1, inet '192.168.1.5'), (2, inet '192.168.1.5'), (3, inet '192.168.1.4');",
+        "SELECT a.id, a.ip_address <> b.ip_address AS ip_mismatch FROM inet_test a JOIN inet_test b ON a.id <> b.id WHERE json.isvalid('{\"ip\":\"'+ a.ip_address + '\"}') AND a.ip_address <> inet '192.168.1.5';",
+        "SELECT COUNT(*) FROM json_test GROUP BY json.isvalid(json_data) HAVING json.isvalid(ARRAY_TO_JSON(ARRAY[json_data, NULL]));",
+        "CREATE TABLE nested_test (id INT, parent_id INT, json_data TEXT);",
+        "INSERT INTO nested_test VALUES (1, NULL, '{\"data\": \"parent\"}'), (2, 1, '{\"data\": \"child\"}');",
+        "SELECT nt1.id, json.isvalid(nt1.json_data) AS is_valid FROM nested_test nt1 WHERE nt1.id IN (SELECT nt2.id FROM nested_test nt2 WHERE nt2.parent_id IS NULL AND nt2.json_data <> '{\"data\": \"invalid\"}');",
+        "SELECT DISTINCT json.isvalid(NULL) AS is_null_valid, COUNT(*) FROM json_test WHERE json_data IS NOT NULL GROUP BY json_data <> '{}';",
+        "CREATE TABLE mixed_types (id INT, value TEXT, ip INET);",
+        "INSERT INTO mixed_types VALUES (1, '', inet '192.168.1.1'), (2, 'example', inet '192.168.0.1');",
+        "SELECT id, json.isvalid(value) AS string_valid FROM mixed_types WHERE value <> '' OR ip IS NULL;",
+        "SELECT json_data FROM json_test WHERE json.isvalid(json_data) AND json_data <> '{\"key\": \"value\"}' ORDER BY id DESC LIMIT 1;"
+    ]
+}

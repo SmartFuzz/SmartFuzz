@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=104387",
+  "title": "CHARACTER_SET_MISMATCH issue with regex comparisons",
+  "description": "The query below works on 8.0.21, but throws a CHARACTER_SET_MISMATCH error on 8.0.22+ when using regex comparisson:\r\n\r\nmysql > create table colltest ( id int unsigned not null primary key auto_increment, cbin varbinary(140), ctxt text character set utf8mb3 collate utf8mb3_bin, cstr varchar(255) character set utf8mb4);\r\nQuery OK, 0 rows affected, 2 warnings (0.45 sec)\r\n\r\nmysql > insert into colltest set cbin='asdf',ctxt='asdf',cstr='asdf';\r\nQuery OK, 1 row affected (0.01 sec)\r\n\r\nmysql > select * from colltest where cbin rlike cstr;\r\nERROR 3995 (HY000): Character set 'binary' cannot be used in conjunction with 'utf8mb4_0900_ai_ci' in call to regexp_like.\r\n\r\nmysql > select * from colltest where cbin rlike ctxt;\r\nERROR 3995 (HY000): Character set 'binary' cannot be used in conjunction with 'utf8_bin' in call to regexp_like.\r\n\r\nThe same query works normally on MySQL 8.0.21:\r\nmysql > create table colltest ( id int unsigned not null primary key auto_increment, cbin varbinary(140), ctxt text character set utf8mb3 collate utf8mb3_bin, cstr varchar(255) character set utf8mb4);\r\nQuery OK, 0 rows affected, 2 warnings (0.07 sec)\r\n\r\nmysql >  insert into colltest set cbin='asdf',ctxt='asdf',cstr='asdf';\r\nQuery OK, 1 row affected (0.65 sec)\r\n\r\nmysql > select * from colltest where cbin rlike cstr;\r\n+----+------------+------+------+\r\n| id | cbin       | ctxt | cstr |\r\n+----+------------+------+------+\r\n|  1 | 0x61736466 | asdf | asdf |\r\n+----+------------+------+------+\r\n1 row in set (0.00 sec)\r\n\r\nmysql > select * from colltest where cbin rlike ctxt;\r\n+----+------------+------+------+\r\n| id | cbin       | ctxt | cstr |\r\n+----+------------+------+------+\r\n|  1 | 0x61736466 | asdf | asdf |\r\n+----+------------+------+------+\r\n1 row in set (0.00 sec)\nHow to repeat:\ncreate table colltest ( id int unsigned not null primary key auto_increment, cbin varbinary(140), ctxt text character set utf8mb3 collate utf8mb3_bin, cstr varchar(255) character set utf8mb4);\r\n\r\ninsert into colltest set cbin='asdf',ctxt='asdf',cstr='asdf';\r\n\r\nselect * from colltest where cbin rlike cstr;\r\n\r\nselect * from colltest where cbin rlike ctxt;\r\n\r\nThese work on 8.0.21, but throw an error on 8.0.25+",
+  "date": "2021-07-22 21:24:00",
+  "vulnerable_version": "8.0.22, 8.0.23, 8.0.24, 8.0.25, 8.0.26",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE colltest2 ( id SERIAL PRIMARY KEY, cbin BYTEA, ctxt TEXT COLLATE \"utf8mb3_bin\", cstr VARCHAR(255), cnum INT DEFAULT NULL);",
+    "INSERT INTO colltest2 (cbin, ctxt, cstr, cnum) VALUES (decode('61736466', 'hex'), 'asdf', 'asdf', NULL);",
+    "SELECT * FROM colltest2 WHERE cbin::TEXT LIKE cstr;",
+    "SELECT * FROM colltest2 WHERE cbin::TEXT LIKE ctxt;",
+    "SELECT * FROM colltest2 WHERE cnum IS NULL;"
+  ],
+  "key_bug_features": [
+    "CHARACTER_SET_MISMATCH in regex comparisons"
+  ]
+}

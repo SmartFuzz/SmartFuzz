@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/89876",
+  "title": "Distributed ignores max_replica_delay_for_distributed_queries when replica has only REPLACE_RANGE from cloning; absolute_delay remains 0",
+  "description": "### Describe the unexpected behaviour\nWhen a table clone is performed using ATTACH PARTITION ... FROM (which enqueues a REPLACE_RANGE task), the lagging replica’s system.replicas.absolute_delay stays at 0 while system.replication_queue shows a pending REPLACE_RANGE. As a result, the Distributed table routes reads to this out-of-date replica despite max_replica_delay_for_distributed_queries=1. A subsequent trivial INSERT into the cloned table causes absolute_delay to become non-zero and routing behaves correctly thereafter.\n### How to reproduce\nOn Server 1:\n```sql\nSET distributed_ddl_task_timeout=5;\nCREATE TABLE test1 ON CLUSTER default (\nnum Int64\n) ENGINE = ReplicatedMergeTree('/clickhouse/tables/{database}/{table}', '{replica}')\nORDER BY num;\nCREATE TABLE test1_dist ON CLUSTER default AS test1\nENGINE = Distributed(default, default, test1);\nCREATE TABLE test1_clone ON CLUSTER default (\nnum Int64\n) ENGINE = ReplicatedMergeTree('/clickhouse/tables/{database}/{table}', '{replica}')\nORDER BY num;\nCREATE TABLE test1_clone_dist ON CLUSTER default AS test1\nENGINE = Distributed(default, default, test1_clone);\n```\nOn Server 2:\n```sql\nSYSTEM STOP REPLICATION QUEUES default.test1;\nSYSTEM STOP REPLICATION QUEUES default.test1_clone;\n```\nBack on Server 1:\n```sql\nINSERT INTO test1 SELECT rand() FROM numbers(1000);\nALTER TABLE test1_clone ATTACH PARTITION tuple() FROM test1; -- cloning step\n```\nNow on both servers, run multiple reads against the clone’s Distributed table:\n```bash\nseq 30 | xargs -I {} clickhouse-client --query \"SELECT count() FROM test1_clone_dist SETTINGS max_replica_delay_for_distributed_queries=1, fallback_to_stale_replicas_for_distributed_queries=1, prefer_localhost_replica=0\"\n```\nObserved: a mix of `0` and `1000` counts, meaning queries route to the stale replica.\nControl read against the original table:\n```bash\nseq 30 | xargs -I {} clickhouse-client --query \"SELECT count() FROM test1_dist SETTINGS max_replica_delay_for_distributed_queries=1, fallback_to_stale_replicas_for_distributed_queries=1, prefer_localhost_replica=0\"\n```\nObserved: always `1000`.\nDiagnostics on stale replica (Server 2) while `REPLACE_RANGE` pending:\n```sql\nSELECT * FROM system.replicas WHERE table='test1_clone' FORMAT Vertical; -- absolute_delay = 0\nSELECT * FROM system.replication_queue WHERE table='test1_clone' FORMAT Vertical; -- shows pending REPLACE_RANGE\n```\nTriggering delay accounting by a trivial write on Server 1:\n```sql\nINSERT INTO test1_clone VALUES (1);\n```\nAfter this write:\n* Re-running the `seq 30` read against `test1_clone_dist` returns `1001` consistently on both servers.",
+  "date": "2025-11-11T17:57:16Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test2 (id INT, name VARCHAR, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) WITH (OIDS=FALSE);",
+    "CREATE TABLE test2_dist AS test2 WITH NO DATA;",
+    "INSERT INTO test2 SELECT generate_series(1, 100) AS number, concat('Name', generate_series(1, 100)) AS name;",
+    "ALTER TABLE test2 ADD COLUMN temp_partition INT;",
+    "UPDATE test2 SET temp_partition = NULL;",
+    "DELETE FROM test2 WHERE temp_partition IS NULL;"
+  ],
+  "key_bug_features": [
+    "Distributed queries ignore max replica delay during cloning"
+  ]
+}

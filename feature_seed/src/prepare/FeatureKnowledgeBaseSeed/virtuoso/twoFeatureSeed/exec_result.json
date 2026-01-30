@@ -1,0 +1,16 @@
+{
+    "function": "exec_result",
+    "operator": "NEW Operator",
+    "sql_array": [
+        "CREATE TABLE users (U_ID INTEGER PRIMARY KEY, U_NAME VARCHAR(100), U_AGE INTEGER, U_CREATED TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "CREATE TABLE orders (O_ID INTEGER PRIMARY KEY, U_ID INTEGER, O_AMOUNT DECIMAL(10, 2), O_DATE TIMESTAMP, FOREIGN KEY (U_ID) REFERENCES users (U_ID));",
+        "INSERT INTO users (U_ID, U_NAME, U_AGE) VALUES (1, 'Alice', 30), (2, 'Bob', 22), (3, 'Charlie', 25);",
+        "INSERT INTO orders (O_ID, U_ID, O_AMOUNT, O_DATE) VALUES (1, 1, 150.75, '2023-07-01 12:00:00'), (2, 2, NULL, '2023-08-01 14:00:00');",
+        "CREATE PROCEDURE fuzz_test_proc() { DECLARE meta, _dt ANY; DECLARE inx INTEGER; DECLARE temp_row ANY; DECLARE user_instance NEW users; EXEC ('SELECT U_ID, U_NAME, U_AGE FROM users WHERE U_AGE IS NOT NULL', NULL, NULL, NULL, 0, meta, _dt); inx := 0; WHILE (inx < LENGTH (_dt)) { EXEC_RESULT(_dt[inx]); inx := inx + 1; } SELECT O_ID, CASE WHEN O_AMOUNT IS NULL THEN 'No Amount' ELSE CONCAT('Amount: ', O_AMOUNT) END, O_DATE FROM orders; }",
+        "SELECT U_NAME, (SELECT COUNT(O_ID) FROM orders WHERE orders.U_ID = users.U_ID) AS order_count FROM users GROUP BY U_NAME HAVING order_count > 0;",
+        "SELECT U_NAME FROM (SELECT U_NAME, U_AGE FROM users WHERE U_AGE IS NOT NULL) AS subquery WHERE U_NAME LIKE 'C%' AND NOT EXISTS (SELECT 1 FROM orders WHERE orders.U_ID = users.U_ID AND O_DATE < '2023-01-01');",
+        "SELECT U_ID, U_NAME, CONVERT(O_AMOUNT, VARCHAR) AS str_amount FROM (SELECT users.U_ID, users.U_NAME, orders.O_AMOUNT FROM users LEFT JOIN orders ON users.U_ID = orders.U_ID) AS user_orders WHERE str_amount IS NULL OR str_amount <> '';",
+        "UPDATE users SET U_AGE = NEW users( U_NAME = U_NAME, U_AGE = U_AGE + 1) WHERE U_ID = 1;",
+        "SELECT DISTINCT user_instance.U_NAME FROM (SELECT U_ID, NEW users(U_NAME) AS user_instance FROM users) AS user_with_instance WHERE user_instance.U_NAME IS NOT NULL ORDER BY user_instance.U_NAME ASC;"
+    ]
+}

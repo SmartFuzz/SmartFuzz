@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/13318",
+  "title": "Bitstring equality fails when in select position",
+  "description": "### What happens?\n\nIm was trying to use BITSTRING in a where clause and noticed I didn't receive the expected results. After asking around on the Discord channel (https://discord.com/channels/909674491309850675/1032659480539824208/1270137420360450179) This seemed to be a bug, hence the bug report here.\r\n\r\nThe conclusion in the Discord thread: \r\nthe bitstring created by the & operator seems to not have the right internal structure somehow causing the equality operator to return false.\n\n### To Reproduce\n\n```sql\r\nCREATE TABLE IF NOT EXISTS mask_test (\r\n    flags        BITSTRING,\r\n);\r\n\r\nINSERT INTO mask_test (flags) VALUES ('00000001'::BIT);\r\nINSERT INTO mask_test (flags) VALUES ('00000011'::BIT);\r\n\r\n-- This select statement shows that the flags & <MASK> equals '0000001' for both entries\r\nSELECT (flags & '00000001'::BIT) from main.mask_test;\r\n\r\n-- The select statement below returns 0 results, where i would expect it to return 2 rows.\r\nSELECT * from main.mask_test WHERE (flags & '00000001'::BIT) = '00000001'::BIT;\r\n\r\n\r\n-- This works after casting\r\nSELECT (flags & '00000001')::VARCHAR::BIT = '00000001'::BIT from main.mask_test;\r\n\r\n-- This doesn't work\r\nSELECT (flags & '00000001')::BIT = '00000001'::BIT from main.mask_test;\r\n\r\n```\n\n### OS:\n\nmacOS\n\n### DuckDB Version:\n\n1.0\n\n### DuckDB Client:\n\nRust\n\n### Full Name:\n\nRobert den Harink\n\n### Affiliation:\n\nFull Join\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have not tested with any build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nNot applicable - the reproduction does not require a data set\n\n### Did you include all code required to reproduce the issue?\n\n- [X] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [X] Yes, I have",
+  "date": "2024-08-06 09:21:22",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE IF NOT EXISTS mask_test (flags BIT NOT NULL, id INT PRIMARY KEY);",
+    "INSERT INTO mask_test (flags, id) VALUES (b'00000001', 1);",
+    "INSERT INTO mask_test (flags, id) VALUES (b'00000011', 2);",
+    "SELECT * FROM mask_test WHERE (flags & b'00000001') = b'00000001';",
+    "SELECT (flags & b'00000001') = b'00000001' AS comparison_result FROM mask_test;"
+  ],
+  "key_bug_features": [
+    "Bitstring equality fails in where clause comparison"
+  ]
+}

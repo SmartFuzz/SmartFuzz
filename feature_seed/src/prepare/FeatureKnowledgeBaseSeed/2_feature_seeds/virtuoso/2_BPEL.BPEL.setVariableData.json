@@ -1,0 +1,11 @@
+CREATE TABLE bpel_variables (id INT PRIMARY KEY, res VARCHAR(100), repl_payload XML);
+INSERT INTO bpel_variables (id, res, repl_payload) VALUES (1, NULL, txtree_doc (']]&gt;
+<destResponse><country>USA</country></destResponse><![CDATA['));
+INSERT INTO bpel_variables (id, res, repl_payload) VALUES (2, 'Canada', txtree_doc (']]&gt;
+<destResponse><country>CAN</country></destResponse><![CDATA['));
+SELECT CASE WHEN (id = 1 OR id = 2) THEN BPEL.BPEL.setVariableData ('res', res, 'repl_payload') ELSE NULL END FROM bpel_variables WHERE res IS NOT NULL;
+SELECT res, BPEL.BPEL.setVariableData ('res', res, 'repl_payload') AS bpel_result FROM bpel_variables WHERE (res IS NULL OR repl_payload IS NOT NULL);
+CREATE TABLE temp_data AS SELECT id, res FROM bpel_variables WHERE (res IS NOT NULL OR EXISTS (SELECT 1 FROM bpel_variables WHERE res = 'Unknown' OR res = 'USA'));
+SELECT id, BPEL.BPEL.setVariableData ('res', (SELECT res FROM bpel_variables WHERE id = 1 OR id = 2 LIMIT 1), 'repl_payload') AS result FROM temp_data;
+SELECT BPEL.BPEL.setVariableData ('res', (SELECT res FROM bpel_variables GROUP BY res HAVING COUNT(res) > 1 OR COUNT(res) = 0), 'repl_payload') FROM bpel_variables;
+SELECT BPEL.BPEL.setVariableData ('res', (SELECT res FROM bpel_variables WHERE repl_payload IS NOT NULL ORDER BY id DESC LIMIT 1), 'repl_payload') FROM bpel_variables WHERE (id = 1 OR id = 2);

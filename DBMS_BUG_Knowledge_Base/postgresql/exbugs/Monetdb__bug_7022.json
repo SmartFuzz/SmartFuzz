@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7022",
+  "title": "transaction with an unreleased savepoint not properly persisted",
+  "description": "When committing a transaction with an unreleased `savepoint`, not all information about this transaction is properly persisted. The following problems happen:\n1. after the transaction has successfully committed, the test table created in this transaction shows up in the catalogue but can't be found by a `select`.\n2. a 2nd transaction which creates a table with the same name succeeds.\n3. after the 2nd transaction, both test tables appear in the catalogue. A `select` returns the data of the 2nd test table and a `drop table` only drops the second test table.\nThese problems do not appear if the savepoint was released.\n\n**To Reproduce**\n--- this works, due to the `release savepoint` ---\n```\nstart transaction;\ncreate table savepointtest (id int, primary key(id));\nsavepoint name1;\ninsert into savepointtest values(24);\nrelease savepoint name1;\ncommit;\nselect * from tables where name = 'savepointtest';\nselect * from savepointtest;\n\ncreate table savepointtest (id int, primary key(id));\ninsert into savepointtest values(42);\nselect * from tables where name = 'savepointtest';\nselect * from savepointtest;\ndrop table savepointtest;\nselect * from tables where name = 'savepointtest';\n```\n--- this shows errors ---\n```\nstart transaction;\ncreate table savepointtest (id int, primary key(id));\nsavepoint name1;\ninsert into savepointtest values(24);\ncommit;\nselect * from tables where name = 'savepointtest';\nselect * from savepointtest;\n\ncreate table savepointtest (id int, primary key(id));\ninsert into savepointtest values(42);\nselect * from tables where name = 'savepointtest';\n-- the 2nd 'savepointtest` is used by SELECT and DROP\nselect * from savepointtest;\ndrop table savepointtest;\nselect * from tables where name = 'savepointtest';\n```\n**Expected behavior**\nThe first transaction should be handled correctly. Subsequent creation of a table with the same name should be rejected.\n\n**Software versions**\n - MonetDB version number [v11.39.8 (hg id: 0a97056b6c89)]\n - OS and version: [e.g. Ubuntu 20.04.1]\n - Mercurial source",
+  "date": "2020-12-09T13:13:04Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "BEGIN;",
+    "CREATE TABLE savepointtest (id INT, name VARCHAR(50), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "SAVEPOINT name1;",
+    "INSERT INTO savepointtest (id, name) VALUES (1, 'Test Entry');",
+    "COMMIT;"
+  ],
+  "key_bug_features": [
+    "committing transaction with unreleased savepoint"
+  ]
+}

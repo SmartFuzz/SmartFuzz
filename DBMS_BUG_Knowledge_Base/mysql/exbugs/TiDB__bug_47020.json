@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/47020",
+  "title": "Unexpected Result by BROADCAST_JOIN in TiFlash",
+  "description": "## Bug Report\r\n\r\nThe query returns a different result under the hint `BROADCAST_JOIN`, which should not affect the result.\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```sql\r\nCREATE TABLE t0(c0 CHAR, PRIMARY KEY(c0));\r\nCREATE TABLE t1(c0 BOOL);\r\nINSERT INTO t0 VALUES ('a');\r\nINSERT INTO t1 VALUES (true);\r\nANALYZE TABLE t0;\r\nANALYZE TABLE t1;\r\nALTER TABLE t0 SET TIFLASH REPLICA 1;\r\nALTER TABLE t1 SET TIFLASH REPLICA 1;\r\nSELECT SLEEP(5);\r\n\r\nSELECT t1.c0 FROM t1, t0 WHERE LOG(t0.c0); -- empyt\r\nSELECT /*+ BROADCAST_JOIN(t0, PRIMARY)*/t1.c0 FROM t1, t0 WHERE LOG(t0.c0); -- {1}\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\nTwo queries return the same result.\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n```\r\n| Release Version: v7.4.0-alpha\r\nEdition: Community\r\nGit Commit Hash: 0ccc9e170563763f46a2c62671a56b8581f6bd5d\r\nGit Branch: heads/refs/tags/v7.4.0-alpha\r\nUTC Build Time: 2023-09-16 14:33:29\r\nGoVersion: go1.21.1\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv |\r\n```\r\n\r\n",
+  "date": "2023-09-17T01:09:03Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2(c0 INT, c1 VARCHAR(10), PRIMARY KEY(c0));",
+    "CREATE TABLE t3(c0 FLOAT, c1 DATE);",
+    "INSERT INTO t2 VALUES (1, 'test');",
+    "INSERT INTO t3 VALUES (1.5, '2023-01-01');",
+    "SELECT t2.c1 FROM t2 JOIN t3 ON t2.c0 = CAST(t3.c0 AS SIGNED);"
+  ],
+  "key_bug_features": [
+    "BROADCAST_JOIN hint affecting query results"
+  ]
+}

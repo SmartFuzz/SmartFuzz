@@ -1,0 +1,32 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/50044",
+  "title": "query gets incorrect result caused by hash partition",
+  "vulnerable_database": "tidb",
+  "date": "2024-01-03T11:47:50Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n``` SQL\r\nCREATE TABLE `t4e32b983` (\r\n  `col_29` tinyint(4) DEFAULT NULL,\r\n  UNIQUE KEY `idx_25` (`col_29`),\r\n  KEY `idx_26` (`col_29`),\r\n  UNIQUE KEY `idx_27` (`col_29`),\r\n  UNIQUE KEY `idx_28` (`col_29`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci\r\nPARTITION BY HASH (`col_29`) PARTITIONS 7;\r\nINSERT INTO `t4e32b983` VALUES (-1), (11), (-128), (39), (-46), (38), (-102), (-99), (-87), (-127), (-89), (43), (108), (59), (0), (24), (101), (37), (-103), (90), (-95), (-44), (123), (124), (-123), (-52), (-49), (-98), (-104), (-68), (2), (-24), (67), (89), (1), (-65), (36), (-109), (41), (5), (98), (-63), (-14), (127), (-6), (121), (14), (-122);\r\n\r\nselect * from t4e32b983 where col_29 between -2 and 1;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nThree rows\r\n``` SQL\r\nmysql> select count(*) from (select col_29 between -2 and 1 as a from t4e32b983) t where a = 1;\r\n+----------+\r\n| count(*) |\r\n+----------+\r\n|        3 |\r\n+----------+\r\n1 row in set (0.00 sec)\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n``` SQL\r\nmysql> select * from t4e32b983 where col_29 between -2 and 1;\r\nEmpty set (0.01 sec)\r\n\r\nmysql> select * from t4e32b983 where col_29 between -2 and 2;\r\n+--------+\r\n| col_29 |\r\n+--------+\r\n|      2 |\r\n+--------+\r\n1 row in set (0.00 sec)\r\n\r\nmysql> select * from t4e32b983 where col_29 between -2 and 3;\r\n+--------+\r\n| col_29 |\r\n+--------+\r\n|      0 |\r\n|      2 |\r\n+--------+\r\n2 rows in set (0.01 sec)\r\n\r\nmysql> select * from t4e32b983 where col_29 between -2 and 4;\r\n+--------+\r\n| col_29 |\r\n+--------+\r\n|      2 |\r\n|      0 |\r\n|     -1 |\r\n|      1 |\r\n+--------+\r\n4 rows in set (0.01 sec)\r\n```\r\n### 4. What is your TiDB version? (Required)\r\n33480e8c8d8874811a5362767c81d40c9a057cb6\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "poc": [
+    "CREATE TABLE `t4e32b983` (",
+    "  `col_29` tinyint(4) DEFAULT NULL,",
+    "  UNIQUE KEY `idx_25` (`col_29`),",
+    "  KEY `idx_26` (`col_29`),",
+    "  UNIQUE KEY `idx_27` (`col_29`),",
+    "  UNIQUE KEY `idx_28` (`col_29`)",
+    ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+    "PARTITION BY HASH (`col_29`) PARTITIONS 7;",
+    "INSERT INTO `t4e32b983` VALUES (-1), (11), (-128), (39), (-46), (38), (-102), (-99), (-87), (-127), (-89), (43), (108), (59), (0), (24), (101), (37), (-103), (90), (-95), (-44), (123), (124), (-123), (-52), (-49), (-98), (-104), (-68), (2), (-24), (67), (89), (1), (-65), (36), (-109), (41), (5), (98), (-63), (-14), (127), (-6), (121), (14), (-122);",
+    "select * from t4e32b983 where col_29 between -2 and 1;"
+  ],
+  "poc_type": "sql_text",
+  "state": "closed",
+  "key_bug_features": [
+    "query returns empty set due to hash partitioning"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE `test_partition` ( `id` INT NOT NULL AUTO_INCREMENT, `value` TINYINT DEFAULT NULL, PRIMARY KEY (`id`), UNIQUE KEY `unique_value` (`value`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci PARTITION BY HASH (`value`) PARTITIONS 5;",
+    "INSERT INTO `test_partition` (value) VALUES (NULL), (0), (1), (2), (3), (4), (5), (-1), (-2), (-3), (10), (20), (30);",
+    "SELECT * FROM `test_partition` WHERE value IS NULL;",
+    "SELECT COUNT(*) FROM (SELECT value FROM `test_partition` WHERE value BETWEEN -2 AND 2) AS subquery;",
+    "SELECT * FROM `test_partition` WHERE value BETWEEN -3 AND 3;"
+  ]
+}

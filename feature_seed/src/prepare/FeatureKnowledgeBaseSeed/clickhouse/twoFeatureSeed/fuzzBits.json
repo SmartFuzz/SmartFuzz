@@ -1,0 +1,16 @@
+{
+    "function": "fuzzBits",
+    "operator": "a != ALL (subquery)",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, data String, value Float64);",
+        "INSERT INTO test_table VALUES (1, 'abcdef', 0.5), (2, 'ghijkl', 1.5), (3, NULL, NULL), (4, '', 2.0);",
+        "SELECT id, fuzzBits(data, 0.2) FROM test_table WHERE value != ALL (SELECT value FROM test_table WHERE data IS NOT NULL);",
+        "SELECT COUNT(*) FROM (SELECT fuzzBits(data, 0.5) as fuzzed_data FROM test_table GROUP BY fuzzed_data HAVING fuzzed_data != ALL (SELECT fuzzBits(data, 0.3) FROM test_table WHERE data != ''));",
+        "SELECT id FROM (SELECT id, value FROM test_table) AS subquery WHERE value IS NULL OR fuzzBits(CAST(value AS String), 0.1) != ALL (SELECT fuzzBits(data, 0.1) FROM test_table WHERE data IS NOT NULL);",
+        "CREATE TABLE test_table_2 (id UInt32, data FixedString(6), value Float32);",
+        "INSERT INTO test_table_2 VALUES (1, 'abc123', 0.1), (2, 'xyz456', NULL), (3, 'def789', 0.9);",
+        "SELECT id, fuzzBits(data, 0.3) FROM test_table_2 WHERE value != ALL (SELECT value FROM test_table_2 WHERE value IS NOT NULL);",
+        "SELECT id FROM (SELECT id, fuzzBits(data, 0.2) AS fuzzed_data FROM test_table_2 GROUP BY fuzzed_data HAVING fuzzed_data != '') AS temp WHERE fuzzed_data != ALL (SELECT fuzzBits(data, 0.2) FROM test_table_2 WHERE data IS NOT NULL);",
+        "SELECT fuzzBits(CAST(value AS String), 0.1) FROM test_table WHERE id IN (SELECT id FROM test_table_2 WHERE value > 0.5);"
+    ]
+}

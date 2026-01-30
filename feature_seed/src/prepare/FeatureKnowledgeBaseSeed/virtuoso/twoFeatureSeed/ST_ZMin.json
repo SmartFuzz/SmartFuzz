@@ -1,0 +1,24 @@
+{
+    "function": "ST_ZMin",
+    "operator": "bif:contains",
+    "sql_array": [
+        "CREATE TABLE shapes (id SERIAL PRIMARY KEY, geom GEOMETRY, description TEXT);",
+        "INSERT INTO shapes (geom, description) VALUES (ST_GeomFromText('POINTZM(1 2 3 4)', 4326), '3D point');",
+        "INSERT INTO shapes (geom, description) VALUES (ST_GeomFromText('POLYGON((0 0, 0 10, 10 10, 10 0, 0 0))', 4326), 'Square polygon');",
+        "INSERT INTO shapes (geom, description) VALUES (ST_GeomFromText('MULTIPOLYGON(((1 1,2 2,2 1,1 1)), ((3 3,4 4,4 3,3 3)))', 4326), 'Multipolygon');",
+        "INSERT INTO shapes (geom, description) VALUES (ST_GeomFromText('POINT(5 5)', 4326), NULL);",
+        "SELECT id, bif:contains(description, 'polygon') AS contains_polygon FROM shapes WHERE geom IS NOT NULL;",
+        "SELECT id, bif:contains(description, 'point') AS contains_point FROM shapes WHERE bif:st_zmin(geom) < 4;",
+        "SELECT s1.id, s2.id, ST_ZMin(s1.geom) AS zmin1, ST_ZMin(s2.geom) AS zmin2 FROM shapes s1 JOIN shapes s2 ON ST_Distance(s1.geom, s2.geom) < 5;",
+        "SELECT id, bif:contains(description, '3D') AS is_3D FROM shapes WHERE bif:st_zmin(geom) IS NOT NULL GROUP BY id HAVING COUNT(*) > 0;",
+        "SELECT id FROM shapes WHERE bif:contains(description, 'point') AND bif:st_zmin(geom) IS NOT NULL ORDER BY bif:st_zmin(geom) DESC;",
+        "SELECT id, (SELECT MAX(bif:st_zmin(s.geom)) FROM shapes s WHERE s.description IS NOT NULL) AS max_zmin FROM shapes GROUP BY id ORDER BY max_zmin;",
+        "SELECT id, bif:st_zmin(geom) AS zmin FROM (SELECT geom FROM shapes WHERE description IS NOT NULL) AS subquery WHERE zmin > 1.5;",
+        "CREATE TABLE geo_data (id SERIAL PRIMARY KEY, location GEOMETRY, info TEXT DEFAULT NULL);",
+        "INSERT INTO geo_data (location) VALUES (ST_GeomFromText('LINESTRING(2 3, 3 4)', 4326));",
+        "INSERT INTO geo_data (location, info) VALUES (ST_GeomFromText('POINT(1 1)', 4326), 'First Point');",
+        "SELECT g.id, bif:contains(info, 'Point') AS has_point FROM geo_data g WHERE g.id IN (SELECT id FROM shapes WHERE ST_ZMin(geom) IS NOT NULL);",
+        "SELECT g.id, MAX(bif:st_zmin(g.location)) AS max_z FROM geo_data g JOIN shapes s ON g.location IS NOT NULL GROUP BY g.id HAVING max_z > 0;",
+        "SELECT g.id, bif:contains(info, 'Point') AS contains_point FROM geo_data g HAVING COUNT(g.id) > 0 AND MAX(bif:st_zmin(g.location)) IS NOT NULL;"
+    ]
+}

@@ -1,0 +1,19 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/86788",
+  "title": "Iceberg Rest Catalog: DB::Exception: Unable to parse ExceptionName: InvalidRequest Message",
+  "description": "## Current Behaviour\nI am creating a database in clickhouse with the following command:\n```sql\nCREATE DATABASE iceberg_dev\nENGINE = DataLakeCatalog('https://my-rest-catalog')\nSETTINGS\ncatalog_type = 'rest',\nstorage_endpoint = 'http://my_s3_endpoint:port',\nwarehouse = 's3://iceberg-warehouse/',\nvended_credentials = 0,\naws_access_key_id = 's3_key',\naws_secret_access_key = 's3_secret';\n```\nThe storage endpoint in this case is an on prem s3 compliant storage system, and I'm sure the access and secret key are correct.\nAttempting to query a table within the database\n```sql\nselect * from iceberg_dev.\\\"test.foo\\\"\n```\nI get the error:\n```\nDB::Exception: Unable to parse ExceptionName: InvalidRequest Message: Error creating s3 auth info.\nThe request may not be signed using AWS V4 signing algorithm, or might be invalid. (S3_ERROR)\n(version 25.7.1.3997 (official build))\n```\nI'm not entirely sure what the error means...\n---\n## Additional Context\nReading the file from the s3 endpoint directly works fine:\n```sql\nselect *\nFROM s3('http://my_s3_endpoint:port/x/y/z.parquet',  's3_key', 's3_secret','Parquet')\n```",
+  "date": "2025-09-08T06:34:49Z",
+  "vulnerable_version": "25.7.1.3997",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE iceberg_dev.test_foo (id INTEGER PRIMARY KEY, name TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, value REAL);",
+    "INSERT INTO iceberg_dev.test_foo (id, name, value) VALUES (1, 'test1', 10.5), (2, 'test2', NULL), (3, 'test3', 20.0);",
+    "SELECT id, name, value, created_at FROM iceberg_dev.test_foo WHERE value IS NOT NULL;",
+    "SELECT COUNT(*) FROM iceberg_dev.test_foo WHERE created_at > DATETIME('now', '-1 day');"
+  ],
+  "key_bug_features": [
+    "Invalid S3 authentication during database query execution"
+  ]
+}

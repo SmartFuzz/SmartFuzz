@@ -1,0 +1,16 @@
+{
+    "function": "extract(field FROM timestamptz)",
+    "operator": "%",
+    "sql_array": [
+        "CREATE TABLE test_data (id INT, timestamp_field TIMESTAMPTZ, numeric_field NUMERIC);",
+        "INSERT INTO test_data VALUES (1, TIMESTAMPTZ '2000-01-01 00:00:00+00', 15.5), (2, TIMESTAMPTZ '2001-02-02 11:00:00+00', 8.25), (3, TIMESTAMPTZ '2002-03-03 22:30:00+00', NULL);",
+        "SELECT id, extract('hour' FROM timestamp_field) AS hour_extracted, numeric_field % 3 AS numeric_mod FROM test_data WHERE extract('hour' FROM timestamp_field) IS NOT NULL;",
+        "SELECT id, (extract('hour' FROM timestamp_field) % 2) AS hour_mod, numeric_field FROM test_data WHERE numeric_field IS NOT NULL AND hour_mod < 10;",
+        "SELECT id, numeric_field, (EXTRACT('hour' FROM timestamp_field) + 5) % 24 AS adjusted_hour FROM test_data WHERE adjusted_hour IS NOT NULL;",
+        "SELECT id, extract('hour' FROM (SELECT timestamp_field FROM test_data WHERE numeric_field IS NOT NULL LIMIT 1)) AS subquery_hour FROM test_data;",
+        "CREATE TABLE complex_test (comp_id INT, comp_timestamp TIMESTAMPTZ DEFAULT NOW(), comp_value NUMERIC NOT NULL, comp_status VARCHAR(10));",
+        "INSERT INTO complex_test (comp_id, comp_value, comp_status) VALUES (1, 20.5, 'active'), (2, NULL, 'inactive'), (3, -30.0, NULL);",
+        "SELECT comp_id, (extract('hour' FROM comp_timestamp) % (SELECT COUNT(*) FROM complex_test)) AS nested_hour_mod, comp_value FROM complex_test GROUP BY comp_id, comp_value HAVING nested_hour_mod IS NOT NULL;",
+        "SELECT comp_id, (numeric_field % (SELECT COUNT(*) FROM test_data WHERE numeric_field IS NOT NULL)) AS numeric_mod, (extract('hour' FROM comp_timestamp) FROM complex_test WHERE comp_value > 0) AS hour_cond FROM complex_test WHERE numeric_mod IS NOT NULL;"
+    ]
+}

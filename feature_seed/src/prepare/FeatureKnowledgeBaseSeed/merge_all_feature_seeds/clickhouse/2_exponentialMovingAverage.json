@@ -1,0 +1,9 @@
+CREATE TABLE test_data (value Nullable(Float64), timestamp DateTime, priority Int8) ENGINE = MergeTree() ORDER BY timestamp;
+INSERT INTO test_data VALUES (10.5, '2023-01-01 00:00:00', 1), (20.0, '2023-01-01 01:00:00', 2), (30.5, NULL, 3), (NULL, '2023-01-01 03:00:00', 1), (40.75, '2023-01-01 04:00:00', NULL);
+SELECT exponentialMovingAverage(1)(value, intDiv(toUInt32(timestamp), 3600)) AS exp_avg, priority FROM test_data WHERE value IS NOT NULL GROUP BY priority HAVING exp_avg > 15 ORDER BY exp_avg DESC;
+SELECT priority, exponentialMovingAverage(2)(IF(value IS NOT NULL, value, 0), intDiv(toUInt32(timestamp), 3600)) AS smoothed_avg FROM test_data GROUP BY priority ORDER BY smoothed_avg;
+SELECT * FROM (SELECT value, timestamp, exponentialMovingAverage(3)(value, toRelativeHourNum(timestamp)) AS res FROM test_data WHERE timestamp IS NOT NULL) WHERE res IS NOT NULL ORDER BY timestamp;
+SELECT a.value, b.value, exponentialMovingAverage(5)(IF(b.value IS NOT NULL, b.value, 0), toRelativeHourNum(b.timestamp)) AS exp_avg FROM test_data AS a LEFT JOIN test_data AS b ON a.priority = b.priority WHERE b.value IS NOT NULL GROUP BY a.value, b.value HAVING exp_avg < 25 ORDER BY a.value;
+CREATE TABLE temp_data (id Int32, amount Float64) ENGINE = Memory;
+INSERT INTO temp_data VALUES (1, 100.0), (2, 200.0), (3, NULL);
+SELECT t.id, exponentialMovingAverage(1)(amount, ID) AS moving_avg FROM temp_data AS t WHERE amount IS NOT NULL OR amount = 0 GROUP BY t.id HAVING moving_avg IS NOT NULL;

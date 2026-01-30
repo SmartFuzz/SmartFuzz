@@ -1,0 +1,48 @@
+CREATE TABLE status (id INT PRIMARY KEY, description VARCHAR(255));
+CREATE TABLE tasks (task_id INT PRIMARY KEY, task_name VARCHAR(255), status_id INT REFERENCES status(id));
+INSERT INTO status (id, description) VALUES (1, 'Pending');
+INSERT INTO status (id, description) VALUES (2, 'In Progress');
+INSERT INTO status (id, description) VALUES (3, 'Completed');
+INSERT INTO tasks (task_id, task_name, status_id) VALUES (1, 'Task A', 1);
+INSERT INTO tasks (task_id, task_name, status_id) VALUES (2, 'Task B', 2);
+INSERT INTO tasks (task_id, task_name, status_id) VALUES (3, 'Task C', 3);
+<?vsp
+    http ('<p>Initiating long-running process...</p>');
+http_flush ();
+long_running_task ();
+?>;
+<?vsp
+    http ('<p>Starting task processing...</p>');
+http_flush (1);
+FOR i IN (SELECT task_id FROM tasks)
+    LOOP
+        process_task(i);
+http ('Task ' || i || ' processed.<br>');
+http_flush (1);
+END LOOP;
+?>;
+<?vsp
+    DECLARE total_tasks INT;
+SELECT COUNT(*) INTO total_tasks FROM tasks;
+http ('<p>Total tasks: ' || total_tasks || '</p>');
+http_flush ();
+FOR i IN 1..total_tasks LOOP
+        http ('Processing task number: ' || i || '<br>');
+http_flush (1);
+END LOOP;
+?>;
+<?vsp
+    DECLARE i INT := 0;
+WHILE i < 1000 LOOP
+        http ('Current count: ' || i || '<br>');
+http_flush (1);
+i := i + 1;
+END LOOP;
+?>;
+<?vsp
+    http ('<h3>Outputting results:</h3>');
+http_flush ();
+SELECT task_name FROM tasks WHERE status_id = (SELECT id FROM status WHERE description = 'In Progress') INTO temp_result;
+http ('Current task: ' || temp_result || '<br>');
+http_flush (1);
+?>;

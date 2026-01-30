@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/87028",
+  "title": "Add possibility to Revoke create materialized view permissions",
+  "description": "### Company or project name\n_No response_\n### Use case\nWe have multiple multilayer materialized views from Kafka and rabbit, and a lot of users with different level of understanding of clickhouse limitations.\nData flow schema (objects in clickhouse):\n```\nstreams.kafka_table ->                     (Kafka engine)\n-> streams.kafka_table_mv ->         (MaterializedView engine)\n-> datamart.some_table                   (MergeTree engine)\n```\nRegular users does't have access to `streams` (no access) and `datamart` (read-only access), but have access to `test` and `personal databases`.\nMy issue appears when some user create `MaterializedView` over `datamart.some_table` with incorrect types.\nFor example:\n```\ncreate table test.user_table (id Int64);\ncreate materialized view test.user_mv to  test.user_table\nas select from datamart.some_table;  --<< in this table: `id` Nullable(Int64)\n```\nThis action will broke all chain of materialized view (`cannot cast  Nullable(Int64) to Int64`) when some nullable value will be received. And may cause data loss, if it was not detected in time (ttl in kafka).\n### Describe the solution you'd like\nAdd syntax for revoke permissions:\n`revoke create materialized view on *.* from user;`\n### Describe alternatives you've considered\nNo alternative at the moment\n### Additional context\n1. We should also should keep permissions for regular views\n2. We cannot set `materialized_views_ignore_errors` for whole cluster -  initial chain is important, but user part is not.",
+  "date": "2025-09-11T22:12:51Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test.user_table (id BIGINT, name VARCHAR(255));",
+    "CREATE TABLE datamart.some_table (id BIGINT NULL, description VARCHAR(255));",
+    "CREATE VIEW test.user_mv AS SELECT id, description FROM datamart.some_table WHERE id IS NOT NULL;",
+    "INSERT INTO datamart.some_table (id, description) VALUES (1, 'First entry'), (NULL, 'Second entry');",
+    "INSERT INTO test.user_table (id, name) VALUES (1, 'User One');"
+  ],
+  "key_bug_features": [
+    "Creating MaterializedView with incorrect types causes data loss"
+  ]
+}

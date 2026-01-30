@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/16830",
+  "title": "Operator transformation for regular expressions",
+  "description": "### What happens?\n\nExpected (from examples in https://www.postgresql.org/docs/current/functions-matching.html#FUNCTIONS-POSIX-REGEXP):\n\n```\n'abcd' ~ 'bc'     true\n'abcd' ~ 'a.c'    true — dot matches any character\n'abcd' ~ 'a.*d'   true — * repeats the preceding pattern item\n'abcd' ~ '(b|x)'  true — | means OR, parentheses group\n'abcd' ~ '^a'     true — ^ anchors to start of string\n'abcd' ~ '^(b|c)' false — would match except for anchoring\n```\n\nCurrently:\n\n```\nselect 'abcd' ~ 'bc'; false\nselect 'abcd' ~ 'a.c'; false\nselect 'abcd' ~ 'a.*d'; true\nselect 'abcd' ~ '(b|x)'; false\nselect 'abcd' ~ '^a'; false\nselect 'abcd' ~ '^(b|c)'; false\n```\n\n### To Reproduce\n\n```\nselect 'abcd' ~ 'bc'; false\nselect 'abcd' ~ 'a.c'; false\nselect 'abcd' ~ 'a.*d'; true\nselect 'abcd' ~ '(b|x)'; false\nselect 'abcd' ~ '^a'; false\nselect 'abcd' ~ '^(b|c)'; false\n```\n\nFrom my understanding of the postgres documentation:\n\n`SIMILAR TO` is similar to regexp_full_match(), `~` (posix operator) is similar to regexp_matches().\n\n### OS:\n\nLinux\n\n### DuckDB Version:\n\nv1.2.1 8e52ec4395\n\n### DuckDB Client:\n\ncli\n\n### Hardware:\n\nAMD 7840U\n\n### Full Name:\n\nThomas Bley\n\n### Affiliation:\n\nmyself\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a stable release\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "date": "2025-03-25 19:25:11",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_regex (id INTEGER PRIMARY KEY, pattern VARCHAR, test_string VARCHAR);",
+    "INSERT INTO test_regex (id, pattern, test_string) VALUES (1, 'bc', 'abcd'), (2, 'a.c', 'abcd'), (3, 'a.*d', 'abcd'), (4, '(b|x)', 'abcd'), (5, '^a', 'abcd'), (6, '^(b|c)', 'abcd');",
+    "SELECT id, test_string SIMILAR TO pattern AS match_result FROM test_regex;",
+    "SELECT id, test_string SIMILAR TO 'a.*d' AS match_result FROM test_regex WHERE pattern = 'a.*d';",
+    "SELECT id, test_string SIMILAR TO '^(b|c)' AS match_result FROM test_regex WHERE test_string IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Incorrect regex operator behavior for pattern matching"
+  ]
+}

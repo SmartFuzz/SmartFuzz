@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id UInt32, nullable_value Nullable(String), num_value UInt32, str_value String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, 'test', 100, 'example'), (2, NULL, 200, 'sample'), (3, 'NULL', 300, 'data'), (4, '', 400, 'value');
+SELECT sipHash128(concat('ID:', toString(id), 'Value:', if(nullable_value IS NULL, 'NULL', nullable_value))) AS hash_value FROM test_table;
+SELECT id, if(nullable_value IS NULL, 1, 0) AS is_null_flag FROM test_table WHERE num_value > 50 ORDER BY is_null_flag DESC;
+SELECT sipHash128(str_value, sipHash128(toString(id))) AS combined_hash FROM test_table GROUP BY combined_hash HAVING combined_hash IS NOT NULL;
+SELECT id, num_value, sipHash128(str_value) AS str_hash FROM test_table WHERE str_hash IS NOT NULL ORDER BY num_value;
+SELECT id, sipHash128(nullable_value) AS nullable_hash FROM test_table WHERE sipHash128(nullable_value) IS NULL;
+SELECT id, num_value, sipHash128(str_value) AS str_hash FROM (SELECT id, num_value, if(nullable_value IS NULL, '', nullable_value) AS clean_value FROM test_table) AS subquery WHERE clean_value != '';
+CREATE TABLE tmp_table AS SELECT id, sipHash128(str_value) AS hash_value FROM test_table WHERE nullable_value IS NOT NULL;
+SELECT t1.id, t1.num_value, t2.hash_value FROM test_table t1 JOIN tmp_table t2 ON t1.id = t2.id WHERE t1.num_value IS NULL ORDER BY t1.id DESC;

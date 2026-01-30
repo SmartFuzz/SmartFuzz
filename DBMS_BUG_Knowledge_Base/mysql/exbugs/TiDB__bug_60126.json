@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/60126",
+  "title": "Incorrect Join Result under the condition containing date_format, REGEXP and additional true expression",
+  "description": "## Bug Report\n\n### 1. Minimal reproduce step (Required)\n\n```\nCREATE TABLE t0(c0 BOOL);\nCREATE TABLE t1 LIKE t0;\n\n\nINSERT INTO t0 VALUES (false);\nINSERT INTO t1 VALUES (false);\n\n\nSELECT *\nFROM t1\n         INNER JOIN t0 ON ((((((DATE_FORMAT(t0.c0, (t0.c0))) < (t1.c0))) REGEXP (t0.c0))));\n\nSELECT *\nFROM t1\n         INNER JOIN t0 ON ((((((DATE_FORMAT(t0.c0, (t0.c0))) < (t1.c0))) REGEXP (t0.c0))) AND (((t0.c0) = (t1.c0))));\n\n```\n\n### 2. What did you expect to see? (Required)\nRegarding t0.c0 is false and t1.c0 is false, the expression `(t0.c0) = (t1.c0)` is always true.\nSo the expected results should be:\n```\nQ1:\n0, 0\n\nQ2:\n0, 0\n```\n\n### 3. What did you see instead (Required)\n```\nQ1:\n0, 0\n\nQ2:\nempty result\n```\n\n### 4. What is your TiDB version? (Required)\n\n```\n Release Version: v9.0.0-beta.1.pre-389-g21f9bb7b7a\nEdition: Community\nGit Commit Hash: 21f9bb7b7a7478d825c4dee4fbf2ce913e3e7cf1\nGit Branch: HEAD\nUTC Build Time: 2025-03-11 09:37:34\nGoVersion: go1.23.7\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv\n```\n\n",
+  "date": "2025-03-17T12:20:55Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2(c1 INT, c2 DATE, c3 VARCHAR(10));",
+    "INSERT INTO t2 VALUES (1, '2023-01-01', 'test');",
+    "SELECT * FROM t2 WHERE DATE_FORMAT(c2, '%Y-%m-%d') REGEXP '2023';",
+    "SELECT * FROM t2 INNER JOIN t1 ON (t2.c1 = 1 AND t1.c0 = false);",
+    "SELECT * FROM t2 WHERE (c1 < 2 OR c3 IS NULL) AND (c3 REGEXP 'test');"
+  ],
+  "key_bug_features": [
+    "Incorrect join with date_format and REGEXP conditions"
+  ]
+}

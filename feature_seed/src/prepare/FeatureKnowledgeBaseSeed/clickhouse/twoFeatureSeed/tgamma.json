@@ -1,0 +1,18 @@
+{
+    "function": "tgamma",
+    "operator": "a NOT BETWEEN b AND c",
+    "sql_array": [
+        "CREATE TABLE test_tgamma (id UInt32, value Float64, test_value Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_tgamma VALUES (1, 0.5, tgamma(0.5)), (2, 1.0, tgamma(1.0)), (3, -1.0, tgamma(-1.0)), (4, NULL, tgamma(NULL));",
+        "SELECT id FROM test_tgamma WHERE test_value NOT BETWEEN tgamma(value) - 1 AND tgamma(value) + 1;",
+        "SELECT id, COUNT(*) as cnt FROM (SELECT id, tgamma(value) as gamma_value FROM test_tgamma) GROUP BY id HAVING cnt NOT BETWEEN 1 AND 2;",
+        "CREATE TABLE test_null (id UInt32, value Nullable(Float64)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_null VALUES (1, NULL), (2, 0.0), (3, -2.5);",
+        "SELECT id FROM test_null WHERE (value NOT BETWEEN tgamma(0.0) AND tgamma(-1.0)) OR (value IS NULL);",
+        "WITH (SELECT SUM(value) FROM test_null) AS total_value SELECT id FROM test_null WHERE tgamma(value) NOT BETWEEN total_value - 1 AND total_value + 1;",
+        "CREATE TABLE complex_tests (id UInt32, value Float64, result Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO complex_tests SELECT id, value, tgamma(value) FROM test_tgamma WHERE value NOT BETWEEN 0.0 AND 1.0;",
+        "SELECT id FROM complex_tests WHERE result NOT BETWEEN 0.0 AND tgamma(1.0) ORDER BY id DESC;",
+        "SELECT SUM(tgamma(value)) AS total_tgamma FROM test_tgamma WHERE value NOT BETWEEN -1 AND 0.5 GROUP BY id HAVING total_tgamma > 1.0;"
+    ]
+}

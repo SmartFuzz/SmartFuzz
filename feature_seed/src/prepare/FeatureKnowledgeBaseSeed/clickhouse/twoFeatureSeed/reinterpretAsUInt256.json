@@ -1,0 +1,16 @@
+{
+    "function": "reinterpretAsUInt256",
+    "operator": "a < b",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, value String, num Float64, date_val DateTime, uuid_val UUID) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table VALUES (1, 'Test1', 5.25, '2023-01-01 00:00:00', generateUUIDv4()), (2, 'Test2', NULL, '2023-01-02 00:00:00', generateUUIDv4()), (3, 'Test3', 1.5, NULL, generateUUIDv4());",
+        "SELECT id, reinterpretAsUInt256(toUInt32(num)) AS reinterpreted_num, toTypeName(reinterpreted_num), reinterpretAsUInt256(compressed(value)) AS reinterpreted_value FROM (SELECT id, value, num FROM test_table WHERE num IS NOT NULL) WHERE reinterpreted_num < 10;",
+        "SELECT id, date_val, reinterpretAsUInt256(date_val) AS uint256_date, (SELECT count(*) FROM test_table t2 WHERE t2.id < t1.id) AS previous_count FROM test_table t1 WHERE reinterpretAsUInt256(date_val) < reinterpretAsUInt256(num);",
+        "SELECT id, MAX(reinterpretAsUInt256(num)) AS max_uint256_num FROM (SELECT id, num FROM test_table WHERE num IS NOT NULL) GROUP BY id HAVING max_uint256_num > 1;",
+        "SELECT id, value, reinterpretAsUInt256(num) AS reinterpreted_num, reinterpretAsUInt256(value) AS reinterpreted_value FROM test_table WHERE reinterpretAsUInt256(num) < 100;",
+        "CREATE TABLE temp_table AS SELECT id, reinterpretAsUInt256(num) AS num_reinterpreted FROM test_table WHERE value NOT LIKE '%N%';",
+        "INSERT INTO temp_table SELECT id, 0 FROM test_table WHERE num IS NULL;",
+        "SELECT id, reinterpretAsUInt256(NULLIF(value, '')) AS non_empty_value FROM test_table WHERE non_empty_value < 256;",
+        "SELECT t1.id, t1.value, t1.num, t1.date_val, reinterpretAsUInt256(t1.uuid_val) AS reinterpreted_uuid, reinterpretAsUInt256(if(num IS NULL, 0, num)) AS adjusted_num FROM test_table t1 JOIN temp_table t2 ON t1.id = t2.id WHERE (reinterpretAsUInt256(t1.num) + reinterpretAsUInt256(t2.num_reinterpreted)) < 1000;"
+    ]
+}

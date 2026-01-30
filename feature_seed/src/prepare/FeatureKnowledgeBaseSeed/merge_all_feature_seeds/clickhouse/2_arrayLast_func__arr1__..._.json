@@ -1,0 +1,6 @@
+CREATE TABLE test_data (id UInt32, value String, enabled UInt8, created_at DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_data VALUES (1, 'test', 1, '2023-01-01 00:00:01'), (2, NULL, 0, '2023-01-02 00:00:01'), (3, 'example', 1, '2023-01-03 00:00:01'), (4, '', 1, '2023-01-04 00:00:01');
+SELECT arrayLast(x -> IF(value IS NULL, 0, enabled) OR (created_at > now() - INTERVAL 1 DAY), value) FROM test_data WHERE value <> '';
+SELECT id, arrayLast(y -> IF(y = '', 0, y) OR (enabled = 1), created_at) FROM test_data GROUP BY id HAVING id > 1;
+SELECT id, arrayLast(z -> z > 0 OR (value IS NULL AND enabled = 0), value) AS last_value FROM (SELECT id, value FROM test_data WHERE id IN (SELECT id FROM test_data WHERE enabled = 1)) GROUP BY id ORDER BY last_value;
+SELECT a.id, a.value, arrayLast(b -> (b > 1 OR a.value = 'example'), b.value) AS last_value FROM (SELECT id, value, enabled FROM test_data WHERE enabled = 1) AS a JOIN (SELECT value, id FROM test_data WHERE value IS NOT NULL) AS b ON a.id = b.id GROUP BY a.id HAVING last_value != '';

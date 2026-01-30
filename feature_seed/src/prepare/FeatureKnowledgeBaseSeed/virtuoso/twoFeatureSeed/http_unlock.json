@@ -1,0 +1,21 @@
+{
+    "function": "http_unlock",
+    "operator": "SPARQL Operator: a (rdf:type)",
+    "sql_array": [
+        "CREATE TABLE users (id INT PRIMARY KEY, username VARCHAR(50), password VARCHAR(50), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO users (id, username, password) VALUES (1, 'admin', 'adminpass'), (2, 'user', NULL), (3, 'guest', '');",
+        "CREATE TABLE sessions (session_id INT PRIMARY KEY, user_id INT, session_data TEXT, FOREIGN KEY (user_id) REFERENCES users(id));",
+        "INSERT INTO sessions (session_id, user_id, session_data) VALUES (1, 1, 'session1data'), (2, 2, NULL), (3, 3, 'session3data');",
+        "SELECT * FROM users WHERE id = (SELECT user_id FROM sessions WHERE session_id = 1);",
+        "SELECT username, COUNT(*) AS session_count FROM users LEFT JOIN sessions ON users.id = sessions.user_id GROUP BY username HAVING COUNT(sessions.session_id) > 0;",
+        "SELECT a(?, http_unlock('adminpass')) AS unlock_status FROM users WHERE username = 'admin' AND password IS NOT NULL;",
+        "SELECT username, created_at FROM users WHERE created_at < (SELECT MAX(created_at) FROM users WHERE password IS NOT NULL) AND username <> '';",
+        "SELECT a(<Class>, http_unlock('dbaPasswordUPPERCASE')) AS new_class_type FROM users WHERE id IN (SELECT user_id FROM sessions WHERE session_data LIKE '%data%');",
+        "CREATE TEMPORARY TABLE temp_users AS SELECT * FROM users WHERE username IS NOT NULL;",
+        "SELECT DISTINCT a(rdf:type) FROM temp_users WHERE username LIKE 'g%';",
+        "INSERT INTO users (id, username, password) VALUES (4, NULL, 'NULLpassword');",
+        "SELECT a(<Class>) FROM sessions WHERE session_data IS NOT NULL AND EXISTS (SELECT 1 FROM users WHERE id = sessions.user_id);",
+        "UPDATE users SET password = COALESCE(password, 'newDefaultPassword') WHERE id IS NULL OR username = '';",
+        "DROP TABLE IF EXISTS temp_users;"
+    ]
+}

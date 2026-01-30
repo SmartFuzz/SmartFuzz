@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id INTEGER PRIMARY KEY, timestamp_col TIMESTAMP, interval_col INTERVAL, nullable_col TIMESTAMP NULL);
+INSERT INTO test_table (id, timestamp_col, interval_col) VALUES (1, TIMESTAMP '2022-05-01 12:00:00', INTERVAL '3 DAYS');
+INSERT INTO test_table (id, timestamp_col, interval_col) VALUES (2, TIMESTAMP '2022-05-01 12:00:00', INTERVAL 'NULL');
+INSERT INTO test_table (id, timestamp_col, interval_col) VALUES (3, TIMESTAMP '2023-01-01 00:00:00', INTERVAL '50 HOURS');
+SELECT strftime(timestamp_col + interval_col, '%Y-%m-%d %H:%M:%S') FROM test_table;
+SELECT id, strftime(timestamp_col + INTERVAL '10 DAY', '%Y-%m-%d %H:%M:%S') AS formatted_timestamp FROM test_table WHERE nullable_col IS NULL;
+SELECT id, strftime(NULLIF(timestamp_col + interval_col, TIMESTAMP '2022-01-01 00:00:00'), '%Y-%m-%d') FROM test_table WHERE interval_col IS NOT NULL ORDER BY formatted_timestamp;
+SELECT AVG(EXTRACT(EPOCH FROM (strftime(timestamp_col + INTERVAL '40 HOURS', '%Y-%m-%d %H:%M:%S') - timestamp_col))) as average_interval FROM test_table GROUP BY id HAVING average_interval IS NOT NULL;
+SELECT id, strftime(timestamp_col + INTERVAL '1 DAY', '%Y-%m-%d %H:%M:%S') AS next_day FROM test_table WHERE timestamp_col < TIMESTAMP '2023-01-01 23:59:59' ORDER BY next_day DESC;
+SELECT A.id, strftime(A.timestamp_col, '%Y-%m-%d %H:%M:%S') AS original_time, strftime(B.timestamp_col + INTERVAL '7 DAY', '%Y-%m-%d %H:%M:%S') AS new_time FROM test_table A JOIN test_table B ON A.id = B.id WHERE A.interval_col IS NOT NULL;
+SELECT id, strftime(timestamp_col + INTERVAL '5 DAY', '%Y-%m-%d %H:%M:%S') AS updated_time FROM test_table WHERE id IN (SELECT id FROM test_table WHERE timestamp_col IS NOT NULL AND id > 0);

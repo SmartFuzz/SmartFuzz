@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/58400",
+  "title": "`UPDATE` and `INSERT ON DUPLICATE KEY` doesn't update index containing generated column",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\nCase1:\n\n```mysql\n\nCREATE TABLE t3 (\n    id int,\n    time1 datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n    time2 datetime GENERATED ALWAYS AS (date_add(time1, interval 1 day)) VIRTUAL,\n    KEY idx (id, time2)\n);\n\ninsert into t3 set id = 1;\n\nupdate t3 set id = 2;\n\nadmin check table t3;\n```\n\nCase2:\n\n```sql\ndrop table tmv;\nCREATE TABLE tmv (\n  J1 json, J2 json GENERATED ALWAYS AS (j1) VIRTUAL,\n  UNIQUE KEY i1 ((cast(j1 as signed array))),\n  KEY i2 ((cast(j2 as signed array)))\n);\n\ninsert into tmv set j1 = '[1]';\n\ninsert ignore into tmv set j1 = '[1]' on duplicate key update j1 = '[2]';\n\nadmin check table tmv;\n```\n\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\n\nBoth `admin check table` passed.\n\n### 3. What did you see instead (Required)\n\n```\nERROR 8223 (HY000): data inconsistency in table: t3, index: idx, handle: 1, index-values:\"handle: 1, values: [KindInt64 2 KindMysqlTime 2024-12-20 10:33:33]\" != record-values:\"handle: 1, values: [KindInt64 2 KindMysqlTime 2024-12-20 10:33:38]\"\n                                    \nERROR 8134 (HY000): data inconsistency in table: tmv, index: i2, col: _V$_i2_0, handle: \"1\",\n index-values:\"KindInt64 1\" != record-values:\"KindMysqlJSON [2]\", compare err:<nil> \n```\n\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "date": "2024-12-19T02:46:14Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t4 (id INT, value VARCHAR(255), created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME AS (DATE_ADD(created_at, INTERVAL 1 HOUR)) VIRTUAL, UNIQUE KEY unique_id (id));",
+    "INSERT INTO t4 (id, value) VALUES (1, 'test');",
+    "UPDATE t4 SET id = 2 WHERE id = 1;",
+    "CREATE TABLE t5 (data JSON, data_processed JSON AS (JSON_UNQUOTE(JSON_EXTRACT(data, '$.key'))) VIRTUAL, KEY idx_data ((CAST(data_processed AS SIGNED)));",
+    "INSERT INTO t5 (data) VALUES ('{\"key\": 10}');"
+  ],
+  "key_bug_features": [
+    "Index not updating with generated column on insert/update"
+  ]
+}

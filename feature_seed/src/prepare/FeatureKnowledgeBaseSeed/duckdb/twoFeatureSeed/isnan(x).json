@@ -1,0 +1,18 @@
+{
+    "function": "isnan(x)",
+    "operator": "+",
+    "sql_array": [
+        "CREATE TABLE test_data (id INTEGER, value FLOAT, event_date DATE);",
+        "INSERT INTO test_data (id, value, event_date) VALUES (1, 'NaN'::float, DATE '2023-01-01');",
+        "INSERT INTO test_data (id, value, event_date) VALUES (2, 3.14, DATE '2023-01-02');",
+        "INSERT INTO test_data (id, value, event_date) VALUES (3, NULL, DATE '2023-01-03');",
+        "INSERT INTO test_data (id, value, event_date) VALUES (4, 1.0/0.0, DATE '2023-01-04');",
+        "SELECT id, value + INTERVAL (CASE WHEN isnan(value) THEN 10 ELSE 0 END) DAY AS adjusted_date FROM test_data WHERE value IS NOT NULL;",
+        "SELECT id, value, event_date + INTERVAL (SELECT COUNT(*) FROM test_data WHERE id = test_data.id) DAY AS new_event_date FROM test_data HAVING isnan(value) OR (value > 0);",
+        "SELECT *, 1.0 / CASE WHEN isnan(value) THEN NULL ELSE value END AS safe_division FROM test_data WHERE value IS NOT NULL ORDER BY safe_division;",
+        "WITH date_adjusted AS (SELECT id, value, event_date + INTERVAL (SELECT 5 FROM test_data LIMIT 1) DAY AS adjusted_event_date FROM test_data) SELECT id, value, adjusted_event_date, isnan(value) FROM date_adjusted WHERE adjusted_event_date < DATE '2023-02-01';",
+        "CREATE TABLE temp_data (temp_id INTEGER PRIMARY KEY, temp_value FLOAT);",
+        "INSERT INTO temp_data (temp_id, temp_value) VALUES (1, 0.0), (2, 1.0/0.0), (3, 'NaN'::float);",
+        "SELECT t.id, CONCAT('Value: ', temp_value) AS message FROM test_data t JOIN temp_data td ON isnan(td.temp_value) AND td.temp_id = t.id WHERE td.temp_value IS NULL;"
+    ]
+}

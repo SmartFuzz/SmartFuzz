@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=109211",
+  "title": "Incorrect Left Outer Join Execution",
+  "description": "Incorrect Nested loop left join when transforming block_nested_loop condition.\nHow to repeat:\nCREATE TABLE `t0` (\r\n  `c0` smallint DEFAULT NULL\r\n);\r\n\r\nINSERT INTO `t0` VALUES (32767),(NULL);\r\n\r\nCREATE TABLE `t1` (\r\n  `c0` decimal(10,0)\r\n);\r\n\r\nINSERT INTO `t1` VALUES (0000000000),(NULL),(NULL),(NULL);\r\n\r\nCREATE TABLE `t2` (\r\n  `c0` decimal(10,0) unsigned zerofill DEFAULT NULL\r\n);\r\n\r\nINSERT INTO `t2` VALUES (0000001964),(0292269042);\r\n\r\nmysql> SET optimizer_switch='block_nested_loop=on';\r\n\r\nmysql> SELECT ALL t2.c0 FROM t2 CROSS JOIN t0 RIGHT OUTER JOIN t1 ON t1.c0 = t0.c0;\r\n+------------+\r\n| c0         |\r\n+------------+\r\n| 0000001964 |\r\n| 0292269042 |\r\n|       NULL |\r\n|       NULL |\r\n|       NULL |\r\n+------------+\r\n5 rows in set (0.00 sec)\r\n\r\nmysql> SET optimizer_switch='block_nested_loop=off';\r\n\r\nmysql> SELECT  t2.c0 FROM t2 CROSS JOIN t0 RIGHT OUTER JOIN t1 ON t1.c0 = t0.c0;\r\n+------+\r\n| c0   |\r\n+------+\r\n| NULL |\r\n| NULL |\r\n| NULL |\r\n| NULL |\r\n+------+\r\n4 rows in set (0.00 sec)\nSuggested fix:\nmysql> SET optimizer_switch='block_nested_loop=on';\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nmysql> explain format=tree SELECT t2.c0 FROM t2 CROSS JOIN t0 RIGHT OUTER JOIN t1 ON t1.c0 = t0.c0; \r\n+-----------------------------+\r\n| EXPLAIN                                                                                                                                                                                                                                                                                                       |\r\n+-----------------------------+\r\n| -> Left hash join (t1.c0 = t0.c0)  (cost=2.61 rows=16)\r\n    -> Table scan on t1  (cost=0.65 rows=4)\r\n    -> Hash\r\n        -> Inner hash join (no condition)  (cost=0.76 rows=4)\r\n            -> Table scan on t0  (cost=0.06 rows=2)\r\n            -> Hash\r\n                -> Table scan on t2  (cost=0.11 rows=2)\r\n+-----------------------------+\r\n\r\nmysql> SET optimizer_switch='block_nested_loop=off';\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nmysql> explain format=tree SELECT t2.c0 FROM t2 CROSS JOIN t0 RIGHT OUTER JOIN t1 ON t1.c0 = t0.c0; \r\n+-----------------------------+\r\n| EXPLAIN                                                                                                                                                                                                                                                                                                 |\r\n+-----------------------------+\r\n| -> Nested loop left join  (cost=3.25 rows=16)\r\n    -> Table scan on t1  (cost=0.65 rows=4)\r\n    -> Nested loop inner join  (cost=2.70 rows=4)\r\n        -> Table scan on t2  (cost=0.30 rows=2)\r\n        -> Filter: (t1.c0 = t0.c0)  (cost=0.28 rows=2)\r\n            -> Table scan on t0  (cost=0.28 rows=2)\r\n |\r\n+-----------------------------+",
+  "date": "2022-11-27 07:56:00",
+  "vulnerable_version": "8.0.30, 8.0.31",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE `t3` (`c1` varchar(255) DEFAULT NULL);",
+    "INSERT INTO `t3` VALUES ('test1'), (NULL), ('test3');",
+    "CREATE TABLE `t4` (`c2` int NOT NULL, `c3` float DEFAULT NULL);",
+    "INSERT INTO `t4` VALUES (1, 1.1), (2, NULL), (3, 3.3);",
+    "SELECT t3.c1, t4.c3 FROM t3 LEFT JOIN t4 ON LENGTH(t3.c1) = t4.c2;"
+  ],
+  "key_bug_features": [
+    "Incorrect Nested loop left join execution with optimizer switch"
+  ]
+}

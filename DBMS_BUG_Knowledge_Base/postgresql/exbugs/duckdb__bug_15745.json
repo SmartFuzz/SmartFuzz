@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/15745",
+  "title": "Errors triggered by between operators and column references",
+  "description": "### What happens?\n\nI encountered inconsistency while executing the following SQL statement. I believe that statement 1 and statement 2 should return the same result,\nThe first query does not have a where condition, and the second query returns union all results for true, false, and unknown under the same condition. According to the three value logic, these two results should be the same, but in fact, they return different amounts of data.\nAccording to my observation, the data with c1=1970-01-24 is not returned by the second query. It should be returned by SELECT * FROM t0, t1 WHERE (t0.c1 BETWEEN DATE '1969-12-13' AND DATE '1970-01-24')  in the second query and included in the result of union all.\n\n\n### To Reproduce\n\n```sql\nCREATE TABLE t0(c0 FLOAT4 DEFAULT(-2099375280), c1 DATE DEFAULT(TIMESTAMP '1969-12-21 04:33:55'));\nCREATE TABLE t1(c0 DOUBLE, PRIMARY KEY(c0));\nINSERT INTO t1(c0) VALUES (-1594596923);\nINSERT INTO t0(c0) VALUES (0.22539020597356485), (false);\nCREATE INDEX i4 ON t1(c0 );\nUPDATE t1 SET c0=794336359;\nINSERT INTO t1(c0) VALUES (false);\nINSERT INTO t1(c0) VALUES (0.6612848603283843), (0.9912459533380317);\nINSERT INTO t1(c0) VALUES (1075487427);\nCREATE VIEW v0(c0) AS SELECT -880627954 FROM t1, t0 OFFSET 1930423036;\nINSERT INTO t0(c1) VALUES (TIMESTAMP '1970-01-24 10:01:35'), (TIMESTAMP '1969-12-13 10:00:50');\nVACUUM;\nINSERT INTO t1(c0) VALUES (9223372036854775807);\nINSERT INTO t1(c0) VALUES (true);\nDELETE FROM t1;\nINSERT INTO t0(c0) VALUES (DEFAULT);\nINSERT INTO t0(c1) VALUES (DEFAULT);\nCREATE INDEX i0 ON t0(c1 );\nANALYZE;\nINSERT INTO t0(c0) VALUES (true);\nINSERT INTO t1(c0) VALUES (1377137152);\nINSERT INTO t0(c1) VALUES (DATE '1969-12-20');\nINSERT INTO t0(c0) VALUES (570366129);\n\n--First query\nSELECT * FROM t0, t1;\n--whose cardinality is: 9\n\n--Second query\nSELECT * FROM t0, t1 WHERE (t0.c1 BETWEEN DATE '1969-12-13' AND DATE '1970-01-24') UNION ALL SELECT * FROM t0, t1 WHERE (NOT (t0.c1 BETWEEN DATE '1969-12-13' AND DATE '1970-01-24')) UNION ALL SELECT * FROM t0, t1 WHERE (((t0.c1 BETWEEN DATE '1969-12-13' AND DATE '1970-01-24')) IS NULL);\n--whose cardinality is: 8\n```\n\n### OS:\n\nlinux\n\n### DuckDB Version:\n\nv1.1.0\n\n### DuckDB Client:\n\npython\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nChenglin\n\n### Affiliation:\n\npersonal\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a source build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "date": "2025-01-16 09:14:57",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE t2(c0 INT, c1 DATE, c2 VARCHAR(50) DEFAULT 'default');",
+    "INSERT INTO t2(c0, c1) VALUES (1, DATE '1970-01-01'), (2, DATE '1970-01-15'), (3, DATE '1970-01-24');",
+    "CREATE TABLE t3(c0 FLOAT, c1 BOOLEAN, c2 DATE DEFAULT CURRENT_DATE);",
+    "INSERT INTO t3(c0, c1) VALUES (3.14, true), (2.71, false), (1.41, NULL);",
+    "SELECT * FROM t2 WHERE (t2.c1 BETWEEN DATE '1970-01-01' AND DATE '1970-01-24') UNION ALL SELECT * FROM t3 WHERE (t3.c1 IS NULL);"
+  ],
+  "key_bug_features": [
+    "Inconsistent results from BETWEEN operators and column references"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/86206",
+  "title": "Support Date[Time] data types for partitioning",
+  "description": "Should work\n```sql\nCREATE TABLE wikistat_iceberg\n(\n`time` DateTime,\n`project` String,\n`subproject` String,\n`path` String,\n`hits` UInt64\n)\nENGINE = IcebergS3('https://s3.us-east-2.amazonaws.com/wikistatbucket/', '***', '***')\nPARTITION BY (identity(path), identity(time));\nINSERT INTO wikistat_iceberg WITH\nparseDateTimeBestEffort(extract(_file, '^pageviews-([\\\\d\\\\-]+)\\\\.gz$')) AS time,\nsplitByChar(' ', line) AS values,\nsplitByChar('.', values[1]) AS projects\nSELECT\ntime,\nprojects[1] AS project,\nprojects[2] AS subproject,\ndecodeURLComponent(values[2]) AS path,\nCAST(values[3], 'UInt64') AS hits\nFROM s3Cluster('default', 'https://clickhouse-public-datasets.s3.amazonaws.com/wikistat/original/pageviews*.gz', 'LineAsString')\nWHERE length(values) >= 3\nLIMIT 10\nQuery id: 1ffc4763-7bad-4e00-b2a2-a2180d22dcae\nElapsed: 3.317 sec. Processed 261.64 thousand rows, 2.62 MB (78.87 thousand rows/s., 790.20 KB/s.)\nPeak memory usage: 10.15 MiB.\nReceived exception from server (version 25.8.1):\nCode: 36. DB::Exception: Received from localhost:9000. DB::Exception: Unsupported type for iceberg Date. (BAD_ARGUMENTS)\n```",
+  "date": "2025-08-26T14:48:35Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE wikistat_iceberg_v2 (time DATETIME, project TEXT, subproject TEXT, path TEXT, hits INTEGER, created_at DATE DEFAULT (DATE('now')));",
+    "INSERT INTO wikistat_iceberg_v2 (time, project, subproject, path, hits, created_at) VALUES (DATETIME('now'), 'project1', 'subproject1', '/path/to/resource', 100, DATE('now'));",
+    "CREATE TABLE wikistat_temp (temp_time DATETIME, temp_hits INTEGER);",
+    "INSERT INTO wikistat_temp (temp_time, temp_hits) SELECT time, hits FROM wikistat_iceberg_v2 WHERE hits > 50;",
+    "SELECT temp_time, SUM(temp_hits) AS total_hits FROM wikistat_temp GROUP BY temp_time HAVING total_hits > 100;"
+  ],
+  "key_bug_features": [
+    "Unsupported type for iceberg Date during partitioning"
+  ]
+}

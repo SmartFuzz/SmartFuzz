@@ -1,0 +1,21 @@
+{
+    "function": "simpleJSON (visitParam) functions",
+    "operator": "a != ALL (subquery)",
+    "sql_array": [
+        "CREATE TABLE json_test(id UInt32, json String) ENGINE = Memory;",
+        "INSERT INTO json_test VALUES (1, '{\"foo\":\"42\", \"bar\": {\"baz\": \"true\"}}'), (2, '{\"foo\":\"not an integer\", \"bar\": {\"baz\": 3}}');",
+        "SELECT id, simpleJSONExtractInt(json, 'foo') FROM json_test WHERE simpleJSONExtractInt(json, 'foo') != ALL (SELECT simpleJSONExtractInt(json, 'bar.baz') FROM json_test WHERE json IS NOT NULL);",
+        "CREATE TABLE json_check(json String) ENGINE = Memory;",
+        "INSERT INTO json_check VALUES ('{\"key1\":\"value1\", \"key2\": false}'), (NULL), ('{\"key3\": \"value3\"}');",
+        "SELECT simpleJSONExtractBool(json, 'key2') FROM json_check WHERE simpleJSONExtractBool(json, 'key1') != ALL (SELECT simpleJSONExtractBool(json, 'key3') FROM json_check WHERE json IS NOT NULL);",
+        "CREATE TABLE json_complex(id UInt32, json String, info String) ENGINE = Memory;",
+        "INSERT INTO json_complex VALUES (1, '{\"num\":\"3.14\"}', 'high'), (2, '{\"num\":\"5.67\"}', 'low'), (3, '{\"num\":\"not a number\"}', 'medium');",
+        "SELECT info, simpleJSONExtractFloat(json, 'num') FROM json_complex WHERE simpleJSONExtractFloat(json, 'num') != ALL (SELECT simpleJSONExtractFloat(json, 'num') FROM json_complex WHERE info = 'high');",
+        "CREATE TABLE json_nested(json String) ENGINE = Memory;",
+        "INSERT INTO json_nested VALUES ('{\"layer1\": {\"layer2\": {\"layer3\": 10}}}'), ('{\"layer1\": {\"layer2\": {}}}'), ('{\"layer1\": null}');",
+        "SELECT simpleJSONExtractInt(json, 'layer1.layer2.layer3') FROM json_nested WHERE simpleJSONExtractInt(json, 'layer1.layer2.layer3') != ALL (SELECT simpleJSONExtractInt(json, 'layer1.layer2.layer3') FROM json_nested WHERE json IS NOT NULL);",
+        "CREATE TABLE json_special(json String) ENGINE = Memory;",
+        "INSERT INTO json_special VALUES ('{\"key\":\"value\", \"number\":3.14}'), ('{\"key\":\"another value\", \"number\":\"not a number\"}');",
+        "SELECT simpleJSONHas(json, 'key') FROM json_special WHERE simpleJSONHas(json, 'key') != ALL (SELECT simpleJSONHas(json, 'number') FROM json_special WHERE json IS NOT NULL);"
+    ]
+}

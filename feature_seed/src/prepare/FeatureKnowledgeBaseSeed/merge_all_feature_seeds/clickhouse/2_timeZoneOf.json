@@ -1,0 +1,11 @@
+CREATE TABLE test_time_zones (id UInt32, event_time DateTime64(6), description String);
+INSERT INTO test_time_zones VALUES (1, toDateTime64('2023-10-01 12:00:00', 6, 'Europe/London'), 'Event A'), (2, toDateTime64('2023-10-02 08:00:00', 6, 'America/New_York'), 'Event B');
+SELECT timezoneOf(event_time) AS timezone, event_time + INTERVAL 1 DAY AS after_1_day FROM test_time_zones WHERE id = 1;
+SELECT id, timezoneOf(event_time + INTERVAL '2 hour'), event_time FROM test_time_zones WHERE event_time < now() - INTERVAL 1 DAY;
+SELECT t1.id, timezoneOf(t2.event_time + INTERVAL 3 HOUR) AS adjusted_timezone FROM test_time_zones t1 JOIN test_time_zones t2 ON t1.id != t2.id AND t1.event_time < t2.event_time;
+SELECT DISTINCT id, timezoneOf(event_time + INTERVAL 1 MINUTE) FROM test_time_zones GROUP BY id HAVING timezoneOf(event_time + INTERVAL 1 MINUTE) IS NOT NULL;
+SELECT id, timezoneOf(event_time) AS tz, COUNT(*) AS event_count FROM test_time_zones GROUP BY tz HAVING event_count > 1;
+SELECT id, timezoneOf(event_time + INTERVAL 1 HOUR) AS new_time_zone FROM test_time_zones WHERE timezoneOf(event_time) != 'UTC';
+CREATE TABLE temp_events AS SELECT id, event_time + INTERVAL 1 WEEK AS next_event_time FROM test_time_zones WHERE event_time IS NOT NULL;
+SELECT timeZoneOf(now() + INTERVAL 6 HOUR) AS current_tz;
+SELECT timeZoneOf((SELECT MIN(event_time) FROM test_time_zones) + INTERVAL 1 DAY) AS min_plus_1_day_timezone;

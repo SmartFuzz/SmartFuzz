@@ -1,0 +1,12 @@
+CREATE TABLE registry_test (name VARCHAR(255) NOT NULL, value VARCHAR(255) NOT NULL);
+INSERT INTO registry_test (name, value) VALUES ('setting1', 'value1'), ('setting2', NULL), ('setting3', '123'), ('setting4', '5.67');
+SELECT registry_set((SELECT 'setting' || id FROM (SELECT 1 AS id UNION SELECT 2 UNION SELECT 3) AS ids), (SELECT COUNT(*) FROM registry_test WHERE value IS NOT NULL) BETWEEN 1 AND 3);
+SELECT registry_set('setting_max', 'max_value') WHERE (SELECT MAX(value) FROM registry_test WHERE value LIKE 'value%' BETWEEN 'value1' AND 'value3') IS NOT NULL;
+SELECT registry_set('setting_null', NULL) WHERE (SELECT value IS NULL FROM registry_test) IS TRUE;
+SELECT registry_set('setting_empty', '') WHERE EXISTS (SELECT 1 FROM registry_test WHERE value = '');
+SELECT registry_set('setting_numeric', CAST((SELECT SUM(CAST(value AS FLOAT)) FROM registry_test WHERE value IS NOT NULL) AS VARCHAR)) WHERE CAST(5 AS VARCHAR) BETWEEN '1' AND '10';
+SELECT registry_set('setting_boundary', '1') WHERE '2' BETWEEN CAST('1' AS VARCHAR) AND CAST('3' AS VARCHAR);
+SELECT registry_set('protected_variable', 'safe_value') WHERE (SELECT MONTH(CURRENT_DATE) BETWEEN 1 AND 12) = TRUE;
+CREATE TABLE join_test (id INT, related_id INT, value VARCHAR(255));
+INSERT INTO join_test (id, related_id, value) VALUES (1, NULL, 'related1'), (2, 1, 'related2'), (3, 2, 'related3');
+SELECT registry_set('setting_join', (SELECT AVG(CASE WHEN value IS NOT NULL THEN 1 ELSE NULL END) FROM join_test j JOIN registry_test r ON j.related_id = r.name WHERE r.value BETWEEN 'value1' AND 'value3')) UPDATE register_test SET value = registry_set('updated_value', 'new_value') WHERE id IN (SELECT id FROM join_test);

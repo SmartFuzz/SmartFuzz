@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/90651",
+  "title": "Query Failures on a Sharded ClickHouse Cluster",
+  "description": "### Company or project name\nRealytics\n### Describe what's wrong\nAn error occurs when creating a replicated table from a distributed table with cross join/array join conditions.\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\n1) Version 25.8.3.66\n2) DBeaver / Clickhouse browser client / clickhouse-client\n3)\nRun this script below (you need 2 cluster with 2 shards)\n```\ncreate database if not exists test_db on cluster '{cluster}';\ncreate table if not exists test on\ncluster '{cluster}' (\nnum UInt64,\ndate Date\n)\nengine = ReplicatedMergeTree('/clickhouse/tables/{shard}/{database}.{table}', '{replica}')\norder by num;\ncreate or replace table test_distr on cluster '{cluster}' (\nnum int,\ndate Date\n)\nEngine = Distributed('{cluster}',\n'default',\n'test',\ncityHash64(num));\ninsert into test_distr\nSELECT number as num, toDate(now()) FROM system.numbers LIMIT 100000;\ncreate view if not exists test_view on cluster '{cluster}' as select num, date from test_distr;\ncreate or replace dictionary test_db.test_dict on cluster '{cluster}' (\nnum UInt64,\ndate Date\n)\nprimary key num\nSOURCE(CLICKHOUSE(HOST 'localhost' PORT 9000 TABLE 'test_view' USER 'default' PASSWORD 'test' DB 'default'))\nLIFETIME(MIN 0 MAX 0)\nLAYOUT(FLAT());\ncreate or replace table replica_from_distr_2 on cluster '{cluster}' Engine = Memory as\nselect\nnum,\njoined_num.num,\ndictGet('test_db.test_dict', 'date', toUInt64(joined_num.num)) as date_from_dict,\nuniq(num) OVER (partition by toUInt64(joined_num.num)) as metric\nfrom\ntest_distr\ncross join (select num from test_dict where num in (1, 2, 3, 4)) as joined_num\nwhere num != 0\norder by joined_num.num asc",
+  "date": "2025-11-22T10:20:23Z",
+  "vulnerable_version": "25.8.3.66",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE DATABASE test_db;",
+    "CREATE TABLE test_distr (num INT, date TIMESTAMP, value FLOAT DEFAULT 0.0);",
+    "INSERT INTO test_distr SELECT number AS num, NOW() AS date, number * 1.5 AS value FROM DB.DUAL WHERE ROWNUM <= 100;",
+    "CREATE TABLE replicated_table (num BIGINT, date DATE, metric FLOAT) AS SELECT num, date, NULL AS metric FROM test_distr WHERE num IS NOT NULL;",
+    "INSERT INTO replicated_table SELECT num, date, (SELECT date FROM test_distr WHERE num = replicated_table.num) AS metric FROM replicated_table;"
+  ],
+  "key_bug_features": [
+    "Creating replicated table from distributed table with joins"
+  ]
+}

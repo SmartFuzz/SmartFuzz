@@ -1,0 +1,15 @@
+CREATE TABLE test_arrays (id UInt32, arr Array(Int32), threshold Int32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_arrays VALUES (1, [1, 2, 3, 4, 5], 2), (2, [NULL, 3, 4, 5, 6, NULL], 3), (3, [10, 9, 8], 0);
+SELECT id, arrayShiftRight(arr, threshold, arr[1]) as shifted_arr FROM test_arrays WHERE arr[1] < 6;
+SELECT id, arrayShiftRight(arr, -2) as shifted_arr FROM test_arrays WHERE arrayShiftRight(arr, threshold)[2] < 5;
+SELECT id FROM test_arrays WHERE arrayShiftRight(arr, threshold, -1) < [0, 0, 0];
+SELECT id, arrayShiftRight(arr, threshold) as shifted_arr FROM test_arrays GROUP BY id HAVING shifted_arr[1] < arr[1];
+WITH arrayShiftRight(arr, threshold, 42) as shifted FROM test_arrays SELECT id, shifted WHERE shifted[3] < threshold ORDER BY id;
+CREATE TABLE complex_type (user_id UInt32, user_data Array(Float64)) ENGINE = MergeTree() ORDER BY user_id;
+INSERT INTO complex_type VALUES (1, [1.1, 2.2, 3.3]), (2, [5.5, NULL, 7.7]), (3, [NULL, NULL, NULL]);
+SELECT user_id, arrayShiftRight(user_data, 1, 0.0) FROM complex_type WHERE user_data[2] < 7.0;
+SELECT user_id, arrayShiftRight(user_data, -1) as shifted_data FROM complex_type WHERE shifted_data[1] < user_data[2];
+WITH (SELECT arrayShiftRight(arr, -1) FROM test_arrays WHERE id = 2) AS previous_array SELECT id, previous_array FROM test_arrays WHERE previous_array[2] < arr[1];
+CREATE TEMPORARY TABLE temp_test (x Int32, values Array(Int32)) ENGINE = Memory;
+INSERT INTO temp_test VALUES (1, [1, 2, 3]), (2, NULL), (3, [4, 5]);
+SELECT x, arrayShiftRight(COALESCE(values, []), 2) as shifted_values FROM temp_test WHERE x < 3;

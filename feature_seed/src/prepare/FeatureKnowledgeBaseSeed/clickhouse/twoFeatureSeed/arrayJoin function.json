@@ -1,0 +1,18 @@
+{
+    "function": "arrayJoin function",
+    "operator": "a < b",
+    "sql_array": [
+        "CREATE TABLE test_array_join (id UInt32, cities Array(String), browsers Array(String)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_array_join VALUES (1, ['Istanbul', 'Berlin', 'Bobruisk'], ['Firefox', 'Chrome', 'Safari']), (2, [], ['Edge']), (3, ['Paris', 'London'], ['Opera', 'Firefox']);",
+        "SELECT arrayJoin(cities) AS city, count() AS impression_count FROM test_array_join GROUP BY city HAVING impression_count < 5;",
+        "SELECT arrayJoin(arrayZip(cities, browsers)) AS pair, sum(id) AS total FROM test_array_join GROUP BY pair HAVING (pair.1 < 'London' AND pair.2 = 'Firefox');",
+        "SELECT arrayJoin(browsers) AS browser, a.id, sum(a.id) FROM (SELECT id, arrayJoin(cities) AS city FROM test_array_join) AS a WHERE a.city IN (SELECT arrayJoin(cities) FROM test_array_join WHERE id < 3) GROUP BY browser, a.id;",
+        "SELECT sum(CASE WHEN arrayJoin(cities) < 'Berlin' THEN 1 ELSE 0 END) AS below_berlin_count, avg(arrayJoin([1, 2, 3, 4]) < 3) AS avg_less_than_3 FROM test_array_join;",
+        "SELECT arrayJoin(arrayConcat(cities, ['New York'])) AS city, count() FROM (SELECT arrayJoin(cities) AS cities FROM test_array_join WHERE arrayJoin(browsers) = 'Chrome') GROUP BY city ORDER BY city;",
+        "SELECT DISTINCT city, browser FROM (SELECT arrayJoin(cities) AS city, arrayJoin(browsers) AS browser FROM test_array_join) WHERE city < 'Paris' AND browser NOT IN ('Chrome', NULL) ORDER BY city;",
+        "SELECT id, arrayJoin(cities) AS city, arrayJoin(browsers) AS browser FROM test_array_join WHERE id IN (SELECT id FROM test_array_join WHERE arrayJoin(browsers) < 'Safari');",
+        "CREATE TABLE temp_table (source UInt32, numbers Array(UInt32)) ENGINE = Memory;",
+        "INSERT INTO temp_table VALUES (1, [10, 20, 5, NULL]), (2, [NULL, 15, 25]), (3, [1, 2, 0]);",
+        "SELECT arrayJoin(arraySort(numbers)) AS sorted_num, count() FROM temp_table GROUP BY sorted_num HAVING sorted_num < 15 OR sorted_num IS NULL;"
+    ]
+}

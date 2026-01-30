@@ -1,0 +1,18 @@
+CREATE TABLE urls (scheme VARCHAR(10), host VARCHAR(100), port INT, path VARCHAR(255));
+INSERT INTO urls VALUES ('https', 'www.example.com', 8080, 'api/v1/resources');
+SELECT sys.newurl(scheme, host, port, path) AS full_url FROM urls WHERE port IS NOT NULL;
+SELECT sys.newurl(scheme, host, port, path) AS full_url FROM urls WHERE port BETWEEN 8000 AND 9000;
+SELECT sys.newurl(scheme, host, port, JSON_VALID('{"path":"' || path || '"}')) AS valid_url FROM urls;
+CREATE TABLE json_data (data JSON, created_at TIMESTAMP);
+INSERT INTO json_data VALUES (json '{"url": "https://www.example.com/api/v1/resources"}', CURRENT_TIMESTAMP);
+SELECT json_valid(data) AS is_valid FROM json_data;
+SELECT sys.newurl(scheme, host, port, JSON_EXTRACT(data, '$.url')) AS dynamic_url FROM urls JOIN json_data ON json_valid(data);
+SELECT COUNT(*) FROM urls WHERE sys.newurl(scheme, 'www.test.com', port, path) IS NOT NULL;
+SELECT sys.newurl(scheme, host, port, path) AS url FROM urls WHERE port = (SELECT MAX(port) FROM urls);
+SELECT sys.newurl(NULLIF(scheme, ''), host, port, path) AS url_handling FROM urls;
+SELECT sys.newurl('http', 'www.abc.com', CAST(NULL AS INT), 'page') AS resolved_url FROM urls;
+INSERT INTO json_data SELECT json CONCAT('{"url":"', sys.newurl(scheme, host, port, path), '"}') AS json_url, NOW() FROM urls;
+CREATE TEMPORARY TABLE temp_urls (url VARCHAR(255), response_code INT);
+INSERT INTO temp_urls VALUES (sys.newurl('ftp', 'ftp.example.com', 21, 'download/...'), 200);
+SELECT url FROM temp_urls HAVING response_code = 200 ORDER BY url;
+SELECT sys.newurl('http', 'www.test.com', 80, CONCAT(path, '?id=', null)) AS url_with_null FROM urls;

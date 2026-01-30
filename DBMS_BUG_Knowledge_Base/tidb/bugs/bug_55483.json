@@ -1,0 +1,25 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/55483",
+  "title": "Query execution failed.",
+  "vulnerable_database": "tidb",
+  "date": "2024-08-17T09:51:37Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n```sql\r\nCREATE TABLE t0(c0 BOOL UNSIGNED CHECK (((((66058967)^(false)))<(true))) NOT NULL DEFAULT false , c1 NUMERIC ZEROFILL NOT NULL , c2 TEXT(33) , c3 TINYINT ZEROFILL  AS (c0) VIRTUAL UNIQUE )PARTITION BY RANGE(c3) (PARTITION p0 VALUES LESS THAN (910),\\nPARTITION p1 VALUES LESS THAN (1820),\\nPARTITION p2 VALUES LESS THAN (2730),PARTITION p23 VALUES LESS THAN MAXVALUE);\r\nINSERT IGNORE  INTO t0(c1, c0) VALUES (NULL, NULL);\r\n\r\nSELECT t0.c1 FROM t0 WHERE '4' AND (t0.c3 IN (SELECT c3 FROM t0 WHERE t0.c3 BETWEEN 12877 AND 14560) AND t0.c3 IN (SELECT c3 FROM t0 WHERE t0.c3 BETWEEN 13650 AND 15255));\r\n```\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nquery executed successfully.\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nAt first query executed successfully, but after waiting about 1 min, executing same SELECT statement reported:\r\n\r\n```sql\r\nmysql> SELECT t0.c1 FROM t0 WHERE '4' AND (t0.c3 IN (SELECT c3 FROM t0 WHERE t0.c3 BETWEEN 12877 AND 14560) AND t0.c3 IN (SELECT c3 FROM t0 WHERE t0.c3 BETWEEN 13650 AND 15255));\r\nERROR 1105 (HY000): Internal error, needPartitionHandle != ret, tp(1)\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n```sql\r\n Release Version: v8.3.0-alpha-50-gb59f5ecb47-dirty\r\nEdition: Community\r\nGit Commit Hash: b59f5ecb472d831f867b079e0a409caef9f4a290\r\nGit Branch: master\r\nUTC Build Time: 2024-07-31 18:41:32\r\nGoVersion: go1.22.5\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv \r\n```\r\ntikv was set up with partitioned raft kv\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "poc": [
+    "CREATE TABLE t0(c0 BOOL UNSIGNED CHECK (((((66058967)^(false)))<(true))) NOT NULL DEFAULT false , c1 NUMERIC ZEROFILL NOT NULL , c2 TEXT(33) , c3 TINYINT ZEROFILL  AS (c0) VIRTUAL UNIQUE )PARTITION BY RANGE(c3) (PARTITION p0 VALUES LESS THAN (910),\\nPARTITION p1 VALUES LESS THAN (1820),\\nPARTITION p2 VALUES LESS THAN (2730),PARTITION p23 VALUES LESS THAN MAXVALUE);",
+    "INSERT IGNORE  INTO t0(c1, c0) VALUES (NULL, NULL);",
+    "SELECT t0.c1 FROM t0 WHERE '4' AND (t0.c3 IN (SELECT c3 FROM t0 WHERE t0.c3 BETWEEN 12877 AND 14560) AND t0.c3 IN (SELECT c3 FROM t0 WHERE t0.c3 BETWEEN 13650 AND 15255));"
+  ],
+  "poc_type": "sql_text",
+  "state": "closed",
+  "key_bug_features": [
+    "SELECT statement with complex partitioned conditions fails"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t1(id INT PRIMARY KEY, name VARCHAR(50) NOT NULL, age INT CHECK (age >= 0), salary DECIMAL(10,2) DEFAULT 0.00);",
+    "INSERT INTO t1(name, age, salary) VALUES ('Alice', 30, 50000.00), ('Bob', NULL, 60000.00), ('Charlie', 25, NULL);",
+    "CREATE TABLE t2(department_id INT, department_name VARCHAR(50), FOREIGN KEY (department_id) REFERENCES t1(id));",
+    "INSERT INTO t2(department_id, department_name) VALUES (1, 'HR'), (2, 'Engineering'), (NULL, 'Marketing');",
+    "SELECT t1.name, t1.salary FROM t1 LEFT JOIN t2 ON t1.id = t2.department_id WHERE t1.age IS NOT NULL AND (t1.salary > 40000 OR t2.department_name IS NULL);"
+  ]
+}

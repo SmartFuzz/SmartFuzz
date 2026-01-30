@@ -1,0 +1,27 @@
+{
+    "function": "editdistance2(s1, s2)",
+    "operator": "=",
+    "sql_array": [
+        "CREATE TABLE test_strings (id INT PRIMARY KEY, str1 VARCHAR(255), str2 VARCHAR(255));",
+        "INSERT INTO test_strings (id, str1, str2) VALUES (1, 'abcd', 'abed'), (2, 'hello', NULL), (3, '', 'world'), (4, 'MonetDB', 'DB3');",
+        "SELECT id, editdistance2(str1, str2) AS distance FROM test_strings WHERE str1 IS NOT NULL AND str2 IS NOT NULL;",
+        "SELECT id, editdistance2(str1, str2) AS distance FROM test_strings WHERE editdistance2(str1, str2) = 1;",
+        "CREATE TABLE test_ips (ip1 INET, ip2 INET);",
+        "INSERT INTO test_ips (ip1, ip2) VALUES (inet '192.168.1.5', inet '192.168.1.5'), (inet '192.168.1.10', inet '192.168.1.5');",
+        "SELECT ip1, ip2 FROM test_ips WHERE ip1 = ip2;",
+        "SELECT (SELECT COUNT(*) FROM test_ips WHERE ip1 = inet '192.168.1.5') AS count_same_ips, editdistance2('192.168.1.1', '192.168.1.5') AS distance;",
+        "SELECT str1, str2 FROM test_strings WHERE editdistance2(str1, str2) = (SELECT MAX(editdistance2(str1, str2)) FROM test_strings);",
+        "CREATE TEMP TABLE temp_group AS SELECT id, editdistance2(str1, str2) AS distance FROM test_strings GROUP BY id HAVING distance > 0;",
+        "INSERT INTO temp_group (id, distance) VALUES (5, 2);",
+        "SELECT AVG(distance) FROM temp_group WHERE distance IS NOT NULL;",
+        "CREATE TABLE test_edge_cases (numeric_value NUMERIC, text_value VARCHAR(255));",
+        "INSERT INTO test_edge_cases (numeric_value, text_value) VALUES (NULL, 'NULL_VALUE'), (0, 'zero'), (10.5, 'ten_point_five'), (2147483647, 'max_int');",
+        "SELECT editdistance2(CAST(numeric_value AS VARCHAR), text_value) FROM test_edge_cases WHERE numeric_value IS NOT NULL;",
+        "CREATE TABLE join_test (a INT, b INT);",
+        "INSERT INTO join_test (a, b) VALUES (1, 2), (2, NULL), (NULL, 3);",
+        "SELECT jt.a, jt.b, editdistance2(CAST(jt.a AS VARCHAR), '2') AS distance FROM join_test jt JOIN test_strings ts ON editdistance2(ts.str1, ts.str2) < 3 WHERE jt.b IS NULL;",
+        "SELECT jt.a, COUNT(*) FROM join_test jt GROUP BY jt.a HAVING COUNT(*) > 1;",
+        "ALTER TABLE test_strings ADD COLUMN distance INT;",
+        "UPDATE test_strings SET distance = editdistance2(str1, str2) WHERE str1 IS NOT NULL AND str2 IS NOT NULL;"
+    ]
+}

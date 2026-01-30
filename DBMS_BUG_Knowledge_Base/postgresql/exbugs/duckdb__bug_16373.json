@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/16373",
+  "title": "regression: TABLESAMPLE does not respect seed when using `system` method",
+  "description": "### What happens?\n\n```sql\nSET threads = 1;\nCREATE OR REPLACE TABLE test AS SELECT UNNEST(RANGE(100000)) as x;\nSELECT COUNT(*), min(x) FROM test TABLESAMPLE system (25 PERCENT) REPEATABLE (42);\n# (32416, 0)\n# (18432, 0)\n# (28320, 2048)\n# (24224, 0)\n# (24224, 2048)\n```\n\nHowever, if I replace the `system` method with `bernoulii` or `reservoir`, then the results are reproducible.\n\nThis appears to be a regression in 1.2.0. In Duckdb version 1.1.3 and before, the results are consistent.\n\n### To Reproduce\n\nSee above.\n\n### OS:\n\nmacOS 14.6.1\n\n### DuckDB Version:\n\n1.2.0\n\n### DuckDB Client:\n\npython\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nNick Crews\n\n### Affiliation:\n\nShip Creek Group\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a stable release\n\n### Did you include all relevant data sets for reproducing the issue?\n\nNot applicable - the reproduction does not require a data set\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "date": "2025-02-24 00:16:43",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_int (id SERIAL PRIMARY KEY, value INTEGER NOT NULL);",
+    "INSERT INTO test_int (id, value) VALUES (1, 100), (2, NULL), (3, 200);",
+    "CREATE TABLE test_float (id SERIAL PRIMARY KEY, value FLOAT NOT NULL);",
+    "INSERT INTO test_float (id, value) VALUES (1, 1.5), (2, 2.5), (3, NULL);",
+    "SELECT COUNT(*), MIN(value) FROM test_int WHERE id IN (SELECT id FROM test_int ORDER BY RANDOM() LIMIT (SELECT COUNT(*) FROM test_int) * 0.5) AND value IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "TABLESAMPLE system method does not respect seed"
+  ]
+}

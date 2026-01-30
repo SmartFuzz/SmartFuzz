@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=102025",
+  "title": "Wrong result when use \"select all\"",
+  "description": "CREATE TABLE `t0` (\r\n  `c0` tinyint unsigned zerofill DEFAULT NULL\r\n) ;\r\ninsert into t0 values (255);\n\nCREATE TABLE `t1` (\r\n  `c0` tinyint,\r\n  UNIQUE KEY `c0` (`c0`)\r\n) ;\r\ninsert into t1 values (-128),(0),(127);\r\n\r\nselect all t0.c0,t1.c0 FROM t0, t1 WHERE (t0.c0) > (t1.c0);\r\n+------+------+\r\n| c0   | c0   |\r\n+------+------+\r\n|  255 | -128 |\r\n+------+------+\n\nThe result should be:\r\nselect all t0.c0,t1.c0 FROM t0, t1 WHERE (t0.c0) > (t1.c0);\r\n+------+------+\r\n| c0   | c0   |\r\n+------+------+\r\n|  255 | -128 |\r\n|  255 |    0 |\r\n|  255 |  127 |\r\n+------+------+\n\nNote:\r\nremove the UNIQUE KEY from t1 can get the right result.\nHow to repeat:\nsee description",
+  "date": "2020-12-18 07:33:00",
+  "vulnerable_version": "8.0.22, 5.7.32",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE `t2` (`c1` smallint unsigned DEFAULT NULL);",
+    "INSERT INTO t2 VALUES (65535);",
+    "CREATE TABLE `t3` (`c1` smallint);",
+    "INSERT INTO t3 VALUES (-32768),(0),(32767);",
+    "SELECT t2.c1, t3.c1 FROM t2, t3 WHERE (t2.c1) > (t3.c1);"
+  ],
+  "key_bug_features": [
+    "select all with UNIQUE KEY causes incorrect results"
+  ]
+}

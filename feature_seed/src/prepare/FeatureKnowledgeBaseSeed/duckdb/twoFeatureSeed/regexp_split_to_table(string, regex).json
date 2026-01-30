@@ -1,0 +1,17 @@
+{
+    "function": "regexp_split_to_table(string, regex)",
+    "operator": "+",
+    "sql_array": [
+        "CREATE TABLE test_data (id INTEGER, text_data VARCHAR, date_data DATE);",
+        "INSERT INTO test_data VALUES (1, '2022-01-01;Item1 Item2', DATE '2022-01-01'), (2, '2022-02-01;Item3 Item4', DATE '2022-02-01'), (3, NULL, DATE '2022-02-01');",
+        "SELECT id, regexp_split_to_table(text_data, ';? ') AS split_item FROM test_data WHERE date_data + INTERVAL 5 DAY <= CURRENT_DATE;",
+        "SELECT id, COUNT(*) AS item_count FROM (SELECT id, regexp_split_to_table(text_data, ';? ') AS split_item FROM test_data) AS split_data GROUP BY id HAVING item_count > 1;",
+        "SELECT text_data, (SELECT COUNT(*) FROM (SELECT regexp_split_to_table(text_data, ';? ') AS split_item FROM test_data WHERE text_data IS NOT NULL) AS split_data) AS total_split FROM test_data;",
+        "WITH split_items AS (SELECT id, regexp_split_to_table(text_data, ';? ') AS split_item FROM test_data) SELECT split_item, COUNT(*) FROM split_items GROUP BY split_item HAVING COUNT(*) > 1;",
+        "SELECT id, (DATE '2022-01-01' + INTERVAL (CAST(split_item AS INTEGER) + 5) DAY) AS new_date FROM (SELECT id, regexp_split_to_table(text_data, ';? ') AS split_item FROM test_data) AS split_data WHERE split_item IS NOT NULL;",
+        "CREATE TABLE additional_data (item VARCHAR PRIMARY KEY, quantity INTEGER NOT NULL);",
+        "INSERT INTO additional_data VALUES ('Item1', 10), ('Item2', 20), ('Item3', NULL), ('Item4', -5);",
+        "SELECT ad.item, COALESCE(ad.quantity, 0) + (SELECT COUNT(*) FROM (SELECT regexp_split_to_table(text_data, ';? ') AS split_item FROM test_data WHERE id = ad.item) AS split_data) AS adjusted_quantity FROM additional_data ad;",
+        "SELECT id, DATE '2022-01-01' + INTERVAL (CAST(NULL AS INTEGER) + 1) DAY AS adjusted_date FROM test_data WHERE date_data IS NULL;"
+    ]
+}

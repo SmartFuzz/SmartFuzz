@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/704",
+  "title": "non-deterministic and incomplete property path ( rdfs:subClassOf ) query result counts",
+  "description": "Hi,\nwe experienced a questionable behavior for property path queries, returning non-deterministic or incomplete query result counts for the following types of queries:\nWe tried the query below for the English DBpedia Endpoint:\nQuery A\nPrefix dbo: <http://dbpedia.org/ontology/>\nSELECT (Count( distinct ?s) as ?number)\nWHERE {\n    ?s rdf:type/(rdfs:subClassOf{0,2}) dbo:Place .\n    ?s rdf:type/(rdfs:subClassOf{0,2}) dbo:Agent .\n}\nProblem 1 (non-determinism):\nRewriting the query (inserting a comment at a random place) and rerunning the query leads to a different count number.\nProblem 2: (incomplete results)\nWhen running  query A on our own virtuoso backend BUT without loaded DBpedia ontology (so there will be no single subClassOf triple in the store), the result returned 0, but it has to be much higher since we investigated it with Query B (similar to A but without the optional (!) property path)\nQuery B\nPrefix dbo: <http://dbpedia.org/ontology/>\nSELECT (Count( distinct ?s) as ?number)\nWHERE {\n    ?s rdf:type dbo:Place .\n    ?s rdf:type dbo:Agent .\n}\nreturns a number higher than 0 (so that means Place and Agent are not disjoint) which should at least be the number of results we expect to be returned from Query A in our store",
+  "date": "2018-01-04 16:30:09",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE test_places (id INT PRIMARY KEY, name VARCHAR(255), type VARCHAR(50));",
+    "CREATE TABLE test_agents (id INT PRIMARY KEY, name VARCHAR(255), type VARCHAR(50));",
+    "INSERT INTO test_places (id, name, type) VALUES (1, 'Central Park', 'Place'), (2, 'Eiffel Tower', 'Place');",
+    "INSERT INTO test_agents (id, name, type) VALUES (1, 'Agent Smith', 'Agent'), (2, 'Agent Johnson', 'Agent');",
+    "SELECT COUNT(DISTINCT p.id) AS number FROM test_places p JOIN test_agents a ON p.type = a.type WHERE p.type IS NOT NULL AND a.type IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "non-deterministic query result counts for property path"
+  ]
+}

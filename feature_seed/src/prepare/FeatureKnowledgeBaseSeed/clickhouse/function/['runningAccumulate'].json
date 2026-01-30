@@ -1,0 +1,15 @@
+[
+    "CREATE TABLE test_running_accumulate (id UInt32, value UInt32) ENGINE = Memory;",
+    "INSERT INTO test_running_accumulate VALUES (1, 10), (1, 20), (1, 30), (2, 15), (2, 25);",
+    "SELECT id, runningAccumulate(sumState(value)) AS accumulated_sum FROM (SELECT id, sumState(value) FROM test_running_accumulate GROUP BY id ORDER BY id, value);",
+    "SELECT id, value, runningAccumulate(state) AS accumulated_value FROM (SELECT id, value, sumState(value) AS state FROM test_running_accumulate GROUP BY id, value ORDER BY id, value);",
+    "SELECT grouping, item, runningAccumulate(state, grouping) AS accumulated FROM (SELECT toInt8(id) AS grouping, value AS item, sumState(value) AS state FROM test_running_accumulate GROUP BY grouping, item ORDER BY grouping, item);",
+    "CREATE TABLE test_running_accumulate_2 (groupId UInt32, num UInt32) ENGINE = Memory;",
+    "INSERT INTO test_running_accumulate_2 VALUES (1, 11), (1, 22), (1, 33), (2, 14), (2, 24);",
+    "SELECT groupId, runningAccumulate(sumState(num)) AS total_accumulated FROM (SELECT groupId, num, sumState(num) FROM test_running_accumulate_2 GROUP BY groupId ORDER BY groupId, num);",
+    "SELECT t1.groupId, t1.num, runningAccumulate(sumState(t2.num)) AS running_total FROM test_running_accumulate_2 AS t1 JOIN test_running_accumulate AS t2 ON t1.groupId = t2.id GROUP BY t1.groupId, t1.num ORDER BY t1.groupId, t1.num;",
+    "SELECT t1.id, runningAccumulate(sumState(t1.value)) FROM (SELECT id, value FROM test_running_accumulate ORDER BY id, value) AS t1 GROUP BY t1.id;",
+    "CREATE TABLE test_running_accumulate_3 (col1 UInt32, col2 UInt32) ENGINE = MergeTree() ORDER BY col1;",
+    "INSERT INTO test_running_accumulate_3 VALUES (1, 5), (1, 15), (2, 10), (2, 20), (3, 25);",
+    "SELECT col1, runningAccumulate(sumState(col2)) AS cumulative_result FROM (SELECT col1, sumState(col2) FROM test_running_accumulate_3 GROUP BY col1 ORDER BY col1) GROUP BY col1;"
+]

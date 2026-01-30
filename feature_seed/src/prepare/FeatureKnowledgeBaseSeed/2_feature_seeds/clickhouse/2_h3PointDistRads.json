@@ -1,0 +1,10 @@
+CREATE TABLE geo_points (id UInt32, lat Float64, lon Float64, attributes Array(String));
+INSERT INTO geo_points VALUES (1, -10.0, 0.0, ['pointA']), (2, 10.0, 0.0, ['pointB']), (3, 0.0, 0.0, ['pointC']), (4, -90.0, 180.0, ['pointD']);
+SELECT id, h3PointDistRads(lat, lon, arrayElement((SELECT lat FROM geo_points WHERE id = 2), 1), arrayElement((SELECT lon FROM geo_points WHERE id = 2), 1)) AS distance_radians FROM geo_points WHERE h3PointDistRads(lat, lon, 0.0, 0.0) > 0;
+SELECT id, h3PointDistRads(lat, lon, (SELECT max(lat) FROM geo_points), (SELECT min(lon) FROM geo_points)) AS distance_radians FROM geo_points GROUP BY id HAVING distance_radians IS NOT NULL;
+SELECT id, arrayJoin(attributes) as attribute, h3PointDistRads(lat, lon, h3PointDistRads(-90.0, 0.0, 90.0, 0.0), h3PointDistRads(0.0, -180.0, 0.0, 180.0)) AS nested_distance FROM geo_points ORDER BY attribute;
+CREATE TEMPORARY TABLE temp_geo AS SELECT id, h3PointDistRads(lat, lon, 0.0, 0.0) AS distance FROM geo_points WHERE lat BETWEEN -90 AND 90;
+INSERT INTO temp_geo SELECT id, h3PointDistRads(lat, lon, (SELECT max(lat) FROM geo_points WHERE id != 1), (SELECT min(lon) FROM geo_points)) FROM geo_points WHERE lat IS NOT NULL;
+SELECT id, h3PointDistRads(lat, lon, arrayElement((SELECT lat FROM geo_points), 1), arrayElement((SELECT lon FROM geo_points ORDER BY id DESC LIMIT 1), 1)) AS distance_radians FROM geo_points WHERE distance_radians < 10;
+SELECT h3PointDistRads(lat, lon, NULL, NULL) AS null_test FROM geo_points WHERE lat IS NOT NULL;
+SELECT id, h3PointDistRads(lat, lon, CASE WHEN id = 1 THEN NULL ELSE 10.0 END, CASE WHEN id = 2 THEN 0.0 ELSE NULL END) AS distance_test FROM geo_points HAVING distance_test IS NOT NULL;

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/92475",
+  "title": "Changing the default expression for a column should materialize the old default in the old parts",
+  "description": "### Company or project name\nClickHouse\n### Use case\nThere is a quirky, but well-known behavior: after adding a new column and then changing the default expression for a column, it will also change its values in the data parts where the column was not present.\nExample:\n```\nCREATE TABLE test (x UInt8) ORDER BY x;\nINSERT INTO test (x) VALUES (1);\nALTER TABLE test ADD COLUMN y String DEFAULT 'Hello';\nSELECT * FROM test ORDER BY x;\nINSERT INTO test (x) VALUES (2);\nSELECT * FROM test ORDER BY x;\nALTER TABLE test MODIFY COLUMN y String DEFAULT 'World';\nSELECT * FROM test ORDER BY x;\nINSERT INTO test (x) VALUES (3);\nSELECT * FROM test ORDER BY x;\n```\n```\nCREATE TABLE test\n(\n`x` UInt8\n)\nORDER BY x\nQuery id: 979c2c17-b19e-4535-942d-f6b252d87751\nOk.\n0 rows in set. Elapsed: 0.039 sec.\nINSERT INTO test (x) FORMAT Values\nQuery id: 9050fe54-abaa-4d78-ac21-9a07e2c602f7\nOk.\n1 row in set. Elapsed: 0.004 sec.\nALTER TABLE test\n(ADD COLUMN `y` String DEFAULT 'Hello')\nQuery id: e73e87e7-6380-4662-8dc5-544a16507ebd\nOk.\n0 rows in set. Elapsed: 0.006 sec.\nSELECT *\nFROM test\nORDER BY x ASC\nQuery id: 42fbf93f-31a9-46bb-b857-31194f2cdddc\n┌─x─┬─y─────┐\n1. │ 1 │ Hello │\n└───┴───────┘\n1 row in set. Elapsed: 0.002 sec.\nINSERT INTO test (x) FORMAT Values\nQuery id: 15f1980b-54ab-4057-b69e-f1d3ad15fa01\nOk.\n1 row in set. Elapsed: 0.002 sec.\nSELECT *\nFROM test\nORDER BY x ASC",
+  "date": "2025-12-18T05:24:02Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test1 (id INT, name VARCHAR(255));",
+    "INSERT INTO test1 (id, name) VALUES (1, 'Alice');",
+    "ALTER TABLE test1 ADD COLUMN age INT DEFAULT 30;",
+    "INSERT INTO test1 (id, name) VALUES (2, 'Bob');",
+    "ALTER TABLE test1 ALTER COLUMN age SET DEFAULT 25;"
+  ],
+  "key_bug_features": [
+    "Changing default expression affects old data parts unexpectedly"
+  ]
+}

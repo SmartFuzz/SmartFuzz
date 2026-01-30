@@ -1,0 +1,14 @@
+CREATE TABLE users (id INT PRIMARY KEY, name VARCHAR(100), email VARCHAR(100));
+CREATE TABLE certificates (id INT PRIMARY KEY, user_id INT, cert_data TEXT, FOREIGN KEY(user_id) REFERENCES users(id));
+INSERT INTO users (id, name, email) VALUES (1, 'Test User', 'test@example.com');
+INSERT INTO users (id, name, email) VALUES (2, 'Another User', 'another@example.com');
+SELECT user_id FROM certificates WHERE id = (SELECT MAX(id) FROM certificates);
+SELECT * FROM users u JOIN certificates c ON u.id = c.user_id WHERE u.name = 'Test User';
+SELECT u.name, c.cert_data FROM users u INNER JOIN certificates c ON u.id = c.user_id WHERE u.email = 'test@example.com';
+INSERT INTO certificates (id, user_id, cert_data) VALUES (1, 1, xenc_x509_ss_generate('id_rsa', 'ca_id_rsa', 365, vector('C', 'US', 'O', 'Example Org', 'CN', 'Example Cert', 'emailAddress', 'test@example.com'), vector('authorityKeyIdentifier', 'keyid,issuer:always')));
+INSERT INTO certificates (id, user_id, cert_data) VALUES (2, 2, xenc_x509_ss_generate('id_rsa', 'ca_id_rsa', 730, vector('C', 'FR', 'O', 'Another Org', 'CN', 'Another Cert', 'emailAddress', 'another@example.com'), vector('authorityKeyIdentifier', 'keyid,issuer:always')));
+SELECT user_id, COUNT(cert_data) as cert_count FROM certificates GROUP BY user_id HAVING cert_count > 1;
+SELECT u.name, (SELECT COUNT(*) FROM certificates c WHERE c.user_id = u.id) AS cert_count FROM users u ORDER BY cert_count DESC;
+SELECT * FROM certificates WHERE cert_data LIKE '%CN%' AND user_id IN (SELECT id FROM users WHERE email LIKE '%@example.com');
+UPDATE certificates SET cert_data = xenc_x509_ss_generate('id_rsa', 'ca_id_rsa', 90, vector('C', 'DE', 'O', 'Updated Org', 'CN', 'Updated Cert', 'emailAddress', 'update@example.com'), vector('authorityKeyIdentifier', 'keyid,issuer:always')) WHERE user_id = 1;
+DELETE FROM certificates WHERE user_id = (SELECT id FROM users WHERE email = 'another@example.com') AND cert_data IS NOT NULL;

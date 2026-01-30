@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/3699",
+  "title": "segfault again! (during last week I found 3 segfault bugs already)",
+  "description": "",
+  "date": "2020-11-30T13:00:51Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE DATABASE financialdata;",
+    "CREATE TABLE financialdata.stocks (id INT AUTO_INCREMENT NOT NULL, trade_time TIMESTAMP NOT NULL, trade_date TIMESTAMP NULL, ticker VARCHAR(10) NOT NULL, currency VARCHAR(10) NOT NULL, opening_price DOUBLE NOT NULL, highest_price DOUBLE NOT NULL, lowest_price DOUBLE NOT NULL, closing_price DOUBLE NOT NULL, trade_volume DOUBLE, PRIMARY KEY (id));",
+    "INSERT INTO financialdata.stocks (trade_time, trade_date, ticker, currency, opening_price, highest_price, lowest_price, closing_price, trade_volume) VALUES (NOW(), NOW(), 'AAPL', 'USD', 150.0, 155.0, 149.0, 154.0, 10000.0);",
+    "SELECT daily_open.trade_date, daily_open.opening_price, daily_stats.highest_price, daily_stats.lowest_price, daily_close.closing_price, daily_stats.trade_volume FROM (SELECT trade_date, opening_price, ROW_NUMBER() OVER (PARTITION BY trade_date ORDER BY trade_time ASC) AS rnk FROM financialdata.stocks WHERE ticker='AAPL' AND trade_date IS NOT NULL AND trade_date > NOW() - INTERVAL 30 DAY) AS daily_open JOIN (SELECT trade_date, closing_price, ROW_NUMBER() OVER (PARTITION BY trade_date ORDER BY trade_time DESC) AS rnk FROM financialdata.stocks WHERE ticker='AAPL' AND trade_date IS NOT NULL AND trade_date > NOW() - INTERVAL 30 DAY) AS daily_close ON daily_open.trade_date = daily_close.trade_date JOIN (SELECT trade_date, MAX(highest_price) AS highest_price, MIN(lowest_price) AS lowest_price, SUM(trade_volume) AS trade_volume FROM financialdata.stocks WHERE ticker='AAPL' AND trade_date IS NOT NULL AND trade_date > NOW() - INTERVAL 30 DAY GROUP BY trade_date) AS daily_stats ON daily_open.trade_date = daily_stats.trade_date WHERE daily_open.rnk=1 AND daily_close.rnk=1 ORDER BY daily_open.trade_date DESC;",
+    "SELECT DATE(trade_date) FROM financialdata.stocks LIMIT 10;"
+  ],
+  "key_bug_features": [
+    "SELECT statement with complex CTEs and date casting"
+  ]
+}

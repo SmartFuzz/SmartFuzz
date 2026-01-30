@@ -1,0 +1,5 @@
+CREATE TABLE repro.test_table (id BIGINT, timestamp TIMESTAMP, value1 VARCHAR(255), value2 DOUBLE PRECISION, value3 BIGINT) PARTITION BY EXTRACT(YEAR_MONTH FROM timestamp) ORDER BY (id, timestamp);
+INSERT INTO repro.test_table SELECT id, TIMESTAMP '2025-01-01 00:00:00' + INTERVAL '1' SECOND * (RANDOM() % 86400) AS timestamp, value1, value2, value3 FROM (SELECT id, value1, value2, value3 FROM generate_series(1, 20) AS id, 'sample' AS value1, RANDOM() AS value2, RANDOM() AS value3) LIMIT 100000;
+CREATE TABLE repro.another_table (id BIGINT, timestamp TIMESTAMP, value1 VARCHAR(255), value2 DOUBLE PRECISION, value3 BIGINT) PARTITION BY EXTRACT(YEAR_MONTH FROM timestamp) ORDER BY (id, timestamp);
+INSERT INTO repro.another_table SELECT id, TIMESTAMP '2025-01-01 00:00:00' + INTERVAL '1' SECOND * (RANDOM() % 86400) AS timestamp, value1, value2, value3 FROM (SELECT id, value1, value2, value3 FROM generate_series(1, 20) AS id, 'sample' AS value1, RANDOM() AS value2, RANDOM() AS value3) LIMIT 50;
+SELECT * FROM repro.test_table WHERE (timestamp >= TIMESTAMP '2025-01-01 00:00:00') AND (timestamp <= TIMESTAMP '2025-01-02 00:00:00') AND (value2 IS NOT NULL);

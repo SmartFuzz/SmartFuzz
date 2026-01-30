@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/51290",
+  "title": "Incorrect query result caused by view and inner join.",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n**The bug can't be reproduced without `GROUP BY` and `JOIN v0` and `AND` in the following sqls**\r\n\r\n```\r\nCREATE TABLE t0(c0 TINYINT);\r\nCREATE VIEW v0(c0) AS SELECT t0.c0 FROM t0 GROUP BY '1';\r\nINSERT IGNORE INTO t0(c0) VALUES (-1);\r\n\r\nSELECT f1 FROM (SELECT t0.c0 AS f1, (TIMEDIFF('2001-11-25', '2008-03-06') AND 1 ) IS TRUE AS flag FROM t0 INNER JOIN v0) AS t WHERE flag=1;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\n\r\n**The following sql should return -1.**\r\n\r\n`SELECT f1 FROM (SELECT t0.c0 AS f1, (TIMEDIFF('2001-11-25', '2008-03-06') AND 1 ) IS TRUE AS flag FROM t0 INNER JOIN v0) AS t WHERE flag=1;`\r\n \r\n**Because f1 is -1 in the intermediate table.**\r\n\r\n```\r\nmysql> SELECT t0.c0 AS f1, (TIMEDIFF('2001-11-25', '2008-03-06') AND 1 ) IS TRUE AS flag FROM t0 INNER JOIN v0;\r\n+------+------+\r\n| f1   | flag |\r\n+------+------+\r\n|   -1 |    1 |\r\n+------+------+\r\n1 row in set, 2 warnings (0.01 sec)\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n**However, the following sql return 1.**\r\n\r\n```\r\nSELECT f1 FROM (SELECT t0.c0 AS f1, (TIMEDIFF('2001-11-25', '2008-03-06') AND 1 ) IS TRUE AS flag FROM t0 INNER JOIN v0) AS t WHERE flag=1;\r\n+------+\r\n| f1   |\r\n+------+\r\n|    1 |\r\n+------+\r\n1 row in set, 4 warnings (0.00 sec)\r\n```\r\n### 4. What is your TiDB version? (Required)\r\n\r\n`8.0.11-TiDB-v7.5.0`\r\n\r\n",
+  "date": "2024-02-23T13:17:03Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1(c1 INTEGER NOT NULL, c2 TEXT DEFAULT NULL);",
+    "INSERT INTO t1(c1, c2) VALUES (1, 'test'), (2, NULL), (3, 'example');",
+    "CREATE VIEW v1 AS SELECT c1, COUNT(*) AS cnt FROM t1 GROUP BY c1;",
+    "SELECT v1.c1, v1.cnt FROM v1 INNER JOIN t1 ON v1.c1 = t1.c1 WHERE t1.c2 IS NULL;",
+    "SELECT f2 FROM (SELECT t1.c1 AS f2, (COALESCE(t1.c2, 'default') = 'default') AS flag FROM t1 INNER JOIN v1) AS t WHERE flag=1;"
+  ],
+  "key_bug_features": [
+    "GROUP BY and INNER JOIN with view causing incorrect results"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+    "function": "isIPAddressInRange",
+    "operator": "a = ANY (subquery)",
+    "sql_array": [
+        "CREATE TABLE ip_test (address String, prefix String) ENGINE = MergeTree() ORDER BY address;",
+        "INSERT INTO ip_test VALUES ('192.168.1.10', '192.168.1.0/24'), ('::1', '::1/128'), ('10.0.0.1', '10.0.0.0/8'), (NULL, '192.168.1.0/24');",
+        "SELECT address, prefix, isIPAddressInRange(address, prefix) AS in_range FROM ip_test WHERE in_range = 1;",
+        "SELECT address FROM ip_test WHERE address = ANY (SELECT address FROM ip_test WHERE isIPAddressInRange(address, prefix) = 1);",
+        "CREATE TABLE ip_subquery (sub_prefix String) ENGINE = MergeTree() ORDER BY sub_prefix;",
+        "INSERT INTO ip_subquery VALUES ('192.168.1.0/24'), ('::/16');",
+        "SELECT address FROM ip_test WHERE address = ANY (SELECT sub_prefix FROM ip_subquery WHERE in_range = 1);",
+        "SELECT address FROM ip_test WHERE isIPAddressInRange(address, (SELECT sub_prefix FROM ip_subquery LIMIT 1)) = 1;",
+        "SELECT COUNT(*) FROM (SELECT address, isIPAddressInRange(address, prefix) AS in_range FROM ip_test GROUP BY address HAVING in_range = 1);",
+        "SELECT DISTINCT prefix FROM ip_test WHERE hasNull(address) OR isIPAddressInRange(NULL, prefix) = 1;",
+        "SELECT address FROM ip_test WHERE address = (SELECT address FROM ip_test WHERE address IS NOT NULL ORDER BY address LIMIT 1);",
+        "CREATE TABLE temp_ip (ip_address String, ip_range String) ENGINE = MergeTree() ORDER BY ip_address;",
+        "INSERT INTO temp_ip VALUES ('192.168.0.5', '192.168.0.0/24'), ('ff80::1', 'ff80::/16');",
+        "SELECT ip_address FROM temp_ip WHERE ip_address = ANY (SELECT address FROM ip_test WHERE isIPAddressInRange(address, '192.168.0.0/24') = 1);",
+        "SELECT isIPAddressInRange('255.255.255.255', ANY (SELECT prefix FROM ip_subquery)) AS edge_case_check;",
+        "SELECT address FROM ip_test WHERE (isIPAddressInRange(address, prefix) = 1) AND (address IS NOT NULL OR prefix = '');"
+    ]
+}

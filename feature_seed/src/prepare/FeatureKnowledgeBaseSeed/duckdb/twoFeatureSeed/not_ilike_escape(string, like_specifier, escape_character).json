@@ -1,0 +1,15 @@
+{
+    "function": "not_ilike_escape(string, like_specifier, escape_character)",
+    "operator": "-",
+    "sql_array": [
+        "CREATE TABLE test_table (id INTEGER, description TEXT, price DECIMAL(10, 2) DEFAULT 0.00);",
+        "INSERT INTO test_table (id, description, price) VALUES (1, 'A%sample%', 23.45), (2, 'b$special$', 0.00), (3, 'C$n$%foo%', NULL);",
+        "SELECT id, NOT not_ilike_escape(description, 'A%SAMPLE%', '$') AS match FROM test_table WHERE price - (SELECT AVG(price) FROM test_table) < 0;",
+        "SELECT id, description, price FROM test_table WHERE NOT not_ilike_escape(description, 'b$special$', '$') AND price - 10 < 0;",
+        "SELECT id, COUNT(*) AS count FROM (SELECT id, price - COALESCE((SELECT MAX(price) FROM test_table WHERE price IS NOT NULL), 0) AS adjusted_price FROM test_table) AS subquery GROUP BY id HAVING count > 1;",
+        "CREATE TEMPORARY TABLE temp_table AS SELECT id, description, price / (price - 5) AS adjusted_price FROM test_table WHERE price IS NOT NULL;",
+        "SELECT id, NOT not_ilike_escape(description, (price::TEXT || '%'), '$') FROM temp_table;",
+        "SELECT id, description, (price - (SELECT MIN(price) FROM test_table WHERE price IS NOT NULL)) AS price_diff FROM test_table WHERE description IS NOT NULL ORDER BY price_diff DESC;",
+        "SELECT (SELECT COUNT(*) FROM test_table) - (SELECT COUNT(*) FROM temp_table WHERE NOT not_ilike_escape(description, 'A%sample%', '$')) AS difference;"
+    ]
+}

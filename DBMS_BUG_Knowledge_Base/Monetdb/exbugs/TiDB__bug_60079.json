@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/60079",
+  "title": "Unexpected Identical Results for Complementary Subquery Conditions in TiDB",
+  "description": "## Bug Report\n### 1. Minimal reproduce step (Required)\nThe following SQL statements create a test table and insert sample data:\n```\nDROP TABLE IF EXISTS `t1`;\nCREATE TABLE `t1` (\n  `c1` int ,\n  `c2` int \n);\nINSERT INTO `t1` (`c1`, `c2`) VALUES\n(NULL, NULL),\n(-7, NULL);\n```\nThen, executing the following two queries produces the same results, which is unexpected:\n\nQuery 1:\n```\nselect  \n  ref_0.c2\nfrom \n  t1 as ref_0\nwhere ((ref_0.c2) in (\n        select  \n            ref_1.c1 as c_0\n          from \n            t1 as ref_1\n          where (ref_0.c1) is not null))\n    and ((((ref_0.c1) in (select  \n                      1 as c_0\n                    from \n                      t1 as ref_2\n                 )) \n        or (true)))\n```\n\nOutput:\n+------+\n| c2   |\n+------+\n| NULL |\n| NULL |\n+------+\n2 rows in set (0.00 sec)\n\nQuery 2:\n```\nselect  \n  ref_0.c2\nfrom \n  t1 as ref_0\nwhere (not (((ref_0.c2) in (\n        select  \n            ref_1.c1 as c_0\n          from \n            t1 as ref_1\n          where (ref_0.c1) is not null))\n      and ((((ref_0.c1) in (select  \n                      1 as c_0\n                    from \n                      t1 as ref_2\n                 )) \n        or (true))))) \n  or ((((ref_0.c2) in (\n        select  \n            ref_1.c1 as c_0\n          from \n            t1 as ref_1\n          where (ref_0.c1) is not null))\n    and ((((ref_0.c1) in (select  \n                      1 as c_0\n                    from \n                      t1 as ref_2\n                 )) \n        or (true))))is null);\n\n```\nOutput:\n+------+\n| c2   |\n+------+\n| NULL |\n| NULL |\n+------+\n2 rows in set (0.00 sec)\n\n### 2. What did you expect to see? (Required)\nSince the second query negates the condition used in the first query (WHERE NOT X OR X IS NULL), the result set should be different\n\n### 3. What did you see instead (Required)\nBoth queries return the same result set\n\n### 4. What is your TiDB version? (Required)\n8.0.11-TiDB\nmaster b6141ec589ed8e73176692dc982a210ad7cf070b\n\nGoVersion: go1.23.4\nRace Enabled: false\nCheck Table Before Drop: false\nStore: unistore |\n\n",
+  "date": "2025-03-14T03:41:42Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t2;",
+    "CREATE TABLE t2 ( c1 int, c2 varchar(10), c3 float, c4 timestamp );",
+    "INSERT INTO t2 (c1, c2, c3, c4) VALUES (1, 'test', 1.5, '2023-01-01 00:00:00'), (NULL, NULL, NULL, NULL), (2, 'example', 2.5, '2023-01-02 00:00:00');",
+    "SELECT ref_0.c2 FROM t2 AS ref_0 WHERE (ref_0.c1 IS NOT NULL) AND (ref_0.c3 IN (SELECT ref_1.c3 FROM t2 AS ref_1 WHERE ref_1.c1 IS NULL));",
+    "SELECT ref_0.c2 FROM t2 AS ref_0 WHERE NOT ((ref_0.c1 IS NOT NULL) AND (ref_0.c3 IN (SELECT ref_1.c3 FROM t2 AS ref_1 WHERE ref_1.c1 IS NULL))) OR (ref_0.c2 IS NULL);"
+  ],
+  "key_bug_features": [
+    "Identical results from complementary subquery conditions"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/46233",
+  "title": "Incorrect distinct json result on ARM64",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\nrun tiup playground v7.1.1 on amd64 and arm64 machine\r\n```sql\r\ncreate table t(j json);\r\ninsert into t values ('2010'), ('2011'), ('2012'), ('2010.000'), (cast(18446744073709551615 as JSON)), (cast(18446744073709552000 as JSON));\r\nselect count(distinct j) from t;\r\n```\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\nThe result of `count(distinct j)`  should be the same on amd64 and arm64 machine\r\n### 3. What did you see instead (Required)\r\nLeft: amd64, right: arm64\r\n![image](https://github.com/pingcap/tidb/assets/8039876/b8de0158-4475-4f4d-8d45-7e780b1e3015)\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n```\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| tidb_version()                                                                                                                                                                                                                                                                               |\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| Release Version: v7.1.1\r\nEdition: Community\r\nGit Commit Hash: cf441574864be63938524e7dfcf7cc659edc3dd8\r\nGit Branch: heads/refs/tags/v7.1.1\r\nUTC Build Time: 2023-07-19 10:07:59\r\nGoVersion: go1.20.6\r\nRace Enabled: false\r\nTiKV Min Version: 6.2.0-alpha\r\nCheck Table Before Drop: false\r\nStore: tikv |\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n1 row in set (0.00 sec)\r\n```\r\n\r\n### Other things to note:\r\nThis breaks unit test on arm:\r\nhttps://github.com/pingcap/tidb/blob/592d52ed8e19e5553d047a924e53726612476f14/executor/test/executor/executor_test.go#L6076C74-L6076C74\r\n",
+  "date": "2023-08-18T07:36:38Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1(j VARCHAR(255), k INT NOT NULL DEFAULT 0);",
+    "INSERT INTO t1 VALUES ('2010'), ('2011'), ('2012'), (CAST(18446744073709551615 AS VARCHAR(255))), (CAST(18446744073709552000 AS VARCHAR(255))), (NULL);",
+    "CREATE TABLE t2(m VARCHAR(255), n VARCHAR(255) UNIQUE);",
+    "INSERT INTO t2 VALUES ('{\"key\": \"value1\"}'), ('{\"key\": \"value2\"}'), (NULL), ('{\"key\": \"value1\"}');",
+    "SELECT COUNT(DISTINCT j) FROM t1 UNION SELECT COUNT(DISTINCT m) FROM t2;"
+  ],
+  "key_bug_features": [
+    "count(distinct j) inconsistent on amd64 and arm64"
+  ]
+}

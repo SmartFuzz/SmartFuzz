@@ -1,0 +1,12 @@
+CREATE TABLE test_table (id UInt32, value String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table (id, value) VALUES (1, 'test1'), (2, 'test2'), (3, 'test3');
+WATCH test_table;
+CREATE TABLE another_table (id UInt32, description String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO another_table (id, description) VALUES (1, 'desc1'), (2, 'desc2');
+WATCH (SELECT * FROM test_table WHERE id > 1);
+CREATE TABLE joined_table AS (SELECT a.id, a.value, b.description FROM test_table a JOIN another_table b ON a.id = b.id) ENGINE = MergeTree() ORDER BY id;
+WATCH joined_table;
+CREATE TABLE complex_table AS (SELECT id, count(*) as count_value FROM test_table GROUP BY id) ENGINE = MergeTree() ORDER BY id;
+WATCH (SELECT id FROM complex_table WHERE count_value > 1);
+CREATE TABLE nested_watch AS (SELECT id, value, (SELECT count(*) FROM another_table WHERE another_table.id = test_table.id) as related_count FROM test_table) ENGINE = MergeTree() ORDER BY id;
+WATCH (SELECT * FROM nested_watch WHERE related_count < 2);

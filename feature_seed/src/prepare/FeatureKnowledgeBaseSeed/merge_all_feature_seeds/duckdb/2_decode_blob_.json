@@ -1,0 +1,14 @@
+CREATE TABLE test_data (id INT, binary_data BLOB, value VARCHAR);
+INSERT INTO test_data (id, binary_data, value) VALUES (1, '\xC3\xBC'::BLOB, 'test'), (2, NULL, 'example');
+SELECT id, decode(binary_data) AS decoded_value, (8 >> 1) AS shifted_value FROM test_data WHERE binary_data IS NOT NULL;
+SELECT id, (decode(binary_data) >> 1) AS shifted_decoded FROM test_data WHERE binary_data IS NOT NULL AND LENGTH(decode(binary_data)) > 0;
+SELECT COUNT(*) AS num_records FROM (SELECT id, decode(binary_data) AS decoded_value FROM test_data WHERE binary_data IS NOT NULL GROUP BY id HAVING decoded_value IS NOT NULL) AS temp;
+SELECT t1.id, (SELECT MAX(value) FROM test_data t2 WHERE t2.id = t1.id) >> 1 AS shifted_max_value FROM test_data t1;
+CREATE TABLE additional_data (id INT, data BLOB, reference_id INT);
+INSERT INTO additional_data (id, data, reference_id) VALUES (1, '\xC3\xBF'::BLOB, 1), (2, '\xC3\x80'::BLOB, NULL);
+SELECT ad.id, decode(ad.data) AS decoded_data, (ad.id >> 1) AS shifted_id FROM additional_data ad LEFT JOIN test_data td ON ad.reference_id = td.id WHERE ad.data IS NOT NULL;
+SELECT id, decode(binary_data) AS decoded_value FROM test_data WHERE LENGTH(decode(binary_data)) <= 3 AND id IS NOT NULL;
+SELECT SUM(COALESCE(id, 0) >> 1) AS total_shifted_ids FROM test_data;
+SELECT COUNT(*) FROM (SELECT id, decode(binary_data) AS decoded_value FROM test_data GROUP BY id HAVING decoded_value IS NOT NULL) AS grouped_data;
+ALTER TABLE test_data ADD CONSTRAINT unique_value UNIQUE(value);
+SELECT td.id, decode(td.binary_data) AS decoded_value, (td.id >> 1) AS shifted_id FROM test_data td WHERE td.binary_data IS NOT NULL ORDER BY decoded_value DESC;

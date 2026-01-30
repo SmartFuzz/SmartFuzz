@@ -1,0 +1,22 @@
+{
+    "function": "reinterpretAsInt64",
+    "operator": "IS NOT NULL",
+    "sql_array": [
+        "CREATE TABLE test_fuzz (id Int32, data Nullable(String), num Float64, created DateTime);",
+        "INSERT INTO test_fuzz VALUES (1, '100', 1.5, '2023-01-01 00:00:00'), (2, NULL, 2.5, '2023-01-02 00:00:00'), (3, 'invalid', 3.5, '2023-01-03 00:00:00');",
+        "SELECT id, reinterpretAsInt64(num) AS num_int, data IS NOT NULL AS data_check FROM test_fuzz;",
+        "SELECT id, reinterpretAsInt64(num) AS num_int, (data IS NOT NULL) + (num IS NOT NULL) AS total_check FROM test_fuzz GROUP BY id, num_int HAVING total_check > 0;",
+        "SELECT id, data, reinterpretAsInt64(reinterpretAsInt64(num) + reinterpretAsInt64(data)) AS complex_reinterpret FROM test_fuzz WHERE num > 1.0 AND data IS NOT NULL;",
+        "SELECT id, reinterpretAsInt64(CAST(NULL AS String)) AS null_as_int FROM test_fuzz WHERE data IS NOT NULL;",
+        "SELECT id, reinterpretAsInt64(num) AS num_int, (data IS NOT NULL) AS data_check FROM test_fuzz WHERE created > '2023-01-01 00:00:00' AND num_int IS NOT NULL;",
+        "WITH (SELECT COUNT(*) FROM test_fuzz WHERE data IS NOT NULL) AS non_null_count SELECT id, reinterpretAsInt64(num), non_null_count FROM test_fuzz WHERE non_null_count > 0;",
+        "CREATE TABLE test_fuzz_join (user_id Int32, score Float64, review Nullable(String));",
+        "INSERT INTO test_fuzz_join VALUES (1, 4.5, 'Good'), (2, NULL, NULL), (3, 5.0, 'Excellent');",
+        "SELECT f.id, reinterpretAsInt64(f.num) AS num_int, j.score, j.review IS NOT NULL AS review_check FROM test_fuzz AS f JOIN test_fuzz_join AS j ON reinterpretAsInt64(num) = user_id WHERE num_int > 0.0;",
+        "SELECT id, reinterpretAsInt64(num) AS num_reinterpret FROM test_fuzz WHERE data IS NOT NULL AND reinterpretAsInt64(COALESCE(data, '0')) IS NOT NULL;",
+        "SELECT id, reinterpretAsInt64(num) AS num_cast FROM test_fuzz HAVING num_cast > 0.0 ORDER BY num_cast DESC;",
+        "SELECT id, num, reinterpretAsInt64(data) AS data_reinterpret FROM test_fuzz WHERE (num IS NOT NULL) AND (reinterpretAsInt64(data) IS NOT NULL);",
+        "DROP TABLE IF EXISTS test_fuzz;",
+        "DROP TABLE IF EXISTS test_fuzz_join;"
+    ]
+}

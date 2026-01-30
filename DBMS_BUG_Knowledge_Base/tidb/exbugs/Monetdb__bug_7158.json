@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7158",
+  "title": "Python aggregate UDF returns garbage when run on empty table",
+  "description": "Python aggregate UDF returns garbage when run on empty table\n\n**To Reproduce**\nexample of aggregate is from: https://www.monetdb.org/blog/embedded-pythonnumpy-monetdb\n```\nDROP AGGREGATE python_aggregate;\nCREATE AGGREGATE python_aggregate(val INTEGER) \nRETURNS INTEGER \nLANGUAGE PYTHON {\n    try:\n        unique = numpy.unique(aggr_group)\n        x = numpy.zeros(shape=(unique.size))\n        for i in range(0, unique.size):\n            x[i] = numpy.sum(val[aggr_group==unique[i]])\n    except NameError:\n        # aggr_group doesn't exist. no groups, aggregate on all data\n        x = numpy.sum(val)\n    return(x)\n};\n\nDROP TABLE IF EXISTS test;\nCREATE TABLE test (x INTEGER);\nSELECT python_aggregate(x) FROM test;\n\n-- returns this (if I play around with returning data types by switching to bigints, the number gets bigger)\nsql>select python_aggregate(x) from test;\n+------------+\n| %1         |\n+============+\n| 1212796176 |\n+------------+\n1 tuple\nsql:0.034 opt:0.242 run:0.098 clk:201.432 ms\n```\n\n**Expected behavior**\nIt should return 0.\n\n**Software versions**\n - MonetDB version number Oct2020-SP5\n - OS and version: Ubuntu latest LTS in Docker container\n - From deb package",
+  "date": "2021-07-16T11:57:47Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "DROP FUNCTION IF EXISTS python_aggregate;",
+    "CREATE FUNCTION python_aggregate(val INT) RETURNS INT BEGIN DECLARE result INT DEFAULT 0;",
+    "IF (SELECT COUNT(*) FROM test_empty) = 0 THEN RETURN result;",
+    "END IF;",
+    "SELECT SUM(val) INTO result FROM test_empty;",
+    "RETURN result;"
+  ],
+  "key_bug_features": [
+    "Python aggregate UDF on empty table returns incorrect value"
+  ]
+}

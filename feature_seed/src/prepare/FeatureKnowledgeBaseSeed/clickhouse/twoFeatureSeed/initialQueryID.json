@@ -1,0 +1,16 @@
+{
+    "function": "initialQueryID",
+    "operator": "x",
+    "sql_array": [
+        "CREATE TABLE tmp1 (id UInt32, str String, value Float64) ENGINE = MergeTree() ORDER BY id; CREATE TABLE tmp2 (id UInt32, str String, value Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO tmp1 VALUES (1, 'test1', 1.1), (2, 'test2', 2.2), (3, 'test3', NULL);",
+        "INSERT INTO tmp2 VALUES (1, 'test1', 3.3), (2, NULL, 4.4), (3, 'test3', 5.5);",
+        "SELECT initialQueryID() AS query_id, count(DISTINCT case when value IS NULL then str else NULL end) FROM (SELECT str, value FROM tmp1 UNION ALL SELECT str, value FROM tmp2) GROUP BY str HAVING initialQueryID() = query_id;",
+        "SELECT str, multiIf(value = 1.1, initialQueryID(), value > 4.0, initialQueryID(), 0) AS id FROM tmp1 WHERE value IS NOT NULL GROUP BY str; ",
+        "SELECT initialQueryID() AS outer_query_id, (SELECT count(*) FROM tmp1 WHERE str IS NOT NULL) AS inner_count WHERE outer_query_id = initialQueryID();",
+        "SELECT str, transform(initialQueryID(), ['test1', 'test2'], [1, 2], 0) AS transformed_value FROM tmp2 GROUP BY str HAVING transformed_value > 0;",
+        "SELECT initialQueryID() AS query_id, str, count(*) AS cnt FROM (SELECT str, value FROM tmp1 WHERE value IS NOT NULL HAVING cnt > 1) GROUP BY str WITH ROLLUP;",
+        "SELECT str, multiIf(value IS NULL, 'No Value', value < 2.0, 'Low Value', 'High Value') AS value_category, initialQueryID() FROM tmp1 WHERE initialQueryID() IS NOT NULL ORDER BY value_category;",
+        "ALTER TABLE tmp1 ADD COLUMN nullable_value Nullable(Float64); INSERT INTO tmp1 VALUES (4, 'test4', NULL); SELECT str, initialQueryID(), multiIf(nullable_value IS NULL, 'NULL', nullable_value) FROM tmp1 WHERE nullable_value IS NOT NULL;"
+    ]
+}

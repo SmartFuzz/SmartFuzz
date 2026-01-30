@@ -1,0 +1,13 @@
+CREATE TABLE json_test (id INT PRIMARY KEY, data JSON);
+INSERT INTO json_test VALUES (1, json '[1, 2, 3]'), (2, json '[4, 5, 6]'), (3, json '[7, null, 9]'), (4, json '["string", true]');
+SELECT id, json.isarray(data) * (SELECT COUNT(*) FROM json_test WHERE data IS NOT NULL) AS is_array_multiplier FROM json_test;
+SELECT id, data, json.isarray(data) AS is_array FROM json_test WHERE data IS NOT NULL AND json.isarray(data) * 1 = 1;
+CREATE TABLE numbers (num1 FLOAT, num2 FLOAT);
+INSERT INTO numbers VALUES (2.5, 3.0), (NULL, 1.0), (1.5, NULL), (0, NULL);
+SELECT nt.id, nt.num1 * nt.num2 AS product, json.isarray(json '[1, 2]') AS is_array_check FROM (SELECT row_number() OVER () as id, num1, NULLIF(num1, 0) AS num2 FROM numbers) nt WHERE nt.num1 IS NOT NULL;
+SELECT nt.id, nt.num1, json.isarray(json '[3]') * (nt.num1 + nt.num2) AS calculated_value FROM numbers nt WHERE nt.num2 IS NOT NULL OR nt.num2 IS NULL;
+CREATE TABLE more_json_test (id INT PRIMARY KEY, arr_data JSON);
+INSERT INTO more_json_test VALUES (1, json '[3, 4]'), (2, json '[5, null, 6]'), (3, json '[7, 8, 9]'), (4, json '["text", false]');
+SELECT mj.id, json.isarray(mj.arr_data), (SELECT COUNT(*) FROM more_json_test) * json.isarray(mj.arr_data) AS nested_calc FROM more_json_test mj WHERE json.isarray(mj.arr_data) = TRUE AND mj.id IN (SELECT id FROM more_json_test WHERE id > 1);
+CREATE TEMP TABLE temp_numbers AS SELECT num1, num2 FROM numbers;
+SELECT tn.num1, tn.num2, json.isarray(json '[1, 2]') * (tn.num1 + COALESCE(tn.num2, 0)) AS final_result FROM temp_numbers tn WHERE ti.num1 IS NOT NULL;

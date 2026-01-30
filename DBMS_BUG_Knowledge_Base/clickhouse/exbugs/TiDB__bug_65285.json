@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/65285",
+  "title": "Exchange partition creates duplicate _tidb_rowid causing global index to skip rows in nonclustered PK tables",
+  "description": "## Bug Report\n\n### 1. Minimal reproduce step \n```\ndrop table if exists t,tp;\ncreate table t (a int, b int,dt date, primary key (a) nonclustered);\ncreate table tp (a int, b int,dt date, primary key (a) nonclustered) \nPARTITION BY RANGE (a) (\n    PARTITION p0 VALUES LESS THAN (5),\n    PARTITION p1 VALUES LESS THAN (11),\n    PARTITION p2 VALUES LESS THAN (20));\n\ninsert into tp(a,b) values (2,2),(4,2),(6,2);\ninsert into t(a,b)  values (12,2),(14,2),(15,2),(16,2);\n\nalter table tp exchange partition p2 with table t;\nselect *, _tidb_rowid from tp  order by a ;\n\ncreate index ind_b on tp(b) global;\nselect * from tp where b=2;\n```\n\n### 2. What did you expect to see? \n```\nmysql> select * from tp use index() where b=2;\n+----+------+------+\n| a  | b    | dt   |\n+----+------+------+\n| 12 |    2 | NULL |\n| 14 |    2 | NULL |\n| 15 |    2 | NULL |\n| 16 |    2 | NULL |\n|  6 |    2 | NULL |\n|  2 |    2 | NULL |\n|  4 |    2 | NULL |\n+----+------+------+\n7 rows in set (0.01 sec)\n```\n\n### 3. What did you see instead \n//The returned data is insufficient\n+----+------+------+\n| a  | b    | dt   |\n+----+------+------+\n| 12 |    2 | NULL |\n| 14 |    2 | NULL |\n| 15 |    2 | NULL |\n| 16 |    2 | NULL |\n+----+------+------+\n\n### 4. What is your TiDB version? \nv8.5.4\n\nThis issue appears similar to but is NOT the same as https://github.com/pingcap/tidb/issues/65067\n",
+  "date": "2025-12-26T07:11:58Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t1, t2;",
+    "CREATE TABLE t1 (id Int32, name String, created_at DateTime DEFAULT now());",
+    "CREATE TABLE t2 (id Int32, value Decimal(10,2), dt Date) ENGINE = MergeTree() ORDER BY id PARTITION BY intDiv(id, 10);",
+    "INSERT INTO t1 (id, name) VALUES (1, 'Alice'), (2, 'Bob');",
+    "INSERT INTO t2 (id, value, dt) VALUES (5, 10.50, '2023-01-01'), (15, 20.75, '2023-01-02');"
+  ],
+  "key_bug_features": [
+    "Exchange partition creates duplicate _tidb_rowid in tables"
+  ]
+}

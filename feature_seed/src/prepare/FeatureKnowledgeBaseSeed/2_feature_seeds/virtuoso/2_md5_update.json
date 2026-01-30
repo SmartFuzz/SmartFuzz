@@ -1,0 +1,11 @@
+CREATE TABLE test_data (id INT PRIMARY KEY, xml_data XML, hash_data VARCHAR(32), value INT);
+INSERT INTO test_data (id, xml_data, hash_data, value) VALUES (1, '<root><number>12345</number></root>', NULL, 25);
+INSERT INTO test_data (id, xml_data, hash_data, value) VALUES (2, '<root><number>67890</number></root>', NULL, NULL);
+INSERT INTO test_data (id, xml_data, hash_data, value) VALUES (3, '<root><number>0</number></root>', NULL, -1);
+INSERT INTO test_data (id, xml_data, hash_data, value) VALUES (4, '<root><number>-123</number></root>', NULL, 2147483647);
+UPDATE test_data SET hash_data = md5_update(CAST(value AS VARCHAR), hash_data) WHERE value IS NOT NULL;
+SELECT id, value, xpath_integer('/root/number', xml_data) AS extracted_number, md5_update(CAST(value AS VARCHAR), hash_data) AS updated_hash FROM test_data WHERE value > (SELECT AVG(value) FROM test_data) ORDER BY extracted_number DESC;
+SELECT id, value, md5_update(NULLIF(CAST(value AS VARCHAR), ''), hash_data) AS updated_hash FROM test_data WHERE value IS NOT NULL AND xpath_integer('/root/number', xml_data) < 50000;
+SELECT id, value, md5_update(xpath_integer('/root/number', xml_data), hash_data) FROM test_data GROUP BY value HAVING COUNT(*) > 1;
+SELECT id, COUNT(*) AS count_duplicates FROM test_data GROUP BY value HAVING count_duplicates > (SELECT AVG(value) FROM test_data WHERE value IS NOT NULL) ORDER BY id;
+WITH subquery AS (SELECT id, xpath_integer('/root/number', xml_data) AS num FROM test_data WHERE xml_data IS NOT NULL) SELECT id, md5_update(CAST((SELECT AVG(num) FROM subquery) AS VARCHAR), hash_data) FROM test_data WHERE value IN (SELECT num FROM subquery WHERE num > 10000);

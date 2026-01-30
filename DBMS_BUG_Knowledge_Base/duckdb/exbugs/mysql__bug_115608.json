@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=115608",
+  "title": "Inplace ALTER TABLE might cause lost rows if concurrent purge",
+  "description": "Inplace ALTER TABLE might sometimes lead to lost rows from a table (which uses InnoDB SE) if concurrent purge happens on the table being ALTERed.\r\n\r\nThis problem has been observed in the wild under load which involved lots of concurrent INSERTs and UPDATES to table being ALTERed, but recipe for reproducing this situation was not available.\r\n\r\nHowever, while investigating\nbug #115511\n\"Inplace ALTER TABLE might fail with duplicate key error if concurrent insertions\" I was able to come up with a test case using debug server and sync point facility.\nHow to repeat:\nApply the following patch to MySQL Server code (I have used 8.0.38 source from the Github) to introduce new sync point:\r\n\r\ndiff --git a/storage/innobase/ddl/ddl0par-scan.cc b/storage/innobase/ddl/ddl0par-scan.cc\r\nindex f7f948a0f74..f334a7d2f5c 100644\r\n--- a/storage/innobase/ddl/ddl0par-scan.cc\r\n+++ b/storage/innobase/ddl/ddl0par-scan.cc\r\n@@ -237,6 +237,7 @@ dberr_t Parallel_cursor::scan(Builders &builders) noexcept {\r\n             thread_ctx->get_state() != Parallel_reader::State::THREAD) {\r\n           thread_ctx->savepoint();\r\n           latches_released = true;\r\n+          DEBUG_SYNC_C(\"ddl_bulk_inserter_latches_released\");\r\n         }\r\n         return DB_SUCCESS;\r\n       });\r\n\r\nBuild debug version of server and run the following test case for MTR framework:\r\n\r\nCREATE TABLE t1 (pk CHAR(5) PRIMARY KEY);\r\nINSERT INTO t1 VALUES ('aaaaa'), ('bbbbb'), ('bbbcc'), ('ccccc'), ('ddddd'), ('eeeee');\r\n\r\nset global innodb_purge_stop_now=ON;\r\nDELETE FROM t1 WHERE pk = 'bbbcc';\r\n\r\n--connect (con1, localhost, root,,)\r\nSET DEBUG='+d,ddl_buf_add_two';\r\nSET DEBUG_SYNC='ddl_bulk_inserter_latches_released SIGNAL latches_released WAIT_FOR go';\r\n--send ALTER TABLE t1 ENGINE=InnoDB, ALGORITHM=INPLACE\r\n\r\n--connection default\r\nSET DEBUG_SYNC='now WAIT_FOR latches_released';\r\nSET GLOBAL innodb_purge_run_now=ON;\r\n--source include/wait_innodb_all_purged.inc\r\nSET DEBUG_SYNC='now SIGNAL go';\r\n\r\n--connection con1\r\n--reap\r\nSELECT * FROM t1;\r\n# Returns:\r\n# pk\r\n# aaaaa\r\n# bbbbb\r\n# ccccc\r\n# eeeee\r\n\r\nSET DEBUG='-d,ddl_buf_add_two';\r\n\r\n--connection default\r\nDROP TABLE t1;\r\n\r\n########################################\r\n\r\nNotice that SELECT in the above test case misses the row 'ddddd' even though it was not deleted and supposed to be present in table after it is ALTERed.\nSuggested fix:\nFix implementation of parallel ALTER TABLE INPLACE in InnoDB engine not to miss the rows or process the same rows twice (see\nbug #115511\n).\r\n\r\nParticularly, PCursor::restore_position() and PCursor::resume() implementations look wrong to me in cases when they are used in the context of pausing/resume table scanning during parallel ALTER TABLE.",
+  "date": "2024-07-16 13:10:00",
+  "vulnerable_version": "8.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (id INTEGER PRIMARY KEY, name VARCHAR(50), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t2 (id, name) VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie');",
+    "ALTER TABLE t2 ADD COLUMN age INTEGER;",
+    "UPDATE t2 SET age = NULL WHERE id = 2;",
+    "SELECT * FROM t2 WHERE age IS NULL;"
+  ],
+  "key_bug_features": [
+    "Inplace ALTER TABLE with concurrent purge causes lost rows"
+  ]
+}

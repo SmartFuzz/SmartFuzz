@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/17228",
+  "title": "Explain output is ambiguous",
+  "description": "### What happens?\n\nI'm filing this after talking some with Richard Wesley.  I'm using DuckDB's explain output to do some query analysis, but its output can be ambiguous.  Here's an example.  For this DDL:\n\n```\ncreate table \"table1\" (\n    \"a\" int,\n    \"b\" varchar, \n    \"c\" int\n);\n\ncreate table \"table2\" (\n    \"a\" int,\n    \"b\" varchar, \n    \"c\" int\n);\n```\n\nAnd this query:\n\n```\nSELECT t1.a, t2.b\nFROM table1 t1, table2 t2\nWHERE concat(left(t2.b,1),left(t1.b,2))='abc';\n```\n\nThe explain output includes this info in the filter node:\n\n```\n                \"extra_info\": {\n                    \"Expression\": \"(concat(\\\"left\\\"(b, 1), \\\"left\\\"(b, 2)) = 'abc')\",\n                    \"Estimated Cardinality\": \"1\"\n                }\n```\n\nThe references here to \"b\" are ambiguous.  Other join filters solve this by ordering the references to \"b\" to be in the same order as the underlying joined tables, but it isn't possible in a case like this.  Full code is below.\n\n\n### To Reproduce\n\n```\nimport duckdb\nimport json\n\nddl = \"\"\" \ncreate table \"table1\" (\n    \"a\" int,\n    \"b\" varchar, \n    \"c\" int\n);\n\ncreate table \"table2\" (\n    \"a\" int,\n    \"b\" varchar, \n    \"c\" int\n);\n\"\"\"\n\nquery = \"\"\"\nSELECT t1.a, t2.b\nFROM table1 t1, table2 t2\nWHERE concat(left(t2.b,1),left(t1.b,2))='abc';\n\"\"\"\n\nconn = duckdb.connect(':memory:')\nconn.execute(ddl)\nexplain_result = conn.execute(f\"SET disabled_optimizers='empty_result_pullup,statistics_propagation,filter_pushdown'; EXPLAIN (FORMAT JSON) {query};\").fetchone()[1]\nplan = json.loads(explain_result)\nprint(json.dumps(plan, indent=4))\n```\n\n### OS:\n\nMacOS 15.3.2\n\n### DuckDB Version:\n\nv1.2.0 5f5512b827\n\n### DuckDB Client:\n\nPython\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nAndrew Beers\n\n### Affiliation:\n\nWallabi / independent\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a stable release\n\n### Did you include all relevant data sets for reproducing the issue?\n\nNot applicable - the reproduction does not require a data set\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "date": "2025-04-24 03:02:11",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE table3 (x int, y varchar, z float);",
+    "CREATE TABLE table4 (x int, y varchar, z float);",
+    "INSERT INTO table3 (x, y, z) VALUES (1, 'test1', 1.1), (2, 'test2', 2.2);",
+    "INSERT INTO table4 (x, y, z) VALUES (1, 'testA', 3.3), (2, NULL, 4.4);",
+    "SELECT t3.x, t4.y FROM table3 t3 JOIN table4 t4 ON t3.x = t4.x WHERE CONCAT(LEFT(t4.y, 1), LEFT(t3.y, 2)) = 'te';"
+  ],
+  "key_bug_features": [
+    "Ambiguous references to column 'b' in explain output"
+  ]
+}

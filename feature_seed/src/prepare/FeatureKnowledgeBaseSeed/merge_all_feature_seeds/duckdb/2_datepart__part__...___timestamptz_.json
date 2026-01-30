@@ -1,0 +1,11 @@
+CREATE TABLE test_timestamps (id INT, event_time TIMESTAMPTZ, description VARCHAR);
+INSERT INTO test_timestamps VALUES (1, TIMESTAMPTZ '1992-09-20 20:38:40-07', 'Event A');
+INSERT INTO test_timestamps VALUES (2, TIMESTAMPTZ '1990-05-15 10:22:00-07', 'Event B');
+INSERT INTO test_timestamps VALUES (3, TIMESTAMPTZ '1995-12-25 15:30:00-08', 'Event C');
+SELECT datepart(['year', 'month', 'day'], event_time - INTERVAL 14 DAY) AS adjusted_parts FROM test_timestamps WHERE event_time IS NOT NULL;
+SELECT id, datepart(['year', 'month', 'day'], event_time) AS parts FROM test_timestamps WHERE event_time = (SELECT event_time FROM test_timestamps WHERE id = 2) - INTERVAL 5 DAY;
+SELECT id, datepart(['year', 'month'], event_time) AS year_month_parts FROM test_timestamps GROUP BY year_month_parts HAVING MAX(event_time) < (TIMESTAMPTZ '1993-01-01 00:00:00-08' - INTERVAL 1 MONTH);
+WITH adjusted_events AS (SELECT id, event_time - INTERVAL (SELECT COUNT(*) FROM test_timestamps) DAY AS adjusted_time FROM test_timestamps) SELECT datepart(['year'], adjusted_time) FROM adjusted_events WHERE adjusted_time > TIMESTAMPTZ '1992-01-01 00:00:00-08';
+SELECT DISTINCT datepart(['year', 'month', 'day'], event_time) AS parts FROM test_timestamps WHERE event_time IS NOT NULL AND event_time - INTERVAL 1 DAY IS NOT NULL;
+ALTER TABLE test_timestamps ADD COLUMN created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP - INTERVAL 1 MONTH;
+SELECT id, description, datepart(['month'], created_at - INTERVAL (CASE WHEN id = 1 THEN 1 ELSE 0 END) DAY) AS month_adjusted FROM test_timestamps ORDER BY month_adjusted;

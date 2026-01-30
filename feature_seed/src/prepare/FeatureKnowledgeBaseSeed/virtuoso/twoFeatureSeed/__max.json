@@ -1,0 +1,15 @@
+{
+    "function": "__max",
+    "operator": "XPath //",
+    "sql_array": [
+        "CREATE TABLE prices (id INT PRIMARY KEY, price1 NUMERIC, price2 NUMERIC, price3 NUMERIC, xml_data XML);",
+        "INSERT INTO prices (id, price1, price2, price3, xml_data) VALUES (1, 1.5, 3, 2.5, '<item><price>0.5</price></item>');",
+        "INSERT INTO prices (id, price1, price2, price3, xml_data) VALUES (2, 4.5, NULL, 3.5, '<item><price>1.5</price></item>');",
+        "INSERT INTO prices (id, price1, price2, price3, xml_data) VALUES (3, 3, 2, 1, '<item><price>0.1</price></item>');",
+        "SELECT id, __max(price1, price2, price3), xpath_string('//price', xml_data) AS prices_extracted FROM prices WHERE price2 IS NOT NULL GROUP BY id HAVING __max(price1, price3) > 3;",
+        "SELECT id, __max(__max(price1, price2), price3) AS max_price FROM prices WHERE __max(price1, price2) IS NOT NULL AND __max(price1, price2) < 5;",
+        "SELECT max_price.id, max_price.max_price FROM (SELECT id, __max(price1, price2) AS max_price FROM prices GROUP BY id) AS max_price JOIN prices AS original ON max_price.id = original.id WHERE xpath_string('//item', original.xml_data) IS NOT NULL;",
+        "WITH RankedPrices AS (SELECT id, price1, price2, price3, ROW_NUMBER() OVER (ORDER BY __max(price1, price2, price3) DESC) as rank FROM prices) SELECT id, __max(price1, price2) FROM RankedPrices WHERE rank <= 2;",
+        "SELECT id, __max(price1, price2) AS max_price, xpath_string('//item', xml_data) FROM prices WHERE xpath_string('//item', xml_data) IS NOT NULL GROUP BY id HAVING max_price > 4 OR price3 IS NULL;"
+    ]
+}

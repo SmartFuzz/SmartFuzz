@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7414",
+  "title": "MonetDB server crashes in `GDKanalytical_correlation`",
+  "description": "MonetDB server crashes in `GDKanalytical_correlation`.\n\n**To Reproduce**\n```sql\nCREATE TABLE v0 ( v1 , v2 ) as ( select i , cast ( i as string ) from generate_series ( 1 , 1000 ) as t ( i ) );\n DELETE FROM v0 WHERE NULLIF ( v2 , v2 = ( SELECT corr ( v1 , v1 ) OVER ( ROWS 2 PRECEDING ) ) ) ;  \n```\n\n**Backtrace of the Crash**\n```c\n#0 0x7f413b189c02 (GDKanalytical_correlation+0xdbb2)\n#1 0x7f4139c11497 (do_covariance_and_correlation+0xd67)\n#2 0x7f4139c235db (SQLcorr+0x5b)\n#3 0x7f413a07429f (runMALsequence+0xf0f)\n#4 0x7f413a079933 (DFLOWworker+0x4a3)\n#5 0x7f413aefb8a7 (thread_starter+0xc7)\n#6 0x7f4139a16609 (start_thread+0xd9)\n#7 0x7f4139939133 (clone+0x43)\n```\n\n**Software versions**\n - MonetDB version number: v11.47.11 (Jun2023-SP2)\n - OS and version: Ubuntu 20.04\n - From docker image monetdb/monetdb:Jun2023-SP2\n\nAn example of steps to reproduce in docker container (**write the poc into /tmp/test.sql first**):\n```bash\ndocker container rm monetdb_test -f                                 # remove the old one\ndocker run -e MDB_DB_ADMIN_PASS=monetdb --name monetdb_test -itd monetdb/monetdb:Jun2023-SP2\n                                                                    # start monetdb in docker\ndocker exec monetdb_test bash -c 'echo -n -e \"user=monetdb\\npassword=monetdb\\n\" > /root/.monetdb'\n                                                                    # set username and password\nsleep 10                                                            # wait the server start\ndocker exec monetdb_test bash -c \"grep '/usr/bin/[m]server5' /proc/*/cmdline -lR\"\n                                                                    # check the existence of mserver5 process\ncat /tmp/test.sql | docker exec -i monetdb_test mclient monetdb     # run test case\ndocker exec monetdb_test bash -c \"grep '/usr/bin/[m]server5' /proc/*/cmdline -lR\" || { echo \"[CRASH] Mserver5 process does NOT exist.\"; exit 1; }\n                                                                    # check the existence of mserver5 process\necho \"[INFO] Server normal.\"\n```\n\nIt can also be reproduced on MonetDB Dec2023_root, self-compiled by `CC=clang-12 CXX=clang++-12 cmake /root/monetdb -DCMAKE_BUILD_TYPE=RelWithDebInfo`.\n\n**Issue labeling**\nbug",
+  "date": "2023-11-15T16:35:47Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE TABLE v1 ( id INT PRIMARY KEY, value FLOAT, description VARCHAR(255) );",
+    "INSERT INTO v1 (id, value, description) VALUES (1, 10.5, 'First entry');",
+    "CREATE TABLE v2 ( ref_id INT, amount DECIMAL(10, 2), FOREIGN KEY (ref_id) REFERENCES v1(id) );",
+    "INSERT INTO v2 (ref_id, amount) VALUES (1, NULLIF(20.0, 20.0));",
+    "DELETE FROM v1 WHERE NULLIF(value, (SELECT AVG(value) FROM (SELECT value FROM v1 ORDER BY id LIMIT 2) AS subquery)) IS NULL;"
+  ],
+  "key_bug_features": [
+    "DELETE FROM v0 with NULLIF and corr function"
+  ]
+}

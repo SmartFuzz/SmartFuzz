@@ -1,0 +1,32 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/57153",
+  "title": "admin check doesn't detect inconsistency when index contains generated column",
+  "vulnerable_database": "tidb",
+  "date": "2024-11-06T04:01:21Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```sql\r\nCREATE TABLE cache (\r\n  cache_key varchar(512) NOT NULL,\r\n  updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\r\n  expired_at datetime GENERATED ALWAYS AS (if(expires > 0, date_add(updated_at, interval expires second), date_add(updated_at, interval 99 year))) VIRTUAL,\r\n  expires int(11),\r\n  PRIMARY KEY (cache_key) /*T![clustered_index] CLUSTERED */,\r\n  KEY idx_c_on_expired_at (expired_at)\r\n);\r\n\r\nINSERT INTO cache(cache_key, expires) VALUES ('2001-01-01 11:11:11', 60) ON DUPLICATE KEY UPDATE expires = expires + 1;\r\nselect sleep(5);\r\nINSERT INTO cache(cache_key, expires) VALUES ('2001-01-01 11:11:11', 60) ON DUPLICATE KEY UPDATE expires = expires + 1;\r\n```\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nThese SQLs can generate data inconsistency and `admin check` should this.\r\n\r\nSee details of this bug in https://github.com/pingcap/tidb/issues/56829#issuecomment-2456356173\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n`admin check` passed.\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "poc": [
+    "CREATE TABLE cache (",
+    "  cache_key varchar(512) NOT NULL,",
+    "  updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,",
+    "  expired_at datetime GENERATED ALWAYS AS (if(expires > 0, date_add(updated_at, interval expires second), date_add(updated_at, interval 99 year))) VIRTUAL,",
+    "  expires int(11),",
+    "  PRIMARY KEY (cache_key) /*T![clustered_index] CLUSTERED */,",
+    "  KEY idx_c_on_expired_at (expired_at)",
+    ");",
+    "INSERT INTO cache(cache_key, expires) VALUES ('2001-01-01 11:11:11', 60) ON DUPLICATE KEY UPDATE expires = expires + 1;",
+    "select sleep(5);"
+  ],
+  "poc_type": "sql_text",
+  "state": "closed",
+  "key_bug_features": [
+    "admin check fails with generated column in index"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE test_cache (cache_key varchar(512) NOT NULL, updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, expired_at datetime GENERATED ALWAYS AS (IF(expires > 0, DATE_ADD(updated_at, INTERVAL expires SECOND), DATE_ADD(updated_at, INTERVAL 99 YEAR))) VIRTUAL, expires int(11), PRIMARY KEY (cache_key), KEY idx_expired_at (expired_at));",
+    "INSERT INTO test_cache(cache_key, expires) VALUES ('2023-01-01 10:00:00', 120) ON DUPLICATE KEY UPDATE expires = expires + 2;",
+    "INSERT INTO test_cache(cache_key, expires) VALUES ('2023-01-01 10:00:00', NULL) ON DUPLICATE KEY UPDATE expires = COALESCE(expires, 0) + 1;",
+    "SELECT * FROM test_cache WHERE expired_at < NOW();",
+    "DELETE FROM test_cache WHERE cache_key = '2023-01-01 10:00:00' AND expires IS NOT NULL;"
+  ]
+}

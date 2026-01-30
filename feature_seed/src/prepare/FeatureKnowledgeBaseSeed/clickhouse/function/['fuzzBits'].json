@@ -1,0 +1,22 @@
+[
+    "CREATE TABLE test_strings (s String) ENGINE = MergeTree() ORDER BY tuple();",
+    "INSERT INTO test_strings VALUES ('abcdef'), ('ghijkl'), ('mnopqr');",
+    "SELECT fuzzBits(s, 0.0) FROM test_strings;",
+    "SELECT fuzzBits(s, 1.0) FROM test_strings;",
+    "SELECT fuzzBits(s, 0.5) FROM test_strings;",
+    "SELECT fuzzBits(materialize(s), 0.1) FROM (SELECT s FROM test_strings) AS subquery;",
+    "WITH (SELECT fuzzBits('teststring', 0.2) AS fuzzed) AS fuzzed_string SELECT fuzzed_string.fuzzed;",
+    "SELECT fuzzBits(s, prob) FROM test_strings CROSS JOIN (SELECT 0.3 AS prob) AS probabilities;",
+    "CREATE TABLE test_data (data FixedString(10)) ENGINE = MergeTree() ORDER BY tuple();",
+    "INSERT INTO test_data VALUES (toFixedString('abcdefghij', 10)), (toFixedString('klmnopqrst', 10));",
+    "SELECT fuzzBits(data, 0.4) FROM test_data WHERE length(data) = 10;",
+    "SELECT fuzzBits(s, 0.1) AS fuzzed FROM (SELECT s FROM test_strings WHERE length(s) > 5) AS filtered;",
+    "SELECT fuzzBits(s, 0.2) FROM test_strings WHERE s IN (SELECT s FROM test_strings WHERE s LIKE 'a%');",
+    "CREATE TABLE test_join (id Int32, string_col String) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO test_join VALUES (1, 'hello'), (2, 'world');",
+    "SELECT uj.id, fuzzBits(uj.string_col, 0.3) FROM (SELECT string_col FROM test_join) AS uj;",
+    "WITH (SELECT fuzzBits(s, 0.1) FROM test_strings) AS fuzzed_results SELECT COUNT(*) FROM fuzzed_results WHERE fuzzed_results IS NOT NULL;",
+    "CREATE TABLE complex_test (col1 String, col2 Float64) ENGINE = MergeTree() ORDER BY col1;",
+    "INSERT INTO complex_test VALUES ('first', 1.0), ('second', 2.0), ('third', 3.0);",
+    "SELECT col1, fuzzBits(col1, 0.5) FROM complex_test JOIN (SELECT DISTINCT col1 FROM complex_test WHERE col2 > 1) AS filtered ON complex_test.col1 = filtered.col1;"
+]

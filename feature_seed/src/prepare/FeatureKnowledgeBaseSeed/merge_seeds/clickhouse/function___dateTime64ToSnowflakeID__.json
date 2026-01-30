@@ -1,0 +1,15 @@
+CREATE TABLE test_dates (event_time DateTime64(3), id UInt64);
+INSERT INTO test_dates VALUES (toDateTime64('2020-01-01 00:00:00.000', 3), 1);
+INSERT INTO test_dates VALUES (toDateTime64('2020-12-31 23:59:59.999', 3), 2);
+SELECT dateTime64ToSnowflakeID(event_time) AS snowflake_id FROM test_dates;
+SELECT event_time, dateTime64ToSnowflakeID(event_time) AS snowflake_id FROM test_dates WHERE id = 1;
+SELECT id, dateTime64ToSnowflakeID(toDateTime64('2021-06-15 14:30:00.123', 3)) AS snowflake_id FROM test_dates WHERE event_time < toDateTime64('2021-07-01 00:00:00.000', 3);
+SELECT dateTime64ToSnowflakeID(dt) AS snowflake_id FROM (SELECT toDateTime64('2021-08-15 18:57:56.493', 3) AS dt) AS sub;
+CREATE TABLE events (event_time DateTime64(3), category String);
+INSERT INTO events VALUES (toDateTime64('2015-01-01 00:00:00.000', 3), 'New Year'), (toDateTime64('2015-01-02 00:00:00.000', 3), 'Holiday');
+SELECT category, dateTime64ToSnowflakeID(event_time) AS snowflake_id FROM events ORDER BY event_time;
+SELECT e.category, dateTime64ToSnowflakeID(e.event_time) AS snowflake_id FROM events e JOIN test_dates t ON e.event_time < t.event_time GROUP BY e.category, e.event_time;
+SELECT DISTINCT dateTime64ToSnowflakeID(event_time) AS snowflake_id FROM test_dates WHERE event_time >= toDateTime64('2020-01-01 00:00:00.000', 3) AND event_time < toDateTime64('2021-01-01 00:00:00.000', 3);
+CREATE TABLE snowflake_ids AS SELECT dateTime64ToSnowflakeID(event_time) AS snowflake_id FROM test_dates;
+SELECT count(*) FROM snowflake_ids WHERE snowflake_id IS NOT NULL;
+SELECT t1.id, dateTime64ToSnowflakeID(t2.event_time) AS snowflake_id FROM test_dates t1 JOIN events t2 ON t1.event_time = t2.event_time WHERE t1.id = 2;

@@ -1,0 +1,11 @@
+CREATE TABLE test_bitmaps (id UInt32, bitmap_data Array(UInt32)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_bitmaps VALUES (1, bitmapBuild([1, 2, 3])), (2, bitmapBuild([3, 4, 5])), (3, bitmapBuild([6, 7, 8]));
+SELECT id, bitmapOrCardinality(bitmap_data[1], bitmap_data[2]) AS cardinality FROM test_bitmaps WHERE id NOT LIKE '2';
+SELECT id, bitmapOrCardinality(bitmapBuild([0, 1, 10]), bitmapBuild([10, 20, 30])) AS cardinality FROM test_bitmaps WHERE NOT (id NOT LIKE '1' AND id NOT LIKE '3');
+SELECT id, COUNT() AS cnt FROM (SELECT id, bitmapOrCardinality(bitmapBuild([]), bitmap_data) AS cardinality FROM test_bitmaps) GROUP BY id HAVING cnt > 0 AND id NOT LIKE '2';
+CREATE TABLE test_join (id UInt32, bitmap1 Array(UInt32), bitmap2 Array(UInt32)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_join VALUES (1, bitmapBuild([1, 2]), bitmapBuild([2, 3])), (2, bitmapBuild([3, 4]), bitmapBuild([4, 5]));
+SELECT j1.id, bitmapOrCardinality(j1.bitmap1, j2.bitmap2) AS cardinality FROM test_join j1 JOIN test_join j2 ON j1.id NOT LIKE CAST(j2.id AS String) AND j1.id NOT LIKE '1';
+CREATE TABLE test_nulls (id UInt32, data Nullable(UInt32)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_nulls VALUES (1, NULL), (2, 2), (3, 3);
+SELECT id, bitmapOrCardinality(bitmapBuild([1, data]), bitmapBuild([data, 3])) AS cardinality FROM test_nulls WHERE data NOT LIKE '%2%';

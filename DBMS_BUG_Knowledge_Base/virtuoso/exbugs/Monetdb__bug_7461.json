@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7461",
+  "title": "Crash by potentially use of bad escape characters",
+  "description": "Consider the test cases below. It would crash the monetdb server. The last lines of the server log (`merovingian.log`):\n```\n2024-02-20 13:39:53 ERR monetdb[624]: #client9246: GDKstrFromStr: ERROR: not a Unicode code point escape\n2024-02-20 13:39:53 ERR monetdb[624]: #client9246: createExceptionInternal: ERROR: MALException:mal.interpreter:GDK reported error: GDKstrFromStr: not a Unicode code point escape\n2024-02-20 13:39:53 ERR monetdb[624]: mserver5: /app/MonetDB/sql/backends/monet5/sql_cast.c:137: SQLbatstr_cast: Assertion `digits >= 0' failed.\n2024-02-20 13:39:54 MSG merovingian[159]: database 'monetdb' (624) has crashed with signal SIGABRT (dumped core)\n```\n\n**To Reproduce**\n\nSorry for the long query, we haven't implemented a reducer for crashes yet, and it's hard for me to manually reduce it more. Sometimes I'll encounter the error message: `Could not allocate space` from `mclient` when trying to reduce the query, not sure if it's expected.\n\nTo reproduce, execute the mclient using `docker exec -i monetdb-test mclient -E UTF-8 -d monetdb` and copy the following queries:\n\n```sql\nDROP TABLE IF EXISTS t0 CASCADE;\nDROP TABLE IF EXISTS t1 CASCADE;\n\nCREATE TABLE t0(c0 BOOLEAN, c1 BOOLEAN, PRIMARY KEY(c0));\nCREATE TABLE t1(c0 INTEGER, c1 INT, PRIMARY KEY(c0));\nINSERT INTO t0(c1) VALUES (-2041868105), (true);\nINSERT INTO t0(c1, c0) VALUES (-1820721628, -337528041);\nINSERT INTO t0(c1) VALUES (true);\nINSERT INTO t1(c0) VALUES (true);\n\n\nSELECT * FROM t1, t0;\nSELECT * FROM t1, t0 WHERE (CASE t0.c0 WHEN (t0.c0 IN (((t1.c0)<=(true)))) THEN (((-953136241) IS NOT NULL) NOT BETWEEN (CASE true WHEN '_hf4{r' THEN t0.c0 WHEN '\\Uwc0g8g' THEN t1.c1 WHEN false THEN '' ELSE t1.c1 END ) AND 1239880767) ELSE t0.c1 END );\n```\n\n**Expected behavior**\nShould return an error message, or return the correct result.\n\n**Screenshots**\nN/A\n\n**Software versions**\nBuild from source:\n\n```\n> docker exec monetdb-test mserver5 --version --dbname=monetdb\nMonetDB 5 server 11.50.0 (hg id: d333af8) (64-bit, 128-bit integers)\nThis is an unreleased version\nCopyright (c) 1993 - July 2008 CWI\nCopyright (c) August 2008 - 2023 MonetDB B.V., all rights reserved\nVisit https://www.monetdb.org/ for further information\nFound 503.5GiB available memory, 128 available cpu cores\nLibraries:\nCompiled by: @6421299871b6 (x86_64-pc-linux-gnu)\nCompilation: /usr/bin/cc \nLinking    : /usr/bin/ld\n```\n\n**Issue labeling**\nBug\n\n**Additional context**\nKindly inform me if you need more information (e.g. error trace, etc.)",
+  "date": "2024-02-20T13:45:21Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t0;",
+    "DROP TABLE IF EXISTS t1;",
+    "CREATE TABLE t0(c0 BOOLEAN, c1 BOOLEAN, PRIMARY KEY(c0));",
+    "CREATE TABLE t1(c0 INTEGER, c1 INT, PRIMARY KEY(c0));",
+    "INSERT INTO t0(c1) VALUES (FALSE), (TRUE);",
+    "SELECT * FROM t1 LEFT JOIN t0 ON t1.c0 = t0.c0;"
+  ],
+  "key_bug_features": [
+    "Use of bad escape characters in SQL queries"
+  ]
+}

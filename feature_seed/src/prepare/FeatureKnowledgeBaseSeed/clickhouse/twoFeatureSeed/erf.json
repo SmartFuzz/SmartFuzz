@@ -1,0 +1,16 @@
+{
+    "function": "erf",
+    "operator": "x",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt8, value Float64, category String, nested_value Nested(attr1 Float64, attr2 Float64));",
+        "INSERT INTO test_table VALUES (1, 2.5, 'A', [(1.0, 2.0), (3.0, 4.0)]), (2, NULL, 'B', [(5.0, 6.0), (NULL, 8.0)]), (3, 3.14159, 'C', [(9.0, 10.0)]);",
+        "SELECT id, value, erf(value) AS erf_value, multiIf(category = 'A', 1, category = 'B', 2, 3) AS category_value FROM test_table WHERE value IS NOT NULL;",
+        "SELECT id, value, multiIf(value IS NULL, 'No Value', 'Has Value'), erf(value * 2) FROM test_table WHERE category = 'C' AND value > 0 ORDER BY erf(value) DESC;",
+        "SELECT id, value, SUM(erf(value)) OVER (PARTITION BY category) AS sum_erf FROM test_table WHERE value IS NOT NULL AND id IN (SELECT id FROM test_table WHERE category = 'A');",
+        "SELECT id, category, multiIf(id <= 2, erf(value), id > 2, value + 1) AS modified_value FROM test_table GROUP BY id, category HAVING modified_value < 3;",
+        "SELECT id, value, (SELECT AVG(erf(value)) FROM test_table WHERE category = 'B') AS avg_erf FROM test_table WHERE id = (SELECT MAX(id) FROM test_table);",
+        "CREATE TEMPORARY TABLE temp_table AS SELECT id, value, category FROM test_table WHERE value < 5;",
+        "INSERT INTO temp_table SELECT id, erf(value) FROM test_table WHERE category IS NOT NULL AND value IS NOT NULL;",
+        "SELECT DISTINCT value, multiIf(erf(value) > 0, 'Positive', erf(value) = 0, 'Zero', 'Negative') AS classification FROM temp_table ORDER BY classification, value;"
+    ]
+}

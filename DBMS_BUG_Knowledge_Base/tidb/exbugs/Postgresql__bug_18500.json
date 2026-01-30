@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/18500-62948b6fe5522f56%40postgresql.org",
+  "title": "BUG #18500: Detaching a partition with an index manually attached to the parent's index triggers Assert",
+  "description": "The following bug has been logged on the website:\nBug reference:      18500\nLogged by:          Alexander Lakhin\nEmail address:      exclusion(at)gmail(dot)com\nPostgreSQL version: 17beta1\nOperating system:   Ubuntu 22.04\nDescription:\nThe following script:\nCREATE TABLE t (a integer) PARTITION BY RANGE (a);\nCREATE TABLE tp (a integer PRIMARY KEY);\nALTER TABLE t ATTACH PARTITION tp FOR VALUES FROM (0) TO (1000);\nCREATE UNIQUE INDEX t_a_idx ON t (a);\nALTER INDEX t_a_idx ATTACH PARTITION tp_pkey;\n\\d+ t*\nALTER TABLE t DETACH PARTITION tp;\ntriggers an assertion failure as below:\n...\nPartitioned index \"public.t_a_idx\"\nColumn |  Type   | Key? | Definition | Storage | Stats target\n--------+---------+------+------------+---------+--------------\na      | integer | yes  | a          | plain   |\nunique, btree, for table \"public.t\"\nPartitions: tp_pkey\nAccess method: btree\n...\nserver closed the connection unexpectedly\nThis probably means the server terminated abnormally\nbefore or while processing the request.\nconnection to server was lost\nTRAP: failed Assert(\"constrForm->coninhcount == 0\"), File:\n\"pg_constraint.c\", Line: 873, PID: 3272276\n...\n#5  0x000055b26dc9b76f in ExceptionalCondition (\nconditionName=conditionName(at)entry=0x55b26dd2d254\n\"constrForm->coninhcount == 0\",\nfileName=fileName(at)entry=0x55b26dd2d230 \"pg_constraint.c\",\nlineNumber=lineNumber(at)entry=873) at assert.c:66\n#6  0x000055b26d8687d7 in ConstraintSetParentConstraint\n(childConstrId=16392, parentConstrId=parentConstrId(at)entry=0,\nchildTableId=childTableId(at)entry=0) at pg_constraint.c:873\n#7  0x000055b26d9361c7 in DetachPartitionFinalize\n(rel=rel(at)entry=0x7f84a051d4b8, partRel=partRel(at)entry=0x7f84a0514428,\nconcurrent=concurrent(at)entry=false,\ndefaultPartOid=defaultPartOid(at)entry=0) at tablecmds.c:19306\n#8  0x000055b26d94449a in ATExecDetachPartition\n(wqueue=wqueue(at)entry=0x7fff8d338780, tab=tab(at)entry=0x55b26fcd6f90,\nrel=rel(at)entry=0x7f84a051d4b8, name=<optimized out>, concurrent=false) at\ntablecmds.c:19140\n#9  0x000055b26d944fe0 in ATExecCmd (wqueue=wqueue(at)entry=0x7fff8d338780,\ntab=tab(at)entry=0x55b26fcd6f90,\ncmd=<optimized out>, lockmode=lockmode(at)entry=8,\ncur_pass=cur_pass(at)entry=AT_PASS_MISC,\ncontext=context(at)entry=0x7fff8d338890) at tablecmds.c:5515\n...\nWithout asserts enabled, DETACH executed with no error.\nReproduced on REL_11_STABLE .. master.",
+  "date": "2024-06-09 06:00:00",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE t (a INT, b TEXT) PARTITION BY RANGE (a);",
+    "CREATE TABLE tp (a INT PRIMARY KEY, c BOOLEAN NOT NULL DEFAULT TRUE);",
+    "ALTER TABLE t ADD PARTITION tp FOR VALUES FROM (0) TO (1000);",
+    "CREATE UNIQUE INDEX t_a_idx ON t (a, b);",
+    "ALTER TABLE t ADD PARTITION tp_pkey FOR VALUES FROM (0) TO (1000);"
+  ],
+  "key_bug_features": [
+    "Detaching partition with attached index triggers assertion failure"
+  ]
+}

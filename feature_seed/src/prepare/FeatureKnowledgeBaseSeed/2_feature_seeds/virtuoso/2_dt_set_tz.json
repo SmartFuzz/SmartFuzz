@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id INT PRIMARY KEY, data XML, event_time TIMESTAMP NOT NULL);
+INSERT INTO test_data (id, data, event_time) VALUES (1, '<root><a>10</a></root>', '2023-01-01 12:00:00');
+INSERT INTO test_data (id, data, event_time) VALUES (2, '<root><a>20</a></root>', '2023-01-01 13:00:00');
+SELECT dt_set_tz(event_time, 120), xpath_string('/root/a', data) FROM test_data WHERE dt_set_tz(event_time, 120) IS NOT NULL;
+SELECT id, COUNT(*) OVER(PARTITION BY xpath_string('/root/a', data)) AS count FROM test_data GROUP BY id, xpath_string('/root/a', data) HAVING COUNT(*) > 1;
+SELECT dt_set_tz(MAX(event_time), 60) AS max_time, MIN(dt_set_tz(event_time, -120)) AS min_adjusted_time FROM test_data;
+INSERT INTO test_data (id, data, event_time) VALUES (3, '<root><a></a></root>', NULL);
+SELECT dt_set_tz(NULL, 60), xpath_string('/root/a', data) FROM test_data WHERE data IS NOT NULL OR dt_set_tz(event_time, 120) IS NULL;
+SELECT dt_set_tz(event_time, 180), xpath_string('/root/a', data) FROM test_data WHERE id IN (SELECT id FROM test_data WHERE xpath_string('/root/a', data) = '10');
+SELECT NULLIF(dt_set_tz(event_time, 300), event_time) AS timezone_difference FROM test_data WHERE event_time IS NOT NULL;

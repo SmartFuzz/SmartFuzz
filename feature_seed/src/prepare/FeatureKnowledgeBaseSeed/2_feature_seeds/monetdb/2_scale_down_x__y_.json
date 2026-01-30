@@ -1,0 +1,12 @@
+CREATE TABLE test_scale_down (id SERIAL PRIMARY KEY, value INT, description TEXT);
+INSERT INTO test_scale_down (value, description) VALUES (100, e'Test with \fbackslash \ttab \nnewline'), (200, e'Another test \bbackspace');
+SELECT id, scale_down(value, 3) AS scaled_value, e'Test description: \f' || description AS completed_desc FROM test_scale_down WHERE scale_down(value, 2) > 15;
+CREATE TABLE test_numbers (num1 DECIMAL(10, 2), num2 DECIMAL(10, 2));
+INSERT INTO test_numbers (num1, num2) VALUES (123.45, NULL), (NULL, 67.89), (999.99, 0);
+SELECT scale_down(COALESCE(num1, 0), num2) AS result FROM test_numbers WHERE num2 IS NOT NULL AND scale_down(num1, NULLIF(num2, 0)) < 50;
+CREATE TABLE complex_test (id SERIAL, a TEXT, b INT);
+INSERT INTO complex_test (a, b) SELECT e'Some text with \f escapes', scale_down(200, 4) UNION ALL SELECT e'Another \tentry', scale_down(100, 3);
+SELECT a, b FROM complex_test WHERE scale_down(b, 2) = 25;
+SELECT scale_down(num, 2) AS scaled_val FROM (SELECT scale_down(ABS(value), 10) AS num FROM (SELECT value FROM test_scale_down) AS subquery) AS final;
+CREATE TABLE temporary_test AS SELECT id, scale_down(value, 1) AS scaled_value FROM test_scale_down WHERE value < 250;
+SELECT e'Deserialized: \n' || description FROM test_scale_down WHERE id IN (SELECT id FROM temporary_test WHERE scaled_value IS NOT NULL);

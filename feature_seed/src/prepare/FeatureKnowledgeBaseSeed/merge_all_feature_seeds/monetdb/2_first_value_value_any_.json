@@ -1,0 +1,15 @@
+CREATE TABLE test_table (id INT, event_time TIME, value FLOAT, category VARCHAR(50));
+INSERT INTO test_table (id, event_time, value, category) VALUES (1, time '14:35:45', 100.25, 'A');
+INSERT INTO test_table (id, event_time, value, category) VALUES (2, time '12:00:00', NULL, 'B');
+INSERT INTO test_table (id, event_time, value, category) VALUES (3, time '15:00:00', 250.50, 'A');
+SELECT FIRST_VALUE(value) OVER (PARTITION BY category ORDER BY event_time) - (first_value(value) OVER (PARTITION BY category ORDER BY event_time)) AS value_difference FROM test_table;
+SELECT id, event_time, value, (first_value(value) OVER (ORDER BY event_time) - time '01:00:00') AS adjusted_value FROM test_table WHERE event_time IS NOT NULL;
+SELECT category, AVG(COALESCE(value, 0)) AS avg_value, FIRST_VALUE(value) OVER (PARTITION BY category ORDER BY event_time) AS first_val FROM test_table GROUP BY category HAVING avg_value - FIRST_VALUE(value) OVER (PARTITION BY category ORDER BY event_time) > 0;
+CREATE TABLE summary_table (cat VARCHAR(50), time_diff INTERVAL);
+INSERT INTO summary_table (cat, time_diff) SELECT DISTINCT category, (first_value(event_time) OVER (PARTITION BY category ORDER BY event_time) - time '01:30:00') AS time_corrected FROM test_table;
+SELECT t1.category, t1.value, t2.time_diff FROM test_table t1 JOIN summary_table t2 ON t1.category = t2.cat WHERE t1.event_time > t2.time_diff;
+INSERT INTO test_table (id, event_time, value, category) VALUES (4, time '13:45:00', -50.00, 'A');
+SELECT FIRST_VALUE(value) OVER (PARTITION BY category ORDER BY event_time) - (NULLIF(FIRST_VALUE(value) OVER (PARTITION BY category ORDER BY event_time), 0) - CAST('10' AS FLOAT)) AS diff_adjusted FROM test_table WHERE value IS NOT NULL;
+ALTER TABLE test_table ADD COLUMN event_date DATE;
+UPDATE test_table SET event_date = CURRENT_DATE - (SELECT FIRST_VALUE(event_time) FROM test_table WHERE value IS NOT NULL) WHERE id = 1;
+SELECT event_date, FIRST_VALUE(event_time) OVER (PARTITION BY event_date ORDER BY value) AS first_time FROM test_table WHERE event_date IS NOT NULL ORDER BY event_date ASC;

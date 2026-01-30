@@ -1,0 +1,18 @@
+{
+    "function": "sum(integer_expr)",
+    "operator": ">>",
+    "sql_array": [
+        "CREATE TABLE test_data (id SERIAL PRIMARY KEY, value INTEGER, ip_address INET, nullable_value INTEGER NULL);",
+        "INSERT INTO test_data (value, ip_address, nullable_value) VALUES (10, inet '192.168.1.5', NULL), (20, inet '192.168.1.10', 15), (30, inet '192.168.1.15', 25), (NULL, inet '192.168.1.20', 30);",
+        "SELECT SUM(value) FROM test_data WHERE ip_address >> inet '192.168.1.0/24' GROUP BY (CASE WHEN nullable_value IS NULL THEN 0 ELSE 1 END) HAVING SUM(value) IS NOT NULL;",
+        "SELECT id, SUM(value) OVER (PARTITION BY (CASE WHEN ip_address >> inet '192.168.1.0/24' THEN 1 ELSE 0 END)) AS partitioned_sum FROM test_data WHERE id IN (SELECT id FROM test_data WHERE nullable_value > 10);",
+        "SELECT SUM(COALESCE(value, 0)) + (SELECT COUNT(*) FROM test_data WHERE nullable_value IS NOT NULL) AS total_sum FROM test_data WHERE NOT (ip_address >> inet '192.168.2.0/24');",
+        "CREATE TABLE temp_data AS SELECT * FROM test_data WHERE value IS NOT NULL;",
+        "INSERT INTO temp_data (value, ip_address, nullable_value) VALUES (NULL, inet '192.168.2.5', NULL), (5, inet '192.168.2.10', 7);",
+        "SELECT SUM(value) FROM (SELECT value, ip_address >> inet '192.168.2.0/24' AS in_range FROM temp_data) subquery WHERE in_range;",
+        "SELECT SUM(value) as total_non_null, COUNT(*) as total_count FROM (SELECT value, ip_address FROM test_data WHERE nullable_value IS NOT NULL) result GROUP BY (SELECT COUNT(*) FROM test_data) HAVING total_non_null < 50;",
+        "ALTER TABLE test_data ADD COLUMN extended_value BIGINT;",
+        "UPDATE test_data SET extended_value = SUM(value) OVER () WHERE ip_address >> inet '192.168.1.0/24';",
+        "DROP TABLE IF EXISTS temp_data;"
+    ]
+}

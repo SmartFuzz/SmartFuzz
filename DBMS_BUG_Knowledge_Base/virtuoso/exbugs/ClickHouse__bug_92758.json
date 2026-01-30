@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/92758",
+  "title": "min/max/uniq aggregate functions can be calculated from secondary indices of type `minmax` and `set`",
+  "description": "### Company or project name\nClickHouse\n### Describe the situation\nWhen there is an aggregation across the whole table involving `min` or `max` aggregate functions, and there is a `minmax` index of a column, we can avoid data reading by calculating the result only on the index:\n```sql\nCREATE TABLE table\n(\nc UInt64,\nINDEX ix(c) TYPE minmax\n);\nSELECT min(c), max(c) FROM table;\n```\nWe can do it as well if we read from entire parts:\n```sql\nCREATE TABLE table\n(\nc UInt64,\nINDEX ix(c) TYPE minmax,\np String,\nPARTITION BY p\n);\nSELECT min(c), max(c) FROM table WHERE p = 'Hello';\n```\nOr when aggregating by partition key:\n```sql\nCREATE TABLE table\n(\nc UInt64,\nINDEX ix(c) TYPE minmax,\np String,\nPARTITION BY p\n);\nSELECT p, min(c), max(c) FROM table GROUP BY p;\n```\nIt can be applied to the `set` index as well. However, we can use it only if the set is present in every granule (it didn't overflow). In this case, we can also calculate `uniq`, `uniqExact`, and other `uniq` variants.\nThe implementation can use \"implicit projections\".\n### Which ClickHouse versions are affected?\n.\n### How to reproduce\n.\n### Expected performance\n_No response_\n### Additional context\n_No response_",
+  "date": "2025-12-21T16:12:40Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test_table1 (c INTEGER, d FLOAT);",
+    "INSERT INTO test_table1 (c, d) VALUES (1, 1.1), (2, 2.2), (3, 3.3);",
+    "SELECT MIN(c) AS min_c, MAX(c) AS max_c FROM test_table1;",
+    "CREATE TABLE test_table2 (c INTEGER, p VARCHAR, PARTITION BY p);",
+    "INSERT INTO test_table2 (c, p) VALUES (10, 'A'), (20, 'B'), (30, 'A');"
+  ],
+  "key_bug_features": [
+    "Aggregation using min/max on minmax index without data reading"
+  ]
+}

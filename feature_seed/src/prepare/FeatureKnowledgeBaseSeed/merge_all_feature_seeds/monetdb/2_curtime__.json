@@ -1,0 +1,13 @@
+CREATE TABLE test_table (id SERIAL PRIMARY KEY, event_time TIMESTAMP WITH TIME ZONE, event_description TEXT);
+INSERT INTO test_table (event_time, event_description) VALUES (NOW(), 'Event 1');
+INSERT INTO test_table (event_time, event_description) VALUES (NOW() - INTERVAL '1 hour', 'Event 2');
+INSERT INTO test_table (event_time, event_description) VALUES (NOW() + INTERVAL '1 hour', 'Event 3');
+SELECT id, event_description, curtime() AS current_time, time(event_time::TEXT) AS event_time_converted FROM test_table WHERE event_time > NOW() - INTERVAL '2 hours';
+SELECT id, event_description, curtime() AS current_time, time(event_time AT TIME ZONE 'UTC'::TEXT) AS event_time_utc FROM test_table WHERE event_time IS NOT NULL ORDER BY event_time_utc;
+SELECT id, event_description, time(curtime() + INTERVAL '1 hour'::TEXT) AS projected_time FROM test_table GROUP BY event_description HAVING COUNT(*) > 1;
+SELECT id, event_description FROM test_table WHERE time(event_time::TEXT) BETWEEN time('08:00:00') AND time('17:00:00');
+SELECT id, event_description, COUNT(*) OVER (PARTITION BY event_description) AS description_count FROM test_table WHERE time(event_time::TEXT) IS NOT NULL;
+WITH recent_events AS (SELECT id, event_description, curtime() AS current_time, time(event_time::TEXT) AS event_time_converted FROM test_table WHERE event_time > NOW() - INTERVAL '1 DAY') SELECT * FROM recent_events ORDER BY event_time_converted DESC;
+ALTER TABLE test_table ADD COLUMN event_duration INTERVAL;
+UPDATE test_table SET event_duration = INTERVAL '30 minutes' WHERE event_description = 'Event 1';
+DROP TABLE test_table;

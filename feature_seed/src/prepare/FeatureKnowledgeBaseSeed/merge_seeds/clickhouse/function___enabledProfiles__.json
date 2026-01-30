@@ -1,0 +1,13 @@
+CREATE TABLE user_profiles (user_id UInt32, profile_name String) ENGINE = MergeTree() ORDER BY user_id;
+INSERT INTO user_profiles VALUES (1, 'default'), (1, 'admin'), (2, 'default'), (2, 'editor');
+CREATE TABLE granted_roles (user_id UInt32, role_name String) ENGINE = MergeTree() ORDER BY user_id;
+INSERT INTO granted_roles VALUES (1, 'super_user'), (2, 'content_creator');
+CREATE TABLE main_settings (user_id UInt32, setting_name String, setting_value String) ENGINE = MergeTree() ORDER BY user_id;
+INSERT INTO main_settings VALUES (1, 'profile_setting', 'custom'), (2, 'profile_setting', 'default');
+SELECT enabledProfiles() AS profiles FROM user_profiles WHERE user_id = (SELECT user_id FROM granted_roles WHERE role_name = 'super_user') LIMIT 1;
+SELECT enabledProfiles() UNION ALL SELECT enabledProfiles() FROM user_profiles WHERE profile_name = 'admin';
+SELECT enabledProfiles() FROM (SELECT user_id, profile_name FROM user_profiles WHERE profile_name IN (SELECT setting_value FROM main_settings WHERE setting_name = 'profile_setting')) AS up;
+WITH (SELECT DISTINCT profile_name FROM user_profiles) AS explicit_profiles SELECT enabledProfiles() FROM explicit_profiles;
+SELECT enabledProfiles() AS profiles FROM user_profiles WHERE user_id IN (SELECT user_id FROM granted_roles WHERE role_name = 'content_creator') AND profile_name != 'default';
+SELECT enabledProfiles() AS profiles FROM (SELECT profile_name FROM user_profiles) ARRAY JOIN (SELECT role_name FROM granted_roles) AS roles WHERE roles.role_name = 'super_user';
+SELECT enabledProfiles() AS profiles FROM (SELECT DISTINCT profile_name FROM user_profiles WHERE user_id IN (SELECT user_id FROM main_settings WHERE setting_value = 'custom')) ORDER BY profile_name DESC;

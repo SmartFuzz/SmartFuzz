@@ -1,0 +1,49 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/63644",
+  "title": "Incorrect type cast in prepared statement",
+  "vulnerable_database": "tidb",
+  "date": "2025-09-21T12:24:51Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\nHi, in the following test case, the value of `t0.c0` is incorrectly cast to a string in the prepared statement. In the normal query, the query result is correct.\n\n```\nCREATE TABLE t0(c0 DOUBLE);\nINSERT INTO t0(c0) VALUES (0);\nSELECT ((INET6_ATON((t0.c0)))OR('a')) FROM t0;  -- NULL\nSET @a = 'a';\nPREPARE prepare_query FROM 'SELECT ((INET6_ATON((t0.c0)))OR(?)) FROM t0';\nEXECUTE prepare_query USING @a; -- Incorrect string value: '0' for function inet_aton6\n```\n\n### 2. What did you expect to see? (Required)\nThe prepared statement should not trigger an error.\n\n### 3. What did you see instead (Required)\nThe prepared statement triggers an error.\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\nRelease Version: v9.0.0-beta.2.pre-196-g312226f869\\nEdition: Community\\nGit Commit Hash: 312226f869d56922135e1c177cac6c90319c3134\\nGit Branch: HEAD\\nUTC Build Time: 2025-09-21 08:27:14\\nGoVersion: go1.23.11\\nRace Enabled: false\\nCheck Table Before Drop: false\\nStore: unistore\\nKernel Type: Classic\n",
+  "poc": [
+    "CREATE TABLE t0(c0 DOUBLE);",
+    "INSERT INTO t0(c0) VALUES (0);",
+    "SELECT ((INET6_ATON((t0.c0)))OR('a')) FROM t0;  -- NULL",
+    "SET @a = 'a';",
+    "PREPARE prepare_query FROM 'SELECT ((INET6_ATON((t0.c0)))OR(?)) FROM t0';",
+    "EXECUTE prepare_query USING @a;"
+  ],
+  "poc_type": "sql_text",
+  "state": "open",
+  "key_bug_features": [
+    "Incorrect type cast in prepared statement execution"
+  ],
+  "bug_feature_seed": [
+  "DROP TABLE IF EXISTS t0;",
+  "CREATE TABLE t0 (c0 DOUBLE, c1 INT, c2 VARCHAR(10));",
+  "INSERT INTO t0 VALUES (0,0,'0');",
+  "INSERT INTO t0 VALUES (1.5,1,'1');",
+  "SELECT (INET6_ATON(t0.c0) OR 'a') FROM t0;",
+  "SELECT (INET6_ATON(CAST(t0.c0 AS DOUBLE)) OR 'a') FROM t0;",
+  "SELECT (INET6_ATON(t0.c1) OR 'a') FROM t0;",
+  "SET @a = 'a';",
+  "PREPARE ps1 FROM 'SELECT (INET6_ATON(t0.c0) OR (?)) FROM t0';",
+  "EXECUTE ps1 USING @a;",
+  "DEALLOCATE PREPARE ps1;",
+  "PREPARE ps2 FROM 'SELECT (INET6_ATON(CAST(t0.c0 AS DOUBLE)) OR (?)) FROM t0';",
+  "EXECUTE ps2 USING @a;",
+  "DEALLOCATE PREPARE ps2;",
+  "PREPARE ps3 FROM 'SELECT (INET6_ATON(t0.c1) OR (?)) FROM t0';",
+  "EXECUTE ps3 USING @a;",
+  "DEALLOCATE PREPARE ps3;",
+  "PREPARE ps4 FROM 'SELECT (INET6_ATON(?) OR t0.c0) FROM t0';",
+  "SET @a = 0;",
+  "EXECUTE ps4 USING @a;",
+  "DEALLOCATE PREPARE ps4;",
+  "PREPARE ps5 FROM 'SELECT (INET6_ATON(t0.c0) OR (? + 0)) FROM t0';",
+  "SET @a = 'a';",
+  "EXECUTE ps5 USING @a;"
+]
+
+
+}

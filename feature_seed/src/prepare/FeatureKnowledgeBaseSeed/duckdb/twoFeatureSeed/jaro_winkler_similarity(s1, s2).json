@@ -1,0 +1,17 @@
+{
+    "function": "jaro_winkler_similarity(s1, s2)",
+    "operator": "//",
+    "sql_array": [
+        "CREATE TABLE test_strings (id INT, str_value VARCHAR);",
+        "INSERT INTO test_strings VALUES (1, 'duck'), (2, 'duckdb'), (3, 'DUCKDB'), (4, NULL);",
+        "CREATE TABLE test_values (id INT, num_value FLOAT);",
+        "INSERT INTO test_values VALUES (1, 1.0), (2, 0.0), (3, -4.5), (4, NULL);",
+        "SELECT id, jaro_winkler_similarity(str_value, 'duckdb') // 1 AS similarity_ratio FROM test_strings;",
+        "SELECT id, jaro_winkler_similarity(str_value, (SELECT str_value FROM test_strings WHERE id = 2)) // (SELECT num_value FROM test_values WHERE id = 1) AS adjusted_similarity FROM test_strings;",
+        "SELECT t1.id, t1.str_value, jaro_winkler_similarity(t1.str_value, t2.str_value) // (COALESCE(t2.num_value, 1) + 1) AS computed_similarity FROM test_strings t1 JOIN test_strings t2 ON t1.id <> t2.id WHERE jaro_winkler_similarity(t1.str_value, t2.str_value) IS NOT NULL;",
+        "SELECT id, jaro_winkler_similarity(str_value, '') // (1 + 0.0001) AS edge_case_ratio FROM test_strings;",
+        "SELECT str_value, COUNT(*) FROM test_strings GROUP BY str_value HAVING jaro_winkler_similarity(str_value, 'duck') > 0.5;",
+        "SELECT num_value, COUNT(*) FROM test_values GROUP BY num_value HAVING num_value // (1 + NULLIF(num_value, 0)) IS NOT NULL;",
+        "SELECT DISTINCT t1.id, jaro_winkler_similarity(t1.str_value, t2.str_value) AS sim FROM test_strings t1 JOIN test_strings t2 ON t1.id < t2.id WHERE jaro_winkler_similarity(t1.str_value, t2.str_value) IS NOT NULL ORDER BY sim DESC LIMIT 10;"
+    ]
+}

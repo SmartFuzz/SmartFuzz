@@ -1,0 +1,16 @@
+CREATE TABLE events (event_time DateTime, event_id UInt32);
+INSERT INTO events VALUES (now() - INTERVAL '1' DAY, 1), (now() - INTERVAL '1' HOUR, 2), (now() - INTERVAL '30' MINUTE, 3);
+SELECT hopStart(event_time, INTERVAL '1' DAY, INTERVAL '2' DAY) FROM events;
+SELECT hopStart(event_time, INTERVAL '1' DAY, INTERVAL '2' DAY, 'UTC') FROM events;
+SELECT hopStart(event_time, INTERVAL '30' MINUTE, INTERVAL '1' HOUR) FROM events WHERE event_id = 1;
+WITH (SELECT event_time FROM events WHERE event_id = 2) AS temp_event_time SELECT hopStart(temp_event_time, INTERVAL '1' DAY, INTERVAL '2' DAY) AS hop_bound;
+CREATE TEMPORARY TABLE temp_events AS SELECT event_time, event_id FROM events WHERE event_id > 1;
+SELECT hopStart(event_time, INTERVAL '1' DAY, INTERVAL '2' DAY) FROM temp_events;
+INSERT INTO events VALUES (now() - INTERVAL '3' DAY, 4), (now() - INTERVAL '2' DAY, 5);
+SELECT hopStart(event_time, INTERVAL '1' DAY, INTERVAL '2' DAY) FROM events WHERE event_time < now() - INTERVAL '1' DAY;
+CREATE TABLE user_activity (activity_time DateTime, user_id UInt32);
+INSERT INTO user_activity VALUES (now() - INTERVAL '1' HOUR, 101), (now() - INTERVAL '3' HOURS, 102);
+SELECT ua.user_id, hopStart(ua.activity_time, INTERVAL '1' HOUR, INTERVAL '2' HOURS) FROM user_activity ua JOIN events e ON ua.activity_time = e.event_time;
+SELECT hopStart(event_time, INTERVAL '1' DAY, INTERVAL '2' DAY) AS window_start, COUNT(*) FROM events GROUP BY window_start;
+SELECT hopStart(event_time, INTERVAL '2' HOURS, INTERVAL '4' HOURS) FROM (SELECT event_time FROM events WHERE event_id < 3);
+SELECT hopStart(event_time, INTERVAL '1' DAY, INTERVAL '3' DAY, 'Europe/London') FROM events WHERE event_id IN (SELECT DISTINCT event_id FROM events WHERE event_time >= now() - INTERVAL '7' DAYS) ORDER BY event_time DESC;

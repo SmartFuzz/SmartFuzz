@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=111663",
+  "title": "Same data, same SQL, return different results",
+  "description": "Same 4 rows, same SQL, different insert order, return different results!\nHow to repeat:\n-------------- MySQL Version 5.7.23 --------------\r\n-------------- TEST 1 --------------\r\ndrop table test_table;\r\ncreate table test_table(id int,company varchar(10),department varchar(10));\r\n\r\ninsert into test_table values(1,'COM A','DEP A');\r\ninsert into test_table values(2,'COM B','DEP A');\r\ninsert into test_table values(3,'','DEP A');\r\ninsert into test_table values(4,'COM B','DEP A');\n\nSELECT tmp.constr, COUNT(DISTINCT(id)) AS ids\r\nFROM (\r\n    SELECT id,concat(department, '-', company) as constr FROM test_table\r\n) tmp\r\nGROUP BY tmp.constr\r\nORDER BY tmp.constr DESC, ids DESC;\r\n+-------------+-----+\r\n| constr      | ids |\r\n+-------------+-----+\r\n| DEP A-COM B |   1 |\r\n| DEP A-COM B |   1 |\r\n| DEP A-COM A |   1 |\r\n| DEP A-      |   1 |\r\n+-------------+-----+\r\n-------------- TEST 1 --------------\n\n-------------- TEST 2 --------------\r\ndrop table test_table;\r\ncreate table test_table(id int,company varchar(10),department varchar(10));\r\n\r\ninsert into test_table values(1,'COM A','DEP A');\r\ninsert into test_table values(2,'COM B','DEP A');\r\ninsert into test_table values(4,'COM B','DEP A'); # swap line 4 \r\ninsert into test_table values(3,'','DEP A'); # swap line 3\n\nSELECT tmp.constr, COUNT(DISTINCT(id)) AS ids\r\nFROM (\r\n    SELECT id,concat(department, '-', company) as constr FROM test_table\r\n) tmp\r\nGROUP BY tmp.constr\r\nORDER BY tmp.constr DESC, ids DESC;\r\n+-------------+-----+\r\n| constr      | ids |\r\n+-------------+-----+\r\n| DEP A-COM B |   2 |\r\n| DEP A-COM A |   1 |\r\n| DEP A-      |   1 |\r\n+-------------+-----+\r\n-------------- TEST 2 --------------",
+  "date": "2023-07-05 07:38:00",
+  "vulnerable_version": "5.7.42",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_table(id INTEGER, company TEXT, department TEXT, salary REAL DEFAULT 0);",
+    "INSERT INTO test_table VALUES(1, 'COM A', 'DEP A', 50000.00);",
+    "INSERT INTO test_table VALUES(2, 'COM B', 'DEP A', NULL);",
+    "INSERT INTO test_table VALUES(3, NULL, 'DEP A', 60000.00);",
+    "SELECT department, COUNT(DISTINCT id) AS ids FROM test_table GROUP BY department ORDER BY ids DESC;"
+  ],
+  "key_bug_features": [
+    "Different results based on insert order in SQL"
+  ]
+}

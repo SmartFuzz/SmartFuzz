@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id UInt32, ulid FixedString(26), value Nullable(Float64));
+INSERT INTO test_table VALUES (1, generateULID(), 10.5), (2, generateULID(), NULL), (3, generateULID(), 0.0), (4, generateULID(), -5.2);
+SELECT id, ulid FROM test_table WHERE ulid == generateULID(1);
+SELECT id, ulid, value FROM test_table WHERE value IS NULL OR ulid == generateULID(2);
+SELECT id, ulid FROM (SELECT id, ulid FROM test_table WHERE value < 0 GROUP BY id, ulid) AS sub WHERE ulid == generateULID();
+WITH (SELECT COUNT(*) FROM test_table WHERE value <= 0) AS cnt SELECT id, ulid, cnt FROM test_table WHERE cnt == (SELECT COUNT(*) FROM test_table);
+SELECT id, ulid FROM test_table WHERE (value + 1) == (SELECT MAX(value) FROM test_table) AND ulid == generateULID(3);
+CREATE TABLE temp_table AS SELECT id, ulid FROM test_table;
+SELECT t1.id, t1.ulid FROM test_table t1 JOIN temp_table t2 ON t1.ulid == t2.ulid WHERE t1.value IS NOT NULL;
+SELECT id, ulid FROM test_table HAVING ulid == generateULID(4) AND (value > (SELECT AVG(IFNULL(value, 0)) FROM test_table));

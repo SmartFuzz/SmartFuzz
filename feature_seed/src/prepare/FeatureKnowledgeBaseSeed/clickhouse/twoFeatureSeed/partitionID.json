@@ -1,0 +1,17 @@
+{
+    "function": "partitionID",
+    "operator": "a NOT LIKE s",
+    "sql_array": [
+        "DROP TABLE IF EXISTS test_table; CREATE TABLE test_table (id Int32, name String, value Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table VALUES (1, 'Alice', NULL), (2, 'Bob', 3.14), (3, 'Charlie', 2.718), (4, 'Diana', 1.618), (5, '', -1.0);",
+        "SELECT id, name, partitionID(id, name), value FROM test_table WHERE name NOT LIKE 'C%' AND value IS NOT NULL ORDER BY id;",
+        "CREATE TABLE test_table2 (ref_id Int32, description String DEFAULT 'N/A', amount UInt64) ENGINE = MergeTree() ORDER BY ref_id;",
+        "INSERT INTO test_table2 VALUES (1, 'Test A', 100), (2, NULL, 200), (3, 'Test C', 300), (4, 'Test D', 400);",
+        "SELECT t.id, t.name, t.value, t2.amount, partitionID(t.id, t.name) AS part_id FROM test_table t JOIN test_table2 t2 ON t.id NOT LIKE CAST(t2.ref_id AS String) ORDER BY part_id;",
+        "SELECT id, COUNT(*) AS count, partitionID(id) AS partition FROM test_table GROUP BY id HAVING count > 1;",
+        "WITH (SELECT MAX(value) AS max_value FROM test_table WHERE value IS NOT NULL) AS max_val SELECT name, partitionID(id) FROM test_table WHERE value NOT LIKE CAST(max_val AS String) ORDER BY partitionID(id);",
+        "DROP TABLE IF EXISTS temp_test_table; CREATE TABLE temp_test_table (temp_id UUID, temp_description LowCardinality(String), temp_count Int32) ENGINE = MergeTree() ORDER BY temp_id;",
+        "INSERT INTO temp_test_table VALUES (generateUUIDv4(), 'Test 1', 1), (generateUUIDv4(), 'Test 2', 2), (generateUUIDv4(), 'Test 3', NULL);",
+        "SELECT temp_id, temp_description, partitionID(temp_count), temp_count FROM temp_test_table WHERE temp_count NOT LIKE CAST(1 AS String) OR temp_count IS NULL;"
+    ]
+}

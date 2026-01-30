@@ -1,0 +1,18 @@
+CREATE TABLE stylesheets (id INTEGER PRIMARY KEY, uri VARCHAR(255));
+INSERT INTO stylesheets (id, uri) VALUES (1, 'file:///stylesheet1.xsl');
+INSERT INTO stylesheets (id, uri) VALUES (2, 'http://example.com/stylesheet2.xsl');
+INSERT INTO stylesheets (id, uri) VALUES (3, 'virt://local/stylesheet3.xsl');
+SELECT * FROM stylesheets WHERE id = (SELECT MAX(id) FROM stylesheets);
+SELECT * FROM stylesheets WHERE uri LIKE 'http%';
+SELECT * FROM stylesheets WHERE id IN (1, 2) AND uri IS NOT NULL;
+CREATE TABLE pages (page_id INTEGER PRIMARY KEY, content XML);
+INSERT INTO pages (page_id, content) VALUES (1, '<?xml version="1.0"?><root><element>Hello World</element></root>');
+INSERT INTO pages (page_id, content) VALUES (2, '<?xml version="1.0"?><root><element>Another Example</element></root>');
+SELECT p.page_id, p.content FROM pages p JOIN stylesheets s ON s.id = 1 WHERE p.page_id = 1;
+SELECT p.page_id, http_xslt(s.uri) FROM pages p JOIN stylesheets s ON s.id = (SELECT MIN(id) FROM stylesheets) WHERE p.page_id = 2;
+SELECT p.page_id, http_xslt(s.uri) FROM pages p LEFT JOIN stylesheets s ON s.id = 2 WHERE p.content IS NOT NULL;
+SELECT p.content FROM pages p WHERE EXISTS (SELECT 1 FROM stylesheets s WHERE s.uri LIKE 'file://%') AND p.page_id = 1;
+CREATE TABLE temp_cache AS SELECT * FROM pages WHERE page_id > 0;
+SELECT COUNT(*) FROM temp_cache WHERE content IS NOT NULL;
+DROP TABLE IF EXISTS expired_stylesheets;
+CREATE TABLE expired_stylesheets AS SELECT * FROM stylesheets WHERE uri NOT LIKE 'http%';

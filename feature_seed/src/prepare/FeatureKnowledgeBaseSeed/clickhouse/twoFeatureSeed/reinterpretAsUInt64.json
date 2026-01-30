@@ -1,0 +1,16 @@
+{
+    "function": "reinterpretAsUInt64",
+    "operator": "a = ALL (subquery)",
+    "sql_array": [
+        "CREATE TABLE fuzz_test (id UInt32, val String, num Float64, dt DateTime, uuid UUID) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO fuzz_test VALUES (1, 'test1', 1.9, '2023-01-01 00:00:00', 'b3f807aa-d8e5-4b1b-9b6b-79b3500d0888'), (2, 'test2', 2.5, '2023-01-02 12:00:00', 'a0f907aa-d7e5-4b1b-9b7b-79b3500d0889'), (3, 'test3', NULL, '2023-01-03 18:00:00', 'c7b907aa-d7e5-4b1b-9b8b-79b3500d088a');",
+        "SELECT id, reinterpretAsUInt64(num) AS reinterpreted_num FROM fuzz_test WHERE reinterpretAsUInt64(num) = ALL (SELECT reinterpretAsUInt64(NULLIF(num, 0)) FROM fuzz_test WHERE dt > '2023-01-01 00:00:00');",
+        "SELECT id, reinterpretAsUInt64(val) AS reinterpreted_val FROM fuzz_test WHERE reinterpretAsUInt64(val) = ALL (SELECT reinterpretAsUInt64('test' || id) FROM (SELECT DISTINCT id FROM fuzz_test) AS sub);",
+        "SELECT DISTINCT id, reinterpretAsUInt64(num) AS reinterpreted_num FROM fuzz_test WHERE val LIKE '%' || reinterpretAsUInt64(num) || '%' AND dt < NOW() ORDER BY reinterpreted_num;",
+        "WITH (SELECT reinterpretAsUInt64(SUM(num)) FROM fuzz_test) AS total_sum SELECT id, total_sum, reinterpretAsUInt64(num) FROM fuzz_test WHERE num > 0 AND total_sum = ALL (SELECT total_sum FROM fuzz_test WHERE dt > '2023-01-01 00:00:00');",
+        "SELECT id, reinterpretAsUInt64(num) AS reinterpreted_num FROM fuzz_test WHERE reinterpretAsUInt64(num) = ALL (SELECT value FROM (SELECT reinterpretAsUInt64(NULLIF(num, 0)) AS value FROM fuzz_test WHERE val LIKE 'test%') AS sub);",
+        "CREATE TEMPORARY TABLE temp_test AS SELECT id, reinterpretAsUInt64(dt) AS reinterpreted_date FROM fuzz_test;",
+        "SELECT temp.id, reinterpretAsUInt64(val) AS reinterpreted_val FROM temp_test temp JOIN fuzz_test fuzz ON temp.id = fuzz.id WHERE fuzz.num > 1 AND temp.reinterpreted_date = ALL (SELECT reinterpretAsUInt64(dt) FROM fuzz_test WHERE dt < '2023-01-02 00:00:00');",
+        "SELECT dt, reinterpretAsUInt64(SUM(reinterpretAsUInt64(num))) AS total_reinterpreted FROM fuzz_test GROUP BY dt HAVING reinterpretAsUInt64(SUM(num)) > 10;"
+    ]
+}

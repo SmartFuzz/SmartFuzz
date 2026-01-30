@@ -1,0 +1,21 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=101976",
+  "title": "generated columns inconsistently permit integer overflow",
+  "description": "Generated columns inconsistently permit integer overflow. Consider the attached test case.\nHow to repeat:\nDROP TABLE IF EXISTS t1, t2, t3;\r\n\r\nCREATE TABLE t1 (a BIGINT UNSIGNED NOT NULL, b BIGINT AS (a) NOT NULL);\r\nINSERT INTO t1 (a) VALUES (9223372036854775808); # out of range for b, succeeds\r\nSELECT * FROM t1; # b wraps\r\n\r\nCREATE TABLE t2 (a INT UNSIGNED NOT NULL, b INT AS (a) NOT NULL);\r\nINSERT INTO t2 (a) VALUES (4294967295); # out of range for b, succeeds\r\nINSERT INTO t2 (a) VALUES (4294967296); # out of range for a, fails\r\nINSERT INTO t2 (a) VALUES (-1); # out of range for a, fails\r\nSELECT * FROM t2;\r\n\r\nCREATE TABLE t3 (a INT NOT NULL, b INT UNSIGNED AS (a) NOT NULL);\r\nINSERT INTO t3(a) VALUES (-1); # out of range for b, but fails! (inconsistent)\r\nSELECT * FROM t3;\n\n...\r\n\r\nmysql [localhost:8022] {msandbox} (test) > DROP TABLE IF EXISTS t1, t2, t3;\r\nQuery OK, 0 rows affected (0.01 sec)\r\n\r\nmysql [localhost:8022] {msandbox} (test) > \r\nmysql [localhost:8022] {msandbox} (test) > CREATE TABLE t1 (a BIGINT UNSIGNED NOT NULL, b BIGINT AS (a) NOT NULL);\r\nQuery OK, 0 rows affected (0.01 sec)\r\n\r\nmysql [localhost:8022] {msandbox} (test) > INSERT INTO t1 (a) VALUES (9223372036854775808); # out of range for b, succeeds\r\nQuery OK, 1 row affected (0.00 sec)\r\n\r\nmysql [localhost:8022] {msandbox} (test) > SELECT * FROM t1; # b wraps\r\n+---------------------+----------------------+\r\n| a                   | b                    |\r\n+---------------------+----------------------+\r\n| 9223372036854775808 | -9223372036854775808 |\r\n+---------------------+----------------------+\r\n1 row in set (0.00 sec)\r\n\r\nmysql [localhost:8022] {msandbox} (test) > \r\nmysql [localhost:8022] {msandbox} (test) > CREATE TABLE t2 (a INT UNSIGNED NOT NULL, b INT AS (a) NOT NULL);\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nmysql [localhost:8022] {msandbox} (test) > INSERT INTO t2 (a) VALUES (4294967295); # out of range for b, succeeds\r\nQuery OK, 1 row affected (0.01 sec)\r\n\r\nmysql [localhost:8022] {msandbox} (test) > INSERT INTO t2 (a) VALUES (4294967296); # out of range for a, fails\r\nERROR 1264 (22003): Out of range value for column 'a' at row 1\r\nmysql [localhost:8022] {msandbox} (test) > INSERT INTO t2 (a) VALUES (-1); # out of range for a, fails\r\nERROR 1264 (22003): Out of range value for column 'a' at row 1\r\nmysql [localhost:8022] {msandbox} (test) > SELECT * FROM t2;\r\n+------------+----+\r\n| a          | b  |\r\n+------------+----+\r\n| 4294967295 | -1 |\r\n+------------+----+\r\n1 row in set (0.00 sec)\r\n\r\nmysql [localhost:8022] {msandbox} (test) > \r\nmysql [localhost:8022] {msandbox} (test) > CREATE TABLE t3 (a INT NOT NULL, b INT UNSIGNED AS (a) NOT NULL);\r\nQuery OK, 0 rows affected (0.01 sec)\r\n\r\nmysql [localhost:8022] {msandbox} (test) > INSERT INTO t3(a) VALUES (-1); # out of range for b\r\nERROR 1264 (22003): Out of range value for column 'b' at row 1\r\nmysql [localhost:8022] {msandbox} (test) > SELECT * FROM t3;\r\nEmpty set (0.00 sec)\nSuggested fix:\nIdeally they would not permit any overflow (as shown with regular columns).",
+  "date": "2020-12-11 16:30:00",
+  "vulnerable_version": "5.7.31, 8.0.22",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t1, t2, t3;",
+    "CREATE TABLE t1 (a BIGINT NOT NULL, b BIGINT NOT NULL GENERATED ALWAYS AS (a));",
+    "INSERT INTO t1 (a) VALUES (9223372036854775807);",
+    "SELECT * FROM t1;",
+    "CREATE TABLE t2 (a INT NOT NULL, b INT NOT NULL GENERATED ALWAYS AS (a));",
+    "INSERT INTO t2 (a) VALUES (2147483647);"
+  ],
+  "key_bug_features": [
+    "Generated columns permit integer overflow inconsistently"
+  ]
+}

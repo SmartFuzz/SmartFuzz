@@ -1,0 +1,10 @@
+CREATE TABLE test_inet_dates (id SERIAL PRIMARY KEY, inet_column inet, time_column time);
+INSERT INTO test_inet_dates (inet_column, time_column) VALUES (inet '192.168.1.1/24', time '12:00:00');
+INSERT INTO test_inet_dates (inet_column, time_column) VALUES (inet '192.168.2.1/24', time '18:30:00');
+INSERT INTO test_inet_dates (inet_column, time_column) VALUES (inet '192.168.1.3/24', time NULL);
+SELECT id, sys.left_shift_assign(inet_column, inet_column) AS is_equal, time_column - time '02:00:00' AS new_time FROM test_inet_dates WHERE time_column IS NOT NULL;
+SELECT id, inet_column, time_column, sys.left_shift_assign(inet '10.0.0.0/8', inet_column) AS is_contained, (time_column - time '00:10:00') AS adjusted_time FROM test_inet_dates WHERE inet_column = inet '192.168.1.1/24';
+SELECT id, inet_column, sys.left_shift_assign(inet_column, inet '192.168.0.0/16') AS left_shift_result, (time_column + interval '1 hour') AS increased_time FROM test_inet_dates HAVING increased_time IS NOT NULL;
+SELECT a.id, a.inet_column, a.time_column, (SELECT COUNT(*) FROM test_inet_dates b WHERE sys.left_shift_assign(a.inet_column, b.inet_column)) AS matching_count FROM test_inet_dates a;
+CREATE TEMPORARY TABLE temp_inet_times AS SELECT inet_column, time_column - time '01:00:00' AS adjusted_time FROM test_inet_dates WHERE time_column IS NOT NULL;
+SELECT id, inet_column, sys.left_shift_assign(inet '192.168.1.0/24', inet_column) AS left_shift_check, COALESCE((time_column - time '03:00:00'), time '00:00:00') AS final_time FROM temp_inet_times WHERE adjusted_time IS NOT NULL;

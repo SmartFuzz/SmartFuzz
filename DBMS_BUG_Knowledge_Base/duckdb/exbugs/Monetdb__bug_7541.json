@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7541",
+  "title": "Unexpected result when using `LEVENSHTEIN`",
+  "description": "Consider the following test cases. I suppose the first query is unexpected: it should return only one row, as the `UNION ALL` of three queries returns only one row `1 false`. Besides, if first insert `true` in table `t0` and then `false`, the first query returns only one row as expected. \n\n\n\n**To Reproduce**\n\n```sql\nDROP TABLE IF EXISTS t0 CASCADE;\nDROP TABLE IF EXISTS t1 CASCADE;\n\nCREATE TABLE t0 (c0 BOOLEAN);\nCREATE TABLE t1 (c1 INT) ;\nINSERT INTO t1(c1) VALUES (1);\n\nINSERT INTO t0(c0) VALUES (false); -- should first insert false then true\nINSERT INTO t0(c0) VALUES (true);\n\nSELECT * FROM t1 LEFT  JOIN t0 ON LEVENSHTEIN(t0.c0, true); -- 1 false, 1, true (unexpected)\nSELECT * FROM t1 LEFT  JOIN t0 ON LEVENSHTEIN(t0.c0, true) WHERE t0.c0 UNION ALL SELECT * FROM t1 LEFT  JOIN t0 ON LEVENSHTEIN(t0.c0, true) WHERE (NOT t0.c0) UNION ALL SELECT * FROM t1 LEFT  JOIN t0 ON LEVENSHTEIN(t0.c0, true) WHERE ((t0.c0) IS NULL); -- 1 false\n\nSELECT LEVENSHTEIN(true, true); -- 0\nSELECT LEVENSHTEIN(t0.c0, true) FROM t0; -- 4, 4 (I guess it's unexpected and the root cause)\n```\n\n**Expected behavior**\nAs mentioned above.\n\n**Screenshots**\nN/A\n\n**Software versions**\nBuild from source:\n\n```\n> docker exec -it monetdb-test mserver5 --version\nMonetDB 5 server 11.52.0 (hg id: 736987f) (64-bit, 128-bit integers)\nThis is an unreleased version\nCopyright (c) 1993 - July 2008 CWI\nCopyright (c) August 2008 - 2023 MonetDB B.V., all rights reserved\nVisit https://www.monetdb.org/ for further information\nFound 503.5GiB available memory, 128 available cpu cores\nLibraries:\nCompiled by: @2195e8c5ad70 (x86_64-pc-linux-gnu)\nCompilation: /usr/bin/cc \nLinking    : /usr/bin/ld\n```\n\n**Issue labeling**\nBug\n\n**Additional context**\nAdd any other context about the problem here.",
+  "date": "2024-06-17T15:09:29Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t2;",
+    "CREATE TABLE t2 (c2 VARCHAR, c3 BOOLEAN NOT NULL DEFAULT false);",
+    "INSERT INTO t2(c2, c3) VALUES ('test', true);",
+    "INSERT INTO t2(c2, c3) VALUES ('test', false);",
+    "SELECT * FROM t2 WHERE ABS(LENGTH(c2) - LENGTH('test')) < 3;"
+  ],
+  "key_bug_features": [
+    "LEVENSHTEIN function returning unexpected results with boolean values"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+    "function": "UUIDNumToString",
+    "operator": "a IN ...",
+    "sql_array": [
+        "CREATE TABLE test_uuids (id UInt32, binary_uuid FixedString(16), variant Int32) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_uuids VALUES (1, toFixedString('a/<@];!~p{jTj={)', 16), 1), (2, toFixedString('@</a;]~!p{jTj={)', 16), 2);",
+        "SELECT id, UUIDNumToString(binary_uuid, variant) AS uuid FROM test_uuids WHERE id IN (SELECT DISTINCT id FROM test_uuids WHERE variant = 1);",
+        "SELECT UUIDNumToString(toFixedString(binary_uuid, 16)) AS uuid, COUNT(*) FROM test_uuids GROUP BY uuid HAVING COUNT(*) > 0;",
+        "SELECT id, binary_uuid FROM test_uuids WHERE binary_uuid IN (SELECT binary_uuid FROM test_uuids WHERE variant = 2) AND (UUIDNumToString(toFixedString(binary_uuid, 16)) IS NOT NULL);",
+        "CREATE TABLE test_nullable_uuids (id UInt32, binary_uuid Nullable(FixedString(16)), variant Nullable(Int32)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_nullable_uuids VALUES (1, NULL, 1), (2, toFixedString('b/<=<3%B&`h^6E', 16), 2);",
+        "SELECT id, UUIDNumToString(IFNULL(binary_uuid, toFixedString('00000000-0000-0000-0000-000000000000', 16)), IFNULL(variant, 1)) AS uuid FROM test_nullable_uuids WHERE id IN (SELECT id FROM test_nullable_uuids WHERE variant IN (1, 2));",
+        "SELECT COUNT(*) FROM (SELECT UUIDNumToString(binary_uuid) AS uuid FROM test_uuids WHERE UUIDNumToString(binary_uuid) IN (SELECT UUIDNumToString(binary_uuid) FROM test_uuids WHERE binary_uuid IS NOT NULL));",
+        "SELECT id, UUIDNumToString(binary_uuid, 2) FROM test_uuids WHERE UUIDNumToString(binary_uuid) IS NOT NULL AND id IN (SELECT id FROM test_uuids WHERE variant >= 1);"
+    ]
+}

@@ -1,0 +1,16 @@
+CREATE TABLE test_data (id INTEGER, values_list LIST<INTEGER>, bit_mask BITSTRING);
+INSERT INTO test_data VALUES (1, [1, 2, 3, 4, 5], '110101'::BITSTRING), (2, [10, 20, 30], '100110'::BITSTRING), (3, NULL, '111000'::BITSTRING);
+SELECT id, array_pop_front(values_list) AS modified_list, (bit_mask >> 2) AS shifted_mask FROM test_data WHERE values_list IS NOT NULL;
+SELECT id, array_pop_front((SELECT values_list FROM test_data WHERE id = 1)) AS list_front, (bit_mask >> LENGTH(bit_mask) - 3) AS shifted_bound FROM test_data WHERE bit_mask IS NOT NULL;
+SELECT d1.id, array_pop_front(d1.values_list) AS popped_list FROM test_data d1 INNER JOIN test_data d2 ON d1.id = d2.id >> 1 WHERE d1.values_list IS NOT NULL GROUP BY d1.id, popped_list HAVING COUNT(*) > 1;
+SELECT id, COUNT(*) FROM (SELECT id, array_pop_front(values_list) AS tmp_list FROM test_data) AS sub GROUP BY id HAVING COUNT(tmp_list) > 0;
+INSERT INTO test_data VALUES (4, [NULL, NULL], '1111'::BITSTRING);
+CREATE TABLE more_data (group_id INTEGER, mask BITSTRING);
+INSERT INTO more_data VALUES (1, '1100'::BITSTRING), (2, NULL);
+SELECT d.id, (d.bit_mask >> 1) AS bit_shifted, array_pop_front(d.values_list) AS front FROM test_data d LEFT JOIN more_data md ON d.id = md.group_id WHERE md.mask IS NULL OR d.bit_mask IS NOT NULL;
+SELECT id, array_pop_front(values_list), (bit_mask >> 1) AS shifted_mask FROM test_data WHERE values_list IS NOT NULL AND id IN (SELECT id FROM test_data WHERE values_list IS NOT NULL);
+UPDATE test_data SET values_list = array_pop_front(values_list) WHERE id = 1;
+SELECT id, array_pop_front(values_list) AS new_list FROM test_data WHERE values_list = array_pop_front(values_list) OR bit_mask IS NOT NULL;
+SELECT (SELECT COUNT(*) FROM test_data) AS total_entries, array_pop_front([1, 2, 3, 4, 5]) AS new_values, ('100010'::BITSTRING >> 2) AS shifted_bitstring;
+SELECT ARRAY[1, 2] AS arr UNION ALL SELECT array_pop_front([3, 4]);
+SELECT id, array_pop_front(values_list) AS new_list, (bit_mask >> 3) AS adjusted_mask FROM test_data WHERE id = (SELECT MAX(id) FROM test_data);

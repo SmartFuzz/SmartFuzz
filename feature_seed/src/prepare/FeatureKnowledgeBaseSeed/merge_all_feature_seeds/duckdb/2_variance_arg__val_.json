@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id INTEGER PRIMARY KEY, value BITSTRING, score DOUBLE, timestamp TIMESTAMP, group_id INTEGER);
+INSERT INTO test_table (id, value, score, timestamp, group_id) VALUES (1, '101'::BITSTRING, 100.0, '2023-01-01 00:00:00', 1), (2, '110'::BITSTRING, 200.5, '2023-01-02 00:00:00', 1), (3, '111'::BITSTRING, NULL, '2023-01-03 00:00:00', 2), (4, '000'::BITSTRING, 50.0, '2023-01-04 00:00:00', 2);
+SELECT group_id, variance(score, score) AS variance_score FROM (SELECT group_id, score FROM test_table WHERE score IS NOT NULL GROUP BY group_id HAVING COUNT(*) > 1) AS subquery GROUP BY group_id;
+SELECT group_id, ~value AS inverted_value FROM test_table WHERE value IS NOT NULL ORDER BY group_id;
+SELECT group_id, variance(score, ~value::DOUBLE) AS adjusted_variance FROM test_table GROUP BY group_id HAVING adjusted_variance IS NOT NULL;
+CREATE TABLE another_table (a DOUBLE, b TIMESTAMP, c VARCHAR(255));
+INSERT INTO another_table (a, b, c) VALUES (1.5, '2023-01-05 00:00:00', 'test1'), (2.1, NULL, 'test2'), (3.3, '2023-01-06 00:00:00', 'test3');
+SELECT a, variance(a, variance(score, score)) AS combined_variance FROM (SELECT a FROM another_table WHERE c IS NOT NULL) AS outer_subquery JOIN (SELECT score FROM test_table WHERE score IS NOT NULL) AS inner_subquery ON outer_subquery.a = inner_subquery.score;
+SELECT COUNT(*), ~value FROM test_table GROUP BY value HAVING COUNT(*) = (SELECT COUNT(*) FROM test_table WHERE score IS NOT NULL);
+SELECT ~('110110'::BITSTRING) AS not_value, variance(score, 4.0) AS sample_variance FROM test_table WHERE group_id = (SELECT MAX(group_id) FROM test_table);
+SELECT DISTINCT group_id, variance(score, NULLIF(score, 100.0)) AS filtered_variance FROM test_table GROUP BY group_id HAVING filtered_variance IS NOT NULL;

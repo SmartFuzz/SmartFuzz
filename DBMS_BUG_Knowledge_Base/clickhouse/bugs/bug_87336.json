@@ -1,0 +1,24 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/87336",
+  "title": "Logical error: '(isConst() || isSparse()) ? getDataType() == rhs.getDataType() : typeid(*this) == typeid(rhs)' during TTL merge",
+  "vulnerable_database": "ClickHouse",
+  "date": "2025-09-19T12:25:13Z",
+  "vulnerable_version": "",
+  "description": "### Describe the bug\nLogical error: '(isConst() || isSparse()) ? getDataType() == rhs.getDataType() : typeid(*this) == typeid(rhs)'\n### How to reproduce\n``` sql\nCREATE TABLE ttl_group_by__fuzz_13\n(\nd Date,\ni LowCardinality(Float32),\nv LowCardinality(Nullable(UInt64))\n)\nENGINE = MergeTree\nORDER BY (toStartOfMonth(d), i % 10)\nTTL d + toIntervalYear(10) GROUP BY toStartOfMonth(d), i % 10 SET d = any(toStartOfMonth(d)), i = any(i % 10), v = sum(v), d + toIntervalYear(40) GROUP BY toStartOfMonth(d) SET d = any(toStartOfMonth(d)), v = sum(v)\nSETTINGS allow_suspicious_low_cardinality_types = 1;\nINSERT INTO ttl_group_by__fuzz_13 SELECT toDate('2000-10-10'), number, number FROM numbers(100);\nINSERT INTO ttl_group_by__fuzz_13 SELECT toDate('1970-10-10'), number, number FROM numbers(100);\nOPTIMIZE TABLE ttl_group_by__fuzz_13;\n```\n### Error message and/or stacktrace\n_No response_",
+  "poc": [
+    "CREATE TABLE ttl_group_by__fuzz_13\n(\n    d Date,\n    i LowCardinality(Float32),\n    v LowCardinality(Nullable(UInt64))\n)\nENGINE = MergeTree\nORDER BY (toStartOfMonth(d), i % 10)\nTTL d + toIntervalYear(10) GROUP BY toStartOfMonth(d), i % 10 SET d = any(toStartOfMonth(d)), i = any(i % 10), v = sum(v), d + toIntervalYear(40) GROUP BY toStartOfMonth(d) SET d = any(toStartOfMonth(d)), v = sum(v)\nSETTINGS allow_suspicious_low_cardinality_types = 1;",
+    "INSERT INTO ttl_group_by__fuzz_13 SELECT toDate('2000-10-10'), number, number FROM numbers(100);",
+    "INSERT INTO ttl_group_by__fuzz_13 SELECT toDate('1970-10-10'), number, number FROM numbers(100);",
+    "OPTIMIZE TABLE ttl_group_by__fuzz_13;"
+  ],
+  "key_bug_features": [
+    "Logical error during TTL merge with LowCardinality types"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE ttl_group_by__fuzz_14 (d Date, i LowCardinality(Int32), v LowCardinality(Nullable(Float64))) ENGINE = MergeTree ORDER BY (toStartOfMonth(d), i % 5) TTL d + toIntervalYear(5) GROUP BY toStartOfMonth(d), i % 5 SET d = any(toStartOfMonth(d)), i = any(i % 5), v = avg(v) SETTINGS allow_suspicious_low_cardinality_types = 1;",
+    "INSERT INTO ttl_group_by__fuzz_14 SELECT toDate('2005-01-01'), number % 10, number * 1.5 FROM numbers(50);",
+    "INSERT INTO ttl_group_by__fuzz_14 SELECT toDate('2010-06-15'), number % 10, NULL FROM numbers(50);",
+    "SELECT d, i, sum(v) FROM ttl_group_by__fuzz_14 GROUP BY d, i HAVING sum(v) IS NOT NULL;",
+    "OPTIMIZE TABLE ttl_group_by__fuzz_14;"
+  ]
+}

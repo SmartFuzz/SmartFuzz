@@ -1,0 +1,11 @@
+CREATE TABLE test_data (id SERIAL PRIMARY KEY, ip_address INET, description VARCHAR(255));
+INSERT INTO test_data (ip_address, description) VALUES (inet '192.168.1.5', 'Sample IP 1'), (inet '192.168.1.10', 'Sample IP 2');
+CREATE TABLE more_data (value INT, detail VARCHAR(100));
+INSERT INTO more_data (value, detail) VALUES (1, 'Detail A'), (2, 'Detail B'), (NULL, 'Detail C');
+SELECT listagg(detail) OVER (PARTITION BY value) FROM more_data WHERE value << inet '192.168.1.0/24';
+SELECT id, listagg(description) FROM test_data WHERE ip_address << (SELECT inet '192.168.1.0/24') GROUP BY id HAVING COUNT(*) > 0;
+SELECT id, COUNT(*) FROM test_data WHERE description IS NOT NULL GROUP BY id HAVING COUNT(*) > 1;
+SELECT listagg('IP: ' || description) AS aggregated_description FROM test_data WHERE ip_address << inet '192.168.1.0/24' GROUP BY id;
+SELECT id, listagg(value) OVER (ORDER BY value) AS aggregated_values FROM more_data WHERE detail IS NOT NULL;
+SELECT (SELECT listagg(detail) FROM more_data WHERE value IS NULL) AS null_values_aggregation;
+SELECT listagg('Active IP: ' || description) FROM test_data WHERE id IN (SELECT id FROM more_data WHERE value IS NOT NULL) AND ip_address << inet '192.168.1.10/32';

@@ -1,0 +1,19 @@
+{
+    "function": "http_request_status",
+    "operator": ">",
+    "sql_array": [
+        "CREATE TABLE test_requests (id INT PRIMARY KEY, status_message VARCHAR(255), response_code INT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO test_requests (id, status_message, response_code) VALUES (1, 'Initial Status', 200);",
+        "SELECT http_request_status(CASE WHEN response_code > 199 THEN 'HTTP/1.1 200 OK' ELSE 'HTTP/1.1 400 Bad Request' END) AS reply_status FROM test_requests WHERE id = 1;",
+        "INSERT INTO test_requests (id, status_message, response_code) VALUES (2, 'Redirecting...', NULL);",
+        "SELECT http_request_status('HTTP/1.1 302 Found') AS redirect_status WHERE (SELECT COUNT(*) FROM test_requests WHERE response_code IS NULL) > 0;",
+        "SELECT http_request_status('HTTP/1.1 ' || (SELECT MAX(CASE WHEN response_code IS NOT NULL THEN response_code ELSE 0 END) FROM test_requests)) AS max_status FROM test_requests;",
+        "INSERT INTO test_requests (id, status_message, response_code) VALUES (3, 'Error Status', -1);",
+        "SELECT http_request_status('HTTP/1.1 500 Internal Server Error') AS error_status WHERE response_code < 200;",
+        "CREATE TABLE temp_requests (request_id INT, request_status VARCHAR(255), request_date DATE);",
+        "INSERT INTO temp_requests (request_id, request_status, request_date) VALUES (1, NULL, CURRENT_DATE);",
+        "SELECT request_id, http_request_status(COALESCE(request_status, 'HTTP/1.1 400 Bad Request')) AS final_status FROM temp_requests WHERE request_date > '2021-01-01' AND request_id > 0;",
+        "UPDATE test_requests SET status_message = 'Updated Status' WHERE id = 2 AND response_code IS NULL;",
+        "SELECT http_request_status('HTTP/1.1 404 Not Found') AS not_found_status WHERE EXISTS (SELECT 1 FROM test_requests WHERE status_message LIKE '%Error%');"
+    ]
+}

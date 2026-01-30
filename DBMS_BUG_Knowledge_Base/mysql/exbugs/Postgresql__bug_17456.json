@@ -1,0 +1,21 @@
+{
+  "url": "https://www.postgresql.org/message-id/17456-484784da23004b59%40postgresql.org",
+  "title": "BUG #17456: pg_dump creates dump that does not fully respect operator schema location",
+  "description": "The following bug has been logged on the website:\nBug reference:      17456\nLogged by:          Andrew Grossman\nEmail address:      agrossman(at)gmail(dot)com\nPostgreSQL version: 14.2\nOperating system:   MacOS 12.3\nDescription:\nI have a case where an AFTER ROW trigger has a condition comparing two ltree\nfields. The ltree extension is installed in a different schema than the\ntriggered table is. Upon restoration, the following error is encountered:\npsql:/tmp/bugreport.sql:93: ERROR:  42883: operator does not exist:\nutil.ltree = util.ltree\nLINE 1: ...N my_schema.my_table FOR EACH ROW WHEN ((new.path IS DISTINC...\n^\nHINT:  No operator matches the given name and argument types. You might need\nto add explicit type casts.\nLOCATION:  op_error, parse_oper.c:731\nThe following sql will reproduce this case:\n===================================\nCREATE SCHEMA my_schema;\nCREATE SCHEMA util;\nCREATE EXTENSION ltree WITH SCHEMA util;\nSET SEARCH_PATH=my_schema,util;\nCREATE TABLE my_schema.my_table\n(path ltree);\nCREATE FUNCTION my_schema.noop() RETURNS trigger\nLANGUAGE plpgsql\nAS $$\nBEGIN\nRETURN NEW;\nEND;\n$$;\nCREATE TRIGGER path_update_after_trg\nAFTER UPDATE ON my_schema.my_table\nFOR EACH ROW WHEN ((new.path IS DISTINCT FROM old.path))\nEXECUTE FUNCTION my_schema.noop();\n===================================\nend of reproduction setup sql.\nExecution looks like:\n===================================\n> createdb my_restore_db; pg_dump my_source_db | psql my_restore_db\n...\nCREATE TABLE\nTime: 15.558 ms\nALTER TABLE\nTime: 0.293 ms\nCOPY 0\nTime: 0.216 ms\nERROR:  42883: operator does not exist: util.ltree = util.ltree\nLINE 1: ...N my_schema.my_table FOR EACH ROW WHEN ((new.path IS DISTINC...\n^\nHINT:  No operator matches the given name and argument types. You might need\nto add explicit type casts.\nLOCATION:  op_error, parse_oper.c:731\nTime: 3.546 ms\n===============================\nThis is against server 13.6 with client 14.2.\nMy workaround for the current bug is to cast the comparison fields to text.",
+  "date": "2022-04-05 15:24:36",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE SCHEMA test_schema;",
+    "CREATE TABLE test_schema.test_table (id INT AUTO_INCREMENT PRIMARY KEY, path TEXT NOT NULL, description TEXT);",
+    "CREATE TRIGGER path_change_trigger AFTER UPDATE ON test_schema.test_table FOR EACH ROW IF (NEW.path <> OLD.path) THEN SET NEW.path = NEW.path;",
+    "END IF;",
+    "INSERT INTO test_schema.test_table (path, description) VALUES ('Top.Science.Astronomy', 'Initial entry');",
+    "SELECT * FROM test_schema.test_table;"
+  ],
+  "key_bug_features": [
+    "AFTER ROW trigger with ltree fields in different schemas"
+  ]
+}

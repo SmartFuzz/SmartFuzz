@@ -1,0 +1,21 @@
+{
+    "function": "lengthUTF8",
+    "operator": "[x1, ...]",
+    "sql_array": [
+        "CREATE TABLE test_strings (id UInt32, utf8_data String, numeric_data UInt64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_strings (id, utf8_data, numeric_data) VALUES (1, 'hello', 123), (2, '\u041f\u0440\u0438\u0432\u0435\u0442', 456), (3, '', 0), (4, NULL, 999);",
+        "SELECT id, lengthUTF8(utf8_data) AS utf8_length, numeric_data FROM test_strings WHERE numeric_data > 100;",
+        "SELECT id, (SELECT lengthUTF8(utf8_data) FROM test_strings WHERE numeric_data = 456) AS length_from_subquery FROM test_strings;",
+        "SELECT id, ARRAY[lengthUTF8(utf8_data), numeric_data] AS combined_array FROM test_strings WHERE utf8_data IS NOT NULL;",
+        "SELECT id, lengthUTF8(IFNULL(utf8_data, 'default')) AS length_with_default FROM test_strings;",
+        "SELECT id, lengthUTF8(concat(utf8_data, ' world')), (SELECT COUNT() FROM test_strings WHERE numeric_data > 500) AS high_count FROM test_strings GROUP BY id HAVING high_count > 0;",
+        "SELECT id, lengthUTF8(ARRAY_JOIN([utf8_data, 'test'])) AS length_with_array_join FROM test_strings WHERE utf8_data IS NOT NULL;",
+        "SELECT id, utf8_data FROM test_strings WHERE lengthUTF8(utf8_data) = (SELECT MAX(lengthUTF8(utf8_data)) FROM test_strings);",
+        "INSERT INTO test_strings (id, utf8_data, numeric_data) VALUES (5, '\u3053\u3093\u306b\u3061\u306f', 789);",
+        "CREATE TEMPORARY TABLE temp AS SELECT lengthUTF8(utf8_data) AS temp_length, id FROM test_strings;",
+        "SELECT t.id, t.temp_length FROM temp t JOIN test_strings s ON t.id = s.id WHERE s.utf8_data IS NOT NULL;",
+        "SELECT id, lengthUTF8(utf8_data) AS length, numeric_data FROM test_strings WHERE numeric_data = ANY([123, 456, 999]);",
+        "SELECT id, lengthUTF8(NULLIF(utf8_data, '')) AS length_no_empty FROM test_strings;",
+        "SELECT id, utf8_data, (SELECT SUM(numeric_data) FROM test_strings) AS total_numeric FROM test_strings GROUP BY utf8_data HAVING lengthUTF8(utf8_data) > 5;"
+    ]
+}

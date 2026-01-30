@@ -1,0 +1,21 @@
+{
+    "function": "ngramSearchCaseInsensitiveUTF8",
+    "operator": "SELECT a AND b",
+    "sql_array": [
+        "CREATE TABLE test_strings (id Int32, haystack String, needle String);",
+        "INSERT INTO test_strings (id, haystack, needle) VALUES (1, '\u0430\u0431\u0432\u0413\u0414\u0415\u0451\u0436\u0437', '\u0410\u0431\u0432\u0433\u0434\u0415\u0401\u0436\u0437'), (2, 'example haystack', 'Sample'), (3, '', 'empty');",
+        "SELECT ngramSearchCaseInsensitiveUTF8(haystack, needle) AS likelihood FROM test_strings WHERE likelihood > 0.1 AND (haystack IS NOT NULL);",
+        "SELECT id, (SELECT ngramSearchCaseInsensitiveUTF8(haystack, needle) FROM test_strings WHERE id = t.id AND needle = 'Sample') AS search_result FROM test_strings AS t WHERE search_result IS NOT NULL ORDER BY search_result DESC;",
+        "SELECT ngramSearchCaseInsensitiveUTF8(haystack, 'extreme') AS extreme_case, id FROM test_strings HAVING extreme_case < 0.5 AND (haystack AND needle) IS NOT NULL;",
+        "CREATE TABLE test_numeric (id Int32, num_value Float32, str_value String);",
+        "INSERT INTO test_numeric (id, num_value, str_value) VALUES (1, 1.23, 'One Point Two Three'), (2, 0.987, 'Zero Point Nine Eight Seven'), (3, 0, NULL);",
+        "SELECT ngramSearchCaseInsensitiveUTF8(CAST(str_value AS String), CAST(num_value AS String)) AS numeric_similarity FROM test_numeric WHERE (str_value IS NOT NULL) AND (num_value > 0 OR str_value IS NULL);",
+        "SELECT t1.id, (SELECT ngramSearchCaseInsensitiveUTF8(t1.haystack, t2.needle) FROM test_strings AS t2 WHERE t1.id = t2.id) AS search_similarity FROM test_strings AS t1 JOIN test_strings AS t2 ON ngramSearchCaseInsensitiveUTF8(t1.haystack, t2.needle) > 0.5 WHERE t1.haystack IS NOT NULL;",
+        "CREATE TABLE test_empty (id Int32, haystack String, needle String);",
+        "INSERT INTO test_empty (id, haystack, needle) VALUES (1, '', ''), (2, NULL, 'No haystack');",
+        "SELECT ngramSearchCaseInsensitiveUTF8(haystack, needle) AS empty_case FROM test_empty WHERE (haystack IS NOT NULL OR needle IS NOT NULL) AND (haystack AND needle) IS NOT NULL;",
+        "CREATE TABLE test_strings_extended (id Int32, str_value String, num_value Int32, flag UInt8);",
+        "INSERT INTO test_strings_extended (id, str_value, num_value, flag) VALUES (1, 'some string', 42, 0), (2, 'Another STRING', 24, 1);",
+        "SELECT id, ngramSearchCaseInsensitiveUTF8(str_value, 'string') AS match_case FROM test_strings_extended WHERE flag = 1 AND num_value > 20 ORDER BY match_case DESC;"
+    ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/42442",
+  "title": "reorganize partition can not concurrent run ddl with other ddl",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n1. session 1\r\n```sql\r\ncreate database db1;\r\nCREATE TABLE `t1` (\r\n    `id` bigint(20) NOT NULL AUTO_INCREMENT,\r\n    `k` int(11) NOT NULL DEFAULT '0',\r\n    `c` char(120) NOT NULL DEFAULT '',\r\n    `pad` char(60) NOT NULL DEFAULT '',\r\n    PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,\r\n    KEY `k_1` (`k`)\r\n  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin\r\n  PARTITION BY RANGE (`id`)\r\n  (PARTITION `p0` VALUES LESS THAN (2000000),\r\n   PARTITION `p1` VALUES LESS THAN (4000000),\r\n   PARTITION `p2` VALUES LESS THAN (6000000),\r\n   PARTITION `p3` VALUES LESS THAN (8000000),\r\n   PARTITION `p4` VALUES LESS THAN (10000000),\r\n   PARTITION `p5` VALUES LESS THAN (MAXVALUE));\r\ninsert into t1(k, c, pad) values (1, 'a', 'beijing'), (2, 'b', 'chengdu');\r\ninsert into t1(k, c, pad) select k, c, pad from t1 limit 2000000; -- some times\r\nalter table t1 reorganize partition p0, p1, p2, p3, p4 into( partition pnew values less than (10000000));\r\n```\r\n2. session 2\r\n```sql\r\ncreate database db2;\r\nuse db2;\r\ncreate table t01(a int, b int);\r\n```\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\nsession 2 create table t01 will not be blocked by reorganize partition\r\n### 3. What did you see instead (Required)\r\ncreate table ddl was blocked by reorganize partition\r\n![图片](https://user-images.githubusercontent.com/10184437/226569379-816835d4-a8b0-4648-9f9c-1f5093233319.png)\r\n\r\n### 4. What is your TiDB version? (Required)\r\n```sql\r\npartitioninsert_1647963896275> select tidb_version();\r\n+-----------------------------------------------------------+\r\n| tidb_version()                                            |\r\n+-----------------------------------------------------------+\r\n| Release Version: v7.0.0                                   |\r\n| Edition: Community                                        |\r\n| Git Commit Hash: fc166ffae8576ac3efb2f5abac848d5edbaf2657 |\r\n| Git Branch: heads/refs/tags/v7.0.0                        |\r\n| UTC Build Time: 2023-03-20 07:08:59                       |\r\n| GoVersion: go1.20.2                                       |\r\n| Race Enabled: false                                       |\r\n| TiKV Min Version: 6.2.0-alpha                             |\r\n| Check Table Before Drop: false                            |\r\n| Store: tikv                                               |\r\n+-----------------------------------------------------------+\r\n```\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2023-03-21T09:50:09Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE DATABASE db3;",
+    "CREATE TABLE t2 (id INT PRIMARY KEY, name VARCHAR(100) NOT NULL, age INT CHECK (age >= 0));",
+    "INSERT INTO t2 (id, name, age) VALUES (1, 'Alice', 30), (2, 'Bob', NULL);",
+    "ALTER TABLE t2 ADD COLUMN email VARCHAR(255);",
+    "ALTER TABLE t2 REORGANIZE PARTITION p0 INTO (PARTITION pnew VALUES LESS THAN (100));"
+  ],
+  "key_bug_features": [
+    "reorganize partition blocks concurrent DDL operations"
+  ]
+}

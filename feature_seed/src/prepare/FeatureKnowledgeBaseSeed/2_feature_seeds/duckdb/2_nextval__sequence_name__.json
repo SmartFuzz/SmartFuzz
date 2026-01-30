@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id INTEGER PRIMARY KEY, sequence_value INTEGER, event_date DATE, nullable_col INTEGER);
+INSERT INTO test_table VALUES (1, nextval('my_sequence_name'), DATE '2023-10-01', NULL);
+INSERT INTO test_table VALUES (2, nextval('my_sequence_name'), DATE '2023-10-02', 5);
+INSERT INTO test_table VALUES (3, nextval('my_sequence_name'), DATE '2023-10-03', 10);
+CREATE SEQUENCE my_sequence_name START WITH 1 INCREMENT BY 1;
+SELECT id, sequence_value, event_date, nextval('my_sequence_name') - event_date AS days_difference FROM test_table WHERE event_date > DATE '2023-09-30';
+SELECT id, sequence_value, event_date, (nextval('my_sequence_name')::TEXT || ' days ago') AS relative_time FROM test_table;
+SELECT id, SUM(nullable_col) AS total_nullable, nextval('my_sequence_name') AS sequence_marker FROM test_table GROUP BY id HAVING total_nullable IS NULL;
+WITH seq_values AS (SELECT nextval('my_sequence_name') AS next_val, DATE '2023-10-01' AS reference_date) SELECT id, event_date, next_val - event_date AS days_difference FROM test_table, seq_values WHERE event_date < reference_date;
+UPDATE test_table SET nullable_col = nextval('my_sequence_name') - 1 WHERE nullable_col IS NULL;
+SELECT AVG(sequence_value) AS average_sequence FROM test_table WHERE id IN (SELECT id FROM test_table WHERE nullable_col IS NOT NULL) HAVING AVG(sequence_value) > 5;

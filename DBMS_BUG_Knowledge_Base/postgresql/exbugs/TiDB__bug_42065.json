@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/42065",
+  "title": "executor: global index join returns wrong result",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\nset `enable-global-index=true` in config/config.toml.example\r\n\r\n```\r\ncreate table t1 (id int, c int) partition by range (c) (\r\npartition p0 values less than (4),\r\npartition p1 values less than (7),\r\npartition p2 values less than (10));\r\nalter table t1 add unique idx(id);\r\ninsert into t1 values (1,3), (3,4), (5,6), (7,9);\r\ncreate table t2 (id int, c int);\r\ninsert into t2 values (1, 3);\r\nselect /*+ INL_JOIN(t1, t2) */ * from t1 partition(p0) inner join t2 on t1.id = t2.id;\r\nselect /*+ INL_JOIN(t1, t2) */ t1.id from t1 partition(p0) inner join t2 on t1.id = t2.id;\r\n```\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\nThe first select result: 1 3 1 3\r\nThe second select result:  1\r\n\r\n### 3. What did you see instead (Required)\r\nThe first select result: empty set\r\nThe second select result:  empty set\r\n<img width=\"695\" alt=\"image\" src=\"https://user-images.githubusercontent.com/20724552/223982691-ea2078f3-5ef2-4357-9a40-b4f4d16092bf.png\">\r\n\r\n### 4. What is your TiDB version? (Required)\r\n                                                                |\r\n+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| Release Version: v6.7.0-alpha-205-g29adb0aa8-dirty\r\nEdition: Community\r\nGit Commit Hash: 29adb0aa86705d4728e1c9fd28a3afdc705c969a\r\nGit Branch: HEAD\r\nUTC Build Time: 2023-03-09 09:40:00\r\nGoVersion: go1.19.4\r\nRace Enabled: false\r\nTiKV Min Version: 6.2.0-alpha\r\nCheck Table Before Drop: false\r\nStore: unistore |\r\n+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n1 row in set (0.00 sec)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2023-03-09T09:43:03Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t3 (id INT, c VARCHAR(10), d DATE);",
+    "INSERT INTO t3 VALUES (1, 'test', '2023-01-01'), (2, 'example', '2023-02-01');",
+    "CREATE TABLE t4 (id INT, c INT, CONSTRAINT unique_id_c UNIQUE (id, c));",
+    "INSERT INTO t4 VALUES (1, 3), (2, 4), (3, 5);",
+    "SELECT t3.id, t3.c FROM t3 INNER JOIN t4 ON t3.id = t4.id WHERE t4.c IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "global index join with partitioned tables returns incorrect results"
+  ]
+}

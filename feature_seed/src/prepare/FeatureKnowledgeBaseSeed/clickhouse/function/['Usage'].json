@@ -1,0 +1,18 @@
+[
+    "CREATE TABLE remote_table (id Int32, name String) ENGINE = MergeTree() ORDER BY id;",
+    "CREATE TABLE distributed_table AS remote_table ENGINE = Distributed('cluster_name', 'remote_table', rand());",
+    "INSERT INTO remote_table VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie');",
+    "SELECT * FROM remote_table;",
+    "SELECT * FROM remote_table WHERE id IN (SELECT id FROM remote_table WHERE name LIKE 'A%');",
+    "SELECT count(*) FROM remote_table WHERE id IN (SELECT id FROM remote_table WHERE id > 1);",
+    "SELECT r1.id, r2.name FROM remote_table AS r1 JOIN remote_table AS r2 ON r1.id = r2.id WHERE r1.name <> r2.name;",
+    "SELECT id, name FROM remote_table WHERE id IN (SELECT id FROM remote_table ORDER BY id OFFSET 1 LIMIT 1);",
+    "SELECT * FROM remote_table WHERE id IN (SELECT id FROM remote_table WHERE name != 'Alice') AND id < 3;",
+    "SELECT r1.id, r1.name FROM remote_table AS r1 LEFT JOIN remote_table AS r2 ON r1.id = r2.id WHERE r2.id IS NULL;",
+    "SELECT DISTINCT name FROM (SELECT name FROM remote_table UNION ALL SELECT name FROM remote_table WHERE id < 3);",
+    "SELECT id, groupArray(name) as names FROM remote_table GROUP BY id;",
+    "CREATE TABLE IF NOT EXISTS new_table (value Int32) ENGINE = MergeTree() ORDER BY value;",
+    "INSERT INTO new_table SELECT id FROM distributed_table;",
+    "SELECT value FROM new_table WHERE value BETWEEN (SELECT MIN(id) FROM remote_table) AND (SELECT MAX(id) FROM remote_table);",
+    "SELECT count(*), max(id) FROM remote_table WHERE id IN (SELECT DISTINCT id FROM remote_table) GROUP BY name HAVING count(*) > 1;"
+]

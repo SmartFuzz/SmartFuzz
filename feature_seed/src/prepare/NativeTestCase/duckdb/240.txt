@@ -1,0 +1,17 @@
+ATTACH ':memory:' AS db1;
+ATTACH ':memory:' as other;
+USE db1;
+CREATE TABLE db1.integers(i INTEGER);
+INSERT INTO db1.integers VALUES (1), (2), (3), (NULL);
+CREATE VIEW db1.integers_view AS SELECT * FROM integers;
+BEGIN TRANSACTION;
+CREATE TABLE other.dont_export_me (i integer);
+EXPORT DATABASE db1 TO '__TEST_DIR__/export_test' (FORMAT CSV);
+rollback;
+drop table db1.integers CASCADE;
+SELECT * FROM integers;
+drop view integers_view;
+IMPORT DATABASE '__TEST_DIR__/export_test';
+SELECT * FROM integers ORDER BY i NULLS LAST;
+SELECT * FROM integers_view order by i NULLS LAST;
+SELECT * FROM other.dont_export_me;

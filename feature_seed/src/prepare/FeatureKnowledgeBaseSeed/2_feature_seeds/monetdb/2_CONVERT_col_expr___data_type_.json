@@ -1,0 +1,14 @@
+CREATE TABLE test_data (id INT, timestamp_col TIMESTAMP, value_string VARCHAR(255));
+INSERT INTO test_data (id, timestamp_col, value_string) VALUES (1, TIMESTAMP '2023-01-01 12:00:00', '100.000'), (2, TIMESTAMP '2023-01-02 14:00:00', NULL), (3, TIMESTAMP '2023-02-03 18:30:00', 'abc');
+SELECT id, CONVERT(value_string, DECIMAL(10, 2)) - (CONVERT(timestamp_col, DECIMAL(10, 5)) - CONVERT(TIMESTAMP '2022-12-31 00:00:00', DECIMAL(10, 5))) AS result FROM test_data WHERE value_string IS NOT NULL;
+SELECT id, CONVERT(value_string, DECIMAL(10, 3)) AS converted_value, (CONVERT(timestamp_col, DECIMAL(10, 5)) - CONVERT(TIMESTAMP '2023-03-01 00:00:00', DECIMAL(10, 5))) AS time_diff FROM test_data WHERE converted_value IS NOT NULL HAVING time_diff > 0 ORDER BY time_diff DESC;
+SELECT id, value_string FROM test_data WHERE value_string IS NOT NULL AND (CONVERT(value_string, DECIMAL(10, 2)) - 50) IS NULL;
+CREATE TABLE another_data (record_id INT, event_time TIMESTAMP, status VARCHAR(50));
+INSERT INTO another_data (record_id, event_time, status) VALUES (1, TIMESTAMP '2023-01-01 12:30:00', 'Active'), (2, TIMESTAMP '2023-01-02 15:00:00', NULL), (3, TIMESTAMP '2023-01-03 16:00:00', 'Inactive');
+SELECT td.id, ad.status FROM test_data td JOIN another_data ad ON (CONVERT(td.value_string, TIMESTAMP) IS NOT NULL AND ad.event_time - td.timestamp_col > INTERVAL '1 day') GROUP BY td.id, ad.status HAVING COUNT(ad.record_id) > 0;
+SELECT id, (CONVERT(value_string, DECIMAL(10, 3)) - 50) AS adjusted_value FROM test_data WHERE adjusted_value < 0 OR adjusted_value IS NULL;
+SELECT DISTINCT CONVERT((SELECT COUNT(*) FROM another_data WHERE status IS NOT NULL), DECIMAL(10, 2)) AS count_active FROM test_data WHERE id < 2;
+ALTER TABLE test_data ADD COLUMN new_col DECIMAL(10, 3);
+UPDATE test_data SET new_col = NULL WHERE id = 3;
+CREATE TEMPORARY TABLE temp_events AS SELECT id, status FROM another_data WHERE status IS NOT NULL;
+SELECT temp_events.id, CONVERT(sum(CONVERT(temp_events.status, DECIMAL(10, 0))), DECIMAL(10, 2)) FROM temp_events GROUP BY temp_events.id HAVING COUNT(temp_events.id) > 1;

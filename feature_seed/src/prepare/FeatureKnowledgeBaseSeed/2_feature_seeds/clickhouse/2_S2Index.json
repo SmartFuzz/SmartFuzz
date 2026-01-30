@@ -1,0 +1,11 @@
+CREATE TABLE geo_data (id UInt32, point_tuple Tuple(Latitude Float64, Longitude Float64), s2_index UInt64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO geo_data VALUES (1, (37.7749, -122.4194), geoToS2(37.7749, -122.4194));
+INSERT INTO geo_data VALUES (2, (34.0522, -118.2437), geoToS2(34.0522, -118.2437));
+INSERT INTO geo_data VALUES (3, (40.7128, -74.0060), geoToS2(40.7128, -74.0060));
+INSERT INTO geo_data VALUES (4, (51.5074, -0.1278), geoToS2(51.5074, -0.1278));
+SELECT id, s2ToGeo(S2Index(point_tuple)) AS geo_coordinates FROM geo_data WHERE arrayJoin(point_tuple) > 0;
+SELECT COUNT(*) FROM geo_data WHERE s2_index IS NULL OR s2_index NOT IN (SELECT s2_index FROM geo_data WHERE id = 1);
+SELECT id, tupleElement(point_tuple, 1) AS latitude FROM geo_data WHERE s2_index = geoToS2(tupleElement(point_tuple, 1), tupleElement(point_tuple, 2)) ORDER BY latitude;
+WITH geoToS2((45.0, 90.0)) AS s2_val SELECT id FROM geo_data WHERE s2_index = s2_val;
+SELECT AVG(tupleElement(point_tuple, 1)) AS avg_latitude FROM geo_data GROUP BY s2_index HAVING avg_latitude > 0;
+SELECT id FROM geo_data WHERE s2_index IS NOT NULL AND tupleElement(point_tuple, 2) < 0;

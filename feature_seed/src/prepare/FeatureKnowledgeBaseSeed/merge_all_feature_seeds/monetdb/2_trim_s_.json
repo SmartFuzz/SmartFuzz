@@ -1,0 +1,15 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, text_col VARCHAR(50), timestamp_col TIMESTAMP(6));
+INSERT INTO test_table (id, text_col, timestamp_col) VALUES (1, trim(E'\t\n  leading and trailing whitespace  \t\n'), timestamp(6) '2020-09-28 18:40:05.123456');
+INSERT INTO test_table (id, text_col, timestamp_col) VALUES (2, '', timestamp(6) '2021-05-01 10:15:30.654321');
+SELECT id, trim(text_col) AS trimmed_text, timestamp_col FROM test_table WHERE timestamp_col > timestamp(6) '2020-01-01 00:00:00';
+SELECT t1.id, trim(t1.text_col) AS trimmed_text, t2.timestamp_col FROM test_table t1 JOIN test_table t2 ON t1.id = t2.id WHERE t1.id IN (SELECT id FROM test_table WHERE text_col IS NOT NULL) AND t2.timestamp_col IS NOT NULL;
+SELECT id, COUNT(*) FROM (SELECT t1.id, trim(t1.text_col) AS trimmed_text FROM test_table t1 WHERE trimmed_text != '' GROUP BY t1.id HAVING COUNT(trimmed_text) > 0) AS subquery GROUP BY id;
+SELECT id, trim(text_col), timestamp_col FROM test_table WHERE trim(text_col) = '' OR timestamp_col IS NULL;
+SELECT t.id, trim(t.text_col), timestamp(t.timestamp_col) AS converted_timestamp FROM test_table t WHERE t.text_col IS NOT NULL AND trim(t.text_col) <> '' ORDER BY converted_timestamp DESC;
+SELECT id FROM (SELECT trim(text_col) AS trimmed_text FROM test_table WHERE timestamp_col IS NOT NULL) AS subquery HAVING trimmed_text LIKE '  %';
+CREATE TABLE another_table (id INT PRIMARY KEY, related_id INT, text_col VARCHAR(100), CONSTRAINT fk_related FOREIGN KEY (related_id) REFERENCES test_table(id));
+INSERT INTO another_table (id, related_id, text_col) VALUES (1, 1, trim(E'\t\facade\t\n'));
+SELECT a.id, trim(a.text_col), a.related_id, t.timestamp_col FROM another_table a JOIN test_table t ON a.related_id = t.id WHERE t.timestamp_col > timestamp(6) '2020-01-01 00:00:00' AND trim(a.text_col) IS NOT NULL;
+ALTER TABLE test_table ADD COLUMN additional_col VARCHAR(255);
+UPDATE test_table SET additional_col = trim(text_col) WHERE text_col IS NOT NULL;
+DROP TABLE another_table;

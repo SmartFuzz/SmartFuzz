@@ -1,0 +1,16 @@
+{
+    "function": "qgramnormalize(s)",
+    "operator": "<<",
+    "sql_array": [
+        "CREATE TABLE test_data (id INT PRIMARY KEY, ip_address INET, notes VARCHAR(255));",
+        "INSERT INTO test_data (id, ip_address, notes) VALUES (1, inet '192.168.1.5', 'Hello World!'), (2, inet '192.168.1.6', 'Test \u20ac50!');",
+        "SELECT qgramnormalize(notes) FROM test_data WHERE ip_address << inet '192.168.1.0/24';",
+        "SELECT id, qgramnormalize(notes) AS normalized_notes FROM test_data WHERE qgramnormalize(notes) IS NOT NULL ORDER BY normalized_notes DESC;",
+        "SELECT id, inet '192.168.1.5' << ip_address AS is_contained_by FROM test_data WHERE qgramnormalize(notes) IS NOT NULL HAVING is_contained_by = TRUE;",
+        "SELECT id, (SELECT COUNT(*) FROM test_data WHERE qgramnormalize(notes) IS NOT NULL AND ip_address << inet '192.168.1.0/24') AS count_valid_notes FROM test_data;",
+        "CREATE TABLE additional_test (user_id INT, user_ip INET, user_notes VARCHAR(255));",
+        "INSERT INTO additional_test (user_id, user_ip, user_notes) VALUES (1, inet '10.0.0.1', 'Test String!'), (2, inet '10.0.0.0', NULL);",
+        "SELECT a.user_id, COALESCE(qgramnormalize(a.user_notes), 'No Notes') AS notes, a.user_ip FROM additional_test a JOIN test_data b ON a.user_ip << b.ip_address;",
+        "DELETE FROM test_data WHERE id = (SELECT id FROM test_data WHERE notes IS NULL LIMIT 1);"
+    ]
+}

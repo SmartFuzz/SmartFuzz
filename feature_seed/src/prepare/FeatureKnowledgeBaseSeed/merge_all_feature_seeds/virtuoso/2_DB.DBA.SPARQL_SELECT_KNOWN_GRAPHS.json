@@ -1,0 +1,16 @@
+CREATE GRAPH <http://example.com/mygraph>;
+SELECT GRAPH_IRI FROM (SELECT DB.DBA.SPARQL_SELECT_KNOWN_GRAPHS() as known_graphs) as t WHERE GRAPH_IRI = 'http://example.com/mygraph';
+SELECT COUNT(*) FROM (SELECT DB.DBA.SPARQL_SELECT_KNOWN_GRAPHS() as known_graphs WHERE GRAPH_IRI = 'http://example.com/mygraph') as t HAVING COUNT(*) = (SELECT COUNT(*) FROM DB.DBA.SPARQL_SELECT_KNOWN_GRAPHS() WHERE GRAPH_IRI LIKE 'http://example.com/%');
+CREATE TABLE TestTable (id INT, value VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO TestTable (id, value) VALUES (1, 'data1'), (2, 'data2');
+SELECT id, value FROM TestTable WHERE EXISTS (SELECT 1 WHERE DB.DBA.SPARQL_SELECT_KNOWN_GRAPHS() = 'http://example.com/mygraph');
+SELECT value FROM TestTable WHERE value IS NULL OR value = (SELECT GRAPH_IRI FROM DB.DBA.SPARQL_SELECT_KNOWN_GRAPHS() ORDER BY GRAPH_IRI LIMIT 1);
+SELECT * FROM TestTable WHERE id IN (SELECT id FROM TestTable WHERE DB.DBA.SPARQL_SELECT_KNOWN_GRAPHS() IS NOT NULL);
+CREATE TABLE AnotherTable (graph_uri VARCHAR(255), description TEXT);
+INSERT INTO AnotherTable (graph_uri, description) VALUES ('http://example.com/mygraph', 'A test graph'), ('http://example.com/othergraph', 'Another graph');
+SELECT a.graph_uri FROM AnotherTable a JOIN TestTable t ON a.graph_uri = t.value WHERE DB.DBA.SPARQL_SELECT_KNOWN_GRAPHS() = a.graph_uri AND t.id = 1;
+SELECT DISTINCT DB.DBA.SPARQL_SELECT_KNOWN_GRAPHS() FROM AnotherTable ORDER BY 1;
+CREATE TABLE EdgeCases (uri VARCHAR(255) NOT NULL UNIQUE, created_at TIMESTAMP DEFAULT NOW());
+INSERT INTO EdgeCases (uri) VALUES ('http://test/emptystring'), ('http://test/maxvalue');
+SELECT * FROM EdgeCases WHERE uri = (SELECT MAX(uri) FROM EdgeCases) AND DB.DBA.SPARQL_SELECT_KNOWN_GRAPHS() = uri;
+SELECT COUNT(*) FROM EdgeCases WHERE uri IS NOT NULL AND (SELECT COUNT(*) FROM DB.DBA.SPARQL_SELECT_KNOWN_GRAPHS()) > 0;

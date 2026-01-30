@@ -1,0 +1,13 @@
+CREATE TABLE test_dates (id INT, event_date DATE, timezone_offset INT);
+INSERT INTO test_dates VALUES (1, DATE '1990-01-01', 120), (2, DATE '1992-02-15', NULL), (3, DATE '2000-12-31', 60), (4, DATE '2023-01-01', 300);
+SELECT id, event_date, timezone_minute(event_date) AS minute_offset FROM test_dates WHERE timezone_minute(event_date) IS NOT NULL;
+SELECT id, event_date, timezone_minute(event_date) AS minute_offset, (timezone_minute(event_date) - INTERVAL 30 MINUTE) AS adjusted_offset FROM test_dates WHERE event_date < DATE '2005-01-01';
+SELECT DISTINCT id, (event_date + INTERVAL (timezone_minute(event_date) + 300) MINUTE) AS adjusted_date FROM test_dates ORDER BY adjusted_date;
+SELECT id, event_date, timezone_minute(event_date) AS minute_offset FROM (SELECT id, event_date, timezone_minute(event_date) FROM test_dates WHERE timezone_offset IS NOT NULL) AS subquery;
+CREATE TABLE test_events (event_name VARCHAR, event_date DATE, event_location VARCHAR);
+INSERT INTO test_events VALUES ('Event 1', DATE '1990-12-12', 'Location A'), ('Event 2', DATE '1992-02-15', 'Location B'), (NULL, DATE '2000-01-01', 'Location C');
+SELECT e.event_name, e.event_date, timezone_minute(e.event_date) AS minute_offset, t.event_location FROM test_events AS e JOIN test_dates AS t ON e.event_date = t.event_date WHERE t.timezone_offset IS NULL;
+WITH offset_dates AS (SELECT id, event_date, timezone_minute(event_date) AS minute_offset FROM test_dates) SELECT id, minute_offset, (minute_offset - (SELECT MIN(minute_offset) FROM offset_dates)) AS offset_diff FROM offset_dates WHERE minute_offset IS NOT NULL HAVING offset_diff < 60;
+SELECT (event_date - DATE '1992-02-15') AS date_difference, timezone_minute(event_date) FROM test_dates;
+DROP TABLE IF EXISTS temp_table;
+CREATE TEMP TABLE temp_table AS SELECT event_date, (timezone_minute(event_date) - INTERVAL 15 MINUTE) AS adjusted_time FROM test_dates WHERE timezone_offset IS NOT NULL;

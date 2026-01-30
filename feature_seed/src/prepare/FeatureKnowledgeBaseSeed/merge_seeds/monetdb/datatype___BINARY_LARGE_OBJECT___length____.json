@@ -1,0 +1,12 @@
+CREATE TABLE blobs_table (id SERIAL PRIMARY KEY, data BLOB);
+INSERT INTO blobs_table (data) VALUES (CAST('a' AS BLOB));
+INSERT INTO blobs_table (data) VALUES (CAST(Repeat('b', 2147483647) AS BLOB));
+INSERT INTO blobs_table (data) VALUES (CAST(Repeat('c', 1) AS BLOB));
+INSERT INTO blobs_table (data) VALUES (CAST(Repeat('d', 2147483646) AS BLOB));
+SELECT * FROM blobs_table WHERE LENGTH(data) BETWEEN 1 AND 2147483647;
+SELECT id FROM blobs_table WHERE LENGTH(data) = 2147483647;
+WITH RECURSIVE blob_generator AS (SELECT CAST('e' AS BLOB) AS data UNION ALL SELECT CAST(CONCAT(data, 'e') AS BLOB) FROM blob_generator WHERE LENGTH(data) < 2147483647) SELECT COUNT(*) FROM blob_generator;
+SELECT b1.id, b2.data FROM blobs_table b1 JOIN blobs_table b2 ON b1.id <> b2.id WHERE LENGTH(b1.data) > 1 AND LENGTH(b2.data) < 2147483647;
+CREATE TABLE other_table (id SERIAL PRIMARY KEY, blob_id INT REFERENCES blobs_table(id), description TEXT);
+INSERT INTO other_table (blob_id, description) SELECT id, 'Testing BLOB with length ' || LENGTH(data) FROM blobs_table;
+SELECT ot.description FROM other_table ot WHERE ot.blob_id IN (SELECT id FROM blobs_table WHERE LENGTH(data) = 1);

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/456",
+  "title": "Virtuoso is always changing the GeoSPARQL geometry type to the Virtuoso specific one when loading data",
+  "description": "Consider the following triples and load them into a Virtuoso installation:\n@prefix gsp:   <http://www.opengis.net/ont/geosparql#> .\n@prefix schema: <http://schema.org/> .\n@prefix geo:   <http://www.w3.org/2003/01/geo/wgs84_pos#> .\n@prefix locn:  <http://www.w3.org/ns/locn#> .\n@prefix dul:   <http://ontologydesignpatterns.org/ont/dul/DUL.owl#> .\n@prefix dc:    <http://purl.org/dc/elements/1.1/> .\n\n<http://data.linkedevents.org/location/028f1b02-d121-46f9-bff7-b5e5509a356c/>\n        a                     dul:Place ;\n        rdfs:label         \"Duomo di Milano - Duomo of Milan\" ;\n        dc:identifier      \"345483388889753\" ;\n        dc:publisher     <http://www.facebook.com> ;\n        schema:image  <https://fbcdn-sphotos-d-a.akamaihd.net/hphotos-ak-xpa1/t31.0-8/s720x720/901621_475672112537546_754871748_o.jpg> ;\n        schema:interactionCount   \"3964 Checkins\" , \"3996 Likes\" ;\n        schema:url                <http://www.duomomilano.it/it/> ;\n        geo:location              <http://data.linkedevents.org/location/028f1b02-d121-46f9-bff7-b5e5509a356c/geometry> .\n\n<http://data.linkedevents.org/location/028f1b02-d121-46f9-bff7-b5e5509a356c/geometry>\n        a              geo:Point ;\n        geo:lat        \"45.463925903103\"^^xsd:double ;\n        geo:long       \"9.1927945677761\"^^xsd:double ;\n        locn:geometry  \"POINT(9.1927945677761 45.463925903103)\"^^gsp:wktLiteral .\n\nRegardless of how this data is loaded into Virtuoso, we always get the following behavior which is the transformation of the triple\n<http://data.linkedevents.org/location/028f1b02-d121-46f9-bff7-b5e5509a356c/geometry>\n        locn:geometry  \"POINT(9.1927945677761 45.463925903103)\"^^gsp:wktLiteral .\n\ninto\n<http://data.linkedevents.org/location/028f1b02-d121-46f9-bff7-b5e5509a356c/geometry>\n        locn:geometry  \"POINT(9.1927945677761 45.463925903103)\"^^<http://www.openlinksw.com/schemas/virtrdf#Geometry>.\n\nWhy does Virtuoso change on the fly the GeoSPARQL datatype being used in the data by its own specific datatype? One can see this behavior when DESCRIBE-ing this resource or by simply running this query (see the results):\nSELECT *\nWHERE {\n <http://data.linkedevents.org/location/028f1b02-d121-46f9-bff7-b5e5509a356c/geometry> ?p ?o\n}",
+  "date": "2015-08-11 13:47:44",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE locations (id VARCHAR(255) PRIMARY KEY, label VARCHAR(255), identifier VARCHAR(255), publisher VARCHAR(255), image VARCHAR(255), interactionCount VARCHAR(255), url VARCHAR(255));",
+    "CREATE TABLE geometry (id VARCHAR(255) PRIMARY KEY, type VARCHAR(255), lat DOUBLE, long DOUBLE, wktLiteral VARCHAR(255));",
+    "INSERT INTO locations VALUES ('http://data.linkedevents.org/location/028f1b02-d121-46f9-bff7-b5e5509a356c/', 'Duomo di Milano - Duomo of Milan', '345483388889753', 'http://www.facebook.com', 'https://fbcdn-sphotos-d-a.akamaihd.net/hphotos-ak-xpa1/t31.0-8/s720x720/901621_475672112537546_754871748_o.jpg', '3964 Checkins, 3996 Likes', 'http://www.duomomilano.it/it/');",
+    "INSERT INTO geometry VALUES ('http://data.linkedevents.org/location/028f1b02-d121-46f9-bff7-b5e5509a356c/geometry', 'Point', 45.463925903103, 9.1927945677761, 'POINT(9.1927945677761 45.463925903103');",
+    "SELECT * FROM locations l JOIN geometry g ON l.id = g.id WHERE g.lat IS NOT NULL AND g.long IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "GeoSPARQL geometry type changes to Virtuoso specific type"
+  ]
+}

@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id UInt32, value String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table (id, value) VALUES (1, '123'), (2, 'abc'), (3, '456'), (4, 'NaN'), (5, '0xc0fe'), (6, '789.123');
+SELECT id, toUInt128OrZero(value) AS converted_value, converted_value != 0 AS is_non_zero FROM test_table WHERE converted_value != 0;
+SELECT id, COUNT(*) AS count_valid FROM (SELECT id, toUInt128OrZero(value) AS converted_value FROM test_table) GROUP BY id HAVING converted_value != 0;
+SELECT id, toUInt128OrZero(value) AS converted_value FROM (SELECT id, value FROM test_table WHERE value != '') AS sub WHERE converted_value != 0;
+CREATE TABLE another_table (id UInt32, category String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO another_table (id, category) VALUES (1, 'A'), (2, 'B'), (3, 'C');
+SELECT a.id, a.value, b.category FROM test_table a JOIN another_table b ON a.id != b.id WHERE toUInt128OrZero(a.value) != 0 AND b.category != 'C';
+SELECT id, toUInt128OrZero(value) AS converted_value FROM test_table WHERE converted_value != 0 ORDER BY converted_value DESC;
+WITH (SELECT toUInt128OrZero(value) FROM test_table WHERE id = 4) AS comparison_value SELECT id, value FROM test_table WHERE toUInt128OrZero(value) != comparison_value;

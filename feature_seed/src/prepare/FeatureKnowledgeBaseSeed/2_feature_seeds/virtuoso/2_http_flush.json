@@ -1,0 +1,10 @@
+CREATE TABLE spatial_data (id INT PRIMARY KEY, geom GEOMETRY, status VARCHAR(100));
+INSERT INTO spatial_data (id, geom, status) VALUES (1, ST_GeomFromText('POINT(1 1)'), 'initial');
+INSERT INTO spatial_data (id, geom, status) VALUES (2, ST_GeomFromText('POINT(2 2)'), 'processing');
+INSERT INTO spatial_data (id, geom, status) VALUES (3, ST_GeomFromText('POINT(3 3)'), NULL);
+SELECT http_flush(1) FROM spatial_data WHERE status IS NOT NULL AND bif:st_distance(geom, ST_GeomFromText('POINT(1 2)')) < 2;
+SELECT id, http_flush(1) FROM spatial_data WHERE bif:st_distance(geom, ST_GeomFromText('POINT(0 0)')) = 0 ORDER BY id;
+UPDATE spatial_data SET status = 'completed' WHERE id IN (SELECT id FROM spatial_data WHERE status IS NULL OR status = 'initial');
+SELECT http('Status for id=' || id), http_flush(1) FROM spatial_data HAVING COUNT(geom) > 1;
+SELECT id, http_flush(1) FROM (SELECT id, ST_AsText(geom) AS geom_text FROM spatial_data WHERE status IS NOT NULL) AS subquery WHERE geom_text IS NOT NULL;
+SELECT http('Processing id=' || id), http_flush(1) FROM spatial_data WHERE status = 'processing' AND bif:st_distance(geom, ST_GeomFromText('POINT(1 1)')) = 1.5;

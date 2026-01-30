@@ -1,0 +1,16 @@
+{
+    "function": "h3Line",
+    "operator": "a != ANY (subquery)",
+    "sql_array": [
+        "CREATE TABLE h3_test (id UInt64, start_index UInt64, end_index UInt64, value String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO h3_test VALUES (1, 590080540275638271, 590103561300344831, 'A'), (2, 590080540275638272, 590103561300344832, NULL), (3, 590080540275638273, 590103561300344833, 'B');",
+        "SELECT h3Line(start_index, end_index) AS line_indices FROM h3_test WHERE value != ANY (SELECT value FROM h3_test WHERE value IS NOT NULL) LIMIT 10;",
+        "SELECT id, h3Line((SELECT start_index FROM h3_test WHERE id = 1), (SELECT end_index FROM h3_test WHERE id = 2)) AS line_indices FROM h3_test WHERE id != ANY (SELECT id FROM h3_test WHERE id <= 2) HAVING length(line_indices) > 0;",
+        "SELECT start_index, COUNT(*) AS cnt FROM (SELECT h3Line(start_index, end_index) AS line_indices FROM h3_test) GROUP BY start_index HAVING cnt != ANY (SELECT COUNT(*) FROM h3_test WHERE value IS NOT NULL);",
+        "SELECT id FROM h3_test WHERE (start_index, end_index) != ANY (SELECT start_index, end_index FROM h3_test WHERE start_index <= 590080540275638272);",
+        "SELECT h3Line(start_index, end_index) AS line_indices FROM h3_test WHERE value != ANY (SELECT value FROM h3_test WHERE start_index IS NULL) ORDER BY start_index DESC;",
+        "ALTER TABLE h3_test ADD COLUMN new_value Int32 DEFAULT 0;",
+        "UPDATE h3_test SET new_value = (SELECT COUNT(*) FROM h3_test WHERE value IS NOT NULL) WHERE start_index != ANY (SELECT end_index FROM h3_test);",
+        "DROP TABLE IF EXISTS h3_test;"
+    ]
+}

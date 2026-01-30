@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/59107",
+  "title": "Statistics' async load loads more items than current sync load",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\nBefore https://github.com/pingcap/tidb/pull/56813, take the following SQL as an example:\n```\ntable t(a int, b int, cint, index idx(a, b));\nselect * from t where a > 1;\n```\nBoth sync load and async load will load `a`'s full stats, `idx`'s full stats, and the NDV/NullCount info of columns `b` and `c`.\n\nAfter https://github.com/pingcap/tidb/pull/56813, sync load will not load the stats of `b` and `c` anymore. But we forget to modify the async load.\nSo as a result, `b` and `c`'s NDV/NullCount will be loaded finally.\nIt's a mistake and we should fix it.\n\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\n\n### 3. What did you see instead (Required)\n\n### 4. What is your TiDB version? (Required)\n\ncurrent master.\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "date": "2025-01-21T17:29:11Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t(a INT, b INT, c INT, d VARCHAR(255), INDEX idx(a, b));",
+    "INSERT INTO t(a, b, c, d) VALUES (1, NULL, 3, 'test1');",
+    "INSERT INTO t(a, b, c, d) VALUES (2, 2, NULL, 'test2');",
+    "SELECT * FROM t WHERE a > 1 AND b IS NOT NULL;",
+    "SELECT COUNT(*) FROM t WHERE d LIKE 'test%';"
+  ],
+  "key_bug_features": [
+    "Async load incorrectly retrieves stats for columns b and c"
+  ]
+}

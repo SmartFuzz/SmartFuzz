@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/19629",
+  "title": "date_trunc() can silently truncate a constant RHS",
+  "description": "### What happens?\n\n(Hat tip to @colinmarc and @drin for originally finding this)\n\nThe `date_trunc()` function returns a `DATE` type when the given date part parameter is `day`.  But, in a comparison expression with a `TIMESTAMP`-type RHS, this means that DuckDB will truncate the RHS to a `DATE`.  In my view this is incorrect.\n\nSo, I believe this condition should be unsatisfiable regardless of `t`:\n\n```\ndate_trunc('day', t) = '2024-01-01 12:30:00'\n```\n\nI had originally believed this to be a bug with the `date_trunc()` simplification rule in the optimizer, but a bit of digging revealed that the rule appears to be correct, but the RHS gets truncated before that simplification rule applies.\n\n### To Reproduce\n\n```\ncreate table a(t timestamp);\ninsert into a values ('2024-01-15 15:30:00');\nselect * from a where date_trunc('day', t) = '2024-01-15 12:30:00';\n```\n\n```\n┌─────────────────────┐\n│          t          │\n│      timestamp      │\n├─────────────────────┤\n│ 2024-01-15 15:30:00 │\n└─────────────────────┘\n```\n\n### OS:\n\nLinux x86_64\n\n### DuckDB Version:\n\nmain\n\n### DuckDB Client:\n\ncli\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nRyan Curtin\n\n### Affiliation:\n\nBauplan Labs\n\n### Did you include all relevant configuration (e.g., CPU architecture, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant data sets for reproducing the issue?\n\nNo - Other reason (please specify in the issue body)",
+  "date": "2025-11-03 18:42:55",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE b(u VARCHAR(36), t TIMESTAMP, d DATE);",
+    "INSERT INTO b VALUES (UUID(), '2024-01-20 10:15:00', '2024-01-20');",
+    "SELECT * FROM b WHERE CAST(t AS DATE) = CAST('2024-01-20 05:00:00' AS DATE);",
+    "CREATE TABLE c(x INT, y TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO c VALUES (1, NULL), (2, '2024-01-21 08:00:00');"
+  ],
+  "key_bug_features": [
+    "date_trunc() truncates TIMESTAMP to DATE in comparisons"
+  ]
+}

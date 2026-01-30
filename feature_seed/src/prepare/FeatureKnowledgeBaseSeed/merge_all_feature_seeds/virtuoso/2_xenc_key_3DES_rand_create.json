@@ -1,0 +1,16 @@
+CREATE TABLE session_keys (id INT PRIMARY KEY, key_value VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE class_data (class_id INT PRIMARY KEY, class_name VARCHAR(100));
+INSERT INTO session_keys (id, key_value) VALUES (1, xenc_key_3DES_rand_create('session_key_1'));
+INSERT INTO class_data (class_id, class_name) VALUES (1, 'ClassA'), (2, 'ClassB');
+SELECT * FROM session_keys WHERE key_value = xenc_key_3DES_rand_create('session_key_2') AND created_at > NOW() - INTERVAL '1 DAY';
+SELECT ?s WHERE { ?s a class_data.class_name } ORDER BY ?s;
+SELECT * FROM session_keys WHERE key_value IS NOT NULL HAVING COUNT(*) > 0 GROUP BY key_value;
+SELECT a.key_value FROM session_keys AS a JOIN class_data AS b ON a.id = b.class_id WHERE b.class_name = 'ClassA' AND a.key_value = xenc_key_3DES_rand_create('session_key_3') OR a.created_at IS NULL;
+CREATE TEMPORARY TABLE temp_classes (temp_id INT, temp_name VARCHAR(255));
+INSERT INTO temp_classes SELECT class_id, class_name FROM class_data WHERE class_name LIKE '%Class%';
+SELECT xenc_key_3DES_rand_create('temp_key') AS temp_key, (SELECT COUNT(*) FROM temp_classes) AS class_count WHERE temp_key IS NOT NULL;
+SELECT COUNT(*) FROM (SELECT DISTINCT key_value FROM session_keys WHERE key_value IS NOT NULL) AS distinct_keys;
+UPDATE session_keys SET key_value = xenc_key_3DES_rand_create('updated_key') WHERE id = (SELECT MAX(id) FROM session_keys WHERE key_value IS NOT NULL LIMIT 1);
+DROP TABLE IF EXISTS temp_classes;
+DROP TABLE IF EXISTS session_keys;
+DROP TABLE IF EXISTS class_data;

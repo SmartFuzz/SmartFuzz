@@ -1,0 +1,10 @@
+CREATE TABLE fuzz_test (id UInt32, timestamp String, value Float32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO fuzz_test VALUES (1, '2020-12-12 17:36:00 -5:00', 123.456), (2, '23/10/2020 12:12:57', NULL), (3, '', -123.456);
+SELECT id, parseDateTime32BestEffort(timestamp) AS parsed_time, -value AS negated_value FROM fuzz_test WHERE parsed_time < now() AND value IS NOT NULL;
+WITH parseDateTime32BestEffort(timestamp) AS ts_parsed, -value AS negated_sum SELECT id, SUM(negated_sum) FROM fuzz_test GROUP BY id HAVING ts_parsed IS NOT NULL;
+SELECT id, parseDateTime32BestEffort('Jun 9 14:20:32') + INTERVAL -1 DAY AS offset_timestamp FROM fuzz_test WHERE timestamp NOT LIKE '';
+CREATE TABLE temp_table AS SELECT id, value FROM fuzz_test WHERE value IS NOT NULL;
+SELECT tt.id, parseDateTime32BestEffort('2018-10-23 10:12:12') + INTERVAL -0.5 HOUR AS adjusted_time FROM temp_table tt JOIN fuzz_test f ON tt.value = -f.value WHERE f.value IS NOT NULL;
+INSERT INTO temp_table VALUES (4, NULL), (5, -0.0001);
+SELECT id, parseDateTime32BestEffort('2021*01') + INTERVAL 1 DAY AS new_time FROM fuzz_test WHERE id IN (SELECT id FROM temp_table);
+SELECT f.id, parseDateTime32BestEffort('2018-10-23') AS date FROM fuzz_test f JOIN (SELECT id FROM temp_table WHERE value < 0) temp ON f.id = temp.id;

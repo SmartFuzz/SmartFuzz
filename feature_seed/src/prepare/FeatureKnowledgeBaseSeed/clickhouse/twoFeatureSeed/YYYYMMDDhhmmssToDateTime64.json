@@ -1,0 +1,16 @@
+{
+    "function": "YYYYMMDDhhmmssToDateTime64",
+    "operator": "a <= b",
+    "sql_array": [
+        "CREATE TABLE test_dates (id Int32, event_time String, event_value Float64);",
+        "INSERT INTO test_dates (id, event_time, event_value) VALUES (1, '20231012123000', 100.0), (2, '20231012123001', NULL), (3, '20231012123002', 200.0);",
+        "SELECT id, YYYYMMDDhhmmssToDateTime64(event_time, 'UTC', 3) AS parsed_time FROM test_dates WHERE YYYYMMDDhhmmssToDateTime64(event_time, 'UTC', 3) <= now();",
+        "CREATE TABLE event_summary AS SELECT id, count(*) as total_events, min(YYYYMMDDhhmmssToDateTime64(event_time, 'UTC', 3)) as first_event_time FROM test_dates WHERE event_value IS NOT NULL GROUP BY id HAVING total_events > 0;",
+        "INSERT INTO event_summary SELECT 1, 3, YYYYMMDDhhmmssToDateTime64('20231012123000', 'UTC', 3);",
+        "SELECT id, COUNT(*) AS event_count, AVG(event_value) AS average_value FROM test_dates WHERE YYYYMMDDhhmmssToDateTime64(event_time, 'UTC', 3) <= now() AND event_value IS NOT NULL GROUP BY id HAVING event_count > 0 ORDER BY average_value DESC;",
+        "SELECT id, event_value, (SELECT COUNT(*) FROM test_dates AS inner_table WHERE inner_table.event_value > external_table.event_value) AS rank FROM test_dates AS external_table WHERE YYYYMMDDhhmmssToDateTime64(event_time, 'UTC', 3) <= now();",
+        "CREATE TABLE test_joined AS SELECT a.id, a.event_value, YYYYMMDDhhmmssToDateTime64(a.event_time, 'UTC', 3) as parsed_time, b.total_events FROM test_dates AS a JOIN (SELECT id, COUNT(*) AS total_events FROM test_dates GROUP BY id) AS b ON a.id <= b.id;",
+        "CREATE TEMPORARY TABLE temp_dates AS SELECT id, YYYYMMDDhhmmssToDateTime64(event_time, 'UTC', 3) AS precise_time FROM test_dates WHERE event_value IS NOT NULL;",
+        "SELECT temp.id, temp.precise_time, a.total_events FROM temp_dates AS temp JOIN (SELECT id, COUNT(*) AS total_events FROM test_dates GROUP BY id) AS a ON temp.precise_time <= now() ORDER BY temp.precise_time DESC;"
+    ]
+}

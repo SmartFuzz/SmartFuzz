@@ -1,0 +1,11 @@
+CREATE TABLE test_intervals (id INTEGER, start_time TIMESTAMPTZ, duration INTERVAL, value NUMERIC);
+INSERT INTO test_intervals (id, start_time, duration, value) VALUES (1, TIMESTAMPTZ '2023-01-01 00:00:00 UTC', INTERVAL '14 months', 100), (2, TIMESTAMPTZ '2022-07-01 00:00:00 UTC', INTERVAL '5 months', NULL);
+SELECT id, start_time, duration, value, extract('month' FROM duration) AS month_extracted, start_time - duration AS adjusted_time FROM test_intervals WHERE value IS NOT NULL;
+SELECT id, (extract('month' FROM duration) + 1) * 2 AS adjusted_months FROM test_intervals WHERE NOT (start_time - duration IS NULL) GROUP BY id HAVING adjusted_months > 5;
+WITH interval_adjustments AS (SELECT id, start_time, duration, value, extract('month' FROM start_time - duration) AS month_diff FROM test_intervals) SELECT * FROM interval_adjustments WHERE month_diff IS NOT NULL;
+CREATE TABLE additional_intervals (id INTEGER PRIMARY KEY, event_time TIMESTAMPTZ, event_duration INTERVAL);
+INSERT INTO additional_intervals (id, event_time, event_duration) VALUES (1, TIMESTAMPTZ '2023-06-15 12:00:00 UTC', INTERVAL '1 year'), (2, TIMESTAMPTZ '2023-06-15 12:00:00 UTC', INTERVAL '0 months');
+SELECT a.id, a.event_time, (a.event_time - INTERVAL extract('month' FROM a.event_duration) MONTH) AS new_time, b.start_time FROM additional_intervals a JOIN test_intervals b ON a.id = b.id WHERE b.value IS NOT NULL;
+SELECT id, start_time, duration, value, extract('month' FROM (start_time - INTERVAL '10 days')) AS month_adjusted FROM test_intervals WHERE duration IS NOT NULL ORDER BY month_adjusted DESC;
+UPDATE test_intervals SET value = NULL WHERE id = (SELECT MIN(id) FROM test_intervals WHERE value IS NOT NULL);
+SELECT id, (extract('month' FROM duration) + NULLIF(value, 0)) AS adjusted_value FROM test_intervals WHERE value NOT IN (0, NULL) GROUP BY id HAVING adjusted_value IS NOT NULL;

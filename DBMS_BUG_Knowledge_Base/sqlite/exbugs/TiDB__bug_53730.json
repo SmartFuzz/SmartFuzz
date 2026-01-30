@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/53730",
+  "title": "Unexpected eliminated conditions in the connection with utf8mb4 charset ",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\ncreate table t (id int primary key, name varchar(20));\r\ninsert into t values(1, 'a'), (2, 'a ');\r\nselect * from t where name='a' and length(name)=1;\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\n```\r\nmysql> set names utf8;\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nmysql>  select * from t where name='a' and length(name)=1;\r\n+----+------+\r\n| id | name |\r\n+----+------+\r\n|  1 | a    |\r\n+----+------+\r\n1 row in set (0.00 sec)\r\nmysql> explain select * from t where name='a' and length(name)=1;\r\n+-------------------------+---------+-----------+---------------+--------------------------------------------------+\r\n| id                      | estRows | task      | access object | operator info                                    |\r\n+-------------------------+---------+-----------+---------------+--------------------------------------------------+\r\n| TableReader_7           | 0.00    | root      |               | data:Selection_6                                 |\r\n| └─Selection_6           | 0.00    | cop[tikv] |               | eq(length(test.t.name), 1), eq(test.t.name, \"a\") |\r\n|   └─TableFullScan_5     | 2.00    | cop[tikv] | table:t       | keep order:false, stats:pseudo                   |\r\n+-------------------------+---------+-----------+---------------+--------------------------------------------------+\r\n3 rows in set (0.00 sec)\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n\r\n```\r\nmysql> set names utf8mb4;\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nmysql>  select * from t where name='a' and length(name)=1;\r\n+----+------+\r\n| id | name |\r\n+----+------+\r\n|  1 | a    |\r\n|  2 | a    |\r\n+----+------+\r\n2 rows in set (0.00 sec)\r\n\r\nmysql> explain select * from t where name='a' and length(name)=1;\r\n+-------------------------+---------+-----------+---------------+--------------------------------+\r\n| id                      | estRows | task      | access object | operator info                  |\r\n+-------------------------+---------+-----------+---------------+--------------------------------+\r\n| TableReader_7           | 0.00    | root      |               | data:Selection_6               |\r\n| └─Selection_6           | 0.00    | cop[tikv] |               | eq(test.t.name, \"a\")           |\r\n|   └─TableFullScan_5     | 2.00    | cop[tikv] | table:t       | keep order:false, stats:pseudo |\r\n+-------------------------+---------+-----------+---------------+--------------------------------+\r\n3 rows in set (0.00 sec)\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\nv6.5.6",
+  "date": "2024-05-31T15:56:38Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT, email TEXT NOT NULL);",
+    "INSERT INTO users VALUES (1, 'user1'), (2, 'user2 '), (3, 'user3');",
+    "CREATE TABLE orders (order_id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL, FOREIGN KEY (user_id) REFERENCES users(id));",
+    "INSERT INTO orders VALUES (101, 1, 99.99), (102, 2, 150.00), (103, 1, 200.50);",
+    "SELECT u.id, u.username FROM users u WHERE TRIM(u.username) = 'user1' AND LENGTH(u.username) = 5;"
+  ],
+  "key_bug_features": [
+    "utf8mb4 charset alters string length evaluation"
+  ]
+}

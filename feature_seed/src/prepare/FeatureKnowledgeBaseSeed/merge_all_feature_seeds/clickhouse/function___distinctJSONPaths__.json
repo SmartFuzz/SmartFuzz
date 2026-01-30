@@ -1,0 +1,15 @@
+DROP TABLE IF EXISTS test_json;
+CREATE TABLE test_json(json JSON) ENGINE = Memory;
+INSERT INTO test_json VALUES ('{"a" : 42, "b" : "Hello"}'), ('{"b" : [1, 2, 3], "c" : {"d" : {"e" : "2020-01-01"}}}'), ('{"a" : 43, "c" : {"d" : {"f" : [{"g" : 42}]}}}');
+SELECT distinctJSONPaths(json) FROM test_json;
+SELECT json, distinctJSONPaths(json) AS paths FROM test_json;
+WITH (SELECT max(json) FROM test_json) AS max_json SELECT distinctJSONPaths(max_json);
+CREATE TABLE test_json_2(json JSON) ENGINE = Memory;
+INSERT INTO test_json_2 VALUES ('{"x" : {"y" : 1}, "z" : [2, 3]}'), ('{"x" : {"y" : 4}, "z" : [5, 6]}');
+SELECT distinctJSONPaths(json) FROM (SELECT json FROM test_json UNION ALL SELECT json FROM test_json_2) AS combined_json;
+WITH (SELECT DISTINCT json FROM test_json WHERE json IS NOT NULL) AS non_null_json SELECT distinctJSONPaths(non_null_json) FROM non_null_json;
+DROP TABLE IF EXISTS nested_test_json;
+CREATE TABLE nested_test_json(json JSON) ENGINE = Memory;
+INSERT INTO nested_test_json VALUES ('{"outer": {"inner": {"a": 1, "b": 2}}}'), ('{"outer": {"inner": {"b": 3, "c": 4}}}');
+SELECT DISTINCT distinctJSONPaths(json) FROM nested_test_json;
+SELECT distinctJSONPaths(json) AS paths FROM (SELECT json FROM test_json INTERSECT SELECT json FROM test_json_2) AS intersected_json;

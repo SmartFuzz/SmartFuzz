@@ -1,0 +1,10 @@
+CREATE TABLE test_dates (id INTEGER, event_time TIMESTAMP, notes VARCHAR);
+INSERT INTO test_dates (id, event_time, notes) VALUES (1, TIMESTAMP '2021-08-03 11:59:44.123456', 'First event'), (2, NULL, 'Second event with NULL'), (3, TIMESTAMP '2023-10-01 00:00:00.000000', 'Third event'), (4, TIMESTAMP '2022-12-31 23:59:59.999999', 'Fourth event');
+SELECT id, minute(event_time) + INTERVAL 10 MINUTE AS adjusted_minute FROM test_dates WHERE event_time IS NOT NULL;
+SELECT id, event_time FROM test_dates WHERE (minute(event_time) + INTERVAL 30 MINUTE) BETWEEN INTERVAL 0 MINUTE AND INTERVAL 59 MINUTE;
+SELECT id, MINUTE(event_time) AS minute_val FROM test_dates GROUP BY id HAVING minute_val IS NOT NULL;
+SELECT t1.id, minute(t1.event_time) AS event_minute FROM test_dates t1 JOIN (SELECT id, event_time + INTERVAL 1 DAY AS adjusted_time FROM test_dates WHERE notes IS NOT NULL) t2 ON t1.event_time = t2.adjusted_time;
+SELECT id, minute(event_time) AS minute_val FROM test_dates WHERE event_time IS NOT NULL ORDER BY minute_val + INTERVAL 5 MINUTE;
+SELECT id, minute(event_time) AS minute_val FROM test_dates WHERE event_time IS NOT NULL AND minute_val > (SELECT AVG(minute(event_time)) FROM test_dates WHERE event_time IS NOT NULL) + INTERVAL 5 MINUTE;
+CREATE TABLE temp_events AS SELECT id, event_time + INTERVAL (minute(event_time) + 12) MINUTE AS modified_time FROM test_dates WHERE notes IS NOT NULL;
+SELECT id, minute(modified_time) AS new_minute FROM temp_events WHERE modified_time IS NOT NULL;

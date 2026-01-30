@@ -1,0 +1,14 @@
+CREATE TABLE nobel_prizes (fullName String, year Int32, category String, motivation String);
+INSERT INTO nobel_prizes (fullName, year, category, motivation) VALUES ('Albert Einstein', 1921, 'physics', 'for his services to Theoretical Physics'), ('Marie Curie', 1903, 'physics', 'for their joint research on radiation phenomena');
+CREATE OR REPLACE VIEW physics_prizes AS SELECT fullName, year, category FROM nobel_prizes WHERE category = 'physics';
+SELECT fullName, leadInFrame(year, 1, year) OVER (ORDER BY year) AS next_year, category FROM physics_prizes ORDER BY year;
+CREATE TABLE scientists (id UUID, fullName String, category String);
+INSERT INTO scientists (id, fullName, category) VALUES (generateUUIDv4(), 'Albert Einstein', 'physics'), (generateUUIDv4(), 'Marie Curie', 'physics');
+SELECT sp.fullName, sp.category, leadInFrame(n.year, 1, NULL) OVER (PARTITION BY sp.category ORDER BY n.year) AS next_year FROM physics_prizes AS n JOIN scientists AS sp ON n.fullName = sp.fullName ORDER BY n.year;
+CREATE TABLE physics_research (researchId UUID, fullName String, year Int32);
+INSERT INTO physics_research (researchId, fullName, year) VALUES (generateUUIDv4(), 'Albert Einstein', 1921), (generateUUIDv4(), 'Marie Curie', 1903);
+WITH (SELECT AVG(year) FROM physics_prizes) AS avg_year SELECT fullName, year, leadInFrame(year, 1) OVER (ORDER BY year) AS next_year FROM physics_research WHERE year > avg_year;
+CREATE TABLE award_history (prizeId UUID, fullName String, year Int32, category String);
+INSERT INTO award_history (prizeId, fullName, year, category) VALUES (generateUUIDv4(), 'Albert Einstein', 1921, 'physics'), (generateUUIDv4(), 'Marie Curie', 1903, 'physics');
+SELECT ah.fullName, ah.year, leadInFrame(ah.year, 1, 2000) OVER (ORDER BY ah.year) AS next_year, ah.category FROM award_history AS ah ORDER BY ah.year;
+SELECT n.fullName, n.year, n.category, leadInFrame(n.year, 1, 1900) OVER (PARTITION BY n.category ORDER BY n.year) AS next_year FROM (SELECT fullName, year, category FROM nobel_prizes) AS n ORDER BY n.year;

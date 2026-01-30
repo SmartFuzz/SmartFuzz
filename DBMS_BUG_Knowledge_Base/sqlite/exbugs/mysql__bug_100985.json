@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=100985",
+  "title": "Stored value for 0.001 is inconsistent, and casted to decimal is also different",
+  "description": "mysql> select * from t1;\r\n+-------+------+\r\n| a     | b    |\r\n+-------+------+\r\n|     1 |   -1 |\r\n| 0.001 |    0 |\r\n|    -1 |    0 |\r\n+-------+------+\r\n3 rows in set (0.01 sec)\n\nmysql> select sum(a) from t1;\r\n+-----------------------+\r\n| sum(a)                |\r\n+-----------------------+\r\n| 0.0009999999999998899 |\r\n+-----------------------+\r\n1 row in set (0.00 sec)\r\n\r\nmysql> select sum(a) as mysum from t1 group by b;\r\n+--------+\r\n| mysum  |\r\n+--------+\r\n|      1 |\r\n| -0.999 |\r\n+--------+\r\n2 rows in set (0.00 sec)\r\n\r\nmysql> select sum(mysum) from (select sum(a) as mysum from t1 group by b) as t;\r\n+-----------------------+\r\n| sum(mysum)            |\r\n+-----------------------+\r\n| 0.0010000000000000009 |\r\n+-----------------------+\r\n1 row in set (0.00 sec)\n\nmysql> select cast( (select sum(a) from t1) as decimal(30,30));\r\n+--------------------------------------------------+\r\n| cast( (select sum(a) from t1) as decimal(30,30)) |\r\n+--------------------------------------------------+\r\n|                 0.000999999999999889900000000000 |\r\n+--------------------------------------------------+\r\n1 row in set (0.02 sec)\r\n\r\n                          \r\nmysql> select cast( (select sum(mysum) from (select sum(a) as mysum from t1 group by b) as t) as decimal(30,30));\r\n+----------------------------------------------------------------------------------------------------+\r\n| cast( (select sum(mysum) from (select sum(a) as mysum from t1 group by b) as t) as decimal(30,30)) |\r\n+----------------------------------------------------------------------------------------------------+\r\n|                                                                   0.001000000000000000900000000000 |\r\n+----------------------------------------------------------------------------------------------------+\r\n1 row in set (0.00 sec)\nHow to repeat:\ncreate table t1 (a double, b int);\r\ninsert into t1 values (1,-1), (0.001,0), (-1, 0);\r\n\r\nselect sum(a) from t1;\r\n\r\nselect sum(a) as mysum from t1 group by b;\r\nselect sum(mysum) from (select sum(a) as mysum from t1 group by b) as t;\r\n\r\nselect cast( (select sum(a) from t1) as decimal(30,30));\r\n                           \r\nselect cast( (select sum(mysum) from (select sum(a) as mysum from t1 group by b) as t) as decimal(30,30));\nSuggested fix:\nIf 0.001 cannot be represented precisely, then it should have the same approximation stored value on the same machine.",
+  "date": "2020-09-29 07:42:00",
+  "vulnerable_version": "8.0.21, 5.7.31, 5.6.48",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (x REAL, y INTEGER, z REAL NOT NULL DEFAULT 0.00001);",
+    "INSERT INTO t2 VALUES (0.001, 1, NULL), (1.0, 2, 0.00001), (NULL, -1, 0.001);",
+    "SELECT SUM(x) AS total_x, SUM(z) AS total_z FROM t2 WHERE y IS NOT NULL;",
+    "SELECT CAST(SUM(x) AS REAL) FROM t2 WHERE z IS NOT NULL;",
+    "SELECT (SELECT SUM(x) FROM t2) + (SELECT SUM(z) FROM t2) AS combined_sum;"
+  ],
+  "key_bug_features": [
+    "Inconsistent storage and casting of the value 0.001"
+  ]
+}

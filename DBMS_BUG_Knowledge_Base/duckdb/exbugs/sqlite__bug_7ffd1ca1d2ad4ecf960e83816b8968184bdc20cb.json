@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/7ffd1ca1d2",
+  "title": "Incorrect affinity when using automatic indexes",
+  "description": "drh added on 2017-01-16 15:10:18:\nIn the script below, the first query which uses automatic indexes gets\na different and incorrect answer than the other three:\nCREATE TABLE map_integer (id INT, name);\nINSERT INTO map_integer VALUES(1,'a');\nCREATE TABLE map_text (id TEXT, name);\nINSERT INTO map_text VALUES('4','e');\nCREATE TABLE data (id TEXT, name);\nINSERT INTO data VALUES(1,'abc');\nINSERT INTO data VALUES('4','xyz');\nCREATE VIEW idmap as\n    SELECT * FROM map_integer\n    UNION SELECT * FROM map_text;\nCREATE TABLE mzed AS SELECT * FROM idmap;\n\n.print ------ idmap:\nSELECT * FROM data JOIN idmap USING(id);\n.print ------ mzed:\nSELECT * FROM data JOIN mzed USING(id);\n.print ------ id_map1 with auto-index off:\nPRAGMA automatic_index=off;\nSELECT * FROM data JOIN idmap USING(id);\n.print ------ mzed with auto-index off:\nSELECT * FROM data JOIN mzed USING(id);\nBisecting shows that this problem was introduced by check-in\n[0b3174e0b1] on 2011-06-23 and first appeared in SQLite version 3.7.7.",
+  "date": "2017-01-16 15:10:188.57 years ago",
+  "vulnerable_version": "3.16.2",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE map_float (id FLOAT, name VARCHAR);",
+    "INSERT INTO map_float VALUES(1.5, 'float_a');",
+    "CREATE TABLE map_boolean (id BOOLEAN, name VARCHAR);",
+    "INSERT INTO map_boolean VALUES(FALSE, 'bool_a');",
+    "SELECT * FROM map_float JOIN map_boolean ON map_float.id = map_boolean.id;"
+  ],
+  "key_bug_features": [
+    "Incorrect results when using automatic indexes in queries"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/16520",
+  "title": "Bug: Constraint Error: Duplicate key during data insert (1.2.0)",
+  "description": "### What happens?\n\nDuckDB v1.2.0 has announced that [Over-Eager Unique Constraint Checking](https://duckdb.org/2025/02/05/announcing-duckdb-120.html#indexing) issue has been resolved and it is now possible to drop the data and insert new rows with the same keys.\n\nI still see `Constraint Error: Duplicate key during data insert` error using duckdb v1.2.0 when deleting and inserting data in the same transaction. \n\n### To Reproduce\n\nRun the following script, that removes all records from the table and then re-insert them as part of the same transaction resulting in primary key constraint violation error, where it should not.\n\n`./load_lineitem.sh`\n\n```bash\n#!/bin/bash\n\nDB_FILE=\"./tpch_lineitem.db\"\nrm -f $DB_FILE\n\nduckdb --version\n\nduckdb $DB_FILE <<EOF\n\n-- Create test table with primary key and index\nCREATE TABLE IF NOT EXISTS lineitem(l_orderkey INTEGER, l_partkey INTEGER, l_suppkey INTEGER, l_linenumber INTEGER, l_quantity DECIMAL(15,2), l_extendedprice DECIMAL(15,2), l_discount DECIMAL(15,2), l_tax DECIMAL(15,2), l_returnflag VARCHAR, l_linestatus VARCHAR, l_shipdate DATE, l_commitdate DATE, l_receiptdate DATE, l_shipinstruct VARCHAR, l_shipmode VARCHAR, l_comment VARCHAR, PRIMARY KEY (l_linenumber, l_orderkey));\nCREATE INDEX IF NOT EXISTS \"i_lineitem_l_shipdate\" ON \"lineitem\" (\"l_shipdate\");\n\n-- Insert initial data from S3 Parquet\nINSERT INTO lineitem \nSELECT * FROM read_parquet('s3://spiceai-demo-datasets/tpch/lineitem/*.parquet') LIMIT 1000;\n\nSELECT COUNT(*) as initial_insert_count FROM lineitem;\n\n# -- Begin transaction: delete existing data and reinsert\nBEGIN;\nDELETE FROM lineitem;\nSELECT COUNT(*) as count_after_drop FROM lineitem;\nINSERT INTO lineitem \nSELECT * FROM read_parquet('s3://spiceai-demo-datasets/tpch/lineitem/*.parquet') LIMIT 1000;\nSELECT COUNT(*) as count_after_reinsert FROM lineitem;\nCOMMIT;\n\nEOF\n\necho \"Overwrite attempt completed.\"\n```\n\nTrace:\n\n```bash\n./load_lineitem.sh\nv1.2.0 5f5512b827\n100% ▕████████████████████████████████████████████████████████████▏ \n┌──────────────────────┐\n│ initial_insert_count │\n│        int64         │\n├──────────────────────┤\n│         1000         │\n└──────────────────────┘\n┌──────────────────┐\n│ count_after_drop │\n│      int64       │\n├──────────────────┤\n│        0         │\n└──────────────────┘\nConstraint Error:\nDuplicate key \"l_linenumber: 1, l_orderkey: 1\" violates primary key constraint.\nTransactionContext Error:\nCurrent transaction is aborted (please ROLLBACK)\nOverwrite attempt completed.\n```\n\n### OS:\n\naarch64 (macos ARM)\n\n### DuckDB Version:\n\n1.2.0\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nSergei Grebnov\n\n### Affiliation:\n\nSpice AI\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have not tested with any build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "date": "2025-03-05 01:27:43",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE IF NOT EXISTS orders(order_id INTEGER PRIMARY KEY, customer_id INTEGER, order_date TEXT, total_amount REAL);",
+    "INSERT INTO orders VALUES (1, 101, '2023-10-01', 250.00);",
+    "CREATE TABLE IF NOT EXISTS order_items(order_item_id INTEGER PRIMARY KEY, order_id INTEGER, product_id INTEGER, quantity INTEGER, price REAL, FOREIGN KEY (order_id) REFERENCES orders(order_id));",
+    "INSERT INTO order_items VALUES (1, 1, 201, 2, 125.00);",
+    "DELETE FROM orders WHERE order_id = 1;",
+    "INSERT INTO orders VALUES (1, 101, '2023-10-01', 250.00);"
+  ],
+  "key_bug_features": [
+    "Duplicate key error during data reinsert in transaction"
+  ]
+}

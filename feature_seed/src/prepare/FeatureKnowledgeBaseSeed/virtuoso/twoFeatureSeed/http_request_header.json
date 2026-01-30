@@ -1,0 +1,16 @@
+{
+    "function": "http_request_header",
+    "operator": "bif:score",
+    "sql_array": [
+        "CREATE TABLE http_headers (id INTEGER PRIMARY KEY, header_line VARCHAR(255));",
+        "INSERT INTO http_headers (header_line) VALUES ('Host: example.com'), ('User-Agent: TestAgent'), ('Accept: */*');",
+        "SELECT id, http_request_header(SELECT header_line FROM http_headers) AS request_headers FROM http_headers WHERE id IN (SELECT id FROM http_headers WHERE header_line LIKE 'Host%');",
+        "SELECT id, bif:score() FROM http_headers WHERE http_request_header((SELECT header_line FROM http_headers WHERE header_line LIKE 'User-Agent%')) IS NOT NULL;",
+        "SELECT id, http_request_header((SELECT header_line FROM http_headers)) AS headers FROM http_headers GROUP BY headers HAVING bif:score() > 0;",
+        "CREATE TABLE test_scores (id INTEGER PRIMARY KEY, score FLOAT);",
+        "INSERT INTO test_scores (score) VALUES (1.0), (NULL), (2.5);",
+        "SELECT id, http_request_header(header_line, 'Host', NULL) AS host, bif:score() AS rank FROM http_headers JOIN test_scores ON test_scores.id = http_headers.id WHERE test_scores.score IS NOT NULL ORDER BY rank DESC;",
+        "CREATE TEMPORARY TABLE temp_scores AS SELECT id, bif:score() AS score FROM http_headers WHERE header_line IS NOT NULL;",
+        "SELECT t.id, http_request_header(SELECT header_line FROM temp_scores WHERE id = t.id) FROM test_scores AS t JOIN temp_scores AS ts ON t.id = ts.id WHERE ts.score < ALL (SELECT score FROM test_scores WHERE score IS NOT NULL);"
+    ]
+}

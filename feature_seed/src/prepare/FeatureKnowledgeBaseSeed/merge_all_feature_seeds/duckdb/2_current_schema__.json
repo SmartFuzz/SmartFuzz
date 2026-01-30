@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id INTEGER, name VARCHAR, created_at TIMESTAMPTZ, custom_col TIMESTAMPTZ DEFAULT current_schema()::TIMESTAMPTZ);
+INSERT INTO test_data (id, name, created_at) VALUES (1, 'Alice', TIMESTAMPTZ '2023-10-01 15:00:00+00'), (2, 'Bob', TIMESTAMPTZ '2023-10-02 16:00:00+00'), (3, NULL, TIMESTAMPTZ '2023-10-03 17:00:00+00');
+SELECT id, name, created_at - (SELECT MAX(created_at) FROM test_data WHERE name IS NOT NULL) AS time_diff FROM test_data GROUP BY id, name, created_at HAVING time_diff IS NOT NULL;
+SELECT id, name, current_schema() as active_schema, created_at - (TIMESTAMPTZ '2023-10-03 17:00:00+00') AS negative_diff FROM test_data WHERE created_at IS NOT NULL;
+SELECT id, name, (SELECT COUNT(*) FROM test_data WHERE created_at IS NOT NULL) - (SELECT COUNT(*) FROM test_data WHERE created_at IS NULL) AS count_diff FROM test_data GROUP BY id, name HAVING count_diff > 0;
+SELECT id, name, COALESCE(current_schema(), 'default') AS schema_name, created_at - (TIMESTAMPTZ '2023-10-01 15:00:00+00') AS time_diff FROM test_data ORDER BY time_diff DESC;
+CREATE TEMP TABLE temp_data AS SELECT name, created_at - INTERVAL '1 DAY' AS adjusted_time FROM test_data WHERE created_at IS NOT NULL;
+INSERT INTO temp_data (name, adjusted_time) SELECT name, TIMESTAMPTZ '2023-09-30 15:00:00+00' WHERE name IS NOT NULL;
+SELECT id, name, created_at, adjusted_time, (adjusted_time - created_at) AS time_variance FROM temp_data JOIN test_data ON temp_data.name = test_data.name;
+SELECT current_schema() AS schema_check, id, name FROM test_data WHERE current_schema() = 'main' AND created_at IS NOT NULL;

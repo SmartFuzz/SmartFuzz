@@ -1,0 +1,11 @@
+CREATE TABLE timestamps_table (id INTEGER, ts TIMESTAMP NOT NULL, value FLOAT);
+INSERT INTO timestamps_table VALUES (1, TIMESTAMP '1992-03-22 12:34:56', 3.5), (2, TIMESTAMP '2000-01-01 00:00:00', 4.2), (3, TIMESTAMP '2100-12-31 23:59:59', NULL);
+SELECT id, century(ts) ^ 2 AS century_square FROM timestamps_table WHERE ts IS NOT NULL;
+SELECT id, value, century(ts) ^ 3 AS century_cubed FROM timestamps_table WHERE value > 3.0 ORDER BY century(ts);
+SELECT id, value, (century(ts) ^ 2) + (value IS NULL) AS adjusted_value FROM timestamps_table;
+WITH century_values AS (SELECT id, century(ts) AS century_val FROM timestamps_table WHERE ts IS NOT NULL) SELECT cv.century_val, COUNT(*) AS count FROM century_values cv JOIN timestamps_table tt ON cv.century_val = century(tt.ts) GROUP BY cv.century_val HAVING COUNT(*) > 1;
+SELECT id, century(ts) AS century_val, century(ts) ^ 2 AS century_squared FROM timestamps_table WHERE EXISTS (SELECT 1 FROM timestamps_table tt WHERE tt.value < 4 AND tt.ts BETWEEN ts AND ts + INTERVAL '1 year') ORDER BY century_squared DESC;
+SELECT id, COALESCE(century(ts), 0) ^ 2 AS coalesced_century FROM timestamps_table;
+CREATE TABLE additional_data (id INTEGER PRIMARY KEY, ts TIMESTAMP);
+INSERT INTO additional_data VALUES (1, TIMESTAMP '1999-12-31 23:59:59'), (2, TIMESTAMP NULL);
+SELECT ad.id, century(ad.ts) ^ (SELECT MAX(century(ts)) FROM timestamps_table) AS modified_century FROM additional_data ad LEFT JOIN timestamps_table tt ON ad.ts = tt.ts WHERE tt.value IS NULL;

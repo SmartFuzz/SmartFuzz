@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=102086",
+  "title": "the result of order by cast(field1 as char) is unexpect.",
+  "description": "Hi, guys:\r\nI might find out a bug about CAST function.\r\nAssume a varchar field named 'a' includes '+', '-', when usinig ORDER BY CAST(a AS char) clause, the result is unexpect.\nHow to repeat:\ncreate table t(a varchar(4));\r\ninsert into t value('+123'), ('-123');\r\n\r\nmysql> select ascii('+'), ascii('-') from dual;\r\n+------------+------------+\r\n| ascii('+') | ascii('-') |\r\n+------------+------------+\r\n|         43 |         45 |\r\n+------------+------------+\n\nmysql> select * from t order by a;\r\n+------+\r\n| a    |\r\n+------+\r\n| +123 |\r\n| -123 |\r\n+------+\n\nmysql> select * from t order by cast(a as char);\r\n+------+\r\n| a    |\r\n+------+\r\n| -123 |\r\n| +123 |\r\n+------+\r\n\r\nSince '+' is less then '-', why CAST function takes '-' first by asc?\r\n\r\nIn oracle database, the results are in line with the expectation.\r\n\r\nSQL> select * from t order by a;\r\n\r\nA\r\n----\r\n+123\r\n-123\r\n\r\nSQL> select * from t order by cast(a as char);\r\n\r\nA\r\n----\r\n+123\r\n-123\r\n\r\nSQL>  select ascii('+'), ascii('-') from dual;\r\n\r\nASCII('+') ASCII('-')\r\n---------- ----------\r\n        43         45",
+  "date": "2020-12-29 12:06:00",
+  "vulnerable_version": "8.0.18",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t(a String, b Int32 DEFAULT NULL);",
+    "INSERT INTO t VALUES ('+123', 1), ('-123', 2), (NULL, 3);",
+    "SELECT * FROM t WHERE b IS NOT NULL ORDER BY CAST(a AS String);",
+    "SELECT * FROM t ORDER BY a DESC;",
+    "SELECT CAST(a AS String) AS casted_value, b FROM t ORDER BY casted_value;"
+  ],
+  "key_bug_features": [
+    "ORDER BY CAST function with varchar containing '+' and '-'"
+  ]
+}

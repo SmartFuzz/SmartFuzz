@@ -1,0 +1,33 @@
+{
+  "url": "https://github.com/oceanbase/oceanbase/issues/2197",
+  "title": "[Bug]: The results of the complex query are unexpected.",
+  "vulnerable_database": "oceanbase",
+  "date": "2024-12-10T13:45:51Z",
+  "vulnerable_version": "Unknown",
+  "description": "<!-- A clear and concise description of bug. -->",
+  "poc": [
+    "drop table if exists t0;",
+    "drop table if exists t1;",
+    "CREATE TABLE t0(c0 FLOAT , c1 VARCHAR(123) , c2 INT )  PARTITION BY KEY (c1) WITH COLUMN GROUP (all columns, each column);",
+    "CREATE TABLE IF NOT EXISTS t1 LIKE t0;",
+    "Insert statements for table t0\r\nINSERT INTO t0 (c0, c1, c2) VALUES\r\n(-697414020, NULL, NULL),\r\n(NULL, '', -1044026135),\r\n(0.924866, 'A', -877182619),\r\n(0.426481, '', 617715999),\r\n(0.622039, '', 626667259),\r\n(0.906042, '1803263993', -405682590),\r\n(NULL, '0.46651577472598704', 233143763);",
+    "Insert statements for table t1\r\nINSERT INTO t1 (c0, c1, c2) VALUES\r\n(0.221074, '', -1741523580),\r\n(0.79028, 'yH#-5.DU', -1964321858);",
+    "select (CAST(t0.c0 AS DATE)) from t0;",
+    "select /*+ USE_COLUMN_TABLE(t0) USE_COLUMN_TABLE(t1) */ ALL true\r\nFROM t0\r\n         RIGHT OUTER JOIN t1 ON (t0.c0) >= (t1.c0);",
+    "SELECT /*+ USE_COLUMN_TABLE(t0) USE_COLUMN_TABLE(t1) */ ALL true\r\nFROM t0\r\n         RIGHT OUTER JOIN t1 ON (t0.c0) >= (t1.c0)\r\nWHERE (CAST(t0.c0 AS DATE)) IS NULL;",
+    "SELECT /*+ USE_COLUMN_TABLE(t0) USE_COLUMN_TABLE(t1) */ ALL true\r\n    -> FROM t0\r\n    ->          RIGHT OUTER JOIN t1 ON (t0.c0) >= (t1.c0)\r\n    -> WHERE (CAST(t0.c0 AS DATE)) IS NULL;",
+    "select /*+ USE_COLUMN_TABLE(t0) USE_COLUMN_TABLE(t1) */ ALL true\r\n    -> FROM t0\r\n    ->          RIGHT OUTER JOIN t1 ON (t0.c0) >= (t1.c0);",
+    "select /*+ USE_COLUMN_TABLE(t0) USE_COLUMN_TABLE(t1) */ ALL true\r\n    -> FROM t0, t1\r\n    -> where (t0.c0) >= (t1.c0);",
+    "SELECT /*+ USE_COLUMN_TABLE(t0) USE_COLUMN_TABLE(t1) */ ALL true\r\n    -> FROM t0, t1\r\n    -> WHERE (CAST(t0.c0 AS DATE)) IS NULL and (t0.c0) >= (t1.c0);"
+  ],
+  "key_bug_features": [
+    "Unexpected results from RIGHT OUTER JOIN with NULL date cast"
+  ],
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t2;",
+    "CREATE TABLE t2(c0 INT, c1 VARCHAR(255), c2 DATE);",
+    "INSERT INTO t2 (c0, c1, c2) VALUES (1, 'test', NULL), (2, 'example', '2023-01-01'), (3, NULL, '2023-01-02');",
+    "SELECT * FROM t2 WHERE c2 IS NULL;",
+    "SELECT /*+ USE_COLUMN_TABLE(t0) USE_COLUMN_TABLE(t1) */ ALL true FROM t0 RIGHT OUTER JOIN t1 ON (CAST(t0.c0 AS DATE)) < (t1.c0);"
+  ]
+}

@@ -1,0 +1,16 @@
+CREATE TABLE test_table (id UInt32, data String, value Float32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table (id, data, value) VALUES (1, 'test data', 1.0), (2, 'another test', 2.5), (3, '', 0.0), (4, NULL, NULL);
+SELECT id, data, byteSlice(data, 0, 4) ? value : 0 AS conditional_value FROM test_table WHERE byteSlice(data, 0, 4) IS NOT NULL;
+SELECT id, data, IF(value > 1.0, byteSlice(data, 1, 2), byteSlice(data, 0, 1)) AS extracted_data FROM test_table;
+SELECT id, data, (CASE WHEN value IS NULL THEN byteSlice('', 0, 1) ELSE byteSlice(data, 0, 2) END) AS empty_check FROM test_table;
+SELECT id, data, (byteSlice(data, 0, 4) ? 'starts with' : 'does not start with') AS start_check FROM test_table;
+SELECT id, data, byteSlice(data, 0, 5) AS extracted_data FROM (SELECT id, byteSlice(data, 0, 3) AS short_data FROM test_table) t WHERE value IS NOT NULL;
+SELECT id, data, (byteSlice(data, 0, 4) ? NULL : 'not null') AS null_propagation_test FROM test_table WHERE data IS NOT NULL;
+SELECT id, byteSlice(data, 0, 4) AS sub_data FROM (SELECT id, data, value, (value + 1.5) * id AS computed_value FROM test_table) subquery GROUP BY sub_data HAVING sub_data != '';
+CREATE TABLE secondary_table (user_id UInt32, user_data String) ENGINE = MergeTree() ORDER BY user_id;
+INSERT INTO secondary_table (user_id, user_data) VALUES (1, 'user data 1'), (2, 'user data 2'), (3, '');
+SELECT t.id, t.data, s.user_data, t.value ? s.user_data : 'no data' AS conditional_output FROM test_table AS t JOIN secondary_table AS s ON t.id = s.user_id;
+SELECT t.id, t.data, (1 + (SELECT COUNT(*) FROM secondary_table s WHERE s.user_id = t.id)) AS data_count FROM test_table t;
+SELECT id, byteSlice(data, 0, 1) AS first_byte FROM test_table ORDER BY byteSlice(data, 0, 2);
+ALTER TABLE test_table ADD COLUMN extra_data Nullable(Int32);
+INSERT INTO test_table (id, data, value, extra_data) VALUES (5, 'new row', 3.0, NULL);

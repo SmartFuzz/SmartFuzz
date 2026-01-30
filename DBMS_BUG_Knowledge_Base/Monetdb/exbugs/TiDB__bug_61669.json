@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/61669",
+  "title": "planner: invalid column error when building IndexJoin for sub-query with multiple Agg",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n\n```\nCREATE TABLE B (\n  ROW_NO bigint NOT NULL AUTO_INCREMENT,\n  RCRD_NO varchar(20) NOT NULL,\n  FILE_NO varchar(20) DEFAULT NULL,\n  BSTPRTFL_NO varchar(20) DEFAULT NULL,\n  MDL_DT date DEFAULT NULL,\n  TS varchar(19) DEFAULT NULL,\n  LD varchar(19) DEFAULT NULL,\n  MDL_NO varchar(50) DEFAULT NULL,\n  TXN_NO varchar(90) DEFAULT NULL,\n  SCR_NO varchar(20) DEFAULT NULL,\n  DAM decimal(25, 8) DEFAULT NULL,\n  DT date DEFAULT NULL,\n  PRIMARY KEY (ROW_NO),\n  KEY `IDX1_ETF_FLR_PRCHRDMP_TXN_DTL` (BSTPRTFL_NO, DT, MDL_DT, TS, LD),\n  KEY `IDX2_ETF_FLR_PRCHRDMP_TXN_DTL` (BSTPRTFL_NO, MDL_DT, SCR_NO, TXN_NO),\n  KEY `IDX1_ETF_FLR_PRCHRDMP_TXNDTL` (FILE_NO, BSTPRTFL_NO),\n  KEY `IDX_ETF_FLR_PRCHRDMP_TXN_FIX` (MDL_NO, BSTPRTFL_NO, MDL_DT),\n  UNIQUE `UI_ETF_FLR_PRCHRDMP_TXN_DTL TB` (RCRD_NO),\n  KEY `IDX3_ETF_FLR_PRCHRDMP_TXN_DTL` (DT)\n) ENGINE = InnoDB CHARSET = utf8mb4 COLLATE utf8mb4_bin AUTO_INCREMENT = 2085290754;\n\n\nCREATE TABLE `A` (\n  ROW_NO bigint NOT NULL AUTO_INCREMENT,\n  TEMP_NO varchar(20) NOT NULL,\n  VCHR_TPCD varchar(19) DEFAULT NULL,\n  LD varchar(19) DEFAULT NULL,\n  BSTPRTFL_NO varchar(20) DEFAULT NULL,\n  DAM decimal(25, 8) DEFAULT NULL,\n  DT date DEFAULT NULL,\n  CASH_RPLC_AMT decimal(19, 2) DEFAULT NULL,\n  PCSG_BTNO_NO varchar(20) DEFAULT NULL,\n  KEY `INX_TEMP_NO` (`TEMP_NO`),\n  PRIMARY KEY (ROW_NO),\n  KEY `idx2_ETF_FNDTA_SALE_PA` (PCSG_BTNO_NO, DT, VCHR_TPCD)\n) ENGINE = InnoDB CHARSET = utf8mb4 COLLATE utf8mb4_bin AUTO_INCREMENT = 900006;\n\nset tidb_opt_index_join_build_v2=off; \n\nexplain SELECT *\nFROM A A\nJOIN \n    (SELECT CASH_RPLC_AMT,\n         S.BSTPRTFL_NO\n    FROM \n        (SELECT BSTPRTFL_NO,\n         SUM(CASE\n            WHEN LD IN ('03') THEN\n            DAM\n            ELSE 0 END) AS CASH_RPLC_AMT\n        FROM \n            (SELECT B.LD,\n         SUM(B.DAM) DAM,\n         B.BSTPRTFL_NO\n            FROM B B\n            GROUP BY  B.LD, B.BSTPRTFL_NO) ff\n            GROUP BY  BSTPRTFL_NO) S ) f\n            ON A.BSTPRTFL_NO = f.BSTPRTFL_NO\n    WHERE A.PCSG_BTNO_NO = 'MXUU2022123043502318';\n```\n\nRoot Cause:\n    1. An optimizer bug, when constructing the inner operators under an IndexJoin in `constructIndexJoinInnerSideTaskWithAggCheck`, we assume there is at most `1` Agg. \n    2. In this SQL with 2 nested sub-queries, there are `2` Agg under IndexJoin, which breaks our assumption, and causes some errors.\n\n<img width=\"234\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/6375a658-4c86-44ff-b511-11ea4fe7291f\" />\n\n### 2. What did you expect to see? (Required)\n\nNo error\n\n### 3. What did you see instead (Required)\n\n```\nERROR 1105 (HY000): Some columns of IndexJoin_20 cannot find the reference from its child(ren)\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\nMaster",
+  "date": "2025-06-11T10:02:55Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE C (ID bigint NOT NULL, NAME varchar(50) NOT NULL, VALUE decimal(10, 2) DEFAULT NULL, PRIMARY KEY (ID));",
+    "INSERT INTO C (NAME, VALUE) VALUES ('Test1', 100.00), ('Test2', NULL), ('Test3', 200.50);",
+    "CREATE TABLE D (ID bigint NOT NULL, C_ID bigint NOT NULL, DESCRIPTION varchar(100) DEFAULT NULL, PRIMARY KEY (ID), FOREIGN KEY (C_ID) REFERENCES C(ID));",
+    "INSERT INTO D (C_ID, DESCRIPTION) VALUES (1, 'Description1'), (2, 'Description2'), (1, NULL);",
+    "SELECT A.TEMP_NO, D.DESCRIPTION FROM A JOIN D ON A.ROW_NO = D.C_ID WHERE A.CASH_RPLC_AMT > (SELECT AVG(VALUE) FROM C WHERE VALUE IS NOT NULL);"
+  ],
+  "key_bug_features": [
+    "IndexJoin with multiple Agg in sub-query"
+  ]
+}

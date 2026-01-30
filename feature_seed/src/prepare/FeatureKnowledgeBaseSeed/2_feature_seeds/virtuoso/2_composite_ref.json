@@ -1,0 +1,13 @@
+CREATE TABLE test_composite (id INT PRIMARY KEY, data COMPOSITE(STRING, STRING, STRING, STRING, STRING));
+INSERT INTO test_composite (id, data) VALUES (1, composite('One', 'Two', NULL, 'Four', 'Five'));
+INSERT INTO test_composite (id, data) VALUES (2, composite('Zero', 'Three', 'NULL', 'Five', 'Six'));
+SELECT id, composite_ref(data, 0) AS first_elem FROM test_composite WHERE composite_ref(data, 1) IN (SELECT composite_ref(data, 0) FROM test_composite WHERE id = 2);
+SELECT id FROM test_composite WHERE (composite_ref(data, 2) IS NULL OR composite_ref(data, 4) IN (SELECT composite_ref(data, 3) FROM test_composite WHERE composite_ref(data, 1) = 'Three'));
+SELECT id, composite_ref(data, 3) FROM test_composite WHERE (composite_ref(data, 0) IN (SELECT composite_ref(data, 1) FROM test_composite) OR composite_ref(data, 4) IS NULL);
+SELECT id, COUNT(*) FROM (SELECT id, composite_ref(data, 0) FROM test_composite GROUP BY composite_ref(data, 0) HAVING composite_ref(data, 3) IS NOT NULL) AS subquery GROUP BY id ORDER BY COUNT(*) DESC;
+CREATE TABLE test_users (user_id SERIAL PRIMARY KEY, username VARCHAR(50) NOT NULL);
+INSERT INTO test_users (username) VALUES ('user1'), ('user2'), (NULL);
+SELECT u.user_id, c.first_elem FROM test_users u JOIN (SELECT id, composite_ref(data, 0) AS first_elem FROM test_composite WHERE composite_ref(data, 2) IS NULL) c ON u.user_id = c.id WHERE u.username IS NOT NULL;
+CREATE TEMPORARY TABLE temp_test AS SELECT id, composite_ref(data, 1) AS second_elem FROM test_composite WHERE composite_ref(data, 0) IN (SELECT composite_ref(data, 4) FROM test_composite);
+SELECT a.second_elem FROM temp_test a WHERE a.second_elem IN (SELECT composite_ref(data, 0) FROM test_composite WHERE composite_ref(data, 1) IS NULL);
+DROP TABLE IF EXISTS temp_test;

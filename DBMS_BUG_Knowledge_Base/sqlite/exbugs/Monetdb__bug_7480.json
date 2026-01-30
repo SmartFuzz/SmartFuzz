@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7480",
+  "title": "MonetDB server crashes in `get_rel_count`",
+  "description": "MonetDB server crashes in `get_rel_count`.\n\n**To Reproduce**\n```sql\nSELECT CASE WHEN ( SELECT 2 WHERE FALSE ) > ANY ( 1 ) THEN 1 END GROUP BY 1;\n```\n\n**Backtrace of the Crash**\n```c\n#0 0x7fde17972420 (get_rel_count+0x30)\n#1 0x7fde179971e7 (rel_propagate_statistics+0x1327)\n#2 0x7fde17969a65 (exp_visitor+0xc45)\n#3 0x7fde179685e9 (exps_exp_visitor_bottomup+0xf9)\n#4 0x7fde17991ca1 (rel_get_statistics_+0x351)\n#5 0x7fde17967de7 (rel_visitor_bottomup+0x3e7)\n#6 0x7fde17967c78 (rel_visitor_bottomup+0x278)\n#7 0x7fde17967cd7 (rel_visitor_bottomup+0x2d7)\n#8 0x7fde179917bf (rel_get_statistics+0x5f)\n#9 0x7fde1798e235 (rel_optimizer+0x935)\n#10 0x7fde178f04a7 (sql_processrelation+0xc7)\n#11 0x7fde176f8edb (sql_symbol2relation+0x1bb)\n#12 0x7fde17725a82 (SQLparser+0x802)\n#13 0x7fde17724a0a (SQLengine_+0xa5a)\n#14 0x7fde177221fe (SQLengine+0x3e)\n#15 0x7fde17ca6b2f (runScenario+0x6f)\n#16 0x7fde17ca7cfe (MSscheduleClient+0xb6e)\n#17 0x7fde17deb6c2 (doChallenge+0x132)\n#18 0x7fde18c08b38 (thread_starter+0x318)\n#19 0x7fde17619609 (start_thread+0xd9)\n#20 0x7fde1753c353 (clone+0x43)\n```\n\n**Software versions**\n - MonetDB version number: v11.49.1 (Dec2023)\n - OS and version: Ubuntu 20.04\n - From docker image monetdb/monetdb:Dec2023 (or monetdb/dev-builds:default)\n\nAn example of steps to reproduce in docker container (**write the poc into /tmp/test.sql first**):\n```bash\ndocker container rm monetdb_test -f\ndocker run -e MDB_DB_ADMIN_PASS=monetdb --name monetdb_test -itd monetdb/monetdb:Dec2023\ndocker exec monetdb_test bash -c 'echo -n -e \"user=monetdb\\npassword=monetdb\\n\" > /root/.monetdb'\n\nsleep 10\ncat /tmp/test.sql | timeout 5s docker exec -i monetdb_test mclient monetdb     # run test case\n\nif docker exec monetdb_test bash -c \"grep '[m]server5' /proc/*/cmdline -lR\"; then\n    echo \"[INFO] Server normal.\"\nelse\n    echo \"[CRASH] Mserver5 process does NOT exist.\"\nfi\n```\n\nIt can also be reproduced on the docker image `monetdb/dev-builds:default`.\n\n**Issue labeling**\nbug",
+  "date": "2024-03-17T11:22:24Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INTEGER PRIMARY KEY, value TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table (id, value) VALUES (1, 'test1'), (2, 'test2'), (3, NULL);",
+    "SELECT CASE WHEN (SELECT COUNT(*) FROM test_table WHERE value IS NOT NULL) > (SELECT MAX(id) FROM test_table) THEN 'valid' ELSE 'invalid' END AS status;",
+    "UPDATE test_table SET value = 'updated' WHERE id = 2;",
+    "SELECT value FROM test_table WHERE created_at > (SELECT MIN(created_at) FROM test_table WHERE value IS NULL);"
+  ],
+  "key_bug_features": [
+    "SELECT CASE WHEN ( SELECT 2 WHERE FALSE ) > ANY ("
+  ]
+}

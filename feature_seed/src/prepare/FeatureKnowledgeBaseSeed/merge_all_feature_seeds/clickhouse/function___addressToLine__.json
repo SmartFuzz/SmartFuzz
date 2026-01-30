@@ -1,0 +1,14 @@
+CREATE TABLE trace_log (address UInt64) ENGINE = Memory;
+INSERT INTO trace_log VALUES (94784076370703), (94784076370704), (94784076370705);
+SET allow_introspection_functions=1;
+SELECT addressToLine(address) FROM trace_log;
+SELECT arrayStringConcat(arrayMap(addr -> addressToLine(addr), arrayJoin([94784076370703, 94784076370706])), '\n') AS lines FROM trace_log;
+SELECT addressToLine(0) AS line_info;
+SELECT addressToLine(99999999999999) AS line_info_invalid;
+SELECT addressToLine(NULL) AS line_info_null;
+WITH (SELECT arrayMap(x -> addressToLine(x), [94784076370703, 94784076370704]) AS lines) SELECT arrayStringConcat(lines, '\n');
+SELECT addressToLine(94784076370703) AS code_line, addressToLine(94784076370704) AS next_code_line FROM trace_log;
+CREATE TABLE debug_info (address UInt64, debug_info String) ENGINE = Memory;
+INSERT INTO debug_info VALUES (94784076370703, 'Valid Debug Info'), (94784076370706, 'Another Debug Info');
+SELECT d.debug_info, addressToLine(t.address) FROM trace_log t LEFT JOIN debug_info d ON t.address = d.address;
+SELECT addressToLine(12345678901234) AS trace_info FROM system.trace_log WHERE address = 94784076370703;

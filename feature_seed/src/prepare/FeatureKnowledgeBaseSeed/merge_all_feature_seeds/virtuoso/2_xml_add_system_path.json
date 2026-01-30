@@ -1,0 +1,16 @@
+CREATE TABLE xml_test (id INT PRIMARY KEY, xml_data XML);
+INSERT INTO xml_test (id, xml_data) VALUES (1, '<data><item>1</item></data>');
+INSERT INTO xml_test (id, xml_data) VALUES (2, '<data><item>2</item></data>');
+SELECT id FROM xml_test WHERE xml_add_system_path('file://custom/') IN (SELECT xml_data FROM xml_test WHERE id = 1);
+SELECT id FROM xml_test WHERE xml_add_system_path('file://custom/') IN (SELECT DISTINCT id FROM xml_test);
+SELECT COUNT(*) FROM xml_test WHERE xml_data IN (SELECT xml_data FROM xml_test WHERE id = 2 HAVING COUNT(*) > 0);
+SELECT id FROM xml_test WHERE xml_add_system_path(NULL) IN (SELECT id FROM xml_test WHERE xml_data IS NOT NULL);
+CREATE TABLE data_test (id INT, value VARCHAR(255) NOT NULL);
+INSERT INTO data_test (id, value) VALUES (1, 'A'), (2, 'B'), (3, NULL);
+SELECT * FROM data_test WHERE value IN (SELECT value FROM data_test WHERE id = 1) AND id IN (SELECT id FROM xml_test WHERE xml_data IS NOT NULL);
+SELECT value FROM data_test WHERE (xml_add_system_path('file:///tmp/') IN (SELECT value FROM data_test WHERE value IS NULL)) OR id = (SELECT MAX(id) FROM data_test);
+SELECT * FROM xml_test WHERE xml_data IN (SELECT xml_data FROM xml_test GROUP BY xml_data HAVING COUNT(id) > 1);
+SELECT id, CASE WHEN xml_add_system_path('file://invalid/') IS NULL THEN 0 ELSE 1 END AS path_status FROM xml_test;
+SELECT xml_data FROM (SELECT xml_data FROM xml_test WHERE id IN (1, 2) GROUP BY xml_data) AS derived WHERE xml_add_system_path('file://custom/') IN (SELECT xml_data FROM xml_test);
+SELECT COUNT(*) FROM (SELECT xml_data FROM xml_test WHERE xml_data IN (SELECT xml_data FROM data_test WHERE value IS NOT NULL)) AS filtered;
+SELECT id FROM data_test WHERE (id IN (1, 2, 3) OR value IN (SELECT value FROM data_test WHERE value = 'B')) AND id = (SELECT MIN(id) FROM data_test);

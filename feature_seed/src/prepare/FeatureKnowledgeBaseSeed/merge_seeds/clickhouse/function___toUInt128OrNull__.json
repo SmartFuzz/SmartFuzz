@@ -1,0 +1,12 @@
+CREATE TABLE test_table (value String);
+INSERT INTO test_table VALUES ('128'), ('abc'), ('-300'), ('340282366920938463463374607431768211456'), ('0'), ('-1'), ('99999999999999999999999999999999999999999999');
+SELECT toUInt128OrNull(value) FROM test_table;
+SELECT toUInt128OrNull(value) FROM test_table WHERE value NOT LIKE '%[^0-9]%';
+SELECT toUInt128OrNull(CAST(value AS String)) FROM test_table;
+SELECT value, toUInt128OrNull(value) AS converted_value FROM test_table WHERE converted_value IS NULL;
+SELECT COUNT(*) FROM (SELECT toUInt128OrNull(value) AS converted_value FROM test_table GROUP BY converted_value HAVING converted_value IS NOT NULL);
+CREATE TABLE test_table_2 (id UInt32, value String);
+INSERT INTO test_table_2 VALUES (1, '25'), (2, '99999'), (3, '0x1F4'), (4, 'NaN'), (5, 'Inf');
+SELECT id, toUInt128OrNull(value) FROM test_table_2 WHERE id = 3;
+SELECT t1.value, t2.value AS other_value, toUInt128OrNull(t1.value) AS converted_value FROM test_table t1 JOIN test_table_2 t2 ON t1.value = t2.value WHERE t1.value IS NOT NULL;
+SELECT SUM(toUInt128OrNull(value)) FROM test_table_2 GROUP BY id HAVING SUM(toUInt128OrNull(value)) > 0;

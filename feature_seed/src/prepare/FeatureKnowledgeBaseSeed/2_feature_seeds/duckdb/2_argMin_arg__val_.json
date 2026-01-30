@@ -1,0 +1,10 @@
+CREATE TABLE test_table (A INTEGER, B FLOAT, C STRING, D TIMESTAMP, E BOOLEAN);
+INSERT INTO test_table VALUES (1, 2.5, 'test1', '2023-01-01 00:00:00', TRUE), (2, 3.5, 'test2', '2023-01-02 00:00:00', NULL), (3, NULL, 'test3', NULL, FALSE);
+SELECT argMin(B, A / NULLIF(CAST(D AS FLOAT), 0)) FROM test_table GROUP BY E HAVING E IS NOT NULL;
+SELECT E, argMin(B, A / NULLIF(CAST(D AS FLOAT), 0)) OVER (PARTITION BY E ORDER BY A) AS min_value FROM test_table;
+SELECT argMin(A, B / (SELECT MIN(CAST(E AS FLOAT)) FROM test_table WHERE E IS NOT NULL)) FROM test_table WHERE B IS NOT NULL;
+CREATE TABLE temp_table AS SELECT argMin(B, (5 / 2.0)) AS min_value FROM test_table WHERE A > 0 GROUP BY C;
+INSERT INTO temp_table SELECT argMin(B, A / (SELECT MAX(A) FROM test_table WHERE E)) FROM test_table WHERE A IS NOT NULL OR C <> '';
+SELECT argMin(A, B / (CASE WHEN C IS NULL THEN 1 ELSE CAST(C AS FLOAT) END)) FROM test_table WHERE EXISTS (SELECT 1 FROM test_table WHERE A < 3);
+SELECT argMin(B, (SELECT AVG(A) FROM test_table GROUP BY E)) AS min_value FROM test_table HAVING COUNT(*) > 1;
+DROP TABLE temp_table;

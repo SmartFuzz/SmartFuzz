@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=104239",
+  "title": "Calling REGEXP_INSTR() with NULL causes all further calls of it to return NULL",
+  "description": "When REGEXP_INSTR() is used in a custom function like this:\r\n\r\nCREATE FUNCTION func(arg VARCHAR(255)) RETURNS INT\r\nRETURN REGEXP_INSTR(arg, 'pattern');\r\n\r\nand the custom function func is called with NULL once, it will return NULL as expected, but every further call of func will also return NULL, even if the provided arg is a normal string.\nHow to repeat:\nDROP FUNCTION IF EXISTS func;\r\nCREATE FUNCTION func(input_text VARCHAR(255)) RETURNS INT DETERMINISTIC\r\n    RETURN REGEXP_INSTR(input_text, 'pattern');\r\n    -- On the contrary, INSTR(input_text, 'pattern') works fine.\r\n\r\nSELECT func('Find this pattern'); -- expected 11, got 11\r\nSELECT func(NULL);                -- expected NULL, got NULL\r\nSELECT func('Find this pattern'); -- expected 11, got NULL\r\n-- Every further call of func will now have NULL as a result, regardless of the input.",
+  "date": "2021-07-07 16:22:00",
+  "vulnerable_version": "8.0.25-0ubuntu0.20.04.1",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT PRIMARY KEY, text_column VARCHAR(255) NOT NULL);",
+    "INSERT INTO test_table (id, text_column) VALUES (1, 'Find this pattern'), (2, NULL), (3, 'Another pattern');",
+    "CREATE FUNCTION func(arg VARCHAR(255)) RETURNS INT RETURN CASE WHEN arg IS NULL THEN NULL ELSE INSTR(arg, 'pattern') END;",
+    "SELECT func(text_column) FROM test_table WHERE id = 1;",
+    "SELECT func(NULL);"
+  ],
+  "key_bug_features": [
+    "Calling REGEXP_INSTR() with NULL affects subsequent calls"
+  ]
+}

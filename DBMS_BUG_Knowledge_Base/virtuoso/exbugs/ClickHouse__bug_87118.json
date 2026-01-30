@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/87118",
+  "title": "The statistic value of temporary data size always increases",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nThe statistic value of temporary data size only increase but not reduce:\nhttps://github.com/ClickHouse/ClickHouse/blob/09e4d7cdb763d263820386b0ee96882ac3c7d8db/src/Interpreters/TemporaryDataOnDisk.h#L79\nhttps://github.com/ClickHouse/ClickHouse/blob/09e4d7cdb763d263820386b0ee96882ac3c7d8db/src/Interpreters/TemporaryDataOnDisk.cpp#L460-L479\nSo when max_temporary_data_on_disk_size is set, the statistic value of temporary data size will increase and finally reach the limit size, However, the real data size in disk is not reach the max_temporary_data_on_disk_size.\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nSet max_temporary_data_on_disk_size to a small size(Such as 10240).\ncreate a table\n```\nCREATE TABLE default.t_proj_external\n(\n`k1` UInt32,\n`k2` UInt32,\n`k3` UInt32,\n`value` UInt32\n)\nENGINE = MergeTree\nORDER BY tuple()\nSETTINGS index_granularity = 8192;\nINSERT INTO t_proj_external SELECT 1, number%2, number%4, number FROM numbers(50000);\n```\nMultiple run the sql(about 4 times)\n```\nSELECT k1, k2, k3, sum(value) v FROM t_proj_external GROUP BY k1, k2, k3 ORDER BY k1, k2, k3 SETTINGS optimize_aggregation_in_order = 0, max_bytes_before_external_group_by = 1, max_bytes_ratio_before_external_group_by = 0, group_by_two_level_threshold = 1;\n```\n<img width=\"3456\" height=\"1868\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/7552f8cd-31f9-4da2-ae8a-32c746835ef0\" />\n### Expected behavior\n_No response_\n### Error message and/or stacktrace\n_No response_\n### Additional context\n_No response_",
+  "date": "2025-09-15T07:15:51Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE t_proj_test1 (id xsd:integer, name xsd:string, value xsd:double, created_at xsd:dateTime);",
+    "INSERT INTO t_proj_test1 SELECT number, CONCAT('Name', CAST(number AS xsd:string)), number * 1.5, NOW() FROM (SELECT ROW_NUMBER() OVER () AS number FROM DB.DUAL) WHERE number <= 10000;",
+    "CREATE TABLE t_proj_test2 (user_id xsd:integer, score xsd:integer, timestamp xsd:date);",
+    "INSERT INTO t_proj_test2 SELECT number, CASE WHEN number % 2 = 0 THEN number ELSE NULL END, CURRENT_DATE FROM (SELECT ROW_NUMBER() OVER () AS number FROM DB.DUAL) WHERE number <= 5000;",
+    "SELECT user_id, SUM(score) AS total_score FROM t_proj_test2 GROUP BY user_id ORDER BY total_score DESC;"
+  ],
+  "key_bug_features": [
+    "Temporary data size statistic only increases, never decreases."
+  ]
+}

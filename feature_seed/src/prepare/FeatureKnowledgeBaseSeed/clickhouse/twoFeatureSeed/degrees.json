@@ -1,0 +1,27 @@
+{
+    "function": "degrees",
+    "operator": "a * b",
+    "sql_array": [
+        "CREATE TABLE radians_test (id UInt32, radians_value Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO radians_test VALUES (1, 3.141592653589793), (2, 0), (3, NULL), (4, 1.570796326794897), (5, -3.141592653589793);",
+        "CREATE TABLE radians_summary AS SELECT id, degrees(radians_value) AS degrees_value FROM radians_test GROUP BY id;",
+        "SELECT id, degrees(radians_value) * 2 AS double_degrees FROM radians_test WHERE radians_value IS NOT NULL;",
+        "SELECT a.id, degrees(a.radians_value) * b.scale_factor AS scaled_degrees FROM radians_test AS a JOIN (SELECT 1 AS scale_factor) AS b ON a.id = b.scale_factor;",
+        "SELECT id, degrees(radians_value) AS degrees_value FROM radians_test HAVING degrees_value > degrees(1) ORDER BY degrees_value DESC;",
+        "SELECT id, degrees((radians_value + 0)*0) AS degrees_zero, degrees((radians_value + -3.14)) AS degrees_negative, degrees(3.14*0) AS degrees_zero_mul FROM radians_test;",
+        "SELECT id, degrees(COALESCE(radians_value, 0)) AS coalesced_degrees FROM radians_test;",
+        "CREATE TABLE radians_detailed (id UInt32, radians_value Float64, description String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO radians_detailed VALUES (1, 3.14159, 'Pi'), (2, 0, 'Zero'), (3, 0.785398, 'Quarter Pi'), (4, NULL, 'Null Value'), (5, -3.14, 'Negative Pi');",
+        "SELECT D.id, degrees(D.radians_value) AS degrees_value, CASE WHEN D.radians_value IS NULL THEN 'Undefined' ELSE 'Defined' END AS value_status FROM radians_detailed AS D WHERE D.radians_value < 0;",
+        "SELECT D1.id, degrees(D1.radians_value) * D2.factor AS adjusted_degrees FROM radians_detailed AS D1 JOIN (SELECT 2 AS factor) AS D2 ON D1.id = 1;",
+        "SELECT D.id, degrees(D.radians_value) AS degrees_value FROM radians_detailed D ORDER BY CASE WHEN D.description = 'Null Value' THEN 1 ELSE 0 END, degrees_value DESC;",
+        "SELECT id, degrees(degrees(radians_value * 2.0)) AS complex_degrees FROM radians_test;",
+        "SELECT id FROM radians_test WHERE degrees(NULLIF(radians_value, 0)) IS NOT NULL;",
+        "SELECT degrees(radians_value) AS degrees_using_empty FROM (SELECT NULL AS radians_value) AS tmp;",
+        "SELECT degrees(radians_value) * 100 AS scaled_degrees FROM radians_test WHERE radians_value <= 3.14;",
+        "CREATE TEMPORARY TABLE temp_radians (id UInt32, radians_value Float64) ENGINE = Memory;",
+        "INSERT INTO temp_radians VALUES (1, 0), (2, 6.283185), (3, 12.566370);",
+        "SELECT id, degrees(radians_value) / 2 AS half_degrees FROM temp_radians WHERE radians_value > 0;",
+        "DROP TABLE temp_radians;"
+    ]
+}

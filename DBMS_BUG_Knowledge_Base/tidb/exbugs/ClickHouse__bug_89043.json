@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/89043",
+  "title": "Parametrized view with enabled analyzer often near to 2x slower then with old analyzer",
+  "description": "### Company or project name\n_No response_\n### Describe the situation\nInitially problem described here https://github.com/ClickHouse/ClickHouse/issues/87267\nand now old analyzer not work\nWe use cascade of param views (one param views invoke another multiple param views).\nWith old analyzer queries executed near 2x time faster then with new\n<img width=\"1562\" height=\"1200\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/3fbf0a16-02f7-4706-adbe-c7f4229cc99c\" />\n### Which ClickHouse versions are affected?\nch v25.8.2.29\n### How to reproduce\nsomething like be this pattern\ndrop database if exists my_db on cluster analytics;\ncreate database my_db on cluster analytics;\nCREATE TABLE my_db.my_table on cluster analytics ENGINE = ReplicatedMergeTree ORDER BY id AS SELECT number as id FROM numbers(3);\nCREATE VIEW my_db.my_view1  on cluster analytics AS\nWITH\n{param_id:Int64}         as param_id\nSELECT * FROM my_db.my_table\nwhere id=param_id;\nCREATE VIEW my_db.my_view2 on cluster analytics AS\nwith\ncte as (\nSELECT * FROM my_db.my_view1(param_id={param_id:Int64})\n)\nselect * from cte;\nbut we have big queries and logic with multiple tables\n### Expected performance\nlike with old analyzer (not 2x slower)\n### Additional context\n_No response_",
+  "date": "2025-10-27T12:58:39Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "DROP DATABASE IF EXISTS my_db;",
+    "CREATE DATABASE my_db;",
+    "CREATE TABLE my_db.my_table (id BIGINT, name VARCHAR(255), created_at DATETIME DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB;",
+    "CREATE VIEW my_db.my_view1 AS SELECT * FROM my_db.my_table WHERE id = ?;",
+    "CREATE VIEW my_db.my_view2 AS SELECT * FROM my_db.my_view1 WHERE id = NULL;"
+  ],
+  "key_bug_features": [
+    "Parametrized views with new analyzer are significantly slower"
+  ]
+}

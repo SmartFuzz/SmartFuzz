@@ -1,0 +1,16 @@
+{
+    "function": "bitmapOr",
+    "operator": "a * b",
+    "sql_array": [
+        "CREATE TABLE test_bitmaps (id Int32, bitmap_data UInt64, value Float64, nullable_value Nullable(String));",
+        "INSERT INTO test_bitmaps VALUES (1, bitmapBuild([1, 2, 3]), 1.1, NULL), (2, bitmapBuild([3, 4, 5]), NULL, 'test'), (3, bitmapBuild([6, 7, 8]), 2.2, 'example');",
+        "SELECT bitmapToArray(bitmapOr(bitmap_data, bitmapBuild([0, 9]))) AS combined_bitmap FROM test_bitmaps WHERE value * 2 > 2.0;",
+        "SELECT id, bitmapToArray(bitmapOr(bitmapBuild([1, 2]), NULL)) AS combined_bitmap, NULLIF(value * 3, 0.0) AS adjusted_value FROM test_bitmaps WHERE nullable_value IS NULL;",
+        "SELECT id, bitmapToArray(bitmapOr(bitmap_data, bitmapOr(bitmapBuild([5, NULL]), bitmapBuild([7, 8])))) AS final_bitmap FROM test_bitmaps WHERE id IN (SELECT id FROM test_bitmaps WHERE bitmapOr(bitmap_data, bitmapBuild([1, 2])) != bitmap_data);",
+        "CREATE TABLE test_fuzz (seq Int32, rand_value String, multiplied_value Float64);",
+        "INSERT INTO test_fuzz VALUES (1, '10', 5.0), (2, '20', NULL), (3, 'third', 15.0), (4, '', 0.0);",
+        "SELECT seq, bitmapToArray(bitmapOr(bitmapBuild([CAST(rand_value AS UInt64)]), bitmapBuild([5]))) AS combined_bits, multiplied_value * 2 AS double_value FROM test_fuzz WHERE doubled_value IS NOT NULL AND seq * 2 <= 8;",
+        "SELECT AVG(multiplied_value) AS avg_value FROM test_fuzz GROUP BY seq HAVING avg_value > 0.0;",
+        "SELECT seq, bitmapToArray(bitmapOr(bitmapBuild([LOWER(rand_value)]), bitmapBuild([4, 5]))) AS new_bitmap FROM test_fuzz ORDER BY seq * (NULLIF(rand_value, '')) DESC LIMIT 2;"
+    ]
+}

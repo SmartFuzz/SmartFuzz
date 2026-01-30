@@ -1,0 +1,23 @@
+{
+    "function": "gz_file_open",
+    "operator": "|| (Concatenate)",
+    "sql_array": [
+        "CREATE TABLE test_files (id INT PRIMARY KEY, file_content TEXT, description VARCHAR(255) NOT NULL);",
+        "INSERT INTO test_files (id, file_content, description) VALUES (1, gz_file_open('path/file1.n3.gz'), 'First test file');",
+        "INSERT INTO test_files (id, file_content, description) VALUES (2, gz_file_open('path/file2.n3.gz'), 'Second test file');",
+        "SELECT id, file_content || ' - processed' AS processed_content FROM test_files WHERE id = (SELECT MAX(id) FROM test_files);",
+        "SELECT id, gz_file_open('path/file3.n3.gz') || ' - extra data' AS combined_data FROM test_files WHERE file_content IS NOT NULL;",
+        "SELECT id, COUNT(*) OVER (PARTITION BY description) AS description_count FROM test_files GROUP BY id, description HAVING description_count > 1;",
+        "SELECT id, gz_file_open('path/' || CASE WHEN description IS NOT NULL THEN description ELSE 'default_file.n3.gz' END) AS dynamic_content FROM test_files;",
+        "SELECT id, gz_file_open('path/' || description) AS zipped_file_content FROM test_files WHERE LENGTH(description) > 0 ORDER BY LENGTH(description) DESC LIMIT 5;",
+        "SELECT id, gz_file_open('path/' || description) AS content FROM test_files WHERE file_content IS NULL OR LENGTH(file_content) = 0;",
+        "CREATE TABLE complex_edges (id INT PRIMARY KEY, data TEXT, valid BOOLEAN NOT NULL DEFAULT TRUE);",
+        "INSERT INTO complex_edges (id, data) VALUES (1, 'Some data');",
+        "INSERT INTO complex_edges (id, data) VALUES (2, NULL);",
+        "SELECT id || ' : ' || (gz_file_open('path/' || data) || ' - check') AS result FROM complex_edges WHERE valid = TRUE AND data IS NOT NULL;",
+        "SELECT id, SUM(CASE WHEN data IS NOT NULL THEN 1 ELSE 0 END) AS valid_data_count FROM complex_edges GROUP BY id HAVING valid_data_count > 0;",
+        "DROP TABLE IF EXISTS temp_results;",
+        "CREATE TEMP TABLE temp_results AS SELECT id, gz_file_open('path/file4.n3.gz') AS result FROM test_files WHERE id < (SELECT COUNT(*) FROM test_files);",
+        "SELECT id, result || ' inserted' AS final_result FROM temp_results;"
+    ]
+}

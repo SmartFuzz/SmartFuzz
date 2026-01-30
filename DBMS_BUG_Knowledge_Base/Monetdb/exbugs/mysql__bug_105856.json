@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=105856",
+  "title": "Inserting values to a view with check option raises unexpected error",
+  "description": "Inserting values to a view with check option raises an unexpected error, when the values are visible through the view.\nHow to repeat:\nCREATE TABLE t1 (id int);\r\nCREATE TABLE t2 (id int, c int);\r\n\r\nINSERT INTO t1 (id) VALUES (1);\r\nINSERT INTO t1 (id) VALUES (2);\r\nINSERT INTO t2 (id, c) VALUES (1, 2), (2, 2);\r\n\r\nCREATE VIEW v2 (a,b) AS\r\nSELECT t2.id, t2.c AS c FROM t1, t2\r\nWHERE t1.id=t2.id AND 1 IN (SELECT id FROM t1) WITH CHECK OPTION;\r\n\r\nmysql-8.0.27 > SELECT * FROM v2;\r\n+------+------+\r\n| a    | b    |\r\n+------+------+\r\n|    1 |    2 |\r\n|    2 |    2 |\r\n+------+------+\r\n2 rows in set (0.00 sec)\r\n\r\nmysql-8.0.27 > INSERT INTO v2(a,b) VALUES (1,2);\r\nERROR 1369 (HY000): CHECK OPTION failed 'test.v2'\r\n\r\nmysql-8.0.27 > SELECT * FROM v2 LIMIT 1;\r\n+------+------+\r\n| a    | b    |\r\n+------+------+\r\n|    1 |    2 |\r\n+------+------+\r\n1 row in set (0.01 sec)\r\n\r\nmysql-8.0.27 > INSERT INTO v2(a,b) VALUES (1,2);\r\nQuery OK, 1 row affected (0.00 sec)\r\n\r\nmysql-8.0.27 > INSERT INTO v2(a,b) VALUES (2,2);\r\nERROR 1369 (HY000): CHECK OPTION failed 'test.v2'\r\n\r\nActually, we should be able to insert these two values by the view. But some unexpected behaviors occur.\nSuggested fix:\nI think the server doesn't properly fill the actual value of `t1.id` to the field, but keeps the value of TABLE cache since the last execution when TABLE_LIST::view_check_option().",
+  "date": "2021-12-10 07:12:00",
+  "vulnerable_version": "8.0.27",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t3 (id INT PRIMARY KEY, name VARCHAR(50), age INT CHECK (age >= 0));",
+    "INSERT INTO t3 (id, name, age) VALUES (1, 'Alice', 30), (2, 'Bob', NULL);",
+    "CREATE VIEW v3 AS SELECT id, name FROM t3 WHERE age >= 18;",
+    "SELECT * FROM v3;",
+    "INSERT INTO v3 (id, name) VALUES (1, 'Alice');"
+  ],
+  "key_bug_features": [
+    "Inserting values to a view with check option"
+  ]
+}

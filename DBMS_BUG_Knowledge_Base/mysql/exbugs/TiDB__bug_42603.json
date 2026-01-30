@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/42603",
+  "title": "Useless partition pruning warning for `ANALYZE TABLE` statement",
+  "description": "## Bug Report\r\n\r\n1. Warning about partition pruning for something that uses all partitions isn't really helpful as partition pruning wouldn't be used anyway.\r\n2. Warning about missing statistics for a `ANALYZE TABLE` statement isn't really helpful either as this is what would populate the stats.\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n```sql\r\nCREATE TABLE t1(c1 int)\r\npartition by range(c1)\r\n(partition p0 values less than (100),\r\npartition p1 values less than maxvalue);\r\nINSERT INTO t1 VALUES (1),(200),(400),(600);\r\nANALYZE TABLE t1;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\n\r\n```\r\nsql> CREATE TABLE t1(c1 int)\r\n   -> partition by range(c1)\r\n   -> (partition p0 values less than (100),\r\n   -> partition p1 values less than maxvalue);\r\nQuery OK, 0 rows affected (0.2005 sec)\r\n\r\nsql> INSERT INTO t1 VALUES (1),(200),(400),(600);\r\nQuery OK, 4 rows affected (0.0240 sec)\r\n\r\nRecords: 4  Duplicates: 0  Warnings: 0\r\n\r\nsql> ANALYZE TABLE t1;\r\nQuery OK, 0 rows affected, 2 warnings (0.1893 sec)\r\nNote (code 1105): Analyze use auto adjusted sample rate 1.000000 for table test.t1's partition p0\r\nNote (code 1105): Analyze use auto adjusted sample rate 1.000000 for table test.t1's partition p1\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n```\r\nsql> CREATE TABLE t1(c1 int)\r\n   -> partition by range(c1)\r\n   -> (partition p0 values less than (100),\r\n   -> partition p1 values less than maxvalue);\r\nQuery OK, 0 rows affected (0.2005 sec)\r\n\r\nsql> INSERT INTO t1 VALUES (1),(200),(400),(600);\r\nQuery OK, 4 rows affected (0.0240 sec)\r\n\r\nRecords: 4  Duplicates: 0  Warnings: 0\r\n\r\nsql> ANALYZE TABLE t1;\r\nQuery OK, 0 rows affected, 4 warnings (0.1893 sec)\r\nWarning (code 1105): disable dynamic pruning due to t1 has no global stats\r\nNote (code 1105): Analyze use auto adjusted sample rate 1.000000 for table test.t1's partition p0\r\nWarning (code 1105): disable dynamic pruning due to t1 has no global stats\r\nNote (code 1105): Analyze use auto adjusted sample rate 1.000000 for table test.t1's partition p1\r\n```\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n```\r\ntidb_version(): Release Version: v6.6.0\r\nEdition: Community\r\nGit Commit Hash: f4ca0821fb96a2bdd37d2fb97eb26c07fc58d4e4\r\nGit Branch: heads/refs/tags/v6.6.0\r\nUTC Build Time: 2023-02-17 14:49:02\r\nGoVersion: go1.19.5\r\nRace Enabled: false\r\nTiKV Min Version: 6.2.0-alpha\r\nCheck Table Before Drop: false\r\nStore: tikv\r\n```",
+  "date": "2023-03-27T06:52:52Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2(c1 int, c2 varchar(50)) PARTITION BY RANGE(c1) (PARTITION p0 VALUES LESS THAN (50), PARTITION p1 VALUES LESS THAN (100), PARTITION p2 VALUES LESS THAN MAXVALUE);",
+    "INSERT INTO t2 VALUES (10, 'A'), (20, 'B'), (30, 'C'), (60, 'D');",
+    "CREATE TABLE t3(c1 int, c2 int NOT NULL, c3 datetime DEFAULT CURRENT_TIMESTAMP) PARTITION BY HASH(c1) PARTITIONS 4;",
+    "INSERT INTO t3 SELECT c1, COUNT(*) FROM t2 GROUP BY c1;",
+    "ANALYZE TABLE t3;"
+  ],
+  "key_bug_features": [
+    "Warning for ANALYZE TABLE with all partitions used"
+  ]
+}

@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, time_string VARCHAR(50), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO test_table (id, time_string) VALUES (1, '12:00:00'), (2, '14:30:00'), (3, NULL), (4, '08:15:00'), (5, '');
+SELECT id, stringtime(time_string) AS converted_time, 'Conversion of ' || COALESCE(time_string, 'NULL') AS status FROM test_table;
+SELECT id, stringtime('2023-10-01 ' || time_string) AS full_time FROM test_table WHERE time_string IS NOT NULL;
+SELECT id FROM test_table WHERE stringtime(time_string) = stringtime('12:00:00') || ' UTC';
+CREATE TABLE another_table (ref_id INT, FOREIGN KEY(ref_id) REFERENCES test_table(id));
+INSERT INTO another_table (ref_id) VALUES (1), (2), (4);
+SELECT a.ref_id, stringtime(t.time_string) AS time_converted FROM another_table a JOIN test_table t ON a.ref_id = t.id WHERE stringtime(t.time_string) IS NOT NULL;
+SELECT stringtime('19:00:00' || '') AS concat_time, MIN(stringtime(time_string)) AS min_time FROM test_table GROUP BY time_string HAVING MIN(stringtime(time_string)) IS NOT NULL;
+SELECT DISTINCT stringtime('23:59:59' || time_string) AS edge_case_time FROM test_table ORDER BY edge_case_time;
+SELECT id, stringtime((SELECT MAX(time_string) FROM test_table WHERE time_string IS NOT NULL) || ' +00:00') AS max_time_plus_zero FROM test_table WHERE EXISTS (SELECT 1 FROM another_table WHERE ref_id = test_table.id);

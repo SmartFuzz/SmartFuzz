@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/5f60b11fc8",
+  "title": "likely() function in the ON clause of a LEFT JOIN results in incorrect result",
+  "description": "drh added on 2015-06-18 14:31:23:\nUsing any of the likely(), unlikely(), or likelihood() functions on a term in\nthe ON clause of a LEFT JOIN can cause the LEFT JOIN to malfunction. Example:\nCREATE TABLE t1(i int, x, y, z);\nINSERT INTO t1 VALUES (1,1,1,1), (2,2,2,2), (3,3,3,3), (4,4,4,4);\n\nCREATE TABLE t2(i int, bool char);\nINSERT INTO t2 VALUES(1,'T'), (2,'F');\n\nSELECT count(*) FROM t1 LEFT JOIN t2 ON t1.i=t2.i AND bool='T';\nSELECT count(*) FROM t1 LEFT JOIN t2 ON likely(t1.i=t2.i) AND bool='T';\nThe two queries in the script above should give the same answer, but due\nto this bug, they do not. The problem is that the likely() function causes\nthe query planner to forget that the t1.i=t2.i term is part of the ON\nclause, making it think that the term is in the WHERE clause instead.\nThis problem appears to have existed since the unlikely() function was\nfirst introduced in version 3.8.1.",
+  "date": "2015-06-18 14:31:2310.15 years ago",
+  "vulnerable_version": "3.8.10.2",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(i int PRIMARY KEY, x double, y varchar(255), z varbinary(255));",
+    "INSERT INTO t1 VALUES (1, 1.1, 'one', CAST(0x01 AS varbinary)), (2, 2.2, 'two', CAST(0x02 AS varbinary)), (3, 3.3, 'three', CAST(0x03 AS varbinary)), (4, 4.4, 'four', CAST(0x04 AS varbinary));",
+    "CREATE TABLE t2(i int, bool char NOT NULL CHECK(bool IN ('T', 'F')));",
+    "INSERT INTO t2 VALUES(1, 'T'), (2, 'F'), (NULL, 'T');",
+    "SELECT count(*) FROM t1 LEFT JOIN t2 ON t1.i=t2.i AND t2.bool='T';"
+  ],
+  "key_bug_features": [
+    "likely() function in LEFT JOIN ON clause malfunctions"
+  ]
+}

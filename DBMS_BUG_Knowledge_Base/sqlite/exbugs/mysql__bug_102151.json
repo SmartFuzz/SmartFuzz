@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=102151",
+  "title": "select result is mismatch when use COALESCE and not.",
+  "description": "When the following two SQL statements are executed, the same result is expected. However, the query result is not the same.\r\n\r\nsql:\r\nSELECT t2.c0 FROM t2 WHERE \"M\" = t2.c0;\r\nSELECT t2.c0 FROM t2 WHERE (((COALESCE(NULL, \"M\", \"b\", \"W\", -1775599917)) = (t2.c0)));\n\ntested in mysql 8.0.18 - 8.0.22\nHow to repeat:\n1、run the following SQL statement:\r\n\r\nDROP DATABASE IF EXISTS database195;\r\nCREATE DATABASE database195;\r\nUSE database195;\r\nCREATE TABLE t0(c0 DECIMAL ZEROFILL  STORAGE MEMORY ) ;\r\nALTER TABLE t0 RENAME t0;\r\nCHECK TABLE t0 FOR UPGRADE FAST EXTENDED CHANGED QUICK MEDIUM;\r\nINSERT IGNORE INTO t0(c0) VALUES('r105169326'), (1.250308188E9);\r\nALTER TABLE t0 STATS_AUTO_RECALC DEFAULT, ROW_FORMAT COMPACT, STATS_PERSISTENT 1, PACK_KEYS DEFAULT, CHECKSUM 0, DELAY_KEY_WRITE 1, RENAME t1, ALGORITHM INSTANT, COMPRESSION 'ZLIB', DISABLE KEYS;\r\nALTER TABLE t0 FORCE, STATS_AUTO_RECALC 1, RENAME AS t2, STATS_PERSISTENT 1, PACK_KEYS 1, DELAY_KEY_WRITE 1, COMPRESSION 'ZLIB', ROW_FORMAT COMPRESSED, ENABLE KEYS, ALGORITHM COPY;\r\nSET SESSION max_sort_length = 7531760;\r\nCHECKSUM TABLE t2 EXTENDED;\r\nDELETE IGNORE FROM t2;\r\nDELETE LOW_PRIORITY QUICK IGNORE FROM t2;\r\nTRUNCATE TABLE t2;\r\nCREATE INDEX i0 ON t2(c0 ASC);\r\nINSERT IGNORE INTO t2(c0) VALUES(NULL);\r\nINSERT IGNORE INTO t2(c0) VALUES('+');\r\nREPLACE DELAYED INTO t2(c0) VALUES(NULL);\r\nINSERT IGNORE INTO t2(c0) VALUES(\"Fc|X4\");\r\nINSERT DELAYED IGNORE INTO t2(c0) VALUES(NULL), (NULL), (-1884484723), (\"O'8㿮 ~)\"), (\"#k)rKf\");\r\nALTER TABLE t2 FORCE;\r\nINSERT LOW_PRIORITY IGNORE INTO t2(c0) VALUES(NULL);\r\nANALYZE LOCAL TABLE t2;\n\n2、run the following SQL statements:\r\n\r\nSELECT t2.c0 FROM t2 WHERE \"M\" = t2.c0;\r\n\r\nSELECT t2.c0 FROM t2 WHERE (((COALESCE(NULL, \"M\", \"b\", \"W\", -1775599917)) = (t2.c0)));\n\n3、we expect the same results.",
+  "date": "2021-01-05 13:28:00",
+  "vulnerable_version": "8.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t3 (c1 INTEGER NOT NULL, c2 TEXT DEFAULT NULL, c3 REAL NOT NULL);",
+    "INSERT INTO t3 (c1, c2, c3) VALUES (1, 'test', 10.50), (2, NULL, 20.75), (3, 'example', NULL);",
+    "SELECT COALESCE(c2, 'default') AS result FROM t3 WHERE c1 = 2;",
+    "SELECT c1 FROM t3 WHERE c3 IS NULL;",
+    "SELECT c1 FROM t3 WHERE COALESCE(c2, 'fallback') = 'example';"
+  ],
+  "key_bug_features": [
+    "COALESCE function returns unexpected results in SQL query"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=107787",
+  "title": "Incorrect work of query with union in inner select",
+  "vulnerable_database": "MySQL Server: Optimizer",
+  "date": "2022-07-06 17:58:00",
+  "vulnerable_version": "8.0.29",
+  "description": "Problem is reproduced only on MySQL 8.0.29\r\n\r\nChecked also in 8.0.26 and 5.7.12-log. and it is worked as expected.\r\n\r\nUsed select with inner select. In inner select it is used union.\r\nfor outer select it is used filtering by text column with COLLATE ucs2_unicode_ci\r\nbut it is compared with literal of utf8\r\n\r\nif in inner select it is used only one select without union then qury is worked as expected\nHow to repeat:\nI create minimal script where problem is reproduced\r\n\r\nCREATE TABLE `a1` (\r\n    `nId` INT AUTO_INCREMENT  PRIMARY KEY,\r\n\t`wstrText` VARCHAR(200) UNICODE COLLATE ucs2_unicode_ci\r\n\t)ENGINE=InnoDB DEFAULT CHARACTER SET `ascii` COLLATE `ascii_general_ci`\r\nGO\r\n\r\nCREATE TABLE `a2` (\r\n    `nId` INT AUTO_INCREMENT  PRIMARY KEY,\r\n\t`wstrText` VARCHAR(200) UNICODE COLLATE ucs2_unicode_ci\r\n\t)ENGINE=InnoDB DEFAULT CHARACTER SET `ascii` COLLATE `ascii_general_ci`\r\nGO\r\n\r\ninsert into a1(wstrText) values (_utf8'Patch');\r\nGO\r\n\r\nSELECT  `als`.`wstrText`\r\n\r\nFROM (\r\n\r\nSELECT DISTINCT  `a2`.`wstrText` AS wstrText\r\nFROM `a2`   \r\nWHERE `a2`.`wstrText` LIKE _utf8'Patc%' escape _utf8'\\\\'   \r\n\r\nUNION ALL  SELECT DISTINCT  `a1`.`wstrText` AS wstrText FROM `a1` \r\nWHERE (`a1`.`wstrText` LIKE _utf8'Patc%' escape _utf8'\\\\')  \r\n\r\n) als  \r\nWHERE `als`.`wstrText` LIKE _utf8'P%' escape _utf8'\\\\'\n\nlast select return empty result\r\n\r\nbut it is should return 1 record\nSuggested fix:\nquery is worked as expected if modify WHERE clause \r\n\r\nWHERE `als`.`wstrText` LIKE _utf8'P%' collate utf8_general_ci escape _utf8'\\\\'",
+  "poc": [
+    "CREATE TABLE `a1` (\\n`nId` INT AUTO_INCREMENT  PRIMARY KEY,\\n`wstrText` VARCHAR(200) UNICODE COLLATE ucs2_unicode_ci\\n)ENGINE=InnoDB DEFAULT CHARACTER SET `ascii` COLLATE `ascii_general_ci`\\nGO\\nCREATE TABLE `a2` (\\n`nId` INT AUTO_INCREMENT  PRIMARY KEY,\\n`wstrText` VARCHAR(200) UNICODE COLLATE ucs2_unicode_ci\\n)ENGINE=InnoDB DEFAULT CHARACTER SET `ascii` COLLATE `ascii_general_ci`\\nGO\\ninsert into a1(wstrText) values (_utf8'Patch');"
+  ],
+  "key_bug_features": [
+    "Inner select using union with different collations"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE `a3` (`nId` INT AUTO_INCREMENT PRIMARY KEY, `wstrText` VARCHAR(200) UNICODE COLLATE ucs2_unicode_ci) ENGINE=InnoDB DEFAULT CHARACTER SET `ascii` COLLATE `ascii_general_ci`;",
+    "INSERT INTO `a3` (wstrText) VALUES (_utf8'Patchwork');",
+    "SELECT `als`.`wstrText` FROM (SELECT DISTINCT `a2`.`wstrText` AS wstrText FROM `a2` WHERE `a2`.`wstrText` LIKE _utf8'Patc%' ESCAPE _utf8'\\' UNION ALL SELECT DISTINCT `a3`.`wstrText` AS wstrText FROM `a3` WHERE (`a3`.`wstrText` LIKE _utf8'Patc%' ESCAPE _utf8'\\')) als WHERE `als`.`wstrText` LIKE _utf8'P%' COLLATE utf8_general_ci ESCAPE _utf8'\\';",
+    "CREATE TABLE `a4` (`nId` INT AUTO_INCREMENT PRIMARY KEY, `wstrText` VARCHAR(200) UNICODE COLLATE utf8_general_ci) ENGINE=InnoDB DEFAULT CHARACTER SET `utf8` COLLATE `utf8_general_ci`;",
+    "INSERT INTO `a4` (wstrText) VALUES ('Patch');"
+  ]
+}

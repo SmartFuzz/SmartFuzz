@@ -1,0 +1,12 @@
+CREATE TABLE demo_demo (id INT, product_name VARCHAR(255), publication_name VARCHAR(255), price DECIMAL(10,2), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO demo_demo (id, product_name, publication_name, price) VALUES (1, 'Product A', 'demo-publication', 19.99), (2, 'Product B', 'demo-publication', NULL), (3, 'Product C', 'other-publication', 29.99), (4, 'Product D', 'demo-publication', 42.50);
+SELECT DB.DBA.REPL_PUB_REMOVE('demo-publication', (SELECT product_name FROM demo_demo WHERE price NOT IN (SELECT price FROM demo_demo WHERE publication_name = 'other-publication')), 2, 1);
+SELECT DB.DBA.REPL_PUB_REMOVE('demo-publication', 'Demo.demo.' || product_name, 2, 1) FROM demo_demo WHERE price NOT IN (10, 20, 30, NULL);
+CREATE TABLE demo_pub (pub_id INT, pub_name VARCHAR(100), status BOOLEAN);
+INSERT INTO demo_pub (pub_id, pub_name, status) VALUES (1, 'demo-publication', TRUE), (2, 'other-publication', FALSE);
+SELECT * FROM demo_demo WHERE created_at IS NULL OR price IS NOT NULL AND id NOT IN (SELECT pub_id FROM demo_pub WHERE status = FALSE);
+SELECT DB.DBA.REPL_PUB_REMOVE('demo-publication', 'Demo.demo.Products', (SELECT COUNT(*) FROM demo_demo WHERE price < 50), (SELECT COUNT(*) FROM demo_pub WHERE status = TRUE));
+CREATE TABLE temp_demo (temp_id INT, temp_value VARCHAR(100), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO temp_demo (temp_id, temp_value) VALUES (1, ''), (2, 'Extreme value #1'), (3, 'Extreme value #2');
+ALTER TABLE demo_demo ADD CONSTRAINT chk_price CHECK (price >= 0 OR price IS NULL);
+SELECT DB.DBA.REPL_PUB_REMOVE('nonexistent-publication', 'Demo.demo.Products', 0, (SELECT temp_id FROM temp_demo WHERE temp_value NOT IN ('', 'Extreme value #1')));

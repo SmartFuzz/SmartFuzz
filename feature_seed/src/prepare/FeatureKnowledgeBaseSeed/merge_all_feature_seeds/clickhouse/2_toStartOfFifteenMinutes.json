@@ -1,0 +1,11 @@
+CREATE TABLE edge_cases (id UInt32, event_time DateTime, nullable_time Nullable(DateTime), value String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO edge_cases VALUES (1, toDateTime('2023-04-21 10:15:00'), NULL, 'Not Null'), (2, toDateTime('2023-04-21 10:16:00'), toDateTime('2023-04-21 10:16:00'), 'NULL Test'), (3, toDateTime('2023-04-21 10:17:00'), toDateTime('2023-04-21 10:17:00'), 'Edge Case'), (4, toDateTime('2023-04-21 10:18:00'), NULL, 'Another Test');
+SELECT id, toStartOfFifteenMinutes(event_time) AS rounded_time FROM edge_cases WHERE nullable_time IS NOT NULL;
+SELECT id, toStartOfFifteenMinutes(IF(nullable_time IS NOT NULL, nullable_time, toDateTime('2023-04-21 10:00:00'))) AS fallback_time FROM edge_cases;
+SELECT count(*), toStartOfFifteenMinutes(event_time) AS rounded_time FROM edge_cases GROUP BY rounded_time HAVING count(*) > 1;
+SELECT id, toStartOfFifteenMinutes(event_time), value FROM edge_cases WHERE (value IS NOT NULL OR nullable_time IS NOT NULL) AND toStartOfFifteenMinutes(event_time) < toDateTime('2023-04-21 10:20:00');
+SELECT id, toStartOfFifteenMinutes(event_time) AS rounded_time, COUNT(value) OVER (PARTITION BY rounded_time) AS count_over_time FROM edge_cases ORDER BY rounded_time ASC;
+WITH (SELECT MAX(event_time) FROM edge_cases WHERE value != '') AS max_time SELECT toStartOfFifteenMinutes(max_time) AS rounded_max_time, id FROM edge_cases WHERE event_time <= max_time;
+SELECT event_time, value FROM edge_cases WHERE event_time IS NOT NULL AND toStartOfFifteenMinutes(event_time) = toStartOfFifteenMinutes(nullable_time) OR nullable_time IS NULL;
+CREATE TEMPORARY TABLE temp_edge AS SELECT *, toStartOfFifteenMinutes(event_time) AS rounded_time FROM edge_cases WHERE id IS NOT NULL;
+SELECT rounded_time, COUNT(*) FROM temp_edge GROUP BY rounded_time HAVING COUNT(*) > 0;

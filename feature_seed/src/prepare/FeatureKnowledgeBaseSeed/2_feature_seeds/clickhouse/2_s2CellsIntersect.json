@@ -1,0 +1,10 @@
+CREATE TABLE geo_test (id UInt32, s2_index UInt64, value Float64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO geo_test VALUES (1, 9926595209846587392, 0.1), (2, 9926594385212866560, NULL), (3, 1234567890123456789, 0.5), (4, 0, 1.0);
+SELECT s2CellsIntersect(s2_index, (SELECT MAX(s2_index) FROM geo_test WHERE value IS NOT NULL)) AS intersect FROM geo_test GROUP BY id HAVING intersect = 1;
+SELECT id, s2CellsIntersect(s2_index, tuple(9926595209846587392, 9926594385212866560)) AS intersect FROM geo_test WHERE value = 1.0 OR id IN (SELECT id FROM geo_test WHERE s2_index = 0);
+WITH (SELECT MIN(value) FROM geo_test WHERE value IS NOT NULL) AS min_val SELECT s2CellsIntersect((SELECT s2_index FROM geo_test WHERE value = min_val), 1234567890123456789) AS intersect FROM geo_test;
+CREATE TABLE temp_geo_test AS SELECT * FROM geo_test WHERE value IS NOT NULL;
+INSERT INTO temp_geo_test SELECT id, s2_index, CAST(value AS Nullable(Float64)) FROM geo_test WHERE s2_index IS NOT NULL;
+SELECT s2CellsIntersect(0, (SELECT s2_index FROM temp_geo_test LIMIT 1 OFFSET 2)) AS intersect FROM temp_geo_test WHERE id = 1;
+SELECT s2CellsIntersect(tuple(s2_index, 1), if(s2_index = 0, NULL, (SELECT s2_index FROM geo_test LIMIT 1))) AS intersect FROM geo_test;
+DROP TABLE temp_geo_test;

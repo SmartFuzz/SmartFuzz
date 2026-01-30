@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14909",
+  "title": "COPY FROM DATABASE doesn't work well with unique index",
+  "description": "### What happens?\r\n\r\nI created a table with an unique index in an on-disk database, then copied this database to a new on-disk database.\r\nWith the new database, the unique index did not work well with wrong query results returned.\r\n\r\n### To Reproduce\r\n\r\nIt can be reproduced by following script.\r\n\r\n```\r\n#!/bin/bash\r\n\r\nrm old.db new.db\r\n\r\nduckdb -version\r\n\r\n# Return single row with _id = 3 as expected\r\nduckdb old.db \"CREATE TABLE items (_id INTEGER); INSERT INTO items (_id) VALUES (1), (2), (3); CREATE UNIQUE INDEX idx_id ON items(_id); FROM items WHERE _id > 2;\"\r\n\r\nduckdb :memory: \"ATTACH 'old.db' AS old; ATTACH 'new.db' AS new; COPY FROM DATABASE old TO new;\"\r\n\r\n# Return unexpected empty rows\r\nduckdb new.db \"FROM items WHERE _id > 2;\"\r\n\r\nrm old.db new.db\r\n\r\n# Without unique index\r\n# Return single row with _id = 3 as expected\r\nduckdb old.db \"CREATE TABLE items (_id INTEGER); INSERT INTO items (_id) VALUES (1), (2), (3); FROM items WHERE _id > 2;\"\r\n\r\nduckdb :memory: \"ATTACH 'old.db' AS old; ATTACH 'new.db' AS new; COPY FROM DATABASE old TO new;\"\r\n\r\n# Return single row with _id = 3 as expected\r\nduckdb new.db \"FROM items WHERE _id > 2;\"\r\n\r\n```\r\n\r\nWith v1.1.3, the output is:\r\n\r\n```\r\nv1.1.3 19864453f7\r\n┌───────┐\r\n│  _id  │\r\n│ int32 │\r\n├───────┤\r\n│     3 │\r\n└───────┘\r\n┌────────┐\r\n│  _id   │\r\n│ int32  │\r\n├────────┤\r\n│ 0 rows │\r\n└────────┘\r\n┌───────┐\r\n│  _id  │\r\n│ int32 │\r\n├───────┤\r\n│     3 │\r\n└───────┘\r\n┌───────┐\r\n│  _id  │\r\n│ int32 │\r\n├───────┤\r\n│     3 │\r\n└───────┘\r\n```\r\n\r\nWith v1.1.4-dev2077, the output is:\r\n\r\n```\r\nv1.1.4-dev2077 448b46937f\r\n┌───────┐\r\n│  _id  │\r\n│ int32 │\r\n├───────┤\r\n│     3 │\r\n└───────┘\r\n┌────────┐\r\n│  _id   │\r\n│ int32  │\r\n├────────┤\r\n│ 0 rows │\r\n└────────┘\r\n┌───────┐\r\n│  _id  │\r\n│ int32 │\r\n├───────┤\r\n│     3 │\r\n└───────┘\r\n┌───────┐\r\n│  _id  │\r\n│ int32 │\r\n├───────┤\r\n│     3 │\r\n└───────┘\r\n```\r\n\r\n### OS:\r\n\r\nWSL x86_64\r\n\r\n### DuckDB Version:\r\n\r\nv1.1.3\r\n\r\n### DuckDB Client:\r\n\r\nCLI\r\n\r\n### Hardware:\r\n\r\n_No response_\r\n\r\n### Full Name:\r\n\r\nLun Wang\r\n\r\n### Affiliation:\r\n\r\nN/A\r\n\r\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\r\n\r\nI have tested with a nightly build\r\n\r\n### Did you include all relevant data sets for reproducing the issue?\r\n\r\nYes\r\n\r\n### Did you include all code required to reproduce the issue?\r\n\r\n- [X] Yes, I have\r\n\r\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\r\n\r\n- [X] Yes, I have",
+  "date": "2024-11-20 08:54:28",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE items (_id Int32, name String, price Decimal(10, 2), created_at DateTime DEFAULT now());",
+    "INSERT INTO items (_id, name, price) VALUES (1, 'Item A', 10.50), (2, 'Item B', 20.00), (3, 'Item C', 30.75);",
+    "ALTER TABLE items ADD CONSTRAINT idx_id UNIQUE (_id);",
+    "INSERT INTO items (_id, name, price) VALUES (4, 'Item D', NULL);",
+    "SELECT * FROM items WHERE price IS NULL OR _id > 2;"
+  ],
+  "key_bug_features": [
+    "COPY FROM DATABASE with unique index causes incorrect results"
+  ]
+}

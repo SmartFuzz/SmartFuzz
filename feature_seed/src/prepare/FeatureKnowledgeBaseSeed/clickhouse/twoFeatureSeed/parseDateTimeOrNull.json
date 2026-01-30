@@ -1,0 +1,18 @@
+{
+    "function": "parseDateTimeOrNull",
+    "operator": "IS NULL",
+    "sql_array": [
+        "CREATE TABLE test_dates (id UInt32, datetime_str String, nullable_datetime Nullable(DateTime));",
+        "INSERT INTO test_dates VALUES (1, '2023-10-05 14:35:00', parseDateTimeOrNull('2023-10-05 14:35:00')), (2, 'invalid_date', NULL), (3, '', parseDateTimeOrNull(''));",
+        "CREATE TABLE test_aggregated AS SELECT id, parseDateTimeOrNull(datetime_str) AS parsed_date FROM test_dates;",
+        "SELECT id, parsed_date, IS NULL(parsed_date) AS is_null FROM test_aggregated WHERE IS NULL(parsed_date) OR parsed_date < parseDateTimeOrNull('2023-01-01 00:00:00');",
+        "SELECT id, COUNT(*) AS count_null WHERE IS NULL(parsed_date) GROUP BY id HAVING count_null > 0;",
+        "CREATE TABLE join_test (part_id UInt32, part_date String);",
+        "INSERT INTO join_test VALUES (1, '2023-10-05'), (2, 'invalid_date'), (3, '');",
+        "SELECT tt.id, tt.parsed_date, jt.part_date, IS NULL(jt.part_date) AS is_part_date_null FROM test_aggregated AS tt LEFT JOIN join_test AS jt ON tt.id = jt.part_id WHERE IS NULL(tt.parsed_date) OR parseDateTimeOrNull(jt.part_date) IS NULL;",
+        "CREATE TABLE complex_group (group_id UInt32, date_str String);",
+        "INSERT INTO complex_group VALUES (1, '2023-10-01'), (2, 'invalid_date'), (3, '');",
+        "SELECT group_id, COUNT(*) AS total, SUM(IS NULL(parseDateTimeOrNull(date_str))) AS total_nulls FROM complex_group GROUP BY group_id HAVING total_nulls > 0;",
+        "SELECT IS NULL(parseDateTimeOrNull('2023-01-01 00:00:00')) AS is_new_year_null, IS NULL(parseDateTimeOrNull(NULL)) AS is_null_date, parseDateTimeOrNull('2023-10-05 14:35:00') + INTERVAL 5 DAY AS new_date FROM test_dates WHERE IS NULL(datetime_str) OR parseDateTimeOrNull(datetime_str) > parseDateTimeOrNull('2023-01-01 00:00:00');"
+    ]
+}

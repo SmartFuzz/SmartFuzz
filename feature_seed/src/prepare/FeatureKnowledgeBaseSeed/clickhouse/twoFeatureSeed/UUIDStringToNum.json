@@ -1,0 +1,22 @@
+{
+    "function": "UUIDStringToNum",
+    "operator": "x",
+    "sql_array": [
+        "CREATE TABLE test_uuids (id UInt32, uuid String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_uuids VALUES (1, '612f3c40-5d3b-217e-707b-6a546a3d7b29'), (2, NULL), (3, '00000000-0000-0000-0000-000000000000'), (4, 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx');",
+        "SELECT id, UUIDStringToNum(uuid) AS uuid_bytes FROM test_uuids WHERE uuid IS NOT NULL;",
+        "SELECT id, multiIf(uuid IS NULL, 'NULL UUID', uuid, UUIDStringToNum(uuid)) AS processed_uuid FROM test_uuids;",
+        "SELECT id, uuid, UUIDStringToNum(uuid) AS bytes FROM test_uuids WHERE uuid LIKE '612%' OR id = 1;",
+        "CREATE TABLE uuid_metrics (id UInt32, bytes FixedString(16)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO uuid_metrics SELECT id, UUIDStringToNum(uuid) FROM test_uuids WHERE uuid IS NOT NULL;",
+        "SELECT id, bytes FROM uuid_metrics WHERE NOT bytes = UUIDStringToNum('00000000-0000-0000-0000-000000000000');",
+        "SELECT id, COUNT(*) AS count FROM uuid_metrics GROUP BY bytes HAVING count > 1;",
+        "WITH (SELECT MIN(UUIDStringToNum(uuid)) FROM test_uuids WHERE uuid IS NOT NULL) AS min_uuid_bytes SELECT id, uuid, UUIDStringToNum(uuid), min_uuid_bytes FROM test_uuids ORDER BY id;",
+        "SELECT id, UUIDStringToNum(uuid, 2) AS microsoft_bytes FROM test_uuids WHERE bytes IS NOT NULL;",
+        "SELECT id, multiIf(length(uuid) = 36, UUIDStringToNum(uuid), NULL) AS potentially_valid_uuid FROM test_uuids;",
+        "CREATE TEMPORARY TABLE temp_uuid_test AS SELECT id, uuid FROM test_uuids;",
+        "SELECT id, IF(bytes IS NULL, 'No Bytes', bytes) FROM (SELECT id, UUIDStringToNum(uuid) AS bytes FROM temp_uuid_test WHERE uuid IS NOT NULL) AS sub;",
+        "ALTER TABLE temp_uuid_test ADD COLUMN description String;",
+        "WITH (SELECT COUNT(*) FROM temp_uuid_test WHERE uuid IS NOT NULL) AS valid_count SELECT valid_count, COUNT(*) FROM temp_uuid_test GROUP BY uuid HAVING COUNT(*) > 0;"
+    ]
+}

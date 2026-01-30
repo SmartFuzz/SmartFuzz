@@ -1,0 +1,14 @@
+CREATE TABLE test_data (id INT, value FLOAT, category VARCHAR);
+INSERT INTO test_data (id, value, category) VALUES (1, 1.5, 'A'), (2, 2.5, 'A'), (3, NULL, 'B'), (4, 3.0, 'B'), (5, -1.0, 'C'), (6, 0.0, 'C'), (7, 4.0, 'A');
+SELECT geometric_mean(value) / 2 AS half_geomean FROM (SELECT value FROM test_data WHERE category = 'A' OR value IS NULL GROUP BY category) AS sub;
+SELECT category, geometric_mean(value) AS geomean_val FROM test_data GROUP BY category HAVING geomean_val > 0.5 ORDER BY geomean_val DESC;
+SELECT id, value / (SELECT geometric_mean(value) FROM test_data WHERE category = 'B') AS adjusted_value FROM test_data;
+WITH temp AS (SELECT value FROM test_data WHERE value IS NOT NULL) SELECT geometric_mean(value) / geometric_mean(NULLIF(value, 0)) AS adjusted_geomean FROM temp;
+SELECT category, geometric_mean(value) AS geo_mean FROM test_data GROUP BY category HAVING geo_mean > (SELECT AVG(geometric_mean(value)) FROM test_data) / 2;
+CREATE TABLE test_data_ext (id INT, value_str VARCHAR);
+INSERT INTO test_data_ext (id, value_str) VALUES (1, '1.5'), (2, '2.5'), (3, 'NULL'), (4, '3.0'), (5, '-1.0');
+SELECT geometric_mean(CAST(value_str AS FLOAT)) FROM test_data_ext WHERE value_str IS NOT NULL;
+SELECT AVG(rounded_values) AS avg_adjusted FROM (SELECT ROUND(geometric_mean(value) / NULLIF((id + 1) / 2.0, 0), 2) AS rounded_values FROM test_data GROUP BY category) AS subquery;
+CREATE TEMP TABLE temp_transformed AS SELECT id, geometric_mean(COALESCE(value, 1.0)) AS geo_mean_value FROM test_data GROUP BY id;
+SELECT DISTINCT id, geo_mean_value / (SELECT geometric_mean(value) FROM test_data WHERE category = 'C') FROM temp_transformed WHERE geo_mean_value IS NOT NULL;
+SELECT category, geometric_mean(COALESCE(NULLIF(value, 0), 1)) AS corrected_geomean FROM test_data GROUP BY category HAVING corrected_geomean > 1.0;

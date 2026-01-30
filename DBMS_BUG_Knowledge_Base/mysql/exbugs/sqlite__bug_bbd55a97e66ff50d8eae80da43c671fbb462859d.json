@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/bbd55a97e6",
+  "title": "Global heap over flow in sqlite3VdbeMemPrettyPrint",
+  "description": "yongheng added on 2020-01-06 18:39:09:\nConsider the following test case:\n---\nPRAGMA vdbe_trace=true; ; CREATE TABLE v0 ( v1 , v2 , v3 UNIQUE ) ;\nCREATE VIEW v4 ( v5 ) AS SELECT v3 FROM v0 ORDER BY v3 , v3 , v3 , v2 ;\nSELECT DISTINCT 9 IN ( SELECT zeroblob ( 10 * 10 * 10 ) ) ;\n---\nIt triggers an global heap overflow in debug build with asan, for both release code and development code.\ndrh added on 2020-01-06 19:25:35:\nUnable to reproduce.  Nevertheless, enhancements have been made to the\nsqlite3VdbeMemPrettyPrint() function so that it uses safer string handling\nroutines.  Perhaps that will fix the problem.  I'll mark the ticket as\n\"Fixed\" and somebody else can reopen it if they find a new test case that\nstill fails.\nyongheng added on 2020-01-06 19:45:59:\nWe can reproduce this problem stably. Here is the asan trace if it helps:\n---\n==31757==ERROR: AddressSanitizer: global-buffer-overflow on address 0x000002511d90 at pc 0x000000b7e954 bp 0x7ffc764b0970 sp 0x7ffc764b0968\nREAD of size 1 at 0x000002511d90 thread T0\n    #0 0xb7e953 in sqlite3VdbeMemPrettyPrint /data/rxz226/sqlite/bld/sqlite3.c:84994:49\n    #1 0xb7e953 in memTracePrint /data/rxz226/sqlite/bld/sqlite3.c:85067\n    #2 0xb7e953 in registerTrace /data/rxz226/sqlite/bld/sqlite3.c:85074\n    #3 0xab3049 in sqlite3VdbeExec /data/rxz226/sqlite/bld/sqlite3.c:87439:3\n    #4 0x7144ae in sqlite3Step /data/rxz226/sqlite/bld/sqlite3.c:82929:10\n    #5 0x7144ae in sqlite3_step /data/rxz226/sqlite/bld/sqlite3.c:82994\n    #6 0x6c00b5 in exec_prepared_stmt /data/rxz226/sqlite/bld/shell.c:11387:8\n    #7 0x584584 in shell_exec /data/rxz226/sqlite/bld/shell.c:11692:7\n    #8 0x6ca4d6 in runOneSqlLine /data/rxz226/sqlite/bld/shell.c:18278:8\n    #9 0x594363 in process_input /data/rxz226/sqlite/bld/shell.c:18378:17\n    #10 0x532ebb in main /data/rxz226/sqlite/bld/shell.c:19136:12\n    #11 0x7fc8ead4582f in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2082f)\n    #12 0x41bd08 in _start (/data/rxz226/sqlite/bld/sqlite3+0x41bd08)\n---\nyongheng added on 2020-01-06 20:01:21:\nBut the problem has been gone after the check-in.\ndrh added on 2020-01-06 20:04:32:\nUnable to repro.\nPlease show the exact version of SQLite that you are using and the exact sequence of steps you are using to build the CLI.\nyongheng added on 2020-01-06 20:11:41:\nFor development version, it is that before this check-in [69f6a7e4].\n\nFor release version, the info is:\n---\nSQLite version 3.30.1 2019-10-10 20:19:45\n---\n\nBuilt with \"-fsanitize=address -DSQLITE_DEBUG=1\"\ndrh added on 2020-01-06 20:49:36:\nReproducing for me now.  A correct fix has been checked in.\nJust to confirm:  This is all in debugging logic that is omitted from\nrelease builds.\nyongheng added on 2020-01-06 22:48:07:\nThanks for the fix. Yeah, we checked it against release build. That's why we only mentioned debug build.",
+  "date": "2020-01-06 18:39:095.59 years ago",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255), value BLOB, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table (name, value) VALUES ('test1', UNHEX(REPEAT('00', 512)));",
+    "CREATE VIEW test_view AS SELECT name, value FROM test_table WHERE value IS NOT NULL;",
+    "SELECT DISTINCT name FROM test_view WHERE CHAR_LENGTH(value) IN (SELECT CHAR_LENGTH(UNHEX(REPEAT('00', 1024))) );",
+    "UPDATE test_table SET value = NULL WHERE id = 1;"
+  ],
+  "key_bug_features": [
+    "Global heap overflow in sqlite3VdbeMemPrettyPrint"
+  ]
+}

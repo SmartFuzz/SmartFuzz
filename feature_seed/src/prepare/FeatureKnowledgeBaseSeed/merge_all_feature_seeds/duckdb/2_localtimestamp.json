@@ -1,0 +1,14 @@
+CREATE TABLE test_dates (id INT, event_date DATE, timestamp_value TIMESTAMP);
+INSERT INTO test_dates VALUES (1, DATE '2023-01-01', localtimestamp - INTERVAL 10 DAY);
+INSERT INTO test_dates VALUES (2, DATE '2023-02-15', localtimestamp);
+INSERT INTO test_dates VALUES (3, DATE '2023-03-05', localtimestamp + INTERVAL 5 DAY);
+INSERT INTO test_dates VALUES (4, NULL, localtimestamp - INTERVAL 1 DAY);
+SELECT id, event_date, timestamp_value, localtimestamp - INTERVAL (SELECT COUNT(*) FROM test_dates WHERE event_date IS NOT NULL) DAY AS adjusted_timestamp FROM test_dates;
+SELECT event_date, COUNT(*) FROM test_dates WHERE event_date > NULL GROUP BY event_date HAVING COUNT(*) > 1;
+SELECT id, event_date, timestamp_value FROM test_dates WHERE event_date - INTERVAL 2 DAY < localtimestamp;
+WITH adjusted_dates AS (SELECT id, event_date, localtimestamp - INTERVAL 1 DAY AS new_timestamp FROM test_dates WHERE event_date IS NOT NULL) SELECT id, event_date, new_timestamp FROM adjusted_dates WHERE new_timestamp < localtimestamp;
+SELECT id, event_date, localtimestamp - INTERVAL 5 DAY AS historical_time FROM test_dates WHERE event_date < localtimestamp - INTERVAL 10 DAY;
+CREATE TABLE additional_data (data_id INT, related_id INT, entry_timestamp TIMESTAMP);
+INSERT INTO additional_data VALUES (1, 1, localtimestamp), (2, 2, NULL), (3, 3, localtimestamp + INTERVAL 1 MINUTE);
+SELECT d.id, d.event_date, a.entry_timestamp FROM test_dates d JOIN additional_data a ON d.id = a.related_id WHERE a.entry_timestamp IS NOT NULL AND a.entry_timestamp - localtimestamp < INTERVAL 0 DAY;
+SELECT AVG(datediff(DAY, event_date, localtimestamp - INTERVAL 3 DAY)) FROM test_dates GROUP BY event_date HAVING AVG(datediff(DAY, event_date, localtimestamp)) IS NOT NULL;

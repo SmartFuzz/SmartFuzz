@@ -1,0 +1,22 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/17084",
+  "title": "Using `__arrow_c_stream__` (PyCapsule interface) errors after the first call",
+  "vulnerable_database": "DuckDB",
+  "date": "2025-04-12 04:43:29",
+  "vulnerable_version": "",
+  "description": "### What happens?\n\nInteroperating with DuckDB data via the PyCapsule interface (`obj.__arrow_c_stream__()`) seems to work only once; accessing it a second time raises the following error:\n```\nduckdb.InvalidInputException: Invalid Input Error: There is no query result\n```\n\n### To Reproduce\n\nInitially can create the PyCapsule object successfully:\n```python\nimport duckdb\nrel = duckdb.query(\"FROM VALUES (100, 40, 9), (200, 50, 8) tbl(x, y, z)\")\nrel.__arrow_c_stream__()\n# <capsule object \"arrow_array_stream\" at 0x1038f0e70>\n```\nBut call it a second time and it has unexpectedly invalidated itself...\n```python\nrel.__arrow_c_stream__()\n# duckdb.InvalidInputException: Invalid Input Error: There is no query result\n```\n...despite the relation object remaining valid/unchanged, and still being able to export to Arrow:\n```python\nrel\n# ┌───────┬───────┬───────┐\n# │   x   │   y   │   z   │\n# │ int32 │ int32 │ int32 │\n# ├───────┼───────┼───────┤\n# │   100 │    40 │     9 │\n# │   200 │    50 │     8 │\n# └───────┴───────┴───────┘\n\nrel.to_arrow_table()\n# pyarrow.Table\n# x: int32\n# y: int32\n# z: int32\n# ----\n# x: [[100,200]]\n# y: [[40,50]]\n# z: [[9,8]]\n```\n\n###  Expected Behaviour\n\nIt should be valid to call `.__arrow_c_stream__()` as many times as necessary; for example:\n```python\nimport pyarrow as pa\ntbl = pa.table(\n    data={\"x\": [1, 2, 3]},\n    schema=pa.schema([pa.field(\"x\", pa.int32())])\n)\n\ntbl.__arrow_c_stream__()\n# <capsule object \"arrow_array_stream\" at 0x107d86490>\ntbl.__arrow_c_stream__()\n# <capsule object \"arrow_array_stream\" at 0x11ba57120>\n```\n```python\nimport polars as pl\ndf = pl.DataFrame({\"x\": [1, 2, 3]})\n\ndf.__arrow_c_stream__()\n# <capsule object \"arrow_array_stream\" at 0x107afb870>\ndf.__arrow_c_stream__()\n# <capsule object \"arrow_array_stream\" at 0x1048ab210>\n```\n```python\nimport pandas as pd\npf = pd.DataFrame({\"x\": [1, 2, 3]})\n\npf.__arrow_c_stream__()\n# <capsule object \"arrow_array_stream\" at 0x11b8f7f00>\npf.__arrow_c_stream__()\n# <capsule object \"arrow_array_stream\" at 0x105249650>\n```\n\n### OS:\n\nmacOS\n\n### DuckDB Version:\n\n1.2.2\n\n### DuckDB Client:\n\nPython\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nAlexander Beedie\n\n### Affiliation:\n\nADIA\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a stable release\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "poc": [
+    "CREATE TABLE tbl (x INT32, y INT64);",
+    "INSERT INTO tbl VALUES (2**24, 8**16);"
+  ],
+  "key_bug_features": [
+    "Calling __arrow_c_stream__ multiple times raises an error"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT, name VARCHAR, value FLOAT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table VALUES (1, 'Alice', 3.14, '2023-01-01 10:00:00');",
+    "INSERT INTO test_table VALUES (2, 'Bob', NULL, '2023-01-02 11:00:00');",
+    "SELECT id, name, COALESCE(value, 0) AS value FROM test_table WHERE created_at > '2023-01-01';",
+    "CREATE TABLE another_table AS SELECT id, name FROM test_table WHERE value IS NOT NULL;"
+  ]
+}

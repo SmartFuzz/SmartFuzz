@@ -1,0 +1,22 @@
+{
+    "function": "http_acl_remove",
+    "operator": "AND",
+    "sql_array": [
+        "CREATE TABLE acl_rules (id INT PRIMARY KEY, rule_condition VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO acl_rules (id, rule_condition) VALUES (1, 'TRUE'), (2, 'FALSE'), (3, NULL), (4, 'CONDITION A'), (5, 'CONDITION B');",
+        "SELECT http_acl_remove(rule_condition) AND (SELECT COUNT(*) FROM acl_rules WHERE rule_condition IS NOT NULL HAVING COUNT(*) > 2) AS result FROM acl_rules;",
+        "SELECT http_acl_remove('ALLOWED') AND COALESCE((SELECT rule_condition FROM acl_rules WHERE id = 1), 'DEFAULT') AS condition FROM acl_rules;",
+        "SELECT http_acl_remove(SELECT rule_condition FROM acl_rules WHERE id = 2) AND (SELECT MAX(id) FROM acl_rules) AS max_id FROM acl_rules;",
+        "CREATE TABLE user_access (user_id INT, acl_rule VARCHAR(255) NOT NULL, last_accessed TIMESTAMP);",
+        "INSERT INTO user_access (user_id, acl_rule, last_accessed) VALUES (1, 'CONDITION A', NOW()), (2, NULL, NOW()), (3, 'CONDITION B', NOW() - INTERVAL '1 DAY');",
+        "SELECT http_acl_remove(CASE WHEN acl_rule IS NULL THEN 'UNKNOWN' ELSE acl_rule END) AND COUNT(*) FROM user_access GROUP BY user_id HAVING COUNT(user_id) > 1;",
+        "SELECT http_acl_remove(rule_condition) AND COUNT(*) FROM acl_rules HAVING COUNT(*) > IFNULL((SELECT COUNT(*) FROM user_access WHERE acl_rule IS NOT NULL), 0);",
+        "ALTER TABLE acl_rules ADD COLUMN is_active BOOLEAN DEFAULT TRUE;",
+        "UPDATE acl_rules SET is_active = FALSE WHERE rule_condition = 'FALSE';",
+        "SELECT http_acl_remove(rule_condition) AND CASE WHEN EXISTS (SELECT 1 FROM acl_rules WHERE is_active) THEN 'ACTIVE' ELSE 'INACTIVE' END AS status FROM acl_rules;",
+        "CREATE TABLE temp_acl (temp_rule VARCHAR(255), access_level INT CHECK (access_level >= 0 AND access_level <= 10));",
+        "INSERT INTO temp_acl (temp_rule, access_level) VALUES (NULL, 5), ('BLOCKED', 11), ('ALLOWED', 3);",
+        "SELECT http_acl_remove(temp_rule) AND (SELECT SUM(access_level) FROM temp_acl WHERE access_level < 10) AS total_access FROM temp_acl;",
+        "DROP TABLE IF EXISTS temp_acl;"
+    ]
+}

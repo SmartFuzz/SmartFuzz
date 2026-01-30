@@ -1,0 +1,22 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/1103",
+  "title": "Transitivity in Virtuoso vs SPARQL 1.1?",
+  "vulnerable_database": "Virtuoso",
+  "date": "2023-02-13 23:36:39",
+  "vulnerable_version": "",
+  "description": "Here is a simple query that utilizes the property path operator +:\nPREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n\nSELECT ?type\nWHERE {\n  ?type rdfs:subClassOf+ rdf:Property.\n}\n\nBased on section 5.1.5 (rdfs:ContainerMembershipProperty) of the RDF core schema, the expected result is:\nrdf:Property\nrdfs:ContainerMembershipProperty\n\nHowever, when this query is run in 7.2 I get this:\n<html><head></head><body>\n\ntype\n--\nhttp://www.w3.org/2002/07/owl#DeprecatedProperty\nhttp://www.w3.org/2002/07/owl#DatatypeProperty\nhttp://www.w3.org/2002/07/owl#ObjectProperty\nhttp://www.w3.org/2002/07/owl#AnnotationProperty\nhttp://www.w3.org/2002/07/owl#OntologyProperty\nhttp://www.w3.org/2002/07/owl#FunctionalProperty\nhttp://www.w3.org/2002/07/owl#TransitiveProperty\nhttp://www.w3.org/2002/07/owl#SymmetricProperty\nhttp://www.w3.org/2002/07/owl#InverseFunctionalProperty\n\n</body></html>\n\n\nNote that because RDF schema section 5.1.5 asserts rdfs:ContainerMembershipProperty rdfs:subClassOf rdf:Property, the above result should parse the same as the following query, where I omit the + operator from the predicate rdfs:subClassOf:\nPREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n\nSELECT ?type\nWHERE {\n  ?type rdfs:subClassOf rdf:Property.\n}\n\nHowever, when I run that version of the query in 7.2, I get a different result:\n\n\ntype\n--\nhttp://www.w3.org/2002/07/owl#FunctionalProperty\nhttp://www.w3.org/2002/07/owl#OntologyProperty\nhttp://www.w3.org/2002/07/owl#AnnotationProperty\nhttp://www.w3.org/2002/07/owl#ObjectProperty\nhttp://www.w3.org/2002/07/owl#DatatypeProperty\nhttp://www.w3.org/2002/07/owl#DeprecatedProperty\n\nWhat is going on here?",
+  "poc": [
+    "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n\nSELECT ?type\nWHERE {\n  ?type rdfs:subClassOf+ rdf:Property.\n}",
+    "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n\nSELECT ?type\nWHERE {\n  ?type rdfs:subClassOf rdf:Property.\n}"
+  ],
+  "key_bug_features": [
+    "Inconsistent results with rdfs:subClassOf property path operator"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE rdf_classes (id INT PRIMARY KEY, class_uri VARCHAR(255) NOT NULL, parent_class_uri VARCHAR(255));",
+    "INSERT INTO rdf_classes (id, class_uri, parent_class_uri) VALUES (1, 'http://www.w3.org/2002/07/owl#FunctionalProperty', NULL);",
+    "INSERT INTO rdf_classes (id, class_uri, parent_class_uri) VALUES (2, 'http://www.w3.org/2002/07/owl#DatatypeProperty', 'http://www.w3.org/2002/07/owl#Property');",
+    "SELECT class_uri FROM rdf_classes WHERE parent_class_uri IS NULL;",
+    "SELECT class_uri FROM rdf_classes WHERE parent_class_uri = 'http://www.w3.org/2002/07/owl#Property' OR parent_class_uri IS NULL;"
+  ]
+}

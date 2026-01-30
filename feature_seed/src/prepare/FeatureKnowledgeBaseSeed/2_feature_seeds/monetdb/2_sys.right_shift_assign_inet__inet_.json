@@ -1,0 +1,13 @@
+CREATE TABLE ip_data (id SERIAL PRIMARY KEY, ip_address INET NOT NULL, subnet INET NOT NULL);
+INSERT INTO ip_data (ip_address, subnet) VALUES (inet '192.168.1.1', inet '192.168.1/24'), (inet '192.168.2.1', inet '192.168.2/24'), (inet '10.0.0.1', inet '10.0.0/8');
+SELECT *, sys.right_shift_assign(ip_address, subnet) AS is_assigned FROM ip_data;
+SELECT ip1.id, ip1.ip_address FROM ip_data AS ip1 JOIN ip_data AS ip2 ON ip1.ip_address << ip2.subnet WHERE sys.right_shift_assign(ip1.ip_address, ip2.subnet) IS TRUE;
+SELECT COUNT(*) FROM ip_data GROUP BY subnet HAVING COUNT(*) > (SELECT COUNT(*) / 2 FROM ip_data);
+SELECT ip_address, (CASE WHEN sys.right_shift_assign(ip_address, subnet) THEN 'Assigned' ELSE 'Not Assigned' END) AS assignment_status FROM ip_data WHERE subnet IS NOT NULL;
+SELECT ip1.ip_address FROM ip_data ip1 WHERE EXISTS (SELECT 1 FROM ip_data ip2 WHERE ip1.ip_address << ip2.subnet AND ip2.id = (SELECT MIN(id) FROM ip_data)) ORDER BY ip1.ip_address;
+SELECT ip_address FROM ip_data WHERE ip_address IS NOT NULL AND ip_address NOT LIKE '192.%' ORDER BY ip_address DESC;
+CREATE TABLE temp_ip_data AS (SELECT ip_address, subnet FROM ip_data WHERE ip_address IS NOT NULL);
+SELECT DISTINCT ip1.ip_address FROM temp_ip_data ip1 JOIN temp_ip_data ip2 ON ip1.subnet << ip2.ip_address WHERE ip1.ip_address IS NOT NULL;
+INSERT INTO temp_ip_data (ip_address, subnet) VALUES (inet '255.255.255.255', inet '0.0.0.0/0');
+SELECT ip_address, subnet FROM temp_ip_data WHERE sys.right_shift_assign(ip_address, subnet) OR (ip_address IS NULL AND subnet IS NOT NULL);
+SELECT COUNT(DISTINCT ip_address) AS unique_ips, sys.right_shift_assign(ip_address, subnet) AS assign_check FROM ip_data GROUP BY assign_check HAVING unique_ips > 1;

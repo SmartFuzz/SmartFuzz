@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/88054",
+  "title": "Aggregate ReplacingMergeTree table using incremental view",
+  "description": "### Company or project name\n_No response_\n### Question\nI have the following table (simplified):\n```\nCREATE TABLE source\n(\nclient_id Int32,\nsite_id Int32,\ndate Date32,\nvisitors Int64,\n_peerdb_synced_at DateTime64(9) DEFAULT now64(),\n_peerdb_is_deleted UInt8,\n_peerdb_version Int64\n)\nENGINE = ReplacingMergeTree(_peerdb_version, _peerdb_is_deleted)\nPRIMARY KEY (client_id, site_id, date)\nORDER BY (client_id, site_id, date)\nSETTINGS index_granularity = 8192;\n```\nI want to preaggregate the data - sum the number of visitors per client_id and date. The problem is that existing records may change. Since I'm using clickpipes I'll just get a new row with higher version but I can't use SummingMergeTree (since the old value won't be subtracted from the sum).\nSo I came up with the following solution:\n```\nCREATE TABLE target\n(\nclient_id Int32,\ndate Date32,\nvisitors Int64,\ndeleted UInt8,\nversion Int64\n)\nENGINE = ReplacingMergeTree(version, deleted)\nPRIMARY KEY (client_id, date)\nORDER BY (client_id, date)\nSETTINGS index_granularity = 8192;\n```\n```\nCREATE VIEW source_final AS SELECT * FROM source FINAL;\nCREATE MATERIALIZED VIEW source_mv TO target AS\nSELECT\npart.client_id as client_id,\npart.date as date,\nfull.visitors AS visitors,\nnow64() AS version,\nif(full.client_id = 0, 1, 0) AS deleted\nFROM (SELECT DISTINCT ON (client_id, date) client_id, date FROM source) as part\nLEFT JOIN (\nSELECT\nclient_id,\ndate,",
+  "date": "2025-10-03T07:56:48Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE source_test (client_id INT, site_id INT, date DATE, visitors BIGINT, _peerdb_synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, _peerdb_is_deleted BOOLEAN DEFAULT FALSE, _peerdb_version BIGINT);",
+    "INSERT INTO source_test (client_id, site_id, date, visitors, _peerdb_version) VALUES (1, 100, '2023-10-01', 50, 1);",
+    "INSERT INTO source_test (client_id, site_id, date, visitors, _peerdb_version) VALUES (1, 100, '2023-10-01', 70, 2);",
+    "CREATE TABLE target_test AS SELECT client_id, date, SUM(visitors) AS visitors, 0 AS deleted, MAX(_peerdb_version) AS version FROM source_test GROUP BY client_id, date;",
+    "SELECT * FROM target_test WHERE visitors > 0 ORDER BY client_id, date;"
+  ],
+  "key_bug_features": [
+    "ReplacingMergeTree with incremental view for data aggregation"
+  ]
+}

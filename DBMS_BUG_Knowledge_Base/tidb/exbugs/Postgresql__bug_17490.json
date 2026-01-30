@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/17490-fd63590229a42d2e%40postgresql.org",
+  "title": "BUG #17490: unconsistency between TRUNCATE RESTART IDENTITY and setval()",
+  "description": "The following bug has been logged on the website:\nBug reference:      17490\nLogged by:          Sébastien Lardière\nEmail address:      sebastien(at)lardiere(dot)net\nPostgreSQL version: 14.3\nOperating system:   Debian\nDescription:\nI've found an unconsistency between TRUNCATE RESTART IDENTITY and setval()\nfunction.\nFirst, let's quote the documentation, about TRUNCATE:\n> When RESTART IDENTITY is specified, the implied ALTER SEQUENCE RESTART\noperations are also done transactionally;\nand about ALTER SEQUENCE RESTART:\n> This is similar to calling the setval function with is_called = false\nActually, both are not equivalent in term of grants: role has to be owner of\nthe sequence to run ALTER SEQUENCE RESTART, but only needs the grant UPDATE\nto run setval() on the sequence.\nSo, when role is not the owner, he can TRUNCATE and setval() with the\ngrants, but can't TRUNCATE RESTART IDENTITY, because of ALTER SEQUENCE\nRESTART.\nIt's probably not a bug, but maybe ALTER SEQUENCE RESTART should be run with\nthe same grant than setval().\nHere's a simple usecase :\n\\c postgres postgres\nDROP DATABASE IF EXISTS restart_seq_failed;\nDROP ROLE IF EXISTS dumbowner;\nDROP ROLE IF EXISTS dumbuser;\nCREATE ROLE dumbowner LOGIN;\nCREATE ROLE dumbuser LOGIN;\nCREATE DATABASE restart_seq_failed OWNER dumbowner ;\n\\c restart_seq_failed dumbowner\nCREATE TABLE test_table (\nid bigint GENERATED ALWAYS AS IDENTITY\n, val integer\n);\nGRANT UPDATE , SELECT , USAGE\nON SEQUENCE test_table_id_seq\nTO dumbuser;\nGRANT TRUNCATE\nON TABLE test_table\nTO dumbuser;\nINSERT INTO test_table (val)\nSELECT g.v\nFROM generate_series(0 , 100) AS g(v);\n\\c restart_seq_failed dumbuser\nTRUNCATE test_table RESTART IDENTITY;\n-- ERROR:  must be owner of sequence test_table_id_seq\nALTER SEQUENCE test_table_id_seq RESTART WITH 1;\n-- ERROR:  must be owner of sequence test_table_id_seq\nTRUNCATE test_table;\n-- works\nSELECT setval('test_table_id_seq'::regclass,1,false);\n-- works\n\\q",
+  "date": "2022-05-20 13:13:36",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "DROP DATABASE IF EXISTS restart_seq_test;",
+    "CREATE DATABASE restart_seq_test;",
+    "CREATE TABLE test_table (id bigint AUTO_INCREMENT PRIMARY KEY, val text NOT NULL, created_at timestamp DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table (val) SELECT CONCAT('test', g.v) FROM (SELECT 1 AS v UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10) AS g;",
+    "GRANT SELECT, UPDATE ON test_table TO dumbuser;"
+  ],
+  "key_bug_features": [
+    "TRUNCATE RESTART IDENTITY requires sequence ownership"
+  ]
+}

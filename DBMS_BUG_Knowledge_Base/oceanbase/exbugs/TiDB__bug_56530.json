@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/56530",
+  "title": "When the decimal part of the decimal type is 0, a query exception will occur",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n```\r\nCREATE TABLE `PK_MULTI_COL_5048` (\r\n  `COL1` binary(10) NOT NULL,\r\n  `COL2` binary(10) NOT NULL,\r\n  `COL3` decimal(55,0) NOT NULL,\r\n  PRIMARY KEY (`COL1`(5),`COL2`,`COL3`) /*T![clustered_index] CLUSTERED */,\r\n  UNIQUE KEY `UIDXM` (`COL1`(5),`COL2`),\r\n  UNIQUE KEY `UIDX` (`COL2`),\r\n  KEY `IDX3` (`COL3`),\r\n  KEY `IDXM` (`COL3`,`COL2`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin\r\n```\r\nQuery `COL3` for decimal points but no decimals:\r\n\r\n- first query: `select * from PK_MULTI_COL_5048 where col3 <> 6.;`\r\n- second query: `select * from PK_MULTI_COL_5048 where col3 <> 6. or col2 is not null;`\r\n\r\n### 2. What did you expect to see? (Required)\r\nboth query success\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n- first query success\r\n- second query failed: `ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your TiDB version for the right syntax to use line 1 column 51 near \"or col2 is not null\"`\r\n\r\nit will not be recognized when only a decimal point and combined with other statements.\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\nRelease Version: v8.4.0-alpha-359-g2864508e3c\r\nEdition: Community\r\nGit Commit Hash: 2864508e3c89a380b0bf29b4ae3e66a8890efd30\r\nGit Branch: HEAD\r\nUTC Build Time: 2024-10-10 04:16:33\r\nGoVersion: go1.23.2\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv\r\n",
+  "date": "2024-10-10T07:15:52Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE `PK_MULTI_COL_5049` ( `COL1` varchar(20) NOT NULL, `COL2` int NOT NULL, `COL3` decimal(10,2) NOT NULL, PRIMARY KEY (`COL1`), UNIQUE KEY `UIDX` (`COL2`), KEY `IDX3` (`COL3`) ) ENGINE=OceanBase DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;",
+    "INSERT INTO `PK_MULTI_COL_5049` (`COL1`, `COL2`, `COL3`) VALUES ('test1', 1, 6.00);",
+    "INSERT INTO `PK_MULTI_COL_5049` (`COL1`, `COL2`, `COL3`) VALUES ('test2', 2, 6.01);",
+    "SELECT * FROM `PK_MULTI_COL_5049` WHERE `COL3` <> 6.00;",
+    "SELECT * FROM `PK_MULTI_COL_5049` WHERE `COL3` <> 6.00 OR `COL2` IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Query fails when decimal part is zero with additional conditions"
+  ]
+}

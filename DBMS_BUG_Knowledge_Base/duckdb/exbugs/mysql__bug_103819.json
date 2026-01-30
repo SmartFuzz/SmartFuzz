@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=103819",
+  "title": "Can't use StringBuilder containing emoji as MySqlParameter.Value",
+  "description": "When a StringBuilder contains emoji (or non-BMP) characters, using it as the value of MySqlParameter.Value fails to transmit the characters successfully to the MySQL server.\r\n\r\nWorkarounds include calling .ToString() first before assigning it to the Value property.\nHow to repeat:\nCreate a table:\r\n\r\nCREATE TABLE emoji(value TEXT COLLATE utf8mb4_bin);\r\n\r\nExecute the following C# code:\r\n\r\nusing var connection = new MySqlConnection(\"...\");\r\nconnection.Open();\r\n\r\nvar sb = new StringBuilder(\"\\U0001F600\");\r\n\r\n// StringBuilder works fine for BMP characters:\r\n// var sb = new StringBuilder(\"ab\");\r\n\r\nusing var command = connection.CreateCommand();\r\ncommand.CommandText = \"insert into emoji(value) values(@value);\";\r\ncommand.Parameters.AddWithValue(\"@value\", sb);\r\n\r\n// workaround:\r\n// command.Parameters.AddWithValue(\"@value\", sb.ToString());\r\n\r\n// throws MySqlException: Incorrect string value: '\\xF0\\x9F' for column 'value' at row 1\r\ncommand.ExecuteNonQuery();\nSuggested fix:\nIt appears that only the first two UTF-8 bytes (F0 9F) are being transmitted; all four UTF-8 bytes (F0 9F 98 80) for U+1F600 should be sent when the StringBuilder is converted to UTF-8.",
+  "date": "2021-05-26 17:33:00",
+  "vulnerable_version": "8.0.25, 8.0.28",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE emoji(value TEXT NOT NULL);",
+    "CREATE TABLE test_data(id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY, description VARCHAR(255));",
+    "INSERT INTO emoji(value) VALUES('😀');",
+    "INSERT INTO test_data(description) VALUES(NULL), ('Test with emoji: 😃');",
+    "SELECT * FROM emoji WHERE value IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "StringBuilder with emoji fails as MySqlParameter.Value"
+  ]
+}

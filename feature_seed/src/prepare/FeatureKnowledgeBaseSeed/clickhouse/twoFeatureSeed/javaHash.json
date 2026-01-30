@@ -1,0 +1,16 @@
+{
+    "function": "javaHash",
+    "operator": "[x1, ...]",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, str_value String, num_value Int32) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table VALUES (1, 'Hello, world!', 123), (2, '', 0), (3, 'Test', -2147483648), (4, ' ', 2147483647);",
+        "SELECT javaHash(arrayJoin([str_value, toString(num_value), toString(NULL)])) AS hash_value FROM test_table;",
+        "SELECT id, javaHash(str_value) AS string_hash, javaHash(toInt32(num_value)) AS num_hash FROM test_table WHERE num_value > 0;",
+        "SELECT id, javaHash(NULLIF(str_value, '')) AS non_empty_hash FROM test_table WHERE str_value IS NOT NULL;",
+        "SELECT id, javaHash(arrayJoin([toString(num_value), str_value])) AS mixed_hash FROM (SELECT num_value, str_value FROM test_table WHERE id < 4) AS sub;",
+        "SELECT id, str_value, javaHash(toString(arrayJoin([num_value, str_value, 'Extra']))) AS hash_combined FROM test_table GROUP BY id, str_value HAVING hash_combined IS NOT NULL;",
+        "CREATE TEMPORARY TABLE temp_table AS SELECT id, javaHash(num_value) AS num_hash FROM test_table;",
+        "SELECT temp.id, temp.num_hash, javaHash(toString(temp.num_hash)) AS final_hash FROM temp_table AS temp JOIN test_table AS t ON temp.id = t.id;",
+        "SELECT arrayJoin([javaHash(str_value), toString(NULL), javaHash('BoundaryTest')]) AS boundary_values FROM test_table WHERE num_value = 0;"
+    ]
+}

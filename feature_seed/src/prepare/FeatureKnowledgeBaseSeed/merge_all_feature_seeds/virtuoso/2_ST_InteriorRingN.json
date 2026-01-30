@@ -1,0 +1,11 @@
+CREATE TABLE geographies (id INT PRIMARY KEY, shape GEOMETRY);
+INSERT INTO geographies VALUES (1, ST_EWKT_READ('POLYGON((0 0, 5 0, 5 5, 0 5, 0 0),(1 1, 1 4, 3 4, 3 1, 1 1))'));
+INSERT INTO geographies VALUES (2, ST_EWKT_READ('POLYGON((0 0, 10 0, 10 10, 0 10, 0 0),(1 1, 9 1, 9 9, 1 9, 1 1))'));
+SELECT ST_InteriorRingN(shape, 1) FROM geographies WHERE id ILIKE '1';
+SELECT ST_InteriorRingN(shape, 2) FROM geographies WHERE ILIKE(ST_AsText(shape), '%POLYGON%');
+SELECT id, ST_InteriorRingN(shape, 0) AS interior_ring FROM geographies WHERE id IN (SELECT id FROM geographies WHERE ST_InteriorRingN(shape, 1) IS NOT NULL);
+SELECT id, ST_InteriorRingN(shape, 2) AS interior_ring FROM geographies WHERE EXISTS (SELECT 1 FROM geographies AS g WHERE g.id = geographies.id AND ST_InteriorRingN(g.shape, 1) IS NOT NULL) AND id ILIKE '2';
+CREATE TABLE more_geographies (id INT PRIMARY KEY, shape GEOMETRY);
+INSERT INTO more_geographies VALUES (10, ST_EWKT_READ('POLYGON((1 1, 2 2, 3 3, 1 1),(1.1 1.1, 1.6 1.6, 1.1 1.6, 1.1 1.1))'));
+SELECT id, ST_InteriorRingN(shape, 1) AS ring_one FROM more_geographies WHERE ring_one ILIKE 'RING%';
+SELECT id, ST_InteriorRingN(shape, (SELECT COUNT(*) FROM more_geographies WHERE id > 0)) FROM more_geographies HAVING ST_InteriorRingN(shape, 2) IS NOT NULL ORDER BY id LIMIT 5;

@@ -1,0 +1,9 @@
+CREATE TABLE test_table (id UInt32, values Array(Int32), condition UInt8) ENGINE = Memory;
+INSERT INTO test_table VALUES (1, [1, 2, 3], 1), (2, [NULL, 1, 2], 0), (3, [3, 4, NULL], 1), (4, [], 1);
+SELECT arrayFirstOrNull(x -> x > 2, values) AS first_greater_than_two FROM test_table WHERE condition = 1;
+SELECT id, arrayFirstOrNull(x -> x IS NULL, values) AS first_null FROM test_table HAVING first_null IS NULL;
+SELECT id FROM test_table WHERE condition = ALL (SELECT countIf(x -> x IS NULL) FROM test_table WHERE condition = 0);
+SELECT id, arrayFirstOrNull(x -> x >= 1, values) AS first_ge_1 FROM test_table WHERE first_ge_1 = ALL (SELECT max(y) FROM test_table WHERE condition = 1 GROUP BY condition);
+CREATE TABLE another_table (ref UInt32, val Int32) ENGINE = Memory;
+INSERT INTO another_table VALUES (1, 1), (2, 2), (3, 3);
+SELECT a.id, arrayFirstOrNull(x -> x = b.val, a.values) AS matching_value FROM test_table a JOIN another_table b ON a.id = b.ref WHERE a.id = ALL (SELECT id FROM test_table WHERE condition = 1);

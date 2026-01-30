@@ -1,0 +1,12 @@
+CREATE TABLE test_dates (id UInt64, event_time DateTime DEFAULT now(), data String);
+INSERT INTO test_dates VALUES (1, '2023-09-15 12:00:00', 'Event 1'), (2, '2023-09-16 15:30:00', 'Event 2');
+SELECT normalizedQueryHashKeepNames('SELECT EXTRACT(YEAR FROM event_time) AS year, COUNT(*) FROM test_dates GROUP BY year HAVING year > 2022') AS comparison_hash;
+SELECT id, normalizedQueryHashKeepNames('SELECT data, EXTRACT(MONTH FROM event_time) FROM test_dates WHERE data = ''Event 1'' AND EXTRACT(MONTH FROM event_time) IS NOT NULL') AS normalized_hash FROM test_dates WHERE id IN (SELECT id FROM test_dates WHERE NULLIF(data, '') IS NOT NULL);
+SELECT EXTRACT(DAY FROM toDate('2023-03-01')) AS first_day_month, normalizedQueryHashKeepNames('SELECT EXTRACT(DAY FROM event_time) + 1 AS day_plus_one FROM test_dates WHERE EXTRACT(DAY FROM event_time) IS NOT NULL AND id < 3') AS day_hash FROM test_dates;
+SELECT normalizedQueryHashKeepNames('SELECT EXTRACT(YEAR FROM event_time) AS year, COUNT(*) FROM test_dates WHERE EXTRACT(YEAR FROM event_time) IS NOT NULL GROUP BY year HAVING year = 2023') AS year_hash FROM test_dates;
+CREATE TABLE test_users (user_id UInt32, created_at DateTime DEFAULT now(), username String DEFAULT '', favorite_time DateTime);
+INSERT INTO test_users VALUES (1, '2023-01-01 10:00:00', 'user1', '2023-01-01 12:00:00'), (2, '2023-01-02 10:00:00', NULL, NULL);
+SELECT user_id, normalizedQueryHashKeepNames('SELECT username, EXTRACT(HOUR FROM favorite_time) AS favorite_hour FROM test_users WHERE favorite_time IS NOT NULL') AS user_hash FROM test_users;
+SELECT normalizedQueryHashKeepNames('SELECT EXTRACT(MINUTE FROM created_at) AS minute, EXTRACT(HOUR FROM created_at) AS hour FROM test_users GROUP BY minute, hour HAVING hour >= 10') AS time_hash FROM test_users;
+SELECT id, normalizedQueryHashKeepNames('SELECT EXTRACT(MONTH FROM event_time) FROM test_dates WHERE EXTRACT(MONTH FROM event_time) IS NULL') AS month_hash FROM test_dates WHERE id = (SELECT MAX(id) FROM test_dates WHERE id IS NOT NULL);
+SELECT normalizedQueryHashKeepNames('SELECT COUNT(*) FROM (SELECT EXTRACT(DAY FROM event_time) FROM test_dates WHERE event_time IS NOT NULL AND event_time < toDateTime('2023-09-16 15:00:00')) AS subquery') AS subquery_hash;

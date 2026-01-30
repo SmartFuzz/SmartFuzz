@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/91576",
+  "title": "JSON: querying type hinted nested array",
+  "description": "### Company or project name\nMonumental\n### Describe what's wrong\nExample:\n```sql\nCREATE TABLE test_json_hint (\ndata JSON(items Array(JSON(name String, value UInt32)))\n) ENGINE = Memory;\nCREATE TABLE test_no_hint (\ndata JSON\n) ENGINE = Memory;\nINSERT INTO test_json_hint VALUES ('{\"items\": [{\"name\": \"a\", \"value\": 100}, {\"name\": \"b\", \"value\": 200}]}');\nINSERT INTO test_no_hint VALUES ('{\"items\": [{\"name\": \"a\", \"value\": 100}, {\"name\": \"b\", \"value\": 200}]}');\nSELECT data.items[].name AS value FROM test_json_hint;\nSELECT data.items[].name AS value FROM test_no_hint;\n```\nThis returns (when running with `clickhouse-local`):\n```sql\n[NULL,NULL]\n['a','b']\n```\nWhich is unexpected, that the value becomes NULL because of the type hint. Querying `data.items.name` does return the data, which is unexpected to me.\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\n```\n$ clickhouse-local --version\nClickHouse local version 25.11.1.558.\n```\n### Expected behavior\n_No response_\n### Error message and/or stacktrace\n_No response_\n### Additional context\n_No response_",
+  "date": "2025-12-05T14:06:12Z",
+  "vulnerable_version": "25.11.1.558",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test_json_hint_v2 (data JSONB);",
+    "CREATE TABLE test_no_hint_v2 (data JSONB);",
+    "INSERT INTO test_json_hint_v2 VALUES ('{\"items\": [{\"name\": \"c\", \"value\": null}, {\"name\": \"d\", \"value\": 300}]}');",
+    "INSERT INTO test_no_hint_v2 VALUES ('{\"items\": [{\"name\": \"c\", \"value\": null}, {\"name\": \"d\", \"value\": 300}]}');",
+    "SELECT jsonb_array_elements(data->'items')->>'name' AS value FROM test_json_hint_v2;"
+  ],
+  "key_bug_features": [
+    "Type hinting in JSON nested array causes NULL values"
+  ]
+}

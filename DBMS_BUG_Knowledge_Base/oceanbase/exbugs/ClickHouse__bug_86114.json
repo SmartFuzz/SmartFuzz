@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/86114",
+  "title": "Performance with bitmap functions",
+  "description": "### Company or project name\n_No response_\n### Describe the situation\nAfter upgrading to ClickHouse v24.8.14.39, I encountered execution failures when executing test cases. This issue seems to be related to the new query analyzer and bitmap function introduced in v24.3, which slowed down parsing in some scenarios.\n### Which ClickHouse versions are affected?\n24.8.14.39\n### How to reproduce\n1. Create test table:\n```sql\nCREATE TABLE id_table (\nid UInt64\n) ENGINE = MergeTree()\nORDER BY id;\n```\n```sql\nCREATE TABLE bitmap_table (\ntotal UInt64,\nid_bit AggregateFunction(groupBitmap, UInt64),\n) ENGINE = MergeTree()\nORDER BY total;\n```\n2. Insert data:\n```sql\nINSERT INTO id_table\nSELECT number + 1 AS id\nFROM numbers(50000000);\n```\n```sql\nINSERT INTO bitmap_table\nSELECT 1000000 as total, id_bit FROM (\nSELECT groupBitmapState(rand64() % toUInt64(80000000)) as id_bit from numbers(1000000)\n)\nINSERT INTO bitmap_table\nSELECT 6000000 as total, id_bit FROM (\nSELECT groupBitmapState(rand64() % toUInt64(80000000)) as id_bit from numbers(6000000)\n)\n```\n3.Execute query:\n```sql\nSELECT\nbitmapCardinality(\n(\nSELECT\ngroupBitmapState(toUInt64OrDefault(id)) AS id_bitmap\nFROM\nid_table\nWHERE\n(\nbitmapContains(\n(",
+  "date": "2025-08-25T09:25:31Z",
+  "vulnerable_version": "24.8.14.39",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test_table1 (id BIGINT, value VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=OBSERVER;",
+    "CREATE TABLE test_table2 (total FLOAT, id_bit BLOB, description VARCHAR(255)) ENGINE=OBSERVER;",
+    "INSERT INTO test_table1 SELECT number AS id, CAST(number AS CHAR) AS value, CURRENT_TIMESTAMP FROM dual CONNECT BY LEVEL <= 100000;",
+    "INSERT INTO test_table2 SELECT 1.5 AS total, BITMAP_AGG(rand() % 1000) AS id_bit, NULL AS description FROM dual CONNECT BY LEVEL <= 100;",
+    "SELECT COUNT(DISTINCT id_bit) FROM test_table2 WHERE total > 1.0;"
+  ],
+  "key_bug_features": [
+    "New query analyzer and bitmap function performance issue"
+  ]
+}

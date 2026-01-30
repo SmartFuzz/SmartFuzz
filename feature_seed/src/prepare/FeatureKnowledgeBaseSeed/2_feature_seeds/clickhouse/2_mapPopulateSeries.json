@@ -1,0 +1,15 @@
+CREATE TABLE test_map (id Int32, values Map(Int32, Int32));
+INSERT INTO test_map VALUES (1, map(1, 10, 2, 20)), (2, map(2, 30, 3, 30));
+SELECT mapPopulateSeries(values) AS filled_map FROM test_map WHERE id NOT IN (SELECT id FROM test_map WHERE id = 2);
+SELECT id, mapPopulateSeries([1, 2, 3], [10, NULL, 30]) AS res FROM test_map WHERE 1 NOT IN (SELECT value FROM test_map WHERE id = 1);
+SELECT id, mapPopulateSeries(map(1, 100, 3, NULL, 5, 50), 6) AS new_map FROM test_map WHERE id NOT IN (SELECT id FROM test_map WHERE id > 2);
+CREATE TABLE test_join (key Int32, value Int32);
+INSERT INTO test_join VALUES (1, 100), (2, 200), (3, 300);
+SELECT t1.id, mapPopulateSeries(t2.key, t2.value) AS filled_map FROM test_map t1 JOIN test_join t2 ON t1.id NOT IN (SELECT key FROM test_join WHERE value = 200) GROUP BY t1.id;
+SELECT id, mapPopulateSeries(toArray(values), [100, NULL]) AS new_map FROM test_map WHERE id NOT IN (SELECT id FROM test_map WHERE values[2] IS NULL);
+CREATE TABLE test_boundary (num Int32);
+INSERT INTO test_boundary VALUES (0), (2147483647), (-2147483648);
+SELECT mapPopulateSeries(toMap(groupArray(num), groupArray(1)), 2147483647) AS boundary_map FROM test_boundary WHERE num NOT IN (SELECT num FROM test_boundary WHERE num > 1000);
+CREATE TABLE test_null (id Int32, optional_value Nullable(Int32));
+INSERT INTO test_null VALUES (1, NULL), (2, 200);
+SELECT id, mapPopulateSeries(toArray(VALUES(id, optional_value)), [0, 1]) AS populated_map FROM test_null WHERE id NOT IN (SELECT id FROM test_null WHERE optional_value IS NULL);

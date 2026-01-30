@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id UInt32, value String, amount Float64, created_at DateTime);
+INSERT INTO test_table (id, value, amount, created_at) VALUES (1, 'test1', 123.45, '2023-01-01 00:00:00'), (2, 'test2', NULL, '2023-01-02 00:00:00'), (3, '', 0.0, '2023-01-03 00:00:00');
+SELECT * FROM (SELECT x.id, x.value, x.amount FROM test_table x WHERE x.amount <> 0.0) y WHERE NOT(SELECT count() FROM test_table z WHERE z.amount <> 0.0) > 0;
+SELECT id, value, amount FROM (SELECT id, value, amount, CASE WHEN amount IS NULL THEN 'empty' ELSE value END AS status FROM test_table) GROUP BY id, status HAVING status <> 'empty' ORDER BY amount DESC;
+SELECT count(*) FROM (SELECT DISTINCT x.id, x.value FROM test_table x JOIN (SELECT id FROM test_table WHERE value <> '') y ON x.id <> y.id) WHERE created_at IS NOT NULL;
+CREATE TABLE remote_data ENGINE = MergeTree ORDER BY id AS SELECT * FROM remote('remote_host', 'remote_table');
+SELECT t1.id, t1.value, t2.amount FROM test_table t1 LEFT JOIN remote_data t2 ON t1.id <> t2.id WHERE t1.value <> '' AND t2.amount IS NOT NULL;
+SELECT id, value, amount FROM test_table WHERE amount <> (SELECT max(amount) FROM test_table WHERE amount IS NOT NULL);
+CREATE TABLE boundary_test_table (num Int32, text String, time DateTime);
+INSERT INTO boundary_test_table (num, text, time) VALUES (2147483647, 'max', '2023-12-31 23:59:59'), (-2147483648, 'min', '0001-01-01 00:00:00'), (0, '', '2023-01-01 00:00:00');
+SELECT * FROM boundary_test_table WHERE text <> 'max' AND time <> now();

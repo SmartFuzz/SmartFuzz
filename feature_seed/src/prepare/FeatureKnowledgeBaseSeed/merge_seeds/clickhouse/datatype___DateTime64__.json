@@ -1,0 +1,18 @@
+CREATE TABLE dt64_boundary(`timestamp` DateTime64(3, 'UTC'), `event_id` UInt8) ENGINE = TinyLog;
+INSERT INTO dt64_boundary VALUES (0, 1), (1, 2), (1546300800123, 3), (1546300800.123, 4), (2262063000000000000, 5);
+SELECT * FROM dt64_boundary WHERE timestamp = toDateTime64('1970-01-01 00:00:00', 3, 'UTC');
+SELECT * FROM dt64_boundary WHERE timestamp = toDateTime64('2262-04-11 23:47:16', 9, 'UTC');
+SELECT * FROM dt64_boundary WHERE timestamp = toDateTime64('1900-01-01 00:00:00', 8, 'UTC');
+SELECT * FROM dt64_boundary WHERE timestamp = toDateTime64('2299-12-31 23:59:59.99999999', 8, 'UTC');
+SELECT DISTINCT event_id FROM dt64_boundary WHERE timestamp BETWEEN toDateTime64('1900-01-01 00:00:00', 3, 'UTC') AND toDateTime64('2299-12-31 23:59:59.99999999', 8, 'UTC');
+SELECT COUNT(*) AS event_count FROM dt64_boundary GROUP BY event_id;
+SELECT AVG(toUnixTimestamp(timestamp)) AS average_timestamp FROM dt64_boundary;
+CREATE TABLE dt64_join (`timestamp` DateTime64(3, 'Asia/Istanbul'), `event_id` UInt8) ENGINE = MergeTree() ORDER BY timestamp;
+INSERT INTO dt64_join VALUES (toDateTime64('2019-01-01 00:00:00', 3, 'Asia/Istanbul'), 1), (toDateTime64('2019-01-01 03:00:00.123', 3, 'Asia/Istanbul'), 2);
+SELECT a.event_id, b.event_id FROM dt64_boundary AS a JOIN dt64_join AS b ON a.event_id = b.event_id WHERE a.timestamp > toDateTime64('1970-01-01 00:00:00', 3, 'UTC');
+SELECT CONCAT(toString(timestamp), ' - ', toString(event_id)) AS event_details FROM dt64_boundary ORDER BY timestamp DESC LIMIT 5;
+SELECT event_id, COUNT(*) as total FROM dt64_boundary GROUP BY event_id HAVING total > 1;
+SELECT toDateTime64(timestamp, 3, 'Europe/Paris') AS paris_time, toDateTime64(timestamp, 3, 'Asia/Istanbul') AS istanbul_time FROM dt64_boundary WHERE event_id = 1;
+CREATE TEMPORARY TABLE dt64_temp AS SELECT * FROM dt64_boundary WHERE event_id = 1;
+INSERT INTO dt64_temp VALUES (1546300800000, 6);
+SELECT * FROM dt64_temp WHERE timestamp < toDateTime64('2262-04-11 23:47:16', 9, 'UTC');

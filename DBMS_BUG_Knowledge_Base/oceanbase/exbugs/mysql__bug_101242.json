@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=101242",
+  "title": "Cannot use ByteArrayInputStream as arguments in prepared statements anymore",
+  "description": "As of 8.0.22 it is no longer possible to call setObject method of PreparedStatement and pass ByteArrayInputStream, because the driver now throws java.sql.SQLException exception (\"Invalid argument value: java.io.NotSerializableException\"), whereas in the 8.0.21 driver setObject accepted ByteArrayInputStream argument.\r\n\r\nThis seems like a regression which I think was introduced in\nhttps://github.com/mysql/mysql-connector-j/commit/6f8287b2a393ef9b67889d2bb2385ef863a7e8df\nas that commit refactored the setObject method of AbstractQueryBindings class.\nHow to repeat:\nThis code works when using 8.0.21 version of the driver, but throws an exception with 8.0.22.\n\nimport java.io.ByteArrayInputStream;\r\nimport java.sql.Connection;\r\nimport java.sql.DriverManager;\r\nimport java.sql.PreparedStatement;\r\nimport java.sql.ResultSet;\r\n\r\npublic class Main {\r\n    public static void main(String[] args) throws Exception {\r\n        Connection connection = DriverManager.getConnection(\r\n                \"jdbc:mysql://localhost/?user=root&password=my-secret-pw\"\r\n        );\r\n\r\n        connection.createStatement().execute(\"CREATE DATABASE IF NOT EXISTS test\");\r\n        connection.createStatement().execute(\"USE test\");\r\n        connection.createStatement().execute(\"CREATE TABLE IF NOT EXISTS my_table (my_column blob NOT NULL)\");\r\n        connection.createStatement().execute(\"DELETE FROM my_table\");\r\n\r\n        PreparedStatement statement = connection.prepareStatement(\"INSERT INTO my_table(my_column) VALUES (?)\");\r\n        statement.setObject(1, new ByteArrayInputStream(\"test\".getBytes()));\r\n        statement.execute();\r\n\r\n        ResultSet rs = connection.createStatement().executeQuery(\"SELECT * FROM my_table\");\r\n\r\n        rs.next();\r\n\r\n        System.out.println(\"Retrieved from database: \" + new String(rs.getBytes(\"my_column\")));\r\n    }\r\n}",
+  "date": "2020-10-20 11:56:00",
+  "vulnerable_version": "8.0.22",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE DATABASE IF NOT EXISTS test_db;",
+    "CREATE TABLE IF NOT EXISTS my_table (id INT AUTO_INCREMENT PRIMARY KEY, my_column BLOB NOT NULL, my_text_column TEXT DEFAULT NULL);",
+    "INSERT INTO my_table (my_column, my_text_column) VALUES (NULL, 'Sample Text');",
+    "INSERT INTO my_table (my_column) VALUES (CAST('Boundary Test' AS BLOB));",
+    "SELECT id, my_column, my_text_column FROM my_table WHERE my_column IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "setObject method no longer accepts ByteArrayInputStream"
+  ]
+}

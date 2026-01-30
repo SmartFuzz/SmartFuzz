@@ -1,0 +1,19 @@
+{
+    "function": "list",
+    "operator": "/",
+    "sql_array": [
+        "CREATE TABLE test_table (id INT, value FLOAT, category TEXT);",
+        "INSERT INTO test_table (id, value, category) VALUES (1, 5.5, 'A'), (2, NULL, 'B'), (3, 2.3, 'A'), (4, 8.1, 'C'), (5, 3.5, 'A');",
+        "CREATE TABLE another_table (category TEXT, extra_value FLOAT);",
+        "INSERT INTO another_table (category, extra_value) VALUES ('A', 1.1), ('B', 2.2), ('C', 4.4);",
+        "SELECT category, ARRAY_AGG(value / (extra_value + 1)) AS aggregated_values FROM test_table JOIN another_table ON test_table.category = another_table.category GROUP BY category HAVING aggregated_values IS NOT NULL;",
+        "SELECT category, COUNT(*) AS count, ARRAY_AGG(value) AS values_list FROM (SELECT id, value, category FROM test_table WHERE value IS NOT NULL) AS filtered_table GROUP BY category HAVING count > 1;",
+        "SELECT category, ARRAY_AGG(value) OVER (PARTITION BY category ORDER BY value) AS ordered_agg FROM test_table WHERE value > (SELECT AVG(value) FROM test_table) ORDER BY category;",
+        "WITH RecursiveCTE AS (SELECT category, value FROM test_table WHERE value IS NOT NULL UNION ALL SELECT category, value / 2 FROM RecursiveCTE WHERE value > 1) SELECT category, ARRAY_AGG(value) AS values_list FROM RecursiveCTE GROUP BY category;",
+        "SELECT category, ARRAY_AGG(value / 3) FROM another_table WHERE category IN (SELECT DISTINCT category FROM test_table) GROUP BY category HAVING COUNT(*) > 0;",
+        "SELECT category, ARRAY_AGG(value) FILTER (WHERE value IS NOT NULL AND value > 0) AS filtered_list FROM test_table GROUP BY category HAVING AVG(value) > 1;",
+        "DROP TABLE IF EXISTS temp_table;",
+        "CREATE TEMPORARY TABLE temp_table AS SELECT category, value / NULLIF(10, 10) AS division_edge_case FROM test_table;",
+        "SELECT category, ARRAY_AGG(value / (SELECT AVG(value) FROM test_table WHERE category = t.category)) AS relative_values FROM test_table AS t GROUP BY category;"
+    ]
+}

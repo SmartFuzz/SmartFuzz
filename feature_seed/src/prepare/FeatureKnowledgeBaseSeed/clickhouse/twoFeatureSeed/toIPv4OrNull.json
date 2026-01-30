@@ -1,0 +1,19 @@
+{
+    "function": "toIPv4OrNull",
+    "operator": "SELECT a OR b",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, ip_address String, additional_info String, created_at DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table VALUES (1, '192.168.1.1', 'Valid IPv4'), (2, '256.256.256.256', 'Invalid IPv4'), (3, 'fe80:2030:31:24', 'Invalid IPv6'), (4, '', 'Empty String IP');",
+        "SELECT id, toIPv4OrNull(ip_address) AS ipv4, additional_info FROM test_table WHERE toIPv4OrNull(ip_address) IS NULL;",
+        "SELECT id, ip_address FROM test_table WHERE toIPv4OrNull(ip_address) IS NOT NULL OR id IN (SELECT id FROM test_table WHERE additional_info = 'Invalid IPv4');",
+        "SELECT COUNT(*) AS valid_count FROM test_table GROUP BY toIPv4OrNull(ip_address) HAVING valid_count > 0;",
+        "SELECT a.id, a.ip_address, b.additional_info FROM test_table a JOIN test_table b ON toIPv4OrNull(a.ip_address) OR toIPv4OrNull(b.ip_address) IS NULL;",
+        "WITH NULL AS test_value SELECT id, toIPv4OrNull(test_value) as result FROM test_table;",
+        "SELECT id, ip_address FROM test_table WHERE (toIPv4OrNull(ip_address) IS NULL OR ip_address = 'invalid') AND created_at < now() - INTERVAL 1 DAY;",
+        "SELECT DISTINCT id FROM (SELECT id FROM test_table WHERE toIPv4OrNull(ip_address) OR created_at > now() - INTERVAL 1 DAY) AS subquery;",
+        "CREATE TABLE temp_test_table AS SELECT * FROM test_table WHERE ip_address != '';",
+        "INSERT INTO temp_test_table SELECT id, '192.168.0.1', additional_info FROM test_table WHERE toIPv4OrNull(ip_address) IS NOT NULL;",
+        "SELECT ip_address, AVG(id) AS average_id FROM temp_test_table GROUP BY ip_address HAVING toIPv4OrNull(ip_address) IS NOT NULL;",
+        "DROP TABLE IF EXISTS temp_test_table;"
+    ]
+}

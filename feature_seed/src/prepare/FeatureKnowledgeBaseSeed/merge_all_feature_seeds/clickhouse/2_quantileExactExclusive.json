@@ -1,0 +1,11 @@
+CREATE TABLE nums AS SELECT number % 100 AS val, toDate('2020-01-01') + number % 10 AS my_date FROM numbers(100);
+INSERT INTO nums VALUES (NULL, NULL), (1, toDate('2020-01-05')), (2, toDate('2020-01-10'));
+CREATE TABLE nums2 AS SELECT number % 50 AS val2 FROM numbers(50);
+SELECT quantileExactExclusive(0.25)(val) FROM (SELECT val FROM nums WHERE val IS NOT NULL GROUP BY val) HAVING val <> 20;
+SELECT quantileExactExclusive(0.5)(val) FROM (SELECT DISTINCT val FROM nums) WHERE val <> 15;
+SELECT quantileExactExclusive(0.75)(val) FROM (SELECT my_date, val FROM nums) AS subquery WHERE my_date >= '2020-01-01' AND my_date <= NOW() GROUP BY my_date HAVING quantileExactExclusive(0.5)(val) <> 0;
+SELECT DISTINCT quantileExactExclusive(toFloat64(val) + 0.1)(val), val FROM nums GROUP BY val HAVING quantileExactExclusive(0.5)(val) <> 1.0;
+SELECT val, quantileExactExclusive(0.6)(toFloat64(val)) AS quantile_val FROM nums JOIN nums2 ON nums.val <> nums2.val2 GROUP BY val;
+SELECT quantileExactExclusive(0.4)(val), COUNT(*) FROM nums2 GROUP BY val HAVING COUNT(*) <> 0;
+SELECT * FROM (SELECT val, quantileExactExclusive(0.5)(val) AS median_val FROM nums GROUP BY val HAVING median_val <> 5) WHERE val IS NOT NULL;
+SELECT quantileExactExclusive(0.9)(CASE WHEN val IS NULL THEN 0 ELSE val END) FROM nums WHERE val <> 0;

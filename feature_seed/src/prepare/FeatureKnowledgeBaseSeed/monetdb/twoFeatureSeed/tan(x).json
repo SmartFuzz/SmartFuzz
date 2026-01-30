@@ -1,0 +1,19 @@
+{
+    "function": "tan(x)",
+    "operator": "time(3) with time zone",
+    "sql_array": [
+        "CREATE TABLE angles (id SERIAL PRIMARY KEY, radian_value DOUBLE PRECISION);",
+        "INSERT INTO angles (radian_value) VALUES (1.4), (0.0), (3.14), (1.5708), (6.2831);",
+        "SELECT id, tan(radian_value) AS tangent_value FROM angles WHERE radian_value IS NOT NULL;",
+        "CREATE TABLE timezones (id SERIAL PRIMARY KEY, tz_time TIME(3) WITH TIME ZONE);",
+        "INSERT INTO timezones (tz_time) VALUES (time(3) with time zone '18:40:05.123+02:00'), (time(3) with time zone '00:00:00.000+00:00');",
+        "SELECT a.id, a.radian_value, tan(a.radian_value) AS tangent_value, tz.tz_time FROM angles a JOIN timezones tz ON id = (SELECT MAX(id) FROM timezones) WHERE a.radian_value < 6 AND tz.tz_time IS NOT NULL;",
+        "SELECT a.id, a.radian_value, tan(tz.tz_time::double precision) AS tangent_of_time FROM angles a CROSS JOIN timezones tz WHERE tz.tz_time IS NOT NULL;",
+        "CREATE TABLE calculations AS SELECT a.id, IF(tz.tz_time IS NULL, tan(a.radian_value), tan(tz.tz_time::double precision)) AS calculated_value FROM angles a INNER JOIN timezones tz ON a.id = tz.id;",
+        "SELECT * FROM calculations WHERE calculated_value > 0;",
+        "CREATE TEMP TABLE test_boundary AS SELECT time(3) WITH TIME ZONE '23:59:59.999+00:00' AS max_time, time(3) with time zone '00:00:00.000+00:00' AS min_time;",
+        "SELECT tan(EXTRACT(EPOCH FROM max_time)::DOUBLE PRECISION) AS tan_of_max, tan(EXTRACT(EPOCH FROM min_time)::DOUBLE PRECISION) AS tan_of_min FROM test_boundary;",
+        "SELECT GROUP BY radian_value HAVING COUNT(*) > 1 FROM angles;",
+        "SELECT a.id, tan(a.radian_value) AS tangent_value FROM angles a WHERE radian_value BETWEEN (SELECT MIN(radian_value) FROM angles) AND (SELECT MAX(radian_value) FROM angles);"
+    ]
+}

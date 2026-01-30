@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/87336",
+  "title": "Logical error: '(isConst() || isSparse()) ? getDataType() == rhs.getDataType() : typeid(*this) == typeid(rhs)' during TTL merge",
+  "description": "### Describe the bug\nLogical error: '(isConst() || isSparse()) ? getDataType() == rhs.getDataType() : typeid(*this) == typeid(rhs)'\n### How to reproduce\n``` sql\nCREATE TABLE ttl_group_by__fuzz_13\n(\nd Date,\ni LowCardinality(Float32),\nv LowCardinality(Nullable(UInt64))\n)\nENGINE = MergeTree\nORDER BY (toStartOfMonth(d), i % 10)\nTTL d + toIntervalYear(10) GROUP BY toStartOfMonth(d), i % 10 SET d = any(toStartOfMonth(d)), i = any(i % 10), v = sum(v), d + toIntervalYear(40) GROUP BY toStartOfMonth(d) SET d = any(toStartOfMonth(d)), v = sum(v)\nSETTINGS allow_suspicious_low_cardinality_types = 1;\nINSERT INTO ttl_group_by__fuzz_13 SELECT toDate('2000-10-10'), number, number FROM numbers(100);\nINSERT INTO ttl_group_by__fuzz_13 SELECT toDate('1970-10-10'), number, number FROM numbers(100);\nOPTIMIZE TABLE ttl_group_by__fuzz_13;\n```\n### Error message and/or stacktrace\n_No response_",
+  "date": "2025-09-19T12:25:13Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE ttl_group_by__fuzz_14 (d DATE, i INTEGER, v FLOAT) AS SELECT d, i, AVG(v) AS v FROM (VALUES (to_date('2005-01-01'), 0, 0.0), (to_date('2005-01-01'), 1, 1.5), (to_date('2005-01-01'), 2, 3.0), (to_date('2005-01-01'), 3, 4.5), (to_date('2005-01-01'), 4, 6.0), (to_date('2005-01-01'), 5, 7.5), (to_date('2005-01-01'), 6, 9.0), (to_date('2005-01-01'), 7, 10.5), (to_date('2005-01-01'), 8, 12.0), (to_date('2005-01-01'), 9, 13.5)) AS t(d, i, v);",
+    "INSERT INTO ttl_group_by__fuzz_14 (d, i, v) VALUES (to_date('2005-01-01'), 0, 0.0), (to_date('2005-01-01'), 1, 1.5), (to_date('2005-01-01'), 2, 3.0), (to_date('2005-01-01'), 3, 4.5), (to_date('2005-01-01'), 4, 6.0), (to_date('2005-01-01'), 5, 7.5), (to_date('2005-01-01'), 6, 9.0), (to_date('2005-01-01'), 7, 10.5), (to_date('2005-01-01'), 8, 12.0), (to_date('2005-01-01'), 9, 13.5);",
+    "INSERT INTO ttl_group_by__fuzz_14 (d, i, v) VALUES (to_date('2010-06-15'), 0, NULL), (to_date('2010-06-15'), 1, NULL), (to_date('2010-06-15'), 2, NULL), (to_date('2010-06-15'), 3, NULL), (to_date('2010-06-15'), 4, NULL), (to_date('2010-06-15'), 5, NULL), (to_date('2010-06-15'), 6, NULL), (to_date('2010-06-15'), 7, NULL), (to_date('2010-06-15'), 8, NULL), (to_date('2010-06-15'), 9, NULL);",
+    "SELECT d, i, SUM(v) FROM ttl_group_by__fuzz_14 GROUP BY d, i HAVING SUM(v) IS NOT NULL;",
+    "OPTIMIZE TABLE ttl_group_by__fuzz_14;"
+  ],
+  "key_bug_features": [
+    "Logical error during TTL merge with LowCardinality types"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/20",
+  "title": "FILTER concatenation doesn't work with sameTerm",
+  "description": "If you import the following minimal model to virtuoso\n@prefix ex: <http://example.com/> .\n\nex:a a ex:A .\nex:b a ex:B .\n\nand run this query\nSELECT ?i\nWHERE {\n    ?i a ?class.\n    FILTER (sameTerm(?class, <http://example.com/A>) || sameTerm(?class, <http://example.com/B>))\n}\n\nthe expected result would be that ?i is bound to ex:a and ex:b but the result set will be empty.\nWhile the following queries are working as expected\nSELECT ?i\nWHERE {\n    ?i a ?class.\n    FILTER (sameTerm(?class, <http://example.com/A>))\n}\n\nSELECT ?i\nWHERE {\n    ?i a ?class.\n    FILTER (?class = <http://example.com/A> || ?class = <http://example.com/B>)\n}",
+  "date": "2012-10-16 17:19:17",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE ex_classes (id Int32, class_uri String) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO ex_classes (id, class_uri) VALUES (1, 'http://example.com/A'), (2, 'http://example.com/B');",
+    "CREATE TABLE ex_instances (id Int32, class_id Int32) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO ex_instances (id, class_id) VALUES (1, 1), (2, 2);",
+    "SELECT i.id FROM ex_instances i JOIN ex_classes c ON i.class_id = c.id WHERE (c.class_uri = 'http://example.com/A' OR c.class_uri = 'http://example.com/B');"
+  ],
+  "key_bug_features": [
+    "FILTER concatenation with sameTerm fails to return results"
+  ]
+}

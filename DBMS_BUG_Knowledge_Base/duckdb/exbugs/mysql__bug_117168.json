@@ -1,0 +1,19 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=117168",
+  "title": "NULL-safe equals operator (<=>) exhibits incorrect behavior when comparing ROW values containing NULL",
+  "description": "The NULL-safe equals operator (<=>) shows unexpected behavior when comparing multiple columns (ROW values) containing NULL values. This inconsistency can lead to incorrect query results that don't match the logical expectations of NULL-safe comparisons.\r\n\r\nmysql> create database test;\r\nQuery OK, 1 row affected (0.01 sec)\r\n\r\nmysql> use test;\r\nDatabase changed\r\nmysql> create table t1(id int key auto_increment, `col_smallint` smallint, `col_int` int, `col_float` float);\r\nQuery OK, 0 rows affected (0.03 sec)\r\n\r\nmysql> insert into t1(col_smallint, col_int, col_float) values(NULL, 3, NULL);\r\nQuery OK, 1 row affected (0.01 sec)\r\n\r\nmysql> SELECT `col_smallint`,`col_int`,`col_float` FROM `t1` WHERE (`col_smallint`,`col_int`,`col_float`) <=>  \r\n    -> (select NULL, 1, NULL);\r\n+--------------+---------+-----------+\r\n| col_smallint | col_int | col_float |\r\n+--------------+---------+-----------+\r\n|         NULL |       3 |      NULL |\r\n+--------------+---------+-----------+\r\n1 row in set (0.00 sec)\nHow to repeat:\ncreate database test;\r\nuse test;\r\n\r\ncreate table t1(id int key auto_increment, `col_smallint` smallint, `col_int` int, `col_float` float);\r\n\r\ninsert into t1(col_smallint, col_int, col_float) values(NULL, 3, NULL);\r\n\r\nSELECT `col_smallint`,`col_int`,`col_float` FROM `t1` WHERE (`col_smallint`,`col_int`,`col_float`) <=>  \r\n(select NULL, 1, NULL);\nSuggested fix:\nThe query should return no rows since the ROW values are not equal (the col_int values 3 and 1 are different).",
+  "date": "2025-01-09 12:02:00",
+  "vulnerable_version": "9.1.0, 8.0.40, 8.4.3",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t1(id INT PRIMARY KEY, col_smallint SMALLINT, col_int INT, col_float FLOAT);",
+    "INSERT INTO t1(col_smallint, col_int, col_float) VALUES(NULL, 3, NULL);",
+    "SELECT col_smallint, col_int, col_float FROM t1 WHERE (col_smallint, col_int, col_float) = (NULL, 1, NULL);",
+    "SELECT COUNT(*) FROM t1 WHERE (col_smallint, col_int, col_float) IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "NULL-safe equals operator with ROW values containing NULL"
+  ]
+}

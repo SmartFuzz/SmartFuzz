@@ -1,0 +1,10 @@
+CREATE TABLE certificates (id INT PRIMARY KEY, cert_data BLOB NOT NULL, ca_data BLOB NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO certificates (id, cert_data, ca_data) VALUES (1, file_to_string('keys/srv/cert.cer'), file_to_string('keys/srv/ca.cer'));
+SELECT EXISTS (SELECT 1 FROM certificates WHERE x509_certificate_verify(cert_data, vector(ca_data), 'self-signed') IS TRUE);
+SELECT id, cert_data FROM certificates WHERE EXISTS (SELECT 1 WHERE x509_certificate_verify(cert_data, vector(ca_data), 'self-signed') AND created_at >= NOW() - INTERVAL '1 DAY');
+SELECT id FROM certificates WHERE EXISTS (SELECT 1 FROM certificates c2 WHERE c2.id = certificates.id AND x509_certificate_verify(cert_data, vector(ca_data), NULL)) AND cert_data IS NOT NULL;
+SELECT COUNT(*) FROM certificates WHERE EXISTS (SELECT 1 FROM certificates c3 WHERE x509_certificate_verify(c3.cert_data, vector(c3.ca_data), 'not-self-signed'));
+CREATE TABLE temp_certificates AS (SELECT * FROM certificates WHERE cert_data IS NOT NULL);
+INSERT INTO temp_certificates (id, cert_data, ca_data) SELECT id, cert_data, ca_data FROM certificates WHERE EXISTS (SELECT 1 WHERE x509_certificate_verify(cert_data, vector(ca_data), 'self-signed'));
+SELECT EXISTS (SELECT 1 FROM temp_certificates WHERE created_at < NOW() - INTERVAL '30 DAY' AND x509_certificate_verify(cert_data, vector(ca_data), 'self-signed'));
+SELECT SUM(CASE WHEN x509_certificate_verify(cert_data, vector(ca_data), 'testing') IS NOT NULL THEN 1 ELSE 0 END) as verified_count FROM certificates GROUP BY created_at;

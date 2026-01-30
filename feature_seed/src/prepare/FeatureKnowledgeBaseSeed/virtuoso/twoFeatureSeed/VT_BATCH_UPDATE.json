@@ -1,0 +1,24 @@
+{
+    "function": "VT_BATCH_UPDATE",
+    "operator": "bif:score",
+    "sql_array": [
+        "CREATE TABLE documents (id INT PRIMARY KEY, content TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO documents (id, content) VALUES (1, 'Sample text for full-text indexing'), (2, 'Another sample text to trigger scoring.');",
+        "SET VT_BATCH_UPDATE('ON');",
+        "SELECT id, bif:score(content) FROM documents WHERE bif:score(content) > 0.5;",
+        "SET VT_BATCH_UPDATE('OFF');",
+        "SELECT id, content FROM documents WHERE content LIKE '%sample%' ORDER BY bif:score(content) DESC;",
+        "CREATE TABLE logs (log_id INT PRIMARY KEY, document_id INT REFERENCES documents(id), updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO logs (log_id, document_id) VALUES (1, 1), (2, 2);",
+        "SELECT d.id, d.content, (SELECT COUNT(*) FROM logs l WHERE l.document_id = d.id) AS log_count FROM documents d JOIN logs l ON d.id = l.document_id GROUP BY d.id, d.content HAVING log_count > 0;",
+        "UPDATE documents SET content = NULL WHERE id = 1;",
+        "SELECT bif:score(CASE WHEN content IS NULL THEN '' ELSE content END) FROM documents;",
+        "SELECT d1.id, d1.content FROM documents d1 JOIN (SELECT document_id, COUNT(*) AS c FROM logs GROUP BY document_id HAVING c > 1) d2 ON d1.id = d2.document_id;",
+        "SET VT_BATCH_UPDATE('ON');",
+        "SELECT bif:score(content) FROM documents WHERE created_at > NOW() - INTERVAL '1 DAY' AND bif:score(content) < 0.2;",
+        "SELECT id, bif:score(content) AS score FROM documents WHERE score >= 0 ORDER BY score DESC;",
+        "SELECT DISTINCT d.id, d.content, (SELECT bif:score(content) FROM documents WHERE content IS NOT NULL) AS global_score FROM documents d WHERE content <> '';",
+        "UPDATE documents SET content = 'Updated text with different content.' WHERE bif:score(content) IS NOT NULL;",
+        "SELECT d.id, bif:score(COALESCE(content, '')) AS score FROM documents d WHERE bif:score(COALESCE(content, '')) IS NOT NULL ORDER BY score DESC;"
+    ]
+}

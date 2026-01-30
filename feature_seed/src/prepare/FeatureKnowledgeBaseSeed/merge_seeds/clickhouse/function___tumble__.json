@@ -1,0 +1,12 @@
+CREATE TABLE test_table (event_time DateTime, value Int32) ENGINE = MergeTree() ORDER BY event_time;
+INSERT INTO test_table VALUES (now(), 1), (now() - INTERVAL 1 DAY, 2), (now() - INTERVAL 2 DAY, 3);
+SELECT tumble(event_time, toIntervalDay(1)) AS window, COUNT(*) FROM test_table GROUP BY window;
+CREATE TABLE nested_table (event_time DateTime, value Int32) ENGINE = MergeTree() ORDER BY event_time;
+INSERT INTO nested_table VALUES (now(), 10), (now() - INTERVAL 1 HOUR, 20), (now() - INTERVAL 2 HOUR, 30);
+SELECT t.window, SUM(n.value) FROM (SELECT tumble(event_time, toIntervalHour(1)) AS window FROM test_table GROUP BY window) AS t JOIN nested_table AS n ON t.window = tumble(n.event_time, toIntervalHour(1)) GROUP BY t.window;
+CREATE TABLE multi_table (event_time DateTime, group_id Int32) ENGINE = MergeTree() ORDER BY event_time;
+INSERT INTO multi_table VALUES (now() - INTERVAL 5 MINUTE, 1), (now() - INTERVAL 10 MINUTE, 2), (now() - INTERVAL 20 MINUTE, 1);
+SELECT tumble(event_time, toIntervalMinute(5)), COUNT(*) FROM multi_table WHERE group_id = 1 GROUP BY tumble(event_time, toIntervalMinute(5));
+SELECT DISTINCT window FROM (SELECT tumble(event_time, toIntervalMinute(1)) AS window FROM test_table) AS t WHERE window > '2023-10-01 00:00:00' AND window < now();
+SELECT window, AVG(value) FROM (SELECT tumble(event_time, toIntervalDay(1)) AS window, value FROM test_table) AS subquery GROUP BY window;
+SELECT t1.window, AVG(t1.value) FROM (SELECT tumble(event_time, toIntervalDay(1)) AS window, value FROM test_table) AS t1 JOIN (SELECT DISTINCT event_time FROM multi_table) AS t2 ON t1.window = tumble(t2.event_time, toIntervalDay(1)) GROUP BY t1.window;

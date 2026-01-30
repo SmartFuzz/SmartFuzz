@@ -1,0 +1,14 @@
+CREATE TABLE test_dates (id INTEGER, event_date DATE);
+INSERT INTO test_dates VALUES (1, DATE '2023-02-28'), (2, DATE '2023-02-29'), (3, DATE '2023-03-01'), (4, NULL);
+SELECT id, dayofmonth(event_date + 1) AS next_day FROM test_dates;
+SELECT id, (dayofmonth(event_date) + 5) AS adjusted_day FROM test_dates WHERE event_date IS NOT NULL;
+SELECT id, (dayofmonth(event_date) + (SELECT COUNT(*) FROM test_dates WHERE event_date IS NOT NULL)) AS total_days FROM test_dates;
+SELECT t.id, dayofmonth(t.event_date + t.offset) AS computed_day FROM (SELECT id, event_date, (CASE WHEN event_date IS NULL THEN 0 ELSE 5 END) AS offset FROM test_dates) AS t;
+SELECT COUNT(*) AS total_days_passed FROM test_dates GROUP BY (dayofmonth(event_date) + 1);
+CREATE TABLE border_dates (id INTEGER, border_date DATE);
+INSERT INTO border_dates VALUES (1, DATE '9999-12-31'), (2, DATE '0001-01-01');
+SELECT bd.id, (dayofmonth(bd.border_date) + 1) AS adjusted_day FROM border_dates bd WHERE bd.border_date IS NOT NULL;
+SELECT id, dayofmonth(event_date) AS day, event_date + (SELECT MAX(dayofmonth(event_date)) FROM test_dates) AS final_date FROM test_dates;
+WITH date_summary AS (SELECT id, dayofmonth(event_date) AS day FROM test_dates WHERE event_date IS NOT NULL) SELECT day, COUNT(*) AS occurrences FROM date_summary GROUP BY day HAVING occurrences > 1;
+SELECT t1.id, (dayofmonth(t1.event_date) + dayofmonth(t2.event_date)) AS combined_days FROM test_dates t1 JOIN test_dates t2 ON t1.id != t2.id WHERE t1.event_date IS NOT NULL AND t2.event_date IS NOT NULL;
+SELECT dayofmonth(event_date + 5) AS calculated_day FROM test_dates WHERE event_date IS NOT NULL UNION SELECT dayofmonth(NULLIF(event_date, event_date)) AS null_day FROM test_dates;

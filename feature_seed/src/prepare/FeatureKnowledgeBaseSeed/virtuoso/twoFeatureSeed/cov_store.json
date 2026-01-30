@@ -1,0 +1,17 @@
+{
+    "function": "cov_store",
+    "operator": "bif:md5",
+    "sql_array": [
+        "CREATE TABLE test_table (id INT PRIMARY KEY, value VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO test_table (id, value) VALUES (1, 'test'), (2, 'sample'), (3, NULL), (4, 'edge case'), (5, '');",
+        "SELECT id, bif:md5(value) AS value_hash FROM test_table WHERE value IS NOT NULL;",
+        "SELECT id, bif:md5(COALESCE(value, 'default')) AS value_hash FROM test_table HAVING length(value_hash) > 0;",
+        "SELECT id, bif:md5(value) AS value_hash FROM (SELECT id, CONCAT(value, CAST(created_at AS VARCHAR)) AS value FROM test_table) AS subquery WHERE id = (SELECT MAX(id) FROM test_table);",
+        "SELECT id, bif:md5(UPPER(value)) FROM test_table WHERE id IN (SELECT id FROM test_table WHERE value LIKE 'edge%') ORDER BY created_at DESC;",
+        "SELECT id, value, bif:md5(value) AS hash_value FROM test_table ORDER BY hash_value DESC LIMIT 2;",
+        "CREATE TABLE join_table (join_id INT PRIMARY KEY, test_id INT, FOREIGN KEY(test_id) REFERENCES test_table(id));",
+        "INSERT INTO join_table (join_id, test_id) VALUES (1, 1), (2, 2), (3, 3);",
+        "SELECT jt.join_id, tt.value, bif:md5(tt.value) FROM join_table jt JOIN test_table tt ON jt.test_id = tt.id WHERE tt.value IS NOT NULL;",
+        "SELECT bif:md5(value), COUNT(*) FROM test_table WHERE value IS NOT NULL GROUP BY bif:md5(value) HAVING COUNT(*) > 1;"
+    ]
+}

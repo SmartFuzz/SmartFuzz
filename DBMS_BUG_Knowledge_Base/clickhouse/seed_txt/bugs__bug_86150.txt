@@ -1,0 +1,5 @@
+DROP TABLE IF EXISTS test_final_partitions;
+CREATE TABLE test_final_partitions (organization_id UInt32, keyword_id UInt32, search_date DateTime, position_on_serp UInt32, version UInt32, value String) ENGINE = ReplacingMergeTree(version) PARTITION BY toYYYYMM(search_date) ORDER BY (organization_id, keyword_id, search_date, position_on_serp);
+INSERT INTO test_final_partitions SELECT rand() % 1000 AS organization_id, rand() % 100000 AS keyword_id, toDateTime('2023-01-01') + (rand() % (86400*180)) AS search_date, rand() % 50 AS position_on_serp, number % 5 AS version, toString(number) FROM numbers(50000000);
+SELECT count() FROM test_final_partitions FINAL WHERE organization_id IS NOT NULL GROUP BY search_date;
+SELECT count() FROM test_final_partitions FINAL WHERE position_on_serp > 25 AND version IS NULL GROUP BY search_date;

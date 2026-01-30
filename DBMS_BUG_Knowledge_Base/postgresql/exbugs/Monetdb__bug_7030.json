@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7030",
+  "title": "DROP TABLE with AUTO_INCREMENT doesn't drop sequence causing left-over dependency",
+  "description": "When a table with an `auto_increment` column is dropped, the corresponding `sequence` created for this column is not dropped. This results in at least one left-over dependency of this `sequence` on the schema to which the table belonged. So the schema can't be dropped.\n\nAlso, this implicit sequence can't be dropped with `drop sequence seq_nnnn`, so there seems to be no way to clean up this.\n\n**To Reproduce**\n```\ncreate schema s1;\ncreate table s1.t (i int not null auto_increment);\ndrop table s1.t;\ndrop schema s1; -- DROP SCHEMA: unable to drop schema 's1' (there are database objects which depend on it)\nselect sq.id as sequence_id, sq.name as sequence_name, sc.id as schema_id, sc.name as schema_name from sequences sq, schemas sc where sq.schema_id = sc.id; -- shows the left-over dependency\n```\n**Expected behavior**\nThe `auto_increment` sequence should have been removed as part of the `drop table`, and `drop schema s1` should succeed.\n\n**Software versions**\n - MonetDB version number [v11.39.8 (hg id: e6eb722152e3)]\n - OS and version: [e.g. Ubuntu 20.04]\n - Mercurial source",
+  "date": "2020-12-16T10:40:51Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE SCHEMA s2;",
+    "CREATE TABLE s2.u (j serial PRIMARY KEY, k varchar(255) NOT NULL, l date);",
+    "INSERT INTO s2.u (k, l) VALUES ('test', '2023-10-01');",
+    "SELECT COUNT(*) FROM s2.u WHERE l IS NOT NULL;",
+    "DROP TABLE s2.u;"
+  ],
+  "key_bug_features": [
+    "Dropping table with auto_increment does not drop sequence"
+  ]
+}

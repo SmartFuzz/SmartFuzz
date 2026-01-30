@@ -1,0 +1,21 @@
+{
+    "function": "monthname(timestamp)",
+    "operator": "|",
+    "sql_array": [
+        "CREATE TABLE test_dates (id INT, event_date TIMESTAMP, value INT);",
+        "INSERT INTO test_dates (id, event_date, value) VALUES (1, TIMESTAMP '2023-01-01', 10), (2, TIMESTAMP '2023-01-02', NULL), (3, TIMESTAMP '2023-02-01', 20);",
+        "SELECT id, monthname(event_date) AS month_name, (COALESCE(value, 0) | 3) AS adjusted_value FROM test_dates WHERE event_date IS NOT NULL;",
+        "SELECT id, monthname(event_date) AS month_name, (value | 5) AS adjusted_value FROM test_dates WHERE event_date > TIMESTAMP '2023-01-15' ORDER BY month_name;",
+        "CREATE TABLE test_aggregate (group_id INT, aggregate_value INT);",
+        "INSERT INTO test_aggregate (group_id, aggregate_value) VALUES (1, 50), (1, 75), (2, 100);",
+        "SELECT group_id, SUM(aggregate_value | NULLIF(aggregate_value, NULL)) AS total FROM test_aggregate GROUP BY group_id HAVING total > 100;",
+        "CREATE TABLE test_nested (id INT, start_date TIMESTAMP, end_date TIMESTAMP);",
+        "INSERT INTO test_nested (id, start_date, end_date) VALUES (1, TIMESTAMP '2022-12-31', TIMESTAMP '2023-01-31');",
+        "SELECT id, (monthname(start_date) | 2) AS start_month_bin FROM test_nested WHERE end_date > (SELECT MAX(start_date) FROM test_nested);",
+        "SELECT id, monthname(end_date) AS end_month_name, (COALESCE((SELECT COUNT(*) | 1 FROM test_nested WHERE id = t.id), 0) | 2) AS count_adjusted FROM test_nested t GROUP BY end_month_name;",
+        "CREATE TABLE complex_table (id INT, ts_col TIMESTAMP, num_col INT, str_col VARCHAR);",
+        "INSERT INTO complex_table (id, ts_col, num_col, str_col) VALUES (1, TIMESTAMP '2020-01-01', 15, 'sample1'), (2, TIMESTAMP '2020-02-01', -5, NULL);",
+        "SELECT id, monthname(ts_col) AS month, (num_col | CASE WHEN str_col IS NULL THEN 1 ELSE 0 END) AS adjusted_value FROM complex_table WHERE num_col + (NULLIF(str_col, '') | 0) > 0;",
+        "SELECT id, monthname(ts_col) AS month, (15 | (value | 10)) AS combined_value FROM (SELECT id, ts_col, COALESCE(num_col, 0) AS value FROM complex_table) AS derived WHERE combined_value > 20;"
+    ]
+}

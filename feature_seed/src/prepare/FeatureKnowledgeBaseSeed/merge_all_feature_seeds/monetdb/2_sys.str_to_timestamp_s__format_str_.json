@@ -1,0 +1,11 @@
+CREATE TABLE test_dates (id INT PRIMARY KEY, event_time TIMESTAMPTZ, value FLOAT);
+INSERT INTO test_dates (id, event_time, value) VALUES (1, sys.str_to_timestamp('12/31/2023 23:59:59', '%m/%d/%Y %H:%M:%S'), 42.0);
+INSERT INTO test_dates (id, event_time, value) VALUES (2, sys.str_to_timestamp('01/01/2024 00:00:01', '%m/%d/%Y %H:%M:%S'), NULL);
+INSERT INTO test_dates (id, event_time, value) VALUES (3, sys.str_to_timestamp('02/29/2024 12:00:00', '%m/%d/%Y %H:%M:%S'), 3.14);
+INSERT INTO test_dates (id, event_time, value) VALUES (4, sys.str_to_timestamp('13/01/2024 01:01:01', '%m/%d/%Y %H:%M:%S'), 7.5);
+SELECT id, event_time + INTERVAL '5 seconds' AS adjusted_time FROM test_dates WHERE value IS NOT NULL;
+SELECT id, sys.str_to_timestamp('01/01/2000 00:00:00', '%m/%d/%Y %H:%M:%S') + (value * 1.0) AS calculated_timestamp FROM test_dates WHERE event_time IS NOT NULL;
+SELECT id, COUNT(*) AS num_events, MAX(sys.str_to_timestamp(event_time::TEXT, '%Y-%m-%d %H:%M:%S')) + 1 AS max_adjusted_time FROM test_dates GROUP BY id HAVING COUNT(*) > 1;
+SELECT SUM(value) + 10 AS total_value FROM test_dates WHERE value IS NOT NULL AND adjusted_time > sys.str_to_timestamp('12/31/2023 23:59:59', '%m/%d/%Y %H:%M:%S');
+SELECT t.id, t.event_time, (SELECT sys.str_to_timestamp('01/01/2025 12:00:00', '%m/%d/%Y %H:%M:%S') + (1.0 / NULLIF(t.value, 0)) FROM test_dates t2 WHERE t2.id = t.id) AS future_value FROM test_dates t;
+SELECT DISTINCT id, sys.str_to_timestamp(CONCAT('0', '1/1/2024 00:00:00'), '%m/%d/%Y %H:%M:%S') + 5 AS ambiguous_time FROM test_dates WHERE event_time IS NOT NULL;

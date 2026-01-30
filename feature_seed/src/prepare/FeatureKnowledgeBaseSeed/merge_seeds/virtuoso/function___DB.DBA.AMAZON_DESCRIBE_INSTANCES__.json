@@ -1,0 +1,18 @@
+CREATE TABLE instances (id INT, ami_id VARCHAR(255), instance_type VARCHAR(50), status VARCHAR(50), public_ip VARCHAR(15));
+CREATE TABLE reservations (id INT, instance_id INT, user_id INT, start_time TIMESTAMP, end_time TIMESTAMP);
+INSERT INTO instances (id, ami_id, instance_type, status, public_ip) VALUES (1, 'ami-12345678', 't2.micro', 'running', '192.0.2.1');
+INSERT INTO instances (id, ami_id, instance_type, status, public_ip) VALUES (2, 'ami-87654321', 't2.small', 'stopped', NULL);
+INSERT INTO reservations (id, instance_id, user_id, start_time, end_time) VALUES (1, 1, 1001, '2023-10-01 09:00:00', '2023-10-15 09:00:00');
+INSERT INTO reservations (id, instance_id, user_id, start_time, end_time) VALUES (2, 2, 1002, '2023-10-05 10:00:00', '2023-10-10 10:00:00');
+CREATE PROCEDURE complex_test() { DECLARE access_key, sec_token VARCHAR;
+DECLARE amis, instances ANY;
+access_key := 'AKIAJI7ZL427TI5EDF5A';
+sec_token := 'CGI/UMaXf2LRUctaj/HGJ57UNy/t7fNCshh8wpJg';
+amis := xtree_doc(DB.DBA.AMAZON_DESCRIBE_INSTANCES(access_key, sec_token));
+instances := xpath_eval('/DescribeInstancesResponse/reservationSet/item/instancesSet/item', amis, 0);
+SELECT id, ami_id, instance_type, status FROM instances WHERE status = 'running' AND id IN (SELECT instance_id FROM reservations WHERE end_time > CURRENT_TIMESTAMP);
+};
+SELECT COUNT(*) AS running_instances FROM instances WHERE status = 'running';
+SELECT instance_type, COUNT(*) AS count FROM instances GROUP BY instance_type HAVING count > 1;
+SELECT i.id, i.ami_id, r.start_time FROM instances i JOIN reservations r ON i.id = r.instance_id WHERE i.status = 'running' AND r.user_id = (SELECT MAX(user_id) FROM reservations);
+SELECT DISTINCT ami_id FROM instances WHERE ami_id LIKE '%ami-%' AND id NOT IN (SELECT instance_id FROM reservations WHERE end_time < CURRENT_TIMESTAMP);

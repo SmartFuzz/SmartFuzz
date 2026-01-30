@@ -1,0 +1,18 @@
+{
+    "function": "file_stat",
+    "operator": "SPARQL Operator: a (rdf:type)",
+    "sql_array": [
+        "CREATE TABLE test_files (id INT PRIMARY KEY, filename VARCHAR(255), size INT, created_at TIMESTAMP);",
+        "INSERT INTO test_files (id, filename, size, created_at) VALUES (1, 'file1.txt', 12345, NOW()), (2, 'file2.txt', 67890, NOW()), (3, 'file3.txt', NULL, NULL);",
+        "SELECT file_stat(virtuoso_ini_path(), size) AS file_size_stats FROM test_files WHERE size IS NOT NULL ORDER BY file_size_stats DESC;",
+        "SELECT * WHERE { ?s a <FileClass> . FILTER(EXISTS { SELECT file_stat(virtuoso_ini_path(), t.size) AS file_size WHERE t.filename = ?s }) };",
+        "SELECT id, filename, size, file_stat(virtuoso_ini_path(), size) AS file_stats FROM test_files WHERE file_stat(virtuoso_ini_path(), size) > 0 ORDER BY NULLIF(size, 0);",
+        "SELECT COUNT(*) FROM test_files GROUP BY size HAVING file_stat(virtuoso_ini_path(), MAX(size)) IS NOT NULL;",
+        "SELECT file_stat(virtuoso_ini_path(), size) FROM test_files WHERE filename NOT LIKE '' AND created_at IS NOT NULL;",
+        "SELECT id, file_stat(virtuoso_ini_path(), CASE WHEN size IS NULL THEN 0 ELSE size END) AS stats FROM test_files WHERE file_stat(virtuoso_ini_path(), 1) < 10000 ORDER BY stats DESC;",
+        "CREATE TABLE temp_results AS SELECT id, filename, size FROM test_files WHERE size IS NOT NULL;",
+        "SELECT a.id, file_stat(virtuoso_ini_path(), a.size) FROM temp_results AS a JOIN test_files AS b ON a.id = b.id WHERE b.size = (SELECT MAX(size) FROM test_files);",
+        "INSERT INTO test_files (id, filename, size, created_at) VALUES (4, 'file4.txt', 99999, NOW());",
+        "SELECT SUM(size) as total_size, file_stat(virtuoso_ini_path(), SUM(size)) FROM test_files GROUP BY created_at ORDER BY total_size DESC HAVING total_size > 1000;"
+    ]
+}

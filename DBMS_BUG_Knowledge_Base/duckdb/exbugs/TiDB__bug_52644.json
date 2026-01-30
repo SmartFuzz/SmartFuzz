@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/52644",
+  "title": "UnionExec sometimes receives data truncated error from children when casting string to decimal",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n```\r\nUSE TEST;\r\nCREATE TABLE `test1` (\r\n  `bglac` varchar(21) DEFAULT NULL\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;\r\n\r\nCREATE TABLE `test` (\r\n  `id` int(11) DEFAULT NULL,\r\n  `bglac` varchar(21) DEFAULT NULL\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin\r\nPARTITION BY HASH (`id`) PARTITIONS 3;\r\n\r\n```\r\n\r\nUnable to reproduce steadily when not in transaction:\r\n```\r\ninsert into test values(1,'11,11');\r\ninsert into test1(bglac) select  sum(convert(ifnull(bglac, 0), decimal(21,3))) from test;\r\n```\r\nReproduce steadily when in transaction using UnionScan:\r\n```\r\nbegin;\r\ninsert into test values(1,'11,11');\r\ninsert into test1(bglac) select  sum(convert(ifnull(bglac, 0), decimal(21,3))) from test;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nNo error.\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nSometimes report error if insert is not in transaction:\r\n```\r\nmysql> insert into test1(bglac) select  sum(convert(ifnull(bglac, 0), decimal(21,3))) from test;\r\nERROR 1265 (01000): Data truncated for column '%s' at row %d\r\nmysql> insert into test1(bglac) select  sum(convert(ifnull(bglac, 0), decimal(21,3))) from test;\r\nQuery OK, 1 row affected, 1 warning (0.01 sec)\r\nRecords: 1  Duplicates: 0  Warnings: 1\r\n```\r\n\r\nAlways report error in transaction:\r\n```\r\nmysql> begin;\r\nQuery OK, 0 rows affected (0.00 sec)\r\nmysql> insert into test values(1,'11,11');\r\nQuery OK, 1 row affected (0.00 sec)\r\nmysql> insert into test1(bglac) select  sum(convert(ifnull(bglac, 0), decimal(21,3))) from test;\r\nERROR 1265 (01000): Data truncated for column '%s' at row %d\r\n```\r\n### 4. What is your TiDB version? (Required)\r\n\r\nv6.5.2\r\n\r\n",
+  "date": "2024-04-16T09:26:50Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE test2 ( id INTEGER NOT NULL, amount DECIMAL(10,2) );",
+    "INSERT INTO test2 VALUES (1, 10.50);",
+    "INSERT INTO test2 VALUES (2, NULL);",
+    "INSERT INTO test2 VALUES (3, 'invalid_decimal');",
+    "INSERT INTO test1(bglac) SELECT SUM(COALESCE(CAST(amount AS DECIMAL(21,3)), 0)) FROM test2;"
+  ],
+  "key_bug_features": [
+    "Data truncated error when casting string to decimal"
+  ]
+}

@@ -1,0 +1,8 @@
+CREATE TABLE certificates_data (cert_data TEXT, cert_id INT PRIMARY KEY);
+INSERT INTO certificates_data (cert_data) VALUES ('-----BEGIN CERTIFICATE-----\nMIIDyzCCArOgAwIBAgIJAL5D...', NULL), (NULL, 2), ('-----BEGIN CERTIFICATE-----\nMIIE...', 3);
+SELECT pem_certificates_to_array(cert_data) AS cert_array FROM certificates_data WHERE cert_id <= 3;
+SELECT c1.cert_data, pem_certificates_to_array(c1.cert_data) AS cert_array FROM certificates_data c1 JOIN certificates_data c2 ON c1.cert_id <= c2.cert_id WHERE c2.cert_id IS NOT NULL GROUP BY c1.cert_id HAVING COUNT(pem_certificates_to_array(c1.cert_data)) <= 2;
+SELECT DISTINCT pem_certificates_to_array(cert_data || ' extra_string') AS cert_array FROM certificates_data WHERE cert_id <= (SELECT MAX(cert_id) FROM certificates_data);
+SELECT cert_id, COUNT(*) FROM (SELECT pem_certificates_to_array(cert_data) AS cert_array FROM certificates_data GROUP BY cert_data HAVING COUNT(cert_data) <= (SELECT COUNT(*) FROM certificates_data) ) AS sub WHERE NULL IS NOT NULL;
+CREATE TEMPORARY TABLE temp_certificates AS SELECT pem_certificates_to_array(cert_data) AS temp_cert_array FROM certificates_data WHERE cert_data IS NOT NULL;
+SELECT * FROM temp_certificates WHERE temp_cert_array[1] <= (SELECT temp_cert_array[1] FROM temp_certificates WHERE temp_cert_array IS NOT NULL LIMIT 1);

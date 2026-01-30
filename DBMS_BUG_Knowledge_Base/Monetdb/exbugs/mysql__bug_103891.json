@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=103891",
+  "title": "Two parallel threads trigger error code '1032 Can't find record in 'table'",
+  "description": "# The script can reproduce\r\n# the `can’t find record` problem in MySQL5.6 and MySQL5.7.33\r\n\r\nimport pymysql\r\nimport _thread\r\n\r\n# You should create this database before executing the script\r\ndb = 'testdb'\r\n\r\n# host, port, user and password\r\nhost = 'localhost'\r\nport = 13306\r\nuser = 'root'\r\npassword = 'root'\n\ndef connect() -> pymysql.Connection:\r\n    return pymysql.connect(host=host,\r\n                           port=port,\r\n                           user=user,\r\n                           password=password,\r\n                           db=db)\n\n# recreate database ${db}\r\n# then create schema for test\r\ndef initdb():\r\n    conn = connect()\r\n    cur = conn.cursor()\r\n    cur.execute(f'drop table if exists t;')\r\n    cur.execute('create table t(pkAttr0 integer, coAttr1 varchar(100), \\\r\n                coAttr2 varchar(100), coAttr3 varchar(100), coAttr4 integer, \\\r\n                coAttr5 varchar(100), coAttr6 varchar(100), primary key(pkAttr0));')\n\ndef select():\r\n    conn = connect()\r\n    cur = conn.cursor()\r\n    cur.execute('set session transaction isolation level read uncommitted')\r\n    conn.autocommit(False)\r\n    while True:\r\n        #Sometimes, this select triggers error：pymysql.err.0perationalError: (1032,\"Can't find record in 't'\")\r\n        cur.execute('select pkAttr0, coAttr1, coAttr2, coAttr3, coAttr4, coAttr5, coAttr6 \\\r\n            from t order by pkAttr0, coAttr1, coAttr2, coAttr3, coAttr4, coAttr5, coAttr6;')\r\n        print(cur.fetchall())\r\n        conn.commit()\n\ndef change():\r\n    conn = connect()\r\n    cur = conn.cursor()\r\n    cur.execute('set session transaction isolation level read uncommitted')\r\n    conn.autocommit(False)\r\n\r\n    while True:\r\n        cur.execute('delete from t where pkAttr0 = 1;')\r\n        cur.execute('insert into t(pkAttr0, coAttr1, coAttr2, coAttr3, coAttr4, coAttr5, coAttr6) \\\r\n            values(\"1\", \"varchar1\", \"varchar2\", \"varchar3\", \"2021\", \"varchar5\", \"varchar6\");')\r\n        # The problem can be reproduced whether or not to commit the transaction\r\n        # conn.commit()\n\ninitdb()\r\n\r\n_thread.start_new_thread(select, ())\r\n_thread.start_new_thread(change, ())\r\n\r\nwhile True:\r\n    pass\nHow to repeat:\nRun the above Python script to reproduce the bug.\nSuggested fix:\nThe expected result should not throw '1032' error.",
+  "date": "2021-06-02 14:13:00",
+  "vulnerable_version": "MySQL5.6 and MySQL5.7.33",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t(pkAttr0 integer PRIMARY KEY, coAttr1 varchar(100) NOT NULL, coAttr2 varchar(100), coAttr3 varchar(100) DEFAULT 'default', coAttr4 integer CHECK (coAttr4 >= 0), coAttr5 varchar(100), coAttr6 varchar(100) DEFAULT NULL);",
+    "INSERT INTO t(pkAttr0, coAttr1, coAttr2, coAttr3, coAttr4, coAttr5, coAttr6) VALUES(1, 'varchar1', 'varchar2', 'varchar3', 2021, 'varchar5', NULL);",
+    "INSERT INTO t(pkAttr0, coAttr1, coAttr2, coAttr3, coAttr4, coAttr5, coAttr6) VALUES(2, 'varchar4', NULL, 'varchar6', 2022, 'varchar7', 'varchar8');",
+    "DELETE FROM t WHERE pkAttr0 = 1;",
+    "SELECT pkAttr0, coAttr1, coAttr2, coAttr3, coAttr4, coAttr5, coAttr6 FROM t WHERE coAttr4 < 2023 ORDER BY pkAttr0 DESC;"
+  ],
+  "key_bug_features": [
+    "Two parallel threads accessing the same database record"
+  ]
+}

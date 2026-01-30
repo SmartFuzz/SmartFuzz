@@ -1,0 +1,15 @@
+CREATE TABLE test_timestamps (id SERIAL PRIMARY KEY, start_time TIMESTAMPTZ, end_time TIMESTAMPTZ);
+INSERT INTO test_timestamps (start_time, end_time) VALUES (timestamp '2021-12-31 18:40:40', timestamp '2021-12-30 16:30:20');
+INSERT INTO test_timestamps (start_time, end_time) VALUES (NULL, timestamp '2020-01-01 00:00:00');
+SELECT id, timestampdiff(start_time, end_time) AS interval_difference FROM test_timestamps WHERE start_time IS NOT NULL;
+SELECT id, timestampdiff(timestamp '2021-12-31 18:40:40', timestamp '2021-12-31 18:40:40' - INTERVAL '1 day') AS interval_difference FROM test_timestamps WHERE end_time IS NOT NULL;
+CREATE TABLE test_times (time_str VARCHAR(50));
+INSERT INTO test_times (time_str) VALUES ('18:40:05.123456'), ('12:30:30.123456'), (NULL), ('23:59:59.999999');
+SELECT id, timestampdiff(timestamp '2021-12-31 18:40:40', timestamp(time(6) time_str)) AS time_difference FROM test_times WHERE time_str IS NOT NULL GROUP BY time_str;
+SELECT tt.id, tt.start_time, tt.end_time, tt2.time_str FROM test_timestamps tt JOIN test_times tt2 ON timestampdiff(tt.start_time, tt.end_time) < 10000 WHERE tt.start_time IS NOT NULL AND tt2.time_str IS NOT NULL ORDER BY timestampdiff(tt.start_time, tt.end_time) DESC;
+SELECT id, COUNT(*) OVER (PARTITION BY timestampdiff(timestamp '2021-12-31 18:40:40', end_time)) AS count_diff FROM test_timestamps WHERE end_time IS NOT NULL;
+INSERT INTO test_timestamps (start_time, end_time) VALUES (timestamp '2000-01-01 00:00:00', NULL);
+ALTER TABLE test_times ADD COLUMN time_result TIME(6);
+UPDATE test_times SET time_result = time(6) time_str WHERE time_str IS NOT NULL;
+SELECT DISTINCT id, timestampdiff(timestamp '2020-01-01 00:00:00', timestamp '2021-12-31 23:59:59') FROM test_timestamps;
+CREATE TEMPORARY TABLE tmp_test AS SELECT timestampdiff(start_time, end_time) AS difference FROM test_timestamps WHERE start_time IS NOT NULL AND end_time IS NOT NULL;

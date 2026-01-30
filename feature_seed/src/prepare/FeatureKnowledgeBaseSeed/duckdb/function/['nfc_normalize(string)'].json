@@ -1,0 +1,22 @@
+[
+    "CREATE TABLE test_strings (raw_string VARCHAR);",
+    "INSERT INTO test_strings VALUES ('arde\u0300ch'), ('caf\u00e9'), ('na\u00efve'), ('expose\u0301'), ('fa\u00e7ade'), ('souffl\u00e9'), ('r\u00e9sum\u00e9');",
+    "CREATE TABLE normalization_results AS SELECT raw_string, nfc_normalize(raw_string) AS normalized FROM test_strings;",
+    "SELECT raw_string, normalized FROM normalization_results WHERE normalized IS NOT NULL;",
+    "SELECT raw_string, normalized FROM normalization_results WHERE normalized <> raw_string;",
+    "SELECT COUNT(*) FROM normalization_results WHERE normalized LIKE '%\u00e9%';",
+    "SELECT DISTINCT normalized FROM normalization_results ORDER BY normalized;",
+    "CREATE TABLE additional_strings (id INT, more_strings VARCHAR);",
+    "INSERT INTO additional_strings VALUES (1, 'd\u00e9j\u00e0'), (2, 'soup\u00e7on'), (3, 'clich\u00e9');",
+    "SELECT ts.raw_string, nfc_normalize(ts.raw_string) AS normalized_string, asb.more_strings FROM test_strings ts JOIN additional_strings asb ON nfc_normalize(ts.raw_string) LIKE '%' || nfc_normalize(asb.more_strings) || '%';",
+    "CREATE TABLE nested_tests AS SELECT nfc_normalize(SUBSTR(raw_string, 1, 5)) AS short_normalized FROM test_strings;",
+    "SELECT COUNT(*) FROM nested_tests WHERE short_normalized IN (SELECT nfc_normalize('caf\u00e9') AS comparison_value);",
+    "SELECT raw_string FROM test_strings WHERE nfc_normalize(raw_string) NOT IN (SELECT normal_value FROM (SELECT nfc_normalize('expose\u0301') AS normal_value));",
+    "CREATE TABLE final_results AS SELECT nfc_normalize(raw_string) AS fully_normalized_string FROM test_strings GROUP BY fully_normalized_string HAVING COUNT(*) > 1;",
+    "SELECT * FROM final_results WHERE fully_normalized_string LIKE 'fa\u00e7ade%';",
+    "DROP TABLE IF EXISTS test_strings;",
+    "DROP TABLE IF EXISTS additional_strings;",
+    "DROP TABLE IF EXISTS normalization_results;",
+    "DROP TABLE IF EXISTS nested_tests;",
+    "DROP TABLE IF EXISTS final_results;"
+]

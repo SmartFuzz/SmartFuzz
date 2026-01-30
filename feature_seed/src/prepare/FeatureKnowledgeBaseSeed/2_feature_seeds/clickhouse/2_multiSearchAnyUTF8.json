@@ -1,0 +1,11 @@
+CREATE TABLE test_strings (id UInt32, text UTF8, value Int32);
+INSERT INTO test_strings VALUES (1, '\x4e\x6f\x74\x4e\x75\x6c\x6c', 10), (2, '\x54\x65\x73\x74', 20), (3, '\x4e\x6f\x74', 30);
+SELECT id, multiSearchAnyUTF8(text, ['\x54', '\x4e']) AS match_found FROM test_strings WHERE match_found = 1;
+CREATE TABLE test_numbers (num UInt32, value String);
+INSERT INTO test_numbers VALUES (1, '10'), (2, '20'), (3, '30');
+SELECT t.id, t.text, t.value FROM test_strings t INNER JOIN test_numbers n ON multiSearchAnyUTF8(t.text, [n.value]) = 1 WHERE n.num BETWEEN 1 AND 2;
+SELECT COUNT(*) FROM (SELECT multiSearchAnyUTF8(text, ['\x4e']) AS match FROM test_strings GROUP BY text HAVING match = 1) AS matches;
+SELECT id, text FROM test_strings WHERE value BETWEEN (SELECT MIN(num) FROM test_numbers) AND (SELECT MAX(num) FROM test_numbers);
+SELECT id, multiSearchAnyUTF8(text, ['']) AS empty_match FROM test_strings WHERE multiSearchAnyUTF8(text, ['']) = 0;
+SELECT id FROM test_strings WHERE text IS NULL OR (value BETWEEN -1 AND 1);
+CREATE TEMPORARY TABLE temp_strings AS SELECT multiSearchAnyUTF8(text, ['\x4e', '\x54']) AS complex_match FROM test_strings GROUP BY complex_match HAVING complex_match = 1;

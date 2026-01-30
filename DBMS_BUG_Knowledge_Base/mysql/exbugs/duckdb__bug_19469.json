@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/19469",
+  "title": "Potential error in constraint violation message when checking foreign key constraints",
+  "description": "### What happens?\n\nI've realized that when a foreign key constraint is not met, the error message seems to be reporting the wrong values. I could bisect this to versions 1.3.2 (correct) and 1.4.0 (wrong).\n\nUnder version 1.3.2 it produces\n\nConstraint Error:\nViolates foreign key constraint because key \"b1: 4, b2: 5\" does not exist in the referenced table\n\nUnder version 1.4.0 it produces\n\nConstraint Error:\nViolates foreign key constraint because key \"b1: 1, b2: 2\" does not exist in the referenced table\n\nFrom my understanding, the output of version 1.3.2 is correct, whereas for version 1.4.0 (and later ones as well) it is not correct.\n\n### To Reproduce\n\nI'm using a simple example to reproduce:\n\n```\nCREATE TABLE B (b1 INTEGER,\nb2 INTEGER,\nPRIMARY KEY(b1, b2));\n\nCREATE TABLE A (a1 VARCHAR(1),\na2 VARCHAR(1),\na3 VARCHAR(1),\na4 VARCHAR(1),\na5 INTEGER,\na6 INTEGER,\nPRIMARY KEY(a1, a2),\nUNIQUE(a3, a4),\nFOREIGN KEY (a5, a6) REFERENCES B(b1, b2));\n```\n\nand data:\n\n```\nINSERT INTO B (b1, b2) VALUES\n(1, 2),\n(2, 3),\n(6, 7);\n\nINSERT INTO A (a1, a2, a3, a4, a5, a6) VALUES\n('x', 'y', 'z', 'u', 1, 2),\n('y', 'z', 'x', 'v', 1, 2),\n('x', 'x', 'y', 'y', 2, 3),\n('z', 'z', 'v', 'x', 4, 5);\n```\n\n### OS:\n\nLinux x86_64\n\n### DuckDB Version:\n\n1.4.0\n\n### DuckDB Client:\n\ncmd-line\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nMarcus Paradies\n\n### Affiliation:\n\nLMU Munich\n\n### Did you include all relevant configuration (e.g., CPU architecture, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes",
+  "date": "2025-10-22 10:50:13",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE C (c1 INT NOT NULL, c2 VARCHAR(10), c3 FLOAT, PRIMARY KEY(c1));",
+    "INSERT INTO C (c1, c2, c3) VALUES (1, 'test', 1.1), (2, 'example', 2.2), (3, NULL, 3.3);",
+    "CREATE TABLE D (d1 INT, d2 INT, FOREIGN KEY(d1, d2) REFERENCES B(b1, b2));",
+    "INSERT INTO D (d1, d2) VALUES (4, 5), (1, 2), (2, 3);",
+    "SELECT * FROM D WHERE (d1, d2) IN (SELECT b1, b2 FROM B) OR (d1 IS NULL AND d2 IS NOT NULL);"
+  ],
+  "key_bug_features": [
+    "Incorrect foreign key constraint violation error message"
+  ]
+}

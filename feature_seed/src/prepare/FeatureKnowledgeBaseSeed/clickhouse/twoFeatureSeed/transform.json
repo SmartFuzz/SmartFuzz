@@ -1,0 +1,15 @@
+{
+    "function": "transform",
+    "operator": "a = ALL (subquery)",
+    "sql_array": [
+        "CREATE TABLE test.hits (SearchEngineID Int64, Referer String, VisitDate DateTime) ENGINE = MergeTree() ORDER BY VisitDate;",
+        "INSERT INTO test.hits VALUES (2, 'http://yandex.ru', '2023-10-01 12:00:00'), (3, 'http://google.ru', '2023-10-01 12:10:00'), (0, NULL, '2023-10-01 12:20:00'), (1, 'http://example.com', '2023-10-01 12:30:00');",
+        "SELECT transform(SearchEngineID, [0, 1, 2, 3], ['Unknown', 'Other', 'Yandex', 'Google'], 'Not Found') AS title, COUNT() AS c FROM test.hits WHERE SearchEngineID = ALL (SELECT SearchEngineID FROM test.hits WHERE SearchEngineID > 0) GROUP BY title HAVING c > 0 ORDER BY c DESC;",
+        "SELECT search_title.title, COUNT(*) as c FROM (SELECT transform(Referer, ['yandex.ru', 'google.ru', 'example.com'], ['www.yandex', 'example.com', 'other.com'], 'none') AS title FROM test.hits WHERE Referer IS NOT NULL) AS search_title GROUP BY title HAVING c > 1 ORDER BY c DESC;",
+        "CREATE TABLE test.analytics (UserId Int32, ActionType String, CreatedAt DateTime) ENGINE = MergeTree() ORDER BY CreatedAt;",
+        "INSERT INTO test.analytics VALUES (1, 'click', '2023-10-01 12:45:00'), (2, 'impression', '2023-10-01 12:50:00'), (NULL, 'click', '2023-10-01 12:55:00'), (3, NULL, '2023-10-01 13:00:00');",
+        "SELECT transform(ActionType, ['click', 'impression'], ['Clicked', 'Seen'], 'Unknown') AS action, COUNT(*) AS total FROM test.analytics WHERE UserId = ALL (SELECT UserId FROM test.analytics WHERE ActionType IS NOT NULL) GROUP BY action HAVING total > 0 ORDER BY total DESC;",
+        "SELECT t1.title, t2.action, COUNT(*) FROM (SELECT transform(Referer, ['yandex.ru', 'google.ru'], ['www.yandex', 'example.com'], 'unknown') AS title FROM test.hits) AS t1 JOIN (SELECT transform(ActionType, ['click', 'impression'], ['clicked', 'shown'], 'none') AS action FROM test.analytics) AS t2 ON t1.title = t2.action GROUP BY t1.title, t2.action HAVING COUNT(*) > 0 ORDER BY COUNT(*) DESC;",
+        "SELECT transform(Referer, ['yandex.ru', 'google.ru'], ['Yandex', 'Google'], 'Other') AS ref, COUNT() OVER (PARTITION BY transform(Referer, ['yandex.ru', 'google.ru'], ['Yandex', 'Google'], 'Other')) AS partition_count FROM test.hits WHERE SearchEngineID != ALL (SELECT SearchEngineID FROM test.hits WHERE SearchEngineID < 3) GROUP BY ref ORDER BY partition_count DESC;"
+    ]
+}

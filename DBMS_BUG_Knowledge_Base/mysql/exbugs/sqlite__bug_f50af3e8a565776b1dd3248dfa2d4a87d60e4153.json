@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/f50af3e8a5",
+  "title": "OOB memory access on a table rename",
+  "description": "drh added on 2020-02-23 16:09:56:\nThe ALTER TABLE statement in the following SQL causes an out-of-bounds\nmemory access:\nCREATE TABLE t1(x);\nCREATE VIEW t2 AS SELECT 1 FROM t1, (t1 AS a0, t1);\nALTER TABLE t1 RENAME TO t3;\nThis problem was discovered and reported by\nsakura(@eternalsakura13) of Alpha Team, Qihoo 360\ndrh added on 2020-02-23 16:16:40:\nThe OOB memory access occurs inside the \nrenameTokenCheckAll()\nprocedure, which is a debugging procedure\nthat only exists for debugging builds.\nIt is unclear whether or not\nthis problem exists in release builds.\ndrh added on 2020-02-23 17:38:04:\nThe test case shown above is indeed harmless for release builds.  However,\nSakura provides another more complex test case (not shown here) that does\ncause an OOB memory access on release builds due to the two-size lookaside\nmemory allocator added in version 3.31.0.  It is the same problem in both\ncases, and is fixed by check-in [c431b3fd8fd0f6a6].",
+  "date": "2020-02-23 16:09:565.46 years ago",
+  "vulnerable_version": "3.31.1",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(id INT PRIMARY KEY, name VARCHAR(255) NOT NULL, value FLOAT DEFAULT 0.0);",
+    "CREATE VIEW t2 AS SELECT name, value FROM t1 WHERE value > (SELECT AVG(value) FROM t1);",
+    "INSERT INTO t1(name, value) VALUES('Item1', 10.5);",
+    "INSERT INTO t1(name, value) VALUES('Item2', NULL);",
+    "RENAME TABLE t1 TO t3;"
+  ],
+  "key_bug_features": [
+    "ALTER TABLE statement causes out-of-bounds memory access"
+  ]
+}

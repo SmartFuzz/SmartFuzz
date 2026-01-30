@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id UInt16, value String, tuple_column Tuple(id UInt16, name String));
+INSERT INTO test_table VALUES (1, '16'), (2, 'abc'), (3, '65536'), (4, '0.9'), (5, 'uint16'), (6, '0xabc');
+SELECT id, toUInt16OrNull(value) AS converted_value, tuple_column.1 AS tuple_id FROM test_table WHERE toUInt16OrNull(value) IS NULL;
+SELECT id, toUInt16OrNull(tuple_column.2) AS tuple_name FROM test_table WHERE tuple_column.1 = (SELECT toUInt16OrNull('2'));
+SELECT id, tuple_column.1, toUInt16OrNull(CAST(value AS String)) AS cast_value FROM test_table WHERE value NOT IN ('', 'NaN') GROUP BY id, tuple_column.1 HAVING cast_value IS NULL;
+SELECT id, value, toUInt16OrNull(CONCAT(value, '0')) AS concat_value FROM test_table WHERE toUInt16OrNull(CONCAT(value, '0')) IS NOT NULL ORDER BY concat_value;
+WITH (SELECT id, value FROM test_table WHERE toUInt16OrNull(value) IS NOT NULL) AS valid_values SELECT id, toUInt16OrNull(value) AS converted_value FROM valid_values ORDER BY converted_value DESC;
+CREATE TABLE another_table (id UInt16, number String, associated_id UInt16) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO another_table VALUES (1, '10'), (2, '20'), (3, '10000');
+SELECT a.id, toUInt16OrNull(a.number) AS new_value, b.associated_id FROM another_table a INNER JOIN test_table b ON a.id = b.id WHERE toUInt16OrNull(b.value) IS NOT NULL HAVING new_value > 10;

@@ -1,0 +1,22 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=104819",
+  "title": "partition table maxvalue define error",
+  "vulnerable_database": "MySQL Server: Partitions",
+  "date": "2021-09-03 06:55:00",
+  "vulnerable_version": "8.0",
+  "description": "When I define a partition with a boundary value greater than LLONG_MAX (9223372036854775807) in the range partitioning, I cannot define the MAXVALUE partition.\nHow to repeat:\nmysql->CREATE TABLE test(id BIGINT UNSIGNED, k INT) PARTITION BY RANGE(id) (PARTITION p0 VALUES LESS THAN(1), PARTITION p1 VALUES LESS THAN(9223372036854775808));\r\n\r\nmysql->ALTER TABLE test ADD PARTITION (PARTITION p2 VALUES LESS THAN(MAXVALUE));\r\n\r\nERROR 1493 (HY000): VALUES LESS THAN value must be strictly increasing for each partition\nSuggested fix:\nWhen fixing partition values, distinguish between unsigned and unsigned. When the part field is unsigned, the range value should be assigned ULLONG_MAX instead of LLONG_MAX.",
+  "poc": [
+    "CREATE TABLE test(id BIGINT UNSIGNED, k INT) PARTITION BY RANGE(id) (PARTITION p0 VALUES LESS THAN(1), PARTITION p1 VALUES LESS THAN(9223372036854775808));",
+    "ALTER TABLE test ADD PARTITION (PARTITION p2 VALUES LESS THAN(MAXVALUE));"
+  ],
+  "key_bug_features": [
+    "Defining partition with boundary greater than LLONG_MAX"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE test(id BIGINT UNSIGNED, k INT) PARTITION BY RANGE(id) (PARTITION p0 VALUES LESS THAN(1), PARTITION p1 VALUES LESS THAN(9223372036854775808));",
+    "ALTER TABLE test ADD PARTITION (PARTITION p2 VALUES LESS THAN(MAXVALUE));",
+    "INSERT INTO test(id, k) VALUES (0, 10);",
+    "INSERT INTO test(id, k) VALUES (9223372036854775807, 20);",
+    "SELECT COUNT(*) FROM test WHERE id IS NULL;"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/57087",
+  "title": "Runtime error for select on partitioned table with Global Index / IndexFullScan",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n```mysql\r\ndrop table if exists t;\r\ncreate table t (a int, b varchar(255), c varchar (255), primary key (a,b), unique key (c) global) partition by list columns (a,b) (partition p0 values in ((1,\"1\"),(2,\"2\"),(3,\"3\")), partition p1 values in ((100,\"100\"),(101,\"101\"),(102,\"102\"),DEFAULT));\r\ninsert into t values (1,1,1),(2,2,2),(101,101,101),(102,102,102);\r\nselect * from t;\r\nexplain select * from t;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\nsucceeded select\r\n\r\n### 3. What did you see instead (Required)\r\n```\r\ntidb> select * from t;\r\nERROR 1105 (HY000): runtime error: index out of range [2] with length 2\r\n```\r\n\r\nFull output, including plan:\r\n```mysql\r\ntidb> create table t (a int, b varchar(255), c varchar (255), primary key (a,b), unique key (c) global) partition by list columns (a,b) (partition p0 values in ((1,\"1\"),(2,\"2\"),(3,\"3\")), partition p1 values in ((100,\"100\"),(101,\"101\"),(102,\"102\"),DEFAULT));\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\ntidb> insert into t values (1,1,1),(2,2,2),(101,101,101),(102,102,102);\r\nQuery OK, 4 rows affected (0.00 sec)\r\nRecords: 4  Duplicates: 0  Warnings: 0\r\n\r\ntidb> select * from t;\r\nERROR 1105 (HY000): runtime error: index out of range [2] with length 2\r\ntidb> explain select * from t;\r\n+-----------------------+----------+-----------+---------------------+--------------------------------+\r\n| id                    | estRows  | task      | access object       | operator info                  |\r\n+-----------------------+----------+-----------+---------------------+--------------------------------+\r\n| IndexReader_7         | 10000.00 | root      | partition:all       | index:IndexFullScan_6          |\r\n| └─IndexFullScan_6 | 10000.00 | cop[tikv] | table:t, index:c(c) | keep order:false, stats:pseudo |\r\n+-----------------------+----------+-----------+---------------------+--------------------------------+\r\n2 rows in set (0.00 sec)\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n```\r\ntidb_version(): Release Version: v8.5.0-alpha-31-g241c10294b\r\nEdition: Community\r\nGit Commit Hash: 241c10294b9c0305db590576700c00de306be573\r\nGit Branch: master\r\nUTC Build Time: 2024-11-03 21:45:52\r\nGoVersion: go1.23.2\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: unistore\r\n```\r\n",
+  "date": "2024-11-03T21:54:58Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t;",
+    "CREATE TABLE t (a INT, b VARCHAR(255), c VARCHAR(255), d DATE, PRIMARY KEY (a, b), UNIQUE (c));",
+    "INSERT INTO t VALUES (1, '1', 'value1', '2023-01-01'), (2, '2', 'value2', '2023-01-02'), (101, '101', 'value3', '2023-01-03'), (102, '102', 'value4', '2023-01-04');",
+    "SELECT * FROM t WHERE a = 1 OR b IS NULL;",
+    "EXPLAIN SELECT * FROM t WHERE c = 'value1';"
+  ],
+  "key_bug_features": [
+    "select on partitioned table with Global Index"
+  ]
+}

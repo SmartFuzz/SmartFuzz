@@ -1,0 +1,10 @@
+CREATE TABLE test_hex (id UInt64, hex_value String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_hex VALUES (1, '3031'), (2, 'FFA'), (3, 'BBEE'), (4, '7'), (5, 'Z123');
+SELECT id, unhex(hex_value) AS binary_value FROM test_hex WHERE hex_value IS NOT NULL OR unhex('FFF') IS NOT NULL;
+SELECT id, reinterpretAsUInt64(reverse(unhex(hex_value))) AS reversed_num FROM test_hex WHERE hex_value LIKE '3%';
+SELECT id, unhex(hex_value) AS binary_value FROM test_hex WHERE unhex(hex_value) IS NOT NULL GROUP BY unhex(hex_value) HAVING COUNT(*) > 1;
+CREATE TABLE test_data (data_id UInt32, data_value String) ENGINE = MergeTree() ORDER BY data_id;
+INSERT INTO test_data VALUES (1, 'A1B2C3'), (2, NULL), (3, 'D4E5F6'), (4, '8'), (5, 'GHIJKLM');
+SELECT t1.data_id, unhex(t1.data_value) AS data_bin, t2.hex_value FROM test_data t1 LEFT JOIN test_hex t2 ON unhex(t1.data_value) IS NULL OR unhex(t2.hex_value) IS NOT NULL;
+WITH (SELECT unhex(hex_value) FROM test_hex WHERE id < 5) AS subquery_result SELECT id, subquery_result FROM test_hex WHERE unhex(hex_value) IS NOT NULL OR id = 3;
+SELECT id, unhex(hex_value) AS binary_value, NOT (id = 1 OR id = 2) AS is_not_first_two FROM test_hex WHERE unhex(hex_value) IS NOT NULL AND unhex('1F') OR unhex('EF') ORDER BY id DESC;

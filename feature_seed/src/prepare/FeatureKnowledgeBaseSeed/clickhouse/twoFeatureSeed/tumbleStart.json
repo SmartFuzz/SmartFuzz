@@ -1,0 +1,17 @@
+{
+    "function": "tumbleStart",
+    "operator": "[x1, ...]",
+    "sql_array": [
+        "CREATE TABLE test_events (event_time DateTime, event_value UInt32, event_description String) ENGINE = MergeTree() PARTITION BY toYYYYMM(event_time) ORDER BY event_time;",
+        "INSERT INTO test_events VALUES (now() - INTERVAL 10 DAY, 1, 'Event A'), (now() - INTERVAL 5 DAY, 2, 'Event B'), (now(), 3, 'Event C'), (now() - INTERVAL 2 HOUR, 4, NULL);",
+        "SELECT tumbleStart(event_time, toIntervalDay(1)) AS window_start, arrayJoin([event_value, 100, NULL]) AS expanded_value FROM test_events WHERE event_description IS NOT NULL GROUP BY window_start, expanded_value HAVING COUNT(*) > 1;",
+        "SELECT event_time, SUM(event_value) AS total_value FROM (SELECT tumbleStart(event_time, toIntervalDay(1)) AS window_start, arrayJoin([event_value]) AS expanded_value FROM test_events) AS nested_query GROUP BY event_time ORDER BY total_value DESC;",
+        "WITH ARRAY[1, 2, 3, NULL] AS test_array SELECT tumbleStart(toDateTime('2023-11-01 00:00:00'), toIntervalDay(1)) AS window_start, arrayJoin(test_array) AS test_val WHERE test_val IS NOT NULL;",
+        "ALTER TABLE test_events ADD COLUMN event_category String;",
+        "INSERT INTO test_events VALUES (now() - INTERVAL 1 HOUR, 5, 'Event D'), (now() - INTERVAL 3 DAY, 6, 'Event E');",
+        "SELECT window_start, COUNT(*) AS event_count FROM (SELECT tumbleStart(event_time, toIntervalMinute(30)) AS window_start FROM test_events) GROUP BY window_start HAVING event_count > 0 ORDER BY window_start;",
+        "DROP TABLE IF EXISTS transient_table;",
+        "CREATE TABLE transient_table AS (SELECT event_category, SUM(event_value) AS total FROM test_events GROUP BY event_category) ENGINE = MergeTree() ORDER BY event_category;",
+        "SELECT window_start, ARRAY[SUM(total), COUNT(total)] AS stats FROM (SELECT tumbleStart(event_time, toIntervalHour(1)) AS window_start, total FROM transient_table) GROUP BY window_start;"
+    ]
+}

@@ -1,0 +1,16 @@
+{
+    "function": "revision",
+    "operator": "a != ANY (subquery)",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, value String, created_at DateTime, revision_value UInt32 DEFAULT revision());",
+        "INSERT INTO test_table (id, value, created_at) VALUES (1, 'test', now()), (2, 'example', now()), (3, NULL, now());",
+        "SELECT id FROM test_table WHERE revision_value != ANY (SELECT revision() WHERE created_at > now() - INTERVAL 1 DAY);",
+        "SELECT COUNT(*) FROM (SELECT id FROM test_table WHERE value != ANY (SELECT value FROM test_table WHERE value IS NOT NULL));",
+        "SELECT id, revision() AS current_revision FROM test_table GROUP BY id HAVING current_revision != ANY (SELECT revision() FROM test_table WHERE id < 3);",
+        "SELECT id, value FROM test_table WHERE (value != ANY (SELECT value FROM (SELECT COALESCE(NULL, 'dummy_value') AS value)));",
+        "CREATE TABLE temp_table AS SELECT id, value FROM test_table WHERE value IS NOT NULL;",
+        "SELECT COUNT(*) FROM temp_table WHERE revision_value != ANY (SELECT revision() FROM temp_table WHERE id <= 2);",
+        "INSERT INTO test_table (id, value, created_at) VALUES (4, '', now()), (5, 'edge_case', now());",
+        "SELECT id FROM test_table WHERE value != ANY (SELECT '' AS edge WHERE edge IS NOT NULL) AND revision_value IS NOT NULL;"
+    ]
+}

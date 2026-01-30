@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/61118",
+  "title": "Instance level plan cache may cause \"ERROR 8141 assertion failed\" in UPDATE stmt under high concurrency",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n#### Code changes\n\nTo make it reproducible without high concurrency, we need to introduce latency in the code.\n\n\nhttps://github.com/pingcap/tidb/blob/7c0c2b16f965d7f5c16065aa28ece2a7718bff75/pkg/executor/select.go#L891-L899\n\nModify the code here as below:\n\n```diff\n\tvar sc *stmtctx.StatementContext\n\tif vars.TxnCtx.CouldRetry || vars.HasStatusFlag(mysql.ServerStatusCursorExists) {\n\t\t// Must construct new statement context object, the retry history need context for every statement.\n\t\t// TODO: Maybe one day we can get rid of transaction retry, then this logic can be deleted.\n\t\tsc = stmtctx.NewStmtCtx()\n\t} else {\n\t\tsc = vars.InitStatementContext()\n\t}\n+\tif !vars.InRestrictedSQL {\n+\t\ttime.Sleep(1 * time.Second)\n+\t}\n\tsc.SetTimeZone(vars.Location())\n```\n\nThe patch would make the SQL execution slow, be patient~\n\n#### Reproduction Steps\n\n1. Preparation\n\n```sql\nset global tidb_enable_instance_plan_cache = 1;\ncreate table t(a timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, b int, c int, primary key(a), unique key(b,c));\ninsert into t(b,c) value (1,1);\ninsert into t(b,c) value (2,2);\n```\n\n2. Trigger\n\nWe need prepare two sessions (connections) here.\n\nIn session 1:\n\n```sql\nprepare stmt from 'update t set a = NOW() where b = ? and c = ?';\nset @a = 1;\nexecute stmt using @a, @a;\nexecute stmt using @a, @a;\n```\n\nIn session 2:\n\n```sql\nprepare stmt from 'update t set a = NOW() where b = ? and c = ?';\nset @a = 1;\n```\n\nThen execute the SQL below first in session 2, then immediately in session 1. This needs to be very fast.\n\n```sql\nexecute stmt using @a, @a;\n```\n\n### 2. What did you expect to see? (Required)\n\nNo errors.\n\n### 3. What did you see instead (Required)\n\n```\nERROR 8141 (HY000): assertion failed: key: 7480000000000000705f720419b69d6e07000000, assertion: Exist, start_ts: 458027064388747265, existing start ts: 0, existing commit ts: 0\n```\n\n### 4. What is your TiDB version? (Required)\n\nv8.5.0, v9.0.0-beta.1, and the latest nightly\n\n",
+  "date": "2025-05-14T17:45:23Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE users(id INT PRIMARY KEY, name VARCHAR(100), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO users(id, name) VALUES (1, 'Alice');",
+    "INSERT INTO users(id, name) VALUES (2, 'Bob');",
+    "UPDATE users SET created_at = SYSTIMESTAMP WHERE id = 1;",
+    "SELECT * FROM users WHERE created_at IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "High concurrency with instance plan cache during update statements"
+  ]
+}

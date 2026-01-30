@@ -1,0 +1,17 @@
+{
+    "function": "parseDateTime64InJodaSyntaxOrNull",
+    "operator": "a <> b",
+    "sql_array": [
+        "CREATE TABLE test_table (id Int32, event_time String, value Float64, date_check DateTime64(3));",
+        "INSERT INTO test_table VALUES (1, '2023-10-01T12:00:00.000Z', 100.5, NULL), (2, 'invalid_date_format', 200.1, NULL), (3, '', 150.0, NULL);",
+        "SELECT id, parseDateTime64InJodaSyntaxOrNull(event_time) AS parsed_time FROM test_table WHERE parsed_time <> NULL;",
+        "SELECT id, value, parseDateTime64InJodaSyntaxOrNull(event_time) AS parsed_time FROM test_table WHERE parsed_time IS NOT NULL OR parsed_time <> NULL;",
+        "SELECT id, MAX(value) OVER (PARTITION BY CASE WHEN parseDateTime64InJodaSyntaxOrNull(event_time) IS NULL THEN 1 ELSE 0 END) AS max_value FROM test_table GROUP BY id HAVING max_value <> 150.0;",
+        "CREATE TABLE join_table (id Int32, reference_time String);",
+        "INSERT INTO join_table VALUES (1, '2023-10-01T12:00:00.000Z'), (2, 'invalid_date_format');",
+        "SELECT tt.id, tt.value, jt.reference_time FROM test_table tt JOIN join_table jt ON parseDateTime64InJodaSyntaxOrNull(tt.event_time) <> parseDateTime64InJodaSyntaxOrNull(jt.reference_time);",
+        "SELECT DISTINCT id FROM test_table WHERE coalesce(parsed_time, parseDateTime64InJodaSyntaxOrNull(event_time)) <> NULL;",
+        "SELECT COUNT(*) FROM (SELECT DISTINCT id, parseDateTime64InJodaSyntaxOrNull(event_time) AS parsed_event_time FROM test_table WHERE parsed_event_time IS NOT NULL) AS sub_query GROUP BY parsed_event_time HAVING COUNT(*) <> 1;",
+        "SELECT id FROM test_table WHERE value > 150.0 AND parseDateTime64InJodaSyntaxOrNull(event_time) IS NOT NULL HAVING COUNT(id) <> (SELECT COUNT(id) FROM test_table WHERE value < 150.0);"
+    ]
+}

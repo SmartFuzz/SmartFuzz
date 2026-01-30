@@ -1,0 +1,14 @@
+CREATE TABLE test_array (id Int32, values Array(Int32), nullable_values Array(Nullable(Int32)));
+INSERT INTO test_array VALUES (1, [1, 2, 3]), (2, [4, NULL, 6]), (3, []);
+SELECT id, arraySum(values) AS total_sum FROM test_array GROUP BY id HAVING total_sum > 5;
+SELECT id, arraySum(x -> -x, values) AS negated_sum FROM test_array;
+SELECT id, arraySum([ABS(x), -A]) AS adjusted_sum FROM (SELECT values, arrayJoin(values) AS A FROM test_array) GROUP BY id;
+WITH (SELECT arraySum(values) FROM test_array WHERE id = 2) AS inner_sum SELECT id, -inner_sum FROM test_array WHERE id = 2;
+SELECT id, arraySum(x -> x * -1, values) AS negated_sum, arraySum(values) AS positive_sum FROM test_array GROUP BY id HAVING positive_sum IS NOT NULL;
+SELECT id, arraySum(arrayMap(x -> toInt32(NULLIF(CAST(x AS String), 'NULL')), values)) AS converted_sum FROM test_array GROUP BY id;
+CREATE TABLE test_array_2 (other_id Int32, float_values Array(Float64));
+INSERT INTO test_array_2 VALUES (1, [1.1, 2.2, 3.3]), (2, [4.4, NULL, 5.5]);
+SELECT a.id, arraySum(a.values) + arraySum(b.float_values) AS combined_sum FROM test_array AS a JOIN test_array_2 AS b ON a.id = b.other_id GROUP BY a.id;
+SELECT id, arraySum(values) + (-1 * arraySum(x -> x, values)) AS zero_sum_test FROM test_array GROUP BY id HAVING zero_sum_test = 0;
+SELECT id, 0 - arraySum(-values) AS zero_sum_check FROM test_array WHERE importance = 'high' GROUP BY id;
+SELECT id, arraySum(x -> x + IF(x < 0, -x, x), values) AS adjusted_sum FROM test_array GROUP BY id;

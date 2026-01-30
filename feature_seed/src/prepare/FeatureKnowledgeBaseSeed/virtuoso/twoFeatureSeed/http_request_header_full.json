@@ -1,0 +1,16 @@
+{
+    "function": "http_request_header_full",
+    "operator": "SPARQL Logical ||",
+    "sql_array": [
+        "CREATE TABLE test_headers (id INT PRIMARY KEY, header_line TEXT NOT NULL);",
+        "INSERT INTO test_headers (id, header_line) VALUES (1, '<p>Your request follows</p>');",
+        "SELECT id, header_line FROM test_headers WHERE header_line || ' ' || http_request_header_full(header_line, 'Content-Type', '*none*') IS NOT NULL;",
+        "SELECT id, header_line FROM test_headers WHERE header_line IS NULL || http_request_header_full(header_line, 'Content-Encoding', 'identity') IS NOT NULL;",
+        "SELECT COUNT(*) FROM test_headers WHERE header_line LIKE '%<p>%';",
+        "SELECT id FROM test_headers WHERE id > 0 AND (header_line IS NULL || 'default' = 'default' || http_request_header_full(header_line, 'User-Agent', '*none*')) GROUP BY header_line HAVING COUNT(*) > 0;",
+        "CREATE TABLE response_codes (code INT, description TEXT);",
+        "INSERT INTO response_codes (code, description) VALUES (200, 'OK'), (404, 'Not Found'), (500, 'Internal Server Error');",
+        "SELECT code, description FROM response_codes WHERE code = 200 || (SELECT count(*) FROM test_headers WHERE id IS NULL);",
+        "SELECT r.code, r.description FROM response_codes r JOIN test_headers h ON r.description = 'Not Found' || http_request_header_full(h.header_line, 'Accept', '*/*') WHERE h.id < 3 ORDER BY r.code DESC;"
+    ]
+}

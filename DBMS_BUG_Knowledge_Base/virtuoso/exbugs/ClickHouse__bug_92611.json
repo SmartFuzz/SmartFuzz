@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/92611",
+  "title": "Unexpected behavior when evaluating equality predicates on map keys",
+  "description": "### Company or project name\n_No response_\n### Describe the unexpected behaviour\nThe predicate map['key'] = 0 returns different results for map(String, Int16) and map(String, Nullable(Int16)).\nIt looks like it is treating a missing key as 0 (or, default value) for non-nullable map values, whereas for nullable values it is treated as NULL.\n````\nCREATE TABLE map_test\n(\nmap_col1 Map(String, Int8),\nmap_col2 Map(String, Nullable(Int8))\n)\nENGINE = Memory;\n-- inserting the same data into both columns\nINSERT INTO map_test VALUES ({'a':0,'b':0}, {'a':0,'b':0});\nINSERT INTO map_test VALUES ({'c':0,'d':0}, {'c':0,'d':0});\nINSERT INTO map_test VALUES ({'a':1,'b':0}, {'a':1,'b':0});\n-- Returns a row even when key 'a' does not exist\nSELECT map_col1\nFROM map_test\nWHERE map_col1['a'] = 0;\n{'a':0,'b':0}\n{'c':0,'d':0}  -- key 'a' does not exist\n-- Returns the expected result\nSELECT map_col2\nFROM map_test\nWHERE map_col2['a'] = 0;\n{'a':0,'b':0}\n````\n### Which ClickHouse versions are affected?\nLatest version\n### How to reproduce\nhttps://fiddle.clickhouse.com/0b8eba28-00b4-4267-a137-c719b3243a55\n### Expected behavior\nBoth queries should return same result.\nSELECT map_col1 FROM map_test where map_col1['a']=0;\nSELECT map_col2 FROM map_test where map_col2['a']=0;\nExpected Result:\n{'a':0,'b':0}\n### Error message and/or stacktrace\n_No response_\n### Additional context\n_No response_",
+  "date": "2025-12-18T22:00:31Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE map_test_v2 (map_col1 VARCHAR(255), map_col2 VARCHAR(255), map_col3 VARCHAR(255));",
+    "INSERT INTO map_test_v2 VALUES (CAST('{\"x\":-1,\"y\":1}' AS VARCHAR), CAST('{\"x\":NULL,\"y\":1}' AS VARCHAR), CAST('{\"x\":1.5,\"y\":2.5}' AS VARCHAR));",
+    "INSERT INTO map_test_v2 VALUES (CAST('{\"z\":0,\"w\":0}' AS VARCHAR), CAST('{\"z\":0,\"w\":NULL}' AS VARCHAR), CAST('{\"z\":3.14,\"w\":2.71}' AS VARCHAR));",
+    "SELECT map_col1 FROM map_test_v2 WHERE JSON_VALUE(map_col1, '$.x') = '-1';",
+    "SELECT map_col2 FROM map_test_v2 WHERE JSON_VALUE(map_col2, '$.y') = '1';"
+  ],
+  "key_bug_features": [
+    "Different handling of missing keys in map equality predicates"
+  ]
+}

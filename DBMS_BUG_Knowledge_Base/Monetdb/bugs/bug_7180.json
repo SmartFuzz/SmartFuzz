@@ -1,0 +1,23 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7180",
+  "title": "GROUP BY-subquery crashes MonetDb",
+  "vulnerable_database": "monetdb",
+  "date": "2021-09-29T14:53:17Z",
+  "vulnerable_version": "Unknown",
+  "description": "In a query that has a subquery with a GROUP BY-clause in the FROM clause MonetDB server crashes when having another correlated subquery in the SELECT clause.\n\n**To Reproduce**\n```\nroot@dd2a1e8e05d4:~# mclient testdb\nWelcome to mclient, the MonetDB/SQL interactive terminal (unreleased)\nDatabase: MonetDB v11.39.18 (hg id: d0fc592188), 'mapi:monetdb://dd2a1e8e05d4:50000/testdb'\nFOLLOW US on https://twitter.com/MonetDB or https://github.com/MonetDB/MonetDB\nType \\q to quit, \\? for a list of available commands\nauto commit mode: on\nsql>CREATE TABLE table1 (a bigint);\noperation successful\nsql>CREATE TABLE table2 (a bigint);\noperation successful\nsql>SELECT (SELECT max(1) FROM table2 WHERE a=tmp.a) FROM (SELECT a FROM table1 GROUP BY a) tmp;\nsql>\nwrite error on stream\n```\n```\n2021-09-29 16:43:03 ERR testdb[381]: mserver5: /home/niewerth/git/MonetDB/sql/server/sql_query.c:105: query_outer_used_exp: Assertion `(!is_sql_aggr(f) && sq->grouped == 0 && e->card != CARD_AGGR) || (!is_sql_aggr(f) && sq->grouped == 1 && e->card <= CARD_AGGR) || (is_sql_aggr(f) && !is_sql_farg(f) && !sq->grouped && e->card != CARD_AGGR) || (is_sql_aggr(f) && !is_sql_farg(f) && sq->grouped && e->card != CARD_AGGR) || (is_sql_aggr(f) && is_sql_farg(f) && sq->grouped && e->card <= CARD_AGGR) || (is_sql_aggr(f) && sq->grouped && e->card <= CARD_AGGR)' failed.\n2021-09-29 16:43:07 MSG merovingian[34]: database 'testdb' (-1) has crashed with signal SIGABRT (dumped core)\n```\n\n\n**Expected behavior**\nMonetDB does not crash\n\n**Screenshots**\nIf applicable, add screenshots to help explain your problem.\n\n**Software versions**\n - MonetDB version number v11.39.18\n - OS and version: Ubuntu 20.04\n - self-compiled",
+  "poc": [
+    "CREATE TABLE table1 (a bigint);",
+    "CREATE TABLE table2 (a bigint);",
+    "SELECT (SELECT max(1) FROM table2 WHERE a=tmp.a) FROM (SELECT a FROM table1 GROUP BY a) tmp;"
+  ],
+  "key_bug_features": [
+    "Correlated subquery in SELECT with GROUP BY in FROM"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE table1 (a bigint, b varchar(255) NOT NULL);",
+    "CREATE TABLE table2 (a bigint, c float DEFAULT 0.0);",
+    "INSERT INTO table1 (a, b) VALUES (1, 'test1'), (2, 'test2'), (NULL, 'test3');",
+    "INSERT INTO table2 (a, c) VALUES (1, 1.5), (2, NULL), (3, 3.5);",
+    "SELECT (SELECT max(c) FROM table2 WHERE a=tmp.a) FROM (SELECT a FROM table1 GROUP BY a) tmp;"
+  ]
+}

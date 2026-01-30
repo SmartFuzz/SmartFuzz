@@ -1,0 +1,13 @@
+CREATE TABLE config_data (id INTEGER PRIMARY KEY, ini_path VARCHAR(255), section_name VARCHAR(100), value VARCHAR(255));
+INSERT INTO config_data (id, ini_path, section_name, value) VALUES (1, 'path/to/config.ini', 'General', 'value1'), (2, 'path/to/config.ini', 'General', NULL), (3, 'path/to/config.ini', 'User', 'value3');
+SELECT cfg_section_count(virtuoso_ini_path()) AS total_sections, COUNT(*) FROM config_data GROUP BY ini_path HAVING total_sections > 1;
+SELECT d1.id, cfg_section_count(s2.ini_path) FROM config_data d1 INNER JOIN (SELECT DISTINCT ini_path FROM config_data) s2 ON sameTerm(d1.ini_path, s2.ini_path) WHERE d1.value IS NOT NULL;
+WITH section_counts AS (SELECT ini_path, cfg_section_count(ini_path) AS count FROM config_data GROUP BY ini_path) SELECT count FROM section_counts WHERE count = (SELECT MAX(count) FROM section_counts) HAVING sameTerm(ini_path, 'path/to/config.ini');
+CREATE TABLE test_table (id INTEGER PRIMARY KEY, data VARCHAR(255) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO test_table (id, data) VALUES (1, '2021-01-01'), (2, NULL), (3, 'Some string value');
+SELECT cfg_section_count(virtuoso_ini_path()) FROM test_table WHERE created_at > (SELECT MIN(created_at) FROM test_table WHERE data IS NOT NULL) AND sameTerm(data, 'value1');
+SELECT d.id, d.data, cfg_section_count(virtuoso_ini_path()) + COUNT(*) OVER () AS section_total FROM test_table d LEFT JOIN config_data c ON sameTerm(d.data, c.value) WHERE d.data IS NOT NULL;
+SELECT (SELECT COUNT(*) FROM config_data WHERE section_name IS NOT NULL) AS non_null_count, cfg_section_count('');
+CREATE TEMPORARY TABLE temp_data (temp_id INTEGER, temp_value VARCHAR(100));
+INSERT INTO temp_data (temp_id, temp_value) VALUES (NULL, 'test_value'), (4, NULL), (5, '');
+SELECT temp_id, cfg_section_count(virtuoso_ini_path()) AS section_count FROM temp_data WHERE sameTerm(temp_value, 'test_value') OR (temp_value IS NULL AND temp_id IS NOT NULL);

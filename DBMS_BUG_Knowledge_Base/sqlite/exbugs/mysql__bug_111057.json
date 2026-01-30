@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=111057",
+  "title": "group by or distinct clause result doesn't match collation expectation",
+  "description": "It is mentioned in the \"The binary Collation Compared to _bin Collations\"  documentation\r\n\r\n\"For PAD SPACE collations, trailing spaces are insignificant in comparisons; strings are compared without regard to trailing spaces.\r\n\r\nNO PAD collations treat trailing spaces as significant in comparisons, like any other character.\" \r\n\r\nbut in mysql 8.0.XX ，all group by / distinct clause treated strings with trailing space as \"NO PAD\" mode\r\n\r\ne.g.\n\nshow collation;\r\n\r\n| utf8mb4_bin                 | utf8mb4  |  46 |         | Yes      |       1 | PAD SPACE     |\r\n| utf8mb4_bs_0900_ai_ci       | utf8mb4  | 316 |         | Yes      |       0 | NO PAD        |\n\nset collation_connection=utf8mb4_bin;\r\n\r\nselect ''=' ';\r\n+--------+\r\n| ''=' ' |\r\n+--------+\r\n|      1 | --return true \r\n+--------+\r\n\r\nselect count(*) from (select distinct  a from (select '' a union all select ' ' ) b) c;\r\n+----------+\r\n| count(*) |\r\n+----------+\r\n|        2 | --there is wrong result,sholud be 1\r\n+----------+\r\n1 row in set (0.00 sec)\r\n\r\nset collation_connection=utf8mb4_0900_ai_ci;\r\n\r\nselect ''=' ';\r\n+--------+\r\n| ''=' ' |\r\n+--------+\r\n|      0 | --retrun false\r\n+--------+\r\n1 row in set (0.01 sec)\r\n\r\n select count(*) from (select distinct  a from (select '' a union all select ' ' ) b) c;\r\n+----------+\r\n| count(*) |\r\n+----------+\r\n|        2 | --this is right result\r\n+----------+\r\n1 row in set (0.00 sec)\n\nbut in 5.6.xx,collation is work as expectation\r\n\r\ne.g.\r\nset collation_connection=utf8mb4_bin;\r\nselect ''=' ';\r\n+--------+\r\n| ''=' ' |\r\n+--------+\r\n|      1 |\r\n+--------+\r\n1 row in set (0.00 sec)\r\n\r\nselect count(*) from (select distinct  a from (select '' a union all select ' ' ) b) c;\r\n+----------+\r\n| count(*) |\r\n+----------+\r\n|        1 |\r\n+----------+\r\n1 row in set (0.00 sec)\n\nwhen use binary clause ,result also meet expectation：\r\n\r\nselect count(*) from (select distinct binary  a from (select '' a union all select ' ' ) b) c;\r\n+----------+\r\n| count(*) |\r\n+----------+\r\n|        2 |\r\n+----------+\r\n1 row in set (0.00 sec)\nHow to repeat:\nas Description\nSuggested fix:\nwhen use \"PAD SPACE\"  collation, work as documentation description:",
+  "date": "2023-05-17 12:23:00",
+  "vulnerable_version": "8.0.30",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_strings (id INTEGER PRIMARY KEY, value TEXT NOT NULL);",
+    "INSERT INTO test_strings (id, value) VALUES (1, ''), (2, ' ');",
+    "SELECT COUNT(DISTINCT value) FROM test_strings;",
+    "SELECT COUNT(DISTINCT value) FROM test_strings WHERE value = '' OR value = ' ';",
+    "SELECT COUNT(DISTINCT value) FROM (SELECT value FROM test_strings WHERE value = '' UNION ALL SELECT value FROM test_strings WHERE value = ' ');"
+  ],
+  "key_bug_features": [
+    "group by or distinct clause treats trailing spaces as significant"
+  ]
+}

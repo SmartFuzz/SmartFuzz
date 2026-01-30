@@ -1,0 +1,13 @@
+CREATE TABLE bitmap_table1 (id UInt32, bitmap_col Array(UInt32));
+CREATE TABLE bitmap_table2 (id UInt32, bitmap_col Array(UInt32));
+INSERT INTO bitmap_table1 VALUES (1, bitmapBuild([1, 2, 3])), (2, bitmapBuild([1, 2, 3, 4])), (3, bitmapBuild([5, 6]));
+INSERT INTO bitmap_table2 VALUES (1, bitmapBuild([3, 4, 5])), (2, bitmapBuild([])), (3, bitmapBuild([1, 6]));
+SELECT bitmapHasAll(bitmapBuild([1, 2, 3]), bitmapBuild([3, 4, 5])) AS res;
+SELECT bitmapHasAll(bitmapBuild([1, 2, 3]), bitmapBuild([])) AS res;
+SELECT bitmapHasAll((SELECT bitmap_col FROM bitmap_table1 WHERE id = 1), (SELECT bitmap_col FROM bitmap_table2 WHERE id = 1)) AS res;
+SELECT bitmapHasAll((SELECT bitmap_col FROM bitmap_table1 WHERE id = 2), (SELECT bitmap_col FROM bitmap_table2 WHERE id = 2)) AS res;
+SELECT a.id, bitmapHasAll(a.bitmap_col, b.bitmap_col) AS has_all FROM bitmap_table1 a JOIN bitmap_table2 b ON a.id = b.id;
+SELECT id, bitmapHasAll(bitmap_col, bitmapBuild([1, 6])) AS is_contains_all FROM bitmap_table1;
+SELECT id, bitmapHasAll(bitmapBuild([1, 6]), bitmap_col) AS is_contains_all FROM bitmap_table2;
+SELECT bitmapHasAll(bitmapBuild([1, 2, 3]), (SELECT bitmap_col FROM bitmap_table2 WHERE id = 1)) AS res;
+SELECT id, bitmapHasAll(bitmap_col, (SELECT bitmapBuild([1, 2, 3])) FROM bitmap_table1 WHERE id = 3) AS check_has_all FROM bitmap_table2;

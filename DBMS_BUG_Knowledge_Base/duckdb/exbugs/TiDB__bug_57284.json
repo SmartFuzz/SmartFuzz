@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/57284",
+  "title": "Unexpected result when using `BIT_OR` in `RIGHT JOIN`",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```sql\r\nDROP DATABASE IF EXISTS db0;\r\nCREATE DATABASE db0;\r\nUSE db0;\r\n\r\nCREATE  TABLE  t0(c0 INT);\r\n\r\nSELECT * FROM t0 RIGHT  JOIN  (SELECT BIT_OR(1970) FROM t0) AS sub0  ON true; -- NULL 0\r\nSELECT * FROM t0 RIGHT  JOIN  (SELECT BIT_OR(1970) FROM t0) AS sub0  ON true WHERE (CASE 1 WHEN NULL THEN true END );\r\n-- Expected: 0 rows\r\n-- Actual: NULL 0\r\n\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nThe first query returns one row `NULL 0`, and `CASE 1 WHEN NULL THEN true END ` should be evaluated to `NULL`; therefore the second query should return an empty set. However, one row is returned. This is also different from MySQL.\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nAs mentioned above.\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n```\r\nmysql> SELECT tidb_version();\r\n+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| tidb_version()                                                                                                                                                                                                                                                        |\r\n+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| Release Version: v8.5.0-alpha-79-g426ce3e570\r\nEdition: Community\r\nGit Commit Hash: 426ce3e57069afbd8f061d7ae39c79d3f9e2ff5d\r\nGit Branch: HEAD\r\nUTC Build Time: 2024-11-09 05:26:34\r\nGoVersion: go1.23.2\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: unistore |\r\n+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n1 row in set (0.00 sec)\r\n```\r\n",
+  "date": "2024-11-11T06:49:12Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP DATABASE IF EXISTS db1;",
+    "CREATE DATABASE db1;",
+    "CREATE TABLE t1(c1 INT, c2 BOOLEAN, c3 VARCHAR(10));",
+    "INSERT INTO t1(c1, c2, c3) VALUES (1, TRUE, 'test'), (2, FALSE, 'example');",
+    "SELECT * FROM t1 RIGHT JOIN (SELECT MAX(c2) AS bit_or FROM t1) AS sub1 ON TRUE WHERE (CASE c1 WHEN 1 THEN NULL ELSE TRUE END);"
+  ],
+  "key_bug_features": [
+    "Unexpected behavior with BIT_OR in RIGHT JOIN"
+  ]
+}

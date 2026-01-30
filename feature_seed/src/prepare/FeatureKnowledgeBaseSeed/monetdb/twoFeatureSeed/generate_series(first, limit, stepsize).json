@@ -1,0 +1,18 @@
+{
+    "function": "generate_series(first, limit, stepsize)",
+    "operator": "/",
+    "sql_array": [
+        "CREATE TABLE test_numbers (id serial PRIMARY KEY, value decimal(10, 2), description varchar(50));",
+        "INSERT INTO test_numbers (value, description) VALUES (10.00, 'Ten'), (20.00, 'Twenty'), (NULL, 'Null entry'), (25.50, 'Twenty-Five Point Five');",
+        "CREATE TABLE test_series (id serial PRIMARY KEY, generated_number int);",
+        "INSERT INTO test_series (generated_number) SELECT generate_series(1, 10, 1);",
+        "SELECT t1.value / COALESCE(t1.value, 1) AS normalized_value, t1.description FROM test_numbers t1 WHERE t1.value IS NOT NULL AND t1.value <= (SELECT max(generated_number) FROM test_series);",
+        "SELECT AVG(value) AS average_value, COUNT(*) AS total_count FROM test_numbers GROUP BY description HAVING AVG(value) > 5;",
+        "SELECT generated_number, (generated_number + (SELECT COUNT(*) FROM test_numbers t2 WHERE t2.value IS NULL)) / NULLIF(MIN(value), 0) AS adjusted_series FROM test_series GROUP BY generated_number ORDER BY adjusted_series;",
+        "SELECT COUNT(*) FROM (SELECT generate_series(1, 100, 10) AS series) AS derived_series WHERE series / (SELECT NULLIF(AVG(value), 0) FROM test_numbers) IS NULL;",
+        "SELECT MAX(value) / NULLIF(MIN(generated_number), 0) AS risk_factor FROM test_numbers JOIN test_series ON (test_numbers.value / INET_ATON('192.168.1.1')) < generate_series(1, 10, 1) WHERE test_numbers.value IS NOT NULL;",
+        "CREATE TEMPORARY TABLE temp_stress (result decimal(10,5));",
+        "INSERT INTO temp_stress (result) SELECT (value + (SELECT COUNT(*) FROM test_numbers WHERE value IS NOT NULL)) / generate_series(1, 5, 1) FROM test_numbers;",
+        "SELECT AVG(result) AS avg_result FROM temp_stress WHERE result IS NOT NULL;"
+    ]
+}

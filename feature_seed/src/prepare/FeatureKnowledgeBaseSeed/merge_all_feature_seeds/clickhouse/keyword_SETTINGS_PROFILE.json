@@ -1,0 +1,17 @@
+ALTER SETTINGS PROFILE my_profile SETTINGS max_memory_usage=10000000000, max_rows_in_set=100000;
+CREATE TABLE test_table (id UInt32, data String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, 'test1'), (2, 'test2'), (3, 'test3');
+ALTER SETTINGS PROFILE my_profile SETTINGS max_threads=8;
+SELECT * FROM test_table WHERE id IN (SELECT id FROM test_table WHERE data LIKE 'test%');
+SETTINGS PROFILE my_profile;
+CREATE TABLE another_table (id UInt32, value Float64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO another_table SELECT number, number + 0.5 FROM numbers(10);
+ALTER SETTINGS PROFILE my_profile SETTINGS min_bytes_to_use_direct_io=1048576;
+SELECT a.id, b.value FROM test_table AS a JOIN another_table AS b ON a.id = b.id WHERE b.value > 1.0;
+ALTER SETTINGS PROFILE another_profile SETTINGS max_rows_to_read=5000;
+CREATE TABLE example_table (id UInt32, timestamp DateTime, amount Decimal(10, 2)) ENGINE = MergeTree() ORDER BY (id, timestamp);
+INSERT INTO example_table SELECT number, now(), number * 1.1 FROM numbers(100);
+ALTER SETTINGS PROFILE my_profile SETTINGS enable_optimize_predicate_pushdown=1;
+SELECT * FROM example_table WHERE timestamp > now() - INTERVAL 1 DAY;
+ALTER SETTINGS PROFILE new_profile SETTINGS allow_experimental_parallel_read=1;
+SELECT a.id, COUNT(b.value) FROM test_table AS a LEFT JOIN another_table AS b ON a.id = b.id GROUP BY a.id;

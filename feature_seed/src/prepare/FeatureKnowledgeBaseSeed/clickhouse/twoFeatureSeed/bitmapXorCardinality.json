@@ -1,0 +1,16 @@
+{
+    "function": "bitmapXorCardinality",
+    "operator": "a <= b",
+    "sql_array": [
+        "CREATE TABLE test_bitmaps (id UInt32, data Array(UInt32), group_id UInt32) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_bitmaps VALUES (1, [1, 2, 3], 1), (2, [3, 4, 5], 1), (3, [6, 7, 8], 2), (4, [NULL], 2);",
+        "SELECT group_id, bitmapXorCardinality(bitmapBuild(data) OVER (PARTITION BY group_id ORDER BY id)) AS xor_cardinality FROM test_bitmaps GROUP BY group_id HAVING xor_cardinality <= 3;",
+        "SELECT id, bitmapXorCardinality(bitmapBuild(data), bitmapBuild([1, 2, 4])) AS xor_cardinality FROM test_bitmaps WHERE xor_cardinality <= 2;",
+        "SELECT id, bitmapXorCardinality(bitmapBuild(data), (SELECT bitmapBuild(data) FROM test_bitmaps WHERE group_id = 1)) AS xor_cardinality FROM test_bitmaps WHERE xor_cardinality <= 1;",
+        "SELECT COUNT(*) FROM test_bitmaps WHERE bitmapXorCardinality(bitmapBuild(data), bitmapBuild([1, 2, NULL])) IS NULL;",
+        "WITH (SELECT bitmapBuild(data) FROM test_bitmaps WHERE group_id = 1) AS inner_bitmap SELECT bitmapXorCardinality(inner_bitmap, bitmapBuild([NULL])) AS xor_cardinality WHERE xor_cardinality <= 1;",
+        "CREATE TABLE test_bitmaps_2 AS test_bitmaps ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_bitmaps_2 SELECT id, data, group_id FROM test_bitmaps WHERE id <= 2;",
+        "SELECT a.id, a.group_id, bitmapXorCardinality(bitmapBuild(a.data), COALESCE(bitmapBuild(b.data), bitmapBuild([]))) AS xor_cardinality FROM test_bitmaps a JOIN test_bitmaps_2 b ON a.id <= b.id GROUP BY a.id, a.group_id HAVING xor_cardinality <= 4;"
+    ]
+}

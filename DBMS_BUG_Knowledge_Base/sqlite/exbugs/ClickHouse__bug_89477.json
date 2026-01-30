@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/89477",
+  "title": "`ENGINE = Backup` causes Syntax error on `SELECT engine_full FROM system.databases`",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nWhen a database is created using the [Backup](https://clickhouse.com/docs/engines/database-engines/backup) engine, attempting to `SELECT engine_full FROM system.databases` fails.\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nAdd a backup destination of any kind (I've seen the error on at least File and S3).\n```yaml\n# config.yaml\nstorage_configuration:\ndisks:\nbackups:\ntype: local\npath: /var/backups/\nbackups:\nallowed_disk: backups\nallowed_path: /var/backups/\nsend_crash_reports:\nenabled: true\n```\nCreate a backup.\n```sql\nCREATE TABLE default.users (uid Int16, name String, age Int16)\nENGINE=MergeTree ORDER BY uid;\nINSERT INTO default.users VALUES\n(1231, 'John', 33),\n(6666, 'Ksenia', 48),\n(8888, 'Alice', 50);\nBACKUP TABLE default.users TO File('/var/backups/weekly-2025-w45');\n```\nCreate a database from backup.\n```sql\nCREATE DATABASE default_backup ENGINE = Backup('default', File('/var/backups/weekly-2025-w45'));\n```\nAttempt to query `engine_full` causes exception.\n```sql\nSELECT engine_full FROM system.databases;\n```\nAlso crashing is\n```sql\nSHOW CREATE DATABASE default_backup;\n```\nQuerying other fields does not cause exceptions.\n```sql\nSELECT name,engine,data_path,metadata_path,uuid,comment FROM system.databases WHERE name='default_backup';\n```\n### Expected behavior\n```sql\nSELECT engine_full FROM system.databases;",
+  "date": "2025-11-04T11:41:17Z",
+  "vulnerable_version": "25.10.1.3832",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE default_products (id INTEGER, name TEXT, price REAL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO default_products VALUES (1, 'Laptop', 999.99, '2023-10-01 12:00:00'), (2, 'Smartphone', 499.99, '2023-10-02 12:00:00');",
+    "CREATE TABLE test_backup AS SELECT * FROM default_products WHERE 0;",
+    "-- Create an empty table to simulate backup;",
+    "SELECT COUNT(*) FROM default_products WHERE price > 500;",
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='test_backup';"
+  ],
+  "key_bug_features": [
+    "SELECT engine_full from system.databases fails after Backup engine"
+  ]
+}

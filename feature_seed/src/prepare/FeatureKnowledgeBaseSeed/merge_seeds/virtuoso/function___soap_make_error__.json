@@ -1,0 +1,14 @@
+CREATE TABLE soap_errors (id INTEGER PRIMARY KEY, code VARCHAR(10), message VARCHAR(255), detail VARCHAR(255));
+INSERT INTO soap_errors (code, message, detail) VALUES ('404', 'Not Found', 'The requested resource could not be found.');
+INSERT INTO soap_errors (code, message, detail) VALUES ('500', 'Internal Server Error', 'An unexpected error occurred.');
+SELECT soap_make_error(code, message, detail) FROM soap_errors WHERE id = 1;
+SELECT soap_make_error(code, message, detail) AS error_response FROM soap_errors WHERE code IN (SELECT DISTINCT code FROM soap_errors);
+SELECT soap_make_error(code, message, detail) FROM soap_errors WHERE id IN (SELECT id FROM soap_errors WHERE code='500');
+SELECT DISTINCT soap_make_error(code, message, detail) FROM soap_errors WHERE EXISTS (SELECT 1 FROM soap_errors WHERE code = '404');
+SELECT soap_make_error(code, message, detail) FROM (SELECT code, message, detail FROM soap_errors WHERE detail IS NOT NULL) AS valid_errors;
+SELECT soap_make_error(code, message, detail) FROM soap_errors WHERE code = (SELECT MAX(code) FROM soap_errors);
+DELETE FROM soap_errors WHERE code = '404';
+INSERT INTO soap_errors (code, message, detail) VALUES ('400', 'Bad Request', 'The request could not be understood by the server.');
+SELECT soap_make_error(code, message, detail) FROM soap_errors WHERE code || ': ' || message = (SELECT MAX(code || ': ' || message) FROM soap_errors);
+WITH error_codes AS (SELECT code FROM soap_errors WHERE length(code) > 3) SELECT soap_make_error(code, message, detail) FROM soap_errors WHERE code IN (SELECT code FROM error_codes);
+SELECT soap_make_error(code, message, detail) FROM soap_errors WHERE id IN (SELECT id FROM soap_errors ORDER BY RANDOM() LIMIT 1);

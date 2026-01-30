@@ -1,0 +1,10 @@
+CREATE TABLE test_dates (id Int32, event_date DateTime, description String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_dates VALUES (1, toDateTime('2023-01-15 10:00:00'), 'New Year Party'), (2, toDateTime('2023-04-01 12:00:00'), 'April Fools'), (3, NULL, 'No Date'), (4, toDateTime('2022-12-30 23:59:59'), 'Old Year Eve');
+SELECT id, toStartOfISOYear(event_date) AS iso_start FROM test_dates WHERE event_date IS NOT NULL AND (event_date GLOBAL IN (toDateTime('2023-01-15 10:00:00'), toDateTime('2023-04-01 12:00:00')));
+SELECT id, toStartOfISOYear(event_date) AS iso_start, description FROM test_dates GROUP BY iso_start, description HAVING COUNT(*) > 0 ORDER BY iso_start DESC;
+SELECT id, event_date, toStartOfISOYear(event_date) AS iso_start, description FROM test_dates WHERE (toStartOfISOYear(event_date) GLOBAL IN (SELECT toStartOfISOYear(toDateTime('2022-01-01')), toStartOfISOYear(toDateTime('2023-01-01'))) AND event_date IS NOT NULL);
+CREATE TABLE temp_dates (temp_id Int32, temp_date DateTime) ENGINE = MergeTree() ORDER BY temp_id;
+INSERT INTO temp_dates VALUES (1, toDateTime('2022-01-01 00:00:00')), (2, toDateTime('2023-01-01 00:00:00')), (3, NULL);
+SELECT t.temp_id, t.temp_date, toStartOfISOYear(t.temp_date) AS iso_year FROM temp_dates t JOIN test_dates d ON toStartOfISOYear(t.temp_date) = toStartOfISOYear(d.event_date) WHERE d.description LIKE '%Year%';
+SELECT COUNT(*) FROM (SELECT DISTINCT toStartOfISOYear(event_date) AS iso_year FROM test_dates WHERE toStartOfISOYear(event_date) GLOBAL IN (SELECT toStartOfISOYear(temp_date) FROM temp_dates WHERE temp_date IS NOT NULL));
+SELECT t1.id, t1.event_date, toStartOfISOYear(t1.event_date) AS iso_start, CASE WHEN t1.event_date IS NULL THEN 'No date provided' ELSE 'Valid date' END AS date_status FROM test_dates t1 WHERE EXISTS (SELECT 1 FROM test_dates t2 WHERE t2.event_date GLOBAL IN (SELECT event_date FROM temp_dates WHERE temp_date IS NOT NULL));

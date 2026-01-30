@@ -1,0 +1,17 @@
+{
+    "function": "toDateTime64OrDefault",
+    "operator": "[x1, ...]",
+    "sql_array": [
+        "CREATE TABLE test_dates (id UInt32, date_value String, precision UInt8) ENGINE = Memory;",
+        "INSERT INTO test_dates VALUES (1, 'not-a-date', 3), (2, '1976-10-18 00:00:00', 4), (3, '', 5), (4, '2023-10-18 10:20:30', 2);",
+        "SELECT id, toDateTime64OrDefault(date_value, precision) AS converted_date FROM test_dates;",
+        "CREATE TABLE test_arrays (id UInt32, date_list Array(String), precision UInt8, default_value DateTime64) ENGINE = Memory;",
+        "INSERT INTO test_arrays VALUES (1, ['not-a-date', '1970-01-01 00:00:00'], 3, toDateTime64('2000-01-01 12:00:00', 3)), (2, ['2023-10-18 10:20:30', ''], 4, toDateTime64('1999-12-31 23:59:59', 3));",
+        "SELECT id, arrayMap(x -> toDateTime64OrDefault(x, precision, 'UTC', default_value), date_list) AS converted_dates FROM test_arrays;",
+        "SELECT a.id, count(*) as valid_dates_count FROM test_dates a JOIN test_arrays b ON toDateTime64OrDefault(b.date_list[1], b.precision) = toDateTime64OrDefault(a.date_value, a.precision) GROUP BY a.id HAVING valid_dates_count > 0;",
+        "SELECT id, toDateTime64OrDefault(date_value, precision, 'UTC', toDateTime64('2001-01-01 00:00:00.00', 3)) AS custom_default FROM test_dates ORDER BY custom_default;",
+        "SELECT id, countIf(toDateTime64OrDefault(date_value, precision) IS NULL) AS null_count FROM test_dates GROUP BY id HAVING null_count > 0;",
+        "DROP TABLE test_dates;",
+        "DROP TABLE test_arrays;"
+    ]
+}

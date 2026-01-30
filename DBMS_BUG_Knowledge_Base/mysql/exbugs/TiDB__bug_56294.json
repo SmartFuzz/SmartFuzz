@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/56294",
+  "title": "Unexpected result when comparing `TIMESTAMP` null values",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```sql\r\nDROP DATABASE IF EXISTS db0;\r\nCREATE DATABASE db0;\r\nUSE db0;\r\n\r\nCREATE  TABLE  t0(c0 INT, c1 TIMESTAMP);\r\nINSERT INTO t0(c0) VALUES (1);\r\nCREATE INDEX t0i0 ON t0(c1 , c0); -- necessary to trigger the bug\r\n\r\nSELECT t0.c0 FROM t0; -- 1\r\n\r\nSELECT t0.c0 FROM t0 WHERE (t0.c1<>(CAST(1 AS YEAR))); -- 1 (unexpected)\r\nSELECT t0.c0 FROM t0 WHERE (((t0.c1<>(CAST(1 AS YEAR)))) IS NULL); -- 1\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\nAs `t0.c1` is `NULL`, then the expression `t0.c1<>(CAST(1 AS YEAR))` should also be evaluated to `NULL`, and thus this query should return no row. However, `1` is returned. Have tried to search past issues but haven't found a similar one. Kindly lemme know if it's a duplicate. \r\n\r\nMySQL 8.0 works well on it.\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nAs mentioned above.\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n```\r\nelect tidb_version();\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| tidb_version()                                                                                                                                                                                                                                                       |\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| Release Version: v8.4.0-alpha-244-ga5e07a2\r\nEdition: Community\r\nGit Commit Hash: a5e07a2ed360f29216c912775ce482f536f4102b\r\nGit Branch: HEAD\r\nUTC Build Time: 2024-09-25 05:10:21\r\nGoVersion: go1.21.13\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: unistore |\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n1 row in set (0.00 sec)\r\n```\r\n",
+  "date": "2024-09-25T08:29:58Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP DATABASE IF EXISTS db1;",
+    "CREATE DATABASE db1;",
+    "USE db1;",
+    "CREATE TABLE t1(c0 INT, c1 TIMESTAMP, c2 VARCHAR(10) DEFAULT 'default');",
+    "INSERT INTO t1(c0, c1) VALUES (1, NULL), (2, '2023-01-01 00:00:00');",
+    "CREATE INDEX t1i0 ON t1(c1, c0);"
+  ],
+  "key_bug_features": [
+    "Creating index on TIMESTAMP column triggers unexpected comparison result"
+  ]
+}

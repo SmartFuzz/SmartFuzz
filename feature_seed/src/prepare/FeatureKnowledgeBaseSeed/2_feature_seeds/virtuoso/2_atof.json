@@ -1,0 +1,13 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, str_value VARCHAR(50), float_value REAL);
+INSERT INTO test_table (id, str_value, float_value) VALUES (1, '123.456', 0.0), (2, 'not a number', 1.0), (3, '', 2.5), (4, '3.4028235E38', 3.0);
+SELECT id, str_value, float_value, atof(str_value) AS converted_float FROM test_table WHERE atof(str_value) <= 2.5;
+SELECT id, str_value FROM test_table WHERE 0.0 <= (SELECT atof(str_value) FROM test_table WHERE id = 2);
+SELECT AVG(atof(str_value)) AS avg_float FROM test_table HAVING AVG(atof(str_value)) <= 1.0;
+SELECT id FROM test_table WHERE atof(CASE WHEN str_value = '' THEN NULL ELSE str_value END) IS NOT NULL;
+CREATE TABLE another_table (id INT, related_id INT, FOREIGN KEY (related_id) REFERENCES test_table(id));
+INSERT INTO another_table (id, related_id) VALUES (1, 1), (2, 2), (3, 3);
+SELECT at.float_id, (atof(tt.str_value) <= tt.float_value) FROM another_table at JOIN test_table tt ON at.related_id = tt.id WHERE atof(tt.str_value) IS NOT NULL;
+SELECT SUM(atof(str_value)) FROM test_table WHERE str_value IS NOT NULL GROUP BY str_value HAVING SUM(atof(str_value)) <= 10;
+SELECT (SELECT COUNT(*) FROM test_table WHERE atof(str_value) <= 10.0) AS below_limit_count, (SELECT COUNT(*) FROM test_table WHERE atof(str_value) > 10.0) AS above_limit_count;
+DROP TABLE IF EXISTS temporary_table;
+CREATE TEMPORARY TABLE temporary_table AS SELECT id, atof(str_value) AS temp_float FROM test_table WHERE str_value <> 'not a number';

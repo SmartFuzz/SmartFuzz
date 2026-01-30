@@ -1,0 +1,11 @@
+CREATE TABLE test_data (id INT PRIMARY KEY, value VARCHAR(255), num_value DECIMAL(10,2), created_at TIMESTAMP);
+INSERT INTO test_data (id, value, num_value, created_at) VALUES (1, 'A', 10.00, '2023-01-01 10:00:00');
+INSERT INTO test_data (id, value, num_value, created_at) VALUES (2, 'B', 20.00, '2023-01-02 11:00:00');
+INSERT INTO test_data (id, value, num_value, created_at) VALUES (3, 'C', NULL, '2023-01-03 12:00:00');
+SELECT * FROM (SELECT *, rmoreresults() as next_result FROM (SELECT id, value FROM test_data WHERE num_value NOT BETWEEN 15 AND 25) AS subquery) AS outer_query;
+SELECT id, value, (SELECT COUNT(*) FROM test_data AS inner WHERE inner.num_value NOT BETWEEN subquery.num_value AND 50) AS count_not_between FROM (SELECT * FROM test_data WHERE value IS NOT NULL) AS subquery;
+SELECT a.id, a.value FROM test_data a JOIN test_data b ON a.num_value NOT BETWEEN b.num_value AND 30 WHERE a.id < 3 GROUP BY a.id HAVING COUNT(b.id) > 1;
+SELECT DISTINCT id FROM test_data WHERE NOT EXISTS (SELECT 1 FROM test_data t WHERE t.num_value IS NULL AND t.id NOT BETWEEN 1 AND 10) ORDER BY id;
+CREATE TABLE second_data (id INT PRIMARY KEY, ref_id INT, description VARCHAR(255), FOREIGN KEY (ref_id) REFERENCES test_data(id));
+INSERT INTO second_data (id, ref_id, description) VALUES (1, 1, 'Related to A'), (2, 2, 'Related to B'), (3, NULL, 'No Relation');
+SELECT a.id, a.value, b.description FROM test_data a LEFT JOIN second_data b ON a.id NOT BETWEEN 2 AND 3 WHERE a.created_at >= CURRENT_TIMESTAMP - INTERVAL '1 DAY' ORDER BY a.created_at DESC;

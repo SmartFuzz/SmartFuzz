@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=107991",
+  "title": "Clone_persist_gtid causes memory leak",
+  "description": "We found slow memory leaks after instances were running for a long time.\r\n\r\nThe memory application of our instance during the 8-hour period is given below in the w_diff.pdf file, which is obtained by jemalloc profiling.\r\n\r\nCode analysis:\r\nIn MySQL8.0, the Clone_persist_gtid thread is responsible for saving GTID into dd table gtid_executed periodically (every 100ms).\r\n\r\nThe Clone_persist_gtid thread requests memory from thd->mem_root during lock_tables. \r\n\r\nThe code position is:\r\nGtid_table_persistor::save\r\n  -> Gtid_table_access_context::init\r\n    ->System_table_access::open_table\r\n      ->open_n_lock_single_table\r\n        ->open_and_lock_tables\r\n          ->lock_tables\r\n\r\nsql_base.cc\r\n```\r\nbool lock_tables(THD *thd, TABLE_LIST *tables, uint count, uint flags) \r\n  if (!thd->locked_tables_mode) {\r\n    ...\r\n    if (!(ptr = start = (TABLE **)thd->alloc(sizeof(TABLE *) * count)))\r\n      return true;\r\n    ...\r\n       \r\n```\n\nThis thd will not be closed forever, the memory will not be freed.\nHow to repeat:\n1. Reduce the value of s_time_threshold_ms to speed up the scheduling frequency of Clone_persist_gtid\r\n\r\n--- a/storage/innobase/include/clone0repl.h\r\n+++ b/storage/innobase/include/clone0repl.h\r\n@@ -324,7 +324,7 @@ class Clone_persist_gtid {\r\n  private:\r\n   /** Time threshold to trigger persisting GTID. Insert GTID once per 1k\r\n   transactions or every 100 millisecond. */\r\n-  const static uint32_t s_time_threshold_ms = 100;\r\n+  const static uint32_t s_time_threshold_ms = 1;\r\n \r\n   /** Threshold for the count for compressing GTID. */\r\n   const static uint32_t s_compression_threshold = 50;\n\n2. Create a stored procedure to continuously execute transaction.\r\n```\r\nCREATE TABLE t (\r\n  id int NOT NULL AUTO_INCREMENT,\r\n  col1 int unsigned NOT NULL,\r\n  col2 tinyint(1) NOT NULL,\r\n  PRIMARY KEY (id),\r\n) ENGINE=InnoDB;\r\n\r\ndelimiter |;\r\nCREATE PROCEDURE insert_1()\r\nBEGIN\r\n    ins: WHILE 1 DO\r\n       insert into t(col1,col2) values(rand()*1000,111);\r\n       select sleep(0.01);\r\n    END WHILE;\r\nEND |\r\n\r\ndelimiter ;|\r\n\r\ncall insert_1();\r\n```\r\n\r\n3. Use jemalloc profiling to print memory allocation after a day\nSuggested fix:\nRelease this memory which is only temporarily used.",
+  "date": "2022-07-27 02:02:00",
+  "vulnerable_version": "8.0.25",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE users (id INT NOT NULL, username VARCHAR(50) NOT NULL UNIQUE, email VARCHAR(100) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id));",
+    "INSERT INTO users (username, email) VALUES ('user1', 'user1@example.com');",
+    "CREATE TABLE orders (order_id INT NOT NULL, user_id INT NOT NULL, amount DECIMAL(10, 2) NOT NULL, order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (order_id), FOREIGN KEY (user_id) REFERENCES users(id));",
+    "INSERT INTO orders (user_id, amount) VALUES (1, 99.99);",
+    "SELECT u.username, o.amount FROM users u JOIN orders o ON u.id = o.user_id WHERE o.amount > 50;"
+  ],
+  "key_bug_features": [
+    "Clone_persist_gtid thread requests memory during lock_tables"
+  ]
+}

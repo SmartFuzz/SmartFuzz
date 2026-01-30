@@ -1,0 +1,17 @@
+{
+    "function": "curdatetimeoffset",
+    "operator": "bif:st_intersects",
+    "sql_array": [
+        "CREATE TABLE geom_data (id INT PRIMARY KEY, geom GEOMETRY, created_at DATETIME DEFAULT curdatetimeoffset());",
+        "INSERT INTO geom_data (id, geom) VALUES (1, ST_GeomFromText('POINT(1 1)'), curdatetimeoffset(1));",
+        "INSERT INTO geom_data (id, geom) VALUES (2, ST_GeomFromText('POINT(2 2)'), curdatetimeoffset(5));",
+        "CREATE TABLE another_geom (id INT PRIMARY KEY, geom GEOMETRY);",
+        "INSERT INTO another_geom (id, geom) VALUES (1, ST_GeomFromText('POINT(2 2)'));",
+        "SELECT a.id FROM geom_data a JOIN another_geom b ON bif:st_intersects(a.geom, b.geom) WHERE curdatetimeoffset(10) > a.created_at;",
+        "SELECT a.id, curdatetimeoffset(), bif:st_intersects(a.geom, ST_GeomFromText('POLYGON((2 2, 3 3, 3 2, 2 2))')) AS is_intersects FROM geom_data a HAVING is_intersects IS NOT NULL;",
+        "SELECT COUNT(*) FROM (SELECT a.id, bif:st_intersects(a.geom, b.geom) AS intersects FROM geom_data a, another_geom b WHERE bif:st_intersects(a.geom, b.geom) OR curdatetimeoffset(0) IS NULL) AS subquery WHERE intersects = TRUE;",
+        "SELECT curdatetimeoffset(), a.id FROM geom_data a WHERE curdatetimeoffset(0) IS NOT NULL AND a.geom IS NOT NULL;",
+        "CREATE TEMPORARY TABLE temp_geom AS SELECT id, geom FROM geom_data WHERE ST_Area(geom) > 0;",
+        "SELECT curdatetimeoffset(3) AS cur_time, COUNT(*) FROM temp_geom GROUP BY cur_time HAVING COUNT(*) > 0;"
+    ]
+}

@@ -1,0 +1,17 @@
+CREATE TABLE test_dates (id UInt32, date_expr String);
+INSERT INTO test_dates VALUES (1, '2008-10-12 00:00:00'), (2, 'invalid-date'), (3, '1970-01-01 00:00:00');
+SELECT toDateTime64OrZero(date_expr, 3) AS converted_date FROM test_dates;
+SELECT id, toDateTime64OrZero(date_expr, 3) AS converted_date FROM test_dates WHERE id = 2;
+SELECT id, toDateTime64OrZero(date_expr, 3) AS converted_date FROM test_dates WHERE id IN (1, 2);
+WITH (SELECT date_expr FROM test_dates WHERE id = 3) AS valid_date SELECT toDateTime64OrZero(valid_date, 2) AS converted_valid_date;
+CREATE TABLE timezone_test (id UInt32, date_expr String);
+INSERT INTO timezone_test VALUES (1, '2008-10-12 00:30:30'), (2, 'abc'), (3, '1970-01-01 00:00:00');
+SELECT id, toDateTime64OrZero(date_expr, 5, 'UTC') AS converted_date FROM timezone_test;
+SELECT id, toDateTime64OrZero(CAST(date_expr AS String), 4) AS converted_date FROM timezone_test WHERE id > 1;
+CREATE TABLE complex_test (id UInt32, date_expr String, scale UInt32);
+INSERT INTO complex_test VALUES (1, '2008-10-12 00:30:30', 3), (2, 'foo', 4), (3, '1970-01-01 00:00:00', 5);
+SELECT id, toDateTime64OrZero(date_expr, scale) AS converted_date FROM complex_test;
+SELECT ct.id, toDateTime64OrZero(ct.date_expr, ct.scale) AS converted_date FROM complex_test AS ct JOIN test_dates AS td ON ct.id = td.id WHERE ct.scale <= 5;
+CREATE TABLE nested_test (id UInt32, date_expr String);
+INSERT INTO nested_test VALUES (1, '2008-10-12 00:00:00'), (2, 'invalid-date'), (3, '1970-01-01 00:00:00');
+SELECT id, (SELECT toDateTime64OrZero(nt.date_expr, 3) FROM nested_test nt WHERE nt.id = nested_test.id) AS converted_date FROM nested_test;

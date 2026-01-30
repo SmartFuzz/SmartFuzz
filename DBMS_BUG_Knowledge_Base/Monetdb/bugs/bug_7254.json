@@ -1,0 +1,23 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7254",
+  "title": "Commit with deletions is very slow",
+  "vulnerable_database": "monetdb",
+  "date": "2022-02-18T18:26:08Z",
+  "vulnerable_version": "Unknown",
+  "description": "Committing a transaction that has removed a considerable amount of rows takes longer than reasonable.\n\n**To Reproduce**\n```\nset optimizer='sequential_pipe';\n\nstart transaction;\n\n-- a table with 100M random integers, with about 10M unique values\nCREATE TABLE x AS\n  SELECT rand() % (10 * 1000 * 1000) as a1\n  FROM sys.generate_series(1, (100 * 1000 * 1000));\n\n-- without this delete (about 10%), the commit takes less than 1s\n-- with the delete, the commit takes forever (I had to kill the server after waiting longer than 30 minutes)\n\n-- DELETE FROM x\n-- WHERE a1 in (SELECT rand() % (10 * 1000 * 1000) FROM sys.generate_series(1, (1000 * 1000)));\n\ncommit;\n```\n\n**Software versions**\n - MonetDB version number 11.43.10\n - OS and version: Fedora 35\n - self-installed and compiled",
+  "poc": [
+    "CREATE TABLE x AS\\n  SELECT rand() % (10 * 1000 * 1000) as a1\\n  FROM sys.generate_series(1, (100 * 1000 * 1000));",
+    "CREATE TABLE x AS\\r\\n  SELECT rand() % (10 * 1000 * 1000) as a1\\r\\n  FROM sys.generate_series(1, (100 * 1000 * 1000));",
+    "SELECT rand() % (10 * 1000 * 1000) as a1\\n  FROM sys.generate_series(1, (100 * 1000 * 1000));"
+  ],
+  "key_bug_features": [
+    "Committing transactions with large deletions is very slow"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE y (id INT PRIMARY KEY, value VARCHAR(255) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO y (id, value) SELECT i, CONCAT('Value ', i) FROM sys.generate_series(1, 1000000) AS i;",
+    "DELETE FROM y WHERE id IN (SELECT id FROM y WHERE value LIKE 'Value 1%');",
+    "CREATE TABLE z AS SELECT DISTINCT value FROM y WHERE created_at < NOW() - INTERVAL '1 day';",
+    "DELETE FROM z WHERE value IS NULL;"
+  ]
+}

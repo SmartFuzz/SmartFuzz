@@ -1,0 +1,10 @@
+CREATE TABLE test_udt (id INT, member_name VARCHAR(255), data SER_UDT);
+INSERT INTO test_udt (id, member_name, data) VALUES (1, 'A', new SER_UDT()), (2, 'B', new SER_UDT()), (3, NULL, new SER_UDT());
+SELECT id, bif:md5(udt_defines_field(data, member_name)::VARCHAR) AS hash_result FROM test_udt WHERE member_name IS NOT NULL;
+SELECT id, member_name FROM test_udt WHERE udt_defines_field(data, 'A') OR udt_defines_field(data, NULL);
+SELECT id, bif:md5(CONCAT(member_name, CAST(id AS VARCHAR))) AS concatenated_hash FROM test_udt GROUP BY id, member_name HAVING COUNT(*) > 1;
+CREATE TABLE test_join (join_id INT, udt_data SER_UDT, reference_value INT);
+INSERT INTO test_join (join_id, udt_data, reference_value) VALUES (1, new SER_UDT(), 10), (2, new SER_UDT(), NULL), (3, new SER_UDT(), 20);
+SELECT a.id, bif:md5(udt_defines_field(a.data, b.member_name)::VARCHAR) FROM test_udt AS a JOIN test_join AS b ON udt_defines_field(b.udt_data, 'A') AND a.id = COALESCE(b.reference_value, 0);
+SELECT id, bif:md5(COALESCE(udt_defines_field(data, member_name)::VARCHAR, 'default_value')) AS nullable_result FROM test_udt WHERE member_name IS NULL OR member_name <> '';
+SELECT id, COUNT(*) AS count, bif:md5(member_name) FROM test_udt GROUP BY member_name HAVING COUNT(*) >= 1 ORDER BY count DESC;

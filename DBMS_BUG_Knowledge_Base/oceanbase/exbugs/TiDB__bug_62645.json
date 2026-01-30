@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/62645",
+  "title": "Bug in SELECT DISTINCT Query with Complex JOIN Condition: Missing Expected Results",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n```sql\nUSE test;\nDROP DATABASE IF EXISTS database38;\nCREATE DATABASE database38;\nUSE database38;\n\nCREATE TABLE t0(c0 FLOAT ZEROFILL NOT NULL DEFAULT 0.04620542418916285 );\n\nCREATE OR REPLACE ALGORITHM=TEMPTABLE VIEW v82(c0) AS SELECT DISTINCT -1293187837 FROM t0;\n\nTRUNCATE t0;\n\nREPLACE INTO t0(c0) VALUES (0.6186362626549486);\nINSERT INTO t0 VALUES (0.05757263723534567) ON DUPLICATE KEY UPDATE c0=((t0.c0)AND(t0.c0));\nINSERT INTO t0 VALUES (0.7032173504722);\n\nUPDATE t0 SET c0=t0.c0;\nINSERT INTO t0(c0) VALUES (8.62163545E8);\n\nINSERT INTO t0(c0) VALUES (1.2829581E9) ON DUPLICATE KEY UPDATE c0=']';\n\nUPDATE t0 SET c0='0' WHERE DEFAULT(t0.c0);\nINSERT INTO t0 VALUES (0.6025603453324666) ON DUPLICATE KEY UPDATE c0=CONCAT(t0.c0);\nINSERT INTO t0(c0) VALUES (0.5866291294033453) ON DUPLICATE KEY UPDATE c0=t0.c0;\nINSERT INTO t0(c0) VALUES (0.6886645288521922) ON DUPLICATE KEY UPDATE c0=t0.c0;\n\nINSERT INTO t0 VALUES (0.12323627108707103);\nUPDATE t0 SET c0=(CASE 2016798040 WHEN t0.c0 THEN 'XiiU3Ddq' ELSE true END );\nINSERT INTO t0(c0) VALUES (0.20928406390576193);\n\nSELECT DISTINCT t0.c0 FROM  v82 INNER JOIN t0 ON (((- (CHAR(INET6_ATON(1543385653))))) IS NOT NULL); \n\n(SELECT DISTINCT t0.c0 FROM  v82 LEFT JOIN t0 ON (((- (CHAR(INET6_ATON(1543385653))))) IS NOT NULL)) INTERSECT (SELECT DISTINCT t0.c0 FROM  v82 RIGHT JOIN t0 ON (((- (CHAR(INET6_ATON(1543385653))))) IS NOT NULL)); \n```\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\n```shell\nmysql> SELECT DISTINCT t0.c0 FROM  v82 INNER JOIN t0 ON (((- (CHAR(INET6_ATON(1543385653))))) IS NOT NULL); \n+------------+\n| c0         |\n+------------+\n|          1 |\n| 0.20928407 |\n+------------+\n2 rows in set (0.01 sec)\n\nmysql> \nmysql> (SELECT DISTINCT t0.c0 FROM  v82 LEFT JOIN t0 ON (((- (CHAR(INET6_ATON(1543385653))))) IS NOT NULL)) INTERSECT (SELECT DISTINCT t0.c0 FROM  v82 RIGHT JOIN t0 ON (((- (CHAR(INET6_ATON(1543385653))))) IS NOT NULL)); \n+------------+\n| c0         |\n+------------+\n|          1 |\n| 0.20928407 |\n+------------+\n2 rows in set (0.01 sec)\n\n```\n### 3. What did you see instead (Required)\n```shell\nmysql> SELECT DISTINCT t0.c0 FROM  v82 INNER JOIN t0 ON (((- (CHAR(INET6_ATON(1543385653))))) IS NOT NULL); \n+------------+\n| c0         |\n+------------+\n|          0 |\n| 1.4013e-45 |\n+------------+\n2 rows in set (0.00 sec)\n\nmysql> (SELECT DISTINCT t0.c0 FROM  v82 LEFT JOIN t0 ON (((- (CHAR(INET6_ATON(1543385653))))) IS NOT NULL)) INTERSECT (SELECT DISTINCT t0.c0 FROM  v82 RIGHT JOIN t0 ON (((- (CHAR(INET6_ATON(1543385653))))) IS NOT NULL)); \n+------------+\n| c0         |\n+------------+\n|          1 |\n| 0.20928407 |\n+------------+\n2 rows in set (0.01 sec)\n\n\n```\n### 4. What is your TiDB version? (Required)\n<!-- Paste the output of SELECT tidb_version() -->\n```shell\nmysql> select version();\n+--------------------+\n| version() |\n+--------------------+\n| 8.0.11-TiDB-v7.5.1 |\n+--------------------+\n```\nI use docker images for quick deployments.\n**IMAGE ID: bd253ee807c6**\n",
+  "date": "2025-07-27T14:47:22Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1(id INT PRIMARY KEY, name VARCHAR(255) NOT NULL);",
+    "INSERT INTO t1(id, name) VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie');",
+    "CREATE TABLE t2(t1_id INT, value FLOAT, FOREIGN KEY (t1_id) REFERENCES t1(id));",
+    "INSERT INTO t2(t1_id, value) VALUES (1, 0.5), (2, 1.5), (3, NULL);",
+    "SELECT DISTINCT t1.name FROM t1 JOIN t2 ON t1.id = t2.t1_id WHERE t2.value IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "SELECT DISTINCT with complex JOIN condition fails to return results"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/711",
+  "title": "Virtuoso performance issue when hosting Freebase",
+  "description": "I have set up a virtuoso server for hosting Freebase data, and encountered performance issues.\nLet's consider this scenario: find the largest location (probably a county, denoted by ?var1) in Wisconsin State (m.0824r), where ?var1 contains at least one location (denoted by ?var2) with the type \"place_with_neighborhoods\".\nI wrote the SPARQL query as follows:\nPREFIX fb: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?var1 ?var2 ?v2_name WHERE {\n  fb:m.0824r fb:location.location.contains ?var1 .\n  ?var1 fb:location.location.contains ?var2 .\n  ?var2 fb:type.object.type fb:location.place_with_neighborhoods .\n  ?var1 fb:location.location.area ?area .\n  OPTIONAL {?var2 fb:type.object.name ?v2_name} .\n} ORDER BY DESC(?area) LIMIT 1\n\nUnfortunately, the virtuoso engine fail to return the query result for more than one hour.\nI tried some simpler queries, which could produce results in less than one second:\nPREFIX fb: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?var1 ?var2 ?v2_name WHERE {\n  fb:m.0824r fb:location.location.contains ?var1 .\n  ?var1 fb:location.location.contains ?var2 .\n  ?var2 fb:type.object.type fb:location.place_with_neighborhoods .\n  OPTIONAL {?var2 fb:type.object.name ?v2_name} .\n}\n# Remove the area-related information with ?var1\n# Returns ONLY ONE result in 0.05s.\n\nand,\nPREFIX fb: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?var1 ?var2 ?v2_name ?area WHERE {\n  fb:m.0824r fb:location.location.contains ?var1 .\n  ?var1 fb:location.location.contains ?var2 .\n  ?var1 fb:location.location.area ?area .\n  OPTIONAL {?var2 fb:type.object.name ?v2_name} .\n}\n# Remove the type limitation of ?var2\n# Returns ~7000 results in ~1s.\n\nGiven the results of those simpler queries, I'm really confused which step brought the performance issue. Is there anybody who can give me some advice? Thank you so much!",
+  "date": "2018-02-11 08:11:17",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE locations (id INTEGER PRIMARY KEY, name TEXT, area REAL, type TEXT, neighborhood_id INTEGER);",
+    "INSERT INTO locations (id, name, area, type, neighborhood_id) VALUES (1, 'County A', 500.0, 'place_with_neighborhoods', NULL);",
+    "INSERT INTO locations (id, name, area, type, neighborhood_id) VALUES (2, 'County B', 300.0, 'place_with_neighborhoods', 1);",
+    "SELECT l1.name, l2.name, l1.area FROM locations l1 JOIN locations l2 ON l1.id = l2.neighborhood_id WHERE l1.type = 'place_with_neighborhoods' ORDER BY l1.area DESC LIMIT 1;",
+    "SELECT name, area FROM locations WHERE area IS NOT NULL AND area > 250.0 ORDER BY area ASC;"
+  ],
+  "key_bug_features": [
+    "Querying area-related information causes performance issues"
+  ]
+}

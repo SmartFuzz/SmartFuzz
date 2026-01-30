@@ -1,0 +1,13 @@
+{
+    "function": "sum(numeric_expr)",
+    "operator": "<>",
+    "sql_array": [
+        "CREATE TABLE network_logs (id SERIAL PRIMARY KEY, ip_address INET NOT NULL, response_time NUMERIC NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO network_logs (ip_address, response_time) VALUES (inet '192.168.1.1', 123.45), (inet '192.168.1.2', 678.90), (inet '192.168.1.3', NULL), (inet NULL, 0), (inet '192.168.1.4', -12.5);",
+        "SELECT id, ip_address, sum(response_time) OVER (PARTITION BY ip_address) AS total_response FROM network_logs WHERE response_time <> 0 ORDER BY total_response DESC;",
+        "SELECT id, ip_address, sum(response_time) AS total_response FROM network_logs WHERE ip_address <> inet '192.168.1.1' GROUP BY id, ip_address HAVING total_response IS NOT NULL;",
+        "SELECT DISTINCT ip_address FROM (SELECT ip_address, sum(response_time) OVER (ORDER BY created_at RANGE BETWEEN INTERVAL '1 hour' PRECEDING AND CURRENT ROW) AS rolling_sum FROM network_logs) sub WHERE rolling_sum <> 0;",
+        "SELECT id, response_time FROM network_logs WHERE response_time IS NOT NULL AND response_time <> (SELECT sum(response_time) FROM network_logs WHERE response_time IS NOT NULL) ORDER BY response_time;",
+        "SELECT ip_address, count(*) FROM network_logs WHERE ip_address IS NOT NULL GROUP BY ip_address HAVING count(*) <> (SELECT count(*) FROM network_logs WHERE response_time < 0);"
+    ]
+}

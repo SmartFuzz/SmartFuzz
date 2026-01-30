@@ -1,0 +1,9 @@
+CREATE TABLE test_table (id UInt64, value String, amount Float64, created_at DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table (id, value, amount, created_at) VALUES (1, '100.999', 150.75, '2023-01-01 00:00:00'), (2, '255.555', 200.25, '2023-01-02 00:00:00'), (3, 'NaN', 300.00, '2023-01-03 00:00:00'), (4, '256', 400.50, '2023-01-04 00:00:00');
+SELECT id, toUInt256(value) % amount AS modulo_result FROM test_table WHERE toUInt256(value) IS NOT NULL;
+SELECT id, toUInt256(CAST(NULLIF(value, '') AS String)) AS converted, amount FROM test_table WHERE value NOT LIKE '%NaN%' HAVING converted > 100;
+SELECT id, toUInt256(value) % 3 AS remainder, amount FROM test_table WHERE created_at >= '2023-01-01 00:00:00' GROUP BY id, remainder HAVING remainder = 0 ORDER BY remainder DESC;
+WITH (SELECT AVG(amount) FROM test_table) AS avg_amount SELECT id, toUInt256(value) % avg_amount AS mod_avg FROM test_table WHERE avg_amount IS NOT NULL;
+CREATE TABLE temp_table AS SELECT id, toUInt256(value) AS uint_value, amount FROM test_table WHERE value NOT LIKE '%NaN%';
+SELECT id, uint_value, amount, toUInt256(uint_value) % amount AS mod_amount FROM temp_table HAVING mod_amount IS NOT NULL;
+DROP TABLE temp_table;

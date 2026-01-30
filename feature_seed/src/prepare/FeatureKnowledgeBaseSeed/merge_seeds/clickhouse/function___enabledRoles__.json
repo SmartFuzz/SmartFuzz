@@ -1,0 +1,15 @@
+CREATE TABLE roles (role_name String, user_id UInt32) ENGINE = Memory;
+INSERT INTO roles VALUES ('admin', 1), ('editor', 2), ('viewer', 3);
+CREATE TABLE user_roles (user_id UInt32, role_name String) ENGINE = Memory;
+INSERT INTO user_roles VALUES (1, 'admin'), (1, 'editor'), (2, 'editor'), (3, 'viewer');
+SELECT enabledRoles() AS current_roles;
+SELECT enabledRoles() FROM roles WHERE role_name IN (SELECT DISTINCT role_name FROM user_roles);
+SELECT user_id, enabledRoles() AS current_roles FROM user_roles GROUP BY user_id;
+WITH (SELECT COUNT(role_name) FROM roles) AS role_count SELECT enabledRoles(), role_count;
+CREATE TABLE user_data (user_id UInt32, age UInt8) ENGINE = Memory;
+INSERT INTO user_data VALUES (1, 30), (2, 25), (3, 22);
+SELECT user_data.user_id, enabledRoles() FROM user_data JOIN user_roles ON user_data.user_id = user_roles.user_id WHERE user_data.age > 20;
+SELECT enabledRoles() FROM (SELECT user_id FROM user_roles WHERE role_name = 'admin') AS admin_users;
+SELECT user_id, GROUP_CONCAT(enabledRoles()) AS roles FROM user_roles GROUP BY user_id HAVING COUNT(role_name) > 1;
+CREATE TABLE temp_roles AS SELECT * FROM user_roles WHERE role_name LIKE 'editor%';
+SELECT DISTINCT enabledRoles() FROM temp_roles WHERE user_id IN (SELECT user_id FROM roles WHERE role_name = 'viewer');

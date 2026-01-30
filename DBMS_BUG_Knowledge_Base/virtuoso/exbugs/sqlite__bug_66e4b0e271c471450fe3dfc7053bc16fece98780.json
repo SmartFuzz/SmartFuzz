@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/66e4b0e271",
+  "title": "Incorrect result for LEFT JOIN",
+  "description": "mrigger added on 2020-09-30 12:47:38:\nConsider the following test case:\n\nCREATE TABLE t0(c0);\nCREATE VIEW v0(c0) AS SELECT NULL AND NULL FROM t0;\nINSERT INTO t0(c0) VALUES (NULL);\nSELECT * FROM v0 LEFT JOIN t0 ON v0.c0; -- expected: {NULL|NULL}, actual: {}\n\nUnexpectedly, the row with NULL values is not fetched. I found this based on the latest check-in [ce6d8d62].\ndrh added on 2020-09-30 15:46:49:\nThis problem has been in SQLite since at least version 3.0.0 (2004-06-18) which\nis as far back as I checked.\nThe problem is in the query flattener.\nDuring initial processing, the \"ON v0.c0\" term of the query is marked with\nthe EP_FromJoin flag to indicate that it originates in the ON or USING clause\nof a LEFT JOIN and then it is added to the WHERE clause.  The EP_FromJoin flag\ncauses the special processing that is needed to correctly handle ON/USING\nclause terms.\nThe query flattener comes along later and replaces \"v0.c0\" with the\n\"NULL and NULL\" expression.  It transfers the EP_FromJoin mark from the\noriginal \"v0.c0\" over to \"NULL and NULL\", as it should.  But it was not\nputting that mark on the subcomponents - the individual NULL terms - \nof the new expression.  When the WHERE clause is later broken apart into\nmultiple AND-connected terms for analysis, the EP_FromJoin mark is lost\nfrom the NULL terms, and they look like they originated with a \"WHERE NULL\"\nclause.  Hence, SQLite was computing an answer based on the misunderstanding\nthat the original query contained a \"WHERE NULL\" clause.\nThe fix is to ensure that EP_FromJoin mark gets replicated onto all nodes\nof the compression expression - not just the top level node -\nwhen doing expression substitution in the query flattener.",
+  "date": "2020-09-30 12:47:384.86 years ago",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(c1 INTEGER, c2 VARCHAR, c3 FLOAT);",
+    "INSERT INTO t1(c1, c2, c3) VALUES (1, 'test', 1.1);",
+    "CREATE VIEW v1 AS SELECT c2 FROM t1 WHERE c3 IS NULL;",
+    "SELECT * FROM v1 LEFT JOIN t1 ON v1.c2 = t1.c2;",
+    "INSERT INTO t1(c1, c2, c3) VALUES (NULL, NULL, NULL);"
+  ],
+  "key_bug_features": [
+    "LEFT JOIN with NULL values not fetched correctly"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/44389",
+  "title": "Cannot build optimal range on index ab for c = 10 and (a = 'xx' or (a = 'kk' and b = 1))",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```\r\ncreate table t(id int, a varchar(100), b int, c int, index idx_ab(a, b));\r\nexplain select * from t where c = 10 and (a = 'xx' or (a = 'kk' and b = 1));\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n```\r\nmysql> explain select * from t where c = 10 and (a = 'xx' or (a = 'kk' and b = 1));\r\n+-------------------------------+---------+-----------+-----------------------------+--------------------------------------------------------------------+\r\n| id                            | estRows | task      | access object               | operator info                                                      |\r\n+-------------------------------+---------+-----------+-----------------------------+--------------------------------------------------------------------+\r\n| IndexLookUp_11                | 0.01    | root      |                             |                                                                    |\r\n| ├─IndexRangeScan_8(Build)     | 10.10   | cop[tikv] | table:t, index:idx_ab(a, b) | range:[\"kk\" 1,\"kk\" 1], [\"xx\",\"xx\"], keep order:false, stats:pseudo |\r\n| └─Selection_10(Probe)         | 0.01    | cop[tikv] |                             | eq(test.t.c, 10)                                                   |\r\n|   └─TableRowIDScan_9          | 10.10   | cop[tikv] | table:t                     | keep order:false, stats:pseudo                                     |\r\n+-------------------------------+---------+-----------+-----------------------------+--------------------------------------------------------------------+\r\n4 rows in set (0.01 sec)\r\n```\r\n\r\n\r\n### 3. What did you see instead (Required)\r\n```\r\nmysql> explain select * from t where c = 10 and (a = 'xx' or (a = 'kk' and b = 1));\r\n+----------------------------+---------+-----------+-----------------------------+------------------------------------------------------------------+\r\n| id                         | estRows | task      | access object               | operator info                                                    |\r\n+----------------------------+---------+-----------+-----------------------------+------------------------------------------------------------------+\r\n| IndexLookUp_12             | 0.01    | root      |                             |                                                                  |\r\n| ├─Selection_10(Build)      | 0.02    | cop[tikv] |                             | or(eq(test.t.a, \"xx\"), and(eq(test.t.a, \"kk\"), eq(test.t.b, 1))) |\r\n| │ └─IndexRangeScan_8       | 20.00   | cop[tikv] | table:t, index:idx_ab(a, b) | range:[\"kk\",\"kk\"], [\"xx\",\"xx\"], keep order:false, stats:pseudo   |\r\n| └─Selection_11(Probe)      | 0.01    | cop[tikv] |                             | eq(test.t.c, 10)                                                 |\r\n|   └─TableRowIDScan_9       | 0.02    | cop[tikv] | table:t                     | keep order:false, stats:pseudo                                   |\r\n+----------------------------+---------+-----------+-----------------------------+------------------------------------------------------------------+\r\n5 rows in set (0.01 sec)\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\nmaster\r\n\r\n",
+  "date": "2023-06-04T09:00:09Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t(id INTEGER, a TEXT, b INTEGER, c INTEGER);",
+    "CREATE INDEX idx_ab ON t(a, b);",
+    "INSERT INTO t(id, a, b, c) VALUES (1, 'xx', 2, 10);",
+    "INSERT INTO t(id, a, b, c) VALUES (2, 'kk', 1, 10);",
+    "INSERT INTO t(id, a, b, c) VALUES (3, NULL, 3, 10);",
+    "SELECT * FROM t WHERE c = 10 AND (a = 'xx' OR (a = 'kk' AND b = 1));"
+  ],
+  "key_bug_features": [
+    "Index range scan with OR condition on indexed columns"
+  ]
+}

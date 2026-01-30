@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, json_col JSON, values_array ARRAY);
+INSERT INTO test_table (id, json_col, values_array) VALUES (1, '{"key": "value"}', ARRAY[1, 2, 3]), (2, '{"key": null}', ARRAY[NULL]), (3, '{}', ARRAY[]);
+SELECT id, json_get(json_col, 'key') AS json_value, isarray(values_array) AS is_array_valid FROM test_table WHERE isarray(values_array) AND (json_get(json_col, 'key') IS NOT NULL);
+SELECT id, (SELECT COUNT(*) FROM test_table t2 WHERE isarray(t2.values_array) AND t2.id = t1.id) AS array_count FROM test_table t1 GROUP BY id HAVING array_count > 0;
+SELECT id, json_get(json_col, 'key') AS json_value, isarray(NULLIF(values_array, ARRAY[])) AS is_non_empty_array FROM test_table ORDER BY json_value DESC;
+CREATE TABLE additional_table (ref_id INT, data_col VARCHAR(255));
+INSERT INTO additional_table (ref_id, data_col) VALUES (1, 'Sample'), (2, NULL), (1, 'Example');
+SELECT t.id, json_get(t.json_col, 'key'), isarray(t.values_array), (SELECT COUNT(*) FROM additional_table a WHERE a.ref_id = t.id) AS related_count FROM test_table t WHERE json_get(t.json_col, 'key') IS NOT NULL OR isarray(t.values_array) ORDER BY related_count DESC;
+SELECT id, json_get(json_col, 'key') AS key_value, isarray(values_array) AS valid_array FROM test_table WHERE values_array IS NOT NULL AND key_value IS NOT NULL ORDER BY id ASC;
+SELECT id, isarray(NULLIF(json_get(json_col, 'wrong_key'), NULL)) FROM test_table WHERE isarray(values_array) AND json_get(json_col, 'key') IS NOT NULL;

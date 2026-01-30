@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id INT, val NUMERIC(10, 5), val2 VARCHAR(20), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO test_data (id, val, val2) VALUES (1, 10.00001, 'A'), (2, NULL, 'B'), (3, 20.00000, 'C'), (4, 30.00000, NULL), (5, 15.00000, 'D');
+SELECT sys.quantile_avg(val + 5, 0.5) FROM test_data WHERE val2 IS NOT NULL GROUP BY val2 HAVING sys.quantile_avg(val + 5, 0.5) > 10.0;
+INSERT INTO test_data (id, val, val2) VALUES (6, 1.23456, 'E');
+SELECT val2, sys.quantile_avg(val + CAST('2.00001' AS NUMERIC), 0.75) AS quantile_avg FROM test_data GROUP BY val2 HAVING quantile_avg IS NOT NULL;
+CREATE TABLE additional_data (foreign_id INT, extra_val DECIMAL(10, 2), linked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (foreign_id) REFERENCES test_data(id));
+INSERT INTO additional_data (foreign_id, extra_val) VALUES (1, 100.50), (2, NULL), (3, 200.75);
+SELECT d.extra_val, sys.quantile_avg(d.extra_val + t.val, 0.5) FROM test_data t JOIN additional_data d ON t.id = d.foreign_id WHERE t.val IS NOT NULL GROUP BY d.extra_val;
+SELECT sys.quantile_avg(COALESCE(NULLIF(val, 0), 10) + 3, 0.9) FROM test_data WHERE created_at < CURRENT_TIMESTAMP;
+SELECT SUM(val), sys.quantile_avg(val + 1, 0.1) FROM test_data GROUP BY val2 HAVING SUM(val) > 50;

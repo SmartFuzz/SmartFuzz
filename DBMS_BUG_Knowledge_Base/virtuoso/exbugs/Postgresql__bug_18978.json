@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/18978-646ebd7e8e0744ae%40postgresql.org",
+  "title": "BUG #18978: Index does not work in aggregate function filter",
+  "description": "The following bug has been logged on the website:\nBug reference:      18978\nLogged by:          Jinhui\nEmail address:      jinhui-lai(at)foxmail(dot)com\nPostgreSQL version: 17.5\nOperating system:   ubuntu 22.04\nDescription:\nDear PG developers,\nThanks for reading my report!\nI would like to say that \"aggregate_function(column) FILTER (WHERE\ncondition)\" is really a wonderful feature in PG. For example,  \"SELECT\nCOUNT(c1) AS total, COUNT(order_id) FILTER (WHERE c1<2) AS filtered FROM\nt1\", this query helps users get both total and filtered count.\nHowever, when users wanna to add an index to speed up such queries, it\ndoesn't seem to work. You can reproduce it as follows:\nCREATE TABLE t1(c1 INT8);\nINSERT INTO t1 SELECT i FROM generate_series(1, 100000000) AS i;\nCREATE INDEX i ON t1(c1);\nSELECT COUNT(c1) FILTER (WHERE c1<2) FROM t1;\ncount\n-------\n1\n(1 row)\nTime: 3133.225 ms (00:03.133)\nSELECT COUNT(c1) FROM t1 WHERE c1<2;\ncount\n-------\n1\n(1 row)\nTime: 3.756 ms\nexplain SELECT COUNT(c1) FILTER (WHERE c1<2) FROM t1;\nQUERY PLAN\n-----------------------------------------------------------------------------------------\nFinalize Aggregate  (cost=1068478.22..1068478.23 rows=1 width=8)\n->  Gather  (cost=1068478.00..1068478.21 rows=2 width=8)\nWorkers Planned: 2\n->  Partial Aggregate  (cost=1067478.00..1067478.01 rows=1 width=8)\n->  Parallel Seq Scan on t1  (cost=0.00..859144.67\nrows=41666667 width=8)\nJIT:\nFunctions: 5\nOptions: Inlining true, Optimization true, Expressions true, Deforming\ntrue\nexplain SELECT COUNT(c1) FROM t1 WHERE c1<2;\nQUERY PLAN\n-----------------------------------------------------------------------\nAggregate  (cost=4.59..4.60 rows=1 width=8)\n->  Index Only Scan using i on t1  (cost=0.57..4.58 rows=1 width=8)\nIndex Cond: (c1 < 2)\nDo you think this great feature of PG needs to be optimized?\nThanks you once again. I look forward to your reply.\nBest regard,\nJinhui",
+  "date": "2025-07-03 16:13:59",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE t2(c1 INTEGER, c2 VARCHAR(255), c3 DATE DEFAULT CURRENT_DATE);",
+    "INSERT INTO t2(c1, c2) SELECT i, 'test' FROM (SELECT ROW_NUMBER() OVER () AS i FROM rdf_quad) AS series WHERE i <= 100;",
+    "CREATE INDEX idx_c1 ON t2(c1);",
+    "SELECT COUNT(c1) FROM t2 WHERE c1 IS NULL;",
+    "SELECT COUNT(c1) FROM t2 WHERE c1 < 50;"
+  ],
+  "key_bug_features": [
+    "Index does not work with aggregate function filter"
+  ]
+}

@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id INTEGER PRIMARY KEY, data BLOB, interval_value INTERVAL);
+INSERT INTO test_table (id, data, interval_value) VALUES (1, 'A'::blob, INTERVAL '3 HOURS'), (2, 'B'::blob, INTERVAL '5 HOURS');
+SELECT id, base64(data) AS encoded_data, (interval_value - INTERVAL '1 HOUR') AS adjusted_interval FROM test_table WHERE id = (SELECT id FROM test_table WHERE interval_value = (SELECT MAX(interval_value) FROM test_table));
+SELECT id, base64(data) AS encoded_data FROM test_table WHERE ID IN (SELECT id FROM test_table WHERE data IS NOT NULL AND (interval_value - INTERVAL '1 HOUR') > INTERVAL '2 HOURS');
+SELECT id, base64(data), COUNT(*) FROM test_table GROUP BY base64(data) HAVING (COUNT(*) > 1 OR data IS NULL);
+CREATE TABLE temp_table AS SELECT id, data, (interval_value - INTERVAL '2 HOURS') AS subtracted_interval FROM test_table WHERE data IS NOT NULL;
+SELECT id, base64(data) FROM test_table JOIN temp_table ON temp_table.id = test_table.id WHERE temp_table.subtracted_interval IS NOT NULL;
+INSERT INTO test_table (id, data, interval_value) VALUES (3, 'C'::blob, INTERVAL '0 HOUR');
+SELECT id, base64(data) AS encoded_data, (parameter_value - INTERVAL '2 HOUR') FROM (SELECT id, data, (interval_value - INTERVAL '1 HOUR') AS parameter_value FROM test_table) AS derived_table WHERE parameter_value IS NOT NULL;
+SELECT id, base64(data) AS encoded_data FROM test_table WHERE (SELECT COUNT(*) FROM test_table WHERE data IS NULL) > 0;

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7488",
+  "title": "MonetDB server crashes in `strCmp`",
+  "description": "MonetDB server crashes in `strCmp`.\n\n**To Reproduce**\n```sql\nSELECT 0.100000 FROM dependencies ORDER BY max ( 'y' ) OVER ( ROWS BETWEEN 1.100000 PRECEDING AND 8 PRECEDING );\n```\n\n**Backtrace of the Crash**\n```c\n#0 0x7f42471f6ed9 (strCmp+0xd9)\n#1 0x7f42475b3431 (GDKanalyticalmax+0xeae1)\n#2 0x7f4245edf065 (SQLmax+0x245)\n#3 0x7f424634bdad (runMALsequence+0xe8d)\n#4 0x7f4246351293 (DFLOWworker+0x4a3)\n#5 0x7f42472d3b38 (thread_starter+0x318)\n#6 0x7f4245ce4609 (start_thread+0xd9)\n#7 0x7f4245c07353 (clone+0x43)\n```\n\n**Software versions**\n - MonetDB version number: v11.49.1 (Dec2023)\n - OS and version: Ubuntu 20.04\n - From docker image monetdb/monetdb:Dec2023 (or monetdb/dev-builds:default)\n\nAn example of steps to reproduce in docker container (**write the poc into /tmp/test.sql first**):\n```bash\ndocker container rm monetdb_test -f\ndocker run -e MDB_DB_ADMIN_PASS=monetdb --name monetdb_test -itd monetdb/monetdb:Dec2023\ndocker exec monetdb_test bash -c 'echo -n -e \"user=monetdb\\npassword=monetdb\\n\" > /root/.monetdb'\n\nsleep 10\ncat /tmp/test.sql | timeout 5s docker exec -i monetdb_test mclient monetdb     # run test case\n\nif docker exec monetdb_test bash -c \"grep '[m]server5' /proc/*/cmdline -lR\"; then\n    echo \"[INFO] Server normal.\"\nelse\n    echo \"[CRASH] Mserver5 process does NOT exist.\"\nfi\n```\n\nIt can also be reproduced on the docker image `monetdb/dev-builds:default`.\n\n**Issue labeling**\nbug",
+  "date": "2024-03-17T11:53:19Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT PRIMARY KEY, value VARCHAR(255));",
+    "INSERT INTO test_table (id, value) VALUES (1, 'test1'), (2, 'test2'), (3, NULL);",
+    "CREATE TABLE another_table (ref_id INT, amount DECIMAL(10, 2), FOREIGN KEY (ref_id) REFERENCES test_table(id));",
+    "INSERT INTO another_table (ref_id, amount) VALUES (1, 100.50), (2, 200.75), (3, NULL);",
+    "SELECT 0.100000 FROM another_table ORDER BY value DESC LIMIT 1 OFFSET 2;"
+  ],
+  "key_bug_features": [
+    "ORDER BY max() with window frame causes server crash"
+  ]
+}

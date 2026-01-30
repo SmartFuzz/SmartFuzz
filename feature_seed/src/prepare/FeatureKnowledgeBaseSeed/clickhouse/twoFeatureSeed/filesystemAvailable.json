@@ -1,0 +1,17 @@
+{
+    "function": "filesystemAvailable",
+    "operator": "a + b",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt64, data String, created_at DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table (id, data, created_at) VALUES (1, 'test1', now()), (2, NULL, now()), (3, 'test3', now());",
+        "SELECT id, data, filesystemAvailable() + 100 AS calculated_space FROM test_table WHERE id = 1;",
+        "SELECT id, data, filesystemAvailable() - ifNull(NULL, 50) AS remaining_space FROM test_table WHERE created_at < now() - INTERVAL 10 DAY;",
+        "SELECT id, COUNT(data) + filesystemAvailable() AS total_entries FROM test_table GROUP BY id HAVING total_entries > 0;",
+        "SELECT id, (filesystemAvailable() + 1) * 2 AS doubled_space FROM (SELECT id FROM test_table WHERE data IS NOT NULL) AS sub;",
+        "CREATE TABLE test_table_2 (ref_id UInt64, value Float64, timestamp DateTime) ENGINE = MergeTree() ORDER BY ref_id;",
+        "INSERT INTO test_table_2 (ref_id, value, timestamp) VALUES (1, 10.5, now()), (1, NULL, now()), (3, 25.0, now());",
+        "SELECT a.id, (SELECT COUNT(b.value) FROM test_table_2 b WHERE b.ref_id = a.id) + filesystemAvailable() AS space_used FROM test_table a;",
+        "SELECT a.id, a.data, (filesystemAvailable() / 1000000) AS space_in_mb FROM test_table a JOIN test_table_2 b ON a.id = b.ref_id WHERE b.value IS NOT NULL ORDER BY space_in_mb DESC;",
+        "SELECT id, data, IF(data = '', filesystemAvailable(), filesystemAvailable() + 10) AS conditional_space FROM test_table;"
+    ]
+}

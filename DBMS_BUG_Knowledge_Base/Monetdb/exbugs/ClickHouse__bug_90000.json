@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/90000",
+  "title": "optimize_distinct_in_order may drastically slowdown some queries",
+  "description": "### Company or project name\nhttps://www.innervate.com/\n### Describe the unexpected behaviour\nQuery executes 27 seconds with `optimize_distinct_in_order` and 84 milliseconds without.\n25.8.8.26\n```sql\ncreate table T(A UInt64, B UInt64) Engine = MergeTree() order by A as select *, 1 from numbers(5e5);\ncreate table item_dict_t(id UInt64, a1 UInt64, a2 Int32) Engine=MergeTree order by id as select 1,1,1;\nCREATE DICTIONARY item_dict ( id UInt64, a1 UInt64, a2 Int32)\nPRIMARY KEY id SOURCE(CLICKHOUSE(TABLE item_dict_t DB 'default'))\nLIFETIME(MIN 0 MAX 0) LAYOUT(HASHED());\nSELECT DISTINCT\nA,\ndictGetUInt64('item_dict', 'a1', toUInt64(B)) AS a1,\ndictGetInt32('item_dict', 'a2', toUInt64(B)) AS a2\nFROM\n(\nSELECT A, B FROM T\n) FORMAT `Null`\n0 rows in set. Elapsed: 27.406 sec. Processed 500.00 thousand rows, 8.00 MB (18.24 thousand rows/s., 291.91 KB/s.)\nPeak memory usage: 46.96 MiB.\nset optimize_distinct_in_order=0;\nSELECT DISTINCT\nA,\ndictGetUInt64('item_dict', 'a1', toUInt64(B)) AS a1,\ndictGetInt32('item_dict', 'a2', toUInt64(B)) AS a2\nFROM\n(\nSELECT A, B FROM T\n) FORMAT `Null`\n0 rows in set. Elapsed: 0.084 sec. Processed 500.00 thousand rows, 8.00 MB (5.96 million rows/s., 95.29 MB/s.)\nPeak memory usage: 117.96 MiB.\ndrop dictionary item_dict;\ndrop table item_dict_t;\ndrop table T;\n```\n### Which ClickHouse versions are affected?\n25.3+\n### How to reproduce\nabove\n### Expected behavior\n_No response_\n### Error message and/or stacktrace\n_No response_\n### Additional context\n```\nSELECT DISTINCT\nA,\ndictGetUInt64('item_dict', 'a1', toUInt64(B)) AS a1,\ndictGetInt32('item_dict', 'a2', toUInt64(B)) AS a2",
+  "date": "2025-11-13T14:48:26Z",
+  "vulnerable_version": "25.8.8.26",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE T1(A BIGINT, B DOUBLE) AS SELECT number, number * 1.5 FROM generate_series(1, 100000);",
+    "CREATE TABLE T2(C VARCHAR, D INT) AS SELECT CAST(number AS VARCHAR) AS C, CASE WHEN number % 2 = 0 THEN number ELSE NULL END AS D FROM generate_series(1, 1000);",
+    "CREATE TABLE item_dict2 (id BIGINT PRIMARY KEY, a1 BIGINT, a2 INT);",
+    "INSERT INTO item_dict2 SELECT id, a1, a2 FROM T2;",
+    "SELECT DISTINCT A, (SELECT a1 FROM item_dict2 WHERE id = B) AS a1, (SELECT a2 FROM item_dict2 WHERE id = B) AS a2 FROM (SELECT A, B FROM T1);",
+    "DROP TABLE item_dict2;"
+  ],
+  "key_bug_features": [
+    "optimize_distinct_in_order drastically slows down queries"
+  ]
+}

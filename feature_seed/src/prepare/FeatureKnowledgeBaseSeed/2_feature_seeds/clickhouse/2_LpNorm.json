@@ -1,0 +1,10 @@
+CREATE TABLE test_vectors (id Int32, vector Array(Float64), description String, power Float64 DEFAULT 2.0);
+INSERT INTO test_vectors VALUES (1, [1.0, -2.0], 'First vector', 2.0), (2, [5.0, 0.0, -3.2], 'Second vector', 1.5), (3, [NULL], 'Null vector', NULL);
+SELECT id, LpNorm((vector[1] - vector[2], vector[1] - vector[3]), power) AS norm_diff FROM test_vectors WHERE power IS NOT NULL ORDER BY norm_diff DESC;
+SELECT id, LpNorm((vector[1] + vector[2], vector[3] * 2), power) AS norm_sum FROM test_vectors WHERE vector[1] IS NOT NULL OR vector[2] IS NULL;
+SELECT id, vector, LpNorm((LpNorm(vector, power), NULL), 2) AS norm_with_null FROM test_vectors GROUP BY id, vector HAVING norm_with_null > 0.0;
+SELECT id, LpNorm((SELECT SUM(vector[1]) FROM test_vectors WHERE description LIKE '%vector%'), power) AS total_norm FROM test_vectors;
+SELECT id, LpNorm((a, b), 2) AS norm_1 FROM (SELECT vector[1] AS a, vector[2] AS b FROM test_vectors WHERE vector[1] IS NOT NULL) AS subquery;
+SELECT id, LpNorm((LpNorm(arrayMap(x -> x * 2.0, vector), power), NULL), 2) AS mapped_norm FROM test_vectors;
+SELECT id, LpNorm((SELECT vector FROM test_vectors WHERE id = 1), (SELECT power FROM test_vectors WHERE id = 2)) AS nested_norm;
+CREATE TEMPORARY TABLE calc_table AS SELECT id, LpNorm(vector, power) AS norm FROM test_vectors WHERE power IS NOT NULL;

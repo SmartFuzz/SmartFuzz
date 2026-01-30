@@ -1,0 +1,11 @@
+CREATE TABLE test_data (value BFloat16, weight Float32) ENGINE = Memory;
+INSERT INTO test_data VALUES (BFloat16(1.5), 0.2), (BFloat16(2.5), 0.8), (BFloat16(3.5), 1.0), (BFloat16(4.5), 0.5);
+SELECT quantileBFloat16Weighted(0.5, weight)(value) FROM test_data;
+CREATE TABLE additional_data (value BFloat16, weight Float32) ENGINE = Memory;
+INSERT INTO additional_data VALUES (BFloat16(1.0), 0.3), (BFloat16(2.0), 0.7);
+SELECT quantileBFloat16Weighted(0.75, weight)(value) FROM (SELECT value, weight FROM test_data UNION ALL SELECT value, weight FROM additional_data);
+SELECT quantileBFloat16Weighted(0.5, weight)(value) FROM (SELECT value, weight FROM test_data WHERE weight > 0.5);
+SELECT t1.value, quantileBFloat16Weighted(0.5, t1.weight)(t2.value) AS weighted_quantile FROM test_data AS t1 JOIN additional_data AS t2 ON t1.weight = t2.weight GROUP BY t1.value;
+SELECT quantileBFloat16Weighted(0.5, weight)(value) FROM (SELECT value, weight FROM test_data WHERE weight != 0) ORDER BY value DESC;
+SELECT quantileBFloat16Weighted(0.95, weight)(value) FROM (SELECT value, weight FROM test_data WHERE weight < 1.0) GROUP BY weight;
+WITH (SELECT COUNT(*) FROM test_data) AS total_count SELECT quantileBFloat16Weighted(0.5, weight)(value) FROM test_data HAVING total_count > 0;

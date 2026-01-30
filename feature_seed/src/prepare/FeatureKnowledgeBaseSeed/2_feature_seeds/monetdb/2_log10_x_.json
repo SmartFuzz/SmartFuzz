@@ -1,0 +1,12 @@
+CREATE TABLE test_data (id INT PRIMARY KEY, value DOUBLE PRECISION, status INT);
+INSERT INTO test_data (id, value, status) VALUES (1, log10(1000.0), 1), (2, log10(0.1), 0), (3, NULL, 1), (4, log10(10.0), NULL);
+CREATE TABLE additional_data (ref_id INT PRIMARY KEY, comment VARCHAR(255), value1 INT);
+INSERT INTO additional_data (ref_id, comment, value1) VALUES (1, 'test comment', 255), (2, 'another test', NULL);
+SELECT id, value, ~status AS inverted_status FROM test_data WHERE value IS NOT NULL AND value > log10(1) ORDER BY inverted_status;
+SELECT td.id, td.value, ad.comment FROM test_data td JOIN additional_data ad ON td.id = ad.ref_id WHERE td.value < log10(100.0) AND ad.value1 IS NOT NULL;
+WITH ranked_values AS (SELECT id, value, RANK() OVER (ORDER BY value) AS rank FROM test_data) SELECT id, value, log10(rank) FROM ranked_values WHERE rank IS NOT NULL ORDER BY value;
+SELECT id, ~status, log10(COALESCE(value, 1.0)) FROM test_data GROUP BY id, log10(status + 1) HAVING ~MAX(status) > 0;
+SELECT ad.ref_id, td.id, td.value FROM additional_data ad LEFT JOIN test_data td ON ad.ref_id = td.id WHERE log10(td.value + 1) IS NOT NULL OR ad.comment IS NULL;
+SELECT id, value, log10(~(status + 1)) FROM test_data WHERE status IS NOT NULL HAVING log10(value) > ~0 AND value IS NOT NULL;
+DROP TABLE IF EXISTS additional_data;
+DROP TABLE IF EXISTS test_data;

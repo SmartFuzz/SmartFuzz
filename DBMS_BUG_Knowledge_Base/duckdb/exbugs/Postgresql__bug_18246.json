@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/18246-f4d9ff7cb3af77e6%40postgresql.org",
+  "title": "BUG #18246: pgstathashindex() attempts to read invalid file for hash index attached to partitioned table",
+  "description": "The following bug has been logged on the website:\nBug reference:      18246\nLogged by:          Alexander Lakhin\nEmail address:      exclusion(at)gmail(dot)com\nPostgreSQL version: 16.1\nOperating system:   Ubuntu 22.04\nDescription:\nThe following script:\nCREATE EXTENSION pgstattuple;\nCREATE TABLE t (a int, b int[], c int) PARTITION BY RANGE (a);\nCREATE INDEX a_idx ON t USING btree(a);\nCREATE INDEX b_idx ON t USING gin(b);\nCREATE INDEX c_idx ON t USING hash(c);\nSELECT pgstatindex('a_idx');\nSELECT pgstatginindex('b_idx');\nSELECT pgstathashindex('c_idx');\ngives an unexpected error for the hash index:\nERROR:  could not open file \"pg_tblspc/0/PG_16_202307071/0/0\": No such file\nor directory\nwhile for btree and hash indexes errors are more adequate:\nERROR:  relation \"a_idx\" is not a btree index\nERROR:  relation \"b_idx\" is not a GIN index\nReproduced on REL_12_STABLE .. master.\n(On master, thanks to commit 049ef3398, which added an Assert in smgr.c,\nthat assertion fails.)\nThis anomaly can be observed since 8b08f7d48 from 2018-01-19, but IMO the\nculprit is e759854a0 from 2017-02-03, which introduced the following\nasymmetry in pgstatindex.c:\nif (!IS_INDEX(rel) || !IS_BTREE(rel))\nif (!IS_INDEX(rel) || !IS_GIN(rel))\nBut:\nif (!IS_HASH(rel))",
+  "date": "2023-12-13 09:00:01",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE t (a INT NOT NULL, b ARRAY<INT>, c INT);",
+    "CREATE INDEX a_idx ON t (a);",
+    "CREATE INDEX b_idx ON t (b);",
+    "CREATE INDEX c_idx ON t (c);",
+    "SELECT * FROM t;"
+  ],
+  "key_bug_features": [
+    "pgstathashindex() reads invalid file for hash index"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+    "function": "quantileInterpolatedWeighted",
+    "operator": "a != b",
+    "sql_array": [
+        "CREATE TABLE test_data (id UInt32, val Float64, weight Float64, date Date) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_data VALUES (1, 10.0, 0.5, '2023-01-01'), (2, 20.5, 0.8, '2023-02-01'), (3, 30.25, 1.0, NULL), (4, 40.75, 0.0, '2023-03-01');",
+        "SELECT quantileInterpolatedWeighted(0.5)(val, weight) AS median_val FROM test_data WHERE date != NULL OR weight != 0.0 GROUP BY id HAVING median_val != 20.0;",
+        "SELECT id, quantileInterpolatedWeighted(0.9)(val, weight) AS quantile_val FROM (SELECT id, val, weight FROM test_data WHERE val != 25.0) WHERE quantile_val != 30.25 GROUP BY id;",
+        "SELECT quantileInterpolatedWeighted(0.25)(val, weight) FROM (SELECT val, weight FROM test_data WHERE weight != 0.0) WHERE id IN (SELECT id FROM test_data WHERE date IS NOT NULL);",
+        "CREATE TABLE temp_data AS SELECT *, quantileInterpolatedWeighted(0.75)(val, weight) AS upper_quantile_val FROM test_data WHERE weight IS NOT NULL;",
+        "INSERT INTO temp_data SELECT id, val, weight, date FROM test_data WHERE NOT date IS NULL;",
+        "SELECT id, val, weight, upper_quantile_val FROM temp_data WHERE upper_quantile_val != quantileInterpolatedWeighted(0.5)(val, weight) ORDER BY id;",
+        "SELECT quantileInterpolatedWeighted(0.99)(val, weight) AS extreme_quantile FROM (SELECT val, weight FROM test_data WHERE id != 3) WHERE weight IS NOT NULL;",
+        "SELECT id, quantileInterpolatedWeighted(0.5)(val, weight) FROM (SELECT val, weight, id FROM test_data ORDER BY weight) WHERE val != 15.5 GROUP BY id HAVING quantileInterpolatedWeighted(0.5)(val, weight) != NULL;"
+    ]
+}

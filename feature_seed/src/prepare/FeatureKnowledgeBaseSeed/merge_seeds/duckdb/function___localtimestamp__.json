@@ -1,0 +1,12 @@
+CREATE TABLE timestamps (id INT, event_time TIMESTAMP);
+INSERT INTO timestamps VALUES (1, localtimestamp), (2, localtimestamp - INTERVAL '1 hour'), (3, localtimestamp + INTERVAL '2 hours');
+SELECT id, event_time FROM timestamps WHERE event_time < localtimestamp;
+SELECT id, event_time FROM timestamps WHERE event_time BETWEEN localtimestamp - INTERVAL '3 hours' AND localtimestamp + INTERVAL '3 hours';
+SELECT id, event_time, (event_time AT TIME ZONE 'UTC') AS utc_time FROM timestamps WHERE event_time > localtimestamp - INTERVAL '1 day';
+CREATE TABLE events (event_id INT, event_timestamp TIMESTAMP);
+INSERT INTO events VALUES (1, localtimestamp), (2, localtimestamp - INTERVAL '12 hours'), (3, localtimestamp + INTERVAL '6 hours');
+SELECT e.event_id, e.event_timestamp, t.id, t.event_time FROM events e JOIN timestamps t ON e.event_timestamp > t.event_time WHERE t.event_time < localtimestamp;
+SELECT COUNT(*) FROM timestamps WHERE event_time > localtimestamp OR event_time IS NULL;
+SELECT *, localtimestamp - event_time AS time_difference FROM timestamps WHERE event_time IS NOT NULL ORDER BY time_difference DESC;
+WITH recent_events AS (SELECT event_id FROM events WHERE event_timestamp >= localtimestamp - INTERVAL '1 week') SELECT * FROM recent_events WHERE event_id IN (SELECT event_timestamp FROM timestamps);
+SELECT DISTINCT event_time FROM timestamps WHERE event_time > (SELECT MIN(event_time) FROM timestamps) AND event_time < (SELECT MAX(event_time) FROM timestamps);

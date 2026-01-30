@@ -1,0 +1,10 @@
+CREATE TABLE events (event_time DateTime, event_id Int32) ENGINE = MergeTree() ORDER BY event_time;
+INSERT INTO events VALUES (now() - INTERVAL '1' DAY, 1), (now() - INTERVAL '1' HOUR, 2), (now() - INTERVAL '2' HOUR, 3), (now(), 4);
+SELECT hop(event_time, INTERVAL '1' HOUR, INTERVAL '2' HOUR) FROM events;
+SELECT hop(event_time, INTERVAL '30' MINUTE, INTERVAL '1' HOUR) FROM events WHERE event_id IN (SELECT event_id FROM events WHERE event_id > 1);
+SELECT hop(event_time, INTERVAL '1' DAY, INTERVAL '1' DAY) AS window FROM (SELECT event_time, event_id FROM events WHERE event_time > now() - INTERVAL '2' DAY) AS subquery;
+SELECT e1.event_id, hop(e1.event_time, INTERVAL '1' DAY, INTERVAL '3' DAY) FROM events AS e1 JOIN events AS e2 ON e1.event_id = e2.event_id WHERE e1.event_time < e2.event_time;
+WITH (SELECT min(event_time) AS min_time, max(event_time) AS max_time FROM events) AS bounds SELECT hop(b.min_time, INTERVAL '12' HOUR, INTERVAL '1' DAY), hop(b.max_time, INTERVAL '30' MINUTE, INTERVAL '1' HOUR) FROM bounds;
+CREATE TABLE time_intervals (start_time DateTime, end_time DateTime) ENGINE = MergeTree() ORDER BY start_time;
+INSERT INTO time_intervals VALUES (now() - INTERVAL '1' DAY, now() - INTERVAL '1' HOUR), (now() - INTERVAL '1' HOUR, now()), (now() + INTERVAL '1' HOUR, now() + INTERVAL '2' HOUR);
+SELECT hop(start_time, INTERVAL '15' MINUTE, INTERVAL '30' MINUTE) FROM time_intervals WHERE end_time > now() - INTERVAL '1' DAY;

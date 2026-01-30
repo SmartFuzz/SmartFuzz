@@ -1,0 +1,33 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/6688",
+  "title": "Bug in subselect (or condition)",
+  "vulnerable_database": "monetdb",
+  "date": "2020-11-30T16:33:15Z",
+  "vulnerable_version": "Unknown",
+  "description": "",
+  "poc": [
+    "CREATE TABLE \"sys\".\"unitTestDontDelete\" (\r\n \t\"A\" VARCHAR(255),\r\n \t\"B\" BIGINT,\r\n \t\"C\" DOUBLE,\r\n \t\"D\" TIMESTAMP\r\n );",
+    "INSERT INTO \"sys\".\"unitTestDontDelete\" VALUES (NULL, NULL, NULL, NULL);",
+    "INSERT INTO \"sys\".\"unitTestDontDelete\" VALUES ('Cat1', 0, 0.5, '2013-06-10 11:10:10.000000');",
+    "INSERT INTO \"sys\".\"unitTestDontDelete\" VALUES ('Cat2', 1, 1.5, '2013-06-11 12:11:11.000000');",
+    "INSERT INTO \"sys\".\"unitTestDontDelete\" VALUES ('Cat1', 2, 2.5, '2013-06-12 13:12:12.000000');",
+    "INSERT INTO \"sys\".\"unitTestDontDelete\" VALUES ('Cat2', 3, 3.5, '2013-06-13 14:13:13.000000');",
+    "INSERT INTO \"sys\".\"unitTestDontDelete\" VALUES ('Cat1', 4, 4.5, '2013-06-14 15:14:14.000000');",
+    "INSERT INTO \"sys\".\"unitTestDontDelete\" VALUES ('Cat2', 5, 5.5, '2013-06-15 16:15:15.000000');",
+    "INSERT INTO \"sys\".\"unitTestDontDelete\" VALUES ('Cat1', 6, 6.5, '2013-06-16 17:16:16.000000');",
+    "INSERT INTO \"sys\".\"unitTestDontDelete\" VALUES ('Cat2', 7, 7.5, '2013-06-17 18:17:17.000000');",
+    "INSERT INTO \"sys\".\"unitTestDontDelete\" VALUES ('Cat1', 8, 8.5, '2013-06-18 19:18:18.000000');",
+    "with \"cp_t\" as\r\n (\r\n   select\r\n     \"cn_t\".\"A\",\r\n     \"cn_t\".\"B\",\r\n     \"cn_t\".\"C\",\r\n     \"cn_t\".\"D\"\r\n   from\r\n     \"unitTestDontDelete\" as \"cn_t\"\r\n   where\r\n     (\r\n       \"B\" is null\r\n       or \"B\"   <> 8\r\n     )\r\n )\r\n select\r\n   (\r\n     select\r\n       coalesce(sum(\"B\"), 0)\r\n     from\r\n       \"cp_t\" as \"cr_t\"\r\n     where\r\n       (\r\n         \"cr_t\".\"C\" >=\r\n         (\r\n           select\r\n             coalesce(MEDIAN(\"B\"),0)\r\n           from\r\n             \"cp_t\" as \"cq_t\"\r\n           where\r\n             (\r\n               \"cq_t\".\"A\" = \"cp_t\".\"A\"\r\n               or\r\n               (\r\n                 \"cq_t\".\"A\"     is null\r\n                 and \"cp_t\".\"A\" is null\r\n               )\r\n             )\r\n         )\r\n         or\r\n         (\r\n           \"cr_t\".\"C\" is null\r\n           and\r\n           (\r\n             select\r\n               coalesce(MEDIAN(\"B\"),0)\r\n             from\r\n               \"cp_t\" as \"cq_t\"\r\n             where\r\n               (\r\n                 \"cq_t\".\"A\" = \"cp_t\".\"A\"\r\n                 or\r\n                 (\r\n                   \"cq_t\".\"A\"     is null\r\n                   and \"cp_t\".\"A\" is null\r\n                 )\r\n               )\r\n           )\r\n           is null\r\n         )\r\n       )\r\n   )\r\n   as \"co_f1\"\r\n from\r\n   \"cp_t\";",
+    "with \"cp_t\" as\r\n (\r\n   select\r\n     \"cn_t\".\"A\",\r\n     \"cn_t\".\"B\",\r\n     \"cn_t\".\"C\",\r\n     \"cn_t\".\"D\"\r\n   from\r\n     \"unitTestDontDelete\" as \"cn_t\"\r\n   where\r\n     (\r\n       \"B\" is null\r\n       or \"B\"   <> 8\r\n     )\r\n )\r\n select\r\n   (\r\n     select\r\n       coalesce(sum(\"B\"), 0)\r\n     from\r\n       \"cp_t\" as \"cr_t\"\r\n     where\r\n       (\r\n         \"cr_t\".\"C\" >=\r\n         (\r\n           select\r\n             coalesce(MEDIAN(\"B\"),0) \r\n           from\r\n             \"cp_t\" as \"cq_t\"\r\n           where\r\n             (\r\n               \"cq_t\".\"A\" = \"cp_t\".\"A\"\r\n               or\r\n               (\r\n                 \"cq_t\".\"A\"     is null\r\n                 and \"cp_t\".\"A\" is null\r\n               )\r\n             )\r\n         )\r\n       )\r\n   )\r\n   as \"co_f1\"\r\n from\r\n   \"cp_t\";"
+  ],
+  "key_bug_features": [
+    "Subselect with null or condition on column B"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE \"sys\".\"unitTestFuzz\" (\r\n \t\"X\" VARCHAR(100) NOT NULL,\r\n \t\"Y\" INT,\r\n \t\"Z\" FLOAT,\r\n \t\"W\" DATE DEFAULT NULL\r\n );",
+    "INSERT INTO \"sys\".\"unitTestFuzz\" VALUES ('Test1', NULL, 1.1, '2023-01-01');",
+    "INSERT INTO \"sys\".\"unitTestFuzz\" VALUES ('Test2', 5, NULL, NULL);",
+    "INSERT INTO \"sys\".\"unitTestFuzz\" VALUES (NULL, 10, 2.2, '2023-01-02');",
+    "SELECT * FROM \"unitTestFuzz\" WHERE \"Y\" IS NULL OR \"Z\" > (SELECT AVG(\"Z\") FROM \"unitTestFuzz\" WHERE \"W\" IS NOT NULL);"
+  ]
+}

@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id Int32, value String, created_at DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_data VALUES (1, 'row_1'), (2, 'row_2'), (3, 'row_3');
+SELECT formatRow('CSV', id, formatRow('CustomSeparated', value, 'suffix')) FROM test_data WHERE created_at > now() - INTERVAL 2 DAY;
+SELECT id, value, formatRow('CSV', id, value) AS formatted_output FROM (SELECT id, value FROM test_data WHERE id > 0) AS subquery GROUP BY id, value HAVING formatted_output IS NOT NULL;
+SELECT formatRow('CSV', id, 'New Value', created_at + INTERVAL CAST(value AS Int32) DAY) AS formatted_result FROM test_data WHERE value != '' ORDER BY created_at;
+SELECT t.id, formatRow('CSV', t.value, IFNULL(t.created_at, toDateTime('2000-01-01 00:00:00'))) AS formatted_value FROM test_data t JOIN (SELECT id FROM test_data WHERE id < 3) AS subquery ON t.id = subquery.id;
+SELECT id, formatRow('CSV', id, created_at + INTERVAL 1 HOUR) AS timestamp_increment FROM test_data WHERE created_at IS NOT NULL ORDER BY timestamp_increment;
+SELECT formatRow('CSV', id, value, created_at + INTERVAL '3 hours') AS new_format FROM test_data WHERE value LIKE 'row_%' AND id IN (SELECT id FROM test_data WHERE id > 1);
+SELECT t1.id, formatRow('CSV', t1.value, t2.value) AS combined_output FROM test_data t1 JOIN test_data t2 ON t1.id < t2.id WHERE NOT(t1.value IS NULL) GROUP BY combined_output HAVING combined_output LIKE '%row_%';
+SELECT formatRow('CSV', id, IFNULL(value, 'default_value'), created_at + INTERVAL 5 SECOND) AS test_combined FROM (SELECT id, value, toDateTime('2023-01-01 00:00:00') AS created_at FROM test_data) AS inner_query;

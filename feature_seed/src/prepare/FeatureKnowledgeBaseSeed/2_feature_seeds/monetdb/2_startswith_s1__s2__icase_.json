@@ -1,0 +1,11 @@
+CREATE TABLE test_strings (id INT PRIMARY KEY, str_value VARCHAR(255), datetime_value TIMESTAMP);
+INSERT INTO test_strings VALUES (1, 'example_string', TIMESTAMP '2023-01-01 00:00:00'), (2, NULL, TIMESTAMP '2023-01-01 01:00:00'), (3, '', TIMESTAMP '2023-01-01 02:00:00');
+SELECT id, startswith(str_value, 'ex', true) AS starts_with_ex, datetime_value + (INTERVAL '1' SECOND * 30) AS updated_time FROM test_strings WHERE datetime_value IS NOT NULL;
+CREATE TABLE test_dates (date_id INT PRIMARY KEY, event_date DATE);
+INSERT INTO test_dates VALUES (1, DATE '2023-01-01'), (2, DATE '2024-02-29'), (3, NULL);
+SELECT td.date_id, td.event_date, (SELECT COUNT(*) FROM test_strings WHERE startswith(str_value, 'ex', true)) AS count_ex FROM test_dates td WHERE (td.event_date + (INTERVAL '1' DAY * (7 * 24))) > CURRENT_DATE;
+SELECT ts.id, ts.str_value, (SELECT COUNT(*) FROM test_dates WHERE event_date IS NOT NULL) AS event_count FROM test_strings ts WHERE str_value IS NOT NULL AND datetime_value IS NOT NULL ORDER BY updated_time DESC;
+CREATE TABLE test_complex (cid INT PRIMARY KEY, c_value VARCHAR(100), c_date DATE);
+INSERT INTO test_complex VALUES (1, 'a', DATE '2023-01-01'), (2, 'b', DATE '2023-01-02'), (3, 'c', DATE NULL);
+SELECT cc.cid, cc.c_value, CASE WHEN startswith(cc.c_value, 'a', false) THEN cc.c_date + (INTERVAL '1' MONTH) ELSE NULL END AS adjusted_date FROM test_complex cc WHERE cc.c_value IS NOT NULL HAVING adjusted_date IS NOT NULL;
+SELECT ts.str_value, count(*) AS total_count FROM test_strings ts JOIN test_dates td ON ts.datetime_value IS NOT NULL AND td.event_date IS NOT NULL GROUP BY ts.str_value HAVING startswith(ts.str_value, '', true) IS NULL;

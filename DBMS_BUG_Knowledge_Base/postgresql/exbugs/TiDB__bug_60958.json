@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/60958",
+  "title": "Unexpected Result for NATURAL JOIN in TiFlash",
+  "description": "## Bug Report\n\n### 1. Minimal reproduce step (Required)\n\n```sql\nCREATE TABLE t0(c0 DECIMAL ZEROFILL);\nCREATE TABLE t1 (c0 BLOB);\nINSERT IGNORE INTO t0 VALUES(-1749300172);\nINSERT INTO t1 VALUES('aa'), ('-0.0');\nALTER TABLE t0 SET TIFLASH REPLICA 1;\nALTER TABLE t1 SET TIFLASH REPLICA 1;\nSELECT COUNT(*) FROM t1 NATURAL JOIN t0; -- {1}\n```\nThis query should return {2} if we execute the query immediately after `ALTER` statements.\nHowever, if we wait until the tables `t0` and `t1` are copied into TIFLASH (5 seconds in my machine) and then execute the query, it returns {1}.\n\n### 2. What did you expect to see? (Required)\n{2}\n\n### 3. What did you see instead (Required)\n{1}\n\n### 4. What is your TiDB version? (Required)\n\n`tiup playground nightly --host 0.0.0.0 --kv 3 --tiflash 3`\n```bash\n8.0.11-TiDB-v9.0.0-beta.1.pre-554-gb1a5536a64-dirty\n```\n\n\n",
+  "date": "2025-05-01T15:17:36Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2(c1 INT NOT NULL, c2 VARCHAR(255));",
+    "CREATE TABLE t3(c1 FLOAT, c2 DATE DEFAULT NULL);",
+    "INSERT INTO t2 VALUES(1, 'test'), (2, NULL), (3, 'example');",
+    "INSERT INTO t3 VALUES(1.5, '2023-01-01'), (NULL, NULL), (2.5, '2023-01-02');",
+    "SELECT COUNT(*) FROM t2 NATURAL JOIN t3;"
+  ],
+  "key_bug_features": [
+    "NATURAL JOIN behavior after TIFLASH replication delay"
+  ]
+}

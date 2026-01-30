@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id UInt32, name String, value Float64, created_at DateTime DEFAULT now());
+INSERT INTO test_data (id, name, value) VALUES (1, 'Alice', 23.5), (2, 'Bob', NULL), (3, '', 15.0), (4, 'Charlie', 0.0);
+SELECT uniqExact(name) FROM test_data WHERE id NOT IN (SELECT id FROM test_data WHERE value IS NULL);
+SELECT id, uniqExact(value) FROM test_data GROUP BY id HAVING id NOT IN (SELECT id FROM test_data WHERE name = '');
+SELECT id, uniqExact(IF(value > 20, 'High', 'Low')) FROM test_data GROUP BY id HAVING id NOT IN (SELECT id FROM test_data WHERE value = 0.0);
+SELECT name FROM test_data WHERE value NOT IN (SELECT uniqExact(value) FROM test_data) ORDER BY created_at;
+WITH (SELECT uniqExact(value) AS total_values FROM test_data) AS agg_data SELECT id, name FROM test_data WHERE id NOT IN (SELECT id FROM test_data WHERE total_values < 2);
+SELECT id, uniqExact(name) FROM test_data GROUP BY id HAVING id NOT IN (SELECT id FROM test_data WHERE created_at IS NULL);
+SELECT id, uniqExact(value) FROM test_data WHERE created_at BETWEEN '2023-01-01' AND NOW() AND id NOT IN (1, 2);
+CREATE TABLE temp_data AS SELECT * FROM test_data WHERE name NOT IN ('Alice', 'Bob') ENGINE = MergeTree() ORDER BY id;

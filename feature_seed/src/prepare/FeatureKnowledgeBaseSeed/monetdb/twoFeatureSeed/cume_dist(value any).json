@@ -1,0 +1,18 @@
+{
+    "function": "cume_dist(value any)",
+    "operator": "=",
+    "sql_array": [
+        "CREATE TABLE test_data (id INT PRIMARY KEY, value DOUBLE, partition_key INT);",
+        "INSERT INTO test_data (id, value, partition_key) VALUES (1, 10.0, 1), (2, 20.0, 1), (3, 30.0, 2), (4, NULL, 2), (5, 60.0, 3);",
+        "SELECT id, value, cume_dist(value) OVER (PARTITION BY partition_key ORDER BY value) AS cum_dist FROM test_data WHERE cume_dist(value) = 0.5;",
+        "SELECT t1.id, t1.value, t1.partition_key FROM test_data AS t1 JOIN test_data AS t2 ON t1.partition_key = t2.partition_key AND t1.value = t2.value WHERE t1.id <> t2.id;",
+        "SELECT id, value, cume_dist(value) OVER (ORDER BY value) AS cum_dist FROM (SELECT * FROM test_data WHERE value IS NOT NULL) AS subquery;",
+        "SELECT t1.id, t1.value, cume_dist(t1.value) OVER (PARTITION BY t1.partition_key ORDER BY t1.value) AS cum_dist FROM test_data t1 JOIN (SELECT DISTINCT partition_key FROM test_data) t2 ON t1.partition_key = t2.partition_key HAVING cum_dist > 0.3333;",
+        "SELECT COUNT(*) FROM test_data WHERE value IS NOT NULL AND (value = 10.0 OR value = 20.0);",
+        "SELECT t1.id, t1.value, cume_dist(t1.value) OVER (PARTITION BY t1.partition_key ORDER BY t1.value) FROM (SELECT id, value, partition_key FROM test_data WHERE partition_key IN (SELECT DISTINCT partition_key FROM test_data WHERE value > 25.0)) AS t1 WHERE t1.value = (SELECT MAX(value) FROM test_data);",
+        "SELECT NULLIF(cume_dist(value), 0) AS adjusted_cum_dist FROM test_data WHERE partition_key = 1;",
+        "CREATE TABLE temp_data (id INT PRIMARY KEY, value DOUBLE, updated_time TIMESTAMP);",
+        "INSERT INTO temp_data (id, value, updated_time) VALUES (1, 5.5, NOW()), (2, 15.5, NOW()), (3, NULL, NOW());",
+        "SELECT t1.id, t1.value, COALESCE(cume_dist(t1.value) OVER (PARTITION BY t1.updated_time ORDER BY t1.value), 0) AS cum_dist FROM temp_data t1 WHERE t1.value IS NOT NULL AND t1.id IN (SELECT id FROM test_data WHERE value > 25.0);"
+    ]
+}

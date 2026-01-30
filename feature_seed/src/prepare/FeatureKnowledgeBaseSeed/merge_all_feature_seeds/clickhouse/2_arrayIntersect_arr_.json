@@ -1,0 +1,15 @@
+CREATE TABLE test_array_intersect (id Int32, arr Array(Int32)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_array_intersect VALUES (1, [1, 2]), (2, [2, 3]), (3, [3, 4]), (4, [1, 3]), (5, [2, 4, 5]);
+SELECT arrayIntersect(arr, [1, 2, 3]) AS intersected_arr FROM test_array_intersect WHERE arrayIntersect(arr, [1, 2, 3]) > [0];
+SELECT id, arrayIntersect(arr, [1, 2, 3]) AS intersected_arr FROM test_array_intersect WHERE intersected_arr < [3];
+SELECT id, arrayIntersect(arr, [1, 5]) AS intersected_arr FROM (SELECT id, arrayIntersect(arr, [1, 2, 3, NULL]) AS arr FROM test_array_intersect) AS sub WHERE intersected_arr < [1] AND intersected_arr IS NOT NULL;
+SELECT id FROM test_array_intersect WHERE arrayIntersect(arr, [1, 2]) < [2] HAVING COUNT(arr) > 1;
+CREATE TABLE test_empty (id Int32, arr Array(String)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_empty VALUES (1, ['a', 'b']), (2, []), (3, ['b', 'c']);
+SELECT arrayIntersect(arr, ['a']) AS intersected FROM test_empty WHERE intersected < ['z'];
+SELECT arrayIntersect(arr, ['a', 'b']) AS intersected FROM (SELECT id, arr FROM test_empty WHERE id > 0) AS sub WHERE intersected IS NOT NULL;
+CREATE TEMPORARY TABLE temp_test (id Int32, arr Array(Int32)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO temp_test VALUES (1, [1, 2, 3]), (2, [2, 3]), (3, [3, 4, NULL]);
+SELECT arrayIntersect(arr, [1, 2]) AS intersected_arr FROM temp_test WHERE id < 3 AND arrayIntersect(arr, [1, NULL]) IS NOT NULL;
+SELECT id, arrayIntersect(arr, [2, 3, 4]) AS intersected_arr FROM temp_test WHERE arrayIntersect(arr, intersected_arr) < [5] ORDER BY id DESC;
+SELECT arrayIntersect(arr, [1]) AS intersected_arr FROM test_empty GROUP BY id HAVING intersected_arr < ['b'];

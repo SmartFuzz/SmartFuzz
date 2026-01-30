@@ -1,0 +1,18 @@
+{
+    "function": "uniqUpTo(N)(x)",
+    "operator": "INTERVAL",
+    "sql_array": [
+        "CREATE TABLE SearchLog (UserID UInt32, SearchPhrase String, Timestamp DateTime) ENGINE = MergeTree() ORDER BY Timestamp;",
+        "INSERT INTO SearchLog VALUES (1, 'apple', now() - INTERVAL 1 DAY), (2, 'banana', now() - INTERVAL 2 DAY), (3, 'apple', now() - INTERVAL 3 DAY), (4, 'orange', now() - INTERVAL 4 DAY), (5, 'banana', now() - INTERVAL 5 DAY), (6, 'grape', now() - INTERVAL 10 DAY);",
+        "SELECT SearchPhrase, uniqUpTo(5)(UserID) AS unique_users FROM SearchLog GROUP BY SearchPhrase HAVING uniqUpTo(5)(UserID) > 2;",
+        "SELECT SearchPhrase FROM (SELECT SearchPhrase, uniqUpTo(3)(UserID) AS unique_count FROM SearchLog WHERE Timestamp > now() - INTERVAL 7 DAY GROUP BY SearchPhrase) AS subquery WHERE unique_count < 4;",
+        "SELECT UserID, SearchPhrase, Timestamp, uniqUpTo(10)(Timestamp) FROM SearchLog WHERE Timestamp < (now() - INTERVAL 2 DAY) GROUP BY UserID, SearchPhrase HAVING uniqUpTo(10)(Timestamp) >= 3;",
+        "SELECT SearchPhrase, COUNT(*) AS count_users FROM (SELECT DISTINCT UserID, SearchPhrase FROM SearchLog) AS distinct_users GROUP BY SearchPhrase HAVING count_users > uniqUpTo(5)(UserID) AND count_users < 100;",
+        "SELECT UserID, SearchPhrase FROM SearchLog JOIN (SELECT SearchPhrase, COUNT(*) AS count FROM SearchLog GROUP BY SearchPhrase HAVING uniqUpTo(2)(UserID) > 1) AS frequent_phrases ON SearchLog.SearchPhrase = frequent_phrases.SearchPhrase WHERE SearchLog.Timestamp > now() - INTERVAL 30 DAY;",
+        "SELECT SearchPhrase, uniqUpTo(10)(UserID) AS unique_count, (now() - MIN(Timestamp)) AS age FROM SearchLog GROUP BY SearchPhrase HAVING unique_count >= 3 AND age < INTERVAL 1 MONTH;",
+        "SELECT SearchPhrase, COUNT(*) FROM SearchLog WHERE UserID IN (SELECT UserID FROM SearchLog WHERE SearchPhrase = 'banana') GROUP BY SearchPhrase HAVING COUNT(*) > uniqUpTo(5)(UserID);",
+        "CREATE TABLE TempLog AS SELECT * FROM SearchLog WHERE Timestamp > now() - INTERVAL 10 DAY;",
+        "INSERT INTO TempLog SELECT UserID, SearchPhrase, Timestamp FROM SearchLog WHERE uniqUpTo(4)(UserID) = 5;",
+        "SELECT SearchPhrase, INTERVAL COUNT(UserID) DAY AS user_interval FROM SearchLog GROUP BY SearchPhrase HAVING uniqUpTo(5)(UserID) > 1;"
+    ]
+}

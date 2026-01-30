@@ -1,0 +1,19 @@
+[
+    "CREATE TABLE trace_data (ptr UInt64, size UInt64) ENGINE = MergeTree() ORDER BY ptr;",
+    "INSERT INTO trace_data VALUES (1, 100), (2, -50), (3, 200), (0, 150);",
+    "SELECT ptr, sum(size) as total_allocations FROM trace_data WHERE ptr != 0 GROUP BY ptr HAVING total_allocations > 0;",
+    "CREATE TABLE allocation_summary AS SELECT ptr, sum(size) as total_size FROM trace_data GROUP BY ptr WITH DATA;",
+    "SELECT ptr, total_size FROM allocation_summary WHERE total_size > 0 UNION ALL SELECT ptr, total_size FROM allocation_summary WHERE total_size < 0;",
+    "CREATE TABLE other_data (ptr UInt64, value String) ENGINE = MergeTree() ORDER BY ptr;",
+    "INSERT INTO other_data VALUES (1, 'memory leak'), (2, 'optimized allocation'), (3, 'gc') ON DUPLICATE KEY UPDATE value = 'updated';",
+    "SELECT a.ptr, a.total_size, b.value FROM allocation_summary a JOIN other_data b ON a.ptr = b.ptr WHERE a.total_size > 0;",
+    "WITH (SELECT ptr, sum(size) as alloc_size FROM trace_data WHERE size > 0 GROUP BY ptr) AS allocation_data AS SELECT a.ptr, alloc_size, b.value FROM allocation_data a LEFT JOIN other_data b ON a.ptr = b.ptr;",
+    "CREATE TABLE complex_allocations AS SELECT ptr, size FROM trace_data WHERE size > 0 HAVING ptr IS NOT NULL WITH DATA;",
+    "SELECT ptr, size FROM complex_allocations WHERE ptr > 0 ORDER BY size DESC LIMIT 10;",
+    "INSERT INTO trace_data SELECT ptr, size FROM complex_allocations WHERE size < 0;",
+    "SELECT ptr, count() FROM trace_data GROUP BY ptr HAVING count() > 1 ORDER BY count() DESC;",
+    "CREATE TABLE filtered_traces ENGINE = MergeTree() ORDER BY ptr AS SELECT * FROM trace_data WHERE size = 0;",
+    "SELECT b.ptr, count() FROM filtered_traces a INNER JOIN trace_data b ON a.ptr = b.ptr GROUP BY b.ptr HAVING count() > 0;",
+    "DROP TABLE IF EXISTS old_trace_data;",
+    "CREATE TABLE old_trace_data AS SELECT * FROM trace_data WHERE ptr < 10;"
+]

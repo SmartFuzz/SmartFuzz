@@ -1,0 +1,17 @@
+{
+    "function": "grouping()",
+    "operator": "-",
+    "sql_array": [
+        "CREATE TABLE test_data (id INTEGER, val_date DATE, val_interval INTERVAL, group_col VARCHAR(10));",
+        "INSERT INTO test_data VALUES (1, DATE '2023-01-01', INTERVAL '10 days', 'A'), (2, DATE '2023-01-05', INTERVAL '15 days', 'B'), (3, NULL, INTERVAL '5 days', 'A');",
+        "SELECT grouping() AS grp_indicator, val_date - val_interval AS adjusted_date FROM test_data GROUP BY val_date, group_col WITH ROLLUP;",
+        "SELECT id, val_date, grouping() AS grp_val FROM (SELECT val_date, group_col, COUNT(id) AS cnt FROM test_data GROUP BY val_date, group_col HAVING COUNT(id) > 0) AS grouped_data WHERE not(val_date IS NULL) ORDER BY adjusted_date DESC;",
+        "WITH date_adjust AS (SELECT val_date - INTERVAL '7 days' AS new_date, group_col FROM test_data WHERE val_date IS NOT NULL) SELECT group_col, COUNT(*) AS total, GROUPING(group_col) FROM date_adjust GROUP BY group_col WITH ROLLUP HAVING COUNT(*) > 1;",
+        "SELECT d.days, DATE '1990-05-15' - INTERVAL (d.days) DAY AS subtracted_date FROM (VALUES (3), (6), (NULL)) AS d(days) WHERE d.days IS NOT NULL ORDER BY subtracted_date;",
+        "CREATE TABLE agg_test (group_id INTEGER, start_date DATE, end_date DATE);",
+        "INSERT INTO agg_test VALUES (1, DATE '2022-12-01', DATE '2022-12-31'), (2, DATE '2023-01-01', DATE '2023-01-15'), (3, NULL, NULL);",
+        "SELECT group_id, COUNT(*) AS total_days, grouping() OVER (PARTITION BY group_id) FROM (SELECT group_id, (end_date - start_date) AS duration FROM agg_test) AS duration_data GROUP BY group_id HAVING COUNT(*) > 0;",
+        "CREATE TEMPORARY TABLE temp_table AS SELECT group_col, COUNT(*) AS cnt FROM test_data WHERE val_date IS NOT NULL GROUP BY group_col;",
+        "SELECT a.group_col, a.cnt, GROUPING(a.group_col) AS grp_flag FROM temp_table a WHERE a.cnt > 1 ORDER BY grp_flag, a.group_col DESC;"
+    ]
+}

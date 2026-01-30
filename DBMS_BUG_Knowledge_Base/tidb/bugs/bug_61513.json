@@ -1,0 +1,49 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/61513",
+  "title": "wrongly skip plan cache with predicate simplification",
+  "vulnerable_database": "tidb",
+  "date": "2025-06-05T06:07:07Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n```\nCREATE TABLE t1 (\npk INTEGER PRIMARY KEY,\ncol_time TIME DEFAULT NULL,\ncol_varchar VARCHAR(1) DEFAULT NULL,\nKEY (col_varchar)\n);\nINSERT INTO t1 VALUES(5, '11:03:56', 'I');\nPREPARE st FROM\n\"SELECT * FROM t1\nWHERE pk = 5 AND (col_time, col_varchar) IN ((23, 'Y'), (92, 'W'))\";\nEXECUTE st;\n```\n\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\n\nNo warnings\n### 3. What did you see instead (Required)\n\n```\nLevel\tCode\tMessage\nWarning\t1105\tskip prepared plan-cache: True/False predicate simplification is triggered\n```\n\n### 4. What is your TiDB version? (Required)\n\nac812cac18d6391a98bbffb0af5dfd165bc74a89\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "poc": [
+    "CREATE TABLE t1 (",
+    "pk INTEGER PRIMARY KEY,",
+    "col_time TIME DEFAULT NULL,",
+    "col_varchar VARCHAR(1) DEFAULT NULL,",
+    "KEY (col_varchar)",
+    ");",
+    "INSERT INTO t1 VALUES(5, '11:03:56', 'I');",
+    "PREPARE st FROM",
+    "\"SELECT * FROM t1",
+    "WHERE pk = 5 AND (col_time, col_varchar) IN ((23, 'Y'), (92, 'W'))\";",
+    "EXECUTE st;"
+  ],
+  "poc_type": "sql_text",
+  "state": "closed",
+  "key_bug_features": [
+    "predicate simplification skips prepared plan-cache"
+  ],
+  "bug_feature_seed": [
+  "SET GLOBAL tidb_enable_instance_plan_cache = 1;",
+  "DROP TABLE IF EXISTS t1;",
+  "CREATE TABLE t1 (pk INTEGER PRIMARY KEY, col_time TIME DEFAULT NULL, col_varchar VARCHAR(1) DEFAULT NULL, KEY (col_varchar));",
+  "INSERT INTO t1 VALUES (5, '11:03:56', 'I');",
+  "INSERT INTO t1 VALUES (6, '00:00:00', NULL);",
+  "PREPARE st1 FROM \"SELECT * FROM t1 WHERE pk = 5 AND (col_time, col_varchar) IN ((23, 'Y'), (92, 'W'))\";",
+  "EXECUTE st1;",
+  "DEALLOCATE PREPARE st1;",
+  "PREPARE st2 FROM \"SELECT * FROM t1 WHERE pk = ? AND (col_time, col_varchar) IN ((23, 'Y'), (92, 'W'))\";",
+  "SET @p = 5;",
+  "EXECUTE st2 USING @p;",
+  "SET @p = 6;",
+  "EXECUTE st2 USING @p;",
+  "DEALLOCATE PREPARE st2;",
+  "PREPARE st3 FROM \"SELECT * FROM t1 WHERE pk = 5 AND (col_time, col_varchar) IN ((NULL, 'I'), ('11:03:56', 'I'))\";",
+  "EXECUTE st3;",
+  "PREPARE st4 FROM \"SELECT * FROM t1 WHERE pk = 5 AND (col_time, col_varchar) IN ((23, 'Y'), (92, 'W')) AND TRUE\";",
+  "EXECUTE st4;",
+  "PREPARE st5 FROM \"SELECT * FROM t1 WHERE pk = 5 AND ((col_time, col_varchar) IN ((23, 'Y'), (92, 'W')) OR FALSE)\";",
+  "EXECUTE st5;"
+]
+
+}

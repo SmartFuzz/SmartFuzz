@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/a7b7803e8d",
+  "title": "crash when filtering twice by same predicate using aliases",
+  "description": "nobody added on 2012-12-19 15:01:05:\nTry the following:\ncreate table name (\n   type integer,\n   path text primary key);\n\n select (name.type = 0) as container from Name name where name.type = 0 or    container order by name.path\n---\nThe select statement crashes during query preparation.\n[7b96115e81deab0aa0472839cf787ba3f2fc64a7]\nchar sqlite3ExprAffinity(Expr *pExpr){\n    int op;\n    pExpr = sqlite3ExprSkipCollate(pExpr);\n    int op = pExpr->op;                               \n    op = pExpr->op;\n    ...\nlast line crashes because sqlite3ExprSkipCollate returns null.\nnobody added on 2012-12-19 15:13:42:\npExpr is already NULL from caller 'exprAnalyzeOrTerm' -> affRight = sqlite3ExprAffinity(pOrTerm->pExpr->pRight);\ndrh added on 2012-12-19 15:16:52:\nBisecting shows that the bug was introduced by the refactoring of COLLATE at\ncheck-in [8542e6180d4321d45b], just a few days prior to the release of\nversion 3.7.15, and needed to address bug [71e333e7d2e642afc96d2].\nSo, we fixed one bug but in the process introduced another....",
+  "date": "2012-12-19 15:01:0512.64 years ago",
+  "vulnerable_version": "3.7.15",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id SERIAL PRIMARY KEY, value TEXT, status INTEGER DEFAULT 0);",
+    "INSERT INTO test_table (value, status) VALUES ('test1', 1);",
+    "INSERT INTO test_table (value, status) VALUES ('test2', NULL);",
+    "SELECT (test_table.status = 1) AS is_active FROM test_table WHERE test_table.status = 1 OR (test_table.status = 1) ORDER BY test_table.value;",
+    "SELECT (test_table.value IS NULL) AS is_null FROM test_table WHERE (test_table.value IS NULL) OR test_table.value = 'test1' ORDER BY test_table.id;"
+  ],
+  "key_bug_features": [
+    "crash when filtering twice by same predicate using aliases"
+  ]
+}

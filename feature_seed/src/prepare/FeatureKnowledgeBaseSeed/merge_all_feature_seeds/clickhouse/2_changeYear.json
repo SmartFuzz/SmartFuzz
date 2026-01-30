@@ -1,0 +1,11 @@
+CREATE TABLE fuzz_test (id UInt32, event_date Date, year_value Int32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO fuzz_test VALUES (1, toDate('2023-01-01'), 1999), (2, toDate('2023-02-01'), NULL), (3, toDate('2023-03-01'), 3000), (4, toDate('2023-04-01'), -1);
+SELECT id, changeYear(event_date, IF(year_value >= 2000, year_value, 2000)) AS modified_date FROM fuzz_test WHERE (year_value IS NULL OR year_value > 0) GROUP BY id, modified_date HAVING modified_date >= toDate('2000-01-01') ORDER BY modified_date;
+CREATE TABLE test_join (event_id UInt32, data_date DateTime, detail_value Float64) ENGINE = MergeTree() ORDER BY event_id;
+INSERT INTO test_join VALUES (1, toDateTime('2022-01-01 10:00:00'), 123.456), (2, toDateTime('2021-01-01 10:00:00'), NULL), (3, toDateTime('2020-01-01 10:00:00'), 456.789), (4, toDateTime('2023-01-01 10:00:00'), 0);
+SELECT a.id, changeYear(a.event_date, IFNULL(b.detail_value, 0)) AS updated_year FROM fuzz_test AS a JOIN test_join AS b ON a.id = b.event_id WHERE b.data_date >= changeYear(toDate('2023-01-01'), 2020) ORDER BY updated_year DESC;
+SELECT id, changeYear(event_date, (year_value >= 2000) + 1998) AS change_year_expr FROM fuzz_test WHERE (year_value IS NOT NULL OR event_date >= toDate('2022-01-01')) ORDER BY change_year_expr;
+CREATE TABLE edge_cases (case_id UInt32, nullable_date Date, extreme_value Int64) ENGINE = MergeTree() ORDER BY case_id;
+INSERT INTO edge_cases VALUES (1, NULL, 9223372036854775807), (2, toDate('1700-01-01'), -9223372036854775807), (3, toDate('2021-12-31'), 0);
+SELECT case_id, changeYear(COALESCE(nullable_date, toDate('2000-01-01')), extreme_value) FROM edge_cases WHERE extreme_value < 0 ORDER BY case_id;
+SELECT id, COUNT(*) AS occurrences FROM fuzz_test GROUP BY changeYear(event_date, year_value) HAVING occurrences >= 1;

@@ -1,0 +1,17 @@
+{
+    "function": "prod(numeric_expr)",
+    "operator": ">>",
+    "sql_array": [
+        "CREATE TABLE fuzz_test (id SERIAL PRIMARY KEY, value1 BIGINT, value2 DOUBLE, text_val TEXT, num_val NUMERIC);",
+        "INSERT INTO fuzz_test (value1, value2, text_val, num_val) VALUES (2147483647, 1234567890.123456789, 'test', 999999999999.999999999), (1, NULL, 'example', NULL), (0, 0.0, '', 0);",
+        "SELECT id, prod(value1 >> 1) AS shifted_product FROM fuzz_test WHERE text_val IS NULL OR NULLIF(text_val, '') IS NOT NULL GROUP BY id;",
+        "SELECT id, prod(COALESCE(value1, 0) >> (CASE WHEN value2 IS NULL THEN 1 ELSE 2 END)) AS shifted_product FROM fuzz_test WHERE prod(value1) > 0 HAVING shifted_product < 1000000;",
+        "WITH recursive value_calc AS (SELECT id, prod(value1) AS product_value FROM fuzz_test WHERE value1 IS NOT NULL GROUP BY id) SELECT id, product_value, prod(product_value >> 2) FROM value_calc WHERE product_value > 100;",
+        "SELECT f1.id, prod(f1.value1 >> f2.value2) AS complex_shift FROM fuzz_test f1 JOIN fuzz_test f2 ON f1.id != f2.id WHERE f1.value2 IS NOT NULL AND f2.value2 IS NOT NULL GROUP BY f1.id, f2.value2 HAVING complex_shift IS NULL OR complex_shift < 500000;",
+        "SELECT id, value1, prod(value1 + 1.0) AS product_in_float FROM fuzz_test WHERE value1 BETWEEN -2147483648 AND 2147483647;",
+        "CREATE TABLE another_test (row_id SERIAL PRIMARY KEY, num_col NUMERIC(10, 5), dec_col DOUBLE PRECISION, group_id INTEGER);",
+        "INSERT INTO another_test (num_col, dec_col, group_id) VALUES (99999.99999, 123.456789, 1), (NULL, 0.0, 2);",
+        "SELECT at.row_id, prod(at.num_col >> 3) FROM another_test at WHERE at.num_col IS NOT NULL GROUP BY at.group_id HAVING prod(at.num_col) >= 1000;",
+        "DROP TABLE IF EXISTS fuzz_test, another_test;"
+    ]
+}

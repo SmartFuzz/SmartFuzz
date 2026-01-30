@@ -1,0 +1,63 @@
+CREATE TABLE nyc_taxi.trips_large (
+    trip_id             INTEGER,
+    pickup_datetime     TEXT,
+    dropoff_datetime    TEXT,
+    pickup_longitude    REAL,
+    pickup_latitude     REAL,
+    dropoff_longitude   REAL,
+    dropoff_latitude    REAL,
+    passenger_count     INTEGER,
+    trip_distance       REAL,
+    fare_amount         REAL,
+    extra               REAL,
+    tip_amount          REAL,
+    tolls_amount        REAL,
+    total_amount        REAL,
+    payment_type        TEXT,
+    pickup_ntaname      TEXT,
+    dropoff_ntaname     TEXT
+);
+INSERT INTO nyc_taxi.trips_large
+SELECT
+    trip_id,
+    pickup_datetime,
+    dropoff_datetime,
+    pickup_longitude,
+    pickup_latitude,
+    dropoff_longitude,
+    dropoff_latitude,
+    passenger_count,
+    trip_distance,
+    fare_amount,
+    extra,
+    tip_amount,
+    tolls_amount,
+    total_amount,
+    payment_type,
+    pickup_ntaname,
+    dropoff_ntaname
+FROM (SELECT * FROM json_each(readfile('trips.json')));
+CREATE TABLE nyc_taxi.agg_h3_10_large (
+    pickup_latitude REAL,
+    pickup_longitude REAL,
+    h3_cell INTEGER,
+    cnt INTEGER,
+    pickup_ntaname_uniq TEXT,
+    pickup_ntaname_top_app TEXT
+);
+INSERT INTO nyc_taxi.agg_h3_10_large
+SELECT
+    pickup_latitude,
+    pickup_longitude,
+    h3_cell,
+    COUNT(*) AS cnt,
+    GROUP_CONCAT(DISTINCT pickup_ntaname) AS pickup_ntaname_uniq,
+    (SELECT GROUP_CONCAT(pickup_ntaname ORDER BY COUNT(*) DESC LIMIT 1) FROM nyc_taxi.trips_large) AS pickup_ntaname_top_app
+FROM nyc_taxi.trips_large
+GROUP BY pickup_latitude, pickup_longitude, h3_cell;
+SELECT
+    pickup_latitude,
+    pickup_longitude,
+    cnt
+FROM nyc_taxi.agg_h3_10_large
+WHERE cnt > 1000;

@@ -1,0 +1,12 @@
+CREATE TABLE test_table (id UInt64, probability Float64, value UInt64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, 0.75, randBernoulli(0.75)), (2, 0.25, randBernoulli(0.25)), (3, 0.5, randBernoulli(0.5));
+SELECT id, value, probability, (value != randBernoulli(probability)) AS result FROM test_table WHERE result;
+SELECT id, SUM(randBernoulli(probability)) AS success_count FROM test_table GROUP BY id HAVING success_count > 1;
+SELECT id, probability, value FROM test_table WHERE probability != (SELECT max(probability) FROM test_table) AND randBernoulli(probability) != 0;
+SELECT id, value FROM (SELECT id, value, randBernoulli(probability) AS random_value FROM test_table) sub WHERE random_value != 1 OR (value = 0 AND random_value != 0);
+CREATE TABLE test_table_null (id UInt64, prob Float64, val Nullable(UInt64)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table_null VALUES (1, 0.75, randBernoulli(0.75)), (2, NULL, NULL);
+SELECT id, val, prob, (val != randBernoulli(ifNull(prob, 0))) AS null_test FROM test_table_null;
+SELECT id, count(*) FROM test_table GROUP BY id HAVING COUNT(*) != randBernoulli(0.5);
+SELECT id, (CASE WHEN value != 0 THEN value ELSE randBernoulli(probability) END) AS test_value FROM test_table WHERE test_value IS NOT NULL;
+SELECT id, odds, randBernoulli(odds) AS bernoulli FROM (SELECT id, CAST(probability AS Float64) AS odds FROM test_table_null) WHERE odds != 0.5;

@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/b5ca442af9",
+  "title": "\"Malformed database schema\" when creating a failing index within a transaction",
+  "description": "mrigger added on 2019-05-21 10:04:03:\nIt seems that an integer overflow that occurs when creating an index does not prevent the index from being created, when the CREATE statement is executed as part of an explicit transaction:\nCREATE TABLE IF NOT EXISTS t0(c0);\nINSERT INTO t0(c0) VALUES (-9223372036854775808);\nBEGIN TRANSACTION;\nCREATE INDEX i0 ON t0(ABS(c0)); -- integer overflow (expected)\nCOMMIT; -- unexpected: the index is still created\nCREATE INDEX i0 ON t0(1); -- malformed database schema (i0) - index i0 already exists\nThat the schema is malformed can also be verified by pragma integrity_check. Without the BEGIN TRANSACTION and COMMIT, the index is not created as expected.\nmrigger added on 2019-05-21 10:20:27:\nThis bug seems serious, since the index can also not be dropped:\nCREATE TABLE IF NOT EXISTS t0(c0);\nINSERT INTO t0(c0) VALUES (-9223372036854775808);\nBEGIN TRANSACTION;\nCREATE INDEX i0 ON t0(ABS(c0)); -- integer overflow (expected)\nCOMMIT; -- unexpected: the index is still created\nDROP INDEX i0; -- no such index: i0\nCREATE INDEX i0 ON t0(1); -- malformed database schema (i0) - index i0 already exists",
+  "date": "2019-05-21 10:04:036.23 years ago",
+  "vulnerable_version": "3.28",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE IF NOT EXISTS t1(c1 Int64, c2 String, c3 Float64);",
+    "INSERT INTO t1(c1, c2, c3) VALUES (9223372036854775807, 'max int', 1.0);",
+    "CREATE INDEX idx1 ON t1(ABS(c1));",
+    "SELECT * FROM t1 WHERE c1 < 0;",
+    "DROP TABLE IF EXISTS t1;"
+  ],
+  "key_bug_features": [
+    "Index creation within a transaction allows integer overflow"
+  ]
+}

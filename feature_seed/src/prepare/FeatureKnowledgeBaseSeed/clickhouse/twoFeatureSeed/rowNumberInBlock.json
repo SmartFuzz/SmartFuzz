@@ -1,0 +1,18 @@
+{
+    "function": "rowNumberInBlock",
+    "operator": "a NOT LIKE s",
+    "sql_array": [
+        "CREATE TABLE fuzz_test (id UInt32, name String, value Float64, created_at DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO fuzz_test VALUES (1, 'example1', 10.5, '2023-10-01 12:00:00'), (2, 'example2%', 20.25, '2023-10-02 12:00:00'), (3, NULL, 30.75, NULL);",
+        "SELECT rowNumberInBlock() AS rn, id, name FROM (SELECT id, name FROM fuzz_test WHERE value NOT LIKE '20%') SETTINGS max_block_size = 2;",
+        "SELECT rn, COUNT(*) FROM (SELECT rowNumberInBlock() AS rn, value NOT LIKE '20%' AS condition FROM fuzz_test) GROUP BY rn HAVING condition = 1;",
+        "SELECT rowNumberInBlock() AS rn, name FROM (SELECT * FROM fuzz_test WHERE created_at IS NULL OR created_at < now() - INTERVAL 1 DAY) SETTINGS max_block_size = 3;",
+        "CREATE TABLE temp_test AS SELECT name, value FROM fuzz_test WHERE value > 15.0;",
+        "SELECT rowNumberInBlock(), id FROM (SELECT id FROM temp_test WHERE name NOT LIKE '%example%' OR name IS NULL) SETTINGS max_block_size = 5;",
+        "SELECT rn, AVG(value) FROM (SELECT rowNumberInBlock() AS rn, value FROM fuzz_test) GROUP BY rn HAVING rn NOT LIKE '3';",
+        "SELECT rowNumberInBlock(), name FROM (SELECT id, name FROM fuzz_test WHERE id NOT LIKE CAST(value AS String) OR value IS NULL) ORDER BY name;",
+        "CREATE TABLE edge_test (id UInt32, age Int32 DEFAULT 0) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO edge_test VALUES (1, -1), (2, CAST(NULL AS Int32)), (3, 2147483647);",
+        "SELECT rowNumberInBlock() AS rn, id FROM (SELECT id FROM edge_test WHERE age NOT LIKE '') ORDER BY rn;"
+    ]
+}

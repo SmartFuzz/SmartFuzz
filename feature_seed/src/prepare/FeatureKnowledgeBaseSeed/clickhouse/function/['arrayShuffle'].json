@@ -1,0 +1,21 @@
+[
+    "CREATE TABLE test_array (id Int32, values Array(Int32)) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO test_array VALUES (1, [1, 2, 3, 4]), (2, [5, 6, 7, 8]), (3, [9, 10, 11, 12]);",
+    "SELECT arrayShuffle(values) FROM test_array;",
+    "SELECT id, arrayShuffle(values) FROM test_array WHERE id = 1;",
+    "SELECT id, arrayShuffle(values) FROM test_array WHERE arrayShuffle(values)[1] > 5;",
+    "SELECT id, arrayShuffle([10, 20, 30, 40]) FROM test_array;",
+    "SELECT arrayShuffle(arrayJoin(values)) FROM test_array WHERE id IN (SELECT id FROM test_array WHERE id > 1);",
+    "SELECT id, arrayShuffle(values, 42) AS shuffled_values FROM test_array;",
+    "CREATE TABLE test_result (id Int32, shuffled_values Array(Int32)) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO test_result SELECT id, arrayShuffle(values) FROM test_array;",
+    "SELECT id, shuffled_values FROM test_result WHERE id = (SELECT id FROM test_array ORDER BY id DESC LIMIT 1);",
+    "SELECT arrayShuffle(arrayConcat((SELECT values FROM test_array WHERE id = 1), (SELECT values FROM test_array WHERE id = 2)));",
+    "SELECT id, arrayShuffle(arrayMap(x -> x * 2, values)) AS doubled_shuffled FROM test_array;",
+    "CREATE TABLE array_seed_test (id Int32, values Array(Int32), seed UInt32) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO array_seed_test VALUES (1, [1, 2, 3, 4], 10), (2, [5, 6, 7, 8], 20);",
+    "SELECT id, arrayShuffle(values, seed) FROM array_seed_test;",
+    "SELECT id, arrayShuffle(values) AS random_shuffle, arrayShuffle(values, seed) AS seeded_shuffle FROM array_seed_test WHERE id = 1;",
+    "SELECT arrayShuffle(values) FROM (SELECT values FROM test_array WHERE id < 3) AS sub;",
+    "SELECT arrayShuffle(arrayJoin((SELECT values FROM test_array WHERE id > 1))) AS deep_shuffled FROM test_array;"
+]

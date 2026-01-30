@@ -1,0 +1,19 @@
+{
+    "function": "smime_decrypt",
+    "operator": "AND",
+    "sql_array": [
+        "CREATE TABLE smime_test (id INTEGER PRIMARY KEY, encrypted_data TEXT, cert_data TEXT, key_data TEXT);",
+        "INSERT INTO smime_test (encrypted_data, cert_data, key_data) VALUES ('file_to_string (''test.p7m'')', 'file_to_string (''test.pem'')', 'file_to_string (''test.key.pem'')');",
+        "SELECT smime_decrypt(encrypted_data, cert_data, key_data, 'secret') AS decrypted_msg FROM smime_test WHERE encrypted_data IS NOT NULL;",
+        "SELECT smime_decrypt(file_to_string (''anotherTest.p7m''), cert_data, key_data, NULL) FROM smime_test WHERE id IN (SELECT id FROM smime_test WHERE encrypted_data IS NOT NULL AND cert_data IS NOT NULL);",
+        "SELECT smime_decrypt(encrypted_data, cert_data, key_data, CASE WHEN (encrypted_data IS NOT NULL AND cert_data IS NOT NULL) THEN 'secret' ELSE 'fallback_secret' END) AS final_decrypt FROM smime_test WHERE EXISTS (SELECT 1 FROM smime_test WHERE key_data IS NOT NULL AND id > 0);",
+        "SELECT smime_decrypt(encrypted_data, cert_data, key_data, 'secret') FROM smime_test WHERE (SELECT COUNT(*) FROM smime_test WHERE key_data IS NULL) = 0 AND encrypted_data LIKE '' AND cert_data IS NOT NULL;",
+        "SELECT COUNT(*) FROM (SELECT smime_decrypt(encrypted_data, cert_data, key_data, 'secret') FROM smime_test) AS decrypted WHERE decrypted_msg IS NOT NULL GROUP BY decrypted_msg HAVING COUNT(decrypted_msg) > 1;",
+        "SELECT CASE WHEN EXISTS (SELECT 1 FROM smime_test WHERE encrypted_data IS NOT NULL AND cert_data IS NOT NULL) THEN smime_decrypt(file_to_string (''complex.p7m''), cert_data, key_data, 'secret') ELSE NULL END AS conditional_decrypt;",
+        "SELECT smime_decrypt(encrypted_data, cert_data, key_data, 'secret') FROM smime_test WHERE (SELECT MAX(id) FROM smime_test) < 100 AND (SELECT MIN(id) FROM smime_test) IS NOT NULL;",
+        "CREATE TABLE test_conditions (id SERIAL PRIMARY KEY, condition_val BOOLEAN);",
+        "INSERT INTO test_conditions (condition_val) VALUES (TRUE), (FALSE), (NULL);",
+        "SELECT smime_decrypt(encrypted_data, cert_data, key_data, 'secret') FROM smime_test WHERE EXISTS (SELECT 1 FROM test_conditions WHERE condition_val IS NULL) AND (SELECT COUNT(*) FROM smime_test) < 5;",
+        "SELECT smime_decrypt(encrypted_data, cert_data, key_data, CAST(NULL AS TEXT)) AS decryption_test FROM smime_test WHERE (SELECT COUNT(*) FROM smime_test) > 0 AND (SELECT MIN(id) FROM smime_test WHERE encrypted_data IS NOT NULL) IS NOT NULL;"
+    ]
+}

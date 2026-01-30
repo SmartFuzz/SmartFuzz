@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/84777",
+  "title": "Prevent updating JSON subcolumns in primary key",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nIt should not be possible to update a JSON subcolumn that belongs to the primary key.\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\n```sql\nCREATE TABLE test\n(\n`Id` String,\n`Document` JSON (id UInt64)\n)\nENGINE = MergeTree\nORDER BY (Document.id)\nsettings enable_block_number_column = 1, enable_block_offset_column = 1;\ninsert into test values\n('AA','{\"id\":1,\"B\":100}'),\n('BB','{\"id\":2,\"B\":200}');\nupdate test\nset Document = '{\"id\":100,\"B\":1000}'\nwhere Id = 'AA'\nsettings allow_experimental_lightweight_update = 1;\nSELECT *\nFROM test\nSETTINGS apply_patch_parts = 1\nQuery id: 2966bf16-8d64-4b66-b5c2-96cee9505752\n┌─Id─┬─Document────────────────┐\n1. │ AA │ {\"B\":\"1000\",\"id\":\"100\"} │\n2. │ BB │ {\"B\":\"200\",\"id\":\"2\"}    │\n└────┴─────────────────────────┘\n```\n### Expected behavior\nAny attempt to update a JSON subcolumn in the primary key should throw `CANNOT_UPDATE_COLUMN` as for regular keys. However, updating the entire JSON object without modifying the subcolumns used in the primary key should not raise any exception.\n### Error message and/or stacktrace\n_No response_\n### Additional context\n_No response_",
+  "date": "2025-07-31T13:09:26Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test_json (Id VARCHAR(255), Document JSON) PRIMARY KEY (Id);",
+    "INSERT INTO test_json VALUES ('AA', '{\"id\":1,\"Name\":\"A\"}'), ('BB', '{\"id\":2,\"Name\":\"B\"}');",
+    "UPDATE test_json SET Document = '{\"id\":1,\"Name\":\"Updated A\"}' WHERE Id = 'AA';",
+    "SELECT * FROM test_json WHERE JSON_UNQUOTE(Document->'$.id') = '1';",
+    "UPDATE test_json SET Document = '{\"id\":3,\"Name\":\"C\"}' WHERE Id = 'BB';"
+  ],
+  "key_bug_features": [
+    "Updating JSON subcolumns in primary key"
+  ]
+}

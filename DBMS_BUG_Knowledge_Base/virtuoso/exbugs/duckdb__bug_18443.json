@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/18443",
+  "title": "MARK join error after version update",
+  "description": "### What happens?\n\nHello, after upgrading DuckDB to version 1.3.0 or higher, I'm experiencing MARK join errors in some queries. I'll share an isolated example I managed to simulate. In version 1.2.1, the query executes normally, but after 1.3.0, it displays this error.\n\n-> MARK join with correlation in RHS not supported.\n\nI noticed that this validation has been in place since version 0.1.0. I'm just confused about why it started triggering the error after 1.3.0.\n\nValidation commit reference -> https://github.com/duckdb/duckdb/commit/4c1051e3cfed61d78b1da379b157e010dbde7455#diff-6890c0ce9722019e087240ed24bea9f0112f453ac865c755e870c271b3846ea8R218\n\n### To Reproduce\n\n```\nDROP TABLE IF EXISTS customers;\nDROP TABLE IF EXISTS orders;\n\nCREATE TABLE customers (\n    customer_id INTEGER,\n    name TEXT\n);\n\nCREATE TABLE orders (\n    order_id INTEGER,\n    customer_id INTEGER,\n    amount DECIMAL(10,2),\n    created_at TIMESTAMP\n);\n\nINSERT INTO customers VALUES\n    (1, 'Alice'),\n    (2, 'Bob'),\n    (3, 'Charlie');\n\nINSERT INTO orders VALUES\n    (101, 1, 250.00, TIMESTAMP '2021-06-01 10:00:00'),\n    (102, 1,  75.00, TIMESTAMP '2021-06-02 12:30:00'),\n    (103, 2, 150.00, TIMESTAMP '2022-03-15 09:15:00'),\n    (104, 2,  50.00, TIMESTAMP '2022-04-01 17:45:00'),\n    (105, 3,  25.00, TIMESTAMP '2022-11-20 08:05:00');\n    \nWITH\n  f AS MATERIALIZED (\n    SELECT o.order_id, o.customer_id, o.amount, o.created_at\n    FROM orders o\n    WHERE strftime(o.created_at, '%A') IN ('Monday','Tuesday','Wednesday','Thursday','Friday')\n  ),\n  g AS (\n    SELECT *\n    FROM f\n    WHERE customer_id NOT IN (\n      SELECT DISTINCT customer_id\n      FROM f\n      WHERE amount >= 9999 \n    )\n  )\nSELECT *\nFROM g AS outer_g\nWHERE\n  EXISTS (\n    SELECT inner_g.customer_id\n    FROM g AS inner_g\n    WHERE inner_g.customer_id = outer_g.customer_id  -- correlation\n    GROUP BY inner_g.customer_id\n    HAVING MAX(inner_g.created_at) <= CURRENT_TIMESTAMP -- aggregate on RHS\n  )\n  AND outer_g.created_at >= TIMESTAMP '2020-01-01 00:00:00'\n  AND outer_g.created_at <= TIMESTAMP '2022-12-31 23:59:59';\n```\n\n### OS:\n\nWindows 11\n\n### DuckDB Version:\n\n1.2.1, 1.3.0, 1.3.1, 1.3.2\n\n### DuckDB Client:\n\nJava (DBeaver)\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nJosé Miguel da Silveira Junior\n\n### Affiliation:\n\nUpFlux\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a stable release\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "date": "2025-07-29 18:39:55",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS products;",
+    "CREATE TABLE products (product_id INTEGER, name VARCHAR(255) NOT NULL, price DECIMAL(10,2) CHECK(price >= 0), created_at TIMESTAMP DEFAULT NOW());",
+    "INSERT INTO products (product_id, name, price, created_at) VALUES (1, 'Widget', 19.99, TIMESTAMP '2023-01-01 10:00:00'), (2, 'Gadget', 29.99, TIMESTAMP '2023-02-01 11:00:00'), (3, 'Thingamajig', 39.99, TIMESTAMP '2023-03-01 12:00:00');",
+    "SELECT p.product_id, p.name, p.price FROM products p WHERE p.price > (SELECT AVG(price) FROM products) AND p.created_at < NOW();",
+    "WITH recent_products AS (SELECT * FROM products WHERE created_at >= TIMESTAMP '2023-01-01 00:00:00') SELECT rp.product_id FROM recent_products rp WHERE EXISTS (SELECT 1 FROM recent_products WHERE price < rp.price);"
+  ],
+  "key_bug_features": [
+    "MARK join with correlation in RHS not supported"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+    "function": "timestamp_add",
+    "operator": "SELECT a OR b",
+    "sql_array": [
+        "CREATE TABLE test_dates (id UInt32, event_date DateTime64(3), value VARCHAR(255));",
+        "INSERT INTO test_dates VALUES (1, toDateTime64('2023-01-01 10:00:00', 3), 'Event1'), (2, toDateTime64('2022-06-15 14:30:00', 3), 'Event2'), (3, toDateTime64('2023-12-31 23:59:59', 3), 'Event3');",
+        "SELECT id, timestamp_add(event_date, INTERVAL (id = 1 OR id = 2) MONTH) FROM test_dates WHERE value IS NOT NULL;",
+        "SELECT id, timestamp_add(event_date, INTERVAL (SELECT COUNT(*) FROM test_dates WHERE id > 1) DAY) FROM test_dates WHERE value = 'Event3' OR event_date < toDateTime64('2023-01-01 00:00:00', 3);",
+        "SELECT id, timestamp_add(event_date, INTERVAL IF(value = 'Event2', 1, 2) HOUR) FROM test_dates GROUP BY id HAVING (id = 1 OR id = 2) AND event_date IS NOT NULL;",
+        "SELECT id, timestamp_add(event_date, INTERVAL CASE WHEN id = 1 THEN 10 ELSE 5 END MINUTE) FROM (SELECT id, timestamp_add(event_date, INTERVAL (id = 1 OR value IS NULL) DAY) AS modified_date FROM test_dates) WHERE modified_date > toDateTime64('2022-12-31 00:00:00', 3);",
+        "CREATE TABLE test_join_dates (id UInt32, ref_date DateTime64(3), description VARCHAR(100));",
+        "INSERT INTO test_join_dates VALUES (1, toDateTime64('2023-01-01 00:00:00', 3), 'Reference1'), (2, toDateTime64('2023-12-31 23:59:59', 3), 'Reference2');",
+        "SELECT A.id, B.description, timestamp_add(A.event_date, INTERVAL IF(B.id = 1, 1, 2) MINUTE) FROM test_dates A LEFT JOIN test_join_dates B ON timestamp_add(A.event_date, INTERVAL 1 DAY) = B.ref_date WHERE (A.value IS NOT NULL OR B.description LIKE '%Reference%');",
+        "SELECT id, timestamp_add(event_date, INTERVAL 0 SECOND) AS zero_second_addition FROM test_dates WHERE (event_date < toDateTime64('2023-01-01 00:00:00', 3) OR timestamp_add(event_date, INTERVAL -1 HOUR) IS NULL);"
+    ]
+}

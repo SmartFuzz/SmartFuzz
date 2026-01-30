@@ -1,0 +1,13 @@
+CREATE TABLE test_data (id INT, value VARCHAR(100), created_at TIMESTAMP);
+INSERT INTO test_data (id, value, created_at) VALUES (1, 'test1', NOW()), (2, NULL, NOW()), (3, 'test3', NULL);
+SELECT NOT (SELECT COUNT(*) FROM test_data WHERE value IS NOT NULL) > 1;
+SELECT stat_import(deserialize(file_to_string('stat.dv'))) FROM (SELECT NOT EXISTS (SELECT id FROM test_data WHERE value IS NULL) AS is_null) AS subquery;
+CREATE TABLE stats_import_test (stat_id INT, data JSON);
+INSERT INTO stats_import_test (stat_id, data) VALUES (1, '[]'), (2, '{"item":"test"}'), (3, NULL);
+SELECT stat_import(deserialize(file_to_string('stat.dv'))) WHERE NOT (SELECT COUNT(*) FROM stats_import_test WHERE data IS NOT NULL) = 3;
+SELECT id, COUNT(*) FROM test_data GROUP BY id HAVING NOT (COUNT(value) = 0 OR COUNT(value) IS NULL);
+CREATE TABLE boundary_test (num_col INT, float_col FLOAT, text_col VARCHAR(100));
+INSERT INTO boundary_test (num_col, float_col, text_col) VALUES (0, 0.0, ''), (2147483647, 1.7976931348623157E+308, 'max_value');
+SELECT NOT (SELECT SUM(num_col) FROM boundary_test WHERE num_col > -1) AS negative_check;
+SELECT COUNT(*) FROM boundary_test WHERE NOT (text_col IS NULL OR text_col = '');
+SELECT stat_import(deserialize(file_to_string('stat.dv'))) WHERE NOT (SELECT MAX(float_col) FROM boundary_test) = 1.7976931348623157E+308;

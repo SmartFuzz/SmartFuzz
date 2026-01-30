@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/88168",
+  "title": "Querying for object in JSON field always returns NULL",
+  "description": "### Company or project name\n_No response_\n### Describe the unexpected behaviour\nResult for querying for a path in json column is `null` in all rows when that path is an object in some rows and not set in others.\n```\n> select json.a, json.^a, json.a.b, json.c from test;\n┌─json.a─┬─json.^`a`─────────────────────┬─json.a.b─┬─json.c──┐\n1. │ ᴺᵁᴸᴸ   │ {\"b\":\"42\",\"g\":42.42}          │ 42       │ [1,2,3] │\n2. │ ᴺᵁᴸᴸ   │ {}                            │ ᴺᵁᴸᴸ     │ ᴺᵁᴸᴸ    │\n3. │ ᴺᵁᴸᴸ   │ {\"b\":\"43\",\"e\":\"10\",\"g\":43.43} │ 43       │ [4,5,6] │\n└────────┴───────────────────────────────┴──────────┴─────────┘\n```\nI found that I could query `json.^a` to get almost what I want, but that is inefficient according to docs.\n### Which ClickHouse versions are affected?\n25.9.2.1\n### How to reproduce\n```\nCREATE TABLE test (json JSON) ENGINE = Memory;\nINSERT INTO test VALUES ('{\"a\" : {\"b\" : 42, \"g\" : 42.42}, \"c\" : [1, 2, 3], \"d\" : \"2020-01-01\"}'), ('{\"f\" : \"Hello, World!\", \"d\" : \"2020-01-02\"}'), ('{\"a\" : {\"b\" : 43, \"e\" : 10, \"g\" : 43.43}, \"c\" : [4, 5, 6]}');\n```\n### Expected behavior\n```\n> select json.a, json.^a, json.a.b, json.c from test;\n┌─json.a────────────────────────┬─json.^`a`─────────────────────┬─json.a.b─┬─json.c──┐\n1. │ {\"b\":\"42\",\"g\":42.42}          │ {\"b\":\"42\",\"g\":42.42}          │ 42       │ [1,2,3] │\n2. │ ᴺᵁᴸᴸ                          │ {}                            │ ᴺᵁᴸᴸ     │ ᴺᵁᴸᴸ    │\n3. │ {\"b\":\"43\",\"e\":\"10\",\"g\":43.43} │ {\"b\":\"43\",\"e\":\"10\",\"g\":43.43} │ 43       │ [4,5,6] │\n└───────────────────────────────┴───────────────────────────────┴──────────┴─────────┘\n```\nI would expect that `json.a` would have objects in row 1 and 3 and `null` in 2, so it would work the same as when the queried field is a number (`json.a.b`) or an array (`json.c`).\n### Error message and/or stacktrace\n_No response_\n### Additional context\n_No response_",
+  "date": "2025-10-07T09:33:28Z",
+  "vulnerable_version": "25.9.2.1",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test_json (json JSONB);",
+    "INSERT INTO test_json VALUES ('{\"a\" : {\"b\" : 42, \"g\" : 42.42}, \"c\" : [1, 2, 3], \"d\" : \"2020-01-01\"}'), ('{\"f\" : \"Hello, World!\", \"d\" : \"2020-01-02\"}'), ('{\"a\" : {\"b\" : 43, \"e\" : 10, \"g\" : 43.43}, \"c\" : [4, 5, 6]}');",
+    "CREATE TABLE test_numbers (num INT);",
+    "INSERT INTO test_numbers VALUES (1), (NULL), (3);",
+    "SELECT json->'a' AS json_a, COALESCE(json->'a', '{}'::jsonb) AS json_a_coalesced, (json->'a'->>'b')::int AS json_a_b, json->'c' AS json_c FROM test_json;"
+  ],
+  "key_bug_features": [
+    "Querying JSON field with mixed object paths returns NULL"
+  ]
+}

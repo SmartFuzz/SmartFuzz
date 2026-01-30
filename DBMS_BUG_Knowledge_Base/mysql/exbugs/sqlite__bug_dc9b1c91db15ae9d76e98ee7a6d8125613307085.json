@@ -1,0 +1,21 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/dc9b1c91db",
+  "title": "One trigger may use auxdata belonging to another.",
+  "description": "dan added on 2016-02-19 17:22:13:\nAssuming the REGEXP operator implementation uses sqlite3_set_auxdata() to store a compiled version of its regular expression (as the bundled extension does), test 1.1 of the following tcl test script fails:\ndo_execsql_test 1.0 {\n  CREATE TABLE t1(a, b, c);\n  CREATE TABLE x1(x, y, z);\n  CREATE TABLE x2(x, y, z);\n\n  CREATE TRIGGER tr1 AFTER INSERT ON t1 BEGIN\n    INSERT INTO x1 VALUES(\n        new.a REGEXP 'abc',\n        new.b REGEXP 'abc',\n        new.c REGEXP 'abc'\n    );\n  END;\n\n  CREATE TRIGGER tr2 AFTER INSERT ON t1 BEGIN\n    INSERT INTO x2 VALUES(\n        new.a REGEXP 'def',\n        new.b REGEXP 'def',\n        new.c REGEXP 'def'\n    );\n  END;\n\n  INSERT INTO t1 VALUES('abc', 'def', 'abc');\n  SELECT * FROM t1;\n} {abc def abc}\n\ndo_execsql_test 1.1 { SELECT * FROM x1 } {1 0 1}\ndo_execsql_test 1.2 { SELECT * FROM x2 } {0 1 0}\nThe trouble is that the REGEXP operators in trigger \"tr1\" are incorrectly using the compiled regular expressions for trigger \"tr2\" - causing the operators in \"tr1\" to populate table x1 with the same values as table x2.\nIf the two triggers were using different operators or user-functions that both used sqlite3_set_auxdata() a crash or other error might have occurred instead.\nReported on mailing list here: http://osdir.com/ml/general/2016-02/msg26665.html\ndan added on 2016-02-19 18:55:28:\nFixed by [c4295725].",
+  "date": "2016-02-19 17:22:139.47 years ago",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(a VARCHAR(255), b INT, c FLOAT, d BLOB);",
+    "CREATE TABLE x1(x INT, y INT, z INT, w VARCHAR(255) NOT NULL);",
+    "CREATE TRIGGER tr1 AFTER INSERT ON t1 FOR EACH ROW INSERT INTO x1 VALUES(NEW.a REGEXP 'abc', NEW.b REGEXP 'abc', NEW.c REGEXP 'abc', NEW.d);",
+    "CREATE TRIGGER tr2 AFTER INSERT ON t1 FOR EACH ROW INSERT INTO x1 VALUES(NEW.a REGEXP 'def', NEW.b REGEXP 'def', NEW.c REGEXP 'def', NULL);",
+    "INSERT INTO t1 VALUES('abc', 123, 4.56, 0x01);",
+    "SELECT * FROM x1;"
+  ],
+  "key_bug_features": [
+    "REGEXP operators in triggers using incorrect auxdata"
+  ]
+}

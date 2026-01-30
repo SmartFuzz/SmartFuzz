@@ -1,0 +1,24 @@
+{
+  "url": "https://www.postgresql.org/message-id/18256-0b0e1b6e4a620f1b%40postgresql.org",
+  "title": "BUG #18256: spgGetCache() attempts to read to read invalid file for index attached to partitioned table",
+  "vulnerable_database": "postgresql",
+  "date": "2023-12-21 14:00:01",
+  "vulnerable_version": "Unknown",
+  "description": "The following bug has been logged on the website:\nBug reference:      18256\nLogged by:          Alexander Lakhin\nEmail address:      exclusion(at)gmail(dot)com\nPostgreSQL version: 16.1\nOperating system:   Ubuntu 22.04\nDescription:\n[ a kind of follow-up to bug #18246 ]\nThe following query:\nCREATE TABLE t(a int, b text) PARTITION BY RANGE (a);\nCREATE INDEX idx ON t USING spgist(b);\nSELECT * FROM t;\nproduces an unexpected error:\nERROR:  could not open file \"pg_tblspc/0/PG_16_202307071/0/0\": No such file\nor directory\n(On master, thanks to commit 049ef3398, which added an Assert in smgr.c,\nthat assertion fails:\n...\n#5  0x000055fcb19630d3 in ExceptionalCondition (conditionName=0x55fcb1b573f8\n\"RelFileNumberIsValid(rlocator.relNumber)\", fileName=0x55fcb1b573ec\n\"smgr.c\", lineNumber=159) at assert.c:66\n#6  0x000055fcb1770731 in smgropen (rlocator=..., backend=-1) at\nsmgr.c:159\n#7  0x000055fcb171e0a7 in RelationGetSmgr (rel=0x7ff29e501e88) at\n../../../../src/include/utils/rel.h:575\n#8  0x000055fcb171f0ed in ReadBufferExtended (reln=0x7ff29e501e88,\nforkNum=MAIN_FORKNUM, blockNum=0, mode=RBM_NORMAL, strategy=0x0) at\nbufmgr.c:803\n#9  0x000055fcb171efce in ReadBuffer (reln=0x7ff29e501e88, blockNum=0) at\nbufmgr.c:737\n#10 0x000055fcb1294810 in spgGetCache (index=0x7ff29e501e88) at\nspgutils.c:261\n#11 0x000055fcb1291aff in spgcanreturn (index=0x7ff29e501e88, attno=1) at\nspgscan.c:1092\n#12 0x000055fcb125a3ef in index_can_return (indexRelation=0x7ff29e501e88,\nattno=1) at indexam.c:762\n#13 0x000055fcb166154b in get_relation_info (root=0x55fcb27dd928,\nrelationObjectId=16385, inhparent=false, rel=0x55fcb2700938) at\nplancat.c:272\n#14 0x000055fcb166956e in build_simple_rel (root=0x55fcb27dd928, relid=1,\nparent=0x0) at relnode.c:339\n...\n)\nReproduced on REL_16_STABLE (starting from 3c569049b) .. master.",
+  "poc": [
+    "CREATE TABLE t(a int, b text) PARTITION BY RANGE (a);",
+    "CREATE INDEX idx ON t USING spgist(b);",
+    "SELECT * FROM t;"
+  ],
+  "poc_type": "sql_text",
+  "key_bug_features": [
+    "spgGetCache() reads invalid file for partitioned table index"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE partitioned_table (id SERIAL PRIMARY KEY, value INT, description TEXT) PARTITION BY RANGE (value);",
+    "CREATE TABLE partitioned_table_1 PARTITION OF partitioned_table FOR VALUES FROM (1) TO (10);",
+    "CREATE INDEX idx_value ON partitioned_table USING spgist(value);",
+    "INSERT INTO partitioned_table (value, description) VALUES (5, NULL), (NULL, 'Test'), (15, 'Boundary Test');",
+    "SELECT * FROM partitioned_table WHERE value IS NULL OR value < 10;"
+  ]
+}

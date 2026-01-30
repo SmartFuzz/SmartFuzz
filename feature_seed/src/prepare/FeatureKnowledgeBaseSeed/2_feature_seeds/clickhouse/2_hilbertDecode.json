@@ -1,0 +1,16 @@
+CREATE TABLE hilbert_test (id UInt32, code UInt64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO hilbert_test VALUES (1, 10), (2, 31), (3, 63), (4, NULL);
+CREATE TABLE numbers_test (number UInt32) ENGINE = MergeTree() ORDER BY number;
+INSERT INTO numbers_test SELECT number FROM numbers(100);
+SELECT EXISTS(SELECT * FROM hilbert_test WHERE hilbertDecode(2, code) = tuple(0, 1)) AS result_exists;
+SELECT hilbertDecode(2, code) FROM hilbert_test WHERE EXISTS(SELECT * FROM numbers_test WHERE number > hilbertDecode(2, code));
+SELECT count() FROM hilbert_test WHERE EXISTS(SELECT number FROM numbers_test WHERE number > hilbertDecode(2, code) AND code IS NOT NULL);
+SELECT hilbertDecode(2, code) AS coordinates FROM hilbert_test ORDER BY coordinates DESC LIMIT 5;
+SELECT EXISTS(SELECT * FROM (SELECT hilbertDecode(2, code) AS decoded FROM hilbert_test WHERE code IS NOT NULL) subquery WHERE decoded = tuple(1, 1));
+SELECT hilbertDecode(2, code), COUNT(*) FROM hilbert_test GROUP BY hilbertDecode(2, code) HAVING COUNT(*) > 1;
+SELECT hilbertDecode(2, 31) AS coordinates FROM hilbert_test WHERE EXISTS(SELECT * FROM numbers_test WHERE number < 5) AND code IS NOT NULL;
+SELECT hilbertDecode(2, code) AS coordinates FROM hilbert_test WHERE code IS NOT NULL AND EXISTS(SELECT 1 WHERE hilbertDecode(2, closest(code)) = tuple(0, 0));
+CREATE TEMPORARY TABLE temp_hilbert (value UInt64) ENGINE = Memory;
+INSERT INTO temp_hilbert VALUES (1), (2), (3), (NULL);
+SELECT EXISTS(SELECT * FROM temp_hilbert WHERE hilbertDecode(1, value) IS NOT NULL);
+SELECT hilbertDecode(2, 31) AS coordinates FROM hilbert_test WHERE EXISTS(SELECT * FROM temp_hilbert WHERE value IS NOT NULL AND value = hilbertDecode(2, 10));

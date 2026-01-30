@@ -1,0 +1,9 @@
+CREATE TABLE test_table (id UInt32, value String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table (id, value) VALUES (1, '0.1234'), (2, '1.2345'), (3, 'Inf'), (4, 'NaN'), (5, ''), (6, '999999999999999999999999999999999999999999');
+SELECT id, toDecimal128OrDefault(value, 2, CAST('0.00', 'Decimal128(2)')) AS decimal_value FROM test_table WHERE decimal_value NOT BETWEEN toDecimal128OrDefault('0.12', 2) AND toDecimal128OrDefault('1.23', 2);
+SELECT id, toDecimal128OrDefault(value, 4) AS decimal_value, toTypeName(decimal_value) AS type_name FROM test_table HAVING decimal_value < toDecimal128OrDefault('1000.0000', 4) OR decimal_value NOT BETWEEN toDecimal128OrDefault('0.0', 2) AND toDecimal128OrDefault('1.0', 2);
+SELECT id, value, (SELECT COUNT(*) FROM test_table WHERE toDecimal128OrDefault(value, 2) NOT BETWEEN 0 AND 10) AS outside_count FROM test_table WHERE toDecimal128OrDefault(value, 2) > 0 AND NOT (toDecimal128OrDefault(value, 4, CAST('0.00', 'Decimal128(2)')) BETWEEN '0.00' AND '1.00');
+CREATE TABLE another_table (id UInt32, related_id UInt32, amount String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO another_table (id, related_id, amount) VALUES (1, 1, '0.05'), (2, 2, '1.50'), (3, 1, '2.00');
+SELECT a.id, SUM(toDecimal128OrDefault(a.amount, 2)) AS total_amount FROM another_table a JOIN test_table b ON a.related_id = b.id WHERE toDecimal128OrDefault(b.value, 2) NOT BETWEEN 0 AND 2 GROUP BY a.id HAVING total_amount > 1.00;
+SELECT a.id, toDecimal128OrDefault(b.value, 4, DEFAULT) AS decimal_value FROM test_table a LEFT JOIN another_table b ON a.id = b.related_id WHERE b.amount IS NULL OR decimal_value NOT BETWEEN 1 AND 2 ORDER BY decimal_value DESC;

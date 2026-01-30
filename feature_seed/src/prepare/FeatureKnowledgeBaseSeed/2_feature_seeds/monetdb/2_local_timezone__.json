@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id SERIAL PRIMARY KEY, ip_address INET, event_time TIMESTAMP, description TEXT);
+INSERT INTO test_data (ip_address, event_time, description) VALUES (inet '192.168.1.5', NOW(), 'event 1'), (inet '192.168.1.6', REMOTE_TIMESTAMP, 'event 2'), (inet '192.168.1.7', CURRENT_TIMESTAMP - local_timezone(), 'event 3');
+SELECT id, ip_address, event_time FROM test_data WHERE event_time < NOW() AND id < (SELECT COUNT(*) FROM test_data WHERE ip_address < inet '192.168.1.6');
+SELECT COUNT(*) FROM test_data WHERE event_time < (SELECT local_timezone()) GROUP BY ip_address HAVING COUNT(*) > 0;
+SELECT id, ip_address, event_time FROM test_data WHERE (inet '192.168.1.5' < ip_address OR ip_address < inet '192.168.1.9') AND event_time > (local_timezone()::timestamp);
+SELECT ip_address, COUNT(*) OVER (PARTITION BY ip_address) AS ip_count FROM test_data WHERE event_time IS NOT NULL HAVING ip_count > 1;
+SELECT id, ip_address FROM test_data WHERE event_time < (SELECT local_timezone()) OR ip_address < inet '192.168.1.10' ORDER BY 1 + (SELECT COUNT(*) FROM test_data WHERE ip_address IS NOT NULL);
+ALTER TABLE test_data ADD COLUMN status VARCHAR(20) DEFAULT 'active';
+UPDATE test_data SET status = 'inactive' WHERE event_time < (NOW() - local_timezone()) AND ip_address IS NOT NULL;
+SELECT id FROM test_data WHERE status = 'inactive' AND (event_time IS NULL OR event_time < (NOW() - local_timezone()));

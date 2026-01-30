@@ -1,0 +1,18 @@
+{
+    "function": "sumMapFilteredWithOverflow",
+    "operator": "IS NULL",
+    "sql_array": [
+        "CREATE TABLE test_sum_map(    `date` Date,    `timeslot` DateTime,    `statusMap` Nested(status Nullable(UInt8), requests Nullable(UInt8))) ENGINE = Log; INSERT INTO test_sum_map VALUES ('2023-01-01', '2023-01-01 00:00:00', [1, NULL, 3], [10, NULL, 10]), ('2023-01-01', '2023-01-01 00:01:00', [3, 4, NULL], [NULL, 10, 10]), ('2023-01-01', '2023-01-01 00:02:00', [NULL, 5, 6], [10, NULL, 10]);",
+        "SELECT SUM(n) AS total_sum FROM (SELECT sumMapFilteredWithOverflow([1, 3, NULL])(statusMap.status, statusMap.requests) AS n FROM test_sum_map WHERE (statusMap.status IS NULL OR statusMap.requests IS NULL));",
+        "SELECT sumMapFilteredWithOverflow([1, 2, 6])(statusMap.status, statusMap.requests) AS result FROM (SELECT * FROM test_sum_map WHERE statusMap.requests IS NOT NULL) AS filtered WHERE filtered.date = '2023-01-01' GROUP BY filtered.timeslot HAVING sumMapFilteredWithOverflow([1, 2])(statusMap.status, statusMap.requests) IS NULL;",
+        "CREATE TABLE test_null_map(    `id` UInt32,    `key` Nullable(UInt8),    `value` Nullable(UInt8)) ENGINE = Log; INSERT INTO test_null_map VALUES (1, NULL, NULL), (2, 1, NULL), (3, 2, 20);",
+        "SELECT SUM(val) AS total_value FROM (SELECT sumMapFilteredWithOverflow([1, 2])(key, value) AS val FROM test_null_map) WHERE val IS NOT NULL;",
+        "SELECT sumMapFilteredWithOverflow(CASE WHEN key IS NULL THEN [0] ELSE [key] END)(key, value) AS conditional_sum FROM test_null_map GROUP BY key HAVING conditional_sum IS NULL;",
+        "CREATE TABLE mixed_data_types(    `id` UInt32,    `str_key` String,    `int_value` Int32) ENGINE = Log; INSERT INTO mixed_data_types VALUES (1, '1', 10), (2, '2', 20), (3, '3', 30);",
+        "SELECT sumMapFilteredWithOverflow([CAST('1' AS UInt8), CAST('2' AS UInt8)])(CAST(str_key AS UInt8), int_value) AS sum_result FROM mixed_data_types WHERE str_key IS NOT NULL;",
+        "SELECT sumMapFilteredWithOverflow([NULL, 2, 3])(statusMap.status, statusMap.requests) AS output FROM (SELECT * FROM test_sum_map WHERE statusMap.status IS NULL AND statusMap.requests IS NOT NULL) AS filtered;",
+        "CREATE TABLE edge_cases(    `event_id` UInt32,    `data_key` Nullable(String),    `data_value` Nullable(UInt8)) ENGINE = Log; INSERT INTO edge_cases VALUES (1, 'value1', 40), (2, NULL, NULL), (3, 'value2', 60);",
+        "SELECT SUM(value) FROM (SELECT sumMapFilteredWithOverflow([1, 2, 3])(data_key, data_value) AS value FROM edge_cases) WHERE value IS NOT NULL;",
+        "SELECT x, sumMapFilteredWithOverflow([CAST(x AS UInt8)])(x, y) AS sum_value FROM (SELECT data_key AS x, data_value AS y FROM edge_cases) WHERE x IS NOT NULL GROUP BY x HAVING sum_value IS NOT NULL;"
+    ]
+}

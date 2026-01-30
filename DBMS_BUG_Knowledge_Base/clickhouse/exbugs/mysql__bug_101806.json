@@ -1,0 +1,19 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=101806",
+  "title": "MySQL tries to parse string-bound float as integer and returns wrong error",
+  "description": "This bug report contains two issues. Both are related to error emitted when executing queries below. Error: \"ERROR 1292 (22007): Truncated incorrect INTEGER value: '0.3'\".\r\n\r\n1. When executing prepared statement using float value passed as a string, MySQL tries to parse it as integer and returns error.\r\n\r\nIn PHP, variables are passed to prepared statements as strings by default. PHP currently does not support float-bound parameters. See discussion on\nhttps://bugs.php.net/bug.php?id=80445\n2. Returned SQLSTATE error code is 22007, which is related to date/time values.\nHow to repeat:\nCREATE TABLE `test` (`field` INT NOT NULL) ENGINE=InnoDB;\r\nINSERT INTO `test` (`field`) VALUES (0);\r\nPREPARE stmt FROM 'UPDATE `test` SET `field` = 100 * ?';\r\nSET @a = '0.3';\r\nEXECUTE stmt USING @a;\nSuggested fix:\nAs suggested on mentioned PHP bug, there are at least two possible workarounds:\r\n\r\n  100.0 * ?\r\n\r\nand\r\n\r\n  100 * CAST(? AS FLOAT)",
+  "date": "2020-11-30 16:38:00",
+  "vulnerable_version": "8.0.22",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_float (field Float32 NOT NULL);",
+    "INSERT INTO test_float (field) VALUES (0.0);",
+    "UPDATE test_float SET field = 100 * CAST('0.3' AS Float32);",
+    "SELECT * FROM test_float;"
+  ],
+  "key_bug_features": [
+    "MySQL parses string-bound float as integer incorrectly"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+    "function": "xenc_x509_csr_generate",
+    "operator": "OR",
+    "sql_array": [
+        "CREATE TABLE csr_test (id INT, cn VARCHAR(255), c VARCHAR(2), o VARCHAR(255), ou VARCHAR(255), email VARCHAR(255));",
+        "INSERT INTO csr_test (id, cn, c, o, ou, email) VALUES (1, 'Demo User', 'US', 'OpenLink', 'Accounts', 'demo@openlinksw.com');",
+        "INSERT INTO csr_test (id, cn, c, o, ou, email) VALUES (2, NULL, 'GB', 'OpenLink', 'Support', 'support@openlinksw.com');",
+        "INSERT INTO csr_test (id, cn, c, o, ou, email) VALUES (3, 'Test User', 'US', NULL, 'Testing', 'test@openlinksw.com');",
+        "SELECT id FROM csr_test WHERE (cn IS NOT NULL OR c='US') AND (o IS NULL OR ou='Accounts');",
+        "SELECT id, xenc_x509_csr_generate('myRSAkey', vector('CN', cn, 'C', c, 'O', o, 'OU', ou, 'emailAddress', email), vector('subjectAltName', 'URI: http://www.openlinksw.com/dataspace/person/' || id, 'nsComment', 'Virtuoso Generated Certificate', 'authorityKeyIdentifier', 'keyid,issuer:always')) AS csr FROM csr_test WHERE id < 3 OR c IS NOT NULL;",
+        "SELECT id, xenc_x509_csr_generate('myRSAkey', vector('CN', cn, 'C', c, 'O', o, 'OU', ou), vector('subjectAltName', 'URI: http://www.openlinksw.com/dataspace/person/' || id, 'nsComment', 'Test Certificate', 'authorityKeyIdentifier', 'keyid,issuer:always')) AS csr FROM csr_test GROUP BY id HAVING COUNT(*) > 0 OR MAX(c) IS NOT NULL;",
+        "SELECT id, xenc_x509_csr_generate('myRSAkey', vector('CN', cn, 'C', c, 'O', o, 'OU', ou), vector('subjectAltName', 'URI: http://www.openlinksw.com/dataspace/person/demo#' || (id || ''), 'nsComment', 'Demo Certificate')) AS csr FROM csr_test WHERE id IN (SELECT id FROM csr_test WHERE c IS NOT NULL OR ou='Support');",
+        "CREATE TABLE edge_cases (id INT, numeric_val NUMERIC(10,2), string_val VARCHAR(100));",
+        "INSERT INTO edge_cases (id, numeric_val, string_val) VALUES (1, 123.45, 'Test String'), (2, NULL, 'Another Test'), (3, 9.99, NULL);",
+        "SELECT xenc_x509_csr_generate('myRSAkey', vector('CN', 'Edge User', 'C', c, 'O', o, 'OU', ou), vector('subjectAltName', 'URI: edge case', 'authorityKeyIdentifier', 'keyid,issuer:always')) AS csr FROM csr_test WHERE id = (SELECT MAX(id) FROM edge_cases WHERE numeric_val > 0.0 OR string_val IS NULL);"
+    ]
+}

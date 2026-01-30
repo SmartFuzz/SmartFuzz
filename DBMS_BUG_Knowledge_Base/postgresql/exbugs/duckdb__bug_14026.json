@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14026",
+  "title": "Unexpected result when casting `TIMESTAMP_S` to `TIME`",
+  "description": "### What happens?\n\nConsider the following test cases. The second and the third queries are unexpected since the expression and its negation cannot be evaluated as `true` at the same time. I could reproduce it using `TIMESTAMP_S`, `TIMESTAMP_NS`, and `TIMESTAMP_MS`. Things work well for `TIMESTAMP`.\n\n### To Reproduce\n\n```sql\r\nCREATE TABLE  t0(c0 TIMESTAMP_S); -- also for TIMESTAMP_NS and TIMESTAMP_MS\r\nINSERT INTO t0(c0) VALUES ('2030-01-01');\r\nINSERT INTO t0( c0) VALUES ('1969-12-23 20:44:40');\r\n\r\nSELECT * FROM t0; -- 2030-01-01 00:00:00, 1969-12-23 20:44:40\r\n-- Unexpected that both query returns the same result\r\nSELECT (CAST(t0.c0 AS TIME)>=('12:34:56')) FROM t0; -- true, true\r\nSELECT NOT (CAST(t0.c0 AS TIME)>=('12:34:56')) FROM t0; -- true, true\r\n\r\n\r\n-- original query found by TLP\r\nSELECT * FROM t0 WHERE (CAST(t0.c0 AS TIME)>=('12:34:56')) UNION ALL SELECT * FROM t0 WHERE (NOT (CAST(t0.c0 AS TIME)>=('12:34:56'))) UNION ALL SELECT * FROM t0 WHERE (((CAST(t0.c0 AS TIME)>=('12:34:56'))) IS NULL);\r\n-- 4 rows (unexpected)\r\n```\n\n### OS:\n\nUbuntu 22.04\n\n### DuckDB Version:\n\nv1.1.1-dev238 f0f78913a5\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nSuyang Zhong\n\n### Affiliation:\n\nNUS\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a source build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [X] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [X] Yes, I have",
+  "date": "2024-09-19 05:23:53",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE t1(c1 TIMESTAMP, c2 INT NOT NULL);",
+    "INSERT INTO t1(c1, c2) VALUES ('2030-01-01', 1);",
+    "INSERT INTO t1(c1, c2) VALUES ('1969-12-23 20:44:40', 2);",
+    "SELECT (CAST(t1.c1 AS TIME) IS NULL) FROM t1;",
+    "SELECT * FROM t1 WHERE (CAST(t1.c1 AS TIME) < '12:34:56') UNION ALL SELECT * FROM t1 WHERE (CAST(t1.c1 AS TIME) >= '12:34:56');"
+  ],
+  "key_bug_features": [
+    "Casting TIMESTAMP_S to TIME produces contradictory results"
+  ]
+}

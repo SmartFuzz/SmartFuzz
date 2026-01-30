@@ -1,0 +1,10 @@
+CREATE SEQUENCE seq;
+CREATE TABLE weird_tbl(id INT DEFAULT nextval('seq'), key VARCHAR);
+INSERT INTO weird_tbl (key) VALUES 	('/'), 	('\/\/'), 	('==='), 	('value with strings'), 	('?:&'), 	('🦆'), 	('==='), 	('===');
+COPY weird_tbl TO '__TEST_DIR__/escaped_partitions' (FORMAT PARQUET, PARTITION_BY(key));
+select key, COUNT(*) from parquet_scan('__TEST_DIR__/escaped_partitions/**/*.parquet') GROUP BY ALL ORDER BY ALL;
+ALTER TABLE weird_tbl RENAME COLUMN key TO "=/ \\/";
+COPY weird_tbl TO '__TEST_DIR__/escaped_partitions_names' (FORMAT PARQUET, PARTITION_BY("=/ \\/"));
+select "=/ \\/", COUNT(*) from parquet_scan('__TEST_DIR__/escaped_partitions_names/**/*.parquet') GROUP BY ALL ORDER BY ALL;
+COPY weird_tbl TO '__TEST_DIR__/escaped_partitions_names' (FORMAT PARQUET, PARTITION_BY("=/ \\/"), OVERWRITE, WRITE_PARTITION_COLUMNS);
+select "=/ \\/", COUNT(*) from parquet_scan('__TEST_DIR__/escaped_partitions_names/**/*.parquet') GROUP BY ALL ORDER BY ALL;

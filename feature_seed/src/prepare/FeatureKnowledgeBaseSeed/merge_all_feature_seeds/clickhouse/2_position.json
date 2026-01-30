@@ -1,0 +1,10 @@
+CREATE TABLE test_strings (id UInt32, haystack String, needle String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_strings VALUES (1, 'Hello, world!', '!'), (2, 'Hello, world!', 'o'), (3, 'Hello, world!', ''), (4, 'Example text', 'text');
+SELECT id, position(haystack, needle) FROM test_strings WHERE position(haystack, needle) NOT BETWEEN 1 AND 10;
+SELECT id, position(haystack, 'xyz', position(haystack, needle)) AS pos FROM test_strings HAVING pos NOT BETWEEN 1 AND length(haystack);
+SELECT id, position(haystack, needle) = 1 FROM test_strings WHERE needle != '' OR position(haystack, '') NOT BETWEEN 2 AND 3;
+CREATE TABLE test_data (data_id UInt32, string_field String, number_field Int32) ENGINE = MergeTree() ORDER BY data_id;
+INSERT INTO test_data VALUES (1, 'Sample', 1), (2, '', 2), (3, 'Test', NULL), (4, 'Demo string for testing', 4);
+SELECT d.data_id, position(s.string_field, 'Test') FROM test_data d JOIN test_strings s ON position(s.haystack, '') NOT BETWEEN 1 AND length(s.haystack) WHERE (s.id NOT BETWEEN 2 AND 3) = (d.data_id < 5);
+SELECT id FROM test_strings WHERE position(haystack, needle) = 0 AND NOT (id NOT BETWEEN 1 AND 4) ORDER BY position(haystack, needle);
+SELECT DISTINCT s.id FROM test_strings s JOIN (SELECT id, position(haystack, needle) AS pos FROM test_strings WHERE needle = '') sub ON position(s.haystack, sub.needle) NOT BETWEEN 1 AND 10;

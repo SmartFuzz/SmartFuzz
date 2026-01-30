@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/57247",
+  "title": "unexpected query result using CTE",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n``` SQL\r\nCREATE TABLE `tl50cb7440` (\r\n  `col_43` decimal(30,30) NOT NULL,\r\n  PRIMARY KEY (`col_43`) /*T![clustered_index] CLUSTERED */,\r\n  UNIQUE KEY `idx_12` (`col_43`),\r\n  KEY `idx_13` (`col_43`),\r\n  UNIQUE KEY `idx_14` (`col_43`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin;\r\nINSERT INTO `tl50cb7440` VALUES(0.000000000000000000000000000000),(0.400000000000000000000000000000);\r\n\r\nWITH `cte_8911` (`col_47665`) AS (SELECT MID(`tl50cb7440`.`col_43`, 6, 9) AS `r0` FROM `tl50cb7440` WHERE `tl50cb7440`.`col_43` IN (0,0) AND `tl50cb7440`.`col_43` IN (0) GROUP BY `tl50cb7440`.`col_43` HAVING `tl50cb7440`.`col_43` IN (0,0) OR `tl50cb7440`.`col_43` BETWEEN 0.84 AND 0) (SELECT 1 FROM `cte_8911` WHERE `cte_8911`.`col_47665`!='');\r\n```\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\n``` SQL\r\nmysql> WITH `cte_8911` (`col_47665`) AS (SELECT MID(`tl50cb7440`.`col_43`, 6, 9) AS `r0` FROM `tl50cb7440` WHERE `tl50cb7440`.`col_43` IN (0,0) AND `tl50cb7440`.`col_43` IN (0) GROUP BY `tl50cb7440`.`col_43` HAVING `tl50cb7440`.`col_43` IN (0,0) OR `tl50cb7440`.`col_43` BETWEEN 0.84 AND 0) (SELECT 1 FROM `cte_8911` WHERE `cte_8911`.`col_47665`!='');\r\n+---+\r\n| 1 |\r\n+---+\r\n| 1 |\r\n+---+\r\n1 row in set (0.01 sec)\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n``` SQL\r\n WITH `cte_8911` (`col_47665`) AS (SELECT MID(`tl50cb7440`.`col_43`, 6, 9) AS `r0` FROM `tl50cb7440` WHERE `tl50cb7440`.`col_43` IN (0,0) AND `tl50cb7440`.`col_43` IN (0) GROUP BY `tl50cb7440`.`col_43` HAVING `tl50cb7440`.`col_43` IN (0,0) OR `tl50cb7440`.`col_43` BETWEEN 0.84 AND 0) (SELECT 1 FROM `cte_8911` WHERE `cte_8911`.`col_47665`!='');\r\nEmpty set (0.00 sec)\r\n```\r\n### 4. What is your TiDB version? (Required)\r\n248000c998517716263ac866ccce90a6905ff018\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2024-11-08T09:55:21Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (col_1 INTEGER NOT NULL, col_2 REAL DEFAULT NULL, col_3 TEXT NOT NULL, PRIMARY KEY (col_1), UNIQUE (col_2));",
+    "INSERT INTO test_table VALUES (1, 0.00001, 'test1'), (2, 0.40000, 'test2'), (3, NULL, 'test3');",
+    "WITH cte_test AS (SELECT col_2 FROM test_table WHERE col_2 IS NOT NULL AND col_2 < 0.5) SELECT COUNT(*) FROM cte_test WHERE col_2 > 0.1;",
+    "SELECT col_1 FROM test_table WHERE col_3 LIKE 'test%';",
+    "UPDATE test_table SET col_2 = ROUND(col_2, 2) WHERE col_1 = 2;"
+  ],
+  "key_bug_features": [
+    "CTE query with specific conditions on col_43"
+  ]
+}

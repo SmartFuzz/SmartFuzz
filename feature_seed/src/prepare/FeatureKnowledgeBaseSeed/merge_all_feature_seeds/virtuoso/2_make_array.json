@@ -1,0 +1,10 @@
+CREATE TABLE test_array (id INT PRIMARY KEY, value TEXT);
+INSERT INTO test_array (id, value) VALUES (1, 'A'), (2, 'B'), (3, NULL);
+SELECT id, make_array((SELECT value FROM test_array WHERE id != 1)) AS array_result FROM test_array WHERE value IS NOT NULL;
+SELECT id, (SELECT make_array(value) FROM test_array WHERE id != 2) AS nested_array FROM test_array WHERE value IS NOT NULL;
+SELECT id, make_array((SELECT value FROM test_array)) AS complete_array, (SELECT COUNT(*) FROM test_array WHERE value IS NOT NULL) AS non_null_count FROM test_array GROUP BY id HAVING non_null_count != 0;
+SELECT id, make_array(CASE WHEN value != 'A' THEN value END) AS filtered_array FROM test_array WHERE id IN (SELECT id FROM test_array WHERE value IS NOT NULL) GROUP BY id HAVING COUNT(*) != 0;
+SELECT id, make_array((SELECT value FROM test_array WHERE value IS NOT NULL LIMIT 5)) AS top_array FROM test_array;
+SELECT id, make_array((SELECT CASE WHEN value IS NULL THEN 'NULL' ELSE value END FROM test_array WHERE value != 'B')) AS null_handling_array FROM test_array;
+CREATE TEMPORARY TABLE temp_table AS SELECT id, value FROM test_array WHERE value IS NOT NULL;
+SELECT id, make_array((SELECT value FROM temp_table WHERE id != (SELECT MIN(id) FROM temp_table))) AS distinct_array FROM temp_table GROUP BY id HAVING COUNT(*) != 0;

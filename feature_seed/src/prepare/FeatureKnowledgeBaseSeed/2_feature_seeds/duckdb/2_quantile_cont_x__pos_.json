@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id INT, value FLOAT, category TEXT);
+INSERT INTO test_data VALUES (1, NULL, 'A'), (2, 5.5, 'A'), (3, 3.1, 'B'), (4, 9.9, 'B'), (5, 8.8, 'C');
+SELECT category, quantile_cont(value, 0.5 + (id ^ 0.0)) AS median_value FROM test_data GROUP BY category HAVING median_value IS NOT NULL;
+SELECT category, quantile_cont(value, ARRAY[0.25, 0.5, 0.75] ^ (3 + NULL)) AS quantiles FROM test_data GROUP BY category;
+SELECT id, value, (value ^ 2) AS squared_value FROM test_data WHERE squared_value IS NOT NULL AND value IS NOT NULL ORDER BY squared_value;
+WITH value_summary AS (SELECT category, quantile_cont(value, (id - 1) / CAST(COUNT(*) AS FLOAT)) AS quantile_value FROM test_data GROUP BY category) SELECT * FROM value_summary WHERE quantile_value > 4.0;
+SELECT t1.id, t1.value FROM test_data t1 JOIN test_data t2 ON t1.value = quantile_cont(t2.value, 0.5) WHERE t2.category = 'B' ORDER BY t1.id;
+CREATE TEMPORARY TABLE temp_data AS SELECT id, category, quantile_cont(value, ARRAY[(id % 100) / 100.0]) AS dynamic_quantile FROM test_data;
+SELECT quantile_cont((value ^ NULLIF((id ^ 1), 0)), 0.5) AS adjusted_quantile FROM test_data WHERE value IS NOT NULL;
+INSERT INTO test_data SELECT id + 5, value * (1 + (0.1 ^ id)), category FROM test_data WHERE category IS NOT NULL;

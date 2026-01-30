@@ -1,0 +1,23 @@
+{
+    "function": "Implementation Details",
+    "operator": "a <= b",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, amount Float64, date Date, metadata String, status Enum('active', 'inactive')) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table VALUES (1, 100.50, '2023-01-01', 'test record 1', 'active'), (2, 200.75, '2023-01-02', 'test record 2', 'inactive'), (3, NULL, '2023-01-03', 'test record 3', 'active'), (4, 5.00, '2023-01-04', 'test record 4', 'inactive');",
+        "SELECT id, amount, date FROM test_table WHERE amount <= (SELECT AVG(amount) FROM test_table WHERE status = 'active');",
+        "SELECT id, amount, (CASE WHEN amount <= 100 THEN 'Low' ELSE 'High' END) AS amount_category FROM test_table WHERE date >= '2023-01-01' AND amount IS NOT NULL;",
+        "SELECT status, COUNT(*) AS count FROM (SELECT id, status FROM test_table WHERE date > '2023-01-01') GROUP BY status HAVING count > 1;",
+        "CREATE TABLE foreign_table (foreign_id UInt32, linked_id UInt32) ENGINE = MergeTree() ORDER BY foreign_id;",
+        "INSERT INTO foreign_table VALUES (1, 1), (2, 2), (3, 1), (4, 4);",
+        "SELECT t.id, t.amount, f.linked_id FROM test_table t INNER JOIN foreign_table f ON t.id = f.linked_id WHERE t.amount IS NOT NULL ORDER BY t.amount DESC;",
+        "SELECT COUNT(*) FROM test_table WHERE metadata IN (SELECT metadata FROM test_table WHERE amount <= (SELECT MAX(amount) FROM test_table WHERE status = 'inactive')) GROUP BY status HAVING COUNT(*) > 0;",
+        "CREATE TABLE json_table (json_data String) ENGINE = MergeTree() ORDER BY tuple();",
+        "INSERT INTO json_table VALUES ('{\"key\": \"value\"}'), ('{\"key\": null}'), ('{\"key\": \"test\"}');",
+        "SELECT json_data FROM json_table WHERE JSONExtractString(json_data, 'key') IS NOT NULL;",
+        "SELECT id, amount, date FROM test_table WHERE date <= (SELECT max(date) FROM test_table WHERE status = 'active') AND amount IS NOT NULL;",
+        "SELECT AVG(amount) FROM test_table WHERE amount IS NOT NULL AND amount <= (SELECT MAX(amount) FROM test_table WHERE status = 'inactive') LIMIT 1;",
+        "CREATE TABLE complex_table (a Int32, b String, c DateTime) ENGINE = MergeTree() ORDER BY a;",
+        "INSERT INTO complex_table VALUES (1, 'example', NOW()) , (2, 'test', NOW()-INTERVAL 1 DAY);",
+        "SELECT a, b, c FROM complex_table WHERE a <= (SELECT MIN(a) FROM complex_table WHERE c > NOW() - INTERVAL 7 DAY);"
+    ]
+}

@@ -1,0 +1,12 @@
+CREATE TABLE test_table (id UInt32, number String, another_number Float64);
+INSERT INTO test_table VALUES (1, '-128'), (2, 'abc'), (3, '123.456'), (4, 'NaN'), (5, '0xc0fe');
+SELECT id, toInt128OrDefault(number, CAST(-1, 'Int128')) * 2 as multiplied_value FROM test_table WHERE toInt128OrDefault(number, CAST(-1, 'Int128')) IS NOT NULL;
+SELECT id, multiplied_value, multiplied_value + toInt128OrDefault('0.999', CAST(0, 'Int128')) as final_value FROM (SELECT id, toInt128OrDefault(number, CAST(-1, 'Int128')) * 2 as multiplied_value FROM test_table) HAVING final_value > 0;
+SELECT id, SUM(toInt128OrDefault(number, 0) * 1.5) OVER (PARTITION BY 1) as total_value FROM test_table;
+CREATE TABLE temp_table AS SELECT id, toInt128OrDefault(number, 0) as converted_number FROM test_table;
+SELECT id, converted_number, converted_number * toInt128OrDefault(another_number, 0) as product FROM temp_table WHERE converted_number > 0;
+SELECT id, COUNT(*) FILTER (WHERE toInt128OrDefault(number, CAST(-1, 'Int128')) > 100) as count_above_100 FROM test_table GROUP BY id HAVING count_above_100 > 0;
+CREATE TEMPORARY TABLE join_test_table (a Int64, b Float64);
+INSERT INTO join_test_table VALUES (1, 1.5), (2, NaN);
+SELECT t.id, j.a, j.b * toInt128OrDefault(t.number, 0) as resulting_value FROM test_table t JOIN join_test_table j ON j.a = toInt128OrDefault(t.number, 0);
+SELECT DISTINCT toInt128OrDefault(number, 0) as distinct_number FROM test_table WHERE number NOT IN (SELECT number FROM test_table WHERE number LIKE '%abc%');

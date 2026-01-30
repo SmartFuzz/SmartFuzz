@@ -1,0 +1,22 @@
+{
+    "HTML": [
+        "https://docs.openlinksw.com/virtuoso/fn_http_ttl_triple/"
+    ],
+    "Title": [
+        "http_ttl_triple"
+    ],
+    "Feature": [
+        "http_ttl_triple(env, arg1, arg2, arg3, ses)"
+    ],
+    "Description": [
+        "outputs next triple to ses in TTL serialization.",
+        "Outputs next triple to ses in TTL serialization. This function does not terminate the printed\n    \ttriple in hope that the next triple will has same \"s\" or pair of \"s\" and \"p\". So \"intermediate\"\n    \tsemicolon or comma can be used instead of \"trailing\" dot."
+    ],
+    "Examples": [
+        "CREATE PROCEDURE dump_one_graph\n  ( IN  srcgraph           VARCHAR  ,\n    IN  out_file           VARCHAR  ,\n    IN  file_length_limit  INTEGER  := 1000000000\n  )\n  {\n    DECLARE  file_name  varchar;\n    DECLARE  env, ses      any;\n    DECLARE  ses_len,\n             max_ses_len,\n             file_len,\n             file_idx      integer;\n    SET ISOLATION = 'uncommitted';\n    max_ses_len := 10000000;\n    file_len := 0;\n    file_idx := 1;\n    file_name := sprintf ('%s%06d.ttl', out_file, file_idx);\n    string_to_file ( file_name || '.graph',\n                     srcgraph,\n                     -2\n                   );\n    string_to_file ( file_name,\n                     sprintf ( '# Dump of graph <%s>, as of %s\\n',\n                               srcgraph,\n                               CAST (NOW() AS VARCHAR)\n                             ),\n                     -2\n                   );\n    env := vector (dict_new (16000), 0, '', '', '', 0, 0, 0, 0);\n    ses := string_output ();\n    FOR (SELECT * FROM ( SPARQL DEFINE input:storage \"\"\n                         SELECT ?s ?p ?o { GRAPH `iri(?:srcgraph)` { ?s ?p ?o } }\n                       ) AS sub OPTION (LOOP)) DO\n      {\n        http_ttl_triple (env, \"s\", \"p\", \"o\", ses);\n        ses_len := length (ses);\n        IF (ses_len > max_ses_len)\n          {\n            file_len := file_len + ses_len;\n            IF (file_len > file_length_limit)\n              {\n                http (' .\\n', ses);\n                string_to_file (file_name, ses, -1);\n                file_len := 0;\n                file_idx := file_idx + 1;\n                file_name := sprintf ('%s%06d.ttl', out_file, file_idx);\n                string_to_file ( file_name,\n                                 sprintf ( '# Dump of graph <%s>, as of %s (part %d)\\n',\n                                           srcgraph,\n                                           CAST (NOW() AS VARCHAR),\n                                           file_idx),\n                                 -2\n                               );\n                 env := vector (dict_new (16000), 0, '', '', '', 0, 0, 0, 0);\n              }\n            ELSE\n              string_to_file (file_name, ses, -1);\n            ses := string_output ();\n          }\n      }\n    IF (LENGTH (ses))\n      {\n        http (' .\\n', ses);\n        string_to_file (file_name, ses, -1);\n      }\n  }\n;",
+        "create procedure dump_rdftriples_to_ttl(inout triples any, inout ses any)\n{\n  declare env any;\n  declare tcount, tctr integer;\n  tcount := length (triples);\n  if (0 = tcount)\n    {\n      http ('# Empty TURTLE\\n', ses);\n      return;\n    }\n  env := vector (dict_new (__min (tcount, 16000)), 0, '', '', '', 0, 0, 0, 0);\n  { whenever sqlstate '*' goto end_pred_sort;\n    rowvector_subj_sort (triples, 1, 1);\nend_pred_sort: ;\n  }\n  { whenever sqlstate '*' goto end_subj_sort;\n    rowvector_subj_sort (triples, 0, 1);\nend_subj_sort: ;\n  }\n  for (tctr := 0; tctr < tcount; tctr := tctr + 1)\n    {\n      http_ttl_triple (env, triples[tctr][0], triples[tctr][1], triples[tctr][2], ses);\n    }\n  http (' .', ses);\n}\n;"
+    ],
+    "Category": [
+        "RDF data function"
+    ]
+}

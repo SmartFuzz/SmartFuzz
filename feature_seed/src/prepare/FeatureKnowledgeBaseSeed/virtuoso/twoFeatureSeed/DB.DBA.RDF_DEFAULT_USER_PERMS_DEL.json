@@ -1,0 +1,16 @@
+{
+    "function": "DB.DBA.RDF_DEFAULT_USER_PERMS_DEL",
+    "operator": "JSON Operator: json_array_length",
+    "sql_array": [
+        "CREATE TABLE user_permissions (uname VARCHAR(255), set_private BOOLEAN, permissions JSON);",
+        "INSERT INTO user_permissions (uname, set_private, permissions) VALUES ('test_user', TRUE, JSON_ARRAY('read', 'write'));",
+        "SELECT DB.DBA.RDF_DEFAULT_USER_PERMS_DEL(uname, set_private) FROM user_permissions WHERE JSON_CONTAINS(permissions, '\"write\"') AND uname = (SELECT uname FROM user_permissions WHERE set_private = TRUE LIMIT 1);",
+        "SELECT json_array_length(permissions) AS perm_count FROM (SELECT permissions FROM user_permissions WHERE uname = 'test_user') AS temp WHERE json_array_length(permissions) > 0;",
+        "UPDATE user_permissions SET permissions = JSON_ARRAY('read', 'execute') WHERE uname = 'test_user' AND json_array_length(permissions) < 3;",
+        "SELECT DB.DBA.RDF_DEFAULT_USER_PERMS_DEL(uname, set_private) FROM (SELECT uname, set_private FROM user_permissions WHERE uname NOT IN ('nobody', 'dba')) AS valid_users WHERE json_array_length(permissions) = (SELECT MAX(json_array_length(permissions)) FROM user_permissions);",
+        "SELECT DB.DBA.RDF_DEFAULT_USER_PERMS_DEL(uname, NOT set_private) FROM user_permissions WHERE (uname LIKE 'user%' OR set_private IS NULL) AND permissions IS NOT NULL ORDER BY json_array_length(permissions) DESC;",
+        "CREATE TABLE test_graph (graph_name VARCHAR(255), data JSON);",
+        "INSERT INTO test_graph (graph_name, data) VALUES ('example_graph', JSON_ARRAY('data1', NULL, 'data2'));",
+        "SELECT json_array_length(data) AS data_length FROM test_graph WHERE graph_name = 'example_graph' HAVING data_length > 1;"
+    ]
+}

@@ -1,0 +1,17 @@
+{
+    "function": "ngramMinHashArgCaseInsensitiveUTF8",
+    "operator": "a = b",
+    "sql_array": [
+        "CREATE TABLE test_strings (id UInt32, value String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_strings (id, value) VALUES (1, 'Hello'), (2, NULL), (3, 'ClickHouse'), (4, 'clickhouse'), (5, 'C1ickHouse'), (6, 'C!ickH@use');",
+        "SELECT id, ngramMinHashArgCaseInsensitiveUTF8(value) AS ngram_hash FROM test_strings WHERE ngramMinHashArgCaseInsensitiveUTF8(value, 3, 6) = ngramMinHashArgCaseInsensitiveUTF8('ClickHouse') LIMIT 10;",
+        "SELECT id, value FROM test_strings WHERE (ngramMinHashArgCaseInsensitiveUTF8(value) = ngramMinHashArgCaseInsensitiveUTF8('C1ickHouse')) AND value IS NOT NULL;",
+        "WITH ngram_hash AS (SELECT value, ngramMinHashArgCaseInsensitiveUTF8(value) AS result FROM test_strings) SELECT * FROM ngram_hash WHERE result.1 = (SELECT result.1 FROM ngram_hash WHERE value = 'ClickHouse');",
+        "CREATE TABLE comparison_table (id UInt32, data String, comp_value UInt8) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO comparison_table (id, data, comp_value) VALUES (1, 'test1', 1), (2, 'test2', 0), (3, 'test3', 1), (4, 'test4', NULL);",
+        "SELECT data FROM comparison_table WHERE comp_value = (SELECT COUNT(*) FROM comparison_table WHERE comp_value = 1) AND ngramMinHashArgCaseInsensitiveUTF8(data) = ngramMinHashArgCaseInsensitiveUTF8('test1');",
+        "SELECT id, value, CASE WHEN ngramMinHashArgCaseInsensitiveUTF8(value) = ngramMinHashArgCaseInsensitiveUTF8('Hello') THEN 1 ELSE 0 END AS is_matching FROM test_strings GROUP BY is_matching HAVING is_matching = 1;",
+        "SELECT id, value FROM test_strings t1 JOIN comparison_table t2 ON ngramMinHashArgCaseInsensitiveUTF8(t1.value) = ngramMinHashArgCaseInsensitiveUTF8(t2.data) WHERE t1.value IS NOT NULL AND t2.comp_value IS NOT NULL;",
+        "SELECT id, ngramMinHashArgCaseInsensitiveUTF8(value, 4) AS ngram_hash FROM test_strings WHERE (id = 1 OR value = '') AND ngramMinHashArgCaseInsensitiveUTF8(value) IS NOT NULL;"
+    ]
+}

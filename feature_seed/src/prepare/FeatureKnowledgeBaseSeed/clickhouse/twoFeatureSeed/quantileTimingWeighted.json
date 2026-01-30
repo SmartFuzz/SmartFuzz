@@ -1,0 +1,16 @@
+{
+    "function": "quantileTimingWeighted",
+    "operator": "a = b",
+    "sql_array": [
+        "CREATE TABLE page_load_times (response_time Float32, weight Float32) ENGINE = MergeTree() ORDER BY response_time;",
+        "INSERT INTO page_load_times VALUES (100.0, 10), (200.0, 20), (40000.0, 30), (150.0, 15), (NaN, 1), (NULL, 5);",
+        "SELECT quantileTimingWeighted(0.75)(response_time, weight) AS quantile_value FROM page_load_times WHERE response_time IS NOT NULL GROUP BY weight HAVING quantile_value > 0;",
+        "SELECT quantileTimingWeighted(0.5)(response_time, weight) AS median_weighted FROM (SELECT response_time, weight FROM page_load_times WHERE response_time < 30000) WHERE weight = (SELECT MAX(weight) FROM page_load_times);",
+        "SELECT response_time, weight FROM page_load_times WHERE quantileTimingWeighted(0.5)(response_time, weight) > (SELECT AVG(weight) FROM page_load_times) AND weight < response_time;",
+        "SELECT quantileTimingWeighted(0.99)(response_time, weight) FROM (SELECT DISTINCT response_time, weight FROM page_load_times) WHERE EXISTS (SELECT 1 FROM page_load_times AS pl WHERE pl.response_time < 50000 UNION ALL SELECT 1 FROM page_load_times WHERE response_time IS NOT NULL);",
+        "CREATE TABLE temp_load_times AS SELECT response_time, weight FROM page_load_times WHERE response_time IS NOT NULL;",
+        "SELECT quantileTimingWeighted(0.5)(response_time, weight) FROM temp_load_times WHERE weight > 0 AND (response_time = response_time * 1.0 OR response_time < 0);",
+        "INSERT INTO page_load_times VALUES (NULL, 2), (0, 1), (-100.0, 3);",
+        "SELECT quantileTimingWeighted(0.01)(CAST(response_time AS Float32), weight) FROM page_load_times WHERE weight = 0 OR response_time = 30000.0 GROUP BY weight HAVING COUNT(*) > 1;"
+    ]
+}

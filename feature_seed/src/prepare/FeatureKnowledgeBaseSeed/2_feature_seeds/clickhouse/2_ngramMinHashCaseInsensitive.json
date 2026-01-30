@@ -1,0 +1,10 @@
+CREATE TABLE test_strings (id UInt32, string_value String, created_at DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_strings VALUES (1, 'ClickHouse'), (2, 'ClicKHouse'), (3, 'ClickHouseDB'), (4, NULL), (5, 'CLICKHOUSE'), (6, 'SQL injection test');
+SELECT id, ngramMinHashCaseInsensitive(string_value, 3, 6) AS hashes FROM test_strings WHERE created_at IS NOT NULL;
+SELECT id, string_value FROM test_strings WHERE string_value = ANY (SELECT string_value FROM test_strings WHERE ngramMinHashCaseInsensitive(string_value, 2, 5).1 = ngramMinHashCaseInsensitive('ClickHouse', 2, 5).1);
+SELECT id FROM test_strings GROUP BY ngramMinHashCaseInsensitive(string_value, 3, 6) HAVING count(*) > 1;
+SELECT t.id FROM (SELECT id, ngramMinHashCaseInsensitive(string_value, 4, 7) AS hashes FROM test_strings) AS t WHERE t.hashes.1 IS NOT NULL;
+WITH (SELECT string_value FROM test_strings WHERE created_at IS NULL) AS null_test_values SELECT id, ngramMinHashCaseInsensitive((SELECT string_value FROM null_test_values LIMIT 1), 4, 6) AS hashes FROM test_strings WHERE string_value = ANY (SELECT string_value FROM null_test_values);
+CREATE TEMPORARY TABLE temp_strings (temp_id UInt32, temp_value String) ENGINE = MergeTree() ORDER BY temp_id;
+INSERT INTO temp_strings VALUES (1, 'Test String 1'), (2, 'Test String 2'), (3, NULL);
+SELECT ts.temp_id, ts.temp_value, ngramMinHashCaseInsensitive(ts.temp_value, 5, 10) FROM temp_strings ts WHERE ts.temp_value = ANY (SELECT ngramMinHashCaseInsensitive(string_value, 3, 6).2 FROM test_strings WHERE string_value IS NOT NULL);

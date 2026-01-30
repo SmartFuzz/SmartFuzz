@@ -1,0 +1,21 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=102970",
+  "title": "trx reserves record-lock for failed insert statement",
+  "description": "hello,\r\n  While a insert statement fails with `Duplicate entry .. for key ..`, the record lock is not released, although there isn't any modified records. I suppose this is unnecessary.\r\n  Reference to `How to repeat` for detail please.\nHow to repeat:\nmysql>\r\nmysql> create database test;\r\nQuery OK, 1 row affected (0.01 sec)\r\n\r\nmysql> use test\r\nDatabase changed\r\nmysql> create table t1 (id int primary key, age int);\r\nQuery OK, 0 rows affected (0.02 sec)\r\n\r\nmysql> insert into t1 values (1,1), (2,2), (3,3);\r\nQuery OK, 3 rows affected (0.01 sec)\r\nRecords: 3  Duplicates: 0  Warnings: 0\r\n\r\nmysql>\r\nmysql> begin;\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nmysql> insert into t1 values (2,3);\r\nERROR 1062 (23000): Duplicate entry '2' for key 't1.PRIMARY'\r\nmysql>\r\nmysql> select * from performance_schema.data_locks where LOCK_TYPE = 'RECORD'\\G\r\n*************************** 1. row ***************************\r\n               ENGINE: INNODB\r\n       ENGINE_LOCK_ID: 140460297633176:37:4:3:140460194604992\r\nENGINE_TRANSACTION_ID: 10061\r\n            THREAD_ID: 113\r\n             EVENT_ID: 17\r\n        OBJECT_SCHEMA: test\r\n          OBJECT_NAME: t1\r\n       PARTITION_NAME: NULL\r\n    SUBPARTITION_NAME: NULL\r\n           INDEX_NAME: PRIMARY\r\nOBJECT_INSTANCE_BEGIN: 140460194604992\r\n            LOCK_TYPE: RECORD\r\n            LOCK_MODE: S,REC_NOT_GAP\r\n          LOCK_STATUS: GRANTED\r\n            LOCK_DATA: 2\r\n1 row in set (0.00 sec)\nSuggested fix:\nunlock the record-lock while ER_DUP_ENTRY is returned.",
+  "date": "2021-03-15 06:22:00",
+  "vulnerable_version": "MySQL8.0.22, 8.0.23",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (id INT PRIMARY KEY, name VARCHAR(50), age INT CHECK (age >= 0));",
+    "INSERT INTO t2 VALUES (1, 'Alice', 30), (2, 'Bob', 25), (3, 'Charlie', 35);",
+    "BEGIN;",
+    "INSERT INTO t2 VALUES (2, 'David', 40);",
+    "SELECT * FROM t2 WHERE age IS NULL;",
+    "ROLLBACK;"
+  ],
+  "key_bug_features": [
+    "Record lock not released on duplicate entry error"
+  ]
+}

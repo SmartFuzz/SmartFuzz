@@ -1,0 +1,17 @@
+{
+    "function": "toUInt128",
+    "operator": "a == b",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt64, value String, float_value Float64, date_value Date);",
+        "INSERT INTO test_table VALUES (1, '128'), (2, '128.8'), (3, 'NaN'), (4, '0'), (5, 'string'), (6, '18446744073709551615');",
+        "SELECT id, toUInt128(value) AS value_uint, float_value, toUInt128(float_value) AS float_uint FROM test_table WHERE toUInt128(value) == 128;",
+        "SELECT id, value, float_value FROM (SELECT id, value, toUInt128(float_value) AS float_uint FROM test_table HAVING float_uint == 128) AS derived_table;",
+        "SELECT id, toUInt128(value) FROM (SELECT id, NULLIF(value, 'string') AS safe_value FROM test_table) WHERE safe_value IS NOT NULL AND toUInt128(safe_value) == 128;",
+        "CREATE TABLE secondary_table (id UInt64, ref_id UInt64, keyword String);",
+        "INSERT INTO secondary_table VALUES (1, 1, 'match'), (2, 2, 'no_match'), (3, 1, 'another_match');",
+        "SELECT st.id, st.keyword FROM secondary_table st JOIN test_table tt ON st.ref_id == tt.id WHERE toUInt128(tt.value) == 128;",
+        "SELECT id, COUNT(*) FROM test_table GROUP BY toUInt128(float_value) HAVING COUNT(*) > 1;",
+        "SELECT id, CASE WHEN toUInt128(value) == toUInt128('128') THEN 'Matched' ELSE 'Not Matched' END AS match_status FROM test_table;",
+        "SELECT id, (SELECT MAX(toUInt128(value)) FROM test_table WHERE value IS NOT NULL) AS max_value FROM test_table;"
+    ]
+}

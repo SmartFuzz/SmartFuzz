@@ -1,0 +1,16 @@
+CREATE TABLE coverage_tests (id INT PRIMARY KEY, report_filename VARCHAR(255), output_directory VARCHAR(255));
+INSERT INTO coverage_tests VALUES (1, 'report1.txt', '/path/to/directory1');
+INSERT INTO coverage_tests VALUES (2, NULL, '/path/to/directory2');
+INSERT INTO coverage_tests VALUES (3, 'report3.txt', NULL);
+INSERT INTO coverage_tests VALUES (4, 'report4.txt', '');
+SELECT cov_report(report_filename, output_directory) FROM coverage_tests WHERE id = 1 AND report_filename IS NOT NULL;
+SELECT cov_report(report_filename, output_directory) FROM coverage_tests WHERE id = 2 AND output_directory IS NOT NULL;
+SELECT ID, cov_report(CASE WHEN output_directory IS NOT NULL THEN report_filename ELSE 'default_report.txt' END, output_directory) FROM coverage_tests WHERE output_directory IS NOT NULL;
+SELECT ID, cov_report(COALESCE(report_filename, 'fallback_report.txt'), directory) FROM coverage_tests WHERE report_filename IS NOT NULL AND directory IS NOT NULL;
+SELECT COUNT(*) FROM (SELECT cov_report(COALESCE(report_filename, 'report.txt'), output_directory) AS coverage_info FROM coverage_tests WHERE report_filename IS NOT NULL) AS coverage_subquery;
+SELECT * FROM coverage_tests WHERE report_filename IS NOT NULL AND output_directory IS NOT NULL HAVING COUNT(*) > 0;
+SELECT DISTINCT cov_report(report_filename, output_directory) OVER (PARTITION BY output_directory ORDER BY id) FROM coverage_tests WHERE output_directory IS NOT NULL;
+CREATE TABLE temp_coverage (temp_id SERIAL PRIMARY KEY, report VARCHAR(255) NOT NULL, dir VARCHAR(255) NOT NULL);
+INSERT INTO temp_coverage (report, dir) VALUES ('temp_report.txt', '/temp/directory');
+SELECT cov_report(CAST(temp_id AS VARCHAR), dir) FROM temp_coverage WHERE dir IS NOT NULL GROUP BY dir ORDER BY temp_id;
+DROP TABLE IF EXISTS temp_coverage;

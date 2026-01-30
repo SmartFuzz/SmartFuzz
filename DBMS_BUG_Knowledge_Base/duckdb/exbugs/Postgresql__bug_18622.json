@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/18622-066b779aa707ab7a%40postgresql.org",
+  "title": "BUG #18622: Attempt to grant role in absence of INHERIT option fails with internal error",
+  "description": "The following bug has been logged on the website:\nBug reference:      18622\nLogged by:          Alexander Lakhin\nEmail address:      exclusion(at)gmail(dot)com\nPostgreSQL version: 17rc1\nOperating system:   Ubuntu 22.04\nDescription:\nThe last command of the following script:\nCREATE ROLE role0;\nCREATE ROLE role1 WITH CREATEROLE;\nSET role role1;\nCREATE ROLE role2 WITH CREATEROLE;\nSET role role2;\nCREATE ROLE role3;\nCREATE ROLE role4;\nSET role role1;\nCREATE ROLE role5 IN ROLE role3;\nfails with\nERROR:  XX000: no possible grantors\nLOCATION:  check_role_grantor, user.c:2232\nwhilst:\nCREATE ROLE role5 IN ROLE role0;\nfails with\nERROR:  permission denied to grant role \"role0\"\nDETAIL:  Only roles with the ADMIN option on role \"role0\" may grant this\nrole.\nAnother, simpler example:\nGRANT role3 TO role4;\nERROR:  no possible grantors\nBoth \"no possible grantors\" errors go away after:\nGRANT role2 TO role1 WITH INHERIT OPTION;\nThis error is raised at check_role_grantor() where it accompanied by the\ncomment:\nWe shouldn't fail to find a best grantor ...\nThis was added by ce6b672e44 and was true back then, until cf5eb37c5.\nNow this error is raised due to a difference between:\ncheck_role_membership_authorization() -> is_admin_of_role() ->\nroles_is_member_of(member, ROLERECURSE_MEMBERS, ...)\nand\ncheck_role_grantor() -> select_best_admin() ->\nroles_is_member_of(member, ROLERECURSE_PRIVS, ...)",
+  "date": "2024-09-18 09:00:00",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE ROLE role0;",
+    "CREATE ROLE role1;",
+    "CREATE ROLE role2;",
+    "CREATE ROLE role3;",
+    "GRANT role2 TO role1;"
+  ],
+  "key_bug_features": [
+    "Granting role without INHERIT option fails"
+  ]
+}

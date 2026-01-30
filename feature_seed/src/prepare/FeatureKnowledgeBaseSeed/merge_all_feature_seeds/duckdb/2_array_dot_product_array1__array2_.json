@@ -1,0 +1,11 @@
+CREATE TABLE array_test (id INT, l1 ARRAY<INT>, l2 ARRAY<INT>, timestamp_field TIMESTAMP, nullable_field INT);
+INSERT INTO array_test VALUES (1, ARRAY[1, 2, 3], ARRAY[4, 5, 6], TIMESTAMP '2023-01-01 00:00:00', NULL);
+INSERT INTO array_test VALUES (2, ARRAY[NULL, 2, 3], ARRAY[1, 5, NULL], TIMESTAMP '2023-01-02 00:00:00', 10);
+INSERT INTO array_test VALUES (3, ARRAY[1, 2, 3], ARRAY[4, 5, 6], TIMESTAMP '2023-01-03 00:00:00', 20);
+SELECT a.id, array_dot_product(a.l1, a.l2) + INTERVAL (EXTRACT(DAY FROM a.timestamp_field) - 1) DAY AS adjusted_product FROM array_test AS a WHERE a.nullable_field IS NULL;
+SELECT a.id, array_dot_product(a.l1, a.l2) AS product, (TIMESTAMP '2023-01-01 00:00:00' + INTERVAL (array_dot_product(a.l1, a.l2) % 5) DAY) AS new_timestamp FROM array_test AS a HAVING product >= 0;
+WITH sub AS (SELECT id, array_dot_product(l1, l2) AS dp FROM array_test WHERE timestamp_field < TIMESTAMP '2023-02-01 00:00:00') SELECT s.id, MAX(s.dp) + INTERVAL 1 DAY AS max_dp_plus_one FROM sub AS s GROUP BY s.id;
+CREATE TABLE other_data (other_id INT, timestamp_field TIMESTAMP DEFAULT TIMESTAMP '2023-12-31 00:00:00');
+INSERT INTO other_data VALUES (1, NULL), (2, TIMESTAMP '2023-02-01 00:00:00');
+SELECT a.id, (SELECT COUNT(*) FROM other_data od WHERE od.timestamp_field < (TIMESTAMP '2023-01-01 00:00:00' + INTERVAL (array_dot_product(a.l1, a.l2) -1) DAY)) AS count_before FROM array_test a WHERE l1 IS NOT NULL;
+SELECT a.id, (array_dot_product(a.l1, a.l2) + INTERVAL (array_length(a.l1) * a.id) DAY) AS new_interval_field FROM array_test AS a WHERE a.l1 IS NOT NULL AND array_length(a.l2) > 0 ORDER BY new_interval_field DESC;

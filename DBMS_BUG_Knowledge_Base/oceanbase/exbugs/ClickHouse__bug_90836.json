@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/90836",
+  "title": "FINAL across Paritions fails to remove duplicates",
+  "description": "### Company or project name\nAn accounting crm platform.\n### Describe what's wrong\nWhen you have a ReplacingMergeTree table that uses a `PARITION BY` and a newly updated row is in a different partition then the `FINAL` doesn't remove the row in certain select statements that touch only the earlier partition.\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nhttps://fiddle.clickhouse.com/edea44e3-d1c6-463d-ab3d-97824c64515f\nTested in latest and 24.7.2.13\n```sql\nCREATE TABLE Transactions\n(\n`AccountID` Int64,\n`ContributionID` Int64,\n`ReceiptDate` Date,\n`LastUpdatedOnUTC` DateTime64(3, 'UTC'),\n)\nENGINE = ReplacingMergeTree(LastUpdatedOnUTC)\nPARTITION BY toYYYYMM(ReceiptDate)\nPRIMARY KEY (AccountID, ContributionID)\nORDER BY (AccountID, ContributionID);\ninsert into Transactions VALUES (1,1234,'2025-10-01', '2025-10-01');\nselect 'OK-1',* from Transactions final where ContributionID = 1234;\ninsert into Transactions VALUES (1,1234,'2025-09-30', '2025-10-15');\nselect 'OK-2',* from Transactions final where ContributionID = 1234;\nselect 'BAD Date',* from Transactions final where ContributionID = 1234\nAND ReceiptDate>='2025-10-01';\nselect 'BAD Date',* from (SELECT * FROM Transactions final WHERE ReceiptDate>='2025-09-30') as t where ContributionID = 1234\nAND ReceiptDate>='2025-10-01';\n```\n### Expected behavior\nThe ReceiptDate of 9/30 should show for all the queries after when using the FINAL keyword.\n### Error message and/or stacktrace\n_No response_\n### Additional context\n_No response_",
+  "date": "2025-11-25T19:34:20Z",
+  "vulnerable_version": "24.7.2.13",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE Transactions (AccountID BIGINT, ContributionID BIGINT, ReceiptDate DATE, LastUpdatedOnUTC TIMESTAMP(3)) PARTITION BY EXTRACT(YEAR_MONTH FROM ReceiptDate) PRIMARY KEY (AccountID, ContributionID);",
+    "INSERT INTO Transactions VALUES (1, 1234, '2025-10-01', '2025-10-01');",
+    "INSERT INTO Transactions VALUES (1, 1234, '2025-09-30', '2025-10-15');",
+    "SELECT 'Check 1', * FROM Transactions WHERE ContributionID = 1234 ORDER BY LastUpdatedOnUTC DESC;",
+    "SELECT 'Check 2', * FROM (SELECT * FROM Transactions WHERE ReceiptDate >= '2025-09-30' ORDER BY LastUpdatedOnUTC DESC) AS t WHERE ContributionID = 1234 AND ReceiptDate >= '2025-10-01';"
+  ],
+  "key_bug_features": [
+    "FINAL fails to remove duplicates across partitions"
+  ]
+}

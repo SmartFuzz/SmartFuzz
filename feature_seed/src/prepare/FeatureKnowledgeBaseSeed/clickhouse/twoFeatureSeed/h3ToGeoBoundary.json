@@ -1,0 +1,18 @@
+{
+    "function": "h3ToGeoBoundary",
+    "operator": "a GLOBAL NOT IN ...",
+    "sql_array": [
+        "CREATE TABLE geo_data (id UInt64, h3_index UInt64, description String, coords Array(Float64, Float64));",
+        "INSERT INTO geo_data VALUES (1, 644325524701193974, 'Boundary 1', []), (2, 644325524701193975, 'Boundary 2', []);",
+        "SELECT id, h3_index, h3ToGeoBoundary(h3_index) AS boundary FROM geo_data HAVING h3_index GLOBAL NOT IN (SELECT h3_index FROM geo_data WHERE description LIKE '%Boundary%');",
+        "SELECT id, h3_index FROM geo_data WHERE h3_index GLOBAL NOT IN (SELECT arrayJoin(h3ToGeoBoundary(h3_index)) FROM geo_data WHERE id = 1);",
+        "CREATE TABLE geo_test (h3_index UInt64, boundary Array(Float64, Float64));",
+        "INSERT INTO geo_test VALUES (644325524701193974, h3ToGeoBoundary(644325524701193974)), (644325524701193975, h3ToGeoBoundary(644325524701193975));",
+        "SELECT COUNT(*) FROM geo_test WHERE boundary GLOBAL NOT IN (SELECT h3ToGeoBoundary(h3_index) FROM geo_data WHERE coords IS NOT NULL);",
+        "WITH (SELECT arrayJoin(boundary) FROM geo_test) AS coords SELECT h3_index FROM geo_test WHERE coords GLOBAL NOT IN (SELECT arrayJoin(h3ToGeoBoundary(h3_index)) FROM geo_data);",
+        "SELECT h3_index, COUNT(*) FROM geo_data GROUP BY h3_index HAVING h3_index GLOBAL NOT IN (SELECT h3_index FROM geo_data WHERE id IS NULL);",
+        "CREATE TABLE boundary_test (h3_index UInt64, location String, coords Array(Float64, Float64) DEFAULT h3ToGeoBoundary(h3_index));",
+        "INSERT INTO boundary_test VALUES (644325524701193974, 'Location 1', []);",
+        "UPDATE boundary_test SET coords = h3ToGeoBoundary(h3_index) WHERE h3_index GLOBAL NOT IN (SELECT h3_index FROM geo_test);"
+    ]
+}

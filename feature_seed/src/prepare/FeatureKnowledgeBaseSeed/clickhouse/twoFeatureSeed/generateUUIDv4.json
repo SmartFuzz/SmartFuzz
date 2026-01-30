@@ -1,0 +1,23 @@
+{
+    "function": "generateUUIDv4",
+    "operator": "a != b",
+    "sql_array": [
+        "CREATE TABLE test_table (id Int32, uuid_col UUID, some_text String, flag Nullable(Bool)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table VALUES (1, generateUUIDv4(), 'Example A', NULL), (2, generateUUIDv4(), 'Example B', true), (3, generateUUIDv4(), 'Example C', false);",
+        "SELECT id, uuid_col FROM test_table WHERE flag IS NULL AND uuid_col != generateUUIDv4(3);",
+        "SELECT COUNT(*) FROM (SELECT id, flag, uuid_col FROM test_table WHERE uuid_col != (SELECT generateUUIDv4() FROM test_table WHERE id = 2));",
+        "CREATE TABLE temp_table (temp_id Int32, temp_uuid UUID) ENGINE = Memory;",
+        "INSERT INTO temp_table SELECT id, generateUUIDv4() FROM test_table WHERE flag = false;",
+        "SELECT t.id, t.uuid_col, tt.temp_uuid FROM test_table t JOIN temp_table tt ON t.id != tt.temp_id WHERE t.flag IS NOT NULL;",
+        "SELECT generateUUIDv4(1) AS new_uuid, uuid_col FROM test_table GROUP BY new_uuid HAVING new_uuid != ANY(SELECT uuid_col FROM test_table WHERE flag = true);",
+        "SELECT id, generateUUIDv4(2) FROM test_table WHERE EXISTS (SELECT 1 FROM temp_table tt WHERE tt.temp_uuid != generateUUIDv4(3) AND tt.temp_id = id);",
+        "SELECT DISTINCT uuid_col FROM test_table ORDER BY CASE WHEN flag IS NULL THEN 1 ELSE 0 END DESC, uuid_col != generateUUIDv4(4);",
+        "SELECT DISTINCT id, CASE WHEN flag IS NULL THEN generateUUIDv4(5) ELSE NULL END AS generated_uuid FROM test_table;",
+        "CREATE TABLE boundary_table (num_col Float64) ENGINE = MergeTree() ORDER BY num_col;",
+        "INSERT INTO boundary_table VALUES (0.0), (1.7976931348623157e+308);",
+        "SELECT num_col, generateUUIDv4(6) FROM boundary_table WHERE num_col != 1.7976931348623157e+308;",
+        "SELECT generateUUIDv4(7) != (SELECT generateUUIDv4(8) FROM test_table WHERE flag IS NULL) AS uuid_comparison;",
+        "DROP TABLE temp_table;",
+        "SELECT * FROM test_table WHERE (uuid_col IS NOT NULL AND uuid_col != generateUUIDv4(9)) OR flag = true;"
+    ]
+}

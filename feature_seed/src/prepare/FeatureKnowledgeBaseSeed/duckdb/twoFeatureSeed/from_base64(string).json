@@ -1,0 +1,16 @@
+{
+    "function": "from_base64(string)",
+    "operator": "+",
+    "sql_array": [
+        "CREATE TABLE test_data (id INTEGER, encoded_value TEXT);",
+        "INSERT INTO test_data VALUES (1, 'QQ=='), (2, 'dGVzdA=='), (3, NULL);",
+        "SELECT id, from_base64(encoded_value) AS decoded_value, DATE '2023-01-01' + INTERVAL (id * 2) DAY as future_date FROM test_data WHERE encoded_value IS NOT NULL;",
+        "SELECT id, from_base64(encoded_value) AS decoded_value, COUNT(*) OVER (PARTITION BY from_base64(encoded_value)) AS count_per_decoded FROM test_data GROUP BY id, decoded_value HAVING count_per_decoded > 1;",
+        "SELECT id, from_base64(encoded_value) AS decoded_value FROM (SELECT id, encoded_value FROM test_data WHERE encoded_value IS NOT NULL AND LENGTH(encoded_value) = 4) AS sub1 HAVING from_base64(encoded_value) IS NOT NULL;",
+        "CREATE TABLE additional_data (data_id INTEGER PRIMARY KEY, days INTEGER);",
+        "INSERT INTO additional_data VALUES (1, 5), (2, 11);",
+        "SELECT td.id, from_base64(td.encoded_value) AS decoded_value, ad.days, DATE '1992-03-22' + INTERVAL ad.days DAY AS extended_date FROM test_data td INNER JOIN additional_data ad ON td.id = ad.data_id;",
+        "SELECT id, from_base64(encoded_value) AS decoded_value, DATE '1992-03-22' + INTERVAL (SELECT MIN(days) FROM additional_data) DAY AS min_date FROM test_data HAVING LENGTH(decoded_value) > 3;",
+        "SELECT DISTINCT from_base64(td.encoded_value) AS decoded_value FROM test_data td LEFT JOIN additional_data ad ON td.id = ad.data_id WHERE ad.days IS NULL;"
+    ]
+}

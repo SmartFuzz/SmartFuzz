@@ -1,0 +1,19 @@
+{
+    "function": "stddevSampStable",
+    "operator": "a - b",
+    "sql_array": [
+        "CREATE TABLE test_data1 (value UInt8, name String) ENGINE = MergeTree() ORDER BY value;",
+        "INSERT INTO test_data1 VALUES (1, 'A'), (2, 'B'), (3, 'C'), (4, 'D'), (5, 'E'), (255, 'F');",
+        "CREATE TABLE test_data2 (population Nullable(Int32), category String) ENGINE = MergeTree() ORDER BY category;",
+        "INSERT INTO test_data2 VALUES (NULL, 'X'), (3, 'Y'), (4, 'Z'), (NULL, 'W');",
+        "SELECT stddevSampStable(value) - 1 AS adjusted_stddev FROM test_data1;",
+        "SELECT stddevSampStable(value) OVER (PARTITION BY IF(name = 'A', 1, 0)) - 0.5 AS stddev_partitioned FROM test_data1;",
+        "SELECT stddevSampStable(NULLIF(population, 0)) AS population_stddev, category FROM test_data2 GROUP BY category HAVING population_stddev > 0;",
+        "SELECT stddevSampStable(value + 10) - stddevSampStable(value) AS diff_stddev FROM test_data1 GROUP BY value;",
+        "SELECT * FROM (SELECT stddevSampStable(value) AS stddev_val FROM test_data1 WHERE value > (SELECT AVG(value) FROM test_data1)) AS subquery;",
+        "CREATE TABLE test_data3 (id UInt16, amount Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_data3 VALUES (1, 15.5), (2, NULL), (3, 20.0), (4, 12.0);",
+        "SELECT stddevSampStable(amount) - (SELECT stddevSampStable(CAST(amount AS Float32)) FROM test_data3 WHERE id > 2) AS stddev_difference FROM test_data3;",
+        "SELECT a.value, b.category, stddevSampStable(a.value - CAST(b.population AS UInt8)) AS sampled_stddev FROM test_data1 AS a JOIN test_data2 AS b ON a.value = b.population WHERE b.population IS NOT NULL GROUP BY a.value, b.category HAVING sampled_stddev < 5;"
+    ]
+}

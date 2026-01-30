@@ -1,0 +1,15 @@
+CREATE TABLE test_shard_count (id UInt32) ENGINE = MergeTree() ORDER BY id;
+CREATE TABLE distributed_test AS test_shard_count ENGINE = Distributed('cluster_name', 'test_shard_count', rand());
+INSERT INTO test_shard_count VALUES (1), (2), (3);
+SELECT shardCount() FROM distributed_test;
+SELECT shardCount() + 1 AS total_shards FROM distributed_test;
+SELECT shardCount() FROM (SELECT * FROM distributed_test);
+WITH (SELECT COUNT(*) FROM distributed_test) AS total_count SELECT shardCount(), total_count;
+SELECT shardCount() FROM distributed_test WHERE id > 1;
+SELECT shardCount() FROM (SELECT id FROM distributed_test WHERE id <= 2) as subquery;
+CREATE TABLE another_table (id UInt32, val String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO another_table VALUES (1, 'test1'), (2, 'test2');
+SELECT shardCount() FROM another_table AS at LEFT JOIN distributed_test AS dt ON at.id = dt.id;
+SELECT DISTINCT shardCount() FROM (SELECT id FROM distributed_test UNION ALL SELECT id FROM another_table);
+SELECT shardCount() WHERE shardCount() > 0;
+SELECT shardCount() AS shard_total, COUNT(*) FROM distributed_test GROUP BY shard_total;

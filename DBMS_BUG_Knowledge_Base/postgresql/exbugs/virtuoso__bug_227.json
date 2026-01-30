@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/227",
+  "title": "Regression bug in regex() for matching Unicode character categories",
+  "description": "Virtuoso's implementation of the regex() SPARQL function incorrectly matches characters from specified Unicode categories. For example, let's look at the following query, which should return only bindings for ?label that start with a lower-case character:\nSELECT ?label\nWHERE {\n VALUES ?label {\n   \"leden\"\n   \"únor\"\n   \"Leden\"\n   \"Únor\"\n }\n FILTER (REGEX(?label, \"^\\\\p{Ll}\"))\n}\n\nWe can expect that the result's bindings will contain both \"leden\" and \"únor\". This is the case in Virtuoso version 07.00.3203. However, the current version (07.10.3211) matches only \"leden\" (see the results of this query on DBpedia's SPARQL endpoint, which runs the mentioned version).\nThe strange thing is that the current version of Virtuoso returns \"únor\" as matching ^\\\\p{Ll} regular expression:\nSELECT (REGEX(\"únor\", \"^\\\\p{Ll}\") AS ?matches)\nWHERE {}\n# => returns true\n\nSimilar problems occur if we change the category of lower-case characters (\\p{Ll}) to the category of upper-case characters (\\p{Lu}).\nThe issue seem to arise only when Unicode character categories are combined with start of a word anchor (i.e. ^).",
+  "date": "2014-08-14 17:15:01",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE test_labels (id SERIAL PRIMARY KEY, label VARCHAR(100) NOT NULL);",
+    "INSERT INTO test_labels (label) VALUES ('leden'), ('únor'), ('Leden'), ('Únor');",
+    "SELECT label FROM test_labels WHERE label ~ '^\\\\p{Ll}';",
+    "SELECT (label ~ '^\\\\p{Lu}') AS matches FROM test_labels WHERE label IS NOT NULL;",
+    "SELECT COUNT(*) FROM test_labels WHERE label ~ '^\\\\p{Ll}' OR label IS NULL;"
+  ],
+  "key_bug_features": [
+    "Incorrect regex matching for Unicode character categories"
+  ]
+}

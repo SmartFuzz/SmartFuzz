@@ -1,0 +1,18 @@
+[
+    "CREATE TABLE test_table (id UInt32, value String, CONSTRAINT value_not_empty CHECK (value != '')) ENGINE = MergeTree() ORDER BY id;",
+    "ALTER TABLE test_table ADD CONSTRAINT value_length CHECK (length(value) > 5);",
+    "ALTER TABLE test_table DROP CONSTRAINT value_not_empty;",
+    "CREATE TABLE replicated_table ON CLUSTER my_cluster (id UInt32, value String, CONSTRAINT check_value_length CHECK (length(value) > 3)) ENGINE = ReplicatedMergeTree('/clickhouse/tables/{shard}/replicated_table', '{replica}') ORDER BY id;",
+    "INSERT INTO test_table VALUES (1, 'Hello'), (2, 'World'), (3, 'ClickHouse');",
+    "ALTER TABLE test_table ADD CONSTRAINT unique_id UNIQUE (id);",
+    "CREATE TABLE secondary_table (id UInt32, ref_id UInt32, CONSTRAINT fk_ref FOREIGN KEY (ref_id) REFERENCES test_table(id)) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO secondary_table VALUES (1, 1), (2, 2), (3, 4);",
+    "ALTER TABLE secondary_table DROP CONSTRAINT fk_ref;",
+    "SELECT * FROM test_table WHERE id IN (SELECT id FROM secondary_table WHERE ref_id > 1);",
+    "ALTER TABLE test_table ADD CONSTRAINT check_value_pattern CHECK (match(value, '^[A-Z].*'));",
+    "ALTER TABLE test_table DROP CONSTRAINT check_value_length;",
+    "CREATE TABLE complex_test (id UInt32, val String, CONSTRAINT val_check CHECK (val LIKE '%test%')) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO complex_test (id, val) VALUES (1, 'this is a test'), (2, 'another test case'), (3, 'no match here');",
+    "ALTER TABLE complex_test ADD CONSTRAINT no_special_chars CHECK (val NOT LIKE '%[^a-zA-Z0-9]%');",
+    "SELECT id FROM complex_test WHERE id IN (SELECT id FROM trick_table WHERE val LIKE '%something%') UNION SELECT id FROM test_table WHERE value != '';"
+]

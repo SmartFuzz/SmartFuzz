@@ -1,0 +1,22 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/86189",
+  "title": "Logical error: 'current_writer != nullptr'",
+  "vulnerable_database": "ClickHouse",
+  "date": "2025-08-26T13:46:04Z",
+  "vulnerable_version": "",
+  "description": "### Describe the bug\nNasty setup with 2 disks with different metadata types.\n### How to reproduce\nSetup minio running with `tests/docker_scripts/setup_minio.sh stateless` then use this config for the server:\n```xml\n<storage_configuration>\n<disks>\n<disk0>\n<type>object_storage</type>\n<object_storage_type>s3</object_storage_type>\n<metadata_type>plain</metadata_type>\n<endpoint>http://localhost:11111/test/data0</endpoint>\n<access_key_id>clickhouse</access_key_id>\n<secret_access_key>clickhouse</secret_access_key>\n</disk0>\n<disk1>\n<type>object_storage</type>\n<object_storage_type>s3</object_storage_type>\n<metadata_type>local</metadata_type>\n<endpoint>http://localhost:11111/test/data1</endpoint>\n<access_key_id>clickhouse</access_key_id>\n<secret_access_key>clickhouse</secret_access_key>\n</disk1>\n</disks>\n<policies>\n<policy0>\n<volumes>\n<volume0>\n<disk>disk0</disk>\n<disk>disk1</disk>\n</volume0>\n</volumes>\n</policy0>\n</policies>\n</storage_configuration>\n```\nRun:\n```sql\nCREATE TABLE t0 (c0 Int) ENGINE = MergeTree() ORDER BY tuple() SETTINGS non_replicated_deduplication_window = 2, storage_policy = 'policy0';\nINSERT INTO TABLE t0 (c0) VALUES (1); --Logical error\n```\n### Error message and/or stacktrace\nStack trace:\n```\n<Fatal> : Logical error: 'current_writer != nullptr'.\n<Fatal> : Stack trace (when copying this message, always include the lines below):\n0. src/Common/StackTrace.cpp:389: StackTrace::StackTrace() @ 0x0000000014463be4\n1. src/Common/Exception.cpp:56: DB::abortOnFailedAssertion(String const&) @ 0x00000000143bd395\n2. src/Storages/MergeTree/MergeTreeDeduplicationLog.cpp:246: DB::MergeTreeDeduplicationLog::addPart(String const&, DB::MergeTreePartInfo const&) @ 0x000000001eaf6399\n3. src/Storages/MergeTree/MergeTreeSink.cpp:239: DB::MergeTreeSink::commitPart(std::shared_ptr<DB::IMergeTreeDataPart>&, String const&) @ 0x000000001ec383a5",
+  "poc": [
+    "CREATE TABLE t0 (c0 Int) ENGINE = MergeTree() ORDER BY tuple() SETTINGS non_replicated_deduplication_window = 2, storage_policy = 'policy0';",
+    "INSERT INTO TABLE t0 (c0) VALUES (1);"
+  ],
+  "key_bug_features": [
+    "Different metadata types for disks in storage configuration"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t1 (id UInt32, name String, created_at DateTime DEFAULT now()) ENGINE = MergeTree() ORDER BY id SETTINGS storage_policy = 'policy0';",
+    "INSERT INTO t1 (id, name) VALUES (1, 'Alice');",
+    "CREATE TABLE t2 AS t1 ENGINE = MergeTree() ORDER BY id SETTINGS storage_policy = 'policy0';",
+    "INSERT INTO t2 (id, name) SELECT id, name FROM t1 WHERE id = 1;",
+    "SELECT * FROM t2 WHERE created_at IS NOT NULL;"
+  ]
+}

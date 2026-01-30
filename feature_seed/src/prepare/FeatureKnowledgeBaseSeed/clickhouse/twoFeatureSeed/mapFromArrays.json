@@ -1,0 +1,16 @@
+{
+    "function": "mapFromArrays",
+    "operator": "s1 || s2",
+    "sql_array": [
+        "CREATE TABLE test_map_concat (id UInt32, names Array(String), values Array(UInt32), value_map Map(String, UInt32)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_map_concat VALUES (1, ['a', 'b'], [1, 2], map('a', 1, 'b', 2)), (2, [], [], map());",
+        "SELECT mapFromArrays(names, values) AS constructed_map, constructed_map || mapFromArrays(['c'], [3]) AS extended_map FROM test_map_concat WHERE id = 1;",
+        "SELECT mapFromArrays(names, values || [NULL]) AS modified_map FROM test_map_concat WHERE id = 2;",
+        "SELECT id, (mapFromArrays(names, values) || map('d', 4)) AS combined_map FROM test_map_concat WHERE length(name) > 0;",
+        "SELECT id, mapFromArrays(names, [value_map[name] || 0]) AS value_adjusted_map FROM test_map_concat WHERE id IN (SELECT id FROM test_map_concat WHERE length(names) > 0);",
+        "SELECT id, count() OVER (PARTITION BY mapFromArrays(names, values)) AS frequency FROM test_map_concat GROUP BY id, mapFromArrays(names, values) HAVING frequency > 0;",
+        "SELECT id, (CAST(mapFromArrays(names, values || [NULL]), 'Map(String, Nullable(UInt32))') || map('e', 5)) AS complex_map FROM test_map_concat;",
+        "SELECT id, arrayJoin(names) || ' with value ' || toString(arrayJoin(values)) AS concatenated FROM test_map_concat WHERE id = 1;",
+        "SELECT mapFromArrays(['x'], [values || 10]) FROM test_map_concat WHERE id = 1 AND values IS NOT NULL;"
+    ]
+}

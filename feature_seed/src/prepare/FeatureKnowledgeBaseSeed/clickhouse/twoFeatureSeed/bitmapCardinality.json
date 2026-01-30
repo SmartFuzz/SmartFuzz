@@ -1,0 +1,26 @@
+{
+    "function": "bitmapCardinality",
+    "operator": "[x1, ...]",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, bitmap_col AggregateFunction(bitmap, UInt32));",
+        "INSERT INTO test_table VALUES (1, bitmapBuild([1, 2, 3, 4])), (2, bitmapBuild([2, 3, 4, 5])), (3, bitmapBuild([]));",
+        "SELECT id, bitmapCardinality(bitmap_col) AS cardinality FROM test_table GROUP BY id HAVING cardinality > 0;",
+        "SELECT id, bitmapCardinality(bitmap_col) AS cardinality FROM test_table WHERE bitmapCardinality(bitmap_col) = 0;",
+        "SELECT id, bitmapCardinality(bitmap_col) AS cardinality FROM (SELECT id, bitmapBuild(arrayJoin([1, 2, 3, 4, 5])) AS bitmap_col FROM test_table) WHERE cardinality > 0;",
+        "CREATE TABLE test_bitmap (bitmap_data Array(UInt32));",
+        "INSERT INTO test_bitmap VALUES ([1, 2, 3]), ([3, 4, 5]), ([NULL]), (NULL);",
+        "SELECT bitmapCardinality(bitmapBuild(arrayJoin(arrayConcat(bitmap_data, [6, 7, 8])))) AS res FROM test_bitmap;",
+        "SELECT bitmapCardinality(bitmapBuild([max(id), min(id)])) AS cardinality FROM test_table;",
+        "SELECT bitmapCardinality(bitmapBuild([ZEROIFNULL(NULL), 10, 20])) WHERE bitmapCardinality(bitmapBuild([1, 2])) > 1;",
+        "CREATE TABLE temp_bitmap AS SELECT id, bitmapBuild(arrayJoin([id, id + 1])) AS bitmap_col FROM test_table;",
+        "SELECT id, bitmapCardinality(bitmap_col) AS cardinality FROM temp_bitmap WHERE cardinality IS NOT NULL GROUP BY id;",
+        "INSERT INTO temp_bitmap VALUES (4, bitmapBuild([]));",
+        "SELECT id, bitmapCardinality(bitmap_col) AS cardinality, arrayJoin([1, 2, 3]) + id AS new_id FROM temp_bitmap;",
+        "SELECT id, bitmapCardinality(bitmapBuild(arrayFilter(x -> x > 0, bitmap_col))) AS cardinality FROM test_table;",
+        "SELECT bitmapCardinality(bitmapBuild(arrayMap(x -> toUInt32(x + 10), arrayJoin([1, 2, 3, NULL])))) AS transformed_cardinality;",
+        "DROP TABLE IF EXISTS temp_bitmap;",
+        "CREATE TABLE edge_cases (val String, bitmap_data Array(UInt32));",
+        "INSERT INTO edge_cases VALUES ('', [1, 2]), (NULL, [NULL]), ('boundary', []);",
+        "SELECT COUNT(*), bitmapCardinality(bitmap_data) FROM edge_cases GROUP BY val HAVING bitmapCardinality(bitmap_data) < 2;"
+    ]
+}

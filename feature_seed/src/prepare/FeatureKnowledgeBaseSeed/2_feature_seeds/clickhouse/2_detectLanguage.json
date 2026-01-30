@@ -1,0 +1,10 @@
+CREATE TABLE test_languages (id UInt32, content String, created_at DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_languages VALUES (1, 'This is a test sentence in English.'), (2, 'Ceci est une phrase de test en français.'), (3, 'Dies ist ein Testsatz auf Deutsch.'), (4, 'Este es un caso de prueba en español.'), (5, 'これは日本語のテスト文です。');
+SELECT id, detectLanguage(content) AS lang FROM test_languages WHERE detectLanguage(content) ILIKE 'fr' OR detectLanguage(content) ILIKE 'en';
+SELECT MAX(id) AS max_id, detectLanguage(ARRAY.join([content, '')]) AS detected_lang FROM test_languages GROUP BY detected_lang HAVING detected_lang ILIKE 'un';
+SELECT id, content FROM (SELECT id, content, detectLanguage(content) AS lang FROM test_languages) AS subquery WHERE lang = 'es' ILIKE 'es';
+CREATE TABLE test_fuzz (id UInt32, language_code String, notes String, last_checked DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_fuzz VALUES (1, 'fr', 'Invalid language check for an empty string.'), (2, 'un', 'Detect unknown for very short input.'), (3, 'es', 'Test language detection with mixed input.'), (4, 'en', 'Standard English testing with normal sentences.');
+SELECT language_code, detectLanguage(' ') AS lang FROM test_fuzz WHERE detectLanguage(' ') ILIKE 'un' OR language_code IS NULL;
+SELECT a.id, a.content FROM test_languages AS a JOIN test_fuzz AS b ON detectLanguage(a.content) ILIKE b.language_code WHERE b.notes IS NOT NULL;
+SELECT detectLanguage(subquery.content) AS detected_lang FROM (SELECT content FROM test_languages WHERE detectLanguage(content) ILIKE 'de') AS subquery GROUP BY detected_lang HAVING COUNT(detected_lang) > 1;

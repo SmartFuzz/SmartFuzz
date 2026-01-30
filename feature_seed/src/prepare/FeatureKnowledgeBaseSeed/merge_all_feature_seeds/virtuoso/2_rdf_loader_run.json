@@ -1,0 +1,10 @@
+CREATE TABLE rdf_test (id INT PRIMARY KEY, uri VARCHAR(255) NOT NULL, data TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO rdf_test (id, uri, data) VALUES (1, 'http://example.org/item1', 'Sample data 1'), (2, 'http://example.org/item2', NULL), (3, 'http://example.org/item3', 'Sample data 3');
+SELECT rdf_loader_run();
+SELECT * WHERE { ?s a <http://example.org/Class1> } UNION SELECT * WHERE { ?s a <http://example.org/Class2> } ORDER BY ?s;
+SELECT id, COUNT(*) OVER (PARTITION BY uri) AS uri_count FROM rdf_test GROUP BY id, uri HAVING uri_count > 1;
+INSERT INTO rdf_test (id, uri, data) VALUES (4, NULL, 'NULL data'), (5, 'http://example.org/item5', '');
+SELECT rdf_loader_run() WHERE EXISTS (SELECT 1 FROM rdf_test WHERE data IS NOT NULL);
+SELECT * FROM rdf_test WHERE uri IS NOT NULL AND id IN (SELECT id FROM rdf_test WHERE data LIKE 'Sample%') ORDER BY created_at DESC LIMIT 5;
+SELECT id, rdf_loader_run() AS loader_status FROM rdf_test WHERE created_at > (CURRENT_TIMESTAMP - INTERVAL '7 days') AND data IS NOT NULL;
+SELECT * WHERE { ?s a <http://example.org/Class3> } AND ?s IN (SELECT uri FROM rdf_test WHERE data IS NOT NULL);

@@ -1,0 +1,14 @@
+CREATE TABLE timestamps (event_time TIMESTAMP, event_desc VARCHAR(255));
+INSERT INTO timestamps (event_time, event_desc) VALUES (timestamp '2009-02-13 23:31:30', 'Sample Event 1'), (timestamp '1970-01-01 00:00:00', 'Epoch Start');
+CREATE TABLE time_logs (log_time TIME, log_description VARCHAR(255));
+INSERT INTO time_logs (log_time, log_description) VALUES (time '18:40:05', 'Log Entry 1'), (time '00:00:00', 'Start of Day'), (time '23:59:59', 'End of Day');
+SELECT e.event_desc, sys.epoch(e.event_time) AS epoch_seconds FROM timestamps e WHERE sys.epoch(e.event_time) > 0;
+SELECT e.event_desc, time '18:40:05'::TIME AS converted_time FROM timestamps e WHERE e.event_time BETWEEN timestamp '2009-02-13 00:00:00' AND timestamp '2009-02-14 00:00:00';
+SELECT t.log_description, sys.epoch(timestamp e.event_time) AS epoch_seconds, e.event_desc FROM timestamps e JOIN time_logs t ON e.event_time::DATE = CURRENT_DATE WHERE e.event_time IS NOT NULL;
+SELECT e.event_desc, sys.epoch(e.event_time) AS epoch_seconds FROM timestamps e HAVING sys.epoch(e.event_time) < (SELECT MAX(sys.epoch(timestamp '2009-02-14 00:00:00')) FROM timestamps);
+SELECT e.event_desc, time '12:00:00' AS noon_time, sys.epoch(e.event_time) - sys.epoch(timestamp '1970-01-01 00:00:00') AS seconds_since_epoch FROM timestamps e WHERE sys.epoch(e.event_time) > sys.epoch(timestamp e.event_time);
+SELECT e.event_desc, COUNT(t.log_description) FROM timestamps e LEFT JOIN time_logs t ON e.event_time::DATE = CURRENT_DATE GROUP BY e.event_desc HAVING COUNT(t.log_description) = 0;
+INSERT INTO time_logs (log_time, log_description) VALUES (time '25:00:00', 'Invalid Time'), (time NULL, 'Null Time Test');
+SELECT e.event_desc, sys.epoch(e.event_time) FROM timestamps e WHERE sys.epoch(e.event_time) IS NULL OR time '00:00:00' IS NULL;
+CREATE TABLE temp_events AS SELECT event_time, sys.epoch(event_time) AS epoch_seconds FROM timestamps;
+SELECT COUNT(*) FROM temp_events WHERE epoch_seconds > sys.epoch(timestamp '1970-01-01 00:00:01') AND epoch_seconds < sys.epoch(current_timestamp);

@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=102251",
+  "title": "CTE produces wrong result",
+  "description": "The following CTE query produces wrong result:\r\n\r\n```\r\ncreate table t1(id int);\r\n\r\nalter table t1 add column col1 int;\r\nalter table t1 add column col2 int;\r\nalter table t1 add column col3 int;\r\nalter table t1 add column col4 int;\r\nalter table t1 add column col5 int;\r\nalter table t1 add column col6 int;\r\nalter table t1 add column col7 int;\r\nalter table t1 add column col8 int;\r\nalter table t1 add column col9 int;\r\nalter table t1 add column col10 int;\r\nalter table t1 add column col11 int;\r\nalter table t1 add column col12 int;\r\nalter table t1 add column col13 int;\r\nalter table t1 add column col14 int;\r\nalter table t1 add column col15 int;\r\nalter table t1 add column col16 int;\r\nalter table t1 add column col17 int;\r\nalter table t1 add column col18 int;\r\n\r\ncreate table t2(id int, op int);\r\n\r\ninsert into t1 values(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18);\r\n\r\n```\r\n\r\nThe CTE query:\r\n\r\n```\r\nwith dest as (\r\n                   SELECT\r\n                        *\r\n                     FROM t1\r\n                     WHERE col1  = 1\r\n                  union\r\n                   SELECT\r\n                        *\r\n                     FROM t1\r\n                     WHERE col2  = 1\r\n              ),\r\n     records AS (\r\n                     SELECT 'I' op, o.id\r\n                        FROM t2 o LEFT JOIN dest t ON o.id = t.id  WHERE t.id IS NULL\r\n                        UNION ALL\r\n                        SELECT 'D' op, t.id\r\n                        FROM dest t LEFT JOIN t2 o ON t.id = o.id  WHERE o.id IS NULL\r\n                 )\r\n     select * from records;\r\n\r\n+----+------+\r\n| op | id   |\r\n+----+------+\r\n| D  |    1 |\r\n+----+------+\r\n\r\nbut there is not id=1 record in t1.\r\n\r\n```\nHow to repeat:\nFollowing the above descripition, one can repeat this problem.\nSuggested fix:\nBy carefully analyzing the execution process, we find that when building tmp_table_param structure for passing data between tables, the \"hidden_field_count\" is not processed correctly. Specifically, in 'ConvertItemsToCopy' creating copy_fields should skip hash_field because it is a hidden field. but the CTE temp table lost hidden_field_count value, its origin table's value is 1 while the cloned CTE tmp table's value is 0. \r\n\r\nThe root reason is funciton Common_table_expr::clone_tmp_table lost hidden_field_count value between origin table and target table. so the hash_field don't skip.\n\nSuggested fix (based on MySQL-8.0.22):\r\n\r\n```\r\ndiff --git a/sql/sql_derived.cc b/sql/sql_derived.cc\r\nindex c4cd6b7bfdc..b38f512220f 100644\r\n--- a/sql/sql_derived.cc\r\n+++ b/sql/sql_derived.cc\r\n@@ -210,6 +210,8 @@ TABLE *Common_table_expr::clone_tmp_table(THD *thd, TABLE_LIST *tl) {\r\n   tl->table = t;\r\n   t->pos_in_table_list = tl;\r\n\r\n+  t->hidden_field_count = first->hidden_field_count;\r\n+\r\n   t->set_not_started();\r\n\r\n   if (tmp_tables.push_back(tl)) return nullptr; /* purecov: inspected */\r\n```",
+  "date": "2021-01-15 04:42:00",
+  "vulnerable_version": "8.0, 8.0.22, 8.0.23",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t3(id INT PRIMARY KEY, col1 VARCHAR, col2 DATE);",
+    "INSERT INTO t3 VALUES (1, 'test', NULL), (2, 'example', DATE '2023-01-01'), (3, 'sample', NULL);",
+    "CREATE TABLE t4(id INT, col1 FLOAT, col2 BOOLEAN DEFAULT TRUE);",
+    "INSERT INTO t4 VALUES (1, 1.5, TRUE), (2, NULL, FALSE), (3, 3.14, NULL);",
+    "WITH dest AS (SELECT * FROM t3 WHERE col1 = 'test' UNION SELECT * FROM t4 WHERE col2 IS TRUE) SELECT * FROM dest;"
+  ],
+  "key_bug_features": [
+    "CTE temp table loses hidden_field_count value"
+  ]
+}

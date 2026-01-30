@@ -1,0 +1,16 @@
+{
+    "function": "polygonsUnionSpherical",
+    "operator": "s1 || s2",
+    "sql_array": [
+        "CREATE TABLE geo_data (id UInt32, geom Array(Array(Array(Float64))), properties String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO geo_data VALUES (1, [[[(4.3613577, 50.8651821), (4.349556, 50.8535879), (4.3602419, 50.8435626), (4.3830299, 50.8428851), (4.3904543, 50.8564867), (4.3613148, 50.8651279)]]], 'A'), (2, [[[(4.346693, 50.858306), (4.367945, 50.852455), (4.366227, 50.840809), (4.344961, 50.833264), (4.338074, 50.848677), (4.346693, 50.858306)]]], 'B');",
+        "SELECT id, wkt(polygonsUnionSpherical(geom)) as union_geom FROM geo_data GROUP BY id HAVING id > 0;",
+        "SELECT id, geom FROM geo_data WHERE length(properties) || ' - 1' = 'A - 1' AND geom IS NOT NULL;",
+        "SELECT id, wkt(polygonsUnionSpherical([geom])) as single_geom FROM geo_data WHERE id IN (SELECT id FROM geo_data WHERE properties = 'B') ORDER BY id;",
+        "SELECT DISTINCT wkt(polygonsUnionSpherical(geom)) FROM geo_data WHERE NOT properties || 'Test' IS NULL GROUP BY properties HAVING count(*) > 1 ORDER BY wkt(polygonsUnionSpherical(geom));",
+        "CREATE TABLE temp_geo (id UInt32, combined_geom String) ENGINE = Memory;",
+        "INSERT INTO temp_geo SELECT d1.id, wkt(polygonsUnionSpherical(d1.geom)) || ' | ' || d2.properties FROM geo_data d1 JOIN geo_data d2 ON d1.id != d2.id;",
+        "SELECT wkt(polygonsUnionSpherical(geom)) || ' (combined)' as final_geom FROM geo_data WHERE EXISTS (SELECT 1 FROM geo_data d WHERE d.id = geo_data.id LIMIT 1);",
+        "ALTER TABLE geo_data ADD COLUMN combined_properties String AFTER properties;"
+    ]
+}

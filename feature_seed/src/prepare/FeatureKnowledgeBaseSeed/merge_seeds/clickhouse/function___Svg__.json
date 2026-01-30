@@ -1,0 +1,17 @@
+CREATE TABLE geo_data (geometry Array(Float64)) ENGINE = MergeTree() ORDER BY tuple();
+INSERT INTO geo_data VALUES ([(0., 0.)]), ([(0., 0.), (10, 0), (10, 10), (0, 10)]), ([(0., 0.), (5, 5), (10, 0)]);
+SELECT SVG(geometry) FROM geo_data WHERE arrayLength(geometry) = 1;
+SELECT SVG(geometry) FROM geo_data WHERE arrayLength(geometry) = 4;
+SELECT SVG(geometry, 'circle') FROM geo_data WHERE arrayExists(x -> x[1] > 5, geometry);
+SELECT groupArray(SVG(geometry)) FROM geo_data GROUP BY arrayLength(geometry);
+CREATE TABLE geo_styles (style_name String) ENGINE = MergeTree() ORDER BY tuple();
+INSERT INTO geo_styles VALUES ('circle'), ('rectangle'), ('polygon');
+SELECT SVG(g.geometry, s.style_name) FROM geo_data g JOIN geo_styles s ON s.style_name = 'circle' WHERE arrayLength(g.geometry) > 1;
+SELECT SVG(geometry), count() FROM geo_data GROUP BY SVG(geometry) HAVING count() > 1;
+SELECT SVG(geometry) as svg_output FROM (SELECT geometry FROM geo_data) WHERE svg_output IS NOT NULL;
+WITH (SELECT SVG(geometry) FROM geo_data WHERE arrayLength(geometry) = 2) AS svg_data SELECT svg_data;
+SELECT SVG(geometry) FROM geo_data ORDER BY arrayLength(geometry) DESC LIMIT 10;
+CREATE TABLE geo_data_combined AS geo_data ENGINE = MergeTree() ORDER BY tuple();
+INSERT INTO geo_data_combined SELECT geometry FROM geo_data;
+SELECT SVG(geometry) FROM geo_data_combined WHERE geometry != [];
+WITH (SELECT SVG(geometry) AS svg_circle FROM geo_data WHERE arrayLength(geometry) = 1) SELECT svg_circle;

@@ -1,0 +1,17 @@
+CREATE TABLE test_table (id INTEGER, data VARCHAR(255));
+INSERT INTO test_table (id, data) VALUES (1, 'test1'), (2, NULL), (3, 'test3'), (4, '');
+SELECT DB.DBA.TTLP_MT(file_to_string_output('./data1.ttl'), 'graph_uri_1', 'http://example.com/graph') AS load_result WHERE 1 IS NULL;
+SELECT DB.DBA.TTLP_MT(file_to_string_output('./data2.nt'), '', 'http://example.com/graph2') AS load_result FROM test_table WHERE data IS NOT NULL AND (id > 0 OR data = '');
+SELECT (CASE WHEN id IS NULL THEN 'NULL ID' ELSE CAST(id AS VARCHAR) END) AS id_check FROM test_table;
+SELECT COUNT(*) FROM (SELECT DISTINCT data FROM test_table WHERE data IS NOT NULL) AS unique_data;
+INSERT INTO test_table (id, data) SELECT id, data FROM (SELECT id, data FROM test_table WHERE id IS NOT NULL) AS subquery;
+CREATE TABLE another_table (id INTEGER PRIMARY KEY, value VARCHAR(255));
+INSERT INTO another_table (id, value) SELECT id, data FROM test_table WHERE data IS NOT NULL;
+SELECT DB.DBA.TTLP_MT(file_to_string_output('./data3.nq'), '', 'http://example.com/graph3') FROM another_table WHERE value IS NULL;
+SELECT COUNT(*) FROM test_table WHERE id IS NULL OR data IS NULL;
+SELECT AVG(NULLIF(id, 0)) FROM test_table;
+SELECT DB.DBA.TTLP_MT(file_to_string_output('./data_invalid.xtl'), 'invalid_graph', 'http://example.com/invalid') WHERE (id NOT IN (SELECT id FROM test_table WHERE data IS NULL)) OR data IS NULL;
+SELECT (MAX(CASE WHEN data IS NULL THEN 0 ELSE 1 END)) FROM test_table GROUP BY idHAVING COUNT(data) > 1;
+CREATE TABLE temp_data (temp_id SERIAL PRIMARY KEY, temp_value VARCHAR(255) DEFAULT NULL);
+INSERT INTO temp_data (temp_value) VALUES ('value1'), (NULL), ('value3'), (''), (NULL);
+SELECT DISTINCT temp_value FROM temp_data WHERE temp_value IS NOT NULL AND (SELECT COUNT(*) FROM test_table WHERE data IS NOT NULL) > 0;

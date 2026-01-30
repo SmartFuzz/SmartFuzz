@@ -1,0 +1,18 @@
+{
+    "function": "clamp",
+    "operator": "(x1, x2, ...)",
+    "sql_array": [
+        "CREATE TABLE test_clamp (id UInt32, value Float64, min_value Float64, max_value Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_clamp VALUES (1, 1.5, 2.0, 3.0), (2, 3.5, 2.0, 4.0), (3, null, 2.0, 3.0), (4, 4.5, 2.0, 4.0), (5, 1.0, null, null);",
+        "SELECT id, clamp(value, min_value, max_value) AS constrained_value, toTypeName(constrained_value) AS data_type FROM test_clamp WHERE NOT isNull(value);",
+        "SELECT id, clamp(value, min_value, max_value) AS constrained_value FROM (SELECT id, value, clamp(min_value, 1.0, 5.0) AS adjusted_min, clamp(max_value, 10.0, 15.0) AS adjusted_max FROM test_clamp WHERE id % 2 = 0);",
+        "SELECT id, clamp(value, clamp(min_value, 0, 10), clamp(max_value, 20, 30)) AS final_value FROM (SELECT id, value, min_value, max_value FROM test_clamp) HAVING final_value IS NOT NULL;",
+        "SELECT id, clamp(value, (SELECT AVG(min_value) FROM test_clamp), (SELECT AVG(max_value) FROM test_clamp)) AS avg_constrained_value FROM test_clamp ORDER BY avg_constrained_value DESC;",
+        "SELECT result.id, result.constrained_value FROM (SELECT id, clamp(value, min_value, max_value) AS constrained_value FROM test_clamp GROUP BY id) AS result WHERE result.constrained_value > 2.5;",
+        "CREATE TABLE temp_join (id UInt32, value Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO temp_join VALUES (1, 2.5), (2, 3.5), (3, 5.5);",
+        "SELECT t.id, clamp(t.value, min_t.value, max_t.value) AS limited_value FROM test_clamp AS t JOIN (SELECT id, MAX(value) AS value FROM temp_join GROUP BY id) AS max_t ON t.id = max_t.id WHERE limited_value IS NOT NULL;",
+        "SELECT t.id, clamp(t.value, (SELECT MIN(min_value) FROM test_clamp WHERE min_value IS NOT NULL), 10) AS bounded_value FROM test_clamp AS t WHERE bounded_value > 5;",
+        "SELECT t.id, clamp(value, (SELECT AVG(min_value) FROM test_clamp WHERE NOT isNull(min_value)), (SELECT AVG(max_value) FROM test_clamp WHERE NOT isNull(max_value))) AS constrained_value FROM test_clamp AS t WHERE constrained_value IS NOT NULL;"
+    ]
+}

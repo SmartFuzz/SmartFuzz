@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/89661",
+  "title": "clickhouse doesn't filter on tuples in primary index",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\ngiven this table:\n```\nCREATE TABLE default.mytest\n(\n`name` String,\n`other` String,\n`id` Int32\n)\nENGINE = MergeTree\nORDER BY (name, (id, other))\n```\nselect * from mytest where id=3 does _not_ use generic exclusion search, where as it does for `ORDER BY (name, id, other)`\nIt also doesn't work for `where (id, other) = (3, 'a')` despite that being an exact match\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\n```\nCREATE TABLE default.mytest\n(\n`name` String,\n`other` String,\n`id` Int32\n)\nENGINE = MergeTree\nORDER BY (name, (id, other));\ninsert into mytest\nSELECT\n['a', 'b', 'c', 'd'][toInt32(randBinomial(4, 0.5, 1)) + 1] AS name,\n['a', 'b', 'd', 'd'][toInt32(randBinomial(4, 0.5, 2)) + 1] AS other,\ntoInt32(randBinomial(4, 0.5, 3)) as id\nFROM numbers(10000000);\nexplain indexes=1 select * from mytest where id=3\n```\n### Expected behavior\nit should use generic exclusion search exactly as if the tuple was expanded\n### Error message and/or stacktrace\n_No response_\n### Additional context\nthe same behaviour occurs with Array() and Map() types in the index, but the tuple case should be trivially fixable",
+  "date": "2025-11-06T16:43:59Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT, name VARCHAR(255), other VARCHAR(255));",
+    "INSERT INTO test_table SELECT number, CAST(number % 5 AS VARCHAR), CASE WHEN number % 2 = 0 THEN NULL ELSE CAST(number % 5 AS VARCHAR) END FROM generate_series(1, 100);",
+    "SELECT * FROM test_table WHERE id = 2 AND other = '1';",
+    "SELECT * FROM test_table WHERE id = 3 OR other IS NULL;",
+    "EXPLAIN SELECT * FROM test_table WHERE id = 5 AND other IS NULL;"
+  ],
+  "key_bug_features": [
+    "Tuple filtering not applied in primary index queries"
+  ]
+}

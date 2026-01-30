@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7540",
+  "title": "Assertion failure when using `STARTSWITH`",
+  "description": "The following test case crashed the monetdb server.\n\n**To Reproduce**\n\n```sql\nDROP TABLE IF EXISTS t0 CASCADE;\nDROP TABLE IF EXISTS t1 CASCADE;\n\nCREATE TABLE  t1 (c0 BOOLEAN , c1 INT);\nCREATE TABLE  t0 (c0 BOOLEAN , c1 INT);\nINSERT INTO t1(c0) VALUES (true);\nINSERT INTO t1(c0) VALUES (false);\nINSERT INTO t0(c1, c0) VALUES (false, true);\nINSERT INTO t0(c0) VALUES (false);\n\nSELECT * FROM t1, t0 WHERE STARTSWITH(t1.c1, '', t0.c1); -- unexpected end of file\n```\n\n**Expected behavior**\nNo crash.\n\n**Screenshots**\n\nbacktrace (using gdb):\n\n```#0  __pthread_kill_implementation (no_tid=0, signo=6, threadid=139835803805248) at ./nptl/pthread_kill.c:44\n#1  __pthread_kill_internal (signo=6, threadid=139835803805248) at ./nptl/pthread_kill.c:78\n#2  __GI___pthread_kill (threadid=139835803805248, signo=signo@entry=6) at ./nptl/pthread_kill.c:89\n#3  0x00007f2e188ff476 in __GI_raise (sig=sig@entry=6) at ../sysdeps/posix/raise.c:26\n#4  0x00007f2e188e57f3 in __GI_abort () at ./stdlib/abort.c:79\n#5  0x00007f2e188e571b in __assert_fail_base (fmt=0x7f2e18a9a130 \"%s%s%s:%u: %s%sAssertion `%s' failed.\\n%n\", \n    assertion=0x7f2e1a2d14df \"BATcount(c) == 1\", file=0x7f2e1a2d0ba8 \"/app/MonetDB/monetdb5/modules/atoms/str.c\", \n    line=2878, function=<optimized out>) at ./assert/assert.c:92\n#6  0x00007f2e188f6e96 in __GI___assert_fail (assertion=0x7f2e1a2d14df \"BATcount(c) == 1\", \n    file=0x7f2e1a2d0ba8 \"/app/MonetDB/monetdb5/modules/atoms/str.c\", line=2878, \n    function=0x7f2e1a2d2eb8 <__PRETTY_FUNCTION__.0> \"ignorecase\") at ./assert/assert.c:101\n#7  0x00007f2e1a10d32f in ignorecase () from /usr/local/lib/libmonetdb5-11.52.0.so.35\n#8  0x00007f2e1a10d635 in STRstartswithjoin () from /usr/local/lib/libmonetdb5-11.52.0.so.35\n#9  0x00007f2e1a0c8249 in runMALsequence () from /usr/local/lib/libmonetdb5-11.52.0.so.35\n#10 0x00007f2e1a0cc1a2 in DFLOWworker () from /usr/local/lib/libmonetdb5-11.52.0.so.35\n#11 0x00007f2e193999d3 in thread_starter () from /usr/local/lib/libbat-11.52.0.so.28\n#12 0x00007f2e18951ac3 in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:442\n#13 0x00007f2e189e2a04 in clone () at ../sysdeps/unix/sysv/linux/x86_64/clone.S:100\n```\n\n**Software versions**\nBuild from source https://www.monetdb.org/documentation-Aug2024/dev-guide/installation-from-source/#summary:\n\n```\n> docker exec -it monetdb-test mserver5 --version\nMonetDB 5 server 11.52.0 (hg id: 736987f) (64-bit, 128-bit integers)\nThis is an unreleased version\nCopyright (c) 1993 - July 2008 CWI\nCopyright (c) August 2008 - 2023 MonetDB B.V., all rights reserved\nVisit https://www.monetdb.org/ for further information\nFound 503.5GiB available memory, 128 available cpu cores\nLibraries:\nCompiled by: @2195e8c5ad70 (x86_64-pc-linux-gnu)\nCompilation: /usr/bin/cc \nLinking    : /usr/bin/ld\n```\n\n**Issue labeling**\nBug\n\n**Additional context**\nAdd any other context about the problem here.",
+  "date": "2024-06-17T10:51:37Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t2;",
+    "CREATE TABLE t2 (c0 VARCHAR(255), c1 INT, c2 BOOLEAN);",
+    "INSERT INTO t2(c0, c1, c2) VALUES ('test', 1, true);",
+    "SELECT * FROM t2 WHERE LEFT(c0, LENGTH(c1)) = '';",
+    "SELECT * FROM t2 WHERE LEFT(c0, LENGTH(NULLIF(c1, 0))) = '';"
+  ],
+  "key_bug_features": [
+    "Using STARTSWITH with empty string causes server crash"
+  ]
+}

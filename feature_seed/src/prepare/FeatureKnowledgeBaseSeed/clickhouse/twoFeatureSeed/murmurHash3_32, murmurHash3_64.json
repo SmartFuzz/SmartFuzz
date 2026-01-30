@@ -1,0 +1,17 @@
+{
+    "function": "murmurHash3_32, murmurHash3_64",
+    "operator": "a != ALL (subquery)",
+    "sql_array": [
+        "CREATE TABLE test_table (col1 String, col2 UInt32, col3 DateTime, col4 Nullable(Int32));",
+        "INSERT INTO test_table VALUES ('test1', 1, toDateTime('2023-01-01 00:00:00'), NULL), ('test2', 2, toDateTime('2023-01-02 00:00:00'), 10), ('test3', NULL, toDateTime('2023-01-03 00:00:00'), 20);",
+        "SELECT murmurHash3_32(col1, col2, murmurHash3_32(col3, col4)) AS hashed_value FROM test_table WHERE col1 != ALL (SELECT col1 FROM test_table WHERE col2 IS NOT NULL);",
+        "SELECT col1, COUNT(*) FROM test_table GROUP BY col1 HAVING murmurHash3_64(col1, col2) != ALL (SELECT murmurHash3_64(col1, col2) FROM test_table WHERE col3 > toDateTime('2023-01-01 23:59:59')) ORDER BY hashed_value;",
+        "CREATE TABLE temp_table (id UInt64, group_col String, value Float64);",
+        "INSERT INTO temp_table VALUES (1, 'A', 1.1), (2, 'B', 2.2), (3, 'A', 3.3);",
+        "SELECT group_col, SUM(value) AS total_value, murmurHash3_32(total_value, group_col) AS group_hash FROM (SELECT group_col, value FROM temp_table) GROUP BY group_col HAVING total_value != ALL (SELECT total_value FROM (SELECT SUM(value) AS total_value FROM temp_table GROUP BY group_col));",
+        "SELECT murmurHash3_64(NULLIF(col1, ''), col2) AS result FROM test_table WHERE col4 IS NOT NULL;",
+        "SELECT murmurHash3_32(arrayJoin(array(col1, col2)), col4) AS array_hash FROM test_table WHERE col1 != ALL (SELECT col1 FROM test_table WHERE col2 = 1);",
+        "CREATE TABLE final_table (col1 String, col2 Nullable(Float64), col3 UInt64) ENGINE = MergeTree() ORDER BY col1;",
+        "INSERT INTO final_table SELECT col1, value, murmurHash3_32(col1) FROM temp_table WHERE group_col = 'A';"
+    ]
+}

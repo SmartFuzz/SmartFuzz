@@ -1,0 +1,12 @@
+CREATE TABLE test_transactions (id INT PRIMARY KEY, xml_data XML, amount DECIMAL(10, 2), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO test_transactions (id, xml_data, amount) VALUES (1, '<root><value>100</value></root>', 100.00);
+INSERT INTO test_transactions (id, xml_data, amount) VALUES (2, '<root><value>200</value></root>', 200.00);
+INSERT INTO test_transactions (id, xml_data, amount) VALUES (3, '<root><value>300</value></root>', NULL);
+SELECT id, xpath_string('/root/value', xml_data) AS extracted_value, mts_status('TRANSACTION') AS transaction_status FROM test_transactions WHERE amount > (SELECT AVG(amount) FROM test_transactions) HAVING transaction_status = '2pc enabled';
+SELECT SUM(amount) AS total_amount, mts_status('MTS') AS mts_connection FROM test_transactions GROUP BY mts_connection;
+SELECT id, mts_status('TRANSACTION'), xpath_string('/root/value', xml_data) FROM test_transactions WHERE amount IS NOT NULL AND xpath_string('/root/value', xml_data) = '100' UNION ALL SELECT id, mts_status('TRANSACTION'), xpath_string('/root/value', xml_data) FROM test_transactions WHERE amount IS NULL;
+SELECT id, amount, mts_status('TRANSACTION'), xpath_string('/root/value', xml_data) FROM test_transactions WHERE COALESCE(amount, 0) < 100 ORDER BY mts_status('TRANSACTION');
+SELECT id, mts_status('TRANSACTION') FROM test_transactions WHERE created_at < CURRENT_TIMESTAMP - INTERVAL '1 DAY' AND NOT EXISTS (SELECT 1 FROM test_transactions t WHERE t.id = test_transactions.id AND xpath_string('/root/value', xml_data) = xpath_string('/root/value', xml_data));
+CREATE TEMPORARY TABLE temp_transactions AS SELECT id, amount FROM test_transactions WHERE amount IS NOT NULL AND id >= (SELECT MAX(id) FROM test_transactions);
+SELECT mts_status('MTS'), COUNT(*) FROM temp_transactions GROUP BY mts_status('MTS');
+DROP TABLE IF EXISTS temp_transactions;

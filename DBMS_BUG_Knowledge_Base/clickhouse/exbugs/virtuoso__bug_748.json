@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/748",
+  "title": "kNN queries in Virtuoso [Problematic Geometry Evaluation]",
+  "description": "Hi,\nI have loaded in Virtuoso two RDF triple datasets A & B. Both datasets have spatial and non-spatial triples. Regarding spatial triples, A includes POINT, LINESTRING and POLYGON geometies, while B has POINT and MULTIPOINT geometries.\nI also have some kNN queries, divided in two classes. The first class C1: points, the second class C2: non-points. The C1 queries ask for the k nearest spatial entities that have a POINT geometry. The C2 queries ask for the k nearest spatial entities that have a non POINT geometry (e.g., LINESTRING, POLYGON in A, MULTIPOINT in B).\nI implemented the kNN queries as the last example in link:\nhttp://docs.openlinksw.com/virtuoso/rdfsparqlgeospat/\nwhere, instead of DESC, I have ASC, and I have a LIMIT k.\nDuring kNN evaluation on A & B in Virtuoso, I have encountered two problems:\n\nFor C1 kNN queries (points), the kNN results are not in the right order, and also several of them are missing from the right kNN solution. This happens for A dataset, since on B I execute only non-point kNN queries.\nFor C2 kNN queries (non-points), on A I got a zero result, while on B I got the error: \"Function st_distance() expects a geometry of type 1 as argument 0, not geometry of type 4\"\n\nSince Virtuoso supports geometries, as you say in link:\nhttp://docs.openlinksw.com/virtuoso/sqlrefgeospatial7enchance/\nand I can load geometry triples without problems, it seems that bif:st_distance function does not work right and generates the (1) & (2) problems mentioned above.\nI am waiting a formal answer for the (1) & (2) problems, since I will provide the kNN evaluation in Virtuoso to a research paper targeted to a very significant conference.\nBest,\nKT.",
+  "date": "2018-06-14 23:48:48",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE spatial_entities (id Int32, geometry String, name String) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO spatial_entities (id, geometry, name) VALUES (1, 'POINT(-2.5 52.5)', 'Entity A');",
+    "INSERT INTO spatial_entities (id, geometry, name) VALUES (2, 'LINESTRING(-3 53, -2 54)', 'Entity B');",
+    "SELECT DISTINCT id, geoDistance(toFloat64(52.5), toFloat64(-2.5), toFloat64(geometry)) AS distance FROM spatial_entities WHERE has(geometry, 'POINT(-2.5 52.5)') AND geoDistance(toFloat64(52.5), toFloat64(-2.5), toFloat64(geometry)) < 20 ORDER BY distance ASC LIMIT 5;",
+    "SELECT COUNT(*) FROM spatial_entities WHERE has(geometry, 'POLYGON((-3 52, -1 52, -1 54, -3 54, -3 52))');"
+  ],
+  "key_bug_features": [
+    "kNN queries return incorrect results for spatial entities"
+  ]
+}

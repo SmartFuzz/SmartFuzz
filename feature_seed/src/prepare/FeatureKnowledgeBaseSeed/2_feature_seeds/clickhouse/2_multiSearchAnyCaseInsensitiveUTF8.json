@@ -1,0 +1,15 @@
+CREATE TABLE test_strings (id UInt32, haystack String, needle Array(String));
+INSERT INTO test_strings VALUES (1, '\x43\x6c\x69\x63\x6b\x48\x6f\x75\x73\x65', ['h', 'CLICK']);
+SELECT id, multiSearchAnyCaseInsensitiveUTF8(haystack, needle) AS found FROM test_strings WHERE multiSearchAnyCaseInsensitiveUTF8(haystack, needle) = 1;
+CREATE TABLE test_metrics (metric_id UInt32, value Float64);
+INSERT INTO test_metrics VALUES (1, 100.0), (2, 200.0), (3, 0.0);
+SELECT SUM(value) / NULLIF(COUNT(metric_id), 0) AS average_value FROM test_metrics HAVING average_value > 0;
+SELECT id, multiSearchAnyCaseInsensitiveUTF8(haystack, ['h', 'H', 'CLICK']) / 1 AS normalized_search FROM test_strings;
+SELECT a.id FROM test_strings a JOIN test_metrics b ON multiSearchAnyCaseInsensitiveUTF8(a.haystack, b.value) = 1 GROUP BY a.id HAVING COUNT(a.id) > 0;
+SELECT a.id, multiSearchAnyCaseInsensitiveUTF8(a.haystack, ['x', 'y', 'z']) AS search_result FROM test_strings a WHERE search_result = 0 OR a.haystack IS NULL;
+SELECT multiSearchAnyCaseInsensitiveUTF8(haystack, needle) AS search FROM (SELECT haystack, ['c', 'h', 'K'] AS needle FROM test_strings) WHERE search = 1;
+CREATE TABLE test_numbers (num UInt32);
+INSERT INTO test_numbers VALUES (10), (20), (30);
+SELECT AVG(num) / multiSearchAnyCaseInsensitiveUTF8(toString(num), ['x', 'y', 'z']) FROM test_numbers GROUP BY num HAVING AVG(num) > 0;
+CREATE TABLE temp_results AS SELECT * FROM test_metrics WHERE value > 150;
+SELECT multiSearchAnyCaseInsensitiveUTF8(toString(value), ['100']) / (SELECT COUNT(*) FROM test_strings) AS divisive_search FROM temp_results;

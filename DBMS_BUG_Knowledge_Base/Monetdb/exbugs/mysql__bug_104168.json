@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=104168",
+  "title": "Wrongly handled definer for triggers when PS used",
+  "description": "Commands can be denieded when triggers with ,,definer'' are used.\nHow to repeat:\n01) Create initial schema\r\n\r\nCREATE USER 'user01'@'%' IDENTIFIED BY 'user01';\r\nCREATE USER 'user02'@'%' IDENTIFIED BY 'user02';\r\nGRANT ALL PRIVILEGES ON *.* to 'user01'@'%';\n\nCREATE DATABASE  test;\r\nCREATE DATABASE  test01;\r\n\r\nuse test01;\r\nCREATE TABLE c (id int primary key, a varchar(100));\r\nINSERT INTO c SET id =1, a=now();\r\n\r\nuse test;\r\nCREATE TABLE tbl01 (id int primary key, a varchar(100));\r\nCREATE TABLE tbl02 (id int primary key, a varchar(100));\r\nGRANT SELECT, UPDATE, INSERT on test.tbl01 TO 'user02'@'%';\r\n\r\nINSERT INTO tbl01 SET id = 1, a=now();\r\nCREATE DEFINER='user01'@'%' TRIGGER trg01 AFTER UPDATE ON tbl01 FOR EACH ROW UPDATE tbl02 SET a = (SELECT a FROM test01.c WHERE id =1) WHERE id=NEW.id;\n\n02) Run normal and prepared statement:\r\n\r\nmysql> update tbl01 set a = now();\r\nQuery OK, 2 rows affected (0,03 sec)\r\nRows matched: 2  Changed: 2  Warnings: 0\r\n\r\nmysql> prepare s from 'update tbl01 set a = now()';\r\nQuery OK, 0 rows affected (0,01 sec)\r\nStatement prepared\r\n\r\nmysql> execute s;\r\nERROR 1142 (42000): SELECT command denied to user 'user02'@'localhost' for table 'c'\r\nmysql>\nSuggested fix:\nPrepared statement should not fail.\r\n\r\nAlso, it is not reprodubile with 8.0.20, and when the objects are within the same database.",
+  "date": "2021-06-30 14:07:00",
+  "vulnerable_version": "8.0.25",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE USER 'user03' IDENTIFIED BY 'user03';",
+    "GRANT SELECT, INSERT ON test01.c TO 'user03';",
+    "CREATE TABLE tbl03 (id int primary key, b int NOT NULL DEFAULT 0, c varchar(255) DEFAULT NULL);",
+    "INSERT INTO tbl03 (id, b) VALUES (1, NULL);",
+    "CREATE TRIGGER trg02 BEFORE INSERT ON tbl03 FOR EACH ROW SET NEW.c = (SELECT a FROM test01.c WHERE id = 1);"
+  ],
+  "key_bug_features": [
+    "Definer triggers causing permission errors with prepared statements"
+  ]
+}

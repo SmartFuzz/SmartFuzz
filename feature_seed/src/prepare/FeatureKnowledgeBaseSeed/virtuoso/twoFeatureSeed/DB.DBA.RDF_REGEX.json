@@ -1,0 +1,15 @@
+{
+    "function": "DB.DBA.RDF_REGEX",
+    "operator": "SPARQL Operator: isLiteral",
+    "sql_array": [
+        "CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR(255), uri VARCHAR(255), value VARCHAR(255));",
+        "INSERT INTO test_table (id, name, uri, value) VALUES (1, 'Test 1', 'http://example.org/ns#test1', 'sample value'), (2, 'Test 2', 'http://example.org/books#book2', NULL), (3, 'Test 3', 'http://example.org/ns#test3', '123456'), (4, 'Test 4', 'http://example.org/ns#test4', '');",
+        "SELECT DISTINCT DB.DBA.RDF_QNAME_OF_IID ( /*retval[*/  t.uri /* R */ /*]retval*/ ) AS R FROM test_table AS t WHERE DB.DBA.RDF_REGEX(t.uri, 'http://example\\.org/.*') AND SPARQL Operator: isLiteral(t.value);",
+        "SELECT t1.id, COUNT(*) AS cnt FROM (SELECT id, DB.DBA.RDF_QNAME_OF_IID(uri) AS qname FROM test_table) AS t1 WHERE DB.DBA.RDF_REGEX(t1.qname, '^http://example\\.org/ns#') GROUP BY t1.id HAVING COUNT(*) > 0;",
+        "SELECT t.uri, t.name FROM test_table t JOIN (SELECT id, value FROM test_table WHERE value IS NOT NULL) AS sub ON t.id = sub.id WHERE DB.DBA.RDF_REGEX(sub.value, '[0-9]+') AND SPARQL Operator: isLiteral(t.name);",
+        "SELECT t.id, MAX(sub.value) AS max_value FROM test_table AS t JOIN (SELECT id, value FROM test_table) AS sub ON t.id = sub.id WHERE DB.DBA.RDF_REGEX(sub.value, '^[0-9]*$') GROUP BY t.id HAVING MAX(sub.value) IS NOT NULL;",
+        "SELECT t.id FROM test_table t WHERE NULLIF(t.value, '') IS NULL AND SPARQL Operator: isLiteral(t.value);",
+        "SELECT DB.DBA.RDF_QNAME_OF_IID(t.uri) AS uri_transformed FROM (SELECT uri FROM test_table WHERE SPARQL Operator: isLiteral(value)) AS t WHERE DB.DBA.RDF_REGEX(uri_transformed, '^http://example\\.org/).*');",
+        "SELECT DISTINCT t.* FROM test_table t WHERE EXISTS (SELECT 1 FROM test_table sub WHERE t.name LIKE 'Test%' AND SPARQL Operator: isLiteral(sub.uri) AND DB.DBA.RDF_REGEX(sub.uri, '.*book.*'));"
+    ]
+}

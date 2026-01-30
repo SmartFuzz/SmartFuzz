@@ -1,0 +1,10 @@
+CREATE TABLE source_table (id UInt32, name String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO source_table VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie');
+CREATE DICTIONARY my_dictionary (id UInt32, name String) PRIMARY KEY id SOURCE(SELECT id, name FROM source_table) LAYOUT(FLAT);
+CREATE DICTIONARY my_complex_dictionary (id UInt32, age UInt32, name String) PRIMARY KEY id SOURCE(SELECT id, age, name FROM (SELECT id, age, name FROM source_table WHERE id > 1) AS filtered_table) LAYOUT(FLAT);
+CREATE DICTIONARY my_clustered_dictionary ON CLUSTER my_cluster (id UInt32, value String) PRIMARY KEY id SOURCE(SELECT id, value FROM remote('cluster_data', 'source_table')) LAYOUT(HASHED) DEFAULT LIFETIME 3600;
+CREATE DICTIONARY my_joined_dictionary (id UInt32, name String) PRIMARY KEY id SOURCE(SELECT s.id, s.name FROM source_table AS s JOIN another_table AS a ON s.id = a.id) LAYOUT(FLAT);
+CREATE DICTIONARY my_nested_dictionary (id UInt32, attributes Nested (attribute_name String, attribute_value String)) PRIMARY KEY id SOURCE(SELECT id, attribute_name, attribute_value FROM (SELECT id, 'color' AS attribute_name, 'red' AS attribute_value FROM source_table)) LAYOUT(FLAT);
+CREATE DICTIONARY my_time_bound_dictionary (id UInt32, data String) PRIMARY KEY id SOURCE(SELECT id, data FROM source_table) LAYOUT(FLAT) DEFAULT LIFETIME 86400;
+CREATE DICTIONARY my_filtered_dictionary (id UInt32, activity String) PRIMARY KEY id SOURCE(SELECT id, activity FROM source_table WHERE id IN (SELECT id FROM source_table WHERE name LIKE 'A%')) LAYOUT(FLAT);
+CREATE DICTIONARY my_subquery_dictionary (id UInt32, details String) PRIMARY KEY id SOURCE(SELECT id, details FROM (SELECT id, 'some details' AS details FROM source_table)) LAYOUT(FLAT);

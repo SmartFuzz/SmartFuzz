@@ -1,0 +1,16 @@
+{
+    "function": "covarPopStable",
+    "operator": "a[N]",
+    "sql_array": [
+        "CREATE TABLE IF NOT EXISTS test_series(i UInt32, x_value Float64, y_value Float64, arr_value Array(Float64)) ENGINE = Memory;",
+        "INSERT INTO test_series(i, x_value, y_value, arr_value) VALUES (1, 5.6, -4.4, [1.0, 2.0, 3.0]), (2, -9.6, 3.0, [4.0, 5.0, 6.0]), (3, -1.3, -4.0, []), (4, 5.3, 9.7, [0.0]), (5, NULL, 0.037, [7.0, 8.0]), (6, -8.6, -7.8, [9.0]), (7, 5.1, 9.3, [4.1, NULL, 5.2]), (8, 7.9, -3.6, [NULL]), (9, -8.2, 0.62, [10.0]), (10, -3.0, 7.3, [11.0, -12.0]);",
+        "SELECT covarPopStable(arrayElement(arr_value, 1), y_value) FROM test_series WHERE x_value IS NOT NULL AND arrayLength(arr_value) > 0;",
+        "SELECT x_value, covarPopStable(y_value, arrayElement(arr_value, 2)) AS cov FROM test_series GROUP BY x_value HAVING cov IS NOT NULL;",
+        "DROP TABLE IF EXISTS merged_table; CREATE TABLE merged_table AS (SELECT x_value, y_value FROM test_series) ENGINE = Memory;",
+        "SELECT covarPopStable(a.x_value, b.y_value) FROM test_series AS a JOIN (SELECT x_value, y_value FROM test_series WHERE y_value < 0) AS b ON a.i = 1 WHERE arrayLength(a.arr_value) > 1;",
+        "SELECT covarPopStable(NULL, arrayElement(arr_value, 1)) AS cov_nulls FROM test_series HAVING cov_nulls IS NULL;",
+        "SELECT covarPopStable(x_value + 10, y_value) FROM (SELECT x_value, y_value FROM test_series WHERE y_value BETWEEN -10 AND 10) GROUP BY x_value ORDER BY covarPopStable(x_value, y_value) DESC;",
+        "CREATE TABLE IF NOT EXISTS edge_cases_table(i UInt32, x_value Float64, y_value Float64, arr_value Array(Float64)) ENGINE = MergeTree() ORDER BY i;",
+        "INSERT INTO edge_cases_table SELECT i, x_value, y_value, arr_value FROM test_series WHERE x_value IS NOT NULL AND arrayLength(arr_value) < 2;"
+    ]
+}

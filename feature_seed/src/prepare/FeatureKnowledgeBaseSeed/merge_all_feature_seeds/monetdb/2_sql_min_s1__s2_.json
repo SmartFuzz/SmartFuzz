@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id INT, name VARCHAR(50), ip_addr INET);
+INSERT INTO test_table (id, name, ip_addr) VALUES (1, 'Alice', inet '192.168.1.1'), (2, 'Bob', inet '192.168.1.2'), (3, NULL, inet '192.168.1.3'), (4, '', inet NULL);
+SELECT sql_min(name, (SELECT name FROM test_table WHERE id = (SELECT MAX(id) FROM test_table)) ) AS min_name FROM test_table WHERE ip_addr >= inet '192.168.1.2' GROUP BY sql_min(name, 'zz');
+SELECT COUNT(*) FROM (SELECT name, sql_min(name, '') AS min_name FROM test_table WHERE sql_min(name, NULL) IS NOT NULL GROUP BY id HAVING min_name IS NOT NULL) AS derived;
+SELECT sql_min(name, NULL) AS min_value, ip_addr FROM test_table WHERE ip_addr >= inet '192.168.1.2' OR ip_addr IS NULL GROUP BY ip_addr ORDER BY min_value LIMIT 1;
+SELECT id, name, (SELECT sql_min(name, 'zz') FROM test_table WHERE id < 3) AS nested_min FROM test_table WHERE ip_addr >= inet '192.168.1.1' AND (sql_min(name, NULL) IS NOT NULL) ORDER BY id;
+CREATE TABLE second_table (id INT PRIMARY KEY, description VARCHAR(100));
+INSERT INTO second_table (id, description) VALUES (1, 'Test entry 1'), (2, 'Test entry 2'), (3, 'Test entry 3');
+SELECT a.id, sql_min(a.name, b.description) AS min_desc FROM test_table a JOIN second_table b ON a.id = b.id WHERE a.ip_addr >= inet '192.168.1.1' GROUP BY a.id, b.description;
+SELECT sql_min(NULL, 'alpha') AS min_value WHERE EXISTS (SELECT * FROM test_table WHERE ip_addr >= inet '192.168.1.1');

@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id UInt32, value String, decimal_value Float64, created_at DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table (id, value, decimal_value, created_at) VALUES (1, '123', 456.789, now()), (2, '456.256', -123.456, now()), (3, '0.0', 0.0, now()), (4, NULL, NULL, now());
+SELECT id, toInt256(value), toInt256(NULLIF(value, '')) % 2 AS modulo_result FROM test_table WHERE created_at > now() - INTERVAL 1 DAY;
+SELECT id, created_at, 2 * toInt256(value) AS doubled_value FROM test_table HAVING doubled_value > 200;
+SELECT id, COUNT(*) AS count FROM (SELECT toInt256(value) AS converted_value FROM test_table WHERE value != '') GROUP BY converted_value;
+SELECT id, toInt256(coalesce(value, '0')) % (1 + toInt256(decimal_value)) AS complex_modulo FROM test_table WHERE decimal_value IS NOT NULL;
+SELECT id, toInt256(-256.256) AS converted_negative, toInt256('400') + 1 AS incremented FROM test_table WHERE id = 1 OR id = 2;
+SELECT id, value, MOD(toInt256(value), 2) AS modulo_result FROM test_table WHERE created_at < now() - INTERVAL 1 HOUR ORDER BY modulo_result;
+SELECT id, value, toInt256(value) + 100 AS incremented_value FROM test_table WHERE toInt256(value) < 500 ORDER BY incremented_value;
+SELECT A.id, A.value, A.decimal_value, B.other_value FROM test_table A JOIN (SELECT id, toInt256(value) AS other_value FROM test_table WHERE decimal_value > 100) B ON A.id = B.id;

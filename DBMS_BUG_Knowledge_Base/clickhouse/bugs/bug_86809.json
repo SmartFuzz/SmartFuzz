@@ -1,0 +1,22 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/86809",
+  "title": "Support subcolumns in projections.",
+  "vulnerable_database": "ClickHouse",
+  "date": "2025-09-08T11:20:43Z",
+  "vulnerable_version": "",
+  "description": "Allow storing subcolumns in the projection.\n```\nCREATE TABLE test_json (ts DateTime64(3), document JSON(id UInt64,name String, age UInt8)) engine = MergeTree() order by toStartOfHour(ts);\nalter table test_json add projection prj_v1 (SELECT document.name, document.id order by document.id);\nCode: 48. DB::Exception: Received from localhost:9000. DB::Exception: Projections cannot contain individual subcolumns: document.name. (NOT_IMPLEMENTED)\n```\n[Fiddle](https://fiddle.clickhouse.com/f7c779cc-23b6-4c62-8db8-8d1de939139b).\nNote: it's possible to use `getSubcolumn`, but the projection stores the full JSON anyway.",
+  "poc": [
+    "CREATE TABLE test_json (ts DateTime64(3), document JSON(id UInt64,name String, age UInt8)) engine = MergeTree() order by toStartOfHour(ts);",
+    "alter table test_json add projection prj_v1 (SELECT document.name, document.id order by document.id);"
+  ],
+  "key_bug_features": [
+    "Projections cannot contain individual subcolumns in ClickHouse"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE test_json (ts DateTime64(3), document JSON(id UInt64, name String, age UInt8)) ENGINE = MergeTree() ORDER BY toStartOfHour(ts);",
+    "INSERT INTO test_json (ts, document) VALUES (now(), '{\"id\": 1, \"name\": \"Alice\", \"age\": 30}');",
+    "INSERT INTO test_json (ts, document) VALUES (now(), '{\"id\": 2, \"name\": \"Bob\", \"age\": 25}');",
+    "ALTER TABLE test_json ADD PROJECTION prj_v1 (SELECT document.name, document.id ORDER BY document.id);",
+    "SELECT document.name, document.age FROM test_json WHERE document.age IS NOT NULL;"
+  ]
+}

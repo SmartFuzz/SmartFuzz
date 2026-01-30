@@ -1,0 +1,17 @@
+{
+    "function": "ngrams",
+    "operator": "a = ANY (subquery)",
+    "sql_array": [
+        "CREATE TABLE test_edge_cases (id UInt32, text String, value Nullable(Int32));",
+        "INSERT INTO test_edge_cases VALUES (1, 'test', 42), (2, '', NULL), (3, 'ClickHouse', 100), (4, 'boundary', 0);",
+        "SELECT id, ngrams(text, 3) FROM test_edge_cases WHERE value = ANY (SELECT value FROM test_edge_cases WHERE text = 'ClickHouse');",
+        "SELECT id, ngrams(text, 3) FROM test_edge_cases WHERE id = ANY (SELECT id FROM test_edge_cases WHERE value IS NULL);",
+        "SELECT DISTINCT ngrams(text, 2) AS ngram_array FROM test_edge_cases GROUP BY ngram_array HAVING COUNT(*) > 1;",
+        "SELECT id, ngrams(text, 4) FROM test_edge_cases ORDER BY value = ANY (SELECT value FROM test_edge_cases WHERE text = '');",
+        "SELECT id FROM test_edge_cases WHERE text = ANY (SELECT text FROM test_edge_cases WHERE id = 3) AND value IS NOT NULL;",
+        "CREATE TABLE test_join_cases (id UInt32, text String, related_id UInt32);",
+        "INSERT INTO test_join_cases VALUES (1, 'join', 2), (2, 'test', 1), (3, 'ClickHouse', 2);",
+        "SELECT a.id, ngrams(a.text, 3) FROM test_edge_cases AS a JOIN test_join_cases AS b ON a.id = ANY (SELECT related_id FROM test_join_cases WHERE related_id = b.id) WHERE a.value IS NOT NULL;",
+        "SELECT id, ngrams(COALESCE(text, ''), 4) FROM test_edge_cases WHERE ngrams(text, 2) = ANY (SELECT ngrams(text, 2) FROM test_edge_cases) AND text != '';"
+    ]
+}

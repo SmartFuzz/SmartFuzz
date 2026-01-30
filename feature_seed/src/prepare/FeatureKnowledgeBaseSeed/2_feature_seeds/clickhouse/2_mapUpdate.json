@@ -1,0 +1,11 @@
+CREATE TABLE test_map_dates (id UInt32, data Map(String, Int32), event_date DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_map_dates VALUES (1, map('key1', 0, 'key3', 0), toDateTime('2023-01-15 10:00:00')), (2, map('key1', 5, 'key2', 10), toDateTime('2023-01-20 15:30:00'));
+SELECT EXTRACT(YEAR FROM event_date), mapUpdate(data, map('key1', EXTRACT(DAY FROM event_date))) AS updated_map FROM test_map_dates WHERE EXTRACT(MONTH FROM event_date) = 1;
+SELECT id, mapUpdate(data, map('key2', 100)) AS updated_map, EXTRACT(SECOND FROM event_date) AS second FROM test_map_dates WHERE updated_map['key2'] IS NOT NULL;
+SELECT EXTRACT(MONTH FROM event_date) AS month, count() FROM test_map_dates GROUP BY month HAVING month = 1;
+SELECT id, mapUpdate(data, map('key1', 15, 'key3', NULL)) AS updated_map FROM test_map_dates JOIN (SELECT id, EXTRACT(DAY FROM event_date) AS day FROM test_map_dates WHERE event_date < now()) AS subquery ON test_map_dates.id = subquery.id;
+CREATE TABLE test_null_handling (id UInt32, numbers Array(Int32), timestamp DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_null_handling VALUES (1, [NULL, 2, 3], toDateTime('2023-01-01 00:00:00')), (2, [1, NULL, 3], toDateTime('2023-01-02 01:00:00'));
+SELECT id, mapUpdate(map('key1', countIf(numbers, x -> x IS NULL)), map('key2', 10)) AS map_null_counts, EXTRACT(HOUR FROM timestamp) AS hour FROM test_null_handling GROUP BY id HAVING map_null_counts['key1'] > 0;
+SELECT id, mapUpdate(data, map('key1', EXTRACT(DAY FROM event_date) + 1)) AS updated_map FROM test_map_dates WHERE EXTRACT(MONTH FROM event_date) = 1 ORDER BY updated_map['key1'] DESC;
+SELECT id, mapUpdate(data, map('key1', toUInt32('100'), 'key2', CAST('200' AS Int32))) AS updated_map FROM test_map_dates WHERE toInt32(NULL) IS NULL;

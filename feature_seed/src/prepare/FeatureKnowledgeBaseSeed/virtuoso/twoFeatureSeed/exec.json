@@ -1,0 +1,16 @@
+{
+    "function": "exec",
+    "operator": "+",
+    "sql_array": [
+        "CREATE TABLE test_table (id INT PRIMARY KEY, value VARCHAR(255), amount FLOAT, created_at TIMESTAMP);",
+        "INSERT INTO test_table (id, value, amount, created_at) VALUES (1, 'A', 10.5, CURRENT_TIMESTAMP), (2, 'B', NULL, CURRENT_TIMESTAMP), (3, '', 20.0, CURRENT_TIMESTAMP);",
+        "SELECT id, value, exec(sprintf('SELECT COUNT(*) FROM test_table WHERE amount IS NOT NULL'), state, msg, vector(), 1, descs, rows) + 1 AS adjusted_count FROM test_table GROUP BY id, value HAVING adjusted_count > 1;",
+        "CREATE PROCEDURE calculate_total(IN tb VARCHAR) BEGIN DECLARE state, msg, descs, rows ANY; SET state = '00000'; INSERT INTO totals SELECT id, value, exec(sprintf('SELECT SUM(amount) FROM %s', tb), state, msg, vector(), 1, descs, rows) + 100 AS total_amount FROM test_table; IF (state <> '00000') SIGNAL(state, msg); END;",
+        "SELECT id, (CASE WHEN amount IS NULL THEN 0 ELSE amount END) + 1 AS adjusted_amount FROM test_table WHERE id IN (SELECT id FROM test_table WHERE LENGTH(value) > 0);",
+        "SELECT t1.id, (SELECT MAX(amount) + MIN(COALESCE(amount, 0)) FROM test_table t2 WHERE t2.value = t1.value) AS total_value FROM test_table t1 JOIN test_table t2 ON t1.id <> t2.id WHERE t1.created_at < t2.created_at;",
+        "CREATE TABLE totals (id INT, total_amount FLOAT);",
+        "INSERT INTO totals (id, total_amount) SELECT id, (SELECT SUM(amount) FROM test_table) + (SELECT COUNT(*) FROM test_table WHERE amount IS NULL) FROM test_table GROUP BY id;",
+        "SELECT id, exec('SELECT SUM(amount) FROM test_table WHERE id >' + CAST(id AS VARCHAR), state, msg, vector(), 1, descs, rows) + 1.0 AS total_and_one FROM test_table;",
+        "SELECT t1.id, (SELECT AVG(COALESCE(t2.amount, 0)) FROM test_table t2 WHERE t2.value = t1.value) AS average_amount FROM test_table t1 GROUP BY t1.value HAVING average_amount < (SELECT MAX(amount) FROM test_table);"
+    ]
+}

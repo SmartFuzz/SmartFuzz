@@ -1,0 +1,5 @@
+CREATE DATABASE demo on cluster 'all' ENGINE = Replicated('/clickhouse/default/demo', '{shard}', '{replica}');
+CREATE DICTIONARY demo.dict_test (code Int32, value String) PRIMARY KEY code SOURCE(FILE(path './user_files/test.ndjson' format 'JSONEachRow')) LAYOUT(COMPLEX_KEY_HASHED) LIFETIME(0);
+CREATE TABLE demo.test_local(code Int32, name String DEFAULT 'unknown') ENGINE = ReplicatedMergeTree() ORDER BY code;
+INSERT INTO demo.test_local VALUES (1, 'value1'), (2, 'value2'), (3, NULL);
+SELECT code, dictGet('dict_test', 'value', code) AS dict_value FROM demo.test_local WHERE code IN (SELECT code FROM demo.test_local WHERE name IS NOT NULL);

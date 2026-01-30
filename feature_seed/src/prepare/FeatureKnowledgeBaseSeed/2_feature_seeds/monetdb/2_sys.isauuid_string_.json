@@ -1,0 +1,17 @@
+CREATE TABLE test_uuid_inet (id SERIAL PRIMARY KEY, ip INET, uuid_str VARCHAR(36));
+INSERT INTO test_uuid_inet (ip, uuid_str) VALUES (inet '192.168.1.1', 'e31960fb-dc8b-452d-ab30-b342723e7565'), (inet '192.168.1.2', NULL), (inet '10.0.0.1', 'not-a-uuid');
+SELECT id, sys.isauuid(uuid_str) as is_valid_uuid FROM test_uuid_inet WHERE sys.isauuid(uuid_str) IS NOT NULL;
+SELECT ip FROM test_uuid_inet WHERE inet '192.168.1/24' >>= ip AND sys.isauuid(uuid_str) = TRUE;
+SELECT COUNT(*) FROM test_uuid_inet GROUP BY sys.isauuid(uuid_str) HAVING sys.isauuid(uuid_str) IS TRUE;
+SELECT ip FROM test_uuid_inet WHERE ip >>= inet '192.168.1.128/25' AND (sys.isauuid(uuid_str) IS FALSE OR uuid_str IS NULL);
+CREATE TEMPORARY TABLE temp_uuid AS SELECT uuid_str FROM test_uuid_inet WHERE sys.isauuid(uuid_str) IS TRUE;
+SELECT COUNT(*) FROM temp_uuid;
+SELECT DISTINCT uuid_str FROM test_uuid_inet WHERE uuid_str IS NOT NULL ORDER BY uuid_str;
+INSERT INTO test_uuid_inet (ip, uuid_str) VALUES (inet '172.16.0.1', 'e9b1eae2-3c35-4b36-8c3e-d7c39fa112f4'), (inet '172.16.0.2', 'b46b0f15-14e8-4ca3-bde3-88c1475e6bc0');
+SELECT sys.isauuid(uuid_str) FROM test_uuid_inet WHERE uuid_str IS NOT NULL AND sys.isauuid(uuid_str) OR ip >>= inet '172.16.0.0/16';
+SELECT temp_uuid.uuid_str FROM temp_uuid WHERE temp_uuid.uuid_str IS NOT NULL AND (SELECT sys.isauuid(temp_uuid.uuid_str) FROM temp_uuid) IS TRUE;
+CREATE TABLE another_table (ref_id INT, uuid_ref VARCHAR(36));
+INSERT INTO another_table (ref_id, uuid_ref) VALUES (1, 'e31960fb-dc8b-452d-ab30-b342723e7565'), (2, NULL);
+SELECT a.ref_id, a.uuid_ref, t.ip FROM another_table a JOIN test_uuid_inet t ON sys.isauuid(a.uuid_ref) AND t.ip >>= inet '192.168.1.0/24' WHERE t.uuid_str IS NULL;
+ALTER TABLE test_uuid_inet ADD COLUMN ip_type VARCHAR(10);
+UPDATE test_uuid_inet SET ip_type = 'public' WHERE ip >>= inet '192.168.1.0/24';

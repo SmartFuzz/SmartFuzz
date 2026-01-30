@@ -1,0 +1,15 @@
+CREATE TABLE test_numbers (id INT PRIMARY KEY, big_num BINARY(16));
+INSERT INTO test_numbers (id, big_num) VALUES (1, xenc_bn2dec('AAAAAAAAAAE='));
+INSERT INTO test_numbers (id, big_num) VALUES (2, xenc_bn2dec('AAAAAAAAAAE='));
+SELECT id, big_num FROM test_numbers WHERE xenc_bn2dec(big_num) >= '0';
+SELECT id FROM test_numbers WHERE (SELECT COUNT(*) FROM test_numbers t1 WHERE xenc_bn2dec(t1.big_num) >= 0) > 1;
+CREATE TABLE test_data (num VARCHAR(255), val DECIMAL(10,2));
+INSERT INTO test_data (num, val) VALUES ('1', 10.50), ('2', NULL), ('3', 20.00);
+SELECT num, SUM(val) FROM test_data GROUP BY num HAVING SUM(val) >= (SELECT AVG(val) FROM test_data) - (SELECT COUNT(*) FROM test_data WHERE val IS NULL);
+SELECT id FROM test_numbers WHERE big_num >= CAST(xenc_bn2dec('AAAAAAAABg=') AS BINARY(16));
+WITH ranked_numbers AS (SELECT id, ROW_NUMBER() OVER (ORDER BY xenc_bn2dec(big_num)) as rn FROM test_numbers) SELECT id FROM ranked_numbers WHERE rn >= 2;
+SELECT t1.num, xenc_bn2dec(t1.big_num) FROM test_numbers t1 JOIN test_data t2 ON t1.id = CAST(t2.num AS INT) WHERE xenc_bn2dec(t1.big_num) IS NOT NULL;
+SELECT xenc_bn2dec(big_num), COUNT(*) FROM test_numbers GROUP BY xenc_bn2dec(big_num) HAVING xenc_bn2dec(big_num) >= 0;
+INSERT INTO test_numbers (id, big_num) VALUES (3, NULL);
+SELECT id FROM test_numbers WHERE big_num >= NULL;
+SELECT id FROM test_numbers WHERE NOT(xenc_bn2dec(big_num) IS NULL) AND xenc_bn2dec(big_num) >= '1' AND xenc_bn2dec(big_num) <= '3' ORDER BY xenc_bn2dec(big_num);

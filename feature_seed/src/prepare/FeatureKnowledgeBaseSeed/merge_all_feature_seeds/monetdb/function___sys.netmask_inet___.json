@@ -1,0 +1,18 @@
+CREATE TABLE networks (id INT PRIMARY KEY, ip_range INET);
+INSERT INTO networks VALUES (1, inet '192.168.1.5/24');
+INSERT INTO networks VALUES (2, inet '10.0.0.1/16');
+INSERT INTO networks VALUES (3, inet '172.16.0.1/12');
+SELECT sys.netmask(ip_range) FROM networks WHERE id = 1;
+SELECT sys.netmask(ip_range) FROM networks WHERE ip_range = inet '10.0.0.1/16';
+CREATE TABLE devices (device_id INT PRIMARY KEY, net_id INT, FOREIGN KEY (net_id) REFERENCES networks(id));
+INSERT INTO devices VALUES (1, 1);
+INSERT INTO devices VALUES (2, 2);
+SELECT d.device_id, sys.netmask(n.ip_range) FROM devices d JOIN networks n ON d.net_id = n.id;
+CREATE TABLE logs (log_id INT PRIMARY KEY, timestamp TIMESTAMP, message TEXT);
+INSERT INTO logs VALUES (1, NOW(), 'Device 1 connected to network 192.168.1.0/24');
+SELECT l.message, sys.netmask(n.ip_range) FROM logs l JOIN devices d ON l.log_id = d.device_id JOIN networks n ON d.net_id = n.id WHERE l.log_id = 1;
+SELECT sys.netmask(inet '255.255.255.255');
+CREATE TABLE subnet_masks (mask_id INT PRIMARY KEY, version INT, mask INET);
+INSERT INTO subnet_masks VALUES (1, 4, sys.netmask(inet '192.168.1.5/24'));
+INSERT INTO subnet_masks VALUES (2, 4, sys.netmask(inet '10.0.0.1/16'));
+SELECT * FROM subnet_masks WHERE mask_id IN (SELECT mask_id FROM subnet_masks WHERE version = 4);

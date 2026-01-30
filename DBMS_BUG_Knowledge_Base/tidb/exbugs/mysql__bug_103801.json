@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=103801",
+  "title": "Can't use TimeSpan value with microseconds using prepared statement",
+  "description": "When a TimeSpan is used as a MySqlParameter.Value value, and that TimeSpan has non-zero microseconds, the microseconds are lost if MySqlCommand.Prepare is called. This causes data loss if the parameter is used in an INSERT statement, and failure to find data if used as part of a SELECT ... WHERE.\r\n\r\nThis is similar to\nbug #91770\nbut that only fixed the serialization of milliseconds.\nHow to repeat:\nExecute the following SQL:\r\n\r\ncreate table times(value TIME(4));\r\ninsert into times(value) values(time '00:00:01.2345');\r\n\r\nRun the following C# code:\r\n\r\nusing var connection = new MySqlConnection(\"...\");\r\nconnection.Open();\r\n\r\nusing var command = connection.CreateCommand();\r\ncommand.CommandText = \"SELECT value FROM times WHERE value = @value;\";\r\ncommand.Parameters.AddWithValue(\"@value\", new TimeSpan(0, 0, 0, 1, 234) + TimeSpan.FromTicks(5000));\r\n\r\n// *** this causes the bug ***\r\ncommand.Prepare();\r\n\r\nusing var reader = command.ExecuteReader();\r\n\r\n// prints False; expected True\r\nConsole.WriteLine(reader.Read());\r\n\r\n// throws MySqlException; expected 00:00:01.2345000\r\nConsole.WriteLine(reader.GetValue(0));\n\nYou can also reproduce the bug using an INSERT statement:\r\n\r\nusing var command = connection.CreateCommand();\r\ncommand.CommandText = \"insert into times(value) values(@value);\";\r\ncommand.Parameters.AddWithValue(\"@value\", new TimeSpan(0, 0, 0, 1, 234) + TimeSpan.FromTicks(5000));\r\ncommand.Prepare(); // this causes the bug\r\ncommand.ExecuteNonQuery();\r\n\r\nThis inserts '00:00:01.2340' but it should be '00:00:01.2345'.",
+  "date": "2021-05-25 20:38:00",
+  "vulnerable_version": "8.0.25",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE times_with_micros(value TIME(6));",
+    "INSERT INTO times_with_micros(value) VALUES(TIME '00:00:01.234567');",
+    "SELECT value FROM times_with_micros WHERE value = TIME '00:00:01.234567';",
+    "CREATE TABLE test_times(value TIME(4) NOT NULL, description VARCHAR(50));",
+    "INSERT INTO test_times(value, description) VALUES(TIME '00:00:01.2340', 'Test entry with microseconds');"
+  ],
+  "key_bug_features": [
+    "Loss of microseconds in TimeSpan with prepared statement"
+  ]
+}

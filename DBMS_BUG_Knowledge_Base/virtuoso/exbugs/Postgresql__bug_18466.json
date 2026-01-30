@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/18466-1d296028273322e2%40postgresql.org",
+  "title": "BUG #18466: Wrong row estimate for nested loop",
+  "description": "The following bug has been logged on the website:\nBug reference:      18466\nLogged by:          Yan Wu\nEmail address:      4wuyan(at)gmail(dot)com\nPostgreSQL version: 16.3\nOperating system:   Debian Linux\nDescription:\nHello everyone, I notice the row estimate for a nested loop is wrong if a\ncte is involved.\n## How to reproduce\nYou can reproduce it in a docker container. I originally saw it on AWS\nAurora.\n```bash\ndocker run --name test-postgres -e POSTGRES_PASSWORD=mysecretpassword -d -p\n5432:5432 postgres:16.3\n```\nSimple table setup\n```sql\ncreate table t1(a int);\ncreate table t2(b int);\ncreate index my_index on t1 using btree (a);\ninsert into t1 select generate_series(1, 100000) from generate_series(1,\n3);\ninsert into t2 select generate_series(1, 100) from generate_series(1, 10);\nanalyze t1;\nanalyze t2;\n/* Optionally make sure nested loop is used /*\n-- set enable_mergejoin = off;\n-- set enable_hashjoin = off;\n```\nThe row estimate for the following plan is wrong: 2980 / 200 is not close to\n3.\n```\npostgres=# explain with my_cte as materialized (select b from t2) select *\nfrom t1 where t1.a in (select b from my_cte);\nQUERY PLAN\n-------------------------------------------------------------------------------\nNested Loop  (cost=37.92..2674.77 rows=2980 width=4)\nCTE my_cte\n->  Seq Scan on t2  (cost=0.00..15.00 rows=1000 width=4)\n->  HashAggregate  (cost=22.50..24.50 rows=200 width=4)\nGroup Key: my_cte.b\n->  CTE Scan on my_cte  (cost=0.00..20.00 rows=1000 width=4)\n->  Index Only Scan using my_index on t1  (cost=0.42..13.15 rows=3\nwidth=4)\nIndex Cond: (a = my_cte.b)\n(8 rows)\n```\n## Expected output\nA simple `distinct` will give the same plan, but with the correct row\nestimate:\n```\npostgres=# explain with my_cte as materialized (select b from t2) select *\nfrom t1 where t1.a in (select distinct b from my_cte);\nQUERY PLAN\n-------------------------------------------------------------------------------\nNested Loop  (cost=37.92..2674.77 rows=596 width=4)\nCTE my_cte\n->  Seq Scan on t2  (cost=0.00..15.00 rows=1000 width=4)\n->  HashAggregate  (cost=22.50..24.50 rows=200 width=4)\nGroup Key: my_cte.b\n->  CTE Scan on my_cte  (cost=0.00..20.00 rows=1000 width=4)\n->  Index Only Scan using my_index on t1  (cost=0.42..13.15 rows=3\nwidth=4)\nIndex Cond: (a = my_cte.b)\n(8 rows)\n```\nThis is my expected output: 596 / 200 is approximately 3.\nIf you compare the two plans, you can see they are exactly the same plan\nwith the same cost estimate too. The only difference is `rows=2980` and\n`rows=596` for the Nested Loop node. It seems `rows=1000` instead of\n`rows=200` is used for the HashAggregate node in the wrong output.\nThis query is simple and trivial. But it's for demo purpose only. The query\nmay be a part of a bigger query, and the wrong row estimate can lead to a\nbad execution plan for the big query.\n## Postgres version\n16.3\n## Platform information\nLatest postgres docker image, which is based on Debian Linux. Originally\nfound the issue on AWS Aurora.",
+  "date": "2024-05-15 00:28:28",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE t1(a INT, b VARCHAR(255));",
+    "CREATE TABLE t2(b INT, c VARCHAR(50));",
+    "INSERT INTO t1(a, b) VALUES (1, 'row1'), (2, 'row2'), (3, 'row3'), (4, 'row4');",
+    "INSERT INTO t2(b, c) VALUES (1, 'data1'), (2, 'data2'), (3, 'data3');",
+    "SELECT * FROM t1 WHERE t1.a IN (SELECT DISTINCT b FROM t2);"
+  ],
+  "key_bug_features": [
+    "Wrong row estimate for nested loop with CTE involved"
+  ]
+}

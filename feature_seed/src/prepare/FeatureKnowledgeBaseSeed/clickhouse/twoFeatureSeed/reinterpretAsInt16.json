@@ -1,0 +1,16 @@
+{
+    "function": "reinterpretAsInt16",
+    "operator": "a > b",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, value Float64, str_value String, dt_value DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table VALUES (1, 255.0, 'test', now()), (2, 257.1, '', now() - INTERVAL 1 DAY), (3, NULL, 'NULL test', NULL);",
+        "WITH reinterpretAsInt16(value) AS reinterpret_value SELECT id, reinterpret_value, reinterpret_value > 0 AS is_positive FROM test_table WHERE reinterpret_value IS NOT NULL;",
+        "SELECT id, reinterpretAsInt16(value) AS reinterpret_value, str_value FROM test_table WHERE reinterpret_value > reinterpretAsInt16(0) AND str_value <> '';",
+        "SELECT id, count(*) AS cnt FROM (SELECT reinterpretAsInt16(value) AS reinterpret_value FROM test_table GROUP BY reinterpret_value HAVING reinterpret_value > -1) GROUP BY cnt HAVING cnt > 1;",
+        "SELECT id, reinterpretAsInt16(value), reinterpretAsInt16(dt_value) AS reinterpret_dt FROM test_table WHERE reinterpretAsInt16(value) > reinterpretAsInt16(250);",
+        "CREATE TABLE temp_table AS SELECT id, reinterpretAsInt16(value) AS reinterpret_value FROM test_table WHERE value IS NOT NULL;",
+        "INSERT INTO temp_table SELECT id, reinterpretAsInt16(value) FROM test_table WHERE str_value = 'test' OR value IS NULL;",
+        "SELECT t1.id, t1.value, t2.str_value FROM test_table t1 JOIN temp_table t2 ON t1.id = t2.id AND t1.value > -1;",
+        "SELECT reinterpretAsInt16(value), toTypeName(reinterpretAsInt16(value)) AS type_info FROM test_table GROUP BY type_info HAVING type_info LIKE 'Int16';"
+    ]
+}

@@ -1,0 +1,15 @@
+{
+    "function": "arrayCompact",
+    "operator": "SELECT NOT a",
+    "sql_array": [
+        "CREATE TABLE test_data (id Int32, values Array(Float64), status String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_data VALUES (1, [1.1, 1.1, nan, 2.2, 3.3, 3.3]), (2, [4.4, 5.5, 5.5, 6.6]), (3, [7.7, nan, 8.8, 8.8, 9.9, nan]), (4, []);",
+        "SELECT id, arrayCompact(values) AS compacted_values FROM test_data WHERE NOT isNull(arrayCompact(values));",
+        "SELECT id, COUNT(*) FROM (SELECT arrayCompact(values) AS compacted_values FROM test_data GROUP BY compacted_values) GROUP BY id HAVING NOT isEmpty(compacted_values);",
+        "SELECT id, arrayCompact(values) AS compacted_values FROM (SELECT id, values FROM test_data WHERE NOT (status = 'inactive' AND isNull(values))) AS filtered WHERE NOT arrayEmpty(compacted_values) ORDER BY compacted_values;",
+        "SELECT id, arrayCompact([IF(values[1] IS NULL, 0, values[1]), NOT (status = 'active')]) AS processed_values FROM test_data GROUP BY id HAVING NOT isEmpty(processed_values);",
+        "SELECT DISTINCT id, arrayCompact(values) FROM test_data WHERE NOT (id = 4 AND arrayEmpty(values));",
+        "SELECT id, arrayCompact(values) AS compacted_values FROM test_data LEFT JOIN (SELECT id, status FROM test_data WHERE NOT status = 'inactive') filtered ON test_data.id = filtered.id WHERE NOT isNull(compacted_values);",
+        "SELECT id, arrayCompact(arrayMap(x -> NOT (x = 3.3), values)) AS modified_values FROM test_data WHERE NOT isEmpty(values);"
+    ]
+}

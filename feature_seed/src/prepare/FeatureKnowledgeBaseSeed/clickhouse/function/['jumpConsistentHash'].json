@@ -1,0 +1,12 @@
+[
+    "CREATE TABLE hash_test (key UInt64, buckets UInt32) ENGINE = MergeTree() ORDER BY key;",
+    "INSERT INTO hash_test VALUES (1234567890123456789, 10), (9876543210987654321, 5), (5555555555555555555, 3);",
+    "SELECT key, jumpConsistentHash(key, buckets) AS hash_value FROM hash_test;",
+    "SELECT key, buckets, jumpConsistentHash(key, buckets) AS hash_value FROM (SELECT key, buckets FROM hash_test WHERE buckets > 1);",
+    "WITH (SELECT AVG(buckets) FROM hash_test) AS avg_buckets SELECT key, jumpConsistentHash(key, avg_buckets) AS hash_value FROM hash_test;",
+    "CREATE TABLE hash_test_advanced (key UInt64, o UInt32) ENGINE = MergeTree() ORDER BY key;",
+    "INSERT INTO hash_test_advanced SELECT key, jumpConsistentHash(key, o) FROM (SELECT key, buckets AS o FROM hash_test);",
+    "SELECT key, jumpConsistentHash(key, 1) AS hash_value FROM hash_test UNION ALL SELECT key, jumpConsistentHash(key, 100) FROM hash_test;",
+    "CREATE TABLE simple_view AS SELECT key, jumpConsistentHash(key, buckets) AS hash_value FROM hash_test;",
+    "SELECT DISTINCT hash_value FROM simple_view WHERE hash_value % 2 = 0;"
+]

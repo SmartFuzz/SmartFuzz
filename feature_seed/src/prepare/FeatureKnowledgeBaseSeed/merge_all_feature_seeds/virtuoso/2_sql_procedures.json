@@ -1,0 +1,15 @@
+CREATE TABLE test_procedures (id INT, name VARCHAR(255), description TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO test_procedures VALUES (1, 'Procedure One', NULL, '2023-01-01 12:00:00'), (2, 'Procedure Two', 'Second procedure description', NULL), (3, NULL, 'Third procedure description', '2023-03-15 09:30:00');
+SELECT EXISTS (SELECT 1 FROM test_procedures WHERE name IS NULL);
+SELECT EXISTS (SELECT 1 FROM test_procedures WHERE created_at < NOW() - INTERVAL '1 DAY' AND description IS NOT NULL);
+SELECT EXISTS (SELECT 1 FROM test_procedures WHERE id = (SELECT MAX(id) FROM test_procedures));
+SELECT sql_procedures('Local Virtuoso', 'test_procedures', 'DBA', 'Procedure One') AS procedure_info WHERE EXISTS (SELECT 1 FROM test_procedures WHERE description IS NOT NULL);
+SELECT COUNT(*) FROM test_procedures WHERE EXISTS (SELECT 1 FROM test_procedures WHERE name LIKE '%Procedure%');
+SELECT sql_procedures('Local Virtuoso', 'test_procedures', 'DBA', NULL) WHERE EXISTS (SELECT 1 FROM test_procedures WHERE created_at IS NULL);
+SELECT EXISTS (SELECT 1 FROM test_procedures WHERE description IS NOT NULL) AND EXISTS (SELECT COUNT(*) FROM test_procedures WHERE id > 0 AND id < 4) AND EXISTS (SELECT sql_procedures('Local Virtuoso', 'test_procedures', 'DBA', 'Invalid Procedure') WHERE id = (SELECT MIN(id) FROM test_procedures));
+SELECT EXISTS (SELECT 1 FROM test_procedures WHERE created_at = '2023-01-01 12:00:00') OR EXISTS (SELECT 1 FROM test_procedures WHERE name IS NULL);
+SELECT sql_procedures('Local Virtuoso', 'test_procedures', 'DBA', 'Procedure Two') WHERE EXISTS (SELECT 1 FROM test_procedures WHERE description IS NOT NULL AND created_at BETWEEN '2023-01-01' AND NOW());
+CREATE TABLE cross_test (id INT, value DECIMAL(10, 2), constraints_flag BOOLEAN DEFAULT FALSE);
+INSERT INTO cross_test VALUES (1, NULL, TRUE), (2, 99.99, FALSE), (3, 0, TRUE);
+SELECT EXISTS (SELECT 1 FROM cross_test WHERE value IS NOT NULL AND value <= (SELECT COUNT(*) FROM test_procedures)) AND EXISTS (SELECT 1 FROM cross_test WHERE constraints_flag = TRUE);
+SELECT sql_procedures('Local Virtuoso', 'cross_test', 'DBA', null) WHERE EXISTS (SELECT 1 FROM cross_test WHERE value::TEXT LIKE '99.99%');

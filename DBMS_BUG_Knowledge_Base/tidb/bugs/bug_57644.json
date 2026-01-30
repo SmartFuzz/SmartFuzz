@@ -1,0 +1,30 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/57644",
+  "title": "Case when statement dealing with null logic return a wrong result.",
+  "vulnerable_database": "tidb",
+  "date": "2024-11-23T05:14:09Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n1. schema.\r\n\r\n```sql\r\ncreate table `t2`\r\n(\r\n    `vkey` integer,\r\n    `c16`  double,\r\n    primary key (`vkey`)\r\n);\r\ninsert into `t2` (`vkey`, `c16`)\r\nvalues (4, 1.73);\r\n```\r\n\r\n\r\n\r\n2. sql statement.\r\n\r\n```sql\r\nselect case when\r\n(\r\n    select (\r\n               ((null) in\r\n                (select ((case when ((`t2`.`c16`) <> (-3.12)) then (`t2`.`vkey`) else (`t2`.`vkey`) end\r\n                            ) is null))\r\n                   ) is not null)\r\n    from `t2`\r\n)\r\nthen 11\r\nelse 22\r\nend as `result`;\r\n```\r\n\r\n\r\n\r\n\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nMySQL and TIDB have different execution results in the above case.\r\n\r\nThe correct result in MySQL 8:\r\n\r\n```SQL\r\nmysql> select case when\r\n    -> (\r\n    ->     select (\r\n    ->                ((null) in\r\n    ->                 (select ((case when ((`t2`.`c16`) <> (-3.12)) then (`t2`.`vkey`) else (`t2`.`vkey`) end\r\n    ->                             ) is null))\r\n    ->                    ) is not null)\r\n    ->     from `t2`\r\n    -> )\r\n    -> then 11\r\n    -> else 22\r\n    -> end as `result`;\r\n+--------+\r\n| result |\r\n+--------+\r\n|     22 |\r\n+--------+\r\n1 row in set (0.00 sec)\r\n```\r\n\r\n\r\n\r\n\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nIn TiDB v8.1.1:\r\n\r\n```sql\r\nMySQL [test]> select case when\r\n    -> (\r\n    ->     select (\r\n    ->                ((null) in\r\n    ->                 (select ((case when ((`t2`.`c16`) <> (-3.12)) then (`t2`.`vkey`) else (`t2`.`vkey`) end\r\n    ->                             ) is null))\r\n    ->                    ) is not null)\r\n    ->     from `t2`\r\n    -> )\r\n    -> then 11\r\n    -> else 22\r\n    -> end as `result`;\r\n+--------+\r\n| result |\r\n+--------+\r\n|     11 |\r\n+--------+\r\n1 row in set (0.00 sec)\r\n```\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\ntidb v8.1.1",
+  "poc": [
+    "create table `t2`",
+    "(",
+    "    `vkey` integer,",
+    "    `c16`  double,",
+    "    primary key (`vkey`)",
+    ");",
+    "insert into `t2` (`vkey`, `c16`)",
+    "values (4, 1.73);"
+  ],
+  "poc_type": "sql_text",
+  "state": "open",
+  "key_bug_features": [
+    "Case when statement handling null logic incorrectly"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE `t3` (`id` INT, `value` FLOAT, `status` VARCHAR(10), PRIMARY KEY (`id`));",
+    "INSERT INTO `t3` (`id`, `value`, `status`) VALUES (1, NULL, 'active');",
+    "INSERT INTO `t3` (`id`, `value`, `status`) VALUES (2, 3.14, 'inactive');",
+    "SELECT CASE WHEN (SELECT COUNT(*) FROM `t3` WHERE `value` IS NULL) > 0 THEN 'Contains NULL' ELSE 'No NULLs' END AS `null_check`;",
+    "SELECT CASE WHEN (SELECT (CASE WHEN `value` IS NOT NULL THEN `id` ELSE NULL END) FROM `t3` WHERE `status` = 'active') IS NULL THEN 'No active IDs' ELSE 'Has active IDs' END AS `active_id_check`;"
+  ]
+}

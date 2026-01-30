@@ -1,0 +1,12 @@
+CREATE TABLE events (event_id INT, start_time TIMESTAMPTZ, end_time TIMESTAMPTZ);
+INSERT INTO events VALUES (1, TIMESTAMPTZ '1992-09-30 23:59:59', TIMESTAMPTZ '1992-10-01 01:58:00');
+INSERT INTO events VALUES (2, TIMESTAMPTZ '2023-01-01 00:00:00', TIMESTAMPTZ '2023-01-01 01:30:00');
+INSERT INTO events VALUES (3, TIMESTAMPTZ '2023-01-01 05:00:00', TIMESTAMPTZ '2023-01-01 07:45:00');
+SELECT event_id, datediff('hour', start_time, end_time) AS hours_between FROM events;
+SELECT event_id, datediff('minute', start_time, end_time) AS minutes_between FROM events WHERE event_id = 2;
+SELECT event_id, datediff('second', start_time, end_time) AS seconds_between FROM events WHERE event_id IN (SELECT event_id FROM events WHERE event_id > 1);
+CREATE TABLE timezones (timezone_name VARCHAR, timezone_offset INTERVAL);
+INSERT INTO timezones VALUES ('UTC-8', INTERVAL '-08:00'), ('UTC+2', INTERVAL '+02:00');
+SELECT e.event_id, t.timezone_name, datediff('hour', start_time AT TIME ZONE t.timezone_name, end_time AT TIME ZONE t.timezone_name) AS hours_in_timezone FROM events e JOIN timezones t ON t.timezone_name = 'UTC-8' WHERE e.event_id = 1;
+SELECT e1.event_id, e2.event_id, datediff('hour', e1.start_time, e2.end_time) AS hour_diff FROM events e1 JOIN events e2 ON e1.event_id < e2.event_id WHERE datediff('hour', e1.start_time, e2.end_time) > 0;
+WITH time_diffs AS (SELECT event_id, datediff('hour', start_time, end_time) AS hour_diff FROM events) SELECT * FROM time_diffs WHERE hour_diff > 1;

@@ -1,0 +1,17 @@
+{
+    "function": "quantileDeterministic",
+    "operator": "a[N]",
+    "sql_array": [
+        "CREATE TABLE test_quantiles (val Float64, determinator UInt64) ENGINE = MergeTree() ORDER BY val;",
+        "INSERT INTO test_quantiles (val, determinator) VALUES (1.5, 1), (2.5, 2), (3.5, 3), (4.5, 4), (NULL, 5);",
+        "CREATE TABLE test_arrays (arr Array(Float64)) ENGINE = MergeTree() ORDER BY tuple();",
+        "INSERT INTO test_arrays (arr) VALUES ([1.0, 2.0, 3.0]), ([NULL, 4.0, 5.0]), ([]);",
+        "SELECT quantileDeterministic(0.5)(arr[1], arr[2]) AS median FROM test_arrays;",
+        "SELECT quantileDeterministic(0.99)(val, determinator) FROM test_quantiles WHERE determinator = 1;",
+        "SELECT AVG(val) AS average_val, quantileDeterministic(0.75)(val, determinator) AS q75 FROM test_quantiles GROUP BY determinator HAVING average_val > 1.5;",
+        "SELECT a[1] FROM (SELECT quantileDeterministic(0.5)(arrayJoin(arr)) AS a FROM test_arrays) AS b WHERE a[1] IS NOT NULL;",
+        "SELECT quantileDeterministic(0.5)((SELECT AVG(val) FROM test_quantiles WHERE determinator > 1), 1) AS median_val;",
+        "SELECT quantileDeterministic(0.5)(NULLIF(val, 2.0), determinator) AS null_test FROM test_quantiles;",
+        "SELECT quantileDeterministic(0.01)(val, determinator) FROM (SELECT * FROM test_quantiles WHERE val <= 2) AS sub WHERE determinator < 10;"
+    ]
+}

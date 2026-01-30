@@ -1,0 +1,24 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14490",
+  "title": "Inability to write to parquet file when filename is stored as VARIABLE",
+  "vulnerable_database": "DuckDB",
+  "date": "2024-10-22 13:43:55",
+  "vulnerable_version": "",
+  "description": "### What happens?\n\nWhile storing the path of a local file in a `VARIABLE` works great for `read_parquet`/`read_csv`, it's impossible to use it when exporting data.\n\n### To Reproduce\n\n```\r\nCREATE TABLE sample_table (\r\n    sample_column TEXT\r\n);\r\n\r\nINSERT INTO sample_table (sample_column)\r\nVALUES ('Row 1'), ('Row 2');\r\n\r\nSET VARIABLE filename = 'local_file.parquet';\r\n-- Line below works fine\r\nCOPY (SELECT * FROM sample_table) TO 'local_file.parquet';\r\n-- Line below fails with \r\n-- Parser Error: syntax error at or near \"'filename'\"\r\n-- LINE 1: ...CT * FROM sample_table) TO getvariable('filename');\r\nCOPY (SELECT * FROM sample_table) TO getvariable('filename');\r\n```\r\n\r\nThis is not the case for `read_parquet` as this can handle variables fine. Same holds when reading/writing to csv too.\n\n### OS:\n\nMacOS 4.6.1 (23G93)\n\n### DuckDB Version:\n\nv1.1.2 f680b7d08f\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nMichael Tsardakas\n\n### Affiliation:\n\nGower Stree Analytics\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a stable release\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [X] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [X] Yes, I have",
+  "poc": [
+    "CREATE TABLE sample_table (\r\n    sample_column TEXT\r\n);",
+    "INSERT INTO sample_table (sample_column)\r\nVALUES ('Row 1'), ('Row 2');",
+    "SELECT * FROM sample_table) TO 'local_file.parquet';",
+    "SELECT * FROM sample_table) TO getvariable('filename');"
+  ],
+  "key_bug_features": [
+    "Inability to use VARIABLE for parquet file export"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INTEGER PRIMARY KEY, name TEXT, value FLOAT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table (id, name, value) VALUES (1, 'Test A', 10.5), (2, 'Test B', NULL), (3, 'Test C', 20.0);",
+    "SET VARIABLE filename = 'exported_data.parquet';",
+    "COPY (SELECT id, name, value FROM test_table WHERE value IS NOT NULL) TO getvariable('filename');",
+    "SELECT * FROM test_table WHERE created_at > CURRENT_TIMESTAMP - INTERVAL '1 day';"
+  ]
+}

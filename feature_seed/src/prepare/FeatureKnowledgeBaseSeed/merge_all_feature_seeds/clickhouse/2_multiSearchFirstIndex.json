@@ -1,0 +1,14 @@
+CREATE TABLE test_strings (id UInt32, haystack String, needle Array(String));
+INSERT INTO test_strings VALUES (1, 'Hello World', ['Hello', 'World']), (2, 'ClickHouse is great!', ['clickhouse', 'is']);
+SELECT id, multiSearchFirstIndex(haystack, needle) FROM test_strings WHERE id = ANY(SELECT id FROM test_strings WHERE haystack LIKE '%Hello%');
+CREATE TABLE test_numbers (num UInt32);
+INSERT INTO test_numbers VALUES (1), (2), (3);
+SELECT num, multiSearchFirstIndex(haystack, ['ClickHouse']) FROM test_strings CROSS JOIN test_numbers WHERE num = ANY(SELECT num FROM test_numbers WHERE num < 10);
+SELECT id, multiSearchFirstIndex(haystack, ['World', 'is']) AS found_index FROM test_strings GROUP BY id HAVING found_index > 0;
+CREATE TABLE test_nullable (id Nullable(UInt32), text String);
+INSERT INTO test_nullable VALUES (1, 'Test'), (NULL, 'Null Value');
+SELECT id, multiSearchFirstIndex(text, ['Null', 'Test']) FROM test_nullable WHERE id = ANY(SELECT id FROM test_nullable WHERE text IS NOT NULL);
+SELECT multiSearchFirstIndex(haystack, needle) FROM (SELECT 'Mixed Case Test' AS haystack, ['miXeD', 'case'] AS needle) AS subquery WHERE haystack = ANY(SELECT haystack FROM test_strings WHERE id > 0);
+CREATE TABLE test_types (id UInt32, str_value String, int_value Int32, float_value Float64);
+INSERT INTO test_types VALUES (1, '1.5', 1, 1.5), (2, '2.0', 2, 2.0);
+SELECT multiSearchFirstIndex(CAST(str_value AS String) || CAST(int_value AS String), ['1', '2']) FROM test_types WHERE int_value = ANY(SELECT int_value FROM test_types WHERE float_value > 1);

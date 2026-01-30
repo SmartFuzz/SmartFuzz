@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=104918",
+  "title": "Derived condition pushdown rewrite ignores user variables",
+  "description": "Derived condition pushdown rewrite seems like it ignores the situation query block has user variables.\nHow to repeat:\nmysql> create table t1(c1 int);\r\nQuery OK, 0 rows affected (0.01 sec)\r\n\r\nmysql> insert into t1 values(100),(200),(300),(400),(500);\r\nQuery OK, 5 rows affected (0.00 sec)\r\nRecords: 5 Duplicates: 0 Warnings: 0\r\n\r\nmysql> select * from (select c1, (@rownum_r := @rownum_r + 1) as r from t1, (select @rownum_r := 0) as b) as q where q.c1 = 300;\r\n+------+------+\r\n| c1 | r |\r\n+------+------+\r\n| 300 | 1 |\r\n+------+------+\r\n1 row in set, 2 warnings (0.00 sec)\r\n\r\nwhen turns off the derived_condition_pushdown switch in optimzier_switch, it got the right result.\r\n\r\nmysql> set optimizer_switch=\"derived_condition_pushdown=off\";\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nmysql> select * from (select c1, (@rownum_r := @rownum_r + 1) as r from t1, (select @rownum_r := 0) as b) as q where q.c1 = 300;\r\n+------+------+\r\n| c1 | r |\r\n+------+------+\r\n| 300 | 3 |\r\n+------+------+\r\n1 row in set, 2 warnings (0.00 sec)\nSuggested fix:\nIn `TABLE_LIST::can_push_condition_to_derived(THD *thd)`, we can check the whether `Query_block` has user variables, add a member variables `has_user_vars` to `Query_block`.",
+  "date": "2021-09-13 03:12:00",
+  "vulnerable_version": "8.0, 8.0.26",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t2(c1 INT, c2 VARCHAR(50), c3 DATE, c4 FLOAT NULL);",
+    "INSERT INTO t2 VALUES(1, 'test1', '2023-01-01', 1.1), (2, 'test2', NULL, 2.2), (3, 'test3', '2023-03-03', NULL);",
+    "SELECT COUNT(*) AS row_count FROM t2 WHERE c2 IS NOT NULL;",
+    "SELECT * FROM (SELECT c1, ROW_NUMBER() OVER (ORDER BY c1) AS r FROM t2 WHERE c2 IS NOT NULL) AS q WHERE q.c1 < 3;",
+    "SET optimizer_switch='derived_condition_pushdown=off';"
+  ],
+  "key_bug_features": [
+    "Derived condition pushdown ignores user variables in query block"
+  ]
+}

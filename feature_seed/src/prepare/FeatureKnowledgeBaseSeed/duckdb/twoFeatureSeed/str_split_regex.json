@@ -1,0 +1,16 @@
+{
+    "function": "str_split_regex",
+    "operator": "<=>",
+    "sql_array": [
+        "CREATE TABLE test_data (id INT, value STRING, nums ARRAY<INT>);",
+        "INSERT INTO test_data VALUES (1, 'hello world; 42', [1, 2, 3]), (2, 'foo; bar; 5', [3, 4, 5]), (3, '', [0]);",
+        "SELECT id, str_split_regex(value, '\\s*;\\s*') AS split_values FROM test_data WHERE value IS NOT NULL ORDER BY id;",
+        "SELECT id, str_split_regex(value, '\\s*;\\s*') AS split_values, (SELECT COUNT(*) FROM test_data WHERE nums <=> [1, 2, 5]) AS count_similar FROM test_data WHERE nums <=> [0, 0, 0] GROUP BY id HAVING COUNT(split_values) > 0;",
+        "SELECT id, str_split_regex(value, '\\s*;\\s*') AS split_values FROM test_data WHERE (SELECT COUNT(*) FROM test_data WHERE value IS NULL) <=> 1;",
+        "SELECT id, (SELECT COUNT(*) FROM (SELECT unnest(str_split_regex(value, '\\s*;\\s*')) AS parts FROM test_data)) <=> array_length(nums) AS distance FROM test_data GROUP BY id HAVING distance IS NOT NULL;",
+        "CREATE TABLE temp_data AS SELECT id, str_split_regex(value, '\\s*;\\s*') AS split_items FROM test_data WHERE value <> '';",
+        "SELECT id, split_items, (SELECT str_split_regex(value, '\\;') FROM temp_data t WHERE t.id = d.id LIMIT 1) AS sub_split FROM temp_data d WHERE split_items IS NOT NULL;",
+        "SELECT id, str_split_regex(value, '\\s*;\\s*') AS split_values, nums <=> (SELECT array_agg(num) FROM (SELECT DISTINCT UNNEST(nums) AS num) AS sub_nums) FROM test_data WHERE id = 1;",
+        "DROP TABLE IF EXISTS test_data;"
+    ]
+}

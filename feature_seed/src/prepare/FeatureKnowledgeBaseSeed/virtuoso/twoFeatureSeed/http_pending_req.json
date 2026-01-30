@@ -1,0 +1,16 @@
+{
+    "function": "http_pending_req",
+    "operator": "SPARQL Logical ||",
+    "sql_array": [
+        "CREATE TABLE vsp_requests (client_ip VARCHAR(15) NOT NULL, url VARCHAR(255) NOT NULL, process_id INT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO vsp_requests (client_ip, url, process_id) VALUES ('127.0.0.1', '/test.vsp', 1000001), ('192.168.1.10', '/test.vsp', 2000002), (NULL, '/long.vsp', 3000003), ('255.255.255.255', NULL, 4000004);",
+        "SELECT http_pending_req() WHERE (SELECT COUNT(*) FROM vsp_requests WHERE process_id > 0 GROUP BY client_ip HAVING COUNT(client_ip) > 1) > 0 || (SELECT COUNT(*) FROM vsp_requests WHERE url IS NULL);",
+        "SELECT * FROM vsp_requests WHERE process_id IN (SELECT process_id FROM vsp_requests WHERE created_at > CURRENT_TIMESTAMP - INTERVAL '1 day' || 'NULL'::VARCHAR) AND (client_ip IS NOT NULL);",
+        "SELECT COUNT(*) FROM vsp_requests WHERE client_ip IS NOT NULL GROUP BY url HAVING COUNT(DISTINCT process_id) > 1 || (SELECT COUNT(*) FROM vsp_requests WHERE client_ip IS NULL);",
+        "SELECT DISTINCT client_ip, url FROM vsp_requests WHERE client_ip || 'dummy' IS NOT NULL || (SELECT COUNT(*) FROM vsp_requests WHERE process_id < 3000000);",
+        "WITH req_info AS (SELECT client_ip, url, process_id FROM vsp_requests) SELECT * FROM req_info WHERE (url IS NOT NULL || client_ip IS NULL) GROUP BY url, client_ip HAVING COUNT(process_id) > 0;",
+        "CREATE TEMP TABLE temp_requests AS SELECT * FROM vsp_requests WHERE client_ip != '0.0.0.0';",
+        "DELETE FROM vsp_requests WHERE EXISTS (SELECT 1 FROM temp_requests WHERE temp_requests.process_id = vsp_requests.process_id) || (SELECT COUNT(*) FROM vsp_requests WHERE client_ip IS NULL);",
+        "UPDATE vsp_requests SET url = '/updated.vsp' WHERE process_id IN (SELECT process_id FROM vsp_requests WHERE client_ip = '127.0.0.1' || 'extra');"
+    ]
+}

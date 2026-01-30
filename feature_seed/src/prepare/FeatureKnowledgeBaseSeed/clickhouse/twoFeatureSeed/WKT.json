@@ -1,0 +1,18 @@
+{
+    "function": "WKT",
+    "operator": "a GLOBAL NOT IN ...",
+    "sql_array": [
+        "CREATE TABLE geodata (id UInt32, geo Point, tags Array(String)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO geodata VALUES (1, (1.0, 2.0), ['urban']), (2, (3.5, 4.5), ['rural']), (3, (5.0, 6.0), ['coastal']);",
+        "SELECT WKT(geo) AS wkt_geom FROM geodata WHERE id GLOBAL NOT IN (SELECT id FROM geodata WHERE tags[1] = 'urban');",
+        "SELECT COUNT(*) AS cnt, WKT(geo) AS wkt_geom FROM geodata WHERE geo GLOBAL NOT IN (SELECT geo FROM geodata WHERE id = 2) GROUP BY wkt_geom HAVING cnt > 1;",
+        "SELECT WKT((SELECT geo FROM geodata WHERE id = 3)) AS wkt_geom WHERE 3 GLOBAL NOT IN (SELECT id FROM geodata WHERE geo IS NOT NULL);",
+        "CREATE TABLE temp_geodata AS SELECT geo FROM geodata WHERE tags[1] GLOBAL NOT IN (SELECT DISTINCT tags[1] FROM geodata);",
+        "INSERT INTO temp_geodata SELECT geo FROM geodata WHERE geo IS NOT NULL AND id GLOBAL NOT IN (SELECT id FROM geodata WHERE geo = (NULL));",
+        "SELECT geo, WKT(geo) AS wkt_geom FROM geodata WHERE geo IS NOT NULL AND id GLOBAL NOT IN (SELECT id FROM geodata WHERE geo = (0.0, 0.0));",
+        "SELECT WKT(geo) AS wkt_geom FROM geodata WHERE geo GLOBAL NOT IN (SELECT geo FROM geodata WHERE id < 2) AND (id = 3 OR geo = (5.0, 6.0));",
+        "CREATE TABLE multi_geodata (id UInt32, geo MultiPolygon, updated DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO multi_geodata VALUES (1, [(0, 0), (10, 0), (10, 10), (0, 10)], now()), (2, [(10, 10), (20, 10), (20, 20), (10, 20)], now());",
+        "SELECT WKT(geo) AS wkt_multi_geom FROM multi_geodata WHERE id GLOBAL NOT IN (SELECT id FROM multi_geodata WHERE updated < now() - INTERVAL 1 DAY);"
+    ]
+}

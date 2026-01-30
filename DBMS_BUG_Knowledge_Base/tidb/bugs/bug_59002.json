@@ -1,0 +1,29 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/59002",
+  "title": "Wrong result when timestamp compares to 0/false",
+  "vulnerable_database": "tidb",
+  "date": "2025-01-17T02:02:44Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n\n```sql\nDROP TABLE IF EXISTS t0;\nCREATE TABLE t0(c0 TIMESTAMP , PRIMARY KEY(c0));\nINSERT IGNORE INTO t0(c0) VALUES (NULL);\n\nSELECT ((t0.c0)=(0)) FROM t0;\nSELECT t0.c0 FROM t0 WHERE ((t0.c0)=(0));\nSELECT ((t0.c0)=(false)) FROM t0;\nSELECT t0.c0 FROM t0 WHERE ((t0.c0)=(false));\n```\n\n### 2. What did you expect to see? (Required)\n\nsee the following case: \n\n### 3. What did you see instead (Required)\n\n```sql\n-- MySQL 8.4.1\nmysql> SELECT ((t0.c0)=(0)) FROM t0;\n+---------------+\n| ((t0.c0)=(0)) |\n+---------------+\n|             1 |\n+---------------+\n1 row in set (0.01 sec)\n\nmysql> SELECT t0.c0 FROM t0 WHERE ((t0.c0)=(0));\n+---------------------+\n| c0                  |\n+---------------------+\n| 0000-00-00 00:00:00 |\n+---------------------+\n1 row in set (0.00 sec)\n\nmysql> SELECT ((t0.c0)=(false)) FROM t0;\n+-------------------+\n| ((t0.c0)=(false)) |\n+-------------------+\n|                 1 |\n+-------------------+\n1 row in set (0.00 sec)\n\nmysql> SELECT t0.c0 FROM t0 WHERE ((t0.c0)=(false));\n+---------------------+\n| c0                  |\n+---------------------+\n| 0000-00-00 00:00:00 |\n+---------------------+\n1 row in set (0.01 sec)\n\n-- TiDB\nmysql> SELECT ((t0.c0)=(0)) FROM t0;\n+---------------+\n| ((t0.c0)=(0)) |\n+---------------+\n|             1 |\n+---------------+\n1 row in set (0.04 sec)\n\nmysql> SELECT t0.c0 FROM t0 WHERE ((t0.c0)=(0));\nEmpty set (0.03 sec)\n\nmysql> SELECT ((t0.c0)=(false)) FROM t0;\n+-------------------+\n| ((t0.c0)=(false)) |\n+-------------------+\n|                 1 |\n+-------------------+\n1 row in set (0.03 sec)\n\nmysql> SELECT t0.c0 FROM t0 WHERE ((t0.c0)=(false));\nEmpty set (0.04 sec)\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\nmysql> select version();\n+--------------------+\n| version()          |\n+--------------------+\n| 8.0.11-TiDB-v8.5.0 |\n+--------------------+\n1 row in set (0.04 sec)",
+  "poc": [
+    "DROP TABLE IF EXISTS t0;",
+    "CREATE TABLE t0(c0 TIMESTAMP , PRIMARY KEY(c0));",
+    "INSERT IGNORE INTO t0(c0) VALUES (NULL);",
+    "SELECT ((t0.c0)=(0)) FROM t0;",
+    "SELECT t0.c0 FROM t0 WHERE ((t0.c0)=(0));",
+    "SELECT ((t0.c0)=(false)) FROM t0;",
+    "SELECT t0.c0 FROM t0 WHERE ((t0.c0)=(false));"
+  ],
+  "poc_type": "sql_text",
+  "state": "open",
+  "key_bug_features": [
+    "Timestamp comparison with 0 or false returns incorrect results"
+  ],
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t1;",
+    "CREATE TABLE t1(c1 TIMESTAMP, c2 INT, PRIMARY KEY(c1));",
+    "INSERT INTO t1(c1, c2) VALUES (NULL, 1), (CURRENT_TIMESTAMP, 2);",
+    "SELECT ((t1.c1)=(0)) FROM t1;",
+    "SELECT t1.c1 FROM t1 WHERE ((t1.c1)=(false));"
+  ]
+}

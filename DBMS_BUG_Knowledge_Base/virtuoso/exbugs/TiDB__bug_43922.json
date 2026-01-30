@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/43922",
+  "title": "planner: Wrong plan for mpp `window <-- agg`",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n```\r\ncreate table test.t1(c1 int, c2 int);\r\ninsert into test.t1 values(1, 1),(2, 2),(3, 3),(1, 1),(2, 2),(3, 3),(4, 4);\r\nalter table test.t1 set tiflash replica 1;\r\nset tidb_allow_mpp=1;set tidb_enforce_mpp=1; set tidb_isolation_read_engines='tiflash';\r\nexplain select c1, row_number() OVER() from (select c1 from test.t1 group by c1) t;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\nThere should be a PassThrough Exchange between window and agg.\r\n\r\n### 3. What did you see instead (Required)\r\n```\r\n+------------------------------------+---------+--------------+---------------+------------------------------------------------------------------------------------------------------------------+\r\n| id                                 | estRows | task         | access object | operator info                                                                                                    |\r\n+------------------------------------+---------+--------------+---------------+------------------------------------------------------------------------------------------------------------------+\r\n| TableReader_81                     | 5.60    | root         |               | MppVersion: 1, data:ExchangeSender_80                                                                            |\r\n| └─ExchangeSender_80                | 5.60    | mpp[tiflash] |               | ExchangeType: PassThrough                                                                                        |\r\n|   └─Window_79                      | 5.60    | mpp[tiflash] |               | row_number()->Column#5 over(rows between current row and current row)                                            |\r\n|     └─Projection_19                | 5.60    | mpp[tiflash] |               | test.t1.c1                                                                                                       |\r\n|       └─HashAgg_12                 | 5.60    | mpp[tiflash] |               | group by:test.t1.c1, funcs:firstrow(test.t1.c1)->test.t1.c1, stream_count: 20                                    |\r\n|         └─ExchangeReceiver_18      | 7.00    | mpp[tiflash] |               | stream_count: 20                                                                                                 |\r\n|           └─ExchangeSender_17      | 7.00    | mpp[tiflash] |               | ExchangeType: HashPartition, Compression: FAST, Hash Cols: [name: test.t1.c1, collate: binary], stream_count: 20 |\r\n|             └─TableFullScan_16     | 7.00    | mpp[tiflash] | table:t1      | keep order:false, stats:pseudo                                                                                   |\r\n+------------------------------------+---------+--------------+---------------+------------------------------------------------------------------------------------------------------------------+\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\nmaster\r\n\r\n",
+  "date": "2023-05-17T11:53:32Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE test.t2(c1 INT, c2 VARCHAR(50), c3 DATE, c4 FLOAT DEFAULT 0.0);",
+    "INSERT INTO test.t2 VALUES(1, 'a', '2023-01-01', 1.1), (2, 'b', NULL, 2.2), (3, 'c', '2023-01-03', NULL), (4, 'd', '2023-01-04', 4.4);",
+    "CREATE TABLE test.t3(c1 INT PRIMARY KEY, c2 INT NOT NULL);",
+    "INSERT INTO test.t3 SELECT c1, COUNT(*) FROM test.t2 GROUP BY c1;",
+    "SELECT c1, ROW_NUMBER() OVER() FROM (SELECT c1 FROM test.t3 WHERE c2 IS NOT NULL) AS t;"
+  ],
+  "key_bug_features": [
+    "Wrong plan for mpp window and aggregation"
+  ]
+}

@@ -1,0 +1,11 @@
+CREATE TABLE test_dates (id SERIAL PRIMARY KEY, ts TIMESTAMP, uuid_col UUID);
+INSERT INTO test_dates (ts, uuid_col) VALUES (TIMESTAMP '2023-01-01 12:00:00', uuid 'e31960fb-dc8b-452d-ab30-b342723e756a');
+INSERT INTO test_dates (ts, uuid_col) VALUES (TIMESTAMP '2023-06-01 08:30:00', uuid 'd6b7a52f-0475-4b9d-a3b2-9d0e716348fb');
+INSERT INTO test_dates (ts, uuid_col) VALUES (TIMESTAMP '2022-12-31 23:59:59', uuid '7125cbf2-f559-4f61-a451-169072a9bf90');
+SELECT sql_sub(ts, (SELECT COUNT(*) FROM test_dates) % 12) AS adjusted_time, uuid_col FROM test_dates WHERE uuid_col IS NOT NULL;
+SELECT ts, uuid_col FROM test_dates WHERE ts <= sql_sub(TIMESTAMP '2023-01-01 00:00:00', interval '12' month) AND uuid_col = uuid 'e31960fb-dc8b-452d-ab30-b342723e756a';
+SELECT COUNT(*) FROM test_dates GROUP BY sql_sub(ts, interval '1' month) HAVING COUNT(uuid_col) > 0;
+SELECT COUNT(*) OVER (PARTITION BY sql_sub(ts, interval CAST(ACTIVITY AS INT)) ORDER BY ts) AS partitioned_count, uuid_col FROM (SELECT ts, uuid_col, 3 AS ACTIVITY FROM test_dates) AS subquery;
+CREATE TABLE temp_analysis AS SELECT sql_sub(ts, interval '1' month) AS modified_ts, COUNT(*) FROM test_dates GROUP BY modified_ts HAVING COUNT(*) > 1;
+SELECT ts, uuid_col FROM test_dates WHERE uuid_col IN (SELECT uuid 'e31960fb-dc8b-452d-ab30-b342723e756a' UNION SELECT uuid 'd6b7a52f-0475-4b9d-a3b2-9d0e716348fb') AND ts = sql_sub( (SELECT MAX(ts) FROM test_dates) , interval '1' month);
+SELECT DISTINCT sql_sub(ts, interval '0' month) AS no_change_time, uuid_col FROM test_dates WHERE uuid_col IS NOT NULL AND ts IS NOT NULL ORDER BY no_change_time;

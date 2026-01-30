@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/42912",
+  "title": "Unexpected result of subquery",
+  "description": "## Bug Report\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\nConsider the following program:\r\n\r\n```\r\nCREATE TABLE t0(c0 TEXT(328) );\r\n\r\nCREATE VIEW v0(c0) AS SELECT 'c' FROM t0;\r\n\r\nINSERT INTO t0 VALUES (-12);\r\n\r\nSELECT v0.c0 AS c0 FROM  v0 NATURAL RIGHT JOIN t0  WHERE (1 !=((v0.c0)REGEXP(-7)));  -- empty\r\n\r\nSELECT COUNT(v0.c0) AS c0 FROM v0 WHERE EXISTS(SELECT v0.c0 AS c0 FROM v0 NATURAL RIGHT JOIN t0  WHERE (1 !=((v0.c0)REGEXP(-7))));  -- 1\r\n```\r\nThe first query produce empty result, I put the first query in an `EXISTS` expression, which should be equals to `FALSE`, but the second query produce `1`.\r\n\r\n### 2. What did you expect to see? (Required)\r\nThe second query produce `0`.\r\nI run this query in MySQL, and it produce `0`.  https://www.db-fiddle.com/f/wNt1byF7hj6NXEDKDEsp4B/0\r\n\r\n### 3. What did you see instead (Required)\r\nThe second query produce `1`.\r\n\r\n### 4. What is your TiDB version? (Required)\r\nhttps://github.com/pingcap/tidb/commit/c233969b2c385b4292a7caaf16517dd8b152d7f1\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n<img width=\"720\" alt=\"image\" src=\"https://user-images.githubusercontent.com/34330257/231064543-379ed2db-b2f4-4242-9b69-fb09222bed6d.png\">\r\n\r\n",
+  "date": "2023-04-11T05:34:47Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1(c1 INT, c2 VARCHAR(255), c3 TEXT);",
+    "INSERT INTO t1 VALUES (1, 'test', NULL), (2, 'example', 'data');",
+    "CREATE VIEW v1 AS SELECT c2 FROM t1 WHERE c1 > 0;",
+    "SELECT v1.c2 FROM v1 LEFT JOIN t1 ON v1.c2 = t1.c2 WHERE (t1.c3 IS NULL OR t1.c3 REGEXP '^[a-z]+$');",
+    "SELECT COUNT(*) FROM v1 WHERE EXISTS(SELECT c2 FROM v1 LEFT JOIN t1 ON v1.c2 = t1.c2 WHERE (t1.c3 REGEXP '^[0-9]+$'));"
+  ],
+  "key_bug_features": [
+    "EXISTS expression with NATURAL RIGHT JOIN and REGEXP condition"
+  ]
+}

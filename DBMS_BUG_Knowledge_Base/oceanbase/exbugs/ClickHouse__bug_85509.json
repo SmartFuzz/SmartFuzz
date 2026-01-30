@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/85509",
+  "title": "WHERE condition is incorrectly dropped when SELECT alias matches filtered column name",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nClickHouse incorrectly optimizes away a WHERE condition when the filtered column name matches an aliased constant in the SELECT clause. This violates SQL standard behavior where column references in WHERE should be independent of SELECT aliases.\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nCREATE TABLE test (platform UInt8, uid UInt64) ENGINE = Memory;\nINSERT INTO test VALUES (9, 1), (1, 2), (2, 3);\n-- Expected: Returns 2 (should exclude platform=9)\n-- Actual: Returns 3 (WHERE condition is ignored)\nSELECT 0 as platform, COUNT(DISTINCT uid) FROM test WHERE platform != 9;\n-- Works correctly when alias differs:\nSELECT 0 as plat, COUNT(DISTINCT uid) FROM test WHERE platform != 9; -- Correctly returns 2\n### Expected behavior\nBoth queries should return 2 rows (excluding platform=9), regardless of the SELECT alias naming.\nThe first query ignores the WHERE platform != 9 condition when the alias matches the filtered column name.\n### Error message and/or stacktrace\n_No response_\n### Additional context\nClickHouse version: 24.3.2\nServer OS: docker  (bitnami/clickhouse)\nClient interface: dbeaver",
+  "date": "2025-08-13T03:12:15Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test1 (platform TINYINT, uid BIGINT);",
+    "INSERT INTO test1 VALUES (9, 1), (1, 2), (2, 3);",
+    "SELECT 0 as platform_alias, COUNT(DISTINCT uid) FROM test1 WHERE platform != 9;",
+    "CREATE TABLE test2 (id INT, value VARCHAR(255));",
+    "INSERT INTO test2 VALUES (1, 'A'), (2, NULL), (3, 'B');"
+  ],
+  "key_bug_features": [
+    "WHERE condition dropped with matching SELECT alias"
+  ]
+}

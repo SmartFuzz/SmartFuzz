@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/85552",
+  "title": "Don't set filesystem_cache_boundary_alignment too high",
+  "description": "### Describe the bug\nEasy to reproduce\n### How to reproduce\nWith these settings:\n```xml\n<remote_servers>\n<cluster0>\n<shard>\n<replica>\n<host>node1</host>\n<port>9000</port>\n</replica>\n</shard>\n<shard>\n<replica>\n<host>node2</host>\n<port>9000</port>\n</replica>\n</shard>\n</cluster0>\n</remote_servers>\n<filesystem_caches>\n<fcache0>\n<max_size>1Ki</max_size>\n<path>/var/lib/clickhouse/fcache0/</path>\n</fcache0>\n</filesystem_caches>\n```\nRun:\n```sql\nCREATE TABLE t0 (c0 Int, c1 String) ENGINE = IcebergS3(s3, filename = 't0/', format = 'CSV');\nCREATE TABLE t1 (c0 Int, c1 Array(String)) ENGINE = Distributed('cluster0', default, t0);\nREPLACE TABLE t1 (c0 String, c1 Int) ENGINE = S3(s3, filename = 't1/', format = 'CSV');\nCREATE MATERIALIZED VIEW v0 TO t0 (c1 Int, c0 String) AS (SELECT 1 c0, 'a' c1 FROM t1);\nINSERT INTO TABLE t1 (c0, c1) SETTINGS filesystem_cache_boundary_alignment = 18446744073709551615, filesystem_cache_name = 'fcache0' VALUES (1, 1);\n```\n### Error message and/or stacktrace\nStack trace:\n```\n<Fatal> : Logical error: 'size <= aligned_size'.\n<Fatal> : Stack trace (when copying this message, always include the lines below):\n0. src/Common/StackTrace.cpp:389: StackTrace::StackTrace() @ 0x000000001432da64\n1. src/Common/Exception.cpp:56: DB::abortOnFailedAssertion(String const&) @ 0x0000000014287315\n2. src/Interpreters/Cache/FileCache.cpp:415: DB::FileCache::splitRange(unsigned long, unsigned long, unsigned long) @ 0x000000001b5f308f\n3. src/Interpreters/Cache/FileCache.cpp:775: DB::FileCache::getOrSet(DB::FileCacheKey const&, unsigned long, unsigned long, unsigned long, DB::CreateFileSegmentSettings const&, unsigned long, DB::FileCacheUserInfo const&, std::optional<unsigned long>) @ 0x000000001b5f4bf4\n4. src/Disks/IO/CachedOnDiskReadBufferFromFile.cpp:146: DB::CachedOnDiskReadBufferFromFile::nextFileSegmentsBatch() @ 0x00000000197cbbd2\n5. src/Disks/IO/CachedOnDiskReadBufferFromFile.cpp:165: DB::CachedOnDiskReadBufferFromFile::initialize() @ 0x00000000197cbe30\n6. src/Disks/IO/CachedOnDiskReadBufferFromFile.cpp:1357: DB::CachedOnDiskReadBufferFromFile::isContentCached(unsigned long, unsigned long) @ 0x00000000197d93b1\n7. src/Disks/IO/ThreadPoolRemoteFSReader.cpp:94: DB::ThreadPoolRemoteFSReader::submit(DB::IAsynchronousReader::Request) @ 0x00000000196466b3\n8. src/Disks/IO/AsynchronousBoundedReadBuffer.cpp:114: DB::AsynchronousBoundedReadBuffer::readAsync(char*, unsigned long, Priority) @ 0x00000000197c6b88",
+  "date": "2025-08-13T14:21:10Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (c0 SMALLINT, c1 INTEGER NULL, c2 VARCHAR(255));",
+    "CREATE TABLE t3 (c0 BIGINT, c1 FLOAT);",
+    "INSERT INTO t2 (c0, c1, c2) VALUES (1, NULL, 'test');",
+    "INSERT INTO t3 (c0, c1) VALUES (2, 3.14);",
+    "SELECT c0, c1 FROM t2 WHERE c1 IS NULL;"
+  ],
+  "key_bug_features": [
+    "Setting filesystem_cache_boundary_alignment too high"
+  ]
+}

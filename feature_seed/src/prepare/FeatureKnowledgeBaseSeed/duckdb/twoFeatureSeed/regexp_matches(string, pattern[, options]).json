@@ -1,0 +1,16 @@
+{
+    "function": "regexp_matches(string, pattern[, options])",
+    "operator": "&&",
+    "sql_array": [
+        "CREATE TABLE test_table (id INT, description STRING, tags ARRAY<STRING>);",
+        "INSERT INTO test_table VALUES (1, 'anabanana', ['fruit', 'tropical']), (2, 'apple', ['fruit', 'red']), (3, NULL, []), (4, '', ['none']);",
+        "SELECT id, description, tags FROM test_table WHERE regexp_matches(description, '(an)*') && [1, 2] && tags;",
+        "SELECT id, description FROM (SELECT id, description FROM test_table WHERE regexp_matches(description, '^[a-z]*$')) AS sub WHERE id > 1;",
+        "SELECT id, COUNT(*) OVER (PARTITION BY id) AS tag_count FROM test_table GROUP BY id HAVING tag_count > 1 AND regexp_matches(description, '^(anab|app).*');",
+        "SELECT id FROM test_table WHERE id IS NOT NULL AND regexp_matches(IFNULL(description, 'empty'), '^(an)*$') && (SELECT tags FROM test_table WHERE id = 2);",
+        "CREATE TEMPORARY TABLE temp_table AS SELECT id, description, regexp_matches(description, '(an)*') AS has_pattern FROM test_table WHERE tags && ['fruit'];",
+        "SELECT id, description FROM test_table WHERE (SELECT COUNT(*) FROM temp_table WHERE has_pattern) > 0 AND NOT (tags && ['none']);",
+        "ALTER TABLE test_table ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;",
+        "SELECT id, created_at FROM test_table WHERE created_at IS NOT NULL AND regexp_matches(description, '(.*?)') && (SELECT array_agg(tags) FROM (SELECT DISTINCT UNNEST(tags) FROM test_table) AS unique_tags);"
+    ]
+}

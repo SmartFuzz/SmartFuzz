@@ -1,0 +1,12 @@
+CREATE TABLE test_data (id UInt32, value String, number Float32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_data VALUES (1, '8', 10.5), (2, 'abc', 20.0), (3, '', 30.0), (4, '0xc0fe', 40.0), (5, NaN, 50.0);
+SELECT id, toUInt8OrDefault(value, CAST(0, 'UInt8')) AS converted_value FROM test_data WHERE toUInt8OrDefault(value, CAST(0, 'UInt8')) <> 0;
+SELECT id, value, toUInt8OrDefault(toString(number), 0) AS converted_num FROM test_data WHERE number IS NOT NULL AND converted_num <> toUInt8OrDefault(value, 0);
+SELECT id, value, toUInt8OrDefault(value, CAST(0, 'UInt8')) AS converted_value FROM test_data WHERE toUInt8OrDefault(value, CAST(0, 'UInt8')) <> (SELECT COUNT(*) FROM test_data WHERE value <> '') LIMIT 2;
+SELECT a.id, a.value, toUInt8OrDefault(b.value, CAST(0, 'UInt8')) AS new_value FROM test_data AS a JOIN test_data AS b ON toUInt8OrDefault(a.value, CAST(0, 'UInt8')) <> toUInt8OrDefault(b.value, CAST(0, 'UInt8'));
+SELECT id, SUM(toUInt8OrDefault(value, CAST(0, 'UInt8'))) AS total_converted FROM test_data GROUP BY id HAVING total_converted <> COUNT(value);
+WITH (SELECT SUM(number) FROM test_data WHERE number IS NOT NULL) AS sum_val SELECT id, toUInt8OrDefault(value, 0) AS value_check FROM test_data WHERE toUInt8OrDefault(value, 0) <> sum_val;
+INSERT INTO test_data VALUES (6, '100', 1.5), (7, '400', 2.5);
+SELECT id, toUInt8OrDefault(toString(number), 0) AS num_val FROM test_data HAVING num_val IS NOT NULL OR num_val <> 0;
+CREATE TEMPORARY TABLE temp_data AS SELECT id, toUInt8OrDefault(value, CAST(0, 'UInt8')) AS temp_value FROM test_data WHERE value <> '';
+SELECT id, temp_value <> (SELECT AVG(toUInt8OrDefault(value, CAST(0, 'UInt8'))) FROM test_data) FROM temp_data;

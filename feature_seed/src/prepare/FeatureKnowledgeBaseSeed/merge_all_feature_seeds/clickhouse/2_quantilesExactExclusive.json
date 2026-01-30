@@ -1,0 +1,12 @@
+CREATE TABLE test_data (id UInt32, value Float64, created_at DateTime DEFAULT now());
+INSERT INTO test_data VALUES (1, 1.0, '2023-01-01 10:00:00'), (2, 2.0, '2023-01-02 10:00:00'), (3, NULL, '2023-01-03 10:00:00'), (4, 4.0, '2023-01-04 10:00:00'), (5, 5.0, '2023-01-05 10:00:00'), (6, 6.0, NULL);
+SELECT quantilesExactExclusive(0.1, 0.5, 0.9)(arrayFilter(x -> x IS NOT NULL, arrayJoin([value]))) FROM test_data;
+SELECT arrayElement(quantilesExactExclusive(0.25, 0.75)(value), 1) AS lower_quartile, arrayElement(quantilesExactExclusive(0.25, 0.75)(value), 2) AS upper_quartile FROM test_data WHERE created_at < '2023-01-04 10:00:00' GROUP BY lower_quartile, upper_quartile;
+WITH arrayJoin(array(1, 2, 3, 4, 5)) AS numbers SELECT quantilesExactExclusive(0.2, 0.4, 0.6, 0.8)(arrayFilter(x -> x < 3, numbers)) FROM numbers;
+SELECT count() FROM (SELECT arrayElement(quantilesExactExclusive(0.5)(arrayJoin([CAST(value AS Float64), CAST(NULL AS Float64), CAST(3 AS Float64)])), 1) FROM test_data GROUP BY id) AS quantiles;
+CREATE TABLE temp_data (num UInt64, text String) ENGINE = Memory;
+INSERT INTO temp_data VALUES (1, ''), (2, 'non-numeric'), (3, '3.5');
+SELECT arrayElement(quantilesExactExclusive(0.5)(CAST(text AS Float64)), 1) FROM temp_data;
+SELECT quantilesExactExclusive(0.0, 1.0)(value) AS entire_range FROM test_data WHERE value IS NOT NULL;
+SELECT quantilesExactExclusive(arrayElement((SELECT value FROM test_data WHERE id = 3), 1))(value) FROM test_data;
+SELECT value, quantilesExactExclusive(0.25, 0.5, 0.75)(value) FROM test_data GROUP BY value WITH ROLLUP HAVING value IS NOT NULL;

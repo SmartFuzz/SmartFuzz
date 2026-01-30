@@ -1,0 +1,14 @@
+CREATE TABLE test_xml (id INT PRIMARY KEY, data XML);
+INSERT INTO test_xml (id, data) VALUES (1, xtree_doc('<root><node1>Value1</node1><node2 attr="1">Value2</node2></root>'));
+SELECT XMLUpdate(data, '//node2', 'UpdatedValue2') AS updated_data FROM test_xml WHERE data IS NOT NULL;
+CREATE TABLE test_numbers (num INT);
+INSERT INTO test_numbers (num) VALUES (NULL), (10), (20);
+SELECT (SELECT XMLUpdate(xtree_doc('<nested><child>Child</child></nested>'), '//child', 'ReplacedChild') FROM test_numbers WHERE num IS NOT NULL LIMIT 1) AS nested_update UNION ALL SELECT XMLUpdate(data, '//node2', xtree_doc('<newchild>NewChild</newchild>')) FROM test_xml WHERE data IS NOT NULL;
+CREATE TABLE test_edge_cases (col1 VARCHAR(255), col2 XML);
+INSERT INTO test_edge_cases (col1, col2) VALUES ('', xtree_doc('<case><empty></empty></case>')), (NULL, xtree_doc('<case><valid>Content</valid></case>'));
+SELECT XMLUpdate(col2, '//empty', NULL) AS result FROM test_edge_cases WHERE col1 IS NOT NULL ORDER BY col1;
+SELECT XMLUpdate(xtree_doc('<root><a>1</a><b>2</b></root>'), '//a', CAST(NULL AS VARCHAR)), XMLUpdate(xtree_doc('<root><x>2</x></root>'), '//x', xtree_doc('<replacement>5</replacement>')) AS dual_output FROM test_edge_cases WHERE col2 IS NOT NULL;
+CREATE TABLE test_join (id INT, name VARCHAR(100));
+INSERT INTO test_join (id, name) VALUES (1, 'JoinTest1'), (2, 'JoinTest2');
+SELECT j.id, XMLUpdate(j.data, '//node1', 'Replaced') AS updated_xml FROM (SELECT id, data FROM test_xml INNER JOIN test_join j ON j.id = 1 WHERE data IS NOT NULL) AS j;
+SELECT XMLUpdate(data, '//node1', ''), XMLUpdate(data, '//node2', NULL) FROM test_xml WHERE data IS NOT NULL GROUP BY id HAVING COUNT(*) > 0;

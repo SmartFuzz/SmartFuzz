@@ -1,0 +1,16 @@
+{
+    "function": "quantiles",
+    "operator": "INTERVAL",
+    "sql_array": [
+        "CREATE TABLE test_data (id Int32, value Float64, date_field DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_data VALUES (1, 2.5, now()), (2, 3.7, now() - INTERVAL 1 DAY), (3, NULL, now() - INTERVAL 2 DAY);",
+        "SELECT id, quantiles(0.25, 0.5, 0.75)(value) AS value_quantiles FROM test_data GROUP BY id HAVING value_quantiles[1] IS NOT NULL;",
+        "SELECT id, count() AS entry_count FROM test_data WHERE date_field >= now() - INTERVAL 5 DAY GROUP BY id HAVING entry_count >= 1;",
+        "SELECT id, value, date_field + INTERVAL 1 HOUR AS date_plus_hour FROM test_data WHERE value > quantiles(0.5)(value)[1] AND date_field IS NOT NULL;",
+        "SELECT id, value, date_field FROM (SELECT id, value, date_field FROM test_data WHERE value IS NOT NULL) AS subquery WHERE value > 3.0;",
+        "SELECT a.id, a.value, b.value AS joined_value FROM test_data AS a JOIN test_data AS b ON a.id = b.id + INTERVAL 1 DAY ORDER BY a.value DESC;",
+        "SELECT id, quantiles(0.1, 0.9)(value) AS quantiles_values FROM (SELECT id, value FROM test_data WHERE date_field < now()) GROUP BY id HAVING quantiles_values[2] > 3.0;",
+        "SELECT id, count() OVER (PARTITION BY id ORDER BY date_field) AS running_count FROM test_data WHERE value IS NOT NULL;",
+        "CREATE TABLE temp_data AS SELECT quantiles(0.5)(value) AS median_value FROM test_data WHERE value IS NOT NULL GROUP BY id;"
+    ]
+}

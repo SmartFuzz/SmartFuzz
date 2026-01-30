@@ -1,0 +1,12 @@
+CREATE TABLE test_dates (id SERIAL PRIMARY KEY, event_date DATE, description TEXT);
+INSERT INTO test_dates (event_date, description) VALUES (date '2020-03-22', 'Event A'), (date '2020-03-25', 'Event B'), (NULL, 'Event C');
+SELECT id, event_date, greatest(event_date, date '2021-01-01') AS max_event_date FROM test_dates WHERE greatest(event_date, NULL) IS NOT NULL;
+SELECT d1.id, d1.event_date FROM test_dates d1 JOIN test_dates d2 ON d1.event_date > d2.event_date WHERE d1.event_date = greatest(d1.event_date, d2.event_date);
+SELECT COUNT(*) FROM test_dates WHERE greatest(event_date, date '2020-03-20') IS NOT NULL GROUP BY description HAVING COUNT(*) > 1;
+SELECT event_date, greatest(event_date, date '2020-02-01') OVER (ORDER BY event_date) AS cumulative_max FROM test_dates ORDER BY event_date;
+SELECT COUNT(*) FROM (SELECT DISTINCT event_date FROM test_dates WHERE event_date IS NOT NULL) AS subquery WHERE event_date > greatest(date '2020-03-22'::TEXT, date '2020-01-01');
+CREATE TABLE secondary_dates (id SERIAL PRIMARY KEY, related_date DATE);
+INSERT INTO secondary_dates (related_date) VALUES (NULL), (date '2020-03-10');
+SELECT a.id, a.event_date, greatest(a.event_date, b.related_date) FROM test_dates AS a LEFT JOIN secondary_dates AS b ON a.event_date > b.related_date WHERE greatest(a.event_date, NULL) IS NOT NULL;
+CREATE TEMPORARY TABLE temp_dates AS SELECT event_date, greatest(event_date, date '2020-04-01') AS max_date FROM test_dates;
+SELECT * FROM temp_dates WHERE max_date > greatest(date '2022-01-01', date '2021-12-31');

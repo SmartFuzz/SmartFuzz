@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/60737",
+  "title": "In clause with 'NATURAL RIGHT JOIN' and 'union'  does not work as expected",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n```\ncreate table chqin(id int, f1 date);\ninsert into chqin values (1,null);\ninsert into chqin values (2,null);\ninsert into chqin values (3,null);\n\ncreate table chqin2(id int, f1 date);\ninsert into chqin2 values (1,'1990-11-27');\ninsert into chqin2 values (2,'1990-11-27');\ninsert into chqin2 values (3,'1990-11-27');\n\nselect 1 from chqin where  '2008-05-28' NOT IN(select a1.f1 from chqin a1 NATURAL RIGHT JOIN chqin2 a2 WHERE a2.f1  >='1990-11-27' union select f1 from chqin where id=5);\nselect 1 from chqin where  '2008-05-28' NOT IN(select a1.f1 from chqin a1  union select f1 from chqin where id=5);\n```\n\n### 2. What did you expect to see? (Required)\n\nresult from mysql:\n\n```\nMySQL [test2]> select 1 from chqin where  '2008-05-28' NOT IN(select a1.f1 from chqin a1 NATURAL RIGHT JOIN chqin2 a2 WHERE a2.f1  >='1990-11-27' union select f1 from chqin where id=5);\nEmpty set (0.01 sec)\n```\n\n\n### 3. What did you see instead (Required)\nresults from tidb:\n```\nMySQL [test2]> select 1 from chqin where  '2008-05-28' NOT IN(select a1.f1 from chqin a1 NATURAL RIGHT JOIN chqin2 a2 WHERE a2.f1  >='1990-11-27' union select f1 from chqin where id=5);\n+---+\n| 1 |\n+---+\n| 1 |\n| 1 |\n| 1 |\n+---+\n3 rows in set (0.01 sec)\n\n```\n### 4. What is your TiDB version? (Required)\n```\nMySQL [test2]> select tidb_version();\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| tidb_version()                                                                                                                                                                                                                               |\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| Release Version: v8.5.1\nEdition: Community\nGit Commit Hash: fea86c8e35ad4a86a5e1160701f99493c2ee547c\nGit Branch: HEAD\nUTC Build Time: 2025-01-16 07:38:34\nGoVersion: go1.23.4\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv |\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n1 row in set (0.01 sec)\n\n```",
+  "date": "2025-04-23T09:25:55Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE test_table1(id INT, f1 DATE, f2 VARCHAR(50));",
+    "INSERT INTO test_table1 VALUES (1, NULL, 'test1');",
+    "INSERT INTO test_table1 VALUES (2, '2023-01-01', 'test2');",
+    "CREATE TABLE test_table2(id INT, f1 DATE, f3 INT);",
+    "INSERT INTO test_table2 VALUES (1, '2023-01-01', 100);",
+    "SELECT 1 FROM test_table1 WHERE '2023-01-01' NOT IN (SELECT f1 FROM test_table1 RIGHT JOIN test_table2 ON test_table1.id = test_table2.id WHERE f3 > 50 UNION SELECT f1 FROM test_table1 WHERE id = 3);"
+  ],
+  "key_bug_features": [
+    "NATURAL RIGHT JOIN with UNION in NOT IN clause"
+  ]
+}

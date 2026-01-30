@@ -1,0 +1,12 @@
+CREATE TABLE hierarchy_flat_dictionary (id UInt64, parent_id UInt64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO hierarchy_flat_dictionary VALUES (1, NULL), (2, 1), (3, 1), (4, 2), (5, 2), (6, 3);
+SELECT dictGetChildren('hierarchy_flat_dictionary', (SELECT MAX(id) FROM hierarchy_flat_dictionary WHERE parent_id IS NOT NULL)) AS children FROM hierarchy_flat_dictionary WHERE dictGetChildren('hierarchy_flat_dictionary', id) != [];
+SELECT id, dictGetChildren('hierarchy_flat_dictionary', id) AS children FROM hierarchy_flat_dictionary WHERE dictGetChildren('hierarchy_flat_dictionary', id) != [] AND children[1] == 2;
+SELECT COUNT(*) FROM hierarchy_flat_dictionary WHERE dictGetChildren('hierarchy_flat_dictionary', id) != [] GROUP BY id HAVING COUNT(*) > 1;
+CREATE TABLE test_numbers (number UInt64) ENGINE = MergeTree() ORDER BY number;
+INSERT INTO test_numbers VALUES (1), (2), (3), (10), (20), (50);
+SELECT number, dictGetChildren('hierarchy_flat_dictionary', (SELECT number FROM test_numbers WHERE number >= 2 AND number <= 10 ORDER BY number LIMIT 1)) AS children FROM test_numbers WHERE children != [] AND number == (SELECT MAX(number) FROM test_numbers);
+CREATE TABLE another_test (value String) ENGINE = MergeTree() ORDER BY value;
+INSERT INTO another_test VALUES ('10'), ('20'), ('30'), (NULL), ('40');
+SELECT value, dictGetChildren('hierarchy_flat_dictionary', length(value)) AS children FROM another_test WHERE (children[1] == 1) OR (value IS NULL);
+SELECT DISTINCT value FROM another_test WHERE dictGetChildren('hierarchy_flat_dictionary', 1) != [] AND value LIKE '%3%';

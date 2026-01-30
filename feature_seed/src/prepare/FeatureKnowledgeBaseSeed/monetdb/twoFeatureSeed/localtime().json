@@ -1,0 +1,17 @@
+{
+    "function": "localtime()",
+    "operator": "|",
+    "sql_array": [
+        "CREATE TABLE test_data (id INT, created_at TIMESTAMP, value INT, details VARCHAR(100));",
+        "INSERT INTO test_data (id, created_at, value, details) VALUES (1, localtime(), 32, 'test1'), (2, localtime(), 3, 'test2'), (3, localtime(), NULL, 'test3');",
+        "SELECT id, (value | 32) AS combined_value, localtime() FROM test_data WHERE value IS NOT NULL;",
+        "SELECT id, (value | (SELECT COUNT(*) FROM test_data WHERE value IS NOT NULL)) AS val_count, localtime() FROM test_data GROUP BY id HAVING combined_value > 35;",
+        "SELECT id, (localtime() | 16) AS time_combination FROM test_data WHERE id IN (SELECT id FROM test_data WHERE value IS NULL);",
+        "CREATE TABLE reference_data (ref_id INT, ref_value TIME);",
+        "INSERT INTO reference_data (ref_id, ref_value) VALUES (1, localtime());",
+        "SELECT D.ref_id, (D.ref_value | 8) AS adjusted_time FROM reference_data D JOIN test_data T ON D.ref_id = T.id WHERE T.value IS NOT NULL;",
+        "SELECT T.id, COUNT(D.ref_id) AS reference_count FROM test_data T LEFT JOIN reference_data D ON T.id = D.ref_id GROUP BY T.id HAVING (COUNT(D.ref_id) | 1) > 0;",
+        "SELECT (localtime() | (SELECT MAX(value) FROM test_data WHERE value IS NOT NULL AND created_at >= localtime() - INTERVAL '1 day')) AS recent_max;",
+        "SELECT T.id, T.value | (CASE WHEN T.value IS NULL THEN 0 ELSE T.value END) AS safe_value FROM test_data T ORDER BY safe_value DESC;"
+    ]
+}

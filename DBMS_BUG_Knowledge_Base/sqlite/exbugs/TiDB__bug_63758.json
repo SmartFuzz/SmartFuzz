@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/63758",
+  "title": "Data inconsistency between TiKV and TiFlash after adding a NOT NULL BLOB column",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n```sql\nDROP TABLE IF EXISTS tb3;\n\nCREATE TABLE tb3 (id INT UNIQUE AUTO_INCREMENT NOT NULL, c0 INT);\nINSERT INTO tb3 (c0) VALUES (-101022856);\nALTER TABLE tb3 SET TIFLASH REPLICA 1;\nALTER TABLE tb3 ADD COLUMN auto_col_34406 BLOB NOT NULL;\n\nSELECT /*+ read_from_storage(tikv[t0]) */ t0.id AS id, BIT_LENGTH(t0.auto_col_34406) as col_2 FROM tb3 AS t0;\nSELECT /*+ read_from_storage(tiflash[t0]) */ t0.id AS id, BIT_LENGTH(t0.auto_col_34406) as col_2 FROM tb3 AS t0;\n\n```\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\nsame result\n### 3. What did you see instead (Required)\n```\nmysql> SELECT /*+ read_from_storage(tikv[t0]) */ t0.id AS id, BIT_LENGTH(t0.auto_col_34406) as col_2 FROM tb3 AS t0;\n+----+-------+\n| id | col_2 |\n+----+-------+\n|  1 |     0 |\n+----+-------+\n1 row in set (0.003 sec)\n\nmysql> SELECT /*+ read_from_storage(tiflash[t0]) */ t0.id AS id, BIT_LENGTH(t0.auto_col_34406) as col_2 FROM tb3 AS t0;\n+----+--------+\n| id | col_2  |\n+----+--------+\n|  1 | 524280 |\n+----+--------+\n1 row in set (0.007 sec)\n```\n### 4. What is your TiDB version? (Required)\n```\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| tidb_version()                                                                                                                                                                                                                               |\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| Release Version: v8.5.3\nEdition: Community\nGit Commit Hash: dc2548aac79a712265e831cff2a3a896bc0a5a38\nGit Branch: HEAD\nUTC Build Time: 2025-07-31 13:54:59\nGoVersion: go1.23.6\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv |\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n```\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "date": "2025-09-25T12:52:36Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS tb4;",
+    "CREATE TABLE tb4 (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, data BLOB DEFAULT NULL);",
+    "INSERT INTO tb4 (name, data) VALUES ('test', NULL);",
+    "ALTER TABLE tb4 ADD COLUMN extra_col INTEGER NOT NULL DEFAULT 0;",
+    "SELECT id, LENGTH(data) AS data_length FROM tb4 WHERE data IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Adding NOT NULL BLOB column causes data inconsistency"
+  ]
+}

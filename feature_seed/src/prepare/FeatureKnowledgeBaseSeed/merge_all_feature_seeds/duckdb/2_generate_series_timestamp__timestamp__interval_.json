@@ -1,0 +1,10 @@
+CREATE TABLE timestamps_table (id INTEGER PRIMARY KEY, event_time TIMESTAMP, description TEXT);
+INSERT INTO timestamps_table (id, event_time, description) VALUES (1, TIMESTAMP '2001-04-10 08:00:00', 'Start Event'), (2, TIMESTAMP '2001-04-10 12:00:00', 'Middle Event'), (3, TIMESTAMP '2001-04-10 16:00:00', 'End Event');
+SELECT id, generate_series(event_time, event_time + INTERVAL '2 HOUR', INTERVAL '30 MINUTE') AS series_time FROM timestamps_table WHERE event_time IS NOT NULL;
+SELECT id, COUNT(*) FROM (SELECT id, generate_series(event_time, event_time + INTERVAL '1 DAY', INTERVAL '1 HOUR') AS generated_range FROM timestamps_table) AS generated_times GROUP BY id HAVING COUNT(*) > 1;
+SELECT id, event_time + generate_series(INTERVAL '1 HOUR', INTERVAL '3 HOUR', INTERVAL '15 MINUTE') AS adjusted_time FROM timestamps_table;
+SELECT id, event_time, event_time + INTERVAL (SELECT COUNT(*) FROM timestamps_table WHERE description LIKE '%Event%') HOUR AS dynamic_time FROM timestamps_table WHERE event_time IS NOT NULL;
+CREATE TABLE complex_table (cp TIMESTAMP NOT NULL, val INTEGER);
+INSERT INTO complex_table (cp, val) VALUES (TIMESTAMP '2001-04-10 09:00:00', 1), (TIMESTAMP '2001-04-10 10:00:00', 2), (TIMESTAMP '2001-04-11 09:00:00', NULL);
+SELECT c1.cp, COALESCE(c1.val, 0) + generate_series(INTERVAL '1 HOUR', INTERVAL '2 HOUR', INTERVAL '30 MINUTE') AS new_value FROM complex_table c1 JOIN complex_table c2 ON c1.cp = c2.cp + INTERVAL '1 DAY' WHERE c2.val IS NOT NULL;
+SELECT c1.cp, AVG(c1.val) OVER (PARTITION BY generate_series(c1.cp, c1.cp + INTERVAL '1 DAY', INTERVAL '1 HOUR')) AS mean_val FROM complex_table c1 WHERE c1.val IS NOT NULL;

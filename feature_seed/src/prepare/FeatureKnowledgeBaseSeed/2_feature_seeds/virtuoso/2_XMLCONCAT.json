@@ -1,0 +1,11 @@
+CREATE TABLE spatial_data (id INT PRIMARY KEY, geom GEOMETRY, xml_data XML);
+INSERT INTO spatial_data (id, geom, xml_data) VALUES (1, ST_GeomFromText('POLYGON((0 0, 0 10, 10 10, 10 0, 0 0))', 4326), XMLPARSE(DOCUMENT '<root><value>Data 1</value></root>'));
+INSERT INTO spatial_data (id, geom, xml_data) VALUES (2, ST_GeomFromText('POLYGON((5 5, 5 15, 15 15, 15 5, 5 5))', 4326), NULL);
+INSERT INTO spatial_data (id, geom, xml_data) VALUES (3, ST_GeomFromText('POLYGON((2 2, 2 12, 12 12, 12 2, 2 2))', 4326), XMLPARSE(DOCUMENT '<root><value>Data 3</value><value>Data 4</value></root>'));
+SELECT id, XMLCONCAT(xml_data, XMLPARSE(DOCUMENT '<root><value>Extra Data</value></root>')) AS combined_xml FROM spatial_data WHERE bif:st_intersects(geom, ST_MakeEnvelope(0, 0, 10, 10, 4326));
+SELECT id, htons, XMLCONCAT((SELECT XMLPARSE(DOCUMENT '<root><value>Inner Data</value></root>')), xml_data) AS nested_xml FROM spatial_data WHERE id IN (SELECT id FROM spatial_data WHERE geom IS NOT NULL) AND bif:st_intersects(geom, ST_MakeEnvelope(1, 1, 9, 9, 4326));
+SELECT id, COUNT(*) AS count, XMLCONCAT(xml_data) AS xml_combination FROM spatial_data GROUP BY id HAVING count > 1;
+SELECT id, XMLCONCAT(NULL, xml_data, (SELECT XMLPARSE(DOCUMENT '<root><value>Stay Null</value></root>'))) AS merged_xml FROM spatial_data WHERE bif:st_intersects(geom, ST_MakeEnvelope(0, 0, 20, 20, 4326)) GROUP BY id HAVING merged_xml IS NOT NULL;
+CREATE TABLE additional_data (id INT PRIMARY KEY, info XML);
+INSERT INTO additional_data (id, info) VALUES (1, XMLPARSE(DOCUMENT '<root><value>Skip</value></root>'));
+SELECT d.id, XMLCONCAT(d.info, (SELECT XMLPARSE(DOCUMENT '<root><value>Subtree</value></root>'))) AS concatenated_info FROM additional_data d JOIN spatial_data s ON d.id = s.id WHERE bif:st_intersects(s.geom, ST_MakeEnvelope(0, 0, 15, 15, 4326));

@@ -1,0 +1,10 @@
+CREATE TABLE test_dates (id UInt32, event_time DateTime, event_name String, nullable_field Nullable(String));
+INSERT INTO test_dates VALUES (1, toDateTime('2021-01-01 00:00:00'), 'New Year', NULL), (2, toDateTime('2021-02-15 12:00:00'), 'Valentine', 'Love'), (3, toDateTime('2021-03-20 09:30:55'), 'Spring Equinox', 'Spring'), (4, toDateTime('2021-04-30 23:59:59'), 'April End', 'End of April'), (5, toDateTime('2021-12-31 18:45:00'), 'New Year Eve', 'Celebrate');
+SELECT id, event_name, monthName(event_time) ? 'Active' : 'Inactive' AS event_status FROM test_dates WHERE event_time >= toDateTime('2021-01-01 00:00:00');
+SELECT id, monthName(event_time), count(*) AS total_events FROM test_dates GROUP BY monthName(event_time) HAVING monthName(event_time) ? 'January' : 'Not January' = 'January';
+WITH (SELECT avg(toUnixTimestamp(event_time)) AS avg_time FROM test_dates WHERE event_name IS NOT NULL) AS avg_timestamp SELECT id, monthName(event_time), event_name ? 'Present' : 'Absent' AS presence FROM test_dates WHERE toUnixTimestamp(event_time) < avg_time;
+SELECT id, monthName(event_time) ? 'Month Recognized' : 'Unknown Month' AS month_recognition, nullable_field FROM test_dates WHERE nullable_field IS NULL AND monthName(event_time) IS NOT NULL;
+CREATE TEMPORARY TABLE temp_events AS SELECT * FROM test_dates WHERE event_time < toDateTime('2021-06-01 00:00:00');
+SELECT id, monthName(event_time), monthName(toDateTime('2021-05-15 10:10:10')) AS fixed_month FROM temp_events WHERE monthName(event_time) = 'May' ORDER BY id;
+WITH (SELECT count(*) FROM test_dates WHERE event_name = 'New Year') AS new_year_count SELECT monthName(event_time), new_year_count ? 'Has New Year' : 'No New Year' AS new_year_status FROM test_dates WHERE event_time BETWEEN toDateTime('2021-01-01') AND toDateTime('2021-12-31') GROUP BY monthName(event_time);
+SELECT monthName(event_time), (CASE WHEN event_time IS NULL THEN 'NULL Month' ELSE monthName(event_time) END) AS month_as_string FROM test_dates WHERE monthName(event_time) IN ('January', 'February', 'March') ? 'Month Exists' : 'None';

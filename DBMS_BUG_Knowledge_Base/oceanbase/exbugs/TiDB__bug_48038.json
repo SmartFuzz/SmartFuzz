@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/48038",
+  "title": "Constraint name uniqueness is not enforced for check constraints",
+  "description": "## Bug Report\r\n\r\nNot enforcing the same name uniqueness as MySQL might cause issues with compatibility leading to migration and/or replication (TiCDC) issues.\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```sql\r\nCREATE TABLE t1 (id INT PRIMARY KEY, CONSTRAINT c1 CHECK (id<50));\r\nCREATE TABLE t2 (id INT PRIMARY KEY, CONSTRAINT c1 CHECK (id<50));\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nOn MySQL 8.2.0:\r\n```\r\nsql> CREATE TABLE t1 (id INT PRIMARY KEY, CONSTRAINT c1 CHECK (id<50));\r\nQuery OK, 0 rows affected (0.0505 sec)\r\n\r\nsql> CREATE TABLE t2 (id INT PRIMARY KEY, CONSTRAINT c1 CHECK (id<50));\r\nERROR: 3822 (HY000): Duplicate check constraint name 'c1'.\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nOn TiDB:\r\n```\r\nsql> SET GLOBAL tidb_enable_check_constraint=ON;\r\nQuery OK, 0 rows affected (0.0080 sec)\r\n\r\nsql> CREATE TABLE t1 (id INT PRIMARY KEY, CONSTRAINT c1 CHECK (id<50));\r\nQuery OK, 0 rows affected (0.0254 sec)\r\n\r\nsql> CREATE TABLE t2 (id INT PRIMARY KEY, CONSTRAINT c1 CHECK (id<50));\r\nQuery OK, 0 rows affected (0.0182 sec)\r\n```\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n```\r\nRelease Version: v7.6.0-alpha-23-gdfd9080bcf-dirty\r\nEdition: Community\r\nGit Commit Hash: dfd9080bcf49083e52d6cb714668da9b881dc54d\r\nGit Branch: master\r\nUTC Build Time: 2023-10-27 06:35:10\r\nGoVersion: go1.21.0\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: unistore\r\n1 row in set (0.0009 sec)\r\n```",
+  "date": "2023-10-27T07:18:57Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (id INT PRIMARY KEY, name VARCHAR(50), CONSTRAINT c1 CHECK (id < 50));",
+    "CREATE TABLE t2 (id INT PRIMARY KEY, age INT, CONSTRAINT c2 CHECK (age >= 0));",
+    "INSERT INTO t1 (id, name) VALUES (25, 'Alice');",
+    "INSERT INTO t2 (id, age) VALUES (1, 30);",
+    "CREATE TABLE t3 (id INT PRIMARY KEY, score DECIMAL(5,2), CONSTRAINT c3 CHECK (score BETWEEN 0 AND 100));"
+  ],
+  "key_bug_features": [
+    "Duplicate check constraint name enforcement not implemented"
+  ]
+}

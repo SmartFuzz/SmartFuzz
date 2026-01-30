@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/7f7f8026ed",
+  "title": "Segfault following heavy SAVEPOINT usage",
+  "description": "drh added on 2016-04-07 18:31:34:\nA defect in the in-memory journal logic can leave the read cursor for the\nin-memory journal in an inconsistent state, which can result in a segfault.\nNo simple test case is (currently) available for this problem.  One must\nmake heavy use of the SAVEPOINT operation to make it happen.\nThis problem was discovered by Django testing.\ndrh added on 2016-04-07 20:54:57:\nThe problem only comes up when the size of a savepoint journal (which is a\nmultiple of 1028 bytes) is an exact multiple of the in-memory journal buffer\nsize, which defaults to 1016 bytes on 64-bit machines and 1020 bytes on\n32-bit machines.  And even then, you have to do just the right sequence of\nSAVEPOINT operations to get the cursor to be reused.\nThe following scripts will segfault 64-bit builds of SQLite 3.12.0:\nPRAGMA page_size=1024;\nBEGIN;\nCREATE TABLE t1(x INTEGER PRIMARY KEY, y TEXT);\nWITH RECURSIVE c(x) AS (VALUES(1) UNION SELECT x+1 FROM c WHERE x<250)\nINSERT INTO t1(x,y) SELECT x*10, printf('%04d%.800c',x,'*') FROM c;\nSAVEPOINT one;\n  SELECT count(*) FROM t1;\n  WITH RECURSIVE c(x) AS (VALUES(1) UNION SELECT x+1 FROM c WHERE x<250)\n  INSERT INTO t1(x,y) SELECT x*10+1, printf('%04d%.800c',x,'*') FROM c;\nROLLBACK TO one;\n  SELECT count(*) FROM t1;\n  SAVEPOINT twoB;\n    WITH RECURSIVE c(x) AS (VALUES(1) UNION SELECT x+1 FROM c WHERE x<10)\n    INSERT INTO t1(x,y) SELECT x*10+2, printf('%04d%.800c',x,'*') FROM c;\n  ROLLBACK TO twoB;\nRELEASE one;\nCOMMIT;\nFor 32-bit builds, change the two \"250\" constants to \"251\".\ndrh added on 2016-04-07 21:07:21:\nFor some builds (depending on compile-time settings) it might be necessary\nto add\nPRAGMA temp_store=MEMORY;\nto the top of the test script in the previous comment.",
+  "date": "2016-04-07 18:31:349.34 years ago",
+  "vulnerable_version": "3.12.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "SET SESSION sql_mode = '';",
+    "CREATE TABLE t1(id INT PRIMARY KEY, name VARCHAR(255) NOT NULL, value FLOAT DEFAULT 0.0);",
+    "INSERT INTO t1(name, value) VALUES('test1', 1.5);",
+    "START TRANSACTION;",
+    "INSERT INTO t1(name, value) SELECT CONCAT('test', x), x * 1.1 FROM (SELECT 1 AS x UNION SELECT 2 UNION SELECT 3) AS temp;"
+  ],
+  "key_bug_features": [
+    "Heavy SAVEPOINT usage causing inconsistent in-memory journal state"
+  ]
+}

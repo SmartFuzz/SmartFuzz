@@ -1,0 +1,16 @@
+PRAGMA enable_verification;
+SET preserve_insertion_order = false;
+CREATE TABLE integers( 	i INT UNIQUE, 	j INT DEFAULT 0, 	k INT DEFAULT 0 );
+INSERT INTO integers(i) SELECT i FROM range(5000) tbl(i);
+SELECT COUNT(*) FROM integers;
+INSERT INTO integers SELECT * FROM integers ON CONFLICT DO NOTHING;
+INSERT INTO integers SELECT * FROM integers ON CONFLICT DO UPDATE SET j = 10;
+SELECT COUNT(*) FILTER (WHERE j = 10) FROM integers;
+INSERT INTO integers(i, j) SELECT i % 5, i FROM range(4995, 5000) tbl(i) ON CONFLICT DO UPDATE SET j = excluded.j, k = excluded.i;
+SELECT j FROM integers LIMIT 5;
+INSERT INTO integers(i, j) 	SELECT CASE WHEN i % 2 = 0 		THEN 4999 - (i // 2) 		ELSE i - ((i // 2) + 1) 		END, i 	FROM range(5000) tbl(i) ON CONFLICT DO UPDATE SET j = excluded.j;
+SELECT j FROM integers LIMIT 5;
+SELECT j FROM integers LIMIT 5 OFFSET 4995;
+UPDATE integers SET j = 0;
+INSERT INTO integers(i, j) 	SELECT CASE WHEN i % 2 = 0 		THEN 4999 - (i // 2) 		ELSE i - ((i // 2) + 1) 		END, i 	FROM range(5000) tbl(i) ON CONFLICT DO UPDATE SET j = excluded.j WHERE i % 2 = 0 AND excluded.j % 2 = 0;
+SELECT COUNT(j) FILTER (WHERE j != 0) FROM integers;

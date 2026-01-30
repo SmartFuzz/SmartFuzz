@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id INTEGER PRIMARY KEY, values FLOAT[], flags INTEGER);
+INSERT INTO test_data (id, values, flags) VALUES (1, array_value(1.0, 2.0, NULL), 2);
+INSERT INTO test_data (id, values, flags) VALUES (2, array_value(3.5, 4.5, 5.5), 0);
+INSERT INTO test_data (id, values, flags) VALUES (3, array_value(NULL, 6.0, 7.0), 1);
+INSERT INTO test_data (id, values, flags) VALUES (4, array_value(8.9, NULL, 10.0), 3);
+SELECT id, (SELECT COUNT(*) FROM test_data WHERE flags | 1 = 1) AS count_flags FROM test_data GROUP BY id HAVING count_flags > 1;
+SELECT id, array_value(32 | flags, (SELECT COUNT(*) FROM test_data)) AS complex_result FROM test_data WHERE flags IS NOT NULL ORDER BY complex_result;
+SELECT id, values, flags FROM test_data WHERE array_value(flags, (SELECT MAX(flags) FROM test_data)) | 3 = 3;
+SELECT id, SUM(flags) OVER (PARTITION BY values) AS total_flags, (ARRAY_AGG(values))[1] | 1 AS modified_value FROM test_data GROUP BY id;
+WITH filtered_data AS (SELECT id, array_value(0.0 | flags, values[1]) AS combined_data FROM test_data WHERE values IS NOT NULL) SELECT combined_data FROM filtered_data WHERE combined_data IS NOT NULL;

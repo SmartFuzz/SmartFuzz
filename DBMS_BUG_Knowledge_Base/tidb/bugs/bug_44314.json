@@ -1,0 +1,45 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/44314",
+  "title": "Temporary incorrect query results occur after create table.",
+  "vulnerable_database": "tidb",
+  "date": "2023-05-31T15:47:41Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```sql\r\nCREATE DATABASE `django_tests` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci */;\r\nUSE `django_tests`;\r\n\r\nCREATE TABLE `queries_identifier` (\r\n   `id` int(11) NOT NULL AUTO_INCREMENT,\r\n   `name` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,\r\n   PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */\r\n ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;\r\n\r\n\r\n CREATE TABLE `queries_program` (\r\n  `id` int(11) NOT NULL AUTO_INCREMENT,\r\n  `identifier_id` int(11) NOT NULL,\r\n  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,\r\n  UNIQUE KEY `identifier_id` (`identifier_id`),\r\n  CONSTRAINT `queries_program_identifier_id_70ff12a6_fk_queries_identifier_id` FOREIGN KEY (`identifier_id`) REFERENCES `django_tests`.`queries_identifier` (`id`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;\r\n\r\nCREATE TABLE `queries_channel` (\r\n  `id` int(11) NOT NULL AUTO_INCREMENT,\r\n  `identifier_id` int(11) NOT NULL,\r\n  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,\r\n  UNIQUE KEY `identifier_id` (`identifier_id`),\r\n  CONSTRAINT `queries_channel_identifier_id_06ac3513_fk_queries_identifier_id` FOREIGN KEY (`identifier_id`) REFERENCES `django_tests`.`queries_identifier` (`id`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;\r\n\r\nINSERT  INTO queries_identifier(`id`, `name`) values(13, 'i1'), (14, 'i2'), (15, 'i3');\r\nINSERT  INTO queries_program(`id`, `identifier_id`) values(8, 13), (9, 14);\r\nINSERT  INTO queries_channel(`id`, `identifier_id`) values(5, 13);\r\n\r\nSELECT `queries_identifier`.`id`, `queries_identifier`.`name` \r\nFROM `queries_identifier` \r\nLEFT OUTER JOIN `queries_channel` ON (`queries_identifier`.`id` = `queries_channel`.`identifier_id`) \r\nINNER JOIN `queries_program` ON (`queries_identifier`.`id` = `queries_program`.`identifier_id`) \r\nWHERE ((`queries_channel`.`id` = 5 AND `queries_program`.`id` = 9) OR `queries_program`.`id` = 8) \r\nORDER BY `queries_identifier`.`id` ASC;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\n```\r\n+----+------+\r\n| id | name |\r\n+----+------+\r\n| 13 | i1   |\r\n+----+------+\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nDuring a period of time after creating the table.\r\n```\r\n+----+------+\r\n| id | name |\r\n+----+------+\r\n| 13 | i1   |\r\n| 14 | i2   |\r\n+----+------+\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\nI can reproduce this bug in both `7.1.0` and `6.6.0`.\r\n\r\n```\r\nRelease Version: v7.1.0\r\nEdition: Community\r\nGit Commit Hash: 635a4362235e8a3c0043542e629532e3c7bb2756\r\nGit Branch: heads/refs/tags/v7.1.0\r\nUTC Build Time: 2023-05-30 10:50:03\r\nGoVersion: go1.20.3\r\nRace Enabled: false\r\nTiKV Min Version: 6.2.0-alpha\r\nCheck Table Before Drop: false\r\nStore: tikv\r\n```\r\n\r\n```\r\nRelease Version: v6.6.0-serverless\r\nEdition: Community\r\nGit Commit Hash: 5dbf0508b23c87a625e17bd3a992be17e7635c1d\r\nGit Branch: release-6.6-serverless\r\nUTC Build Time: 2023-05-31 10:36:07\r\nGoVersion: go1.19.4\r\nRace Enabled: false\r\nTiKV Min Version: 6.1.0\r\nCheck Table Before Drop: false\r\nStore: tikv\r\n```\r\n",
+  "poc": [
+    "CREATE DATABASE `django_tests` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci */;",
+    "USE `django_tests`;",
+    "CREATE TABLE `queries_identifier` (",
+    "   `id` int(11) NOT NULL AUTO_INCREMENT,",
+    "   `name` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,",
+    "   PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */",
+    " ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;",
+    " CREATE TABLE `queries_program` (",
+    "  `identifier_id` int(11) NOT NULL,",
+    "  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,",
+    "  UNIQUE KEY `identifier_id` (`identifier_id`),",
+    "  CONSTRAINT `queries_program_identifier_id_70ff12a6_fk_queries_identifier_id` FOREIGN KEY (`identifier_id`) REFERENCES `django_tests`.`queries_identifier` (`id`)",
+    "CREATE TABLE `queries_channel` (",
+    "  CONSTRAINT `queries_channel_identifier_id_06ac3513_fk_queries_identifier_id` FOREIGN KEY (`identifier_id`) REFERENCES `django_tests`.`queries_identifier` (`id`)",
+    "INSERT  INTO queries_identifier(`id`, `name`) values(13, 'i1'), (14, 'i2'), (15, 'i3');",
+    "INSERT  INTO queries_program(`id`, `identifier_id`) values(8, 13), (9, 14);",
+    "INSERT  INTO queries_channel(`id`, `identifier_id`) values(5, 13);",
+    "SELECT `queries_identifier`.`id`, `queries_identifier`.`name`",
+    "FROM `queries_identifier`",
+    "LEFT OUTER JOIN `queries_channel` ON (`queries_identifier`.`id` = `queries_channel`.`identifier_id`)",
+    "INNER JOIN `queries_program` ON (`queries_identifier`.`id` = `queries_program`.`identifier_id`)",
+    "WHERE ((`queries_channel`.`id` = 5 AND `queries_program`.`id` = 9) OR `queries_program`.`id` = 8)",
+    "ORDER BY `queries_identifier`.`id` ASC;"
+  ],
+  "poc_type": "sql_text",
+  "state": "closed",
+  "key_bug_features": [
+    "Temporary incorrect query results after creating tables"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE `queries_user` ( `id` int(11) NOT NULL AUTO_INCREMENT, `username` varchar(50) NOT NULL, `email` varchar(100) DEFAULT NULL, PRIMARY KEY (`id`) ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;",
+    "INSERT INTO `queries_user` (`id`, `username`, `email`) VALUES (1, 'user1', 'user1@example.com'), (2, 'user2', NULL);",
+    "CREATE TABLE `queries_order` ( `id` int(11) NOT NULL AUTO_INCREMENT, `user_id` int(11) NOT NULL, `amount` decimal(10,2) NOT NULL, PRIMARY KEY (`id`), CONSTRAINT `fk_user` FOREIGN KEY (`user_id`) REFERENCES `queries_user` (`id`) ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;",
+    "INSERT INTO `queries_order` (`id`, `user_id`, `amount`) VALUES (1, 1, 99.99), (2, 2, 49.50);",
+    "SELECT `queries_user`.`id`, `queries_user`.`username`, `queries_order`.`amount` FROM `queries_user` LEFT JOIN `queries_order` ON `queries_user`.`id` = `queries_order`.`user_id` WHERE `queries_order`.`amount` IS NOT NULL ORDER BY `queries_user`.`id` ASC;"
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/19027",
+  "title": "ASOF JOIN produces incorrect result when join-condition contains OR",
+  "vulnerable_database": "DuckDB",
+  "date": "2025-09-16 20:39:04",
+  "vulnerable_version": "",
+  "description": "### What happens?\n\nConsider the query from the snippet below where left asof join is performed (inner asof gives a wrong answer as well, so join type actually does not matter). I expect the first row from the left table will match the first row from the right, so the result would be:\n| id |        date         | litem | ritem | valuei |\n|---:|---------------------|-------|-------|--------|\n| 0  | 2025-01-01 00:00:00 | A     | A  | 8.0   |\n\nBut this does not happen, the result produced by duckdb:\n| id |        date         | litem | ritem | valuei |\n|---:|---------------------|-------|-------|--------|\n| 0  | 2025-01-01 00:00:00 | A     | NULL  | NULL   |\n\nIf you replace predicate `l.id = r.id and l.date >= r.date and (l.item = r.item or l.item = '*')` on a simple `l.id = r.id and l.date >= r.date and l.item = r.item` everything works as expected, so it's the presence of **OR** in joining condition results in the wrong answer. \n\n### To Reproduce\n\nQuery - can be run directly in duckdb cli:\n```sql\ncreate table l (id integer, date timestamp, item varchar);\ninsert into l values\n    (0, '2025-01-01', 'A');\n\ncreate table r (id integer, date timestamp, item varchar, valuei double);\ninsert into r values\n    (0, '2025-01-01', 'A', 8.0),\n    (0, '2025-01-01', 'B', 12.0);\n\nselect \n    l.id,\n    l.date,\n    l.item as litem,\n    r.item as ritem,\n    valuei\nfrom l\nasof left join r\n    on l.id = r.id and l.date >= r.date\n    and (l.item = r.item or l.item = '*');\n```\n\nOutput:\n| id |        date         | litem | ritem | valuei |\n|---:|---------------------|-------|-------|--------|\n| 0  | 2025-01-01 00:00:00 | A     | NULL  | NULL   |\n\n### OS:\n\nUbuntu 22.04.1, Linux 5.15.0-56-generic, x86_64\n\n### DuckDB Version:\n\n1.4.0\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nAlexey Krasnikov\n\n### Affiliation:\n\nSynthesis Research\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a nightly build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "poc": [
+    "create table l (id integer, date timestamp, item varchar);",
+    "insert into l values\n    (0, '2025-01-01', 'A');",
+    "create table r (id integer, date timestamp, item varchar, valuei double);",
+    "insert into r values\n    (0, '2025-01-01', 'A', 8.0),\n    (0, '2025-01-01', 'B', 12.0);",
+    "select \n    l.id,\n    l.date,\n    l.item as litem,\n    r.item as ritem,\n    valuei\nfrom l\nasof left join r\n    on l.id = r.id and l.date >= r.date\n    and (l.item = r.item or l.item = '*');"
+  ],
+  "key_bug_features": [
+    "Presence of OR in join condition causes incorrect results"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE l (id integer, date timestamp, item varchar, valuei double);",
+    "INSERT INTO l VALUES (1, '2025-01-01 00:00:00', 'B', 5.0);",
+    "CREATE TABLE r (id integer, date timestamp, item varchar, valuei double);",
+    "INSERT INTO r VALUES (1, '2025-01-01 00:00:00', 'B', 10.0), (1, '2025-01-01 00:00:00', 'C', 15.0);",
+    "SELECT l.id, l.date, l.item AS litem, r.item AS ritem, r.valuei FROM l ASOF LEFT JOIN r ON l.id = r.id AND l.date >= r.date AND (l.item = r.item OR l.item = 'C');"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/17009-b364ef2e97142a54%40postgresql.org",
+  "title": "BUG #17009: create temporary table with like option using same name as persistent table does not create indexes",
+  "description": "The following bug has been logged on the website:\nBug reference:      17009\nLogged by:          Mikhail Nagel\nEmail address:      misha_nagel(at)mail(dot)ru\nPostgreSQL version: 12.5\nOperating system:   Debian x64\nDescription:\ntest:\ncreate table t_tmp (a int);\ncreate index on t_tmp (a);\ncreate temporary table t_tmp (like t_tmp including all);\nselect *\nfrom pg_catalog.pg_indexes\nwhere tablename  like 't_tmp%';\ndrop table t_tmp;\ndrop table t_tmp;\n12.5 output:\nce2pg2=> create table t_tmp (a int);\nCREATE TABLE\nce2pg2=> create index on t_tmp (a);\nCREATE INDEX\nce2pg2=> create temporary table t_tmp (like t_tmp including all);\nCREATE TABLE\nce2pg2=> select *\nce2pg2-> from pg_catalog.pg_indexes\nce2pg2-> where tablename  like 't_tmp%';\nschemaname | tablename |  indexname  | tablespace |\nindexdef\n------------+-----------+-------------+------------+---------------------------------------------------------\ntest2      | t_tmp     | t_tmp_a_idx |            | CREATE INDEX\nt_tmp_a_idx ON public.t_tmp USING btree (a)\n(1 строка)\nindex on temporary table \"t_tmp\" not created\n12.3 and 13.3 output:\npostgres=# create table t_tmp (a int);\nCREATE TABLE\npostgres=# create index on t_tmp (a);\nCREATE INDEX\npostgres=# create temporary table t_tmp (like t_tmp including all);\nCREATE TABLE\npostgres=# select *\npostgres-# from pg_catalog.pg_indexes\npostgres-# where tablename  like 't_tmp%';\nschemaname | tablename |  indexname   | tablespace |\nindexdef\n------------+-----------+--------------+------------+---------------------------------------------------------------\npublic     | t_tmp     | t_tmp_a_idx  |            | CREATE INDEX\nt_tmp_a_idx ON public.t_tmp USING btree (a)\npg_temp_4  | t_tmp     | t_tmp_a_idx  |            | CREATE INDEX\nt_tmp_a_idx ON pg_temp_4.t_tmp USING btree (a)\n(2 строки)\nas expected index on temporary table \"t_tmp\" was created (second row)\nworkaround\n1. use different table name\ncreate temporary table t_other_name (like t_tmp including all);\n2. use schema in like option\ncreate temporary table t_tmp (like public.t_tmp including all);",
+  "date": "2021-05-14 07:30:08",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE t_tmp (a int, b varchar, c timestamp DEFAULT CURRENT_TIMESTAMP);",
+    "CREATE INDEX idx_a ON t_tmp (a);",
+    "CREATE TEMPORARY TABLE t_tmp_temp (a int, b varchar, c timestamp DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t_tmp_temp (a, b) VALUES (1, 'test'), (2, NULL), (3, 'example');",
+    "SELECT * FROM DB.DBA_INDEXES WHERE TABLE_NAME LIKE 't_tmp%';"
+  ],
+  "key_bug_features": [
+    "create temporary table with like option using same name"
+  ]
+}

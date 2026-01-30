@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7200",
+  "title": "PRIMARY KEY unique constraint is violated with concurrent inserts",
+  "description": "The unique constraint imposed by the PRIMARY KEY is violated when there are concurrent inserts, resulting in multiple rows with the same key.\n\n**To Reproduce**\n- Create a table with a primary key:\n  ```sql\n  CREATE TABLE T (k int PRIMARY KEY, v int);\n  ```\n\n- Check that the unique constraint is working correctly:\n  ```sql\n  INSERT INTO T VALUES (1, 1); -- ok\n  INSERT INTO T VALUES (1, 1); -- fails (INSERT INTO: PRIMARY KEY constraint 't.t_k_pkey' violated)\n  DELETE FROM T; -- reset table\n  ```\n\n- Test using bash + `mclient`:\n  - Create the `DOTMONETDBFILE`:\n    ```bash\n    cat <<EOF >> .monetdb\n    user=monetdb\n    password=monetdb\n    EOF\n    ```\n  - Run concurrent inserts (make sure to run the second command immediatly after the first, e.g., by pasting the entire input in the terminal):\n    ```bash\n    for i in {1..1000}; do DOTMONETDBFILE=.monetdb mclient -d testdb -s \"INSERT INTO T VALUES ($i, $i)\"; done &\n    for i in {1..1000}; do DOTMONETDBFILE=.monetdb mclient -d testdb -s \"INSERT INTO T VALUES ($i, $i)\"; done\n    ;\n    ```\n  - Check the duplicate values in the table:\n    ```sql\n    SELECT count(*) FROM T;\n\n    Returns (the actual value may vary):\n    +------+\n    | %1   |\n    +======+\n    | 1917 |\n    +------+ \n\n    SELECT * FROM T LIMIT 10;\n\n    Returns:\n    +------+------+\n    | k    | v    |\n    +======+======+\n    |    1 |    1 |\n    |    1 |    1 |\n    |    2 |    2 |\n    |    2 |    2 |\n    |    3 |    3 |\n    |    3 |    3 |\n    |    4 |    4 |\n    |    4 |    4 |\n    |    5 |    5 |\n    |    5 |    5 |\n    +------+------+\n    ```\n  - Running the script again will result in just rollbacks, so it only affects concurrent executions.\n\n\n- Test using Python with `pyodbc`:\n  ```python\n  import pyodbc\n  from multiprocessing import Pool\n\n  def insert(_):\n      conn = pyodbc.connect(f\"DRIVER={{/usr/lib/x86_64-linux-gnu/libMonetODBC.so}};HOST=localhost;PORT=50000;DATABASE=testdb;UID=monetdb;PWD=monetdb\")\n      conn.autocommit = True\n      cursor = conn.cursor()\n      \n      for i in range(1000):\n          try:\n              cursor.execute(f'INSERT INTO T values(?, ?)', i, i)\n          except:\n              pass\n\n      return True\n\n  pool = Pool(2)\n  pool.map(insert, range(2))\n  ```\n**Expected behavior**\nNo rows with a duplicate primary key.\n\n**Software versions**\n- `monetdb -v`: `MonetDB Database Server Toolkit v11.41.11 (Jul2021-SP1)`.\n- OS: `Ubuntu 20.04.3 LTS`;\n- Monetdb installed from release packages with `apt` (packages `monetdb5-sql` and `monetdb-client`);\n- `mclient -v`: `mclient, the MonetDB interactive terminal, version 11.41.11 (Jul2021-SP1)`\n- ODBC driver installed with `apt` packages `unixodbc`, `unixodbc-dev`, and `libmonetdb-client-odbc`;\n- `pyodbc==4.0.32`.\n\n**Additional context**\nThe problem is visible with both `autocommit=True` and `autocommit=False`.",
+  "date": "2021-11-22T16:12:31Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE TABLE T (k int PRIMARY KEY, v int, c varchar(50));",
+    "INSERT INTO T VALUES (1, 1, 'test1');",
+    "INSERT INTO T VALUES (1, 2, 'test2');",
+    "INSERT INTO T VALUES (NULL, 3, 'test3');",
+    "SELECT k, COUNT(*) FROM T GROUP BY k HAVING COUNT(*) > 1;"
+  ],
+  "key_bug_features": [
+    "Concurrent inserts violate PRIMARY KEY unique constraint"
+  ]
+}

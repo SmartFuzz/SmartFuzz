@@ -1,0 +1,30 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/58792",
+  "title": "Bug in Cast char to YEAR",
+  "vulnerable_database": "tidb",
+  "date": "2025-01-08T07:05:30Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n\n```sql\nDROP TABLE IF EXISTS t0;\nDROP TABLE IF EXISTS t1;\nCREATE TABLE t0(c0 CHAR);\nCREATE TABLE t1 LIKE t0;\nINSERT INTO t0 VALUES ('4');\nINSERT INTO t1 VALUES ('1');\n\nSELECT COUNT(*) FROM t1, t0 WHERE NOT (0.7) > (CAST(t1.c0 AS YEAR));\nSELECT (CAST(t1.c0 AS YEAR)) FROM t1;\n```\n\n### 2. What did you expect to see? (Required)\n\nsee the following case:\n\n### 3. What did you see instead (Required)\n\n```sql\n// MySQL 8.4.1\nMySQL [test]> SELECT COUNT(*) FROM t1, t0 WHERE NOT (0.7) > (CAST(t1.c0 AS YEAR));\n+----------+\n| COUNT(*) |\n+----------+\n|        1 |\n+----------+\n1 row in set (0.00 sec)\n\nMySQL [test]> SELECT (CAST(t1.c0 AS YEAR)) FROM t1;\n+-----------------------+\n| (CAST(t1.c0 AS YEAR)) |\n+-----------------------+\n|                  2001 |\n+-----------------------+\n1 row in set (0.00 sec)\n\n// TiDB\nmysql> SELECT COUNT(*) FROM t1, t0 WHERE NOT (0.7) > (CAST(t1.c0 AS YEAR));\n+----------+\n| COUNT(*) |\n+----------+\n|        0 |\n+----------+\n1 row in set (0.04 sec)\nmysql> SELECT (CAST(t1.c0 AS YEAR)) FROM t1;\n+-----------------------+\n| (CAST(t1.c0 AS YEAR)) |\n+-----------------------+\n|                     1 |\n+-----------------------+\n1 row in set (0.03 sec)\n\n// Interestingly, if I change '>' to '>=', this SQL can execute correctly\nmysql> SELECT COUNT(*) FROM t1, t0 WHERE NOT (0.7) >= (CAST(t1.c0 AS YEAR));\n+----------+\n| COUNT(*) |\n+----------+\n|        1 |\n+----------+\n1 row in set (0.05 sec)\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\nTiDB v8.5.0",
+  "poc": [
+    "DROP TABLE IF EXISTS t0;",
+    "DROP TABLE IF EXISTS t1;",
+    "CREATE TABLE t0(c0 CHAR);",
+    "CREATE TABLE t1 LIKE t0;",
+    "INSERT INTO t0 VALUES ('4');",
+    "INSERT INTO t1 VALUES ('1');",
+    "SELECT COUNT(*) FROM t1, t0 WHERE NOT (0.7) > (CAST(t1.c0 AS YEAR));",
+    "SELECT (CAST(t1.c0 AS YEAR)) FROM t1;"
+  ],
+  "poc_type": "sql_text",
+  "state": "open",
+  "key_bug_features": [
+    "CASTing CHAR to YEAR in SQL query"
+  ],
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t2;",
+    "CREATE TABLE t2(c0 CHAR, c1 INT NOT NULL);",
+    "INSERT INTO t2 VALUES ('5', 1);",
+    "SELECT COUNT(*) FROM t2 WHERE NOT (0.7) > (CAST(c0 AS YEAR));",
+    "SELECT (CAST(c0 AS YEAR)) FROM t2 WHERE c1 IS NOT NULL;"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/48253",
+  "title": "TABLESAMPLE REGIONS() with unsigned bigint primary key returns unordered result ",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\nPopulate data:\r\n\r\n```sql\r\nCREATE TABLE a (pk bigint unsigned primary key clustered, v text);\r\nINSERT INTO a WITH RECURSIVE b(pk) AS (SELECT 1 UNION ALL SELECT pk+1 FROM b WHERE pk < 1000) SELECT pk, 'a' FROM b;\r\nINSERT INTO a WITH RECURSIVE b(pk) AS (SELECT 1 UNION ALL SELECT pk+1 FROM b WHERE pk < 1000) SELECT pk + (1<<63), 'b' FROM b;\r\nSPLIT TABLE a BY (500);\r\n```\r\n\r\nPerform the tablesample regions() query:\r\n\r\n```sql\r\nSELECT * FROM a TABLESAMPLE REGIONS() ORDER BY pk;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\n```\r\n+---------------------+------+\r\n| pk                  | v    |\r\n+---------------------+------+\r\n|                 500 | a    |\r\n| 9223372036854775809 | b    |\r\n+---------------------+------+\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n```\r\n+---------------------+------+\r\n| pk                  | v    |\r\n+---------------------+------+\r\n| 9223372036854775809 | b    |\r\n|                 500 | a    |\r\n+---------------------+------+\r\n```\r\n\r\n<details><summary>The `pk` is ordered like a signed integer.</summary>\r\n\r\n`EXPLAIN`ing this shows the `ORDER BY` is eliminated. So the fix should be applied to the `TableSample` object itself.\r\n\r\n```\r\nmysql> explain SELECT * FROM a TABLESAMPLE REGIONS() ORDER BY pk;\r\n+---------------+---------+------+---------------+---------------+\r\n| id            | estRows | task | access object | operator info |\r\n+---------------+---------+------+---------------+---------------+\r\n| TableSample_9 | 1.00    | root |               |               |\r\n+---------------+---------+------+---------------+---------------+\r\n```\r\n\r\n</details>\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\nv7.6.0-alpha-nightly-20231101\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n```\r\nRelease Version: v7.6.0-alpha\r\nEdition: Community\r\nGit Commit Hash: c652a92df890196ad1e956da3a6afa7abf71adfb\r\nGit Branch: heads/refs/tags/v7.6.0-alpha\r\nUTC Build Time: 2023-11-01 14:21:14\r\nGoVersion: go1.21.3\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv \r\n```\r\n\r\n(Also reproduced on v7.3.0 and v6.5.2. Should affect every TiDB version since TABLESAMPLE REGIONS() was implemented)",
+  "date": "2023-11-02T16:01:14Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE b (id UInt64 PRIMARY KEY, name String, created_at DateTime DEFAULT now());",
+    "INSERT INTO b (id, name) VALUES (1, 'test1'), (2, 'test2'), (3, 'test3'), (9223372036854775808, 'test4');",
+    "CREATE TABLE c (ref_id UInt64, description String, CONSTRAINT fk_ref_id FOREIGN KEY (ref_id) REFERENCES b(id));",
+    "INSERT INTO c (ref_id, description) SELECT id, concat('desc_', id) FROM b WHERE id < 4;",
+    "SELECT * FROM b ORDER BY id;"
+  ],
+  "key_bug_features": [
+    "TABLESAMPLE REGIONS() with unsigned bigint primary key"
+  ]
+}

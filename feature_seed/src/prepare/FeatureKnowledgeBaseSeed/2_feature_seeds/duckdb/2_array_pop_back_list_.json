@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id INTEGER, value_list LIST, bitstring_value BITSTRING);
+INSERT INTO test_data VALUES (1, [1, 2, 3, 4], '10101'::BITSTRING), (2, [5, 6, 7, 8], '01010'::BITSTRING), (3, [], '11111'::BITSTRING);
+SELECT id, array_pop_back(value_list) AS modified_list, bitstring_value & '11100'::BITSTRING AS modified_bitstring FROM test_data WHERE id IN (SELECT DISTINCT id FROM test_data WHERE bitstring_value & '00001'::BITSTRING = '00001'::BITSTRING);
+WITH temp AS (SELECT id, array_pop_back(value_list) AS reduced_list FROM test_data WHERE array_pop_back(value_list) IS NOT NULL) SELECT COUNT(*) FROM temp WHERE id > (SELECT MAX(id) FROM test_data);
+SELECT id, array_pop_back(value_list) AS popped_list FROM test_data GROUP BY id HAVING COUNT(array_pop_back(value_list)) > 0 AND (bitstring_value & '10000'::BITSTRING) != 0;
+CREATE TEMP TABLE temp_two AS SELECT id, array_pop_back(value_list) AS list_part, bitstring_value & '00011'::BITSTRING AS reduced_bits FROM test_data WHERE bitstring_value IS NOT NULL;
+SELECT id, list_part, MAX(reduced_bits) FROM temp_two GROUP BY id, list_part ORDER BY id DESC;
+SELECT id, array_pop_back(value_list) AS final_list, nullif(bitstring_value & '10101'::BITSTRING, '00000'::BITSTRING) AS null_safe_bits FROM test_data WHERE value_list IS NOT NULL OR bitstring_value IS NULL;
+ALTER TABLE test_data ADD COLUMN new_column STRING;
+INSERT INTO test_data (id, value_list, bitstring_value, new_column) VALUES (4, [9, 10], '11111'::BITSTRING, 'test');

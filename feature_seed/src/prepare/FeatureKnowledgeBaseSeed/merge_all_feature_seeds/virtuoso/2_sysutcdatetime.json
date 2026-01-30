@@ -1,0 +1,12 @@
+CREATE TABLE test_data (id INT PRIMARY KEY, created_at DATETIME DEFAULT sysutcdatetime(), test_string VARCHAR(100));
+INSERT INTO test_data (id, test_string) VALUES (1, 'abc'), (2, 'def'), (3, NULL);
+SELECT id, test_string, sysutcdatetime(1) AS current_time FROM test_data WHERE test_string LIKE CONCAT('a%', (SELECT SUBSTRING(test_string, 1, 1) FROM test_data WHERE id = 1));
+SELECT id, COUNT(*) FROM test_data WHERE sysutcdatetime() LIKE '%0' GROUP BY id HAVING COUNT(*) > 0;
+SELECT id, created_at, sysutcdatetime() AS now_time FROM test_data WHERE created_at > (SELECT MAX(created_at) FROM test_data WHERE test_string IS NOT NULL) OR (test_string LIKE '%f%');
+CREATE TABLE second_table (ref_id INT, value FLOAT, FOREIGN KEY (ref_id) REFERENCES test_data(id));
+INSERT INTO second_table (ref_id, value) VALUES (1, 100.123456), (2, NULL), (3, 200.654321);
+SELECT td.id, st.value, sysutcdatetime() AS check_time FROM test_data td LEFT JOIN second_table st ON td.id = st.ref_id WHERE st.value IS NULL OR td.test_string LIKE 'd%';
+SELECT id, test_string FROM test_data WHERE sysutcdatetime() IS NOT NULL AND test_string IS NOT NULL AND (test_string LIKE CONCAT('%', 'a', 'b', '%')) ORDER BY id;
+CREATE TABLE edge_cases (num DECIMAL(10,5), description VARCHAR(255));
+INSERT INTO edge_cases (num, description) VALUES (0.00000, 'zero'), (1.23456, 'positive'), (-1.23456, 'negative'), (NULL, 'null case');
+SELECT num, description FROM edge_cases WHERE sysutcdatetime() LIKE '2022%' AND (num IS NULL OR XOR(num < 0 AND description LIKE '%negative%')) ORDER BY LENGTH(description);

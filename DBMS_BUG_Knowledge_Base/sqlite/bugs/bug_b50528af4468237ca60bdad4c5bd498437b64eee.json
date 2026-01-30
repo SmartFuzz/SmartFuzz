@@ -1,0 +1,26 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/b50528af44",
+  "title": "\"WHERE a=? AND b IN (?,?,...) AND c>?\" query using the seekscan optimization sometimes returns extra rows.",
+  "vulnerable_version": "",
+  "date": "2023-03-29 21:55:392.37 years ago",
+  "path": "/home/crawl_bugs/sqlite/ticket_output/ticket_info_b50528af44.json",
+  "poc": [
+    "CREATE TABLE t1(a TEXT, b INT, c INT NOT NULL, PRIMARY KEY(a,b,c));",
+    "WITH RECURSIVE c(x) AS (VALUES(0) UNION ALL SELECT x+1 FROM c WHERE x<1997)\n    INSERT INTO t1(a,b,c) SELECT printf('xyz%d',x/10),x/6,x FROM c;",
+    "INSERT INTO t1 VALUES('abc',234,6);",
+    "INSERT INTO t1 VALUES('abc',345,7);",
+    "SELECT a,b,c FROM t1 WHERE b IN (235, 345) AND c<=3 AND a='abc' ORDER BY a, b;"
+  ],
+  "vulnerable_database": "sqlite",
+  "description": "dan added on 2023-03-29 21:55:39:\nFor example, in the following:\n  CREATE TABLE t1(a TEXT, b INT, c INT NOT NULL, PRIMARY KEY(a,b,c));\n  WITH RECURSIVE c(x) AS (VALUES(0) UNION ALL SELECT x+1 FROM c WHERE x<1997)\n    INSERT INTO t1(a,b,c) SELECT printf('xyz%d',x/10),x/6,x FROM c;\n  INSERT INTO t1 VALUES('abc',234,6);\n  INSERT INTO t1 VALUES('abc',345,7);\n  ANALYZE;\n\n  SELECT a,b,c FROM t1 WHERE b IN (235, 345) AND c<=3 AND a='abc' ORDER BY a, b;\n\nthe final query may incorrectly return the ('abc', 345, 7) tuple.\ndan added on 2023-03-29 22:05:23:\nIntroduced along with the seekscan optimization here:\nhttps://www.sqlite.org/src/info/4a43430fd23f8835",
+  "key_bug_features": [
+    "Seekscan optimization incorrectly returns extra rows in query results."
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t2(a TEXT, b INTEGER, c INTEGER NOT NULL, d REAL DEFAULT 0.0, PRIMARY KEY(a, b));",
+    "INSERT INTO t2(a, b, c) VALUES('test1', 100, 1);",
+    "INSERT INTO t2(a, b, c) VALUES('test2', 200, 2);",
+    "INSERT INTO t2(a, b, c) VALUES('test3', 300, 3);",
+    "SELECT a, b, c FROM t2 WHERE b IN (100, 200) AND c < 3 ORDER BY c DESC;"
+  ]
+}

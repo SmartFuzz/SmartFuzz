@@ -1,0 +1,24 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/6e3ace1270",
+  "title": "Table-valued functions with required parameters",
+  "vulnerable_version": "3.46.0",
+  "date": "2024-05-23 20:33:101.22 years ago",
+  "path": "/home/crawl_bugs/sqlite/ticket_output/ticket_info_6e3ace1270.json",
+  "poc": [
+    "SELECT * FROM testvtab(0) WHERE x=1 OR x=2;",
+    "CREATE TABLE x(x INT, p1 INT HIDDEN)\";",
+    "Create = 0;"
+  ],
+  "vulnerable_database": "sqlite",
+  "description": "drh added on 2024-05-23 20:33:10:\n/*\n** The technique for requiring arguments on table-valued functions\n** described at:\n**\n**   https://sqlite.org/vtab.html#erpotvf\n**\n** does not work.  To see the problem, save the code shown here into\n** a file named \"testvtab.c\" and then compile it (on Linux) as follows:\n**\n**  gcc -Wall -g -shared -fPIC -I. -DSQLITE_DEBUG ./testvtab.c -o ./testvtab.so\n**\n** Then run the following script in the CLI:\n**\n**    .load ./testvtab.so\n**    SELECT * FROM testvtab(0) WHERE x=1 OR x=2;\n*/\n#include <sqlite3ext.h>\nSQLITE_EXTENSION_INIT1\n#include <stdlib.h>\n#include <stdio.h>\n\nint xConnect(sqlite3 *xdb, void *aux, int na1, const char *const *na2,\n             sqlite3_vtab **tab, char **na3) {\n  const char *sql = \"CREATE TABLE x(x INT, p1 INT HIDDEN)\";\n# define X_COLUMN 0\n# define P1_COLUMN 1\n  sqlite3_declare_vtab(xdb, sql);\n  *tab = malloc(sizeof(sqlite3_vtab));\n  return SQLITE_OK;\n}\nint xDisconnect(sqlite3_vtab *t) {\n  free(t);\n  return SQLITE_OK;\n}\nint xDestroy(sqlite3_vtab *t) {\n  free(t);\n  return SQLITE_OK;\n}\nint xOpen(sqlite3_vtab *na1, sqlite3_vtab_cursor **c) {\n  *c = malloc(sizeof(sqlite3_vtab_cursor));\n  return SQLITE_OK;\n}\nint xClose(sqlite3_vtab_cursor *c) {\n  free(c);\n  return SQLITE_OK;\n}\n\nint xBestIndex(sqlite3_vtab * vtab, sqlite3_index_info *info) {\n  int seen_p1 = 0;\n  int i;\n  printf(\"## xBestIndex called:\\n\");\n  printf(\"##   nConstraint=%d\\n\", info->nConstraint);\n  for(i=0; i<info->nConstraint; i++){\n    printf(\"##   constraint[%d]: col=%d op=%d usable=%d\\n\",\n       i, info->aConstraint[i].iColumn, info->aConstraint[i].op,\n       info->aConstraint[i].usable);\n  }\n  for (i = 0; i < info->nConstraint; ++i) {\n    if (info->aConstraint[i].iColumn == P1_COLUMN) {\n      if (!info->aConstraint[i].usable) {\n        return SQLITE_CONSTRAINT;\n      }\n      seen_p1 = 1;\n    }\n  }\n  if (!seen_p1) {\n    vtab->zErrMsg = sqlite3_mprintf(\"p1 omitted\");\n    return SQLITE_ERROR;\n  }\n  return SQLITE_OK;\n}\nint xFilter(sqlite3_vtab_cursor *raw, int idxNum, const char *na1, int na2,\n            sqlite3_value **na3) {\n  return SQLITE_OK;\n}\nint xNext(sqlite3_vtab_cursor *raw) {\n  return SQLITE_OK;\n}\nint xEof(sqlite3_vtab_cursor *raw) {\n  return 1;\n}\nint xColumn(sqlite3_vtab_cursor *raw, sqlite3_context *ctx, int col) {\n  return SQLITE_OK;\n}\n\nsqlite3_module module;\n\nint sqlite3_testvtab_init(sqlite3 *db, char **pzErrMsg,\n                          const sqlite3_api_routines *pApi) {\n  SQLITE_EXTENSION_INIT2(pApi);\n  module.xCreate = 0;\n  module.xConnect = xConnect;\n  module.xDisconnect = xDisconnect;\n  module.xDestroy = xDestroy;\n  module.xOpen = xOpen;\n  module.xBestIndex = xBestIndex;\n  module.xClose = xClose;\n  module.xFilter = xFilter;\n  module.xNext = xNext;\n  module.xEof = xEof;\n  module.xColumn = xColumn;\n  return sqlite3_create_module_v2(db, \"testvtab\", &module, 0, 0);\n}",
+  "key_bug_features": [
+    "Table-valued functions require parameters but fail validation"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE testvtab(x INT, p1 INT HIDDEN);",
+    "INSERT INTO testvtab(x, p1) VALUES (1, NULL);",
+    "INSERT INTO testvtab(x, p1) VALUES (2, 10);",
+    "SELECT * FROM testvtab(10) WHERE x = 1 OR x IS NULL;",
+    "SELECT * FROM testvtab(0) WHERE x = 2 AND p1 = 10;"
+  ]
+}

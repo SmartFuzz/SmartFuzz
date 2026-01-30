@@ -1,0 +1,25 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/87375",
+  "title": "User-defined column can conflict with internally generated subcolumn",
+  "vulnerable_database": "ClickHouse",
+  "date": "2025-09-22T03:44:05Z",
+  "vulnerable_version": "",
+  "description": "### Company or project name\nIn MergeTree tables, some column types internally generate subcolumns (e.g., Array columns generate `size0`). If a user manually creates a column with the same name as one of these internal subcolumns, it can lead to conflicts.\n### Describe the unexpected behaviour\n* **Compact parts** Compact parts handle this by a rule where user-defined columns override internally generated subcolumns, so queries do not fail. However, this breaks `optimize_functions_to_subcolumns`. For example, `length(a)` may read the user-defined column instead of the actual Array length.\n* **Wide parts** can fail during deserialization, causing queries depending on the column or subcolumn to break.\n### Which ClickHouse versions are affected?\nMaster\n### How to reproduce\n**Example using Array:**\n```sql\n-- Compact part works by overriding internally generated subcolumns\nDROP TABLE IF EXISTS a;\nCREATE TABLE a(a Array(Int), `a.size0` UInt64) ENGINE MergeTree ORDER BY ()\nSETTINGS min_bytes_for_wide_part = 100000;\nINSERT INTO a VALUES ([123, 234], 1);\nSELECT a, a.size0, length(a) FROM a\nSETTINGS optimize_functions_to_subcolumns = 0;\nDROP TABLE a;\n-- Wide part fails\nCREATE TABLE a(a Array(Int), `a.size0` UInt64) ENGINE MergeTree ORDER BY ()\nSETTINGS min_bytes_for_wide_part = 0;\nINSERT INTO a VALUES ([123, 234], 1);\n-- Deserialization fails due to conflict between manual column and internal size0\nSELECT a, a.size0, length(a) FROM a\nSETTINGS optimize_functions_to_subcolumns = 0;\nDROP TABLE a;\n```\n### Expected behavior\nWide parts should follow the same rule as compact parts: user-defined columns override internally generated subcolumns without breaking deserialization. Also, functions like length(a) should reflect the actual Array length, even if a user-defined subcolumn exists.\n### Error message and/or stacktrace\n_No response_\n### Additional context\n_No response_",
+  "poc": [
+    "DROP TABLE IF EXISTS a;",
+    "CREATE TABLE a(a Array(Int), `a.size0` UInt64) ENGINE MergeTree ORDER BY () \nSETTINGS min_bytes_for_wide_part = 100000;",
+    "INSERT INTO a VALUES ([123, 234], 1);",
+    "DROP TABLE a;",
+    "CREATE TABLE a(a Array(Int), `a.size0` UInt64) ENGINE MergeTree ORDER BY () \nSETTINGS min_bytes_for_wide_part = 0;"
+  ],
+  "key_bug_features": [
+    "User-defined column conflicts with internal subcolumn names"
+  ],
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS test_table;",
+    "CREATE TABLE test_table(a Array(Int), `a.size0` UInt64) ENGINE MergeTree ORDER BY () SETTINGS min_bytes_for_wide_part = 0;",
+    "INSERT INTO test_table VALUES ([1, 2, 3], 3);",
+    "SELECT a, a.size0, length(a) FROM test_table;",
+    "DROP TABLE test_table;"
+  ]
+}

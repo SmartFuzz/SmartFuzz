@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7435",
+  "title": "MonetDB server crashes in `exp_copy`",
+  "description": "MonetDB server crashes in `exp_copy`.\n\n**To Reproduce**\n```sql\nCREATE TABLE v0 ( v1 , v2 ) as ( select i , cast ( i as string ) from generate_series ( 1 , 1000 ) as t ( i ) );\n DELETE FROM v0 WHERE NOT ( v1 = ( SELECT 3 WHERE v2 = ( SELECT sum ( v2 ) OVER ( ) ) GROUP BY 7 ) ) ;  \n```\n\n**Backtrace of the Crash**\n```c\n#0 0x7f2b00d41e4d (exp_copy+0x28d)\n#1 0x7f2b00d80106 (push_up_project_exp+0x126)\n#2 0x7f2b00d80307 (push_up_project_exp+0x327)\n#3 0x7f2b00d80574 (push_up_project_exp+0x594)\n#4 0x7f2b00d79ca2 (rel_unnest_dependent+0x13d2)\n#5 0x7f2b00d78d0d (rel_unnest_dependent+0x43d)\n#6 0x7f2b00d7a0f0 (rel_unnest_dependent+0x1820)\n#7 0x7f2b00d7c5b1 (rel_unnest_dependent+0x3ce1)\n#8 0x7f2b00d7a0f0 (rel_unnest_dependent+0x1820)\n#9 0x7f2b00d78cba (rel_unnest_dependent+0x3ea)\n#10 0x7f2b00d79c6c (rel_unnest_dependent+0x139c)\n#11 0x7f2b00d78cba (rel_unnest_dependent+0x3ea)\n#12 0x7f2b00d7a3e7 (rel_unnest_dependent+0x1b17)\n#13 0x7f2b00d78cba (rel_unnest_dependent+0x3ea)\n#14 0x7f2b00d79c6c (rel_unnest_dependent+0x139c)\n#15 0x7f2b00d6fab7 (_rel_unnest+0x4d7)\n#16 0x7f2b00d5dc97 (rel_visitor_bottomup+0x3e7)\n#17 0x7f2b00d5db87 (rel_visitor_bottomup+0x2d7)\n#18 0x7f2b00d5db87 (rel_visitor_bottomup+0x2d7)\n#19 0x7f2b00d5db28 (rel_visitor_bottomup+0x278)\n#20 0x7f2b00d68b16 (rel_unnest+0xd6)\n#21 0x7f2b00ce4eef (sql_processrelation+0x4f)\n#22 0x7f2b00aeee1b (sql_symbol2relation+0x1bb)\n#23 0x7f2b00b1bb84 (SQLparser+0x624)\n#24 0x7f2b00b1acbc (SQLengine_+0xa5c)\n#25 0x7f2b00b184fe (SQLengine+0x3e)\n#26 0x7f2b010962cf (runScenario+0x6f)\n#27 0x7f2b010974de (MSscheduleClient+0xb6e)\n#28 0x7f2b011ce182 (doChallenge+0x132)\n#29 0x7f2b01ef78a7 (thread_starter+0xc7)\n#30 0x7f2b00a12609 (start_thread+0xd9)\n#31 0x7f2b00935133 (clone+0x43)\n```\n\n**Software versions**\n - MonetDB version number: v11.49.1 (Dec2023)\n - OS and version: Ubuntu 20.04\n - From docker image monetdb/monetdb:Dec2023\n\nAn example of steps to reproduce in docker container (**write the poc into /tmp/test.sql first**):\n```bash\ndocker container rm monetdb_test -f\ndocker run -e MDB_DB_ADMIN_PASS=monetdb --name monetdb_test -itd monetdb/monetdb:Dec2023\ndocker exec monetdb_test bash -c 'echo -n -e \"user=monetdb\\npassword=monetdb\\n\" > /root/.monetdb'\n\nsleep 10\ncat /tmp/test.sql | timeout 5s docker exec -i monetdb_test mclient monetdb     # run test case\n\nif docker exec monetdb_test bash -c \"grep '[m]server5' /proc/*/cmdline -lR\"; then\n    echo \"[INFO] Server normal.\"\nelse\n    echo \"[CRASH] Mserver5 process does NOT exist.\"\nfi\n```\n\nIt can also be reproduced on the docker image `monetdb/dev-builds:default`.\n\n**Issue labeling**\nbug",
+  "date": "2024-01-17T06:49:04Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE TABLE v1 ( id INT PRIMARY KEY, name VARCHAR(255), value FLOAT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP );",
+    "INSERT INTO v1 (id, name, value) VALUES (1, 'test1', 10.5), (2, 'test2', NULL), (3, 'test3', 20.0);",
+    "CREATE TABLE v2 ( ref_id INT, description VARCHAR(255), amount DECIMAL(10, 2) );",
+    "INSERT INTO v2 (ref_id, description, amount) VALUES (1, 'desc1', 5.00), (2, 'desc2', 15.50);",
+    "DELETE FROM v1 WHERE id NOT IN (SELECT ref_id FROM v2 WHERE amount > (SELECT AVG(amount) FROM v2));"
+  ],
+  "key_bug_features": [
+    "DELETE operation with complex subquery in `exp_copy`"
+  ]
+}

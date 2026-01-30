@@ -1,0 +1,24 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=101252",
+  "title": "Can't query CHAR(36) column containing NULL",
+  "vulnerable_database": "Connector / NET",
+  "date": "2020-10-20 20:09:00",
+  "vulnerable_version": "8.0.22",
+  "description": "The column type CHAR(36) is used to represent a GUID in MySQL Server (and MySqlDataReader.GetValue will return a System.Guid value from that column).\r\n\r\nStarting in 8.0.22, querying a CHAR(36) column containing NULL values will throw an ArgumentOutOfRangeException.\r\n\r\nArgumentOutOfRangeException: Non-negative number required. (Parameter 'count') \r\nStackTrace:\r\n   at System.Text.UTF8Encoding.GetString(Byte[] bytes, Int32 index, Int32 count)\r\n   at MySql.Data.MySqlClient.NativeDriver.ReadColumnValue(Int32 index, MySqlField field, IMySqlValue valObject)\r\n   at MySql.Data.MySqlClient.ResultSet.ReadColumnData(Boolean outputParms)\r\n   at MySql.Data.MySqlClient.ResultSet.NextRow(CommandBehavior behavior)\r\n   at MySql.Data.MySqlClient.MySqlDataReader.Read()\nHow to repeat:\nRun the following C# code:\r\n\r\nusing var connection = new MySqlConnection(\"...\");\r\nconnection.Open();\r\n\r\nusing var command = new MySqlCommand(@\"drop table if exists guid_test;\r\ncreate table guid_test(value char(36));\r\ninsert into guid_test(value) values(null);\", connection);\r\ncommand.ExecuteNonQuery();\r\n\r\ncommand.CommandText = \"select value from guid_test;\";\r\nusing var reader = command.ExecuteReader();\r\nwhile (reader.Read()) // <-- exception thrown here\r\n{\r\n\tConsole.WriteLine(reader.IsDBNull(0)); // expected True\r\n}\nSuggested fix:\nTest for 'length != -1' here:\nhttps://github.com/mysql/mysql-connector-net/commit/c8b7779b9f98f6985600483a5331d951f40127...",
+  "poc": [
+    "drop table if exists guid_test;",
+    "create table guid_test(value char(36));",
+    "insert into guid_test(value) values(null);",
+    "select value from guid_test;"
+  ],
+  "key_bug_features": [
+    "Querying CHAR(36) column with NULL values"
+  ],
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS guid_test;",
+    "CREATE TABLE guid_test(value CHAR(36) DEFAULT NULL, id INT NOT NULL AUTO_INCREMENT PRIMARY KEY);",
+    "INSERT INTO guid_test(value) VALUES(NULL), (NULL), ('123e4567-e89b-12d3-a456-426614174000');",
+    "SELECT value FROM guid_test WHERE value IS NULL;",
+    "SELECT COUNT(*) FROM guid_test WHERE value IS NOT NULL;"
+  ]
+}

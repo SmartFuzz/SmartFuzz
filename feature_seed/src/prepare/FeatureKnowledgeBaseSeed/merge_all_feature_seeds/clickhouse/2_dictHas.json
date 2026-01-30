@@ -1,0 +1,15 @@
+CREATE TABLE test_dict (id UInt32, value String, created_at DateTime, dict_name String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_dict VALUES (1, 'test_value_1', now(), 'dict1'), (2, 'test_value_2', now(), 'dict2'), (3, NULL, now(), 'dict3'), (4, 'extreme_value', now(), 'dict4');
+CREATE DICTIONARY dict1 (id UInt32, description String) PRIMARY KEY id;
+INSERT INTO dict1 VALUES (1, 'desc1'), (2, 'desc2');
+SELECT id, dictHas('dict1', id) || ' has key' AS key_status FROM test_dict WHERE created_at > now() - INTERVAL 1 HOUR;
+SELECT id, value || ' - ' || dictHas('dict1', id) AS detailed_status FROM test_dict WHERE value IS NOT NULL;
+SELECT id, dictHas('dict1', id) AS key_check, value || ' checked' AS updated_value FROM test_dict WHERE id IN (SELECT id FROM test_dict WHERE value IS NOT NULL);
+SELECT id, COUNT() AS occurrence FROM test_dict GROUP BY dictHas('dict1', id) HAVING occurrence > 0 ORDER BY occurrence DESC;
+CREATE TABLE test_aggregation (id UInt32, score Float64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_aggregation VALUES (1, 100.0), (2, NULL), (3, 200.5);
+SELECT id, SUM(score) || ' points' AS total_score FROM test_aggregation GROUP BY id HAVING total_score IS NOT NULL;
+SELECT id, dictHas('dict1', id) AS exists_key, created_at FROM test_dict WHERE created_at BETWEEN '2022-01-01' AND '2023-12-31' ORDER BY id ASC;
+SELECT id, (SELECT COUNT(*) FROM test_aggregation WHERE score IS NOT NULL) + dictHas('dict1', id) AS total_count FROM test_dict;
+SELECT id, MAX(dictHas('dict1', id)) AS max_key_exists FROM test_dict GROUP BY value HAVING max_key_exists = 1;
+SELECT s.id, s.value, d.value || ' - Enhanced' AS enhanced_value FROM (SELECT id, value FROM test_dict WHERE value IS NOT NULL) AS s JOIN dict1 AS d ON dictHas('dict1', s.id) = 1 ORDER BY d.value ASC;

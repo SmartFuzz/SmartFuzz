@@ -1,0 +1,10 @@
+CREATE TABLE ip_test (id UInt32, ip_address String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO ip_test VALUES (1, '192.168.0.1'), (2, '255.255.255.255'), (3, NULL), (4, '0.0.0.0');
+SELECT id, IPv6NumToString(IPv4ToIPv6(IPv4StringToNum(ip_address)) ) AS ipv6 FROM ip_test WHERE ip_address NOT LIKE '%.0.0.0';
+SELECT DISTINCT ip_address, SUM(CASE WHEN IPv4ToIPv6(IPv4StringToNum(ip_address)) NOT LIKE '::ffff:%' THEN 1 ELSE 0 END) AS not_ipv6 FROM ip_test GROUP BY ip_address HAVING not_ipv6 > 0;
+CREATE TABLE ip_aggregate AS SELECT id, IPv6NumToString(IPv4ToIPv6(IPv4StringToNum(ip_address))) AS ipv6 FROM ip_test WHERE ip_address IS NOT NULL;
+SELECT AVG(id) AS avg_id FROM ip_aggregate WHERE ipv6 NOT LIKE '::ffff:192.168.0.100';
+SELECT COUNT(*) FROM (SELECT DISTINCT IPv6NumToString(IPv4ToIPv6(IPv4StringToNum(ip_address))) AS ipv6 FROM ip_test WHERE ip_address NOT LIKE '192.168.0.%') AS unique_ipv6 WHERE ipv6 IS NOT NULL;
+SELECT id, ip_address FROM ip_test WHERE IPv4ToIPv6(IPv4StringToNum(ip_address)) NOT LIKE IPv4ToIPv6(IPv4StringToNum('192.168.1.1')) AND ip_address IS NOT NULL;
+ALTER TABLE ip_test ADD COLUMN description String;
+INSERT INTO ip_test (id, ip_address, description) VALUES (5, '10.0.0.1', 'Private IP'), (6, NULL, 'NULL IP included');

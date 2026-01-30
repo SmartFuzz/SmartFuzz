@@ -1,0 +1,32 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/57608",
+  "title": "When `truncate` is NULL, `1 BETWEEN truncate() AND 1` outputs unexpected 1",
+  "vulnerable_database": "tidb",
+  "date": "2024-11-21T13:34:36Z",
+  "vulnerable_version": "Unknown",
+  "description": "### 1. Minimal reproduce step (Required)\r\n```sql\r\ncreate table t1 ( c1 int primary key);\r\ninsert into t1 (c1) values (1), (2), (3), (4), (5), (6), (7), (11), (12), (13), (14), (15), (16), (17), (21), (22), (23), (24), (25), (26), (27), (116), (127), (121), (122), (113), (214), (251), (261), (217), (91), (92), (39), (94), (95), (69), (79), (191), (129);\r\n\r\ncreate view v2 as select 0 as q2 from t1;\r\n\r\nselect distinct\r\n  1 between NULL and 1 as w0, \r\n  truncate(1, (cast(ref_1.q2 as unsigned) % 0)) as w1,\r\n  (1 between truncate(1, (cast(ref_1.q2 as unsigned) % 0)) and 1) as w2\r\nfrom \r\n  (v2 as ref_0 inner join v2 as ref_1 on (1=1))\r\n;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\nThe third column should not have `1`\r\nin TiDB with unistore:\r\n```\r\nmysql> select distinct   1 between NULL and 1 as w0,    truncate(1, (cast(ref_1.q2 as unsigned) % 0)) as w1,   (1\r\nbetween truncate(1, (cast(ref_1.q2 as unsigned) % 0)) and 1) as w2 from    (v2 as ref_0 inner join v2 as ref_1 on\r\n(1=1));\r\n+------+------+------+\r\n| w0   | w1   | w2   |\r\n+------+------+------+\r\n| NULL | NULL | NULL |\r\n+------+------+------+\r\n1 row in set, 3042 warnings (0.05 sec)\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\nin TiDB with TiKV\r\n```\r\nmysql> select distinct\r\n    ->   1 between NULL and 1 as w0, \r\n    ->   truncate(1, (cast(ref_1.q2 as unsigned) % 0)) as w1,\r\n    ->   (1 between truncate(1, (cast(ref_1.q2 as unsigned) % 0)) and 1) as w2\r\n    -> from \r\n    ->   (v2 as ref_0 inner join v2 as ref_1 on (1=1))\r\n    -> ;\r\n+------+------+------+\r\n| w0   | w1   | w2   |\r\n+------+------+------+\r\n| NULL | NULL |    1 |\r\n| NULL | NULL | NULL |\r\n+------+------+------+\r\n2 rows in set, 1880 warnings (0.00 sec)\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n```\r\nRelease Version: v8.5.0-alpha-184-g1c059a1216\r\nEdition: Community\r\nGit Commit Hash: 1c059a1216db711e2cb56ea9f3d1ad8c23db6327\r\nGit Branch: HEAD\r\nUTC Build Time: 2024-11-21 04:56:22\r\nGoVersion: go1.23.3\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv\r\n```\r\n\r\ntopology:\r\ndistributed.yaml:\r\n```\r\nglobal:\r\n  user: \"tidb\"\r\n  ssh_port: 22\r\n  deploy_dir: \"/tidb-deploy\"\r\n  data_dir: \"/tidb-data\"\r\n\r\ntidb_servers:\r\n  - host: 10.0.2.81\r\n\r\npd_servers:\r\n  - host: 10.0.2.82\r\n\r\ntikv_servers:\r\n  - host: 10.0.2.83\r\n```\r\n\r\n\r\n### about us\r\nWe are the BASS team from the School of Cyber Science and Technology at Beihang University. Our main focus is on system software security, operating systems, and program analysis research, as well as the development of automated program testing frameworks for detecting software defects. Using our self-developed database vulnerability testing tool, we have identified the above-mentioned vulnerabilities in TiDB that may lead to database logic error.\r\n",
+  "poc": [
+    "create table t1 ( c1 int primary key);",
+    "insert into t1 (c1) values (1), (2), (3), (4), (5), (6), (7), (11), (12), (13), (14), (15), (16), (17), (21), (22), (23), (24), (25), (26), (27), (116), (127), (121), (122), (113), (214), (251), (261), (217), (91), (92), (39), (94), (95), (69), (79), (191), (129);",
+    "create view v2 as select 0 as q2 from t1;",
+    "select distinct",
+    "  1 between NULL and 1 as w0,",
+    "  truncate(1, (cast(ref_1.q2 as unsigned) % 0)) as w1,",
+    "  (1 between truncate(1, (cast(ref_1.q2 as unsigned) % 0)) and 1) as w2",
+    "from",
+    "  (v2 as ref_0 inner join v2 as ref_1 on (1=1))",
+    ";"
+  ],
+  "poc_type": "sql_text",
+  "state": "closed",
+  "key_bug_features": [
+    "1 BETWEEN truncate() and 1 with NULL truncate()"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t2 (c1 INT, c2 FLOAT, c3 VARCHAR(10), PRIMARY KEY (c1));",
+    "INSERT INTO t2 (c1, c2, c3) VALUES (1, 1.1, 'test1'), (2, 2.2, 'test2'), (3, NULL, 'test3');",
+    "CREATE VIEW v3 AS SELECT c1, c2 FROM t2 WHERE c2 IS NOT NULL;",
+    "SELECT DISTINCT 1 BETWEEN NULL AND 1 AS w0, TRUNCATE(1, (CAST((SELECT COUNT(*) FROM v3) AS UNSIGNED) % 0)) AS w1, (1 BETWEEN TRUNCATE(1, (CAST((SELECT COUNT(*) FROM v3) AS UNSIGNED) % 0)) AND 1) AS w2 FROM v3;",
+    "SELECT c1, (c2 + 1) AS incremented_value FROM t2 WHERE c3 IS NOT NULL;"
+  ]
+}

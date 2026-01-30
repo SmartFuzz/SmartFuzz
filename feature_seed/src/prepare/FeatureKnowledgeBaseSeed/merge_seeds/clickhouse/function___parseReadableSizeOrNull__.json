@@ -1,0 +1,15 @@
+CREATE TABLE parse_size_test (size_string String);
+INSERT INTO parse_size_test VALUES ('1 B'), ('1 KiB'), ('3 MB'), ('5.314 KiB'), ('invalid');
+SELECT arrayJoin(size_string) AS readable_sizes, parseReadableSizeOrNull(readable_sizes) AS sizes FROM parse_size_test;
+SELECT size_string, parseReadableSizeOrNull(size_string) AS sizes FROM parse_size_test WHERE sizes IS NOT NULL;
+SELECT arrayJoin(['0 B', '1024 B', '1 GiB', '256 MB', '1.5 KiB', 'invalid size']) AS new_readable_sizes, parseReadableSizeOrNull(new_readable_sizes) AS bytes_result;
+WITH subquery AS (SELECT size_string FROM parse_size_test WHERE size_string LIKE '%MB%') SELECT size_string, parseReadableSizeOrNull(size_string) AS bytes FROM subquery;
+SELECT size_string, parseReadableSizeOrNull(size_string) AS sizes FROM parse_size_test ORDER BY sizes DESC;
+CREATE TABLE size_result (size UInt64);
+INSERT INTO size_result SELECT parseReadableSizeOrNull(size_string) FROM parse_size_test;
+SELECT AVG(size) AS average_size FROM size_result WHERE size IS NOT NULL;
+SELECT COUNT(*) AS valid_count FROM parse_size_test WHERE parseReadableSizeOrNull(size_string) IS NOT NULL;
+SELECT size_string, parseReadableSizeOrNull(size_string) AS sizes FROM parse_size_test WHERE size_string NOT LIKE 'invalid%' ORDER BY sizes ASC;
+WITH (SELECT parseReadableSizeOrNull('10 GB')) AS total_size SELECT total_size + 1024 * parseReadableSizeOrNull('1 KiB') AS total_in_bytes;
+CREATE TABLE sizes_summary AS SELECT size_string, parseReadableSizeOrNull(size_string) AS sizes FROM parse_size_test GROUP BY size_string;
+SELECT readable_sizes, sizes FROM (SELECT arrayJoin(['256 B', '512 MB', '2 GiB']) AS readable_sizes) AS t, (SELECT parseReadableSizeOrNull(readable_sizes) AS sizes) AS s;

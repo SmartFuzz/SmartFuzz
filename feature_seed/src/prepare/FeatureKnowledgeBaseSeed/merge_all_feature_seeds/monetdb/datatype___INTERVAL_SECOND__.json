@@ -1,0 +1,18 @@
+CREATE TABLE test_intervals (id INT PRIMARY KEY, duration INTERVAL SECOND);
+INSERT INTO test_intervals VALUES (1, INTERVAL '10.000' SECOND);
+INSERT INTO test_intervals VALUES (2, INTERVAL '9999999999.999' SECOND);
+INSERT INTO test_intervals VALUES (3, INTERVAL '-1.500' SECOND);
+INSERT INTO test_intervals VALUES (4, INTERVAL '0.000' SECOND);
+SELECT id, duration FROM test_intervals WHERE duration > INTERVAL '0.000' SECOND;
+SELECT id, duration FROM test_intervals WHERE duration < INTERVAL '1000.000' SECOND ORDER BY duration DESC;
+CREATE TABLE test_events (event_id INT PRIMARY KEY, start_time TIMESTAMP);
+INSERT INTO test_events VALUES (1, TIMESTAMP '2023-01-01 10:00:00');
+INSERT INTO test_events VALUES (2, TIMESTAMP '2023-01-01 10:05:00');
+SELECT e.event_id, e.start_time + (INTERVAL '5.500' SECOND) AS new_time FROM test_events e JOIN test_intervals i ON e.event_id = i.id;
+SELECT e.event_id, e.start_time + (i.duration) AS adjusted_time FROM test_events e JOIN test_intervals i ON e.event_id = i.id WHERE i.duration > INTERVAL '0.000' SECOND;
+SELECT e.event_id, e.start_time, (e.start_time + INTERVAL '1.500' SECOND) AS time_plus_interval FROM test_events e WHERE EXISTS (SELECT 1 FROM test_intervals i WHERE i.id = e.event_id);
+SELECT e.event_id, EXTRACT(SECOND FROM (e.start_time + i.duration)) AS seconds_plus FROM test_events e JOIN test_intervals i ON e.event_id = i.id;
+CREATE TABLE interval_logs (log_id INT PRIMARY KEY, log_duration INTERVAL SECOND);
+INSERT INTO interval_logs VALUES (1, INTERVAL '300.200' SECOND), (2, INTERVAL '-250.250' SECOND);
+SELECT l.log_id, l.log_duration FROM interval_logs l WHERE l.log_duration < (SELECT MAX(i.duration) FROM test_intervals i);
+SELECT e.event_id, l.log_duration, (e.start_time + l.log_duration) AS adjusted_start FROM test_events e JOIN interval_logs l ON e.event_id = l.log_id;

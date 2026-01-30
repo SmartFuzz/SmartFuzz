@@ -1,0 +1,14 @@
+CREATE TABLE test_data (id INT, ts TIMESTAMPTZ, some_text VARCHAR, value NUMERIC);
+INSERT INTO test_data VALUES (1, TIMESTAMPTZ '2023-01-01 00:00:00+00', 'text1', 10.0), (2, TIMESTAMPTZ '2023-01-02 00:00:00+00', NULL, 20.5), (3, NULL, 'text3', 30.25);
+SELECT typeof(value + 5) AS result_type, ts FROM test_data WHERE ts IS NOT NULL;
+SELECT id, typeof(some_text || ' appended') AS text_type, value FROM test_data WHERE value IS NOT NULL GROUP BY id, value HAVING value > 0;
+SELECT id, COUNT(*) FILTER (WHERE ts IS NULL) AS null_ts_count FROM test_data GROUP BY id HAVING null_ts_count > 0;
+SELECT id, typeof(INTERVAL '5 DAY' + (SELECT MAX(value) FROM test_data WHERE value IS NOT NULL)) AS interval_type FROM test_data;
+SELECT id, ts + INTERVAL (CASE WHEN some_text IS NULL THEN '1 DAY' ELSE '2 DAY' END) AS adjusted_ts FROM test_data;
+CREATE TABLE additional_data (ref_id INT, val NUMERIC);
+INSERT INTO additional_data VALUES (1, NULL), (2, 50.0), (3, 75.5);
+SELECT a.id, typeof(a.value + COALESCE(b.val, 0)) AS combined_value_type FROM test_data a LEFT JOIN additional_data b ON a.id = b.ref_id;
+SELECT id, typeof(value) AS value_type, (ts + INTERVAL (value/10) DAY) AS adjusted_ts FROM test_data WHERE value < 25.0;
+SELECT id, ts, typeof(ts + INTERVAL (SELECT COUNT(*) FROM test_data)) AS complex_interval_type FROM test_data;
+SELECT id, typeof(NULL + 5) AS null_addition_result FROM test_data WHERE value IS NOT NULL;
+SELECT id, ts + INTERVAL (SELECT COUNT(*) FROM additional_data WHERE val IS NOT NULL) AS complex_ts FROM test_data WHERE ts IS NOT NULL LIMIT 1;

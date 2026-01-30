@@ -1,0 +1,10 @@
+CREATE TABLE moods (id INT PRIMARY KEY, mood VARCHAR(20) CHECK (mood IN ('happy', 'sad', 'angry')));
+INSERT INTO moods VALUES (1, 'happy'), (2, 'sad'), (3, 'angry');
+CREATE TABLE mood_scores (mood_id INT, score FLOAT, FOREIGN KEY (mood_id) REFERENCES moods(id));
+INSERT INTO mood_scores VALUES (1, 10.5), (2, NULL), (3, 15.0), (1, 5.0), (2, 20.0);
+SELECT enum_code(mood) + COALESCE(SUM(score), 0) AS total_score FROM moods LEFT JOIN mood_scores ON mood_scores.mood_id = moods.id GROUP BY mood;
+SELECT mood, COUNT(*) AS count, AVG(enum_code(mood) + COALESCE(score, 0)) AS avg_score FROM moods LEFT JOIN mood_scores ON mood_scores.mood_id = moods.id GROUP BY mood HAVING avg_score > 10;
+WITH ranked_scores AS (SELECT mood, score, ROW_NUMBER() OVER (PARTITION BY mood ORDER BY score DESC) AS rank FROM mood_scores) SELECT mood, score FROM ranked_scores WHERE rank = 1;
+SELECT m.mood, (enum_code(m.mood) + 5) AS coded_value FROM moods m WHERE coded_value BETWEEN 2 AND 30;
+SELECT mood, enum_code(mood) + 1 AS adjusted_value FROM moods WHERE mood IN (SELECT mood FROM moods WHERE id < 3);
+SELECT mood, COUNT(*) + enum_code(mood) AS computed_value FROM moods GROUP BY mood HAVING computed_value IS NOT NULL;

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/91577",
+  "title": "JSON: duplicate paths can be created with nested JSON type",
+  "description": "### Company or project name\nMonumental\n### Describe the unexpected behaviour\nYou can create conflicting JSON type hints by using a nested JSON type like\n```\nCREATE TABLE test_mixed (\nid UInt32,\ndata JSON(\nitem JSON(b JSON(c UInt32)),\nitem.b.c String\n)\n)\n```\n### Which ClickHouse versions are affected?\n```\n$ clickhouse-local --version\nClickHouse local version 25.11.1.558.\n```\n### How to reproduce\n```sql\nCREATE TABLE test_mixed (\nid UInt32,\ndata JSON(\nitem JSON(b JSON(c UInt32)),\nitem.b.c String\n)\n) ENGINE = Memory;\nDESC test_mixed;\nINSERT INTO test_mixed VALUES (1, '{\"item\": {\"b\": {\"c\": 100}}}');\nSELECT toTypeName(data.item.b.c) AS type FROM test_mixed;\n```\nOutput\n```\nid      UInt32\ndata    JSON(item JSON(b JSON(c UInt32)), `item.b.c` String)\nUInt32\n```\n### Expected behavior\nAn error while creating the table and I also expect the DESC call to normalize the type to a single represention, I expect:\n```\nitem JSON(b JSON(c UInt32)),\nitem.b.c String\n```\nTo mean the same thing.\n### Error message and/or stacktrace\n_No response_\n### Additional context\n_No response_",
+  "date": "2025-12-05T14:13:08Z",
+  "vulnerable_version": "25.11.1.558",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test_nested_json (id UInt32, data JSON);",
+    "INSERT INTO test_nested_json VALUES (1, '{\"item\": {\"b\": {\"c\": 100}}}');",
+    "CREATE TABLE test_boundary_values (id UInt32, value INTEGER);",
+    "INSERT INTO test_boundary_values VALUES (1, NULL), (2, 2147483647), (3, -2147483648);",
+    "SELECT typeof(data->'item'->'b'->'c') AS type FROM test_nested_json;"
+  ],
+  "key_bug_features": [
+    "Creating conflicting JSON type hints with nested JSON type"
+  ]
+}

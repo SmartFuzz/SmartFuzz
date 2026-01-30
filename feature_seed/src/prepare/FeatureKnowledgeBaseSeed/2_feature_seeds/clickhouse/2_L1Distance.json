@@ -1,0 +1,10 @@
+CREATE TABLE test_vectors (id UInt32, vector1 Array(Float32), vector2 Array(Float32), description String);
+INSERT INTO test_vectors VALUES (1, [1.0, 2.0], [2.0, 3.0], 'Basic points'), (2, [NULL, 2.0], [2.0, NULL], 'NULL values'), (3, [1.0, 2.0], ['not a number', 3.0], 'String in a number'), (4, [], [2.0, 3.0], 'Empty first vector'), (5, [1.0, 2.0], [], 'Empty second vector');
+SELECT id, L1Distance(vector1, vector2) AS distance FROM test_vectors WHERE L1Distance(vector1, vector2) IS NOT NULL;
+SELECT id, L1Distance(vector1, vector2) AS distance FROM test_vectors WHERE distance = L1Distance((1.0, 1.0), (2.0, 2.0));
+SELECT description, L1Distance((vector1[1], vector1[2]), (vector2[1], vector2[2])) AS distance FROM test_vectors WHERE vector1[1] = 1.0;
+SELECT id, vector1, vector2, L1Distance(vector1, vector2) AS distance FROM test_vectors WHERE distance > (SELECT AVG(L1Distance(vector1, vector2)) FROM test_vectors);
+SELECT id, SUM(L1Distance(vector1, vector2)) AS total_distance FROM (SELECT id, vector1, vector2 FROM test_vectors WHERE vector1 != vector2) GROUP BY id HAVING total_distance > 1.0;
+CREATE TABLE IF NOT EXISTS temp_vectors AS SELECT vector1, vector2 FROM test_vectors WHERE vector1 IS NOT NULL AND vector2 IS NOT NULL;
+INSERT INTO temp_vectors SELECT vector1, vector2 FROM test_vectors WHERE L1Distance(vector1, vector2) = 0.0;
+SELECT id, L1Distance(arrayJoin(vector1), arrayJoin(vector2)) AS distance FROM temp_vectors HAVING distance IS NOT NULL;

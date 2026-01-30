@@ -1,0 +1,11 @@
+CREATE TABLE geo_test (id Int32, s2PointLow UInt64, s2PointHigh UInt64, s2Point UInt64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO geo_test VALUES (1, 5179062030687166815, 5177056748191934217, 5177914411069187297), (2, 5179062030687166815, 5177056748191934217, NULL), (3, 0, 0, 0);
+SELECT id, s2PointLow, s2PointHigh, s2Point, EXISTS(SELECT 1 FROM geo_test g2 WHERE g2.s2Point IS NOT NULL AND g2.id <> g1.id) AS otherExists, s2RectContains(s2PointLow, s2PointHigh, s2Point) AS inRect FROM geo_test g1 WHERE s2Point IS NOT NULL AND s2Point > 0;
+SELECT COUNT(*) FROM geo_test g1 WHERE EXISTS(SELECT 1 FROM geo_test g2 WHERE g2.s2PointLow > g1.s2PointHigh AND g2.s2PointLow IS NOT NULL) AND s2RectContains(s2PointLow, s2PointHigh, COALESCE(s2Point, 0)) = 1;
+SELECT COUNT(*) FROM geo_test WHERE EXISTS(SELECT 1 FROM geo_test WHERE s2Point IS NULL) AND s2RectContains(s2PointLow, s2PointHigh, 5178000000000000000) = 0;
+CREATE TABLE test_numbers (number Int32) ENGINE = MergeTree() ORDER BY number;
+INSERT INTO test_numbers VALUES (1), (2), (3), (4), (5), (NULL), (6);
+SELECT COUNT(*) FROM test_numbers WHERE EXISTS(SELECT 1 FROM test_numbers t2 WHERE t2.number > 4 AND t2.number IS NOT NULL) AND s2RectContains(5179062030687166815, 5177056748191934217, number) = 1;
+SELECT s2RectContains(s2PointLow, s2PointHigh, s2Point) AS inRectangle, EXISTS(SELECT * FROM test_numbers WHERE number < 3) AS lowerExists FROM geo_test WHERE s2Point IS NOT NULL GROUP BY inRectangle HAVING lowerExists = 1;
+SELECT EXISTS(SELECT * FROM (SELECT number FROM test_numbers WHERE number IS NOT NULL ORDER BY number DESC LIMIT 3)) AS existsSubquery, s2RectContains(5179062030687166815, 5177056748191934217, (SELECT number FROM test_numbers ORDER BY number ASC LIMIT 1)) AS edgeCaseCheck;
+SELECT COUNT(*) FROM geo_test WHERE EXISTS(SELECT number FROM test_numbers WHERE number IS NOT NULL GROUP BY number HAVING COUNT(*) > 1) AND s2RectContains(s2PointLow, s2PointHigh, TOUInt64(number)) = 1;

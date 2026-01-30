@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=104898",
+  "title": "SELECT COUNT(*) using multi-valued index reports wrong number of rows.",
+  "description": "COUNT(*) query report wrong number of rows when using multi-valued index.\r\n\r\n> SELECT COUNT(*) FROM test_mvi;\r\n+----------+\r\n| COUNT(*) |\r\n+----------+\r\n|   100000 |\r\n+----------+\r\n\r\n> SELECT COUNT(*) FROM test_mvi FORCE INDEX (PRIMARY) WHERE type='T1';\r\n+----------+\r\n| COUNT(*) |\r\n+----------+\r\n|    97998 |\r\n+----------+\r\n\r\n> SELECT COUNT(*) FROM test_mvi FORCE INDEX (ix_type_hid_pat) WHERE type='T1';\r\n+----------+\r\n| COUNT(*) |\r\n+----------+\r\n|   391989 |\r\n+----------+\nHow to repeat:\nYou can reproduce this bug using the attached file of following bug report.\nhttps://bugs.mysql.com/bug.php?id=104897",
+  "date": "2021-09-10 06:45:00",
+  "vulnerable_version": "8.0.26, 8.0.17",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_mvi (id INT NOT NULL PRIMARY KEY, type VARCHAR(10) NOT NULL, hid INT DEFAULT NULL, pat VARCHAR(10) DEFAULT NULL, INDEX ix_type_hid_pat (type, hid, pat));",
+    "INSERT INTO test_mvi (type, hid, pat) VALUES ('T1', 1, 'A'), ('T1', 2, 'B'), ('T2', 3, 'C'), ('T1', 4, 'D'), ('T1', NULL, 'E');",
+    "SELECT COUNT(*) FROM test_mvi WHERE hid IS NULL;",
+    "SELECT COUNT(*) FROM test_mvi WHERE type='T1' AND hid > 0;",
+    "SELECT COUNT(*) FROM test_mvi WHERE type='T1' OR pat IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "COUNT(*) query with multi-valued index returns incorrect results."
+  ]
+}

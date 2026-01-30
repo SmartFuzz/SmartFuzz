@@ -1,0 +1,16 @@
+{
+    "function": "map",
+    "operator": "SELECT NOT a",
+    "sql_array": [
+        "CREATE TABLE test_map (id UInt32, key String, value Float64, created_at DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_map (id, key, value, created_at) VALUES (1, 'first', 1.0, NOW()), (2, 'second', NULL, NOW()), (3, 'third', 3.5, NOW()), (4, 'fourth', 4.2, NOW());",
+        "SELECT id, map(key, value, 'missing_key', NOT(value)) FROM test_map WHERE created_at IS NOT NULL;",
+        "SELECT id, map(key, value, 'negated', NOT(value)) FROM (SELECT id, key, value FROM test_map WHERE value IS NOT NULL) WHERE id > 1;",
+        "SELECT id, map(key, IF(value IS NULL, 'N/A', value), 'twice_value', IF(value IS NULL, 0, value * 2)) AS my_map FROM test_map GROUP BY id HAVING NOT(my_map['twice_value'] IS NULL) OR my_map['twice_value'] > 3;",
+        "SELECT id, map(key, value) AS mapped_values FROM (SELECT id, key, value FROM test_map WHERE id <= 4) WHERE NOT(mapped_values['missing_key'] IS NULL);",
+        "SELECT id, map(key, value + 1.0) AS updated_value FROM (SELECT id, key, value FROM test_map) ORDER BY updated_value['first'] DESC;",
+        "SELECT id, map(key, CAST(value AS UInt8)) AS casted_map FROM test_map HAVING NOT(casted_map['first'] > 2) OR casted_map['second'] IS NULL;",
+        "SELECT id, map(key, IF(value IS NULL, 'default', CAST(value AS String))) AS final_map FROM test_map WHERE NOT final_map['fourth'] = 'default';",
+        "SELECT id, map('a', 1, 'b', 2, 'c', 3) AS static_map FROM test_map WHERE NOT COUNT(static_map) = 0;"
+    ]
+}

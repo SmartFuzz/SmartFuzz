@@ -1,0 +1,10 @@
+CREATE TABLE test_dates (id UInt32, eventDate DateTime, eventValue Int32) ENGINE = Memory;
+INSERT INTO test_dates VALUES (1, toDateTime('2023-01-01 00:00:00'), 100), (2, toDateTime('2023-02-15 15:30:00'), NULL), (3, toDateTime('2023-03-10 10:15:00'), 200);
+SELECT id, eventValue, toRelativeMonthNum(eventDate) AS monthsPassed FROM test_dates WHERE eventValue IS NOT NULL;
+SELECT id, eventValue, (x -> toRelativeMonthNum(toDate(eventDate))) AS monthsPassed FROM test_dates WHERE eventValue < 150;
+SELECT id, eventValue, (x -> toRelativeMonthNum(toDateTime(x))) AS monthsPassed FROM (SELECT eventDate FROM test_dates WHERE eventValue IS NOT NULL) AS sub;
+SELECT COUNT(*) AS cnt, (x -> toRelativeMonthNum(toDateTime(eventDate))) FROM test_dates GROUP BY eventValue HAVING cnt > 1;
+SELECT id, (x -> toRelativeMonthNum(toDate(eventDate))) AS monthsPassed, eventValue FROM test_dates ORDER BY monthsPassed DESC;
+SELECT t1.id, t1.eventValue, t2.eventValue as otherValue FROM test_dates t1 JOIN test_dates t2 ON toRelativeMonthNum(t1.eventDate) = (x -> toRelativeMonthNum(t2.eventDate)) WHERE t1.eventValue IS NOT NULL;
+SELECT AVG(eventValue) AS avgValue FROM (SELECT eventValue, (x -> toRelativeMonthNum(toDate(eventDate))) AS monthsPassed FROM test_dates WHERE eventValue IS NOT NULL HAVING monthsPassed < 12) AS sub;
+DROP TABLE IF EXISTS test_dates;

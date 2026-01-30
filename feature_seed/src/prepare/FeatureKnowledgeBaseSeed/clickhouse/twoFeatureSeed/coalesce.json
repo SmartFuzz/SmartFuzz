@@ -1,0 +1,17 @@
+{
+    "function": "coalesce",
+    "operator": "a.N",
+    "sql_array": [
+        "CREATE TABLE aBook (name String, mail Nullable(String), phone Nullable(String), telegram Nullable(String));",
+        "INSERT INTO aBook (name, mail, phone, telegram) VALUES ('John Doe', NULL, '555-1234', 'john_doe'), ('Jane Smith', NULL, NULL, NULL), ('Alice Johnson', 'alice@example.com', NULL, NULL);",
+        "CREATE TABLE userInfo (userID Int32, uid Nullable(Int32), info Nullable(String));",
+        "INSERT INTO userInfo (userID, uid, info) VALUES (1, 101, 'UserInfo A'), (2, NULL, 'UserInfo B'), (3, 103, NULL);",
+        "SELECT a.name, coalesce(a.mail, coalesce(a.phone, tupleElement((SELECT info FROM userInfo WHERE uid = a.id), 1))) FROM aBook AS a;",
+        "SELECT a.name, coalesce(a.mail, a.phone, CAST(a.telegram AS Nullable(String))) FROM aBook AS a WHERE a.name IS NOT NULL;",
+        "SELECT a.name, coalesce(NULL, (SELECT coalesce(info, '') FROM userInfo WHERE userID = a.id)) FROM aBook AS a GROUP BY a.name HAVING coalesce(a.mail, a.phone) IS NULL;",
+        "SELECT a.name, coalesce(a.mail, (SELECT uid FROM userInfo WHERE userID = a.id)) AS user_id FROM aBook AS a LEFT JOIN userInfo AS u ON coalesce(u.uid, -1) = coalesce(a.telegram, -1) ORDER BY a.name;",
+        "SELECT a.name, coalesce(NULL, (SELECT info FROM userInfo WHERE userID = a.id ORDER BY uid DESC LIMIT 1)) FROM aBook AS a GROUP BY a.name HAVING coalesce(a.mail, a.phone, '') = '';",
+        "CREATE TABLE tempTbl AS SELECT name, coalesce(phone, mail) AS contact FROM aBook WHERE phone IS NOT NULL;",
+        "SELECT a.name, coalesce(CAST(a.phone AS Nullable(Int32)), tupleElement(SELECT uid FROM userInfo WHERE userID = a.id LIMIT 1, 1)) AS user_id FROM aBook AS a LEFT JOIN userInfo AS u ON u.uid = a.id;"
+    ]
+}

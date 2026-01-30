@@ -1,0 +1,21 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=112319",
+  "title": "GROUP_CONCAT with GROUP BY and WHERE clause turns NULL into empty strings.",
+  "description": "Then, I populate them with the following data:\nin account:\nid | global_account_id | latest_version_id\n1 | 1 | 1\n2 | 2 | 4\n3 | 2 | 6\nin account_version:\nid | account_type_id | global_account_id\n1 | 1 | 1\n4 | 2 | 2\n6 | 3 | 2\nin account_type:\nid | type | description\n1 | customer | Customer\n2 | manager | Manager\n3 | other | NULL\nIf you run the following query:\nselect account.id, account.global_account_id, group_concat(description) from account join account_version on account.global_account_id = account_version.global_account_id and account_version.id = account.latest_version_id join account_type on account_version.account_type_id = account_type.id group by account.id;\nYou get:\n+----+-------------------+---------------------------+\n| id | global_account_id | group_concat(description) |\n+----+-------------------+---------------------------+\n|  1 |                 1 | Customer                  |\n|  2 |                 2 | Manager                   |\n|  3 |                 2 | NULL                      |\n+----+-------------------+---------------------------+\nAs one might expect.\nSimply add 'where account.id = 3' to the query, though and it breaks:\nselect account.id, account.global_account_id, group_concat(description) from account join account_version on account.global_account_id = account_version.global_account_id and account_version.id = account.latest_version_id join account_type on account_version.account_type_id = account_type.id where account.id = 3 group by account.id;\n+----+-------------------+---------------------------+\n| id | global_account_id | group_concat(description) |\n+----+-------------------+---------------------------+\n|  3 |                 2 |                           |\n+----+-------------------+---------------------------+\ngroup_concat is now returning an empty string where it should be NULL.",
+  "date": "2023-09-12 07:59:00",
+  "vulnerable_version": "8.0.33, 8.0.34, 8.1.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE account (id SERIAL PRIMARY KEY, global_account_id INT NOT NULL, latest_version_id INT);",
+    "CREATE TABLE account_version (id SERIAL PRIMARY KEY, account_type_id INT NOT NULL, global_account_id INT NOT NULL);",
+    "CREATE TABLE account_type (id SERIAL PRIMARY KEY, type VARCHAR(20) NOT NULL, description VARCHAR(20));",
+    "INSERT INTO account (global_account_id, latest_version_id) VALUES (1, 1), (2, 4), (2, 6);",
+    "INSERT INTO account_version (account_type_id, global_account_id) VALUES (1, 1), (2, 2), (3, 2);",
+    "INSERT INTO account_type (type, description) VALUES ('customer', 'Customer'), ('manager', 'Manager'), ('other', NULL);"
+  ],
+  "key_bug_features": [
+    "GROUP_CONCAT returns empty string instead of NULL"
+  ]
+}

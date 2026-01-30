@@ -1,0 +1,22 @@
+{
+    "function": "nowInBlock",
+    "operator": "(x1, x2, ...)",
+    "sql_array": [
+        "CREATE TABLE test_time_data (id UInt32, event_time DateTime, event_info String, duration UInt8) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_time_data VALUES (1, nowInBlock(), 'event_A', 10), (2, nowInBlock(), 'event_B', 20);",
+        "SELECT id, event_time, tuple(event_info, duration) AS details FROM test_time_data WHERE id IN (SELECT id FROM test_time_data WHERE duration > 15) ORDER BY event_time;",
+        "SELECT *, nowInBlock() - event_time AS time_diff FROM test_time_data WHERE event_time IS NOT NULL AND duration IS NOT NULL ORDER BY time_diff;",
+        "CREATE TABLE test_join_data (id UInt32, ref_id UInt32, info String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_join_data VALUES (1, 1, 'info_A'), (2, 2, 'info_B'), (3, NULL, 'info_C');",
+        "SELECT t1.id, t1.event_time, t2.info FROM test_time_data t1 LEFT JOIN test_join_data t2 ON t1.id = t2.ref_id WHERE t2.ref_id IS NULL OR t1.duration < 15 ORDER BY nowInBlock();",
+        "SELECT id, COUNT(*) AS count, nowInBlock() AS process_time FROM test_time_data GROUP BY id HAVING count > 1;",
+        "SELECT id, tuple(event_time, duration) AS combined FROM test_time_data WHERE event_time >= toDateTime('2023-01-01 00:00:00') AND duration IS NOT NULL;",
+        "SELECT nowInBlock() AS current_time, (SELECT count() FROM test_time_data WHERE event_info LIKE 'event_%') AS total_events FROM numbers(1);",
+        "CREATE TABLE test_null_handling (id UInt32, nullable_info Nullable(String)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_null_handling VALUES (1, 'test_1'), (2, NULL);",
+        "SELECT id, COALESCE(nullable_info, 'default_value') AS info FROM test_null_handling WHERE nullable_info IS NULL ORDER BY id;",
+        "SELECT id, nowInBlock() AS execution_time, event_time FROM (SELECT *, nowInBlock() AS current_time FROM test_time_data) WHERE current_time < event_time ORDER BY current_time DESC;",
+        "SELECT tuple(nowInBlock(), event_time, duration) FROM test_time_data WHERE duration = 10 UNION ALL SELECT tuple(nowInBlock(), NULL, 15);",
+        "SELECT id, event_time, duration, (SELECT avg(duration) FROM test_time_data WHERE duration IS NOT NULL) AS avg_duration FROM test_time_data WHERE duration IS NOT NULL ORDER BY duration ASC;"
+    ]
+}

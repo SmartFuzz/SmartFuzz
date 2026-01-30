@@ -1,0 +1,16 @@
+{
+    "function": "http_request_get",
+    "operator": "SPARQL Operator: datatype",
+    "sql_array": [
+        "CREATE TABLE http_requests (id INT PRIMARY KEY, method VARCHAR(10), query_string VARCHAR(255), request_date TIMESTAMP DEFAULT NOW());",
+        "INSERT INTO http_requests (id, method, query_string) VALUES (1, 'GET', 'param1=value1&param2=value2');",
+        "INSERT INTO http_requests (id, method, query_string) VALUES (2, 'POST', 'param3=value3');",
+        "INSERT INTO http_requests (id, method, query_string) VALUES (3, NULL, '');",
+        "INSERT INTO http_requests (id, method, query_string) VALUES (4, 'PUT', NULL);",
+        "SELECT http_request_get(method, data) AS http_info, COUNT(*) FROM (SELECT method, datatype(query_string) AS param_type FROM http_requests GROUP BY method, query_string) AS grouped_requests WHERE grouped_requests.param_type IS NOT NULL GROUP BY http_info;",
+        "SELECT method, COUNT(method) OVER (PARTITION BY method ORDER BY request_date) as method_count FROM http_requests WHERE NULLIF(method, '') IS NOT NULL HAVING method_count > 1;",
+        "SELECT a.id, b.request_date FROM http_requests a JOIN http_requests b ON a.id = b.id WHERE datatype(a.query_string) = 'string' AND http_request_get(b.method, b.query_string) IS NOT NULL;",
+        "SELECT COUNT(*) FROM (SELECT DISTINCT method FROM http_requests WHERE method NOT IN (SELECT method FROM http_requests WHERE id = 1)) AS sub WHERE NOT EXISTS (SELECT 1 FROM http_requests WHERE id = 2);",
+        "CREATE TABLE temp_requests AS SELECT id, method, query_string FROM http_requests WHERE method IS NOT NULL HAVING COUNT(*) > 0;"
+    ]
+}

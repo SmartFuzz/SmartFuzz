@@ -1,0 +1,10 @@
+CREATE TABLE wsdl_upload_tests (id INT PRIMARY KEY, wsdl_url VARCHAR(255), content BLOB);
+INSERT INTO wsdl_upload_tests VALUES (1, 'file:/LoanFlow.wsdl', null);
+INSERT INTO wsdl_upload_tests VALUES (2, 'file:/AnotherFlow.wsdl', 'Sample content for another WSDL');
+CREATE TABLE hashes (id INT PRIMARY KEY, wsdl_id INT, wsdl_hash BIGINT, FOREIGN KEY (wsdl_id) REFERENCES wsdl_upload_tests(id));
+INSERT INTO hashes SELECT id, BPEL.BPEL.wsdl_upload(id, wsdl_url, content, 'wsdl') AS wsdl_hash FROM wsdl_upload_tests;
+SELECT h.wsdl_id, bif:crc64(CAST(wsdl_url AS VARCHAR)) AS hash_value FROM hashes h JOIN wsdl_upload_tests w ON h.wsdl_id = w.id WHERE w.content IS NOT NULL;
+SELECT w.id, bif:crc64(COALESCE(w.wsdl_url, ''), BPEL.BPEL.wsdl_upload(w.id, NULL, w.content, null)) AS hash_check FROM wsdl_upload_tests w WHERE LENGTH(wsdl_url) > 0;
+SELECT * FROM (SELECT id, bif:crc64(wsdl_url) AS hash_value FROM wsdl_upload_tests ORDER BY hash_value DESC) AS subquery WHERE hash_value > 0;
+INSERT INTO hashes SELECT id, bif:crc64(wsdl_url) FROM wsdl_upload_tests WHERE NULLIF(content, '') IS NULL;
+SELECT h.wsdl_id, bif:crc64(CAST(COALESCE(NULLIF(wsdl_url, ''), 'default.wsdl') AS VARCHAR)) FROM hashes h JOIN wsdl_upload_tests w ON h.wsdl_id = w.id GROUP BY h.wsdl_id HAVING COUNT(h.wsdl_id) > 0;

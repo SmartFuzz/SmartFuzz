@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=106621",
+  "title": "Multivalued index creation results in partial output.",
+  "description": "While using MEMBER OF() JSON_CONTAINS() and JSON_OVERLAPS() over JSON column which contains an array of integers a lot of rows returns.\r\n\r\nAfter multi-valued index creation only rows from the beginning of the table are returned, the rows which posesses after some definite row are not returned.\r\n\r\nObserved on 8.0.27 and 8.0.28. Not observed on 8.0.23.\nHow to repeat:\n-- set needed setting\r\nSET @@cte_max_recursion_depth := 10000;\r\n\r\nDROP TABLE IF EXISTS test;\r\n\r\n-- create a table\r\nCREATE TABLE test (id INT, json_value JSON);\r\n\r\n-- fill the table with 10000 rows\r\n-- an array of 10 elements with pseudo-random values in each row\r\nINSERT INTO test (id, json_value)\r\nWITH RECURSIVE cte AS (\r\n    SELECT 1 id\r\n\tUNION ALL\r\n\tSELECT 1 + id FROM cte WHERE id < @@cte_max_recursion_depth\r\n)\r\nSELECT id, \r\n       JSON_ARRAY(CAST(@seed := (@seed * 73127 + 36671) % 99053 AS UNSIGNED),\r\n                  CAST(@seed := (@seed * 73127 + 36671) % 99053 AS UNSIGNED),\r\n                  CAST(@seed := (@seed * 73127 + 36671) % 99053 AS UNSIGNED),\r\n                  CAST(@seed := (@seed * 73127 + 36671) % 99053 AS UNSIGNED),\r\n                  CAST(@seed := (@seed * 73127 + 36671) % 99053 AS UNSIGNED),\r\n                  CAST(@seed := (@seed * 73127 + 36671) % 99053 AS UNSIGNED),\r\n                  CAST(@seed := (@seed * 73127 + 36671) % 99053 AS UNSIGNED),\r\n                  CAST(@seed := (@seed * 73127 + 36671) % 99053 AS UNSIGNED),\r\n                  CAST(@seed := (@seed * 73127 + 36671) % 99053 AS UNSIGNED),\r\n                  CAST(@seed := (@seed * 73127 + 36671) % 99053 AS UNSIGNED))\r\nFROM cte\r\nWHERE (@seed := 0) = 0\r\nORDER BY id;\r\n\r\n-- view first 20 rows\r\nSELECT id, CAST(json_value AS CHAR) json_value FROM test ORDER BY id LIMIT 20;\r\n\r\n-- set a variable to a value found in the row with id=10\r\nSET @random_value := 37947;\r\n\r\n-- select id of rows in which this value is present\r\n-- 5 rows will be found, with id values of 10, 2486, 4962, 7438, 9915\r\nSELECT id FROM test WHERE @random_value MEMBER OF (json_value->'$');\r\n\r\n-- create multivalued index\r\nALTER TABLE test \r\n   ADD INDEX multivalued_index ((CAST(json_value->'$' AS UNSIGNED ARRAY)));\r\n   \r\n-- execute the same query - only one row (id=10) is returned\r\nSELECT id FROM test WHERE @random_value MEMBER OF (json_value->'$');\r\n\r\n-- look at the rows 1311 and 1312 (the values are found experimentally)\r\nSELECT id, CAST(json_value AS CHAR) json_value FROM test WHERE id IN (1311, 1312);\r\n-- search for the value from the row id=1311 - success\r\nSELECT id FROM test WHERE 48176 MEMBER OF (json_value->'$');\r\n-- search for the value from the row id=1312 - fail\r\nSELECT id FROM test WHERE 74452 MEMBER OF (json_value->'$');\nSuggested fix:\ndowngrade?",
+  "date": "2022-03-02 18:26:00",
+  "vulnerable_version": "8.0.27",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test2 (id INT PRIMARY KEY, json_data JSON NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test2 (id, json_data) VALUES (1, JSON_ARRAY(1, 2, 3, 4, 5)), (2, JSON_ARRAY(6, 7, 8, 9, 10)), (3, JSON_ARRAY(11, 12, 13, 14, 15));",
+    "ALTER TABLE test2 ADD INDEX idx_json_data ((CAST(json_data AS JSON)));",
+    "SELECT id FROM test2 WHERE JSON_CONTAINS(json_data, '5');",
+    "SELECT id, json_data FROM test2 WHERE json_data IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Multivalued index creation affects JSON query results."
+  ]
+}

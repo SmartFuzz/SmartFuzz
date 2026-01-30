@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/87015",
+  "title": "Grant ON nonexistent TABLE ENGINE works",
+  "description": "### Company or project name\nCH Inc\n### Describe what's wrong\nIf you GRANT an nonexistent table engine to a user or a role the query will succeeded.\n```\nGRANT TABLE ENGINE ON RandomName34343 TO test WITH GRANT OPTION\nQuery id: 7c0dbf11-26b7-488b-a85d-bb62be5250bf\nOk.\n0 rows in set. Elapsed: 0.001 sec.\n```\nThis is problem if, for example, you use a slightly wrong name, like using a full upper case name as the query will work but the grant won't:\n```\nGRANT TABLE ENGINE ON FILELOG TO test WITH GRANT OPTION;\nGRANT TABLE ENGINE ON FILELOG TO test WITH GRANT OPTION\nQuery id: b746713e-3c94-4e19-880c-a8d96d0779eb\nOk.\n0 rows in set. Elapsed: 0.001 sec.\n```\n```\nproduction-01 :) CREATE TABLE t111111 (c0 Nullable(Int)) ENGINE = FileLog('CSV', '/etc/passwd');\nCREATE TABLE t111111\n(\n`c0` Nullable(Int)\n)\nENGINE = FileLog('CSV', '/etc/passwd')\nQuery id: ec58a913-821b-41f4-b6ed-081af1a6102e\nElapsed: 0.001 sec.\nReceived exception from server (version 25.9.1):\nCode: 497. DB::Exception: Received from clickhouse-01:49000. DB::Exception: test: Not enough privileges. To execute this query, it's necessary to have the grant TABLE ENGINE ON FileLog. (ACCESS_DENIED)\n```\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nSee above\n### Expected behavior\nI expect the server should reject the query if the `TABLE ENGINE` does not exist. Keeping it or ignoring it on secondary services (or when starting up) is fine in case it was created without these checks (or in a different version with different engines), but not when running the query for the first time.\n### Error message and/or stacktrace\n_No response_\n### Additional context\n_No response_",
+  "date": "2025-09-11T15:38:50Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test_table1 (id INT, name VARCHAR(255), created_at TIMESTAMP);",
+    "GRANT SELECT ON test_table1 TO user1;",
+    "CREATE TABLE test_table2 (value FLOAT, description VARCHAR(255));",
+    "GRANT SELECT ON test_table2 TO user2;",
+    "SELECT * FROM test_table1 WHERE id = (SELECT MAX(id) FROM test_table1);"
+  ],
+  "key_bug_features": [
+    "GRANT on nonexistent table engine succeeds"
+  ]
+}

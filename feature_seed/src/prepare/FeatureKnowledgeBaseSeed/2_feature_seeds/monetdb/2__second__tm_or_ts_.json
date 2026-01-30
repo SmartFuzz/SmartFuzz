@@ -1,0 +1,11 @@
+CREATE TABLE time_data (id INT PRIMARY KEY, timestamp_val TIMESTAMP, random_val DECIMAL(9,6));
+INSERT INTO time_data VALUES (1, TIMESTAMP '2023-10-01 15:35:02.002345', 5.123456), (2, TIMESTAMP '2023-10-01 16:00:00.000000', 3.987654);
+SELECT id, second(timestamp_val) ^ CAST(random_val AS INT) AS complex_calculation FROM time_data WHERE second(timestamp_val) IS NOT NULL;
+SELECT id, (second(timestamp_val) + (SELECT COUNT(*) FROM time_data WHERE random_val > 3)) ^ (2 * (SELECT COUNT(*) FROM time_data WHERE id = 1)) AS operation FROM time_data GROUP BY id HAVING complex_calculation > 1;
+SELECT id, second(timestamp_val) AS secs, random_val FROM time_data WHERE second(timestamp_val) IS NULL OR (random_val ^ 0) >= 0 ORDER BY secs;
+CREATE TABLE another_table (id SERIAL PRIMARY KEY, join_val DECIMAL(9,6) NOT NULL);
+INSERT INTO another_table (join_val) VALUES (1.000001), (0.999999), (NULL), (3.000000);
+SELECT a.id, second(t.timestamp_val) ^ a.join_val AS result FROM time_data t JOIN another_table a ON (CAST(a.join_val AS INT) IS NULL) WHERE (t.timestamp_val IS NOT NULL) AND (second(t.timestamp_val) > 0.000001) ORDER BY result DESC;
+SELECT COALESCE(NULLIF(second(t.timestamp_val), 0), -1) AS seconds_value, a.join_val FROM time_data t FULL OUTER JOIN another_table a ON (t.id = a.id) WHERE seconds_value IS NOT NULL;
+SELECT id, second(timestamp_val) ^ CAST(ABS(random_val) AS INT) AS exec_path_test FROM time_data WHERE (second(timestamp_val) - second(TIMESTAMP '2023-10-01 16:00:00.000000')) < 0.1;
+SELECT id, (first_value(second(timestamp_val)) OVER (PARTITION BY NULL ORDER BY random_val) ^ second(timestamp_val)) AS complex_path FROM time_data ORDER BY random_val;

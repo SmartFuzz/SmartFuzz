@@ -1,0 +1,16 @@
+CREATE TABLE TestProxy (id INT PRIMARY KEY, url VARCHAR(255), method VARCHAR(10), status INT);
+INSERT INTO TestProxy (id, url, method, status) VALUES (1, 'http://www.example.com', 'GET', 200);
+INSERT INTO TestProxy (id, url, method, status) VALUES (2, 'http://www.foo.com', 'POST', 404);
+SELECT * FROM TestProxy WHERE status = (SELECT MAX(status) FROM TestProxy);
+SELECT a.url, b.method FROM TestProxy a JOIN TestProxy b ON a.id <> b.id WHERE a.status = 200;
+SELECT COUNT(*) FROM TestProxy WHERE method IN ('GET', 'POST') AND status < 400;
+CREATE TABLE ProxyLog (log_id INT PRIMARY KEY, proxy_id INT, response_time INT, FOREIGN KEY (proxy_id) REFERENCES TestProxy(id));
+INSERT INTO ProxyLog (log_id, proxy_id, response_time) VALUES (1, 1, 120);
+INSERT INTO ProxyLog (log_id, proxy_id, response_time) VALUES (2, 2, 95);
+SELECT a.url, AVG(b.response_time) FROM TestProxy a JOIN ProxyLog b ON a.id = b.proxy_id GROUP BY a.url HAVING AVG(b.response_time) < 150;
+SELECT DISTINCT a.url FROM TestProxy a WHERE NOT EXISTS (SELECT * FROM ProxyLog b WHERE a.id = b.proxy_id AND b.response_time > 100);
+INSERT INTO TestProxy (id, url, method, status) SELECT MAX(id) + 1, 'http://www.bar.com', 'GET', 200 FROM TestProxy;
+WITH FailedRequests AS (SELECT * FROM TestProxy WHERE status >= 400) SELECT COUNT(*) FROM FailedRequests;
+SELECT a.url, b.method, b.response_time FROM TestProxy a LEFT JOIN ProxyLog b ON a.id = b.proxy_id WHERE b.response_time IS NULL;
+UPDATE TestProxy SET status = 200 WHERE url = 'http://www.foo.com';
+DELETE FROM ProxyLog WHERE response_time < 100;

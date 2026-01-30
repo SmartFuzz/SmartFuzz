@@ -1,0 +1,16 @@
+{
+    "function": "blockSize",
+    "operator": "a != ANY (subquery)",
+    "sql_array": [
+        "DROP TABLE IF EXISTS test; CREATE TABLE test (n UInt8, m String, d DateTime) ENGINE = Memory;",
+        "INSERT INTO test VALUES (1, 'test1', '2023-01-01'), (2, 'test2', '2023-01-02'), (255, NULL, '2000-01-01'), (0, 'test3', NULL);",
+        "SELECT blockSize() FROM (SELECT m FROM test WHERE n != ANY (SELECT n FROM test WHERE m IS NOT NULL));",
+        "SELECT blockSize() AS block_size FROM (SELECT DISTINCT n FROM test GROUP BY n HAVING n != ANY (SELECT max(n) FROM test));",
+        "SELECT blockSize() FROM test WHERE n < 100 AND m != ANY (SELECT DISTINCT m FROM test WHERE d IS NOT NULL);",
+        "SELECT blockSize() FROM (SELECT n, m FROM test WHERE n != ANY (SELECT n FROM (SELECT n FROM test WHERE m IN ('test1', 'test3'))));",
+        "CREATE TABLE temp_test AS SELECT n, m, blockSize() AS size FROM test GROUP BY n, m;",
+        "SELECT n, m, blockSize() FROM (SELECT n, m, size FROM (SELECT n, blockSize() AS size FROM temp_test GROUP BY n) ORDER BY size) WHERE m != ANY (SELECT m FROM test WHERE d IS NULL);",
+        "CREATE TABLE edge_test (a Nullable(Int32), b String) ENGINE = Memory; INSERT INTO edge_test VALUES (NULL, 'edge1'), (1, 'edge2'), (2147483647, 'edge3'), (-2147483648, 'edge4');",
+        "SELECT blockSize() FROM edge_test WHERE a != ANY (SELECT a FROM edge_test WHERE b LIKE '%edge%') AND a IS NOT NULL;"
+    ]
+}

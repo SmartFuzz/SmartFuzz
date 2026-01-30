@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/18292-55856fb8254c79d6%40postgresql.org",
+  "title": "BUG #18292: Unexpected error: \"relation \"hobbies_r\" does not exist\" caused by user-defined functions",
+  "description": "The following bug has been logged on the website:\nBug reference:      18292\nLogged by:          Zuming Jiang\nEmail address:      zuming(dot)jiang(at)inf(dot)ethz(dot)ch\nPostgreSQL version: 16.1\nOperating system:   Ubuntu 20.04\nDescription:\nMy fuzzer finds a suspicious alarm in Postgres 17devel: \"ERROR:  relation\n\"hobbies_r\" does not exist\". I report it as I think it might be an\nunexpected error.\n--- Set up database ---\ncreate table exeet_t2 (vkey int4);\ninsert into exeet_t2 values (5);\nCREATE TABLE person (name text);\ninsert into person values ('mike');\nCREATE TABLE hobbies_r (name text, person text);\nCREATE TABLE equipment_r (name text, hobby text);\nINSERT INTO hobbies_r (name, person)\nSELECT 'posthacking', p.name\nFROM person* p;\nINSERT INTO equipment_r (name, hobby) VALUES ('advil', 'posthacking');\nCREATE FUNCTION hobbies(person)\nRETURNS setof hobbies_r\nAS 'select * from hobbies_r where person = $1.name'\nLANGUAGE SQL;\nCREATE FUNCTION equipment(hobbies_r)\nRETURNS setof equipment_r\nAS 'select * from equipment_r where hobby = $1.name'\nLANGUAGE SQL;\ncreate schema simple1;\ncreate function simple1.simpletarget(int) returns int language plpgsql\nas $$begin return $1;end$$;\ncreate function simpletarget(int) returns int language plpgsql\nas $$begin return $1 + 100;end$$;\ncreate or replace function simplecaller() returns int language plpgsql\nas $$\ndeclare\nsum int := 0;begin\nfor n in 1..10 loop\nsum := sum + simpletarget(n);if n = 5 then\nset local search_path = 'simple1';end if;end loop;return sum;end$$;\nThe fuzzer generates a test case:\n--- Test case ---\nselect\n(SELECT (p.hobbies).equipment.name FROM ONLY person p order by 1 limit 1)\nas c_11\nfrom\n(select\n1 as c_0\nfrom\nexeet_t2 as ref_0\nwhere '555' = ((select cast(simplecaller() as text)))) as subq_0;\n--- Expected behavior ---\nThe test case should not trigger any error.\n--- Actual behavior ---\nThe test case trigger an error:\nERROR:  relation \"hobbies_r\" does not exist\n--- Postgres version ---\nGithub commit: 15235abbf34f6b246f7681e88dccf8c2796a245b\nVersion: PostgreSQL 17devel on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu\n9.4.0-1ubuntu1~20.04.2) 9.4.0, 64-bit\n--- Platform information ---\nPlatform: Ubuntu 20.04\nKernel: Linux 5.4.0-147-generic\n--- Note ---\nThe following query can be successfully executed:\nselect\n(select name from hobbies_r order by 1 limit 1) as c_11\nfrom\n(select\n1 as c_0\nfrom\nexeet_t2 as ref_0\nwhere '555' = ((select cast(simplecaller() as text)))) as subq_0;  ---\nreturn {'posthacking'}",
+  "date": "2024-01-14 18:48:13",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE hobbies_r (name text, person text, PRIMARY KEY (name, person));",
+    "INSERT INTO hobbies_r (name, person) VALUES ('reading', 'mike');",
+    "CREATE TABLE equipment_r (name text, hobby text, FOREIGN KEY (hobby) REFERENCES hobbies_r(name));",
+    "INSERT INTO equipment_r (name, hobby) VALUES ('book', 'reading');",
+    "SELECT (SELECT name FROM equipment_r WHERE hobby = 'reading' LIMIT 1) AS equipment_name;"
+  ],
+  "key_bug_features": [
+    "User-defined functions referencing non-existent relation hobbies_r"
+  ]
+}

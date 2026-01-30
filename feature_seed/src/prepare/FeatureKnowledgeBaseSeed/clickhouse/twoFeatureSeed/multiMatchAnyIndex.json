@@ -1,0 +1,20 @@
+{
+    "function": "multiMatchAnyIndex",
+    "operator": "a GLOBAL IN ...",
+    "sql_array": [
+        "CREATE TABLE test_strings (id UInt32, data String);",
+        "INSERT INTO test_strings VALUES (1, 'apple'), (2, 'banana'), (3, 'cherry'), (4, 'date'), (5, NULL), (6, 'elderberry');",
+        "SELECT id, multiMatchAnyIndex(data, ['banana', 'date', 'kiwi']) AS match_index FROM test_strings WHERE id GLOBAL IN (SELECT id FROM test_strings WHERE data IS NOT NULL);",
+        "SELECT COUNT(*) FROM test_strings WHERE multiMatchAnyIndex(data, ['banana', 'cherry', '', 'kiwi']) IS NOT NULL GROUP BY data HAVING match_index >= 1;",
+        "CREATE TABLE test_numbers (num UInt32, str_value String) ENGINE = MergeTree() ORDER BY num;",
+        "INSERT INTO test_numbers VALUES (1, '1'), (2, '2.5'), (3, 'NULL'), (4, '4'), (5, '5.0');",
+        "SELECT num, multiMatchAnyIndex(str_value, ['1', 'NULL', '7']) AS str_index FROM test_numbers WHERE num GLOBAL IN (SELECT num FROM test_numbers WHERE num >= 3);",
+        "SELECT num, str_value FROM test_numbers WHERE multiMatchAnyIndex(str_value, ['2', '5']) IS NOT NULL AND str_index IS NOT NULL;",
+        "CREATE TABLE temp_data (col1 String, col2 Int32) ENGINE = Memory;",
+        "INSERT INTO temp_data VALUES ('some text', 10), (NULL, 20), ('another text', 30);",
+        "SELECT col1, col2 FROM temp_data WHERE col1 GLOBAL IN (SELECT col1 FROM temp_data WHERE col2 > 10) AND multiMatchAnyIndex(col1, ['some text', NULL]) = 1;",
+        "ALTER TABLE test_numbers ADD COLUMN extra_value Float64 DEFAULT 0.0;",
+        "UPDATE test_numbers SET extra_value = CAST(str_value AS Float64) WHERE str_value != 'NULL';",
+        "SELECT AVG(extra_value) FROM test_numbers WHERE multiMatchAnyIndex(str_value, ['1', '2.5', '5.0']);"
+    ]
+}

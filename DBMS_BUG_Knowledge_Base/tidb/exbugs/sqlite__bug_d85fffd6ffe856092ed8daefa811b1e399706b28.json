@@ -1,0 +1,21 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/d85fffd6ff",
+  "title": "VDBE program uses an expired value",
+  "description": "drh added on 2018-04-26 12:45:00:\nThe following SQL code causes a VDBE fault on the final UPDATE statement,\ncaused by the use of a register that was previously initialized by SCopy from\nanother register that subsequently changed.  This is completely harmless in\nthe example shown, but could cause problems if the value passed was a string or\nblob rather than an integer.\nCREATE TABLE t1(a INTEGER PRIMARY KEY, b int, c DEFAULT 0)WITHOUT ROWID;\nCREATE TABLE record(x TEXT, y TEXT);\nCREATE TRIGGER r3 BEFORE UPDATE ON t1 BEGIN\n  INSERT INTO record(x,y)\n      VALUES('before-update',printf('%d,%d,%d/%d,%d,%d',\n                    old.a,old.b,old.c,new.a,new.b,new.c));\nEND;\nINSERT INTO t1(a,b) VALUES(1,2);\nUPDATE t1 SET c=a WHERE a=1;\nThe problem manifests as an assertion fault here:\n/artifact/066a4e1de2ed83e2?ln=2813.\nBisecting shows this problem began with the optimization at check-in\n[871e091df651b2275a672c] on 2015-10-15 which was first released in\nversion 3.10.0 on 2016-01-06.  The problem was detected during internal\ntesting (specifically during AFL testing of the new UPSERT capability\nto be added for 3.24.0) and has never been seen in the wild.\ndrh added on 2018-04-26 15:07:59:\nSimplified test case:\nCREATE TABLE t1(a INT PRIMARY KEY, b, c)WITHOUT ROWID;\nINSERT INTO t1(a,b,c) VALUES(1,2,3);\nCREATE TRIGGER r3 BEFORE UPDATE ON t1 BEGIN SELECT new.b; END;\nUPDATE t1 SET c=b WHERE a=1;",
+  "date": "2018-04-26 12:45:007.29 years ago",
+  "vulnerable_version": "3.23.1",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(a INT PRIMARY KEY, b TEXT, c DECIMAL(10, 2) DEFAULT 0);",
+    "CREATE TABLE record(x TEXT, y TEXT);",
+    "CREATE TRIGGER r1 BEFORE UPDATE ON t1 FOR EACH ROW BEGIN INSERT INTO record(x, y) VALUES('update-trigger', NEW.b);",
+    "END;",
+    "INSERT INTO t1(a, b, c) VALUES(1, 'test', 3.14);",
+    "UPDATE t1 SET c = b WHERE a = 1;"
+  ],
+  "key_bug_features": [
+    "Using a register initialized by SCopy from another register"
+  ]
+}

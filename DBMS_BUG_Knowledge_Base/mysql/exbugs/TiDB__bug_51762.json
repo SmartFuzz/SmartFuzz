@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/51762",
+  "title": "can't exchange partition for table create fk then drop fk",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n```\r\ncreate table pt36 (id int not null primary key auto_increment,t_id int not null) partition by hash(id) partitions 1;\r\ncreate table nt36 (id int not null primary key auto_increment, t_id int not null,foreign key fk_id (t_id) references pt36(id));\r\nALTER TABLE nt36 DROP FOREIGN KEY fk_id;\r\nalter table pt36 exchange partition p0 with table nt36;\r\n```\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\nSuccess\r\n### 3. What did you see instead (Required)\r\n```\r\nmysql> use test\r\nDatabase changed\r\nmysql> create table pt36 (id int not null primary key auto_increment,t_id int not null) partition by hash(id) partitions 1;\r\ncreate table nt36 (id int not null primary key auto_increment, t_id int not null,foreign key fk_id (t_id) references pt36(id));\r\nALTER TABLE nt36 DROP FOREIGN KEY fk_id;\r\nalter table pt36 exchange partition p0 with table nt36;Query OK, 0 rows affected (0.17 sec)\r\n\r\nmysql> create table nt36 (id int not null primary key auto_increment, t_id int not null,foreign key fk_id (t_id) references pt36(id));\r\nQuery OK, 0 rows affected (0.45 sec)\r\n\r\nmysql> ALTER TABLE nt36 DROP FOREIGN KEY fk_id;\r\nQuery OK, 0 rows affected (0.34 sec)\r\n\r\nmysql> alter table pt36 exchange partition p0 with table nt36;\r\nERROR 1740 (HY000): Table to exchange with partition has foreign key references: 'nt36'\r\n```\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\nv6.5.5\r\n",
+  "date": "2024-03-14T04:06:01Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE pt37 (id INT NOT NULL PRIMARY KEY AUTO_INCREMENT, t_id INT NOT NULL);",
+    "CREATE TABLE nt37 (id INT NOT NULL PRIMARY KEY AUTO_INCREMENT, t_id INT NOT NULL, CONSTRAINT fk_id FOREIGN KEY (t_id) REFERENCES pt37(id));",
+    "ALTER TABLE nt37 DROP FOREIGN KEY fk_id;",
+    "INSERT INTO pt37 (t_id) VALUES (1), (2), (3);",
+    "ALTER TABLE pt37 ADD PARTITION (PARTITION p0 VALUES IN (1));"
+  ],
+  "key_bug_features": [
+    "exchange partition with table having foreign key references"
+  ]
+}

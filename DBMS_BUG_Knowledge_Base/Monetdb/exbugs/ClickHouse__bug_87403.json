@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/87403",
+  "title": "Dictionary and case statement in query does not return correct rows for distributed table",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nUsing a combination of\n- sub select\n- distributed table\n- dictionary\n- case clause\n- where clause using the case clause\nit's possible to create a scenario where the result set only contains data from the local table even when the distributed table is queried.\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\n```\nCREATE TABLE default.t0 ON CLUSTER '{cluster}' (\nid Int,\nc String\n)\nENGINE = MergeTree()\nORDER BY id;\nCREATE TABLE default.t0_d ON CLUSTER '{cluster}'\nAS default.t0\nENGINE = Distributed('{cluster}', 'default', t0, rand());\nCREATE DICTIONARY default.d0 ON CLUSTER '{cluster}' (\nid Int,\nd String\n) PRIMARY KEY id\nSOURCE (\nCLICKHOUSE (QUERY '\nSELECT *\nFROM (\nSELECT toUInt8(1) AS id, ''alpha'' AS d\nUNION ALL\nSELECT toUInt8(2) AS id, ''beta'' AS d\n)\n')\n)\nLAYOUT(FLAT())\nLIFETIME(0);\nINSERT INTO default.t0_d (id, c) VALUES\n(1, 'same'),\n(2, 'same');\nSELECT\nid,\nc,\ndictGet('default.d0', 'd', id) as d,\nCASE\nWHEN c = 'same' AND d = 'gamma' THEN 'SHOULD NOT HAPPEN'\nWHEN c = 'same' THEN 'SHOULD ALWAYS HAPPEN'\nEND AS filter_value",
+  "date": "2025-09-22T14:16:25Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE default.t1 (id INT, c VARCHAR(255));",
+    "CREATE TABLE default.t1_d AS SELECT * FROM default.t1;",
+    "INSERT INTO default.t1_d (id, c) VALUES (1, 'same'), (2, NULL), (3, 'different');",
+    "SELECT id, c, (SELECT d FROM default.d0 WHERE id = default.t1_d.id) AS d, CASE WHEN c IS NULL THEN 'NULL VALUE' WHEN c = 'same' THEN 'MATCH' END AS filter_value FROM default.t1_d;",
+    "SELECT id, c, (SELECT d FROM default.d0 WHERE id = default.t1_d.id) AS d, CASE WHEN c = 'different' AND d = 'alpha' THEN 'SHOULD NOT HAPPEN' WHEN c = 'same' THEN 'SHOULD ALWAYS HAPPEN' END AS filter_value FROM default.t1_d;"
+  ],
+  "key_bug_features": [
+    "Case clause with distributed table returns incorrect rows"
+  ]
+}

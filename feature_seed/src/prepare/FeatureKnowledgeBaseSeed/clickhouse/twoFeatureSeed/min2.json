@@ -1,0 +1,21 @@
+{
+    "function": "min2",
+    "operator": "a * b",
+    "sql_array": [
+        "CREATE TABLE test_table (id Int32, value1 Float64, value2 Float64, created_at DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table VALUES (1, -1.5, 2.5), (2, NULL, 3.0), (3, 3.2, -2.1), (4, 0.0, NULL), (5, '5.5', '6.9');",
+        "SELECT min2(value1, value2 * 0.1) FROM test_table WHERE value1 IS NOT NULL;",
+        "SELECT id, min2(value1 * 2, value2) AS min_value FROM test_table GROUP BY id HAVING min_value > 0;",
+        "SELECT id, min2(value1, min2(value2, -10 * value1)) AS nested_min FROM test_table WHERE created_at > toDateTime('2023-01-01') ORDER BY nested_min;",
+        "SELECT count(*) FROM (SELECT id, min2(value1, value2) AS min_value FROM test_table WHERE value1 IS NOT NULL GROUP BY id HAVING min_value < 1) AS subquery;",
+        "SELECT id, min2(value1, (SELECT AVG(value2) FROM test_table WHERE id > 2)) AS min_average FROM test_table GROUP BY id;",
+        "SELECT id, min2(value1, value2) AS min_value FROM test_table JOIN (SELECT id AS join_id FROM test_table WHERE value1 IS NOT NULL) AS jt ON test_table.id = jt.join_id;",
+        "SELECT id, min2(ROUND(value1 * value2, 2), NULLIF(value2, 0)) AS min_calc FROM test_table ORDER BY min_calc;",
+        "CREATE TABLE temp_table AS SELECT * FROM test_table WHERE value1 IS NOT NULL;",
+        "INSERT INTO temp_table SELECT (id + 1), min2(value2, value1 * 0.5), value1, created_at FROM temp_table WHERE value2 IS NOT NULL;",
+        "SELECT id, min2(NULL, 5.2 * NULL) FROM temp_table HAVING id < 5;",
+        "SELECT id, min2(toFloat64('3.5'), value1 * toFloat64(value2)) AS min_result FROM temp_table WHERE value2 IS NOT NULL;",
+        "SELECT min2(value1, value1 + value2 / (value2 - value1)) AS min_expr FROM temp_table WHERE value1 < value2;",
+        "DROP TABLE temp_table;"
+    ]
+}

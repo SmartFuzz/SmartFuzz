@@ -1,0 +1,15 @@
+PRAGMA enable_verification;
+CREATE TABLE obs(n BIGINT);
+INSERT INTO obs VALUES (0), (5), (7), (12), (20), (23), (24), (25), (26), (28), (31), (34), (36), (41), (47);
+SELECT histogram_exact(n, [10, 20, 30, 40, 50]) FROM obs;
+SELECT histogram_exact(n::double, [10, 20, 30, 40, 50]) FROM obs;
+SELECT histogram_exact((date '2000-01-01' + interval (n) days)::date, [date '2000-01-01' + interval (x) days for x in [10, 20, 30, 40, 50]]) FROM obs;
+SELECT histogram_exact(n::varchar, [10, 20, 30, 40, 50]) FROM obs;
+SELECT histogram_exact([n], [[x] for x in [10, 20, 30, 40, 50]]) FROM obs;
+SELECT case when is_histogram_other_bin(bin) then '(other values)' else bin::varchar end as bin,        count FROM ( 	SELECT UNNEST(map_keys(hist)) AS bin, UNNEST(map_values(hist)) AS count 	FROM (SELECT histogram_exact(n, [10, 20, 30, 40, 50]) AS hist FROM obs) );
+SELECT case when is_histogram_other_bin(bin) then '(other values)' else bin::varchar end as bin,        count FROM ( 	SELECT UNNEST(map_keys(hist)) AS bin, UNNEST(map_values(hist)) AS count 	FROM (SELECT histogram(n, [10, 20, 30, 40]) AS hist FROM obs) );
+SELECT histogram_exact(r, [0, 1, 2, 3]) FROM range(4) t(r);
+SELECT is_histogram_other_bin(NULL);
+SELECT is_histogram_other_bin([[1]]);
+SELECT is_histogram_other_bin([]::INT[][][]);
+SELECT is_histogram_other_bin({'i': NULL::INT[][]});

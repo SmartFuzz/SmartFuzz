@@ -1,0 +1,23 @@
+{
+    "function": "soundex",
+    "operator": "a % b",
+    "sql_array": [
+        "CREATE TABLE fuzz_test (id Int32, name String, score Float64, created_at DateTime);",
+        "INSERT INTO fuzz_test (id, name, score, created_at) VALUES (1, 'AKSEL', 89.5, now()), (2, '', 0.0, now()), (3, NULL, 100.1, now());",
+        "SELECT soundex(name) AS soundex_name, score % 2 AS is_odd FROM fuzz_test WHERE created_at = (SELECT max(created_at) FROM fuzz_test) HAVING soundex_name IS NOT NULL;",
+        "WITH (SELECT COUNT(*) AS total FROM fuzz_test) AS temp SELECT soundex(name), total % score AS mod_score FROM fuzz_test WHERE score > 0;",
+        "SELECT soundex(name % 'test'), AVG(score) FROM fuzz_test GROUP BY soundex(name % 'test') HAVING AVG(score) > 50;",
+        "SELECT id, soundex(name) AS soundex_value FROM fuzz_test WHERE score % (SELECT MAX(score) FROM fuzz_test) > 0;",
+        "CREATE TABLE fuzz_test_nulls (id Int32, description String, balance Float32);",
+        "INSERT INTO fuzz_test_nulls VALUES (1, NULL, NULL), (2, 'Valid', 200.0), (3, 'Empty', 0.0);",
+        "SELECT soundex(description), balance % 100 FROM fuzz_test_nulls WHERE description IS NULL;",
+        "SELECT soundex('Boundary'), MAX(balance % 50) FROM fuzz_test_nulls WHERE balance IS NOT NULL GROUP BY soundex('Boundary');",
+        "CREATE TABLE temp_table AS (SELECT id, soundex(name) AS soundex_name FROM fuzz_test) ENGINE = MergeTree() ORDER BY id;",
+        "SELECT soundex_name, soundex_name % 'A' FROM temp_table WHERE soundex_name IS NOT NULL;",
+        "CREATE TABLE join_test (id Int32, group_id Int32);",
+        "INSERT INTO join_test (id, group_id) VALUES (1, 1), (2, 1), (3, NULL);",
+        "SELECT A.id, A.soundex_value, B.group_id % 5 AS group_mod FROM (SELECT id, soundex(name) AS soundex_value FROM fuzz_test) AS A JOIN join_test AS B ON A.id = B.id WHERE A.soundex_value IS NOT NULL;",
+        "SELECT A.id FROM fuzz_test A INNER JOIN join_test B ON A.id = B.id WHERE A.name IS NOT NULL AND B.group_id IS NULL;",
+        "SELECT soundex(name), COUNT(*) AS count FROM fuzz_test GROUP BY soundex(name) HAVING count > (SELECT AVG(count) FROM (SELECT COUNT(*) AS count FROM fuzz_test GROUP BY id));"
+    ]
+}

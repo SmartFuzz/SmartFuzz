@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id INT, html_content VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO test_table (id, html_content) VALUES (1, '<div>OpenAI</div>'), (2, NULL), (3, '<span>Virtuoso</span>');
+SELECT id, tidy_html(html_content) AS cleaned_html FROM test_table WHERE tidy_html(html_content) IS NOT NULL;
+SELECT id FROM test_table WHERE tidy_html(html_content) >= '<div>' AND created_at >= '2023-01-01 00:00:00';
+SELECT COUNT(*) FROM test_table WHERE LENGTH(tidy_html(html_content)) >= 5;
+SELECT id AS table_id FROM (SELECT id, tidy_html(html_content) AS processed_html FROM test_table HAVING processed_html IS NOT NULL) AS subquery WHERE table_id >= 1;
+SELECT id, COUNT(*) OVER (PARTITION BY tidy_html(html_content)) as html_count FROM test_table GROUP BY id, tidy_html(html_content) HAVING html_count >= 1;
+CREATE TABLE another_table (reference_id INT, FOREIGN KEY (reference_id) REFERENCES test_table(id));
+INSERT INTO another_table (reference_id) VALUES (1), (2), (3);
+SELECT t.id, a.reference_id FROM test_table t JOIN another_table a ON t.id >= a.reference_id WHERE a.reference_id IS NOT NULL;

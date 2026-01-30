@@ -1,0 +1,24 @@
+{
+    "function": "joinGet",
+    "operator": "EXTRACT",
+    "sql_array": [
+        "CREATE DATABASE db_fuzz_test;",
+        "CREATE TABLE db_fuzz_test.date_table(id UInt32, event_date DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO db_fuzz_test.date_table VALUES (1, toDateTime('2023-01-01 12:00:00')), (2, toDateTime('2023-01-02 13:30:00'));",
+        "CREATE TABLE db_fuzz_test.value_table(id UInt32, val UInt32) ENGINE = Join(ANY, LEFT, id);",
+        "INSERT INTO db_fuzz_test.value_table VALUES (1, 100), (2, NULL), (3, 300);",
+        "SELECT event_date, joinGet(db_fuzz_test.value_table, 'val', id) AS value FROM db_fuzz_test.date_table WHERE EXTRACT(MONTH FROM event_date) = 1;",
+        "SELECT EXTRACT(YEAR FROM toDateTime(event_date)), joinGet(db_fuzz_test.value_table, 'val', id) FROM db_fuzz_test.date_table RIGHT JOIN db_fuzz_test.value_table ON date_table.id = value_table.id;",
+        "CREATE TABLE db_fuzz_test.null_table(id UInt32, val Nullable(UInt32)) ENGINE = Join(ANY, LEFT, id) SETTINGS join_use_nulls=1;",
+        "INSERT INTO db_fuzz_test.null_table VALUES (1, 1), (2, NULL), (3, 3);",
+        "SELECT DISTINCT EXTRACT(DAY FROM event_date), joinGet(db_fuzz_test.null_table, 'val', id) FROM db_fuzz_test.date_table WHERE val IS NOT NULL;",
+        "CREATE TABLE db_fuzz_test.complex_table(id UInt32, value DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO db_fuzz_test.complex_table VALUES (1, toDateTime('2023-01-01 00:00:00')), (2, toDateTime('2023-01-02 12:00:00')), (3, toDateTime('2023-01-03 12:00:00'));",
+        "SELECT id, EXTRACT(HOUR FROM value) + joinGet(db_fuzz_test.value_table, 'val', id) AS combined_value FROM db_fuzz_test.complex_table HAVING combined_value > 10;",
+        "WITH (SELECT count(*) FROM db_fuzz_test.date_table WHERE event_date < toDateTime('2023-01-02 00:00:00')) AS event_count SELECT EXTRACT(MONTH FROM event_date), event_count, joinGet(db_fuzz_test.value_table, 'val', id) FROM db_fuzz_test.date_table;",
+        "SELECT EXTRACT(YEAR FROM value) AS year, joinGet(db_fuzz_test.null_table, 'val', id) AS nullable_value FROM db_fuzz_test.complex_table WHERE joinGet(db_fuzz_test.null_table, 'val', id) IS NULL;",
+        "CREATE TABLE db_fuzz_test.temp_table(id UInt32, val String) ENGINE = Memory;",
+        "INSERT INTO db_fuzz_test.temp_table VALUES (1, '100'), (2, '200'), (3, '300');",
+        "SELECT EXTRACT(MONTH FROM now()), SUMIf(joinGet(db_fuzz_test.value_table, 'val', id), id = toUInt32(val)) FROM db_fuzz_test.temp_table GROUP BY EXTRACT(MONTH FROM now());"
+    ]
+}

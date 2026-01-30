@@ -1,0 +1,13 @@
+ATTACH '__TEST_DIR__/test_index_fetch_new.db' AS db_v13 (STORAGE_VERSION 'v1.3.0');
+ATTACH '__TEST_DIR__/test_index_fetch_old.db' AS db_v1 (STORAGE_VERSION 'v1.0.0');
+USE db_v1;
+USE db_v13;
+drop type if exists test_result;
+create type test_result as UNION(     ok BOOL,     err STRUCT(         expected VARCHAR,         actual VARCHAR     ) );
+PRAGMA force_compression='${compression}';
+CREATE TABLE test(id INTEGER PRIMARY KEY, col VARCHAR);
+INSERT INTO test SELECT i id, i::VARCHAR b FROM range(10000) tbl(i);
+CHECKPOINT;
+SELECT MIN(id), MAX(id), SUM(col::INT), MIN(col::INT), MAX(col::INT), COUNT(*) FROM test WHERE id=5000;
+SELECT 	CASE WHEN lower(compression)='${compression}' 		THEN true::test_result 	ELSE { 		'expected': '${compression}', 		'actual': lower(compression) 	}::test_result 	END FROM pragma_storage_info('test') WHERE segment_type ILIKE 'VARCHAR' LIMIT 1;
+DROP TABLE test;

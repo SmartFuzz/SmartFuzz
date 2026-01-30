@@ -1,0 +1,19 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/49285",
+  "title": "planner: reading from storage of tiflash may generate table dual path",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n```\r\ncreate table t3(id int, sala char(10), name char(100), primary key(id, sala)) partition by list columns (sala)(partition p1 values in('a'));\r\nalter table t3 set tiflash replia 1;\r\nexplain select /*+ read_from_storage(tiflash[t3]) */ * from t3 where sala='a' and id =1;\r\n```\r\n\r\n\r\n### 2. What did you expect to see? (Required)\r\n```\r\n+-------------------------+---------+--------------+---------------+-------------------------------------------+\r\n| id                      | estRows | task         | access object | operator info                             |\r\n+-------------------------+---------+--------------+---------------+-------------------------------------------+\r\n| TableReader_8           | 1.00    | root         | partition:p1  | MppVersion: 2, data:ExchangeSender_7      |\r\n| └─ExchangeSender_7      | 1.00    | mpp[tiflash] |               | ExchangeType: PassThrough                 |\r\n|   └─TableRangeScan_6     | 1.00    | mpp[tiflash] | table:t3      | range[1 'a', 1 'a']keep order:false, PartitionTableScan:true |\r\n+-------------------------+---------+--------------+---------------+-------------------------------------------+\r\n3 rows in set (6.791 sec)\r\n```\r\n\r\n\r\n### 3. What did you see instead (Required)\r\n```\r\nMySQL [test]> explain select /*+ read_from_storage(tiflash[t3]) */ * from t3 where sala='a' and id =1;\r\n+-------------+---------+------+---------------+---------------+\r\n| id          | estRows | task | access object | operator info |\r\n+-------------+---------+------+---------------+---------------+\r\n| TableDual_7 | 0.00    | root |               | rows:0        |\r\n+-------------+---------+------+---------------+---------------+\r\n1 row in set, 1 warning (0.001 sec)\r\n\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\nmaster\r\n",
+  "date": "2023-12-08T08:42:46Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t4(id INT, sala CHAR(10), name VARCHAR(100), age INT, PRIMARY KEY(id, sala));",
+    "INSERT INTO t4 VALUES (1, 'a', 'Alice', 25), (2, 'b', 'Bob', 35), (3, 'a', 'Charlie', 45);",
+    "SELECT * FROM t4 WHERE sala='a' AND age > 20;",
+    "SELECT COUNT(*) FROM t4 WHERE sala IS NULL OR sala = 'b';"
+  ],
+  "key_bug_features": [
+    "reading from storage of tiflash generates table dual path"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+    "function": "tryIdnaEncode",
+    "operator": "(x1, x2, ...)",
+    "sql_array": [
+        "CREATE TABLE string_test (id UInt32, encoded_string String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO string_test VALUES (1, 'example.com'), (2, ''), (3, NULL), (4, 'xn--ls8h.com');",
+        "SELECT id, tryIdnaEncode(encoded_string) AS encoded FROM string_test WHERE tryIdnaEncode(encoded_string) <> '' GROUP BY id HAVING encoded != '';",
+        "CREATE TABLE tuple_test (group_id UInt32, data Tuple(id UInt32, value String)) ENGINE = MergeTree() ORDER BY group_id;",
+        "INSERT INTO tuple_test VALUES (1, (1, 'example.com')), (1, (2, 'invalid_domain')), (2, (3, 'xn--ls8h.com')) ;",
+        "SELECT group_id, arrayJoin(data) AS expanded_data FROM tuple_test WHERE tryIdnaEncode(expanded_data.value) = '' OR tryIdnaEncode(expanded_data.value) = 'xn--ls8h.com' GROUP BY group_id ORDER BY group_id;",
+        "SELECT (id, tryIdnaEncode(encoded_string)) AS test_tuple FROM string_test WHERE encoded_string IS NOT NULL AND encoded_string != '' ORDER BY test_tuple;",
+        "CREATE TABLE join_test (left_id UInt32, right_id UInt32, pair Tuple(left_id UInt32, right_id UInt32)) ENGINE = MergeTree() ORDER BY left_id;",
+        "INSERT INTO join_test VALUES (1, 10, (1, 10)), (2, NULL, (2, NULL)), (3, 20, (3, '20'));",
+        "SELECT j.left_id, tryIdnaEncode(j.pair.1) AS encoded_left, tryIdnaEncode(j.pair.2) AS encoded_right FROM join_test AS j WHERE encoded_left <> '' OR encoded_right IS NULL;",
+        "SELECT attempt, count(*) FROM (SELECT tryIdnaEncode(encoded_string) AS attempt FROM string_test GROUP BY attempt HAVING length(attempt) > 0) GROUP BY attempt;"
+    ]
+}

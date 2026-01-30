@@ -1,0 +1,23 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/93363",
+  "title": "Implement iceberg metadata cache for using last modify time",
+  "vulnerable_database": "ClickHouse",
+  "date": "2026-01-04T07:30:32Z",
+  "vulnerable_version": "",
+  "description": "### Company or project name\neBay\n### Use case\nusing same query re-create one table\n```sql\nCREATE TABLE IF NOT EXISTS demo.nyc.taxis\n(\nvendor_id bigint,\ntrip_id bigint,\ntrip_distance float,\nfare_amount double,\nstore_and_fwd_flag string\n)\nUSING iceberg TBLPROPERTIES ('format-version' = '2','write.update.mode'='merge-on-read','write.delete.mode'='merge-on-read','write.merge.mode'='merge-on-read')\nPARTITIONED BY (vendor_id);\n```\n## Write Data to a Table\n```sql\nINSERT INTO demo.nyc.taxis\nVALUES (1, 1000371, 1.8, 15.32, 'N'), (2, 1000372, 2.5, 22.15, 'N'), (2, 1000373, 0.9, 9.01, 'N'), (1, 1000374, 8.4, 42.13, 'Y');\nINSERT INTO demo.nyc.taxis\nVALUES (11, 1000371, 1.8, 15.32, 'N'), (12, 1000372, 2.5, 22.15, 'N'), (12, 1000373, 0.9, 9.01, 'N'), (11, 1000374, 8.4, 42.13, 'Y');\n```\nwill generate same meta file name `vxxx.metadata.json`\nif the cache is only path ` hdfs://hubble-lvs/workspaces/xxx/table_name/metadata/v3.metadata.json` this will  lead **_cache inconsistency occurs_**\n### Describe the solution you'd like\nbuild cache key with last modify time.\n### Describe alternatives you've considered\n_No response_\n### Additional context\n_No response_",
+  "poc": [
+    "CREATE TABLE IF NOT EXISTS demo.nyc.taxis\n(\n    vendor_id bigint,\n    trip_id bigint,\n    trip_distance float,\n    fare_amount double,\n    store_and_fwd_flag string\n)\nUSING iceberg TBLPROPERTIES ('format-version' = '2','write.update.mode'='merge-on-read','write.delete.mode'='merge-on-read','write.merge.mode'='merge-on-read')\nPARTITIONED BY (vendor_id);",
+    "INSERT INTO demo.nyc.taxis\nVALUES (1, 1000371, 1.8, 15.32, 'N'), (2, 1000372, 2.5, 22.15, 'N'), (2, 1000373, 0.9, 9.01, 'N'), (1, 1000374, 8.4, 42.13, 'Y');",
+    "INSERT INTO demo.nyc.taxis\nVALUES (11, 1000371, 1.8, 15.32, 'N'), (12, 1000372, 2.5, 22.15, 'N'), (12, 1000373, 0.9, 9.01, 'N'), (11, 1000374, 8.4, 42.13, 'Y');"
+  ],
+  "key_bug_features": [
+    "Cache inconsistency due to duplicate metadata file names"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE IF NOT EXISTS demo.nyc.taxis_v2\n(\n    vendor_id Int64,\n    trip_id Int64,\n    trip_distance Float32,\n    fare_amount Float64,\n    store_and_fwd_flag Nullable(String)\n)\nUSING iceberg TBLPROPERTIES ('format-version' = '2','write.update.mode'='merge-on-read','write.delete.mode'='merge-on-read','write.merge.mode'='merge-on-read')\nPARTITIONED BY (vendor_id);",
+    "INSERT INTO demo.nyc.taxis_v2\nVALUES (1, 1000371, 1.8, 15.32, 'N'), (2, 1000372, 2.5, 22.15, NULL), (2, 1000373, 0.9, 9.01, 'N'), (1, 1000374, 8.4, 42.13, 'Y');",
+    "INSERT INTO demo.nyc.taxis_v2\nVALUES (1, 1000375, 3.0, 30.00, 'Y'), (2, 1000376, 5.5, 50.00, 'N'), (3, 1000377, 2.2, 20.00, NULL), (4, 1000378, 4.4, 40.00, 'Y');",
+    "SELECT vendor_id, SUM(fare_amount) AS total_fare FROM demo.nyc.taxis_v2 GROUP BY vendor_id HAVING total_fare > 20.00;",
+    "CREATE TABLE IF NOT EXISTS demo.nyc.taxis_summary AS\nSELECT vendor_id, COUNT(*) AS trip_count, AVG(fare_amount) AS avg_fare\nFROM demo.nyc.taxis_v2\nGROUP BY vendor_id;"
+  ]
+}

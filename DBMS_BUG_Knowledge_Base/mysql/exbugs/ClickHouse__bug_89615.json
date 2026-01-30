@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/89615",
+  "title": "Index `set` acts on `rand` function",
+  "description": "### Company or project name\nN/A\n### Describe what's wrong\n```sql\nCREATE TABLE set_idx_rand\n(\ns String,\nINDEX s s TYPE set(0) GRANULARITY 1\n)\nENGINE=MergeTree\nORDER BY tuple();\nINSERT INTO set_idx_rand SELECT * FROM generateRandom('s String') LIMIT 10;\nexplain indexes=1 WITH rand()%1000==1 AS sampled SELECT * FROM set_idx_rand WHERE sampled SETTINGS use_skip_indexes=1;\nexplain indexes=1 WITH rand()%1000==1 AS sampled SELECT * FROM set_idx_rand WHERE sampled SETTINGS use_skip_indexes=0;\n```\nhttps://fiddle.clickhouse.com/da159abf-83a6-4ee9-a85b-dfa97b4c1793\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nRepro ^\n### Expected behavior\nIndex `set` should not be used when condition atom contains `rand` function\n### Error message and/or stacktrace\n_No response_\n### Additional context\n_No response_",
+  "date": "2025-11-06T07:57:17Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE set_idx_rand_v2 (id INT UNSIGNED, s VARCHAR(255), d DATETIME DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO set_idx_rand_v2 (id, s) SELECT number, CAST(number % 10 AS CHAR) FROM (SELECT @rownum := @rownum + 1 AS number FROM (SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9 UNION SELECT 10) AS a, (SELECT @rownum := 0) AS r LIMIT 100) AS numbers;",
+    "SELECT * FROM set_idx_rand_v2 WHERE RAND() % 1000 = 1;",
+    "SELECT * FROM set_idx_rand_v2 WHERE d IS NULL OR d > NOW() - INTERVAL 1 DAY;",
+    "SELECT COUNT(*) FROM set_idx_rand_v2 WHERE s IN (SELECT s FROM set_idx_rand_v2 WHERE id < 50) AND RAND() % 1000 = 1;"
+  ],
+  "key_bug_features": [
+    "Index `set` used with `rand` function condition"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+    "function": "createXML",
+    "operator": "bif:st_within",
+    "sql_array": [
+        "CREATE TABLE XML_SPATIAL_TEST (ID INTEGER PRIMARY KEY, XMLVAL LONG XML, GEOMETRYVAL POINT);",
+        "INSERT INTO XML_SPATIAL_TEST VALUES (1, createXML('<po><pono>1</pono><poname>PO_1</poname><location><lat>34.05</lat><lon>-118.25</lon></location></po>'), POINT(34.05, -118.25));",
+        "INSERT INTO XML_SPATIAL_TEST VALUES (2, createXML('<po><pono>2</pono><poname>PO_2</poname><location><lat>34.06</lat><lon>-118.26</lon></location></po>'), POINT(34.06, -118.26));",
+        "SELECT e.ID, e.XMLVAL.extract('//pono/text()').getVal() as PONO, bif:st_within(e.GEOMETRYVAL, POINT(34.05, -118.25)) as IS_WITHIN FROM XML_SPATIAL_TEST e WHERE e.XMLVAL.existsNode('/po/pono') = 1 AND IS_WITHIN IS TRUE;",
+        "CREATE TABLE XMLTYPE_HANDLE_TEST (ID INTEGER PRIMARY KEY, XMLCOL LONG XML, DATACOL VARCHAR(50));",
+        "INSERT INTO XMLTYPE_HANDLE_TEST VALUES (1, createXML('<emp><empno>123</empno><ename>John Doe</ename></emp>'), 'First Entry');",
+        "INSERT INTO XMLTYPE_HANDLE_TEST VALUES (2, createXML('<emp><empno>456</empno><ename>Jane Smith</ename></emp>'), NULL);",
+        "SELECT t.XMLCOL.extract('//empno/text()').getNumVal() as EMPNO, t.DATACOL FROM XMLTYPE_HANDLE_TEST t WHERE t.DATACOL IS NOT NULL;",
+        "SELECT COUNT(*) FROM XMLTYPE_HANDLE_TEST WHERE XMLCOL.existsNode('/emp/empno') = 1 GROUP BY DATACOL HAVING COUNT(*) > 0;",
+        "SELECT e.ID, e.XMLCOL.extract('//empno/text()').getNumVal() as EMPNO, bif:st_within(e.GEOMETRYVAL, POINT(34.06, -118.26)) as IS_WITHIN FROM XML_SPATIAL_TEST e WHERE e.XMLCOL.existsNode('/po/pono') = 1 ORDER BY EMPNO ASC;",
+        "CREATE TABLE COMPLEX_XML_TEST (ID INTEGER, XMLVAL LONG XML, INFO VARCHAR(100));",
+        "INSERT INTO COMPLEX_XML_TEST VALUES (1, createXML('<data><entry><num>100</num><desc>Desc 1</desc></entry></data>'), 'Info 1');",
+        "INSERT INTO COMPLEX_XML_TEST VALUES (2, createXML('<data><entry><num>200</num><desc>Desc 2</desc></entry></data>'), 'Info 2');",
+        "SELECT ID, XMLVAL.extract('//num/text()').getNumVal() + 1 as INCREMENTED_NUM, COALESCE(INFO, 'No Info') as NON_NULL_INFO FROM COMPLEX_XML_TEST WHERE XMLVAL.existsNode('/data/entry') = 1 ORDER BY INCREMENTED_NUM DESC;"
+    ]
+}

@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/64888",
+  "title": "Pessimistic Transaction: SELECT returns old snapshot after UPDATE to the same value",
+  "description": "## Bug Report\n\n### 1. Minimal reproduce step (Required)\n\n1. Prepare a TiDB cluster (tested on v8.5.4) with the default Pessimistic Transaction mode and Repeatable Read isolation level.\n2. Create a test table and insert initial data:\n   ```sql\n   CREATE TABLE t (id INT, val INT);\n   INSERT INTO t VALUES (1, 1);\n   ```\n3. Open two terminal sessions (Session A and Session B).\n4. Session A: \n    ```sql\n    BEGIN;\n    SELECT * FROM t;   -- Output: id:1, val:1\n    ```\n5. Session B:\n    ```sql\n    UPDATE t SET val = 10 WHERE id = 1;\n    COMMIT;\n    ```\n6. Session A:\n    ```sql\n    UPDATE t SET val = 10 WHERE id = 1; -- Result: Query OK, 1 row affected (or 0 rows changed), Rows matched: 1\n    ```\n7. Session A:\n    ```sql\n    SELECT * FROM t;\n    ```\n\n### 2. What did you expect to see? (Required)\nSince the update by Step 6 succeeded, Session A should see the updated value val = 10 in Step 7.\n\n### 3. What did you see instead (Required)\nI saw val = 1 in Step 7. \n\nIf I changed the val = 20 in Step 6, then Step 7 would be able to see his own write val=20.\n\n### 4. What is your TiDB version? (Required)\n```\nRelease Version: v8.5.4\nEdition: Community\nGit Commit Hash: e4e814fdc0afe9c3a6e5e96f129d83df802ab820\nGit Branch: HEAD\nUTC Build Time: 2025-11-26 15:53:39\nGoVersion: go1.23.12\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv\n```\n\nThis should be similar to the MariaDB bug: [https://jira.mariadb.org/browse/MDEV-26642](https://jira.mariadb.org/browse/MDEV-26642), which was fixed in their recent versions.\n",
+  "date": "2025-12-05T22:26:25Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t (id INT PRIMARY KEY, val INT NOT NULL, description VARCHAR(255));",
+    "INSERT INTO t (id, val, description) VALUES (1, 1, 'Initial value');",
+    "UPDATE t SET val = 1 WHERE id = 1;",
+    "SELECT * FROM t WHERE id = 1;",
+    "UPDATE t SET val = 20 WHERE id = 1;",
+    "SELECT * FROM t WHERE id = 1;"
+  ],
+  "key_bug_features": [
+    "SELECT returns old snapshot after UPDATE to the same value"
+  ]
+}

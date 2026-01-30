@@ -1,0 +1,17 @@
+{
+    "function": "mysql",
+    "operator": "a GLOBAL IN ...",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt64, value String, created_at DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table (id, value, created_at) VALUES (1, 'test1', now()), (2, NULL, now()), (3, 'test3', now() - INTERVAL 1 DAY);",
+        "CREATE TABLE test_remote (remote_id Int32, remote_data String) ENGINE = MergeTree() ORDER BY remote_id;",
+        "INSERT INTO test_remote SELECT id, value FROM mysql('localhost:3306', 'test', 'test_table', 'user', 'password') WHERE remote_id > 1;",
+        "SELECT * FROM mysql('localhost:3306', 'test', 'test_table', 'user', 'password') WHERE remote_id GLOBAL IN (SELECT id FROM test_table WHERE value IS NOT NULL);",
+        "INSERT INTO test_remote SELECT remote_id, remote_data FROM mysql('localhost:3306', 'test', 'test_table', 'user', 'password') ON DUPLICATE KEY UPDATE remote_data = CONCAT(remote_data, ' updated') WHERE remote_id GLOBAL IN (SELECT id FROM test_table WHERE created_at >= NOW() - INTERVAL 1 DAY);",
+        "SELECT remote_data FROM mysql('localhost:3306', 'test', 'test_table', 'user', 'password') WHERE remote_id IN (SELECT id FROM test_remote GROUP BY remote_id HAVING COUNT(*) > 1);",
+        "SELECT id, COUNT(*) AS count FROM test_table GROUP BY id HAVING count = 1;",
+        "CREATE TABLE temp_table (temp_id UInt32, data Float64) ENGINE = Memory;",
+        "INSERT INTO temp_table SELECT id, CAST(value AS Float64) FROM test_table WHERE value IS NOT NULL UNION ALL SELECT remote_id, CAST(remote_data AS Float64) FROM mysql('localhost:3306', 'test', 'test_remote', 'user', 'password') WHERE remote_data IS NOT NULL;",
+        "SELECT temp_id, AVG(data) AS avg_data FROM temp_table GROUP BY temp_id HAVING avg_data > 0;"
+    ]
+}

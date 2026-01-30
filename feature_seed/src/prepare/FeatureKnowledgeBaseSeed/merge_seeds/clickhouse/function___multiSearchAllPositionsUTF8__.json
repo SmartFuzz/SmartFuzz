@@ -1,0 +1,12 @@
+CREATE TABLE haystack_data (id UInt32, haystack String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO haystack_data VALUES (1, '\xC3\x81bcde'), (2, '\xC3\xA9clair'), (3, '\xC2\xA9opyright');
+SELECT multiSearchAllPositionsUTF8(haystack, ['\xC3', '\xC2']) FROM haystack_data;
+CREATE TABLE needles_data (id UInt32, needle String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO needles_data VALUES (1, '\xC3'), (2, '\xA9');
+SELECT multiSearchAllPositionsUTF8(haystack, groupArray(needle)) FROM haystack_data, needles_data;
+SELECT id, multiSearchAllPositionsUTF8(haystack, ['\x41', '\x42']) AS positions FROM haystack_data WHERE positions[1] > 0;
+CREATE TABLE search_results AS SELECT id, multiSearchAllPositionsUTF8(haystack, ['\xC3', '\xA9']) AS positions FROM haystack_data;
+SELECT id FROM search_results WHERE positions[1] = 0;
+SELECT id, multiSearchAllPositionsUTF8(haystack, ['\x41', '\x41', '\x41']) AS occurrences FROM haystack_data;
+CREATE TABLE combined_search AS SELECT id, multiSearchAllPositionsUTF8(haystack, ['\xC3\x81', '\xC3\xA9']) AS positions FROM haystack_data WHERE id IN (SELECT id FROM needles_data);
+INSERT INTO combined_search SELECT id, multiSearchAllPositionsUTF8(haystack, ['\xC2']) FROM haystack_data WHERE id % 2 = 0;

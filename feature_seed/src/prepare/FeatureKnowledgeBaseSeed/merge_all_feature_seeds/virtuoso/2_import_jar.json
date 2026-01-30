@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, name NVARCHAR(255), value DOUBLE PRECISION, creation_date DATETIME);
+INSERT INTO test_table VALUES (1, 'example', 1.23456789, NULL);
+INSERT INTO test_table VALUES (2, NULL, 0, '2022-01-01 10:00:00');
+SELECT id, bif:crc64(import_jar('java.lang.System', vector('java.lang.String'))) AS checksum FROM test_table WHERE value > 0 AND name IS NOT NULL;
+SELECT getstat_m() AS member_value FROM test_table WHERE creation_date IS NULL OR value BETWEEN 1.0 AND 2.0;
+SELECT id, bif:crc64(import_jar('java.lang.Math', vector('java.lang.Double'))) AS result FROM (SELECT id, value * 2.0 AS modified_value FROM test_table WHERE value IS NOT NULL) AS subquery HAVING modified_value > 2.5;
+CREATE TABLE additional_table (name NVARCHAR(50) UNIQUE, reference_id INT, FOREIGN KEY (reference_id) REFERENCES test_table(id));
+INSERT INTO additional_table VALUES (NULL, 1);
+INSERT INTO additional_table VALUES ('unique_name', 2);
+SELECT a.name, bif:crc64(import_jar('java.lang.Math', vector('java.lang.Math'))) AS math_hash, t.value FROM additional_table a LEFT JOIN test_table t ON a.reference_id = t.id WHERE t.creation_date IS NULL OR t.name IS NOT NULL GROUP BY a.name, t.value HAVING COUNT(t.id) > 0;
+SELECT DISTINCT id, bif:crc64(import_jar(NULL, vector('java.lang.String'))) FROM test_table WHERE id <= (SELECT MAX(id) FROM test_table) AND value IS NOT NULL ORDER BY id DESC LIMIT 10;

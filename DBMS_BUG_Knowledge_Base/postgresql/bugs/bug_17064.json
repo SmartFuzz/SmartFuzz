@@ -1,0 +1,24 @@
+{
+  "url": "https://www.postgresql.org/message-id/17064-bb0d7904ef72add3%40postgresql.org",
+  "title": "BUG #17064: Parallel VACUUM operations cause the error \"global/pg_filenode.map contains incorrect checksum\"",
+  "vulnerable_database": "postgresql",
+  "date": "2021-06-18 15:00:01",
+  "vulnerable_version": "Unknown",
+  "description": "The following bug has been logged on the website:\nBug reference:      17064\nLogged by:          Alexander Lakhin\nEmail address:      exclusion(at)gmail(dot)com\nPostgreSQL version: 14beta1\nOperating system:   Ubuntu 20.04\nDescription:\nThe following script:\n===\nfor i in `seq 100`; do\ncreatedb db$i\ndone\n# Based on the contents of the regression test \"vacuum\"\necho \"\nCREATE TABLE pvactst (i INT);\nINSERT INTO pvactst SELECT i FROM generate_series(1,10000) i;\nDELETE FROM pvactst;\nVACUUM pvactst;\nDROP TABLE pvactst;\nVACUUM FULL pg_database;\n\" >/tmp/vacuum.sql\nfor n in `seq 10`; do\necho \"iteration $n\"\nfor i in `seq 100`; do\n( { for f in `seq 100`; do cat /tmp/vacuum.sql; done } | psql -d db$i )\n>psql-$i.log 2>&1 &\ndone\nwait\ngrep -C5 FATAL psql*.log && break;\ndone\n===\ndetects sporadic FATAL errors:\niteration 1\npsql-56.log-DROP TABLE\npsql-56.log-VACUUM\npsql-56.log-CREATE TABLE\npsql-56.log-INSERT 0 10000\npsql-56.log-DELETE 10000\npsql-56.log:FATAL:  relation mapping file \"global/pg_filenode.map\" contains\nincorrect checksum\npsql-56.log-server closed the connection unexpectedly\npsql-56.log-    This probably means the server terminated abnormally\npsql-56.log-    before or while processing the request.\npsql-56.log-connection to server was lost\n(Discovered when running multiple installcheck's for a single instance.\n(Except for this failure, installcheck x 100 (with several tests excluded)\nis rather stable.))\nReproduced on REL9_6_STABLE .. master.",
+  "poc": [
+    "CREATE TABLE pvactst (i INT);",
+    "INSERT INTO pvactst SELECT i FROM generate_series(1,10000) i;",
+    "DELETE FROM pvactst;"
+  ],
+  "poc_type": "sql_text",
+  "key_bug_features": [
+    "Parallel VACUUM operations on multiple databases"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE test_table_1 (id SERIAL PRIMARY KEY, name VARCHAR(50) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table_1 (name) VALUES ('Test Name 1'), ('Test Name 2');",
+    "CREATE TABLE test_table_2 (id INT REFERENCES test_table_1(id), value NUMERIC CHECK (value >= 0));",
+    "INSERT INTO test_table_2 (id, value) SELECT id, random() * 100 FROM test_table_1;",
+    "VACUUM test_table_1;"
+  ]
+}

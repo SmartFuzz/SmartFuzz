@@ -1,0 +1,12 @@
+CREATE TABLE test_table (id UInt32, a Nullable(Int32), b Nullable(String));
+INSERT INTO test_table VALUES (1, 10, 'test'), (2, NULL, 'example'), (3, 20, NULL), (4, NULL, NULL), (5, 30, 'test'), (6, 40, 'example');
+SELECT cramersVBiasCorrected(a, NULL) FROM (SELECT id, a, b FROM test_table WHERE b IS NULL) GROUP BY a HAVING IS NULL;
+SELECT id, cramersVBiasCorrected(a, b) AS relation FROM (SELECT DISTINCT a, b FROM test_table) WHERE a IS NULL;
+SELECT id, cramersVBiasCorrected(a, b) AS relation FROM (SELECT a IS NULL AS a_null, b FROM test_table) WHERE a_null = 1;
+SELECT a, IF(b IS NULL, 0, cramersVBiasCorrected(a, b)) AS correlation FROM test_table ORDER BY correlation DESC;
+SELECT a, COUNT(*) AS cnt FROM (SELECT a, b FROM test_table WHERE a IS NOT NULL GROUP BY a, b HAVING cnt > 1) GROUP BY a;
+SELECT cramersVBiasCorrected(a, b) FROM (SELECT * FROM (SELECT a, b FROM test_table WHERE a IS NOT NULL) AS subquery) WHERE a IS NULL;
+CREATE TABLE temp_table AS SELECT a, b FROM test_table WHERE a IS NOT NULL;
+INSERT INTO temp_table SELECT NULL, 'new_entry' UNION ALL SELECT 50, 'new_example';
+SELECT cramersVBiasCorrected(a, b) AS correlation FROM temp_table WHERE b IS NULL;
+SELECT cramersVBiasCorrected(a, IF(IS NULL(b), CAST('0' AS Int32), b)) FROM test_table GROUP BY a;

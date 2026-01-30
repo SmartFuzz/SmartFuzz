@@ -1,0 +1,15 @@
+{
+    "function": "arrayReverseSplit(func, arr1, ...)",
+    "operator": "a <= b",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, value Array(UInt32), threshold UInt32);",
+        "INSERT INTO test_table VALUES (1, [1, 2, 3, 4, 5], 2), (2, [5, 4, 3, 2, 1], 3), (3, [], 1), (4, [6, 7, 8, 9], 0);",
+        "SELECT id, arrayReverseSplit((x, y) -> y, value, [threshold, threshold, threshold, threshold, threshold]) AS split_arrays FROM test_table WHERE (SELECT COUNT() FROM test_table AS t2 WHERE t2.id <= test_table.id) > 2;",
+        "SELECT id, arrayReverseSplit((x, y) -> if(x <= 0, 0, x), value) AS split_arrays FROM test_table WHERE id <= (SELECT MAX(id) FROM test_table WHERE value[1] IS NOT NULL);",
+        "SELECT id, arrayReverseSplit((x, y) -> (x - threshold), value, [1, 1, 1, 1, 1]) AS split_arrays FROM test_table HAVING split_arrays[1][1] <= 4;",
+        "SELECT id, arrayReverseSplit((x, y) -> if(toString(x) <= throwIf(x, 'error'), 0, 1), value) AS split_arrays FROM test_table WHERE threshold IS NULL;",
+        "SELECT id, arrayReverseSplit((x, y) -> (y - arr[1]), value, [5, 0, 0, 0, 0]) AS split_arrays FROM (SELECT id, value, [min(id), max(id), threshold] AS arr FROM test_table GROUP BY id, value HAVING count(value) >= 1);",
+        "CREATE TABLE temp_table AS SELECT id, arrayReverseSplit((x, y) -> (y - 1), value) FROM test_table;",
+        "SELECT t1.id, t1.value, t1.threshold FROM test_table t1 JOIN temp_table t2 ON (t1.id <= t2.id) WHERE arrayReduce('sum', t2.value) >= (SELECT MAX(threshold) FROM test_table);"
+    ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=102191",
+  "title": "Parsing incorrectly extra row info of binlog",
+  "description": "Mysqld / mysql client (like mysqlbinlog) parses incorrectly partition info from binlog, if:\r\n1. there is a table with more than 128 partitions\r\n2. do a DML involved with the last partition\r\n\r\nmysqlbinlog parses partition id wrongly:\r\nExtra row info for partitioning: partition: 65408\r\n\r\nwhere the partition id (65408) is incorrect and it should be 128.\nHow to repeat:\n# It's easy to repeat:\r\n\r\nCREATE TABLE foo (\r\n    id INT primary key\r\n)\r\nPARTITION BY RANGE( id ) (\r\n  PARTITION p0 VALUES LESS THAN (0),\r\n  PARTITION p1 VALUES LESS THAN (1),\r\n  PARTITION p2 VALUES LESS THAN (2),\r\n  PARTITION p3 VALUES LESS THAN (3),\r\n  ...\r\n  PARTITION p126 VALUES LESS THAN (126),\r\n  PARTITION p127 VALUES LESS THAN (127),\r\n  PARTITION p128 VALUES LESS THAN (128)\r\n);\r\n\r\n# First, the following is the expected behavior\r\ninsert into foo values (126);\r\n\r\n# The DML was written into binlog, and use mysqlbinlog to print verbose.\r\nbin/mysqlbinlog -vv --base64-output=decode-row master-bin.000001\r\n\r\n# then you will see the right partition id info like:\r\n```\r\n...\r\n### Extra row info for partitioning: partition: 127\r\n...\r\n```\r\n\r\n# Then, let's construct a use case that produces a bug\r\ninsert into foo values (127);\r\n\r\n# The DML was written into binlog, and use mysqlbinlog to print verbose.\r\nbin/mysqlbinlog -vv --base64-output=decode-row master-bin.000001\r\n\r\n# then you will see the wrong partition id info like:\r\n```\r\n...\r\n### Extra row info for partitioning: partition: 65408\r\n...\r\n```\nSuggested fix:\nbinary_log::Rows_event::Rows_event(const char *buf, const Format_description_event *fde)\r\n  --> binary_log::Event_reader::read<unsigned short>\r\n\r\n--- a/libbinlogevents/include/event_reader.h\r\n+++ b/libbinlogevents/include/event_reader.h\r\n@@ -267,7 +267,7 @@ class Event_reader {\r\n       return 0;\r\n     }\r\n     T value = 0;\r\n-    value = (T) * (m_ptr);\r\n+    value = (T) (*((const T*)m_ptr));\r\n     m_ptr = m_ptr + sizeof(T);\r\n     return value;\r\n   }",
+  "date": "2021-01-08 06:26:00",
+  "vulnerable_version": "8.0.22",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE bar (id Int32, name String, created_at DateTime DEFAULT now()) ENGINE = MergeTree() ORDER BY id PARTITION BY (id % 128);",
+    "INSERT INTO bar (id, name) VALUES (126, 'Test Entry 126');",
+    "INSERT INTO bar (id, name) VALUES (127, 'Test Entry 127');",
+    "SELECT * FROM bar WHERE id = (SELECT MAX(id) FROM bar);",
+    "ALTER TABLE bar UPDATE name = NULL WHERE id = 127;"
+  ],
+  "key_bug_features": [
+    "Incorrect partition id parsing for large partition tables"
+  ]
+}

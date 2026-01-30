@@ -1,0 +1,21 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=101267",
+  "title": "altering table containing decimal causes corruption",
+  "description": "mysql> CREATE TABLE `test` (\r\n    -> `id` INT NOT NULL AUTO_INCREMENT,\r\n    -> `n` DECIMAL(10,2) ZEROFILL NOT NULL DEFAULT 0,\r\n    -> `t` VARCHAR(45) NOT NULL DEFAULT '',\r\n    -> PRIMARY KEY (`id`))\r\n    -> ENGINE=myisam;\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nmysql> ALTER TABLE test\r\n    -> CHANGE COLUMN `n` `n` DECIMAL(10,2) UNSIGNED NOT NULL DEFAULT '0' ;\r\nERROR 1034 (HY000): Incorrect key file for table 'test'; try to repair it\n\nThe table is now broken and cannot be repaired.\n\nmysql> select version();\r\n+-----------+\r\n| version() |\r\n+-----------+\r\n| 5.7.31    |\r\n+-----------+\nHow to repeat:\nCREATE TABLE `test` (\r\n`id` INT NOT NULL AUTO_INCREMENT,\r\n`n` DECIMAL(10,2) ZEROFILL NOT NULL DEFAULT 0,\r\n`t` VARCHAR(45) NOT NULL DEFAULT '',\r\nPRIMARY KEY (`id`))\r\nENGINE=myisam;\r\n\r\nALTER TABLE test\r\nCHANGE COLUMN `n` `n` DECIMAL(10,2) UNSIGNED NOT NULL DEFAULT '0' ;\n\nMight be something to do with 'DECIMAL(10,2) ZEROFILL'",
+  "date": "2020-10-22 02:16:00",
+  "vulnerable_version": "5.7.31, 5.6.50, 5.7.32, 8.0.22",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test2 (id INTEGER NOT NULL, n DECIMAL(10,2) NOT NULL DEFAULT 0, t VARCHAR(45) NOT NULL DEFAULT '', PRIMARY KEY (id));",
+    "INSERT INTO test2 (n, t) VALUES (123.45, 'example');",
+    "ALTER TABLE test2 RENAME COLUMN n TO n_temp;",
+    "ALTER TABLE test2 ADD COLUMN n DECIMAL(10,2) NOT NULL DEFAULT 0;",
+    "UPDATE test2 SET n = n_temp;",
+    "SELECT * FROM test2 WHERE n IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Altering DECIMAL column with ZEROFILL causes table corruption"
+  ]
+}

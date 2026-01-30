@@ -1,0 +1,10 @@
+CREATE TABLE websites (id INT PRIMARY KEY, url VARCHAR(255) NOT NULL, site_path VARCHAR(255) NOT NULL, crawl_depth INT, hook_function VARCHAR(255), skip_list VECTOR);
+INSERT INTO websites VALUES (1, 'www.foo.com', 'sites/www_foo_com', 0, 'DB.DBA.my_hook', vector('www.skip.me', 'www.bar.com'));
+SELECT id, url, (SELECT COUNT(*) FROM websites w WHERE w.url LIKE 'www.%' AND w.crawl_depth < 3) AS website_count FROM websites WHERE url IS NOT NULL ORDER BY website_count DESC;
+SELECT SERV_QUEUE_TOP(url, site_path, crawl_depth, 0, hook_function, xpath_split(skip_list, ',')) FROM websites WHERE crawl_depth BETWEEN 0 AND 5;
+SELECT url, xpath_split(SERV_QUEUE_TOP('', '', 0, 0, '', vector('www.example.com', 'www.test.com')), ',') AS split_sites FROM websites WHERE url NOT IN (SELECT url FROM websites WHERE crawl_depth = 0) GROUP BY url HAVING COUNT(*) > 0;
+CREATE TABLE crawled_data (site_id INT, node_data XML, PRIMARY KEY (site_id), FOREIGN KEY (site_id) REFERENCES websites(id));
+INSERT INTO crawled_data (site_id, node_data) VALUES (1, '<data><item>value1</item><item>value2</item></data>');
+INSERT INTO crawled_data (site_id, node_data) VALUES (1, '<data><item>value3</item></data>');
+SELECT site_id, xpath_split(node_data, '/') AS split_data FROM crawled_data WHERE site_id IN (SELECT id FROM websites WHERE crawl_depth IS NULL);
+SELECT w.url, c.node_data FROM websites w JOIN crawled_data c ON w.id = c.site_id WHERE xpath_split(c.node_data, '/') IS NOT NULL ORDER BY w.url DESC;

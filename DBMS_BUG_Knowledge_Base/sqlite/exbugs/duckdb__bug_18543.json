@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/18543",
+  "title": "[nightly build] Incorrect handling with CTE and EXIST",
+  "description": "### What happens?\n\nHi, I found that DuckDB will have a different handling of CTE with EXIST clause from [SQLite](https://www.db-fiddle.com/f/nuX6oJBVMXkb1MYgWVfGX6/0) and [Postgres](https://www.db-fiddle.com/f/s7BU9XTJzREC1motGXtAJi/0).\n\nIn this example, both SQLite and Postgres return 1 row, while DuckDB returns zero rows.\n\n```sql\nCREATE  TABLE  t1(c0 BOOLEAN);\nCREATE  TABLE  t2(c0 BOOLEAN);\nCREATE  TABLE  t3(c0 BOOLEAN);\nINSERT INTO t2(c0) VALUES (true);\nINSERT INTO t3(c0) VALUES (true);\n\nWITH c AS (\n  SELECT *\n  FROM t1\n  WHERE false\n)\nSELECT t2.c0\nFROM t2 CROSS JOIN t3 CROSS JOIN c\nUNION ALL\nSELECT t2.c0 FROM t2 CROSS JOIN t3\nWHERE NOT EXISTS (\n  SELECT 1\n  FROM c\n); -- {0 rows}\n```\n\nAfter some initial analysis, I found the following query can return the correct result. Note that the only difference here is that this query uses the physical empty table instead of an empty CTE. And both SQLite and Postgres also return 1 row for this case, which means there might be a bug with the CTE EXIST clause. \n\n```sql\nSELECT t2.c0\nFROM t2 CROSS JOIN t3 CROSS JOIN t1\nUNION ALL\nSELECT t2.c0 FROM t2 CROSS JOIN t3\nWHERE NOT EXISTS (\n  SELECT 1\n  FROM t1\n); -- {1 row}\n```\n\n### To Reproduce\n\nUsing `DuckDB v1.4.0-dev2537 (Development Version) 448f32f03e` cli, run the above queries.\n\n### OS:\n\nUbuntu 24.04.1 LTS, x86_64, Linux 6.14.0-1010-aws (AWS EC2)\n\n### DuckDB Version:\n\nv1.4.0-dev2537 (Development Version) 448f32f03e\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\nAWS EC2 instance\n\n### Full Name:\n\nQiuyang Mang\n\n### Affiliation:\n\nUC Berkeley\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a nightly build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "date": "2025-08-07 15:07:18",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE t1(c0 INTEGER, c1 INTEGER);",
+    "CREATE TABLE t2(c0 INTEGER, c1 TEXT);",
+    "CREATE TABLE t3(c0 INTEGER, c1 REAL);",
+    "INSERT INTO t1(c0, c1) VALUES (NULL, 1);",
+    "SELECT t2.c0 FROM t2 CROSS JOIN t3 CROSS JOIN t1 WHERE NOT EXISTS (SELECT 1 FROM t1 WHERE c0 IS NULL);"
+  ],
+  "key_bug_features": [
+    "Incorrect handling of CTE with EXIST clause"
+  ]
+}

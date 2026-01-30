@@ -1,0 +1,13 @@
+CREATE TABLE test_data (id INT, timestamp_col TIMESTAMP, data_col VARCHAR(255));
+INSERT INTO test_data VALUES (1, TIMESTAMP '2023-01-01 00:00:00', 'test1'), (2, NULL, 'test2'), (3, TIMESTAMP '2023-12-31 23:59:59', 'edge_case');
+SELECT id, java_new_object('java.util.Date', vector('L', bif:crc64(data_col))) AS java_instance FROM test_data WHERE data_col IS NOT NULL;
+SELECT id, bif:crc64(COALESCE(data_col, 'default_string')) AS hashed_data FROM (SELECT id, data_col FROM test_data WHERE timestamp_col IS NULL) AS subquery;
+CREATE TABLE additional_data (ref_id INT, numeric_col FLOAT, text_col VARCHAR(255) DEFAULT 'default');
+INSERT INTO additional_data VALUES (1, 99999.9999, 'text1'), (2, -99999.9999, 'text2'), (3, NULL, 'text3');
+SELECT a.ref_id, a.numeric_col, java_new_object('java.util.String', vector('L', LENGTH(b.text_col))) AS string_object FROM additional_data a JOIN test_data b ON a.ref_id = b.id WHERE a.numeric_col < 0;
+SELECT id, COUNT(*) AS count FROM test_data GROUP BY id HAVING COUNT(*) > 1;
+SELECT id, java_new_object('java.util.Date') AS date_instance, bif:crc64(id || '' || COALESCE(timestamp_col, 'N/A')) AS combined_hash FROM test_data ORDER BY timestamp_col;
+SELECT a.id, java_new_object('java.util.ArrayList', vector('L', a.data_col), NULL) AS list_object FROM test_data a INNER JOIN additional_data b ON a.id = b.ref_id WHERE b.numeric_col IS NOT NULL AND b.text_col LIKE '%text%';
+CREATE TEMPORARY TABLE temp_data AS SELECT id, bif:crc64(data_col) AS data_hash FROM test_data WHERE timestamp_col IS NOT NULL;
+INSERT INTO temp_data SELECT id, bif:crc64(data_col || COALESCE(timestamp_col, '')) FROM test_data WHERE id < 3;
+SELECT t.id, bif:crc64(t.data_hash || CAST(t.id AS VARCHAR)) AS complex_hash FROM temp_data t WHERE t.data_hash IS NOT NULL;

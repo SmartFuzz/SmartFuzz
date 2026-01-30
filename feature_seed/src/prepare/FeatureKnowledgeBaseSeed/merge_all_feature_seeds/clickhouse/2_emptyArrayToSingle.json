@@ -1,0 +1,13 @@
+CREATE TABLE test_table (id UInt32, values Array(String), score Float64);
+INSERT INTO test_table VALUES (1, [], 1.0), (2, ['A', 'B'], 2.0), (3, [], 3.0), (4, ['X'], 4.0);
+SELECT id, emptyArrayToSingle(values) AS transformed_values FROM test_table WHERE emptyArrayToSingle(values) > ['Default'] AND score > 1.5;
+SELECT id, SUM(score) AS total_score FROM test_table GROUP BY id HAVING emptyArrayToSingle(values) > ['None'] AND total_score > 1.5;
+SELECT id FROM test_table WHERE id > (SELECT max(id) FROM test_table WHERE emptyArrayToSingle(values) = ['A']) OR values = emptyArrayToSingle([]);
+CREATE TABLE other_table (id UInt32, info String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO other_table VALUES (1, 'Test'), (2, 'Sample'), (3, 'NULL'), (4, '');
+SELECT ot.id, COUNT(*) AS count FROM other_table ot JOIN (SELECT id, emptyArrayToSingle(values) AS transformed FROM test_table) tt ON ot.id > tt.id GROUP BY ot.id HAVING count > 1;
+SELECT id, emptyArrayToSingle(IFNULL(values, [])) AS safe_array FROM test_table;
+CREATE TABLE temp_table AS SELECT id, emptyArrayToSingle(values) AS single_value FROM test_table WHERE values = [];
+INSERT INTO temp_table SELECT id, ['Single'] FROM test_table WHERE score < 3.0;
+SELECT id, emptyArrayToSingle(ARRAY_MAX(values)) AS max_value FROM test_table WHERE values IS NOT NULL;
+SELECT id FROM test_table WHERE emptyArrayToSingle(values) = ['Default'] AND id > (SELECT id FROM other_table WHERE info IS NULL);

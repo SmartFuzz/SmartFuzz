@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/86227",
+  "title": "Alias, Order by and Distributed tables does not work properly together",
+  "description": "### Describe what's wrong\nOrder by used on a distributed table with an alias seems to shuffle the columns.\n### Does it reproduce on the most recent release?\nYes -  v25.7.2\n### How to reproduce\nTable setup\n```sql\nCREATE TABLE shard_Test ON CLUSTER `{cluster}`\n(\n`a` String,\n`b` Float64,\n`c` Float64,\n`d` Float64,\n`e` Float64 ALIAS b + c,\n`f` Float64 ALIAS c + d\n)\nENGINE = MergeTree\nORDER BY a;\nCREATE TABLE Test ON CLUSTER `{cluster}`\n(\n`a` String,\n`b` Float64,\n`c` Float64,\n`d` Float64,\n`e` Float64 ALIAS b + c,\n`f` Float64 ALIAS c + d\n)\nENGINE =  Distributed('{cluster}', 'default', 'shard_Test', rand());\nINSERT INTO Test VALUES('a', 1,2,3);\n```\nSimple query\n```sql\nSELECT\ne,\nf\nFROM Test\n┌─e─┬─f─┐\n1. │ 3 │ 5 │\n└───┴───┘\n```\nQuery with order by\n```sql\nSELECT\ne,\nf\nFROM Test\nORDER BY a ASC\n┌─e─┬─f─┐\n1. │ 5 │ 3 │\n└───┴───┘",
+  "date": "2025-08-26T16:43:08Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE shard_Test ( `a` VARCHAR(255), `b` FLOAT, `c` FLOAT, `d` FLOAT, `e` FLOAT GENERATED ALWAYS AS (b + c), `f` FLOAT GENERATED ALWAYS AS (c + d), `g` INT NULL ) ENGINE = OBTable ENGINE = MergeTree ORDER BY a;",
+    "CREATE TABLE Test ( `a` VARCHAR(255), `b` FLOAT, `c` FLOAT, `d` FLOAT, `e` FLOAT GENERATED ALWAYS AS (b + c), `f` FLOAT GENERATED ALWAYS AS (c + d), `g` INT NULL ) ENGINE = Distributed('{cluster}', 'default', 'shard_Test', rand());",
+    "INSERT INTO Test VALUES('a', 1, 2, 3, NULL), ('b', 4, 5, 6, 10), ('c', 7, 8, 9, 15);",
+    "SELECT e, f FROM Test WHERE g IS NULL ORDER BY a ASC;",
+    "SELECT e, f FROM Test ORDER BY e DESC;"
+  ],
+  "key_bug_features": [
+    "Order by on distributed table with alias shuffles columns"
+  ]
+}

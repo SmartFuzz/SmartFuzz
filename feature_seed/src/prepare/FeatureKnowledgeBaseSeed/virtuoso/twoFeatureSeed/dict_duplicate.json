@@ -1,0 +1,17 @@
+{
+    "function": "dict_duplicate",
+    "operator": "SPARQL Operator: isIRI",
+    "sql_array": [
+        "CREATE TABLE test_table (id INT PRIMARY KEY, data_dict DICTIONARY, iri_column IRI);",
+        "INSERT INTO test_table (id, data_dict, iri_column) VALUES (1, dict_duplicate(DICT('key1', 'value1', 'key2', 'value2')), 'http://example.com/resource1');",
+        "SELECT id, data_dict, iri_column FROM test_table WHERE isIRI(iri_column) AND data_dict['key1'] IS NOT NULL;",
+        "SELECT id, dict_duplicate(data_dict) AS duplicated_dict FROM test_table WHERE id IN (SELECT id FROM test_table WHERE isIRI(iri_column) AND data_dict['key2'] IS NULL);",
+        "CREATE TABLE sub_test (sub_id INT, related_id INT, sub_data DICTIONARY, CONSTRAINT fk_related FOREIGN KEY (related_id) REFERENCES test_table(id));",
+        "INSERT INTO sub_test (sub_id, related_id, sub_data) VALUES (1, 1, dict_duplicate(DICT('keyA', 'valueA')));",
+        "SELECT t.id, t.data_dict, s.sub_data FROM test_table t JOIN sub_test s ON t.id = s.related_id WHERE isIRI(t.iri_column) AND dict_duplicate(s.sub_data)['keyA'] = 'valueA';",
+        "SELECT id, COUNT(*) OVER (PARTITION BY data_dict['key1']) AS key1_count FROM test_table GROUP BY id, data_dict ORDER BY key1_count DESC HAVING key1_count > 1;",
+        "SELECT t.id, dict_duplicate(t.data_dict) AS full_copy FROM test_table t WHERE NOT EXISTS (SELECT 1 FROM sub_test s WHERE s.related_id = t.id AND isIRI(s.sub_data['keyA']) AND s.sub_data IS NOT NULL);",
+        "CREATE TEMPORARY TABLE temp_table AS SELECT id, dict_duplicate(data_dict) AS dict_copy FROM test_table WHERE data_dict IS NULL OR LENGTH(data_dict) = 0;",
+        "SELECT t.id, t.data_dict FROM temp_table t WHERE t.dict_copy IS NOT NULL AND isIRI(t.id::VARCHAR);"
+    ]
+}

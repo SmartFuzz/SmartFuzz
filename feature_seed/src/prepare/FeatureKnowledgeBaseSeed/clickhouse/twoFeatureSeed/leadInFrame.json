@@ -1,0 +1,16 @@
+{
+    "function": "leadInFrame",
+    "operator": "IS NULL",
+    "sql_array": [
+        "CREATE TABLE test_data (id Int32, year Nullable(Int32), category String, motivation String);",
+        "INSERT INTO test_data VALUES (1, 2001, 'physics', 'For observation of gravitational waves'), (2, NULL, 'chemistry', 'For discoveries in chemistry'), (3, 2003, 'physics', 'For theoretical contributions'), (4, 2005, NULL, 'For advancements in materials');",
+        "CREATE OR REPLACE VIEW year_view AS SELECT id, leadInFrame(year, 1, NULL) OVER (PARTITION BY category ORDER BY year) AS next_year FROM test_data WHERE year IS NOT NULL;",
+        "SELECT id, next_year, category FROM year_view WHERE next_year IS NULL;",
+        "SELECT COUNT(*) FROM test_data WHERE category IS NULL OR leadInFrame(year, 1, year) OVER (PARTITION BY category ORDER BY year) IS NULL;",
+        "SELECT DISTINCT category, leadInFrame(year, 1, year) AS next_year FROM test_data GROUP BY category HAVING next_year IS NOT NULL AND category IS NOT NULL;",
+        "SELECT t1.id, t1.category, t2.motivation FROM test_data t1 JOIN test_data t2 ON t1.id < t2.id WHERE t1.year IS NULL OR leadInFrame(t1.year, 1, NULL) OVER (PARTITION BY t1.category ORDER BY t1.year) = t2.year;",
+        "SELECT category, COUNT(*) AS count FROM test_data GROUP BY category HAVING count > 1 AND category IS NOT NULL OR leadInFrame(year, 1, year) IS NOT NULL;",
+        "CREATE TEMPORARY TABLE temp_data AS SELECT id, year, category FROM test_data WHERE year IS NOT NULL;",
+        "SELECT id, IS_NULL(next_year) AS is_next_year_null FROM (SELECT id, leadInFrame(year, 1, year) AS next_year FROM temp_data) WHERE next_year IS NULL;"
+    ]
+}

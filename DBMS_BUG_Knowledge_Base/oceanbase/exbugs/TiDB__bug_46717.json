@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/46717",
+  "title": "Array field should be passed to the `columnInfo`",
+  "description": "The following sql will fail:\r\n\r\n```\r\ncreate table t (pk varchar(4) primary key clustered, j json, str varchar(255), value int, key idx((cast(j as char(100) array)), str));\r\ninsert into t values (\"1\", '[\"a\"]', 'b', 1);\r\nselect * from t use index(idx) where \"a\" member of (j);\r\n```\r\n\r\nBecause tikv thinks it's a normal column and try to restore the data. However, the restore data doesn't exist in the value because tidb think it's a json and don't need to restore.\r\n\r\nA better way to fix this is to set the collation to `binary`. See https://github.com/pingcap/tidb/issues/46691. This issue should also be  fixed for backward compatibility (for existing data / indexes).",
+  "date": "2023-09-06T07:50:35Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t (pk VARCHAR(4) PRIMARY KEY, j JSON, str VARCHAR(255), value INT, INDEX idx ((CAST(j AS CHAR(100))), str));",
+    "INSERT INTO t VALUES ('1', '[\"a\"]', 'b', 1);",
+    "INSERT INTO t VALUES ('2', '[\"b\"]', 'c', 2);",
+    "SELECT * FROM t WHERE 'a' IN (SELECT JSON_UNQUOTE(JSON_EXTRACT(j, '$[0]')));",
+    "SELECT COUNT(*) FROM t WHERE str IS NULL;"
+  ],
+  "key_bug_features": [
+    "Array field not passed to columnInfo"
+  ]
+}

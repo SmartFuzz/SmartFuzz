@@ -1,0 +1,16 @@
+{
+    "function": "sqrt",
+    "operator": "a NOT IN ...",
+    "sql_array": [
+        "CREATE TABLE test_sqrt_notin (id UInt32, value Float64, text String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_sqrt_notin VALUES (1, 16.0, 'sqrt of 16'), (2, 25.0, 'sqrt of 25'), (3, NULL, 'NULL test'), (4, -1.0, 'negative sqrt'), (5, 0.0, 'zero sqrt'), (6, 2.5, 'decimal sqrt');",
+        "SELECT id, sqrt(value) AS sqrt_value FROM test_sqrt_notin WHERE id NOT IN (SELECT id FROM test_sqrt_notin WHERE text NOT LIKE '%test%') AND value IS NOT NULL;",
+        "SELECT id, sqrt(value) AS sqrt_value FROM test_sqrt_notin GROUP BY id HAVING sqrt_value NOT IN (SELECT sqrt(value) FROM test_sqrt_notin WHERE text = 'sqrt of 25');",
+        "SELECT id, sqrt(value) AS sqrt_value FROM test_sqrt_notin WHERE sqrt(value) NOT IN (SELECT value FROM test_sqrt_notin WHERE value > 10.0) OR text IN ('sqrt of 16', 'sqrt of 25');",
+        "WITH (SELECT DISTINCT sqrt(value) FROM test_sqrt_notin WHERE value IS NOT NULL) AS calculated_sqrt SELECT id, value FROM test_sqrt_notin WHERE value NOT IN calculated_sqrt;",
+        "SELECT COUNT(*) FROM (SELECT sqrt(value) AS sqrt_value FROM test_sqrt_notin WHERE sqrt(value) NOT IN (SELECT value FROM test_sqrt_notin WHERE value IS NOT NULL)) AS inner_query;",
+        "SELECT id, sqrt(ABS(value)) AS sqrt_abs_value FROM test_sqrt_notin WHERE sqrt_abs_value NOT IN (SELECT sqrt(value) FROM test_sqrt_notin WHERE value < 0);",
+        "CREATE TEMPORARY TABLE temp_sqrt AS SELECT id, sqrt(value) AS sqrt_value FROM test_sqrt_notin WHERE value IS NOT NULL AND sqrt(value) NOT IN (SELECT value FROM test_sqrt_notin WHERE value > 20.0);",
+        "SELECT id, sqrt(value) AS sqrt_value FROM temp_sqrt WHERE sqrt_value NOT IN (SELECT value FROM test_sqrt_notin WHERE text = 'NULL test');"
+    ]
+}

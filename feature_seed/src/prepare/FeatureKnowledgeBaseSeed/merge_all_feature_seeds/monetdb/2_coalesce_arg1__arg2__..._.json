@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, data VARCHAR(255), date_col DATE, interval_col INTERVAL YEAR TO MONTH, nullable_col VARCHAR(255));
+INSERT INTO test_table (id, data, date_col, interval_col, nullable_col) VALUES (1, 'value1', '2023-10-01', interval '1-5', NULL), (2, 'value2', NULL, interval '2-3', 'non-null'), (3, NULL, '2023-11-01', NULL, NULL);
+SELECT id, coalesce(data, 'default') AS resolved_data, coalesce(nullable_col, 'fallback') AS resolved_nullable, date_col + (coalesce(interval_col, interval '0-0')) AS adjusted_date FROM test_table WHERE coalesce(interval_col, interval '0-0') < interval '1-6' ORDER BY adjusted_date;
+SELECT id, coalesce((SELECT MAX(data) FROM test_table WHERE id < t.id), 'no data') AS previous_data, t.data FROM test_table t WHERE t.date_col IS NULL;
+SELECT id, data, interval_col, coalesce(NULLIF(data, ''), 'empty') AS null_handling_test FROM test_table HAVING COUNT(data) > 1 GROUP BY id, interval_col;
+SELECT id, (COALESCE(data, (SELECT data FROM test_table WHERE id = 1)) || ' combined') AS combined_data FROM test_table WHERE id IN (SELECT id FROM test_table WHERE coalesce(nullable_col, 'check') = 'check');
+SELECT id, coalesce(NULLIF(data, 'value1'), 'not found') AS data_test FROM (SELECT id, data FROM test_table WHERE date_col IS NOT NULL ORDER BY id) AS subquery HAVING COUNT(data) > 0;
+SELECT id, interval '0-1' + interval_col AS total_interval FROM test_table WHERE id = (SELECT MIN(id) FROM test_table HAVING COUNT(*) WITHIN GROUP (ORDER BY id));
+CREATE TABLE temp_table AS SELECT id, data, coalesce(nullable_col, 'N/A') AS fallback_data FROM test_table WHERE interval_col IS NOT NULL;
+ALTER TABLE test_table ADD COLUMN new_col INT DEFAULT 0;
+INSERT INTO temp_table (id, data, fallback_data) VALUES (4, 'temp value', NULL);

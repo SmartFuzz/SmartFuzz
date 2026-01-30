@@ -1,0 +1,23 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/88426",
+  "title": "Block structure mismatch in function connect between RemovingSparseTransform and MergeTreeSink stream: different types (Alias storage)",
+  "vulnerable_database": "ClickHouse",
+  "date": "2025-10-13T08:52:33Z",
+  "vulnerable_version": "",
+  "description": "CI: https://s3.amazonaws.com/clickhouse-test-reports/json.html?PR=88381&sha=latest&name_0=PR&name_1=AST+fuzzer+%28amd_tsan%29\n```\nCREATE TABLE source_table (`id` UInt32, `value` String) ENGINE = MergeTree ORDER BY id;\nCREATE TABLE alias_4__fuzz_45 (`id` Array(Int8), `value` Array(Array(UInt256)), `status` UInt32) ENGINE = Alias('source_table');\nINSERT INTO alias_4__fuzz_45 FORMAT Values (1, []);\n```\n```\nCode: 49. DB::Exception: Block structure mismatch in function connect between RemovingSparseTransform and MergeTreeSink stream: different number of columns:\nid Array(Int8) Array(size = 0, UInt64(size = 0), Int8(size = 0)), value Array(Array(UInt256)) Array(size = 0, UInt64(size = 0), Array(size = 0, UInt64(size = 0), UInt256(size = 0))), status UInt32 UInt32(size = 0)\nid UInt32 UInt32(size = 0), value String String(size = 0). (LOGICAL_ERROR)\n```",
+  "poc": [
+    "CREATE TABLE source_table (`id` UInt32, `value` String) ENGINE = MergeTree ORDER BY id;",
+    "CREATE TABLE alias_4__fuzz_45 (`id` Array(Int8), `value` Array(Array(UInt256)), `status` UInt32) ENGINE = Alias('source_table');",
+    "INSERT INTO alias_4__fuzz_45 FORMAT Values (1, []);"
+  ],
+  "key_bug_features": [
+    "Block structure mismatch in Alias table creation"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE source_table (`id` UInt32, `value` String) ENGINE = MergeTree ORDER BY id;",
+    "CREATE TABLE alias_4__fuzz_45 (`id` Array(Int8), `value` Array(Array(UInt256)), `status` UInt32) ENGINE = Alias('source_table');",
+    "INSERT INTO source_table VALUES (1, 'test');",
+    "INSERT INTO alias_4__fuzz_45 VALUES ([1, 2], [[100, 200]], 1);",
+    "SELECT * FROM alias_4__fuzz_45 WHERE status IS NOT NULL;"
+  ]
+}

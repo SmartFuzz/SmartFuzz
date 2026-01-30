@@ -1,0 +1,17 @@
+create table test as SELECT i as i, to_json([i%4]) as j FROM range(0,20) as tbl(i);
+COPY test TO '{TEMP_DIR}/json_part' (FORMAT csv, quote '', PARTITION_BY (j), HEADER 0);
+select * exclude (filename), parse_filename(filename) as filename from read_json_auto('{DATA_DIR}/json/example_*.ndjson', filename=true) order by all;
+select *, parse_filename(filename) from read_json_auto('{DATA_DIR}/json/example_*.ndjson') order by all;
+select * from read_json_auto(['{DATA_DIR}/json/example_n.ndjson', '{DATA_DIR}/json/top_level_array.json'], union_by_name=true) order by all;
+SELECT j, count(*) FROM read_json_auto('{TEMP_DIR}/json_part/j=*/*.csv', HIVE_PARTITIONING=1) group by j order by j;
+select * exclude (filename), parse_filename(filename) as filename from read_json_objects_auto('{DATA_DIR}/json/example_*.ndjson', filename=true) order by all;
+select * from read_json_objects_auto(['{DATA_DIR}/json/example_n.ndjson', '{DATA_DIR}/json/top_level_array.json'], union_by_name=true) order by all;
+select j, count(*) from read_json_objects_auto('{TEMP_DIR}/json_part/j=*/*.csv', HIVE_PARTITIONING=1) group by j order by j;
+SELECT j, count(*) FROM read_json_auto('{TEMP_DIR}/json_part/j=*/*.csv', HIVE_PARTITIONING=1) where j='[2]' group by j order by j;
+SELECT j, count(*) FROM read_json_auto('{TEMP_DIR}/json_part/j=*/*.csv', HIVE_PARTITIONING=1) where j>'[2]' group by j order by j;
+SELECT j, count(*) FROM read_json_auto('{TEMP_DIR}/json_part/j=*/*.csv', HIVE_PARTITIONING=1) where sqrt(j[2]::int) > 1.5 group by j order by j;
+SELECT * FROM read_json_auto(['{DATA_DIR}/json/with_uuid.json', '{DATA_DIR}/json/example_n.ndjson']);
+SELECT * FROM read_json_auto(['{DATA_DIR}/json/with_uuid.json', '{DATA_DIR}/json/example_n.ndjson'], sample_size=1, maximum_sample_files=1);
+SELECT * FROM read_json_auto(['{DATA_DIR}/json/with_uuid.json', '{DATA_DIR}/json/example_n.ndjson'], sample_size=1, maximum_sample_files=99);
+SELECT * FROM read_json_auto(['{DATA_DIR}/json/with_uuid.json', '{DATA_DIR}/json/example_n.ndjson'], sample_size=1, union_by_name=true);
+SELECT * FROM read_json_auto(['{DATA_DIR}/json/with_uuid.json', '{DATA_DIR}/json/example_n.ndjson'], sample_size=6);

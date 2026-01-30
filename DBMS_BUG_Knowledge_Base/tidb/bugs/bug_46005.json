@@ -1,0 +1,28 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/46005",
+  "title": "tidb panic for \"IndexMergeProcessWorker: runtime error: invalid memory address or nil pointer dereference\"",
+  "vulnerable_database": "tidb",
+  "date": "2023-08-11T08:16:11Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\nsteps please see in :\r\n[utf-go-clustered-index-panic.log](https://github.com/pingcap/tidb/files/12319665/utf-go-clustered-index-panic.log)\r\n\r\n\r\n### 2. What did you expect to see? (Required)\r\nno panic\r\n### 3. What did you see instead (Required)\r\n```\r\n[2023/08/10 20:54:12.065 +00:00] [ERROR] [index_merge_reader.go:884] [\"IndexMergeProcessWorker: runtime error: invalid memory address or nil pointer dereference\"] [conn=2636120476]\r\n[2023/08/10 20:54:12.065 +00:00] [ERROR] [misc.go:91] [\"panic in the recoverable goroutine\"] [r=\"\\\"invalid memory address or nil pointer dereference\\\"\"] [\"stack trace\"=\"[github.com/pingcap/tidb/util.WithRecovery.func1\\n\\t/home/jenkins/agent/workspace/build-common/go/src/github.com/pingcap/tidb/util/misc.go:93\\nruntime.gopanic\\n\\t/usr/local/go/src/runtime/panic.go:914\\nruntime.panicmem\\n\\t/usr/local/go/src/runtime/panic.go:261\\nruntime.sigpanic\\n\\t/usr/local/go/src/runtime](http://github.com/pingcap/tidb/util.WithRecovery.func1/n/t/home/jenkins/agent/workspace/build-common/go/src/github.com/pingcap/tidb/util/misc.go:93/nruntime.gopanic/n/t/usr/local/go/src/runtime/panic.go:914/nruntime.panicmem/n/t/usr/local/go/src/runtime/panic.go:261/nruntime.sigpanic/n/t/usr/local/go/src/runtime)\r\n```\r\n### 4. What is your TiDB version? (Required)\r\nmaster\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "poc": [
+    "drop table t;",
+    "set tidb_index_lookup_size = 1024;",
+    "create table t(a int, b int, c int, index idx1(a, c), index idx2(b, c));",
+    "insert into t values(1, 1, 1), (1, 2, -1), (2, 1, -2);",
+    "insert into t(a,b,c) select a,b,c from t;",
+    "select /*+ USE_INDEX_MERGE(t, idx1, idx2) */ * from t where a = 1 or b = 1 order by c limit 1025;"
+  ],
+  "poc_type": "sql_comment",
+  "state": "closed",
+  "key_bug_features": [
+    "Index merge with nil pointer dereference during query execution"
+  ],
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t;",
+    "CREATE TABLE t(a INT, b VARCHAR(10), c DECIMAL(10,2), INDEX idx1(a, c), INDEX idx2(b, c));",
+    "INSERT INTO t(a, b, c) VALUES (1, 'one', 1.00), (2, 'two', 2.50), (NULL, 'three', NULL);",
+    "SELECT /*+ USE_INDEX_MERGE(t, idx1, idx2) */ * FROM t WHERE a IS NULL OR b = 'one' ORDER BY c LIMIT 10;",
+    "UPDATE t SET c = c + 1 WHERE b LIKE 't%';"
+  ]
+}

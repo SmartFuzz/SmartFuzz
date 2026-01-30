@@ -1,0 +1,17 @@
+{
+    "function": "range(timestamptz, timestamptz, interval)",
+    "operator": "-",
+    "sql_array": [
+        "CREATE TABLE timestamps (id INTEGER PRIMARY KEY, ts TIMESTAMPTZ, value INTEGER);",
+        "INSERT INTO timestamps (id, ts, value) VALUES (1, TIMESTAMPTZ '2001-04-10 10:00:00Z', 10), (2, TIMESTAMPTZ '2001-04-10 12:00:00Z', 20), (3, TIMESTAMPTZ '2001-04-10 14:00:00Z', NULL);",
+        "INSERT INTO timestamps (id, ts, value) VALUES (4, TIMESTAMPTZ '2001-04-10 10:30:00Z', 30), (5, TIMESTAMPTZ '2002-01-01 00:00:00Z', 40);",
+        "SELECT id, ts, value, (SELECT COUNT(*) FROM timestamps AS t2 WHERE t2.ts < t1.ts) AS less_count FROM timestamps AS t1 WHERE value IS NOT NULL ORDER BY ts;",
+        "SELECT id, value, rate, range(TIMESTAMPTZ '2001-04-10', TIMESTAMPTZ '2001-04-10 15:00:00Z', INTERVAL '1 hour') AS ranges FROM (SELECT id, ts, value, (EXTRACT(EPOCH FROM ts) / 60)::FLOAT AS rate FROM timestamps) AS subquery WHERE rate BETWEEN 0 AND (SELECT MAX(value) FROM timestamps WHERE ts < TIMESTAMPTZ '2001-04-11');",
+        "SELECT id, value, (range(TIMESTAMPTZ '2001-04-10 00:00:00Z', TIMESTAMPTZ '2001-04-11 00:00:00Z', INTERVAL '1 hour') - INTERVAL '30 MINUTE')::TIMESTAMPTZ AS adjusted_ranges FROM timestamps WHERE value IS NULL;",
+        "SELECT AVG(value) AS average_value FROM timestamps WHERE (SELECT COUNT(*) FROM timestamps) > 0 GROUP BY (value + 1);",
+        "SELECT DISTINCT id, (ts - TIMESTAMPTZ '2001-04-09 00:00:00Z') AS day_difference FROM timestamps WHERE ts > (now() - INTERVAL '1 day') ORDER BY day_difference DESC;",
+        "CREATE TEMPORARY TABLE range_test AS SELECT id, value FROM timestamps WHERE value IS NOT NULL;",
+        "SELECT t1.id, t1.ts, t2.id AS join_id FROM timestamps AS t1 JOIN range_test AS t2 ON t1.value = t2.value WHERE (t1.ts - t2.ts) IS NOT NULL ORDER BY t1.ts;",
+        "DROP TABLE IF EXISTS timestamps;"
+    ]
+}

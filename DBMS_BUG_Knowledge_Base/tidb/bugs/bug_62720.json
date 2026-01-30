@@ -1,0 +1,33 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/62720",
+  "title": "CTE: inconsistent query result",
+  "vulnerable_database": "tidb",
+  "date": "2025-07-30T12:18:08Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n\n1. Create table `t8f78eb1d` with partitioning:\n```sql\nCREATE TABLE `t8f78eb1d` (\n  `col_8` date DEFAULT '1979-01-10',\n  `col_9` blob NOT NULL,\n  `col_10` binary(161) DEFAULT NULL,\n  `col_11` tinyblob NOT NULL,\n  KEY `idx_10` (`col_8`,`col_10`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci\nPARTITION BY RANGE COLUMNS(`col_10`)\n(PARTITION `p0` VALUES LESS THAN (_binary 0x2d44754078543800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000),\n PARTITION `p1` VALUES LESS THAN (_binary 0x48564f7a356e6151535876324533310000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000),\n PARTITION `p2` VALUES LESS THAN (MAXVALUE));\n```\n\n2. Insert test data (see attached `test.t8f78eb1d.sql` file)\n\n3. Execute the original CTE query:\n```sql\nwith cte_154 ( col_949,col_950,col_951 ) AS ( \n  select length( t8f78eb1d.col_10 ) as r0 , \n         char( t8f78eb1d.col_8 , t8f78eb1d.col_8 using utf8 ) as r1 , \n         t8f78eb1d.col_9 as r2 \n  from t8f78eb1d \n  where t8f78eb1d.col_9 between 'Jsg15z_' and 'hyVP^IM)(jh' \n    and t8f78eb1d.col_8 in ( '2026-07-04' ) \n) \n( select 1,col_949,col_950,col_951 from cte_154 \n  where cte_154.col_951 in ( '濞鴏皌p+O2MgU0楠澘碼S' ) \n     or cte_154.col_950 < 'oI' \n  order by 1,2,3,4 limit 952035094 )\n```\n\n4. Execute the reduced query form:\n```sql\nWITH `cte_154` (`col_949`, `col_950`, `col_951`) AS (\n  SELECT LENGTH(`t8f78eb1d`.`col_10`) AS `r0`,\n         CHAR_FUNC(`t8f78eb1d`.`col_8`, `t8f78eb1d`.`col_8`, 'utf8') AS `r1`,\n         `t8f78eb1d`.`col_9` AS `r2` \n  FROM `t8f78eb1d` \n  WHERE `t8f78eb1d`.`col_9` BETWEEN 'Jsg15z_' AND 'hyVP^IM)(jh' \n    AND `t8f78eb1d`.`col_8` IN ('2026-07-04')\n) \n(SELECT SUM((`cte_154`.`col_951` IN ('濞鴏皌p+O2MgU0楠澘碼S') OR `cte_154`.`col_950`<'oI') IS TRUE) \n FROM `cte_154` LIMIT 952035094)\n```\n\n### 2. What did you expect to see? (Required)\n\nBoth queries should return consistent results, as they are logically equivalent transformations of the same query logic.\n\n### 3. What did you see instead (Required)\n\n- Original query count: 0\n- Reduced query count: 1\n\nThe queries return different result counts, indicating inconsistent behavior in query execution or optimization.\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\nmaster",
+  "poc": [
+    "CREATE TABLE `t8f78eb1d` (",
+    "  `col_8` date DEFAULT '1979-01-10',",
+    "  `col_9` blob NOT NULL,",
+    "  `col_10` binary(161) DEFAULT NULL,",
+    "  `col_11` tinyblob NOT NULL,",
+    "  KEY `idx_10` (`col_8`,`col_10`)",
+    ") ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci",
+    "PARTITION BY RANGE COLUMNS(`col_10`)",
+    "(PARTITION `p0` VALUES LESS THAN (_binary 0x2d44754078543800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000),",
+    " PARTITION `p1` VALUES LESS THAN (_binary 0x48564f7a356e6151535876324533310000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000),",
+    " PARTITION `p2` VALUES LESS THAN (MAXVALUE));"
+  ],
+  "poc_type": "sql_text",
+  "state": "closed",
+  "key_bug_features": [
+    "CTE query returns inconsistent result counts"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE `test_table` ( `id` INT PRIMARY KEY AUTO_INCREMENT, `name` VARCHAR(255) NOT NULL, `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP, `data` BLOB, `value` DECIMAL(10, 2) CHECK (value >= 0) );",
+    "INSERT INTO `test_table` (`name`, `data`, `value`) VALUES ('Test1', 'Sample data 1', 10.50);",
+    "INSERT INTO `test_table` (`name`, `data`, `value`) VALUES ('Test2', NULL, 20.00);",
+    "WITH `cte_example` AS ( SELECT `id`, `name`, `value` FROM `test_table` WHERE `value` > 15 ) SELECT COUNT(*) FROM `cte_example` WHERE `name` IS NOT NULL;",
+    "WITH `cte_example` AS ( SELECT `id`, `name`, `value` FROM `test_table` WHERE `value` < 15 ) SELECT SUM(`value`) FROM `cte_example` WHERE `name` IS NULL;"
+  ]
+}

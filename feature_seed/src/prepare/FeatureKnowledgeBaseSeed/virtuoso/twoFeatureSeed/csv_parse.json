@@ -1,0 +1,18 @@
+{
+    "function": "csv_parse",
+    "operator": "NOT LIKE",
+    "sql_array": [
+        "CREATE TABLE csv_test (id INT PRIMARY KEY, data_string STRING, processed_data_vector VECTOR);",
+        "INSERT INTO csv_test (id, data_string) VALUES (1, 'value1,value2,value3'), (2, 'value4,value5,value6'), (3, 'value7,value8,value9');",
+        "CREATE PROCEDURE csv_callback (inout r ANY, in inx INT, inout cbd ANY) { IF (cbd IS NULL) cbd := vector(); cbd := vector_concat(cbd, vector(r)); };",
+        "SELECT csv_parse(data_string, 'DB.DBA.csv_callback', NULL, 0, 3) FROM csv_test WHERE data_string NOT LIKE '%value4%';",
+        "SELECT id, data_string, csv_parse(data_string, 'DB.DBA.csv_callback', NULL, 0, 3) NOT LIKE '%value1%' AS is_value1_excluded FROM csv_test WHERE processed_data_vector IS NULL;",
+        "SELECT id, COUNT(*) FROM (SELECT id, data_string FROM csv_test WHERE data_string NOT LIKE '%value7%') AS subquery GROUP BY id HAVING COUNT(*) > 0;",
+        "SELECT DISTINCT id, processed_data_vector FROM csv_test WHERE processed_data_vector NOT LIKE vector(NULL) GROUP BY id HAVING COUNT(DISTINCT data_string) >= 1;",
+        "SELECT id FROM csv_test WHERE data_string NOT LIKE ('%value' || (SELECT id FROM csv_test WHERE data_string IS NULL ORDER BY id LIMIT 1));",
+        "CREATE TEMPORARY TABLE temp_csv (temp_id INT, temp_data STRING);",
+        "INSERT INTO temp_csv (temp_id, temp_data) VALUES (1, ''), (2, 'some,data,here'), (3, NULL);",
+        "SELECT temp_id, csv_parse(temp_data, 'DB.DBA.csv_callback', NULL, 0, 2) FROM temp_csv WHERE temp_data NOT LIKE '%,%';",
+        "DROP TABLE IF EXISTS temp_csv;"
+    ]
+}

@@ -1,0 +1,21 @@
+{
+  "url": "https://www.postgresql.org/message-id/19026-90aed5e71d0c8af3%40postgresql.org",
+  "title": "BUG #19026: ResourceOwnerForget can't find owner for invalid plancache",
+  "description": "The following bug has been logged on the website:\nBug reference:      19026\nLogged by:          Alexander Lakhin\nEmail address:      exclusion(at)gmail(dot)com\nPostgreSQL version: 18beta3\nOperating system:   Ubuntu 24.04\nDescription:\nThe following script:\ncreate function part_hashint4_noop(value int4, seed int8)\nreturns int8 as $$\ncreate table t();\nselect value + seed;\n$$ language sql strict immutable parallel safe;\ncreate operator class part_test_int4_ops for type int4 using hash as\nfunction 2 part_hashint4_noop(int4, int8);\ncreate table pt(i int) partition by hash (i part_test_int4_ops);\ncreate table p1 partition of pt for values with (modulus 4, remainder 0);\ninsert into pt values (1);\ninsert into pt values (1);\ntriggers an expected error and then an internal one:\nERROR:  CREATE TABLE is not allowed in a non-volatile function\nCONTEXT:  SQL function \"part_hashint4_noop\" statement 1\nERROR:  XX000: plancache reference 0x643ae41a7d98 is not owned by resource\nowner Portal\nCONTEXT:  SQL function \"part_hashint4_noop\" during startup\nLOCATION:  ResourceOwnerForget, resowner.c:618\nI also encountered a gibberish owner name (with more complicated queries)\nlike:\n2025-08-19 16:32:22.878 EEST|postgres|regress002|68a47cdb.2d8921|ERROR:\nplancache reference 0x5d56f0675c50 is not owned by resource owner\n?^O^^?H??^H?????H??^H??^O^^?AUATUSH??^HI??H?w(H?=??\nReproduced starting from 0313c5dc6.",
+  "date": "2025-08-20 05:00:01",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE OR REPLACE FUNCTION fuzz_part_hashint4_noop(value INT, seed BIGINT) RETURNS BIGINT AS BEGIN SELECT value + seed;",
+    "RETURN value + seed;",
+    "END;",
+    "CREATE OPERATOR CLASS fuzz_part_int4_ops FOR TYPE INT USING hash AS FUNCTION 2 fuzz_part_hashint4_noop(INT, BIGINT);",
+    "CREATE TABLE fuzz_pt(i INT) PARTITION BY HASH (i);",
+    "CREATE TABLE fuzz_p1 PARTITION OF fuzz_pt FOR VALUES WITH (modulus 4, remainder 0);"
+  ],
+  "key_bug_features": [
+    "CREATE TABLE in a non-volatile function"
+  ]
+}

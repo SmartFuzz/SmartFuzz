@@ -1,0 +1,11 @@
+CREATE TABLE geo_data (id UInt64, h3_index UInt64, edge_length Float64);
+INSERT INTO geo_data VALUES (1, 1310277011704381439, h3ExactEdgeLengthRads(1310277011704381439));
+CREATE TABLE edge_lengths (length_radians Float64);
+INSERT INTO edge_lengths VALUES (h3ExactEdgeLengthRads(1310277011704381439));
+SELECT g.id, g.h3_index, g.edge_length FROM geo_data g WHERE g.edge_length GLOBAL NOT IN (SELECT el.length_radians FROM edge_lengths el WHERE el.length_radians < 1.0);
+SELECT g.id, h3ExactEdgeLengthRads(g.h3_index) AS edge_length_rad FROM geo_data g GROUP BY edge_length_rad HAVING edge_length_rad GLOBAL NOT IN (SELECT el.length_radians FROM edge_lengths el WHERE el.length_radians IS NULL);
+SELECT g.id FROM geo_data g JOIN edge_lengths el ON el.length_radians * 2 = h3ExactEdgeLengthRads(g.h3_index) WHERE g.h3_index > 0 UNION SELECT g.id FROM geo_data g WHERE g.h3_index GLOBAL NOT IN (SELECT el.length_radians FROM edge_lengths el);
+WITH (SELECT h3ExactEdgeLengthRads(1310277011704381439) AS len) AS temp_len SELECT id FROM geo_data WHERE edge_length < (SELECT len FROM temp_len);
+CREATE TABLE edge_testing (test_index UInt64, test_result Float64 DEFAULT NULL);
+INSERT INTO edge_testing VALUES (null, NULL), (2, h3ExactEdgeLengthRads(1310277011704381439));
+SELECT id, h3_index FROM geo_data WHERE h3_index GLOBAL NOT IN (SELECT test_index FROM edge_testing WHERE test_result IS NOT NULL);

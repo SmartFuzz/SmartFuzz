@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=105668",
+  "title": "rpad function is not multibyte safe",
+  "description": "when I use rpad function with multibyte characters, it shows the confusing result\nHow to repeat:\ncreate table t (a char(20) charset utf8mb4);\r\ninsert into t values ('一');\r\nmysql> select hex(rpad(a, 5, 0xe4ba8c)), rpad(a, 5, 0xe4ba8c) from t;\r\n+---------------------------+----------------------+\r\n| hex(rpad(a, 5, 0xe4ba8c)) | rpad(a, 5, 0xe4ba8c) |\r\n+---------------------------+----------------------+\r\n| E4B880E4BA8CE4            | 一二�                 |\r\n+---------------------------+----------------------+\r\n4 rows in set (0.02 sec)\r\n\r\n0xe4ba8c is a valid utf8mb4 character, rpad pad with E4BA8CE4 which are 4 bytes.\r\n\r\nmysql> select charset(rpad(a, 5, 0xe4ba8c)) from t;\r\n+-------------------------------+\r\n| charset(rpad(a, 5, 0xe4ba8c)) |\r\n+-------------------------------+\r\n| utf8mb4                       |\r\n+-------------------------------+\r\n4 rows in set (0.02 sec)\r\n\r\nthe charset if rpad is utf8mb4, so I think it should pad with 4 characters but not 4 bytes.",
+  "date": "2021-11-23 03:19:00",
+  "vulnerable_version": "8.0.26, 5.7, 8.0.27",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT PRIMARY KEY, name CHAR(20));",
+    "INSERT INTO test_table (name) VALUES ('测试');",
+    "SELECT hex(rpad(name, 10, '测试')), rpad(name, 10, '测试') FROM test_table;",
+    "SELECT CHAR_LENGTH(rpad(name, 10, '测试')), LENGTH(rpad(name, 10, '测试')) FROM test_table;",
+    "SELECT name, rpad(name, 10, NULL) AS padded_name FROM test_table;"
+  ],
+  "key_bug_features": [
+    "rpad function mishandles multibyte character padding"
+  ]
+}

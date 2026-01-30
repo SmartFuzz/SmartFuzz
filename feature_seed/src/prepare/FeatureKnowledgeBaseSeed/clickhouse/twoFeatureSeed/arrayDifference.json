@@ -1,0 +1,17 @@
+{
+    "function": "arrayDifference",
+    "operator": "a IN ...",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, values Array(Int32));",
+        "INSERT INTO test_table VALUES (1, [10, 20, NULL, 40, 50]), (2, [NULL, 15, 25, 35, 45]), (3, [30, 30, 30, 30, 30]);",
+        "SELECT id, arrayDifference(values) AS differences FROM test_table WHERE id IN (SELECT id FROM test_table WHERE arrayDifference(values) IS NOT NULL);",
+        "SELECT id, arrayDifference(values) AS differences FROM test_table WHERE differences[2] IN (SELECT SUM(differences) FROM (SELECT arrayDifference(values) AS differences FROM test_table));",
+        "SELECT id, arrayDifference(arrayMap(x -> if(x IS NULL, 0, x), values)) AS differences FROM test_table WHERE id IN (SELECT id FROM test_table WHERE EXISTS (SELECT 1 FROM test_table WHERE arrayDifference(values) = [0, 0]));",
+        "SELECT id, arrayDifference(values) AS differences FROM test_table GROUP BY id HAVING ARRAY JOIN values > 20 AND id IN (SELECT id FROM test_table WHERE arrayDifference(values) = [10, 10, NULL]);",
+        "CREATE TABLE temp_table AS SELECT id, arrayDifference(values) AS differences FROM test_table WHERE id IN (SELECT id FROM test_table);",
+        "CREATE TABLE edge_cases (id UInt32, nums Array(Float64));",
+        "INSERT INTO edge_cases VALUES (1, [1.5, 2.5, 3.5, 4.5]), (2, [NULL, NULL, NULL]), (3, [1e308, -1e308]);",
+        "SELECT id, arrayDifference(nums) AS difference FROM edge_cases WHERE id IN (SELECT id FROM edge_cases WHERE ARRAY_LENGTH(nums) > 0);",
+        "SELECT id, SUM(difference) FROM (SELECT id, arrayDifference(nums) AS difference FROM edge_cases) GROUP BY id HAVING difference[1] IN (SELECT x FROM (SELECT arraySum(nums) AS x FROM edge_cases WHERE id IS NOT NULL));"
+    ]
+}

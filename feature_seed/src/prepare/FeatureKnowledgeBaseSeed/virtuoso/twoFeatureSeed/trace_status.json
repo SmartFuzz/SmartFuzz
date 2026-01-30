@@ -1,0 +1,23 @@
+{
+    "function": "trace_status",
+    "operator": "bif:exec",
+    "sql_array": [
+        "CREATE TABLE test_trace (id INTEGER PRIMARY KEY, trace_option VARCHAR, trace_status VARCHAR);",
+        "INSERT INTO test_trace (id, trace_option, trace_status) VALUES (1, 'user_log', 'off'), (2, 'failed_log', 'off'), (3, 'compile', 'on');",
+        "CREATE TABLE test_data (record_id INTEGER, data_value VARCHAR);",
+        "INSERT INTO test_data (record_id, data_value) VALUES (1, 'example'), (2, NULL), (3, 'test');",
+        "CREATE PROCEDURE dynamic_trace () { DECLARE opt VARCHAR; DECLARE status VARCHAR; DECLARE arr ANY; arr := trace_status(); SELECT opt, status INTO opt, status FROM (SELECT arr[0] AS opt, arr[1] AS status WHERE arr[1] IS NOT NULL) AS derived WHERE opt = 'compile'; };",
+        "CREATE PROCEDURE exec_dynamic_trace () { DECLARE sql_command VARCHAR; sql_command := 'CALL dynamic_trace();'; bif:exec(sql_command); };",
+        "SELECT data_value FROM test_data WHERE record_id IN (SELECT record_id FROM test_trace WHERE trace_status = 'on' LIMIT 1);",
+        "SELECT COUNT(*) FROM (SELECT data_value FROM test_data WHERE data_value IS NOT NULL) AS non_null_data;",
+        "SELECT t.id, t.trace_option, d.data_value FROM test_trace t JOIN test_data d ON t.id = d.record_id WHERE t.trace_status = 'on' ORDER BY d.data_value DESC;",
+        "WITH TraceInfo AS (SELECT id, trace_option FROM test_trace WHERE trace_status IS NULL) SELECT * FROM TraceInfo HAVING COUNT(*) > 0;",
+        "DROP TABLE IF EXISTS temp_data; CREATE TEMPORARY TABLE temp_data AS SELECT record_id, 'temp' || record_id AS temp_value FROM test_data WHERE data_value IS NOT NULL;",
+        "SELECT CASE WHEN temp_value IS NOT NULL THEN 'Exists' ELSE 'Not Exists' END AS existence FROM temp_data WHERE record_id = (SELECT MAX(record_id) FROM test_data);",
+        "SELECT SUM(CASE WHEN data_value IS NULL THEN 1 ELSE 0 END) AS null_count, MIN(data_value) AS min_value, MAX(data_value) AS max_value FROM test_data;",
+        "CALL exec_dynamic_trace();",
+        "SELECT * FROM test_trace WHERE trace_option LIKE '%log%' AND trace_status IN ('on', NULL);",
+        "WITH RecursiveN AS (SELECT 1 AS num UNION ALL SELECT num + 1 FROM RecursiveN WHERE num < 10) SELECT num, (SELECT trace_option FROM test_trace WHERE id = num) AS option FROM RecursiveN;",
+        "SELECT d.data_value, (SELECT COUNT(*) FROM test_data WHERE data_value = d.data_value) AS value_count FROM test_data d GROUP BY d.data_value HAVING value_count > 1;"
+    ]
+}

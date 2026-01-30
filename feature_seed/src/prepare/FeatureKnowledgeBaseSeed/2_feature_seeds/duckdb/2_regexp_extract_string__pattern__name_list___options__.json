@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id INT, date_col VARCHAR, num_list LIST<INT>);
+INSERT INTO test_data VALUES (1, '2023-04-15', [1, 2]), (2, '2023-05-20', [3, 4]), (3, NULL, [5, 6]), (4, '', [7, 8]);
+SELECT id, regexp_extract(date_col, '(\d+)-(\d+)-(\d+)', ['year', 'month', 'day']) AS date_parts FROM test_data WHERE num_list @> [3];
+SELECT id, COUNT(*) FROM (SELECT id, regexp_extract(date_col, '(\d+)-(\d+)-(\d+)', ['year', 'month', 'day']) FROM test_data) AS extracted GROUP BY id HAVING id @> [2];
+SELECT id, regexp_extract(date_col, '(\d+)-(\d+)-(\d+)', ['year', 'month', 'day']) AS date_parts FROM test_data WHERE num_list @> (SELECT DISTINCT [5, 6]);
+SELECT id, date_col FROM test_data WHERE (regexp_extract(date_col, '(\d+)-(\d+)-(\d+)', ['year', 'month', 'day']) IS NOT NULL) @> [1];
+SELECT DISTINCT id FROM test_data WHERE NOT (num_list @> [3] AND date_col LIKE '2023-%') OR (regexp_extract(date_col, '(\d+)-(\d+)-(\d+)', ['year', 'month', 'day']) IS NULL);
+CREATE TEMPORARY TABLE temp_data AS SELECT id, date_col FROM test_data WHERE num_list @> [];
+SELECT id, COUNT(*) OVER(PARTITION BY date_col) AS count_per_date FROM temp_data WHERE date_col IS NOT NULL ORDER BY count_per_date DESC;
+DROP TABLE temp_data;

@@ -1,0 +1,13 @@
+CREATE TABLE test_types (id INT PRIMARY KEY, value VARCHAR(255), type_id INT);
+INSERT INTO test_types (id, value, type_id) VALUES (1, 'Sample', 1), (2, 'Example', 2), (3, NULL, 3);
+SELECT id, internal_type_name(type_id) AS type_name FROM test_types WHERE value ILIKE 's%';
+SELECT id, value, internal_type_name(type_id) AS type_name FROM test_types WHERE id IN (SELECT id FROM test_types WHERE value IS NOT NULL) AND value ILIKE '%ample';
+SELECT id, internal_type_name(COALESCE(type_id, 0)) AS type_name FROM test_types GROUP BY type_name HAVING COUNT(*) > 1;
+SELECT id, value, internal_type_name(type_id) AS type_name FROM test_types WHERE value ILIKE '%' || internal_type_name(type_id) || '%';
+SELECT id, value, internal_type_name(type_id) FROM (SELECT id, value, type_id FROM test_types) AS sub WHERE value IS NOT NULL AND internal_type_name(type_id) ILIKE 'Sample';
+SELECT DISTINCT internal_type_name(type_id) FROM (SELECT DISTINCT type_id FROM test_types) AS unique_types WHERE internal_type_name(type_id) ILIKE '%1%';
+CREATE TABLE test_join (join_id INT PRIMARY KEY, test_id INT, description VARCHAR(255), FOREIGN KEY (test_id) REFERENCES test_types(id));
+INSERT INTO test_join (join_id, test_id, description) VALUES (1, 1, 'Join Sample'), (2, 2, 'Join Example');
+SELECT tj.join_id, tj.description, tt.value, internal_type_name(tt.type_id) FROM test_join tj JOIN test_types tt ON tj.test_id = tt.id AND tt.value ILIKE 'Join%';
+CREATE TEMPORARY TABLE temp_test AS SELECT id, internal_type_name(type_id) AS type_name FROM test_types WHERE value IS NOT NULL;
+SELECT type_name, COUNT(*) FROM temp_test GROUP BY type_name HAVING COUNT(*) > 1;

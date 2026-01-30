@@ -1,0 +1,10 @@
+CREATE TABLE fuzz_test (id SERIAL PRIMARY KEY, value NUMERIC, timestamp_col TIMESTAMP, some_time_col TIME(3) WITH TIME ZONE);
+INSERT INTO fuzz_test (value, timestamp_col, some_time_col) VALUES (NULL, '2023-10-01 12:30:45', time(3) with time zone '10:00:00.000+00:00');
+INSERT INTO fuzz_test (value, timestamp_col, some_time_col) VALUES (1.234, NULL, NULL);
+INSERT INTO fuzz_test (value, timestamp_col, some_time_col) VALUES (2.345, '2023-10-02 14:15:30', time(3) with time zone '11:59:59.999+05:00');
+SELECT id, value, sys.var_samp(value) OVER (PARTITION BY some_time_col) AS sample_var, time(3) with time zone '18:40:05.123+02:00' AS converted_time FROM fuzz_test WHERE value IS NOT NULL;
+SELECT id, value, (sys.var_samp(NULLIF(value, 1.234))) OVER (ORDER BY timestamp_col) AS sample_var FROM fuzz_test WHERE some_time_col IS NOT NULL;
+SELECT id, value, time(3) with time zone (CASE WHEN value IS NOT NULL THEN '18:40:05.123+02:00' ELSE '00:00:00.000+00:00' END) AS conditional_time FROM fuzz_test WHERE value > 1;
+SELECT DISTINCT id, value, sys.var_samp(COALESCE(value, 0)) OVER () AS sample_var, time(3) with time zone some_time_col FROM fuzz_test GROUP BY id, value HAVING COUNT(*) > 1;
+CREATE TEMPORARY TABLE temp_fuzz AS SELECT id, value, time(3) with time zone '12:00:00.000+02:00' AS temp_time FROM fuzz_test;
+SELECT t.id, t.value, AVG(value) OVER (PARTITION BY temp_time ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS avg_value FROM temp_fuzz t JOIN fuzz_test f ON t.id = f.id WHERE f.timestamp_col > '2023-10-01 00:00:00';

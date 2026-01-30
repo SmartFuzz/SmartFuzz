@@ -1,0 +1,16 @@
+CREATE TABLE fuzz_test (id UInt32, value Float64, status String, created_at DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO fuzz_test VALUES (1, exp2(-1), 'active', now()), (2, exp2(0), NULL, now()), (3, exp2(1), 'inactive', now() - INTERVAL 1 DAY);
+SELECT id, value FROM fuzz_test WHERE value NOT BETWEEN exp2(-1) AND exp2(2) ORDER BY value;
+SELECT id, value FROM fuzz_test WHERE status IS NULL OR value NOT BETWEEN exp2(1) AND exp2(2) ORDER BY exp2(value);
+SELECT id, value FROM fuzz_test WHERE value NOT BETWEEN exp2(0) AND exp2(2 * value) AND status = 'active' ORDER BY created_at;
+CREATE TABLE join_test (id UInt32, ref_id UInt32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO join_test VALUES (1, 1), (2, 2), (3, NULL);
+SELECT ft.id, ft.value FROM fuzz_test ft JOIN join_test jt ON ft.id = jt.ref_id AND ft.value NOT BETWEEN exp2(-1) AND exp2(jt.ref_id);
+SELECT id, SUM(value) AS total_value FROM fuzz_test GROUP BY id HAVING total_value NOT BETWEEN exp2(0) AND exp2(2);
+SELECT id, value FROM (SELECT id, exp2(value) AS exp_value FROM fuzz_test) WHERE exp_value NOT BETWEEN exp2(-1) AND exp2(2) LIMIT 5;
+SELECT id, exp2(value) FROM fuzz_test WHERE created_at IS NOT NULL AND status NOT BETWEEN 'inactive' AND 'active';
+ALTER TABLE fuzz_test ADD COLUMN new_value Float64 DEFAULT exp2(3);
+SELECT id, new_value FROM fuzz_test WHERE new_value NOT BETWEEN exp2(1) AND exp2(4);
+CREATE TEMPORARY TABLE temp_test AS SELECT id, exp2(value) AS temp_value FROM fuzz_test;
+SELECT id, temp_value FROM temp_test WHERE temp_value NOT BETWEEN exp2(0) AND NULL;
+INSERT INTO fuzz_test VALUES (4, exp2(NULL), 'active', now() - INTERVAL 2 DAY);

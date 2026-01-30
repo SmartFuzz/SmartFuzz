@@ -1,0 +1,16 @@
+CREATE TABLE kv_pairs (data STRING);
+INSERT INTO kv_pairs VALUES ('age:a\\x0A\\n\\0'), ('name:b\\\"c\\\\\\d');
+SELECT extractKeyValuePairsWithEscaping(data) AS kv FROM kv_pairs;
+SELECT extractKeyValuePairsWithEscaping(data) AS kv FROM kv_pairs WHERE data LIKE '%\\%';
+CREATE TABLE t1 (key STRING, value STRING);
+INSERT INTO t1 VALUES ('key1', 'value1\\n'), ('key2', 'value2\\x0A\\r');
+SELECT extractKeyValuePairsWithEscaping(CONCAT(key, ':', value)) AS extracted FROM t1;
+CREATE TABLE nested_example (info STRING);
+INSERT INTO nested_example VALUES ('item:abc\\def\\\\ghi'), ('category:xyz\\/abc\\r');
+SELECT extractKeyValuePairsWithEscaping((SELECT info FROM nested_example)) AS nested_kv;
+SELECT extractKeyValuePairsWithEscaping('username:user\\\\name\') AS kv WHERE kv IS NOT NULL;
+CREATE TABLE test_join (id Int32, data STRING);
+INSERT INTO test_join VALUES (1, 'foo\\bar'), (2, 'baz\\\\qux');
+SELECT tj.id, extractKeyValuePairsWithEscaping(tj.data) AS kv FROM test_join tj JOIN kv_pairs kv ON kv.data LIKE CONCAT('%', tj.data, '%');
+SELECT extractKeyValuePairsWithEscaping('path:some\\\folder\\/file\\|name:my\\`file\\n') AS complex_kv;
+SELECT extractKeyValuePairsWithEscaping('test:key\\a\\b\\t\\N\\x0d') AS edge_case_kv;

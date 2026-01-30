@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/43158",
+  "title": "Wrong result for partition table with order by + limit",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```\r\ncreate table t(a int, b int, index idx_bc(a, b)) PARTITION BY HASH (`b`) PARTITIONS 4;\r\ninsert into t values (1,2),(1,3),(1,1),(1,5);\r\nanalyze table t;\r\nselect * from t where a = 1 order by b limit 10;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\n```\r\nmysql> select * from tcommonhash where a = 1 order by b limit 10;\r\n+------+------+\r\n| a    | b    |\r\n+------+------+\r\n|    1 |    1 |\r\n|    1 |    2 |\r\n|    1 |    3 |\r\n|    1 |    5 |\r\n+------+------+\r\n4 rows in set (0.00 sec)\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n```\r\nmysql> select * from tcommonhash where a = 1 order by b limit 10;\r\n+------+------+\r\n| a    | b    |\r\n+------+------+\r\n|    1 |    1 |\r\n|    1 |    3 |\r\n|    1 |    5 |\r\n|    1 |    2 |\r\n+------+------+\r\n4 rows in set (0.00 sec)\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\nOnly on master branch\r\n",
+  "date": "2023-04-18T12:01:22Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1(a INTEGER, b INTEGER, c TEXT, INDEX idx_abc(a, b, c));",
+    "INSERT INTO t1 VALUES (1, 2, 'test1'), (1, 3, 'test2'), (1, 1, 'test3'), (1, 5, 'test4');",
+    "CREATE INDEX idx_b ON t1(b);",
+    "SELECT * FROM t1 WHERE a = 1 ORDER BY b LIMIT 10;",
+    "SELECT * FROM (SELECT a, b FROM t1 WHERE b IS NOT NULL) AS subquery ORDER BY b DESC LIMIT 5;"
+  ],
+  "key_bug_features": [
+    "partition table with order by and limit"
+  ]
+}

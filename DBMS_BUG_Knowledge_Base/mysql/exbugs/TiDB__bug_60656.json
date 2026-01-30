@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/60656",
+  "title": "Unexpected Result -0",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n```sql\ncreate table t0 (c0 double);\ninsert into t0 values (1.5), (-1.8);\nselect distinct t0.c0 * -0 as c_0, DENSE_RANK() over (partition by t0.c0) as c_1 from t0;\n```\n\n### 2. What did you expect to see? (Required)\n\nThe query returns uncertain results. \nSometimes, it returns:\n```bash\nc_0     c_1\n0       1\n```\nwhile sometimes, it returns:\n```bash\nc_0     c_1\n-0       1\n```\n\n`-0` should be invalid and not in the result.\nTo observe this difference, please execute the above query multiple times. I tried 10 times and was always able to observe the unexpected `-0`.\n\n### 3. What did you see instead (Required)\n\n### 4. What is your TiDB version? (Required)\n\n```bash\n~/.tiup/bin/tiup playground nightly\n```\nVersion:\n```bash\n8.0.11-TiDB-v9.0.0-beta.1.pre-563-gea52376\n```\n\n\n",
+  "date": "2025-04-18T09:08:32Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (c0 INT, c1 DOUBLE NOT NULL, c2 VARCHAR(50));",
+    "INSERT INTO t1 VALUES (1, 1.5, 'test1'), (2, -1.8, 'test2'), (3, NULL, 'test3');",
+    "SELECT DISTINCT t1.c1 * 0 AS c_0, (SELECT COUNT(*) FROM (SELECT DISTINCT t1.c1 AS c1_group FROM t1 WHERE t1.c1 IS NOT NULL) AS subquery WHERE subquery.c1_group <= t1.c1) AS c_1 FROM t1 WHERE t1.c1 IS NOT NULL;",
+    "CREATE TABLE t2 (c0 FLOAT, c1 DECIMAL(10, 2) DEFAULT 0.00);",
+    "INSERT INTO t2 VALUES (1.5, 2.5), (-1.8, NULL), (0.0, 3.0);"
+  ],
+  "key_bug_features": [
+    "select distinct with multiplication by -0"
+  ]
+}

@@ -1,0 +1,13 @@
+CREATE TABLE test_hash (key Tuple(UInt64, UInt64), value String) ENGINE = Memory;
+INSERT INTO test_hash VALUES ((506097522914230528, 1084818905618843912), 'foo'), ((123456789012345678, 987654321098765432), '\x01'), ((0, 0), 'empty'), ((18446744073709551615, 18446744073709551615), 'max_uint64');
+SELECT hex(sipHash128ReferenceKeyed(key, value)) FROM test_hash;
+SELECT hex(sipHash128ReferenceKeyed((0, 0), 'data', '\x01')) AS hash_empty FROM test_hash;
+SELECT hex(sipHash128ReferenceKeyed((506097522914230528, 1084818905618843912), 'foo', '\x01', 3));
+SELECT hex(sipHash128ReferenceKeyed((18446744073709551615, 18446744073709551615), 'max', '\x02')) AS hash_max FROM test_hash;
+SELECT (SELECT hex(sipHash128ReferenceKeyed(key, value)) FROM test_hash WHERE value = 'foo') AS foo_hash;
+SELECT hex(sipHash128ReferenceKeyed((k0, k1), value)) FROM (SELECT key.1 AS k0, key.2 AS k1, value FROM test_hash) AS subquery;
+SELECT hex(sipHash128ReferenceKeyed((key.1, key.2), 'joined') ) FROM test_hash t1 JOIN test_hash t2 ON t1.key = t2.key;
+SELECT hex(sipHash128ReferenceKeyed((key.1, key.2), CONCAT(value, '_suffix'))) FROM test_hash ORDER BY key ASC;
+CREATE TABLE hash_results (hash FixedString(16)) ENGINE = Memory;
+INSERT INTO hash_results SELECT hex(sipHash128ReferenceKeyed((506097522914230528, 1084818905618843912), 'foo', '\x01')) UNION ALL SELECT hex(sipHash128ReferenceKeyed((0, 0), 'empty', '\x02')) UNION ALL SELECT hex(sipHash128ReferenceKeyed((18446744073709551615, 18446744073709551615), 'max', '\x03'));
+SELECT count(*) FROM hash_results WHERE hash = '5a1eb6efda045fc9b8d1ee6c7d1a5ad6';

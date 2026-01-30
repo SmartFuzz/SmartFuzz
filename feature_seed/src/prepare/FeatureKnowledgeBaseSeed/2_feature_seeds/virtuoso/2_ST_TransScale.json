@@ -1,0 +1,11 @@
+CREATE TABLE GeoShapes (id INT PRIMARY KEY, shape GEOMETRY, description VARCHAR(255));
+INSERT INTO GeoShapes (id, shape, description) VALUES (1, 'POINT(1 1)'::geometry, 'A simple point'), (2, 'LINESTRING(0 0, 1 1, 2 2)'::geometry, 'A line string');
+SELECT id, bif:ST_TransScale(shape, 1.0, 2.0, 1.0, 1.0) AS scaled_shape FROM GeoShapes WHERE id = 1 && description IS NOT NULL;
+SELECT id, bif:ST_TransScale(shape, 0, 0, 2.0, 2.0) AS scaled_shape FROM GeoShapes WHERE shape IS NOT NULL ORDER BY id;
+SELECT id, bif:ST_TransScale(shape, dX, dY, Xfactor, Yfactor) AS transformed FROM ( SELECT 1 as id, 1.0 as dX, 2.0 as dY, 1.2 as Xfactor, 0.5 as Yfactor ) AS params && (SELECT id FROM GeoShapes WHERE shape IS NOT NULL) AS subquery;
+CREATE TABLE Points (id INT PRIMARY KEY, coordinates GEOMETRY NOT NULL);
+INSERT INTO Points (id, coordinates) VALUES (1, 'POINT(5 5)'::geometry), (2, NULL), (3, 'POINT(-1 0)'::geometry), (4, 'POINT(0 0)'::geometry);
+SELECT p.id, bif:ST_TransScale(p.coordinates, 1, 1, 1.5, 1.5) AS transformed_coordinates FROM Points p WHERE p.coordinates IS NOT NULL && p.id > 1;
+SELECT p.id, SUM(bif:ST_TransScale(p.coordinates, 1, -1, 1, 1) IS NOT NULL) AS valid_transforms FROM Points p GROUP BY p.id HAVING valid_transforms > 0;
+SELECT p.id, bif:ST_TransScale(p.coordinates, -0.5, -0.5, 3, 3) AS scaled_coordinates FROM Points p WHERE (p.coordinates IS NOT NULL) && NOT (p.coordinates = 'POINT(5 5)'::geometry) ORDER BY p.id DESC;
+SELECT p1.id, bif:ST_TransScale(p1.coordinates, 1, 1, 2, 2) AS transformed, bif:ST_TransScale(p2.coordinates, -1, -1, 0.5, 0.5) AS transformed2 FROM Points p1 JOIN Points p2 ON p1.id = p2.id + 1 WHERE p1.coordinates IS NOT NULL && p2.coordinates IS NOT NULL;

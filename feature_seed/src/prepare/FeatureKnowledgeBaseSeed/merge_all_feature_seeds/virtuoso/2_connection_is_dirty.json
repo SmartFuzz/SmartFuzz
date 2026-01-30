@@ -1,0 +1,18 @@
+CREATE TABLE test_connections (id INT, value VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO test_connections (id, value) VALUES (1, 'test_value_1'), (2, 'test_value_2');
+DECLARE rc INTEGER;
+connection_vars_set();
+rc := connection_is_dirty();
+SELECT id FROM test_connections WHERE id NOT IN (SELECT id FROM test_connections WHERE value IS NULL) AND rc = 0;
+connection_set('ID', (SELECT MAX(id) FROM test_connections));
+SELECT id FROM test_connections WHERE id = 1 HAVING COUNT(*) NOT NULL;
+DECLARE rc INTEGER;
+connection_vars_set();
+connection_set('value', 'fuzzy_test');
+rc := connection_is_dirty();
+SELECT id, (SELECT COUNT(*) FROM test_connections WHERE value NOT LIKE '%invalid%') AS valid_count FROM test_connections WHERE value IS NOT NULL AND rc = 1;
+SELECT id, value FROM test_connections WHERE NOT (id IS NULL OR id < 1) GROUP BY value HAVING COUNT(*) > 1;
+CREATE TABLE temp_connections (temp_id INT, temp_value VARCHAR(255));
+INSERT INTO temp_connections (temp_id, temp_value) SELECT id, value FROM test_connections WHERE created_at > CURRENT_TIMESTAMP - INTERVAL '1 DAY';
+SELECT temp_id, NOT EXISTS (SELECT 1 FROM test_connections WHERE id = temp_id) AS is_dirty_test FROM temp_connections WHERE temp_value IS NOT NULL AND connection_is_dirty() = 1;
+DROP TABLE IF EXISTS temp_connections;

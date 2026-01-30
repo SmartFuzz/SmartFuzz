@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/18411",
+  "title": "Semi join scans all partitions instead of pruning",
+  "description": "### What happens?\n\nPruning happens on the left side but not on the right side.\n \nWorkaround: use LEFT JOIN pattern (longer) instead as file filter extends to right side.\n\n### To Reproduce\n\n```sql\nCREATE OR REPLACE TABLE orders1 AS \n  SELECT 1 id, 'A' cust, 2023 yr, 1 mth UNION \n  SELECT 2, 'B', 2023, 2 UNION\n  SELECT 3, 'C', 2024, 1;\n\nCREATE OR REPLACE TABLE orders2 AS \n  SELECT 1 id, 'A' cust, 2023 yr, 1 mth UNION \n  SELECT 2, 'B', 2023, 2 UNION\n  SELECT 4, 'C', 2024, 4;\n\nCOPY orders1 TO 'orders1' (FORMAT PARQUET, PARTITION_BY (yr, mth), overwrite 1);\nCOPY orders2 TO 'orders2' (FORMAT PARQUET, PARTITION_BY (yr, mth), overwrite 1);\n\n\nexplain analyze select * FROM 'orders1/**/*.parquet'\n  SEMI JOIN 'orders2/**/*.parquet' USING(yr, mth)\n  where yr=2024;\n```\n\nOutcome: all (3 here) files of `orders2` are scanned\nExpected: only one, as year=2024 file filter should pass on (like other joins)\n\n`ANTI JOIN` has probably the same problem\n\n\n### OS:\n\nWin amd64\n\n### DuckDB Version:\n\n1.3.2\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nyan-hic\n\n### Affiliation:\n\n.\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have not tested with any build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "date": "2025-07-25 17:42:20",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE orders3 (id INT, cust VARCHAR(255), yr INT, mth INT, amount DECIMAL(10, 2));",
+    "INSERT INTO orders3 (id, cust, yr, mth, amount) VALUES (1, 'D', 2023, 1, 100.00), (2, 'E', 2023, 2, 200.50), (3, 'F', 2024, 1, NULL);",
+    "CREATE TABLE orders4 (id INT, cust VARCHAR(255), yr INT, mth INT, status BOOLEAN);",
+    "INSERT INTO orders4 (id, cust, yr, mth, status) VALUES (1, 'D', 2023, 1, TRUE), (2, 'E', 2023, 2, FALSE), (3, 'F', 2024, 1, NULL);",
+    "SELECT * FROM orders3 INNER JOIN orders4 ON orders3.yr = orders4.yr AND orders3.mth = orders4.mth WHERE orders3.yr = 2024;"
+  ],
+  "key_bug_features": [
+    "SEMI JOIN does not prune partitions correctly"
+  ]
+}

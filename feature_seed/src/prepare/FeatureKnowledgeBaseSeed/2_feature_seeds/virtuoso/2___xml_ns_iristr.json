@@ -1,0 +1,11 @@
+CREATE TABLE rdf_data (id INT PRIMARY KEY, namespace VARCHAR(255), property VARCHAR(255));
+INSERT INTO rdf_data (id, namespace, property) VALUES (1, 'foaf', 'knows'), (2, 'foaf', 'likes'), (3, 'dc', 'creator');
+SELECT __xml_ns_iristr(namespace, property) AS iri FROM rdf_data WHERE (SELECT COUNT(*) FROM rdf_data) <= 2;
+SELECT id, __xml_ns_iristr(namespace, property) AS iri FROM rdf_data WHERE property <= (SELECT property FROM rdf_data WHERE id = 2);
+SELECT __xml_ns_iristr(namespace, property) AS iri FROM rdf_data GROUP BY namespace HAVING COUNT(property) <= 1;
+WITH ranked AS (SELECT __xml_ns_iristr(namespace, property) AS iri, RANK() OVER (PARTITION BY namespace ORDER BY id) AS rnk FROM rdf_data) SELECT iri FROM ranked WHERE rnk <= 2;
+SELECT id FROM rdf_data WHERE __xml_ns_iristr(namespace, property) <= 'http://xmlns.com/foaf/0.1/likes' AND id IS NOT NULL;
+CREATE TEMPORARY TABLE temp_rdf AS SELECT __xml_ns_iristr(namespace, property) AS iri FROM rdf_data WHERE id <= (SELECT MAX(id) FROM rdf_data);
+INSERT INTO rdf_data (id, namespace, property) VALUES (4, NULL, 'creator'), (5, 'dc', NULL);
+SELECT COUNT(*) FROM rdf_data WHERE __xml_ns_iristr(namespace, property) <= (SELECT __xml_ns_iristr(namespace, property) FROM rdf_data LIMIT 1);
+SELECT id, __xml_ns_iristr(namespace, property) AS iri FROM rdf_data WHERE iri IS NOT NULL AND EXISTS (SELECT 1 FROM rdf_data rd2 WHERE rd2.property <= rdf_data.property);

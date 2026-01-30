@@ -1,0 +1,13 @@
+CREATE TABLE timestamps (id INTEGER PRIMARY KEY, ts TIMESTAMPTZ);
+INSERT INTO timestamps VALUES (1, TIMESTAMPTZ '2023-01-01 12:00:00 UTC'), (2, TIMESTAMPTZ 'infinity'), (3, TIMESTAMPTZ '2023-12-31 23:59:59 UTC');
+CREATE TABLE bitstrings (bs_id INTEGER PRIMARY KEY, bs BITSTRING);
+INSERT INTO bitstrings VALUES (1, '1010101'::BITSTRING), (2, '1111111'::BITSTRING), (3, '0'::BITSTRING);
+SELECT id, isfinite(ts) >> 1 AS finite_shift FROM timestamps WHERE isfinite(ts);
+SELECT t.id, isfinite(t.ts) AS is_finite, b.bs >> 2 AS shifted_bits FROM timestamps t JOIN bitstrings b ON t.id = b.bs_id WHERE isfinite(t.ts) AND b.bs IS NOT NULL;
+SELECT COUNT(*) FROM (SELECT id, (isfinite(ts) >> 1) AS finite_check FROM timestamps WHERE id IN (SELECT bs_id FROM bitstrings WHERE bs >> 3 = '1'::BITSTRING)) sub WHERE finite_check = 1 GROUP BY finite_check HAVING COUNT(*) > 0;
+SELECT id, isfinite(ts) >> (LENGTH(bs) - 2) FROM timestamps JOIN bitstrings ON timestamps.id = bitstrings.bs_id ORDER BY 1 DESC;
+SELECT DISTINCT t.id, isfinite(t.ts) FROM timestamps t LEFT JOIN bitstrings b ON t.id = b.bs_id WHERE isfinite(ts) IS NOT NULL;
+SELECT id, b.bs, isfinite(t.ts) AND (b.bs >> LENGTH(b.bs) - 1) AS final_check FROM timestamps t JOIN bitstrings b ON t.id = b.bs_id HAVING final_check;
+DROP TABLE IF EXISTS test_temp;
+CREATE TEMP TABLE test_temp AS SELECT id, isfinite(ts) AS finite FROM timestamps;
+SELECT finite, COUNT(*) FROM test_temp GROUP BY finite HAVING COUNT(*) > 0;

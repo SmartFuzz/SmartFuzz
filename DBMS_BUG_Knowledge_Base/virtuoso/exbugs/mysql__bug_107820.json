@@ -1,0 +1,19 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=107820",
+  "title": "Error switch hint parse",
+  "description": "When  character_set_client with character_set_system.\r\nSQL hint with optimizer_switch parse error.\r\n\r\nset @@character_set_client=@@character_set_system;\r\nWarnings:\r\nWarning\t1287\t'utf8mb3' is deprecated and will be removed in a future release. Please use utf8mb4 instead\r\n\r\nexplain select /*+ set_var(optimizer_switch='prefer_ordering_index=off') */ * from t;\r\nid\tselect_type\ttable\tpartitions\ttype\tpossible_keys\tkey\tkey_len\tref\trows\tfiltered\tExtra\r\n1\tSIMPLE\tt\tNULL\tALL\tNULL\tNULL\tNULL\tNULL\t1\t100.00\tNULL\r\nWarnings:\r\nWarning\t1231\tVariable 'optimizer_switch' can't be set to the value of 'prefer_ordering_index=off'\r\nNote\t1003\t/* select#1 */ select `test`.`t`.`c1` AS `c1` from `test`.`t`\nHow to repeat:\nerr_switch_hint.test\r\n\r\n```\r\nCREATE TABLE t(c1 int);\r\nANALYZE TABLE t;\r\nexplain select /*+ set_var(optimizer_switch='prefer_ordering_index=off') */ * from t;\r\nset @@character_set_client=@@character_set_system;\r\nexplain select /*+ set_var(optimizer_switch='prefer_ordering_index=off') */ * from t;\r\nDROP TABLE t;\r\n```\r\n\r\nresult\r\n\r\n```\r\nCREATE TABLE t(c1 int);\r\nANALYZE TABLE t;\r\nTable\tOp\tMsg_type\tMsg_text\r\ntest.t\tanalyze\tstatus\tOK\r\nexplain select /*+ set_var(optimizer_switch='prefer_ordering_index=off') */ * from t;\r\nid\tselect_type\ttable\tpartitions\ttype\tpossible_keys\tkey\tkey_len\tref\trows\tfiltered\tExtra\r\n1\tSIMPLE\tt\tNULL\tALL\tNULL\tNULL\tNULL\tNULL\t1\t100.00\tNULL\r\nWarnings:\r\nNote\t1003\t/* select#1 */ select /*+ SET_VAR(optimizer_switch='prefer_ordering_index=off') */ `test`.`t`.`c1` AS `c1` from `test`.`t`\r\nset @@character_set_client=@@character_set_system;\r\nWarnings:\r\nWarning\t1287\t'utf8mb3' is deprecated and will be removed in a future release. Please use utf8mb4 instead\r\nexplain select /*+ set_var(optimizer_switch='prefer_ordering_index=off') */ * from t;\r\nid\tselect_type\ttable\tpartitions\ttype\tpossible_keys\tkey\tkey_len\tref\trows\tfiltered\tExtra\r\n1\tSIMPLE\tt\tNULL\tALL\tNULL\tNULL\tNULL\tNULL\t1\t100.00\tNULL\r\nWarnings:\r\nWarning\t1231\tVariable 'optimizer_switch' can't be set to the value of 'prefer_ordering_index=off'\r\nNote\t1003\t/* select#1 */ select `test`.`t`.`c1` AS `c1` from `test`.`t`\r\nDROP TABLE t;\r\n```\nSuggested fix:\nThis is because when thd->charset_is_system_charset, parser will not convert string.\r\n```\r\n201             if (thd->charset_is_system_charset && double_separators == 0)\r\n202               return ret;\r\n203\r\n204             LEX_STRING s;\r\n205             if (!thd->charset_is_system_charset) {\r\n206               if (thd->convert_string(&s, system_charset_info, yytext, yyleng,\r\n207                                       thd->charset()))\r\n208                 return HINT_ERROR;  // OOM etc\r\n```\r\n\r\nWhen find_set_from_flags->find_type, we see str below.\r\n```\r\nprefer_ordering_index=off') */ * from t\r\n```\r\n\r\nWhen !thd->charset_is_system_charset, after convert_string, we will see str below.\r\n```\r\nprefer_ordering_index=off\r\n```\r\n\r\nTo fix this:\r\nfind_type should check the end of str.",
+  "date": "2022-07-08 17:35:00",
+  "vulnerable_version": "8.0, 8.0.29",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t(c1 INT, c2 VARCHAR(255) NOT NULL, c3 DATE DEFAULT NULL);",
+    "INSERT INTO t(c1, c2) VALUES (1, 'test'), (2, 'example');",
+    "SELECT * FROM t WHERE c1 IS NOT NULL;",
+    "DROP TABLE t;"
+  ],
+  "key_bug_features": [
+    "Setting optimizer_switch with character_set_client mismatch"
+  ]
+}

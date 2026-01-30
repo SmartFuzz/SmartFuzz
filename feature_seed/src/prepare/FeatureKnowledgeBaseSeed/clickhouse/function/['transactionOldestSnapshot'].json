@@ -1,0 +1,23 @@
+[
+    "CREATE TABLE transactions (id UInt64, value Float64) ENGINE = MergeTree() ORDER BY id;",
+    "CREATE TABLE locks (id UInt64, status String) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO transactions VALUES (1, 10.5), (2, 20.5), (3, 30.5);",
+    "INSERT INTO locks VALUES (1, 'locked'), (2, 'unlocked');",
+    "BEGIN TRANSACTION;",
+    "SELECT transactionOldestSnapshot() AS oldest_snapshot FROM transactions WHERE id IN (SELECT id FROM locks WHERE status = 'locked');",
+    "ROLLBACK;",
+    "BEGIN TRANSACTION;",
+    "SELECT transactionOldestSnapshot() AS oldest_snapshot FROM transactions WHERE value > (SELECT AVG(value) FROM transactions) AND id NOT IN (SELECT id FROM locks WHERE status = 'unlocked');",
+    "ROLLBACK;",
+    "CREATE TABLE nested_example (id UInt64, ref_id UInt64, value Float64) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO nested_example VALUES (1, 1, 100.0), (2, 1, 200.0), (3, 2, 300.0);",
+    "BEGIN TRANSACTION;",
+    "SELECT transactionOldestSnapshot() AS oldest_snapshot FROM nested_example WHERE ref_id = (SELECT id FROM locks WHERE status = 'locked' LIMIT 1) AND value > (SELECT MAX(value) FROM transactions);",
+    "ROLLBACK;",
+    "BEGIN TRANSACTION;",
+    "SELECT transactionOldestSnapshot() AS oldest_snapshot, COUNT(*) AS count FROM transactions GROUP BY value HAVING count > 1;",
+    "ROLLBACK;",
+    "BEGIN TRANSACTION;",
+    "SELECT transactionOldestSnapshot(), t.value FROM transactions t JOIN locks l ON t.id = l.id WHERE l.status = 'locked';",
+    "ROLLBACK;"
+]

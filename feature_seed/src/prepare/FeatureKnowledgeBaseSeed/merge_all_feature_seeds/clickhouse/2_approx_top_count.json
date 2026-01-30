@@ -1,0 +1,9 @@
+CREATE TABLE test_data (id UInt32, value Float64, category String, created DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_data (id, value, category, created) VALUES (1, 10.5, 'A', '2023-10-01 12:00:00'), (2, 20.5, 'B', '2023-10-02 12:00:00'), (3, NULL, 'C', '2023-10-03 12:00:00'), (4, -5.5, 'A', '2023-10-04 12:00:00'), (5, 30.0, NULL, '2023-10-05 12:00:00');
+SELECT approx_top_count(category, 2) FROM test_data GROUP BY category HAVING approx_top_count(value, 1) >= 0;
+SELECT DISTINCT category, approx_top_count(value, 2) FROM (SELECT id, value, category FROM test_data WHERE value IS NOT NULL AND created <= '2023-10-05 12:00:00') AS sub_query WHERE category IS NOT NULL GROUP BY category HAVING approx_top_count(value, 1) <= 20;
+SELECT category, approx_top_count(value, 2) FROM (SELECT value, category FROM test_data WHERE value < (SELECT avg(value) FROM test_data WHERE category LIKE 'A%')) AS filtered_data GROUP BY category HAVING approx_top_count(value, 1) > 0;
+SELECT COUNT(*) FROM (SELECT approx_top_count(category, 3) AS top_categories FROM test_data GROUP BY category HAVING approx_top_count(value, 2) IS NOT NULL) AS sub_group WHERE top_categories != '';
+CREATE TABLE temp_results AS SELECT category, approx_top_count(value, 5) AS top_values FROM test_data WHERE id <= 5 GROUP BY category;
+SELECT AVG(value) FROM temp_results HAVING approx_top_count(top_values, 3) > 1;
+SELECT a.category FROM test_data AS a JOIN test_data AS b ON a.id <= b.id WHERE NOT (a.value <--> b.value) GROUP BY a.category HAVING approx_top_count(a.value, 2) > 10;

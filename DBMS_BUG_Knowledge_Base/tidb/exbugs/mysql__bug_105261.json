@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=105261",
+  "title": "system variable max_join_size acts differently when table size is different",
+  "description": "The document says \"Do not permit statements that probably need to examine more than max_join_size rows (for single-table statements) or row combinations (for multiple-table statements) or that are likely to do more than max_join_size disk seeks\". But max_join_size acts differently for different table size.\nHow to repeat:\n1. create table t1(a int primary key, b int);\r\n2. set max_join_size = 5;\r\n3. insert into t1 values (1,1),(2,2),(3,3),(4,4),(5,5),(6,6),(7,7),(8,8),(9,9);\r\n4. \r\nmysql> select * from t1 limit 2;\r\n+---+------+\r\n| a | b    |\r\n+---+------+\r\n| 1 |    1 |\r\n| 2 |    2 |\r\n+---+------+\r\n2 rows in set (0.00 sec)\r\n\r\n5. \r\ndelimiter //\r\ncreate procedure sp1(a int, b int)\r\nbegin\r\ndeclare var int;\r\nset var =a;\r\nwhile var<b do\r\ninsert into t1 values(var,var);\r\nset var = var+1;\r\nend while;\r\nend //\r\ndelimiter ;\r\n6.  call sp1(10,100);\r\n7. mysql> select * from t1 limit 2;\r\nERROR 1104 (42000): The SELECT would examine more than MAX_JOIN_SIZE rows; check your WHERE and use SET SQL_BIG_SELECTS=1 or SET MAX_JOIN_SIZE=# if the SELECT is okay\nSuggested fix:\nIts behavior should be consistent for different table size.",
+  "date": "2021-10-19 08:24:00",
+  "vulnerable_version": "8.0/5.7",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t2(id INT PRIMARY KEY, name VARCHAR(50), value DECIMAL(10,2));",
+    "SET SESSION max_join_size = 10;",
+    "INSERT INTO t2 VALUES (1, 'A', 10.00), (2, 'B', 20.00), (3, 'C', 30.00), (4, 'D', 40.00), (5, 'E', 50.00);",
+    "SELECT * FROM t2 WHERE value > (SELECT AVG(value) FROM t2);",
+    "CREATE TABLE t3(x INT, y INT, FOREIGN KEY (x) REFERENCES t2(id));"
+  ],
+  "key_bug_features": [
+    "max_join_size inconsistent with varying table sizes"
+  ]
+}

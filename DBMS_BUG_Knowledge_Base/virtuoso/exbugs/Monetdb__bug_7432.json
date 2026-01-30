@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7432",
+  "title": "MonetDB server crashes in `dameraulevenshtein`",
+  "description": "MonetDB server crashes in `dameraulevenshtein`.\n\n**To Reproduce**\n```sql\nCREATE TABLE v0 ( v1 CHAR ( 100 ) );\n INSERT INTO v0 VALUES ( 222 ) , ( 10 ) , ( 3 ) , ( 947 ) , ( 742 ) , ( 1 ) , ( 306 ) , ( 10 ) , ( 510 ) , ( 1.100000 ) , ( 9223372036854775807 ) , ( 333 ) , ( 106 ) , ( 10 ) , ( 10 ) , ( 10 ) , ( 10 ) , ( 10 ) , ( NULL ) , ( 222 ) , ( 10.100000 ) , ( 5 ) , ( 2 ) , ( 1 ) , ( 2 ) , ( 34 ) ; \n INSERT INTO v0 ( v1 ) SELECT group_concat ( 'table tn3 row 99' ) FROM v0 , v0 AS tri , v0 AS OMW WHERE 10 LIMIT 4 ; \n SELECT levenshtein ( v1 , v1 , 16 , 10 , 561 ) , v1 , v1 FROM v0 ;  \n```\n\n**Backtrace of the Crash**\n```c\n#0 0x7f73c9358e84 (dameraulevenshtein+0x474)\n#1 0x7f73c934f4e0 (TXTSIMlevenshtein+0xe0)\n#2 0x7f73c91e929f (runMALsequence+0xf0f)\n#3 0x7f73c91e7f3e (runMAL+0xee)\n#4 0x7f73c8c95bf2 (SQLrun+0x142)\n#5 0x7f73c8c976b9 (SQLengineIntern+0xc9)\n#6 0x7f73c8c94399 (SQLengine_+0x1139)\n#7 0x7f73c8c914fe (SQLengine+0x3e)\n#8 0x7f73c920f2cf (runScenario+0x6f)\n#9 0x7f73c92104de (MSscheduleClient+0xb6e)\n#10 0x7f73c9347182 (doChallenge+0x132)\n#11 0x7f73ca0708a7 (thread_starter+0xc7)\n#12 0x7f73c8b8b609 (start_thread+0xd9)\n#13 0x7f73c8aae133 (clone+0x43)\n```\n\n**Software versions**\n - MonetDB version number: v11.49.1 (Dec2023)\n - OS and version: Ubuntu 20.04\n - From docker image monetdb/monetdb:Dec2023\n\nAn example of steps to reproduce in docker container (**write the poc into /tmp/test.sql first**):\n```bash\ndocker container rm monetdb_test -f\ndocker run -e MDB_DB_ADMIN_PASS=monetdb --name monetdb_test -itd monetdb/monetdb:Dec2023\ndocker exec monetdb_test bash -c 'echo -n -e \"user=monetdb\\npassword=monetdb\\n\" > /root/.monetdb'\n\nsleep 10\ncat /tmp/test.sql | timeout 5s docker exec -i monetdb_test mclient monetdb     # run test case\n\nif docker exec monetdb_test bash -c \"grep '[m]server5' /proc/*/cmdline -lR\"; then\n    echo \"[INFO] Server normal.\"\nelse\n    echo \"[CRASH] Mserver5 process does NOT exist.\"\nfi\n```\n\nIt can also be reproduced on the docker image `monetdb/dev-builds:default`.\n\n**Issue labeling**\nbug",
+  "date": "2024-01-17T06:45:47Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE TABLE v1 ( v2 VARCHAR ( 255 ) NOT NULL, v3 INTEGER CHECK (v3 >= 0) );",
+    "INSERT INTO v1 VALUES ( 'test', 5 ), ( 'example', 10 ), ( NULL, 15 ), ( 'sample', -1 );",
+    "CREATE TABLE v4 ( v5 VARCHAR ( 50 ) DEFAULT 'default', v6 FLOAT );",
+    "INSERT INTO v4 ( v5, v6 ) SELECT v2, CAST(v3 AS FLOAT) FROM v1 WHERE v3 IS NOT NULL;",
+    "SELECT levenshtein(v5, v5, 16, 10, 561) FROM v4 WHERE v6 IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "SELECT levenshtein(v1, v1, 16, 10, 561)"
+  ]
+}

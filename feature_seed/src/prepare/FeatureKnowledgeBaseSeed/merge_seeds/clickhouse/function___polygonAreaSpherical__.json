@@ -1,0 +1,15 @@
+CREATE TABLE polygons (id UInt32, geo Polygon);
+INSERT INTO polygons VALUES (1, '[[[(4.346693, 50.858306), (4.367945, 50.852455), (4.366227, 50.840809), (4.344961, 50.833264), (4.338074, 50.848677), (4.346693, 50.858306)]]]');
+SELECT id, round(polygonAreaSpherical(geo), 14) AS area FROM polygons;
+CREATE TABLE complex_polygons AS SELECT id, geo FROM polygons WHERE id > 0;
+SELECT cp.id, round(polygonAreaSpherical(cp.geo), 14) AS area FROM complex_polygons AS cp JOIN polygons AS p ON cp.id = p.id WHERE cp.id = 1;
+SELECT COUNT(*) FROM polygons WHERE polygonAreaSpherical(geo) BETWEEN 100 AND 10000;
+WITH polygon_id AS (SELECT id FROM polygons WHERE id = 1) SELECT round(polygonAreaSpherical((SELECT geo FROM polygons WHERE id IN (SELECT id FROM polygon_id))), 14) AS area;
+CREATE TABLE other_data (ref_id UInt32, info String);
+INSERT INTO other_data VALUES (1, 'Example Info');
+SELECT o.ref_id, round(polygonAreaSpherical(p.geo), 14) AS area FROM other_data AS o JOIN polygons AS p ON o.ref_id = p.id;
+SELECT round(polygonAreaSpherical(geo), 14) AS area FROM polygons WHERE polygonAreaSpherical(geo) IS NOT NULL;
+SELECT id, geo FROM polygons WHERE geo IS NOT NULL AND round(polygonAreaSpherical(geo), 14) < 500;
+CREATE TABLE mixed_data AS SELECT p.id, p.geo, o.info FROM polygons AS p LEFT JOIN other_data AS o ON p.id = o.ref_id;
+SELECT md.id, md.info, round(polygonAreaSpherical(md.geo), 14) AS area FROM mixed_data AS md WHERE md.info LIKE '%Example%';
+SELECT round(polygonAreaSpherical(geo), 14) FROM polygons WHERE EXISTS (SELECT 1 FROM other_data WHERE ref_id = polygons.id);

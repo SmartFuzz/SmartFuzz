@@ -1,0 +1,22 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=104744",
+  "title": "mysql-connector-python throws exception when custom converter class used",
+  "vulnerable_database": "Connector / Python",
+  "date": "2021-08-26 21:06:00",
+  "vulnerable_version": "8.0.25, 8.0.26",
+  "description": "Python connector throws exception in conversion of STRING fields:\r\n\r\nTraceback (most recent call last):\r\n  File \"test.py\", line 13, in <module>\r\n    cursor.fetchall()\r\n  File \"C:\\Users\\dima\\Miniconda3\\envs\\bug\\lib\\site-packages\\mysql\\connector\\cursor_cext.py\", line 510, in fetchall\r\n    rows = self._cnx.get_rows()\r\n  File \"C:\\Users\\dima\\Miniconda3\\envs\\bug\\lib\\site-packages\\mysql\\connector\\connection_cext.py\", line 344, in get_rows\r\n    row[i])\r\n  File \"C:\\Users\\dima\\Miniconda3\\envs\\bug\\lib\\site-packages\\mysql\\connector\\conversion.py\", line 204, in to_python\r\n    return self._cache_field_types[vtype[1]](value, vtype)\r\n  File \"C:\\Users\\dima\\Miniconda3\\envs\\bug\\lib\\site-packages\\mysql\\connector\\conversion.py\", line 592, in _STRING_to_python\r\n    if dsc[8] == 63:  # 'binary' charset\r\nIndexError: tuple index out of range\nHow to repeat:\nCREATE TABLE `test` (\r\n  `name` varchar(16) DEFAULT NULL\r\n) ENGINE=InnoDB DEFAULT CHARSET=latin1;\r\n\r\nINSERT INTO test VALUES ('test1', 'test2');\r\n\r\nIn python:\r\nfrom mysql import connector\r\nfrom mysql.connector.conversion import MySQLConverter\n\nclass MyConverter(MySQLConverter):\r\n    pass\n\ncnx = connector.connect(converter_class=MyConverter)\r\ncursor = cnx.cursor()\r\ncursor.execute('select * from test')\r\ncursor.fetchall()\nSuggested fix:\nlooks like CMySQLConnection.fetch_eof_columns in lib/mysql/connector/connection_cext.py is not appending a newly [since 8.0.24] field to the column descriptors.",
+  "poc": [
+    "CREATE TABLE `test` (\n`name` varchar(16) DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=latin1;",
+    "INSERT INTO test VALUES ('test1', 'test2');"
+  ],
+  "key_bug_features": [
+    "Exception when using custom converter class for STRING fields"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE `test_strings` (`name` VARCHAR(16) DEFAULT NULL, `description` TEXT, `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8;",
+    "INSERT INTO test_strings (name, description) VALUES ('test1', 'This is a test description.');",
+    "CREATE TABLE `test_numbers` (`id` INT AUTO_INCREMENT PRIMARY KEY, `value` DECIMAL(10, 2) NOT NULL) ENGINE=InnoDB;",
+    "INSERT INTO test_numbers (value) VALUES (123.45), (NULL), (678.90);",
+    "SELECT ts.name, tn.value FROM test_strings ts LEFT JOIN test_numbers tn ON ts.name = 'test1';"
+  ]
+}

@@ -1,0 +1,15 @@
+CREATE TABLE test_table (value String, scale UInt8, default_value Decimal64(0));
+INSERT INTO test_table VALUES ('123.456', 3, CAST('0', 'Decimal64(0)'));
+INSERT INTO test_table VALUES ('-1000000000.999999999', 9, CAST('0', 'Decimal64(0)'));
+INSERT INTO test_table VALUES ('Inf', 0, CAST('-1', 'Decimal64(0)'));
+INSERT INTO test_table VALUES ('NaN', 0, CAST('0', 'Decimal64(0)'));
+INSERT INTO test_table VALUES ('0.0001', 18, CAST('0', 'Decimal64(0)'));
+SELECT toDecimal64OrDefault(value, scale, default_value) AS converted_value FROM test_table;
+SELECT toDecimal64OrDefault('999999999999999999.999999999', 18, CAST('0', 'Decimal64(0)')) AS converted_max_value;
+SELECT toDecimal64OrDefault('123456789012345678901234567890', 2, CAST('-1', 'Decimal64(0)')) AS converted_overflow_value;
+SELECT a.value, a.scale, toDecimal64OrDefault(a.value, a.scale) AS result FROM (SELECT value, scale FROM test_table) AS a WHERE a.scale < 10;
+SELECT a.value, a.scale, b.default_value, toDecimal64OrDefault(a.value, a.scale, b.default_value) AS result FROM (SELECT value, scale FROM test_table) AS a JOIN (SELECT CAST('-1', 'Decimal64(0)') AS default_value) AS b ON a.scale = 0;
+SELECT toDecimal64OrDefault(toString(1.15), 2) AS converted_float;
+SELECT toDecimal64OrDefault('1.15', 2) AS precise_conversion;
+SELECT SUM(toDecimal64OrDefault(value, scale, default_value)) AS total_value FROM test_table;
+SELECT toDecimal64OrDefault(CAST(value AS String), scale, default_value) FROM (SELECT value, scale, default_value FROM test_table) WHERE isNull(default_value) = 0;

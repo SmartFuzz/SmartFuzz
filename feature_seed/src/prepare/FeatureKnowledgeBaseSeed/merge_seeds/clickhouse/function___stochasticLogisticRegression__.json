@@ -1,0 +1,10 @@
+CREATE TABLE train_data (feature1 Float64, feature2 Float64, target Int8);
+INSERT INTO train_data VALUES (0.5, 1.0, 1), (0.2, 0.8, -1), (0.9, 0.5, 1), (0.1, 0.3, -1);
+CREATE TABLE test_data (feature1 Float64, feature2 Float64);
+INSERT INTO test_data VALUES (0.4, 0.6), (0.8, 0.9), (0.3, 0.5);
+CREATE TABLE model_states AS SELECT stochasticLogisticRegression(learning_rate, l2_regularization, mini_batch_size, method) AS state FROM (SELECT 0.1 AS learning_rate, 0.01 AS l2_regularization, 32 AS mini_batch_size, 'SGD' AS method);
+WITH (SELECT state FROM model_states) AS model SELECT evalMLMethod(model, feature1, feature2) AS probability FROM test_data;
+WITH (SELECT state FROM model_states) AS model SELECT probability, (probability < 0.9 AND probability > 0.5) AS predicted_label FROM (SELECT evalMLMethod(model, feature1, feature2) AS probability FROM test_data);
+SELECT feature1, feature2, (WITH (SELECT state FROM model_states) AS model SELECT evalMLMethod(model, feature1, feature2) AS probability) FROM test_data WHERE probability > 0.7;
+CREATE TABLE results AS SELECT feature1, feature2, (WITH (SELECT state FROM model_states) AS model SELECT evalMLMethod(model, feature1, feature2) AS probability) AS probability, (probability > 0.5) AS label FROM test_data;
+SELECT AVG(probability) AS average_prob FROM (WITH (SELECT state FROM model_states) AS model SELECT evalMLMethod(model, feature1, feature2) AS probability FROM test_data);

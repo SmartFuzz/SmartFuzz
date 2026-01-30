@@ -1,0 +1,16 @@
+{
+    "function": "tupleModuloByNumber",
+    "operator": "a GLOBAL IN ...",
+    "sql_array": [
+        "CREATE TABLE test_data (id UInt32, values Tuple(UInt32, UInt32, UInt32), divisor UInt32) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_data VALUES (1, (15, 10, 5), 2), (2, (16, NULL, 19), 0), (3, (0, 0, 0), 5), (4, (20, 25, 30), 3);",
+        "SELECT id, tupleModuloByNumber(values, divisor) as remainders FROM test_data WHERE divisor != 0;",
+        "SELECT id, (SELECT tupleModuloByNumber(values, MAX(divisor)) FROM test_data WHERE id = t.id) AS mod_rem FROM test_data t;",
+        "SELECT id, values, tupleModuloByNumber(values, (SELECT COUNT(*) FROM test_data WHERE divisor = 2)) FROM test_data WHERE GLOBAL IN divisor [(2), (0)];",
+        "SELECT id, values, tupleModuloByNumber(values, CASE WHEN divisor = 0 THEN NULL ELSE divisor END) AS remainders FROM test_data GROUP BY id, values HAVING remainders IS NOT NULL;",
+        "SELECT values, tupleModuloByNumber((SELECT AVG(value) FROM (SELECT arrayJoin(values) as value FROM test_data)), divisor) AS average_remainder FROM test_data GROUP BY values ORDER BY average_remainder ASC;",
+        "SELECT id, tupleModuloByNumber(values, divisor) FROM (SELECT id, values, divisor FROM test_data WHERE id IN (1, 2) AND divisor != 0) AS filtered_data WHERE values.1 < 30;",
+        "SELECT DISTINCT id, tupleModuloByNumber(values, (SELECT 2 * MIN(divisor) FROM test_data WHERE divisor > 0)) FROM test_data ORDER BY id;",
+        "SELECT id, tupleModuloByNumber(values, 2) AS mod_remainders FROM test_data UNION ALL SELECT id, tupleModuloByNumber((1, 2, 3), 3) FROM test_data WHERE id = 3;"
+    ]
+}

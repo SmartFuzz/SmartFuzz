@@ -1,0 +1,10 @@
+CREATE TABLE test_digits (id UInt32, decimal_value Decimal32(9), nullable_value Nullable(Int32));
+INSERT INTO test_digits (id, decimal_value, nullable_value) VALUES (1, toDecimal32(12345.6789, 4), 42), (2, toDecimal32(-12345.6789, 4), NULL), (3, toDecimal32(0.0123, 4), 0), (4, toDecimal32(9876543210.123456789, 8), 15);
+SELECT id, countDigits(decimal_value) AS digit_count FROM test_digits WHERE nullable_value IS NOT NULL GROUP BY id HAVING digit_count > 2;
+SELECT id, countDigits(toDecimal32(nullable_value, 0)) AS digit_count FROM test_digits WHERE decimal_value IS NOT NULL AND nullable_value IS NOT NULL;
+SELECT id, countDigits(toDecimal64(ABS(decimal_value), 18)) AS digit_count, CASE WHEN nullable_value IS NOT NULL THEN 1 ELSE 0 END AS is_nullable FROM test_digits WHERE countDigits(decimal_value) < 10 ORDER BY digit_count DESC;
+CREATE TABLE test_digits_ext (id UInt32, decimal_value Decimal64(18), nullable_value Nullable(String));
+INSERT INTO test_digits_ext (id, decimal_value, nullable_value) VALUES (1, toDecimal64(123456789012345678, 0), 'simple'), (2, toDecimal64(-1.234567890123456789, 18), NULL), (3, toDecimal64(0.000123456789, 18), 'nullable_string');
+SELECT id, NULLIF(countDigits(decimal_value), 0) AS non_zero_digit_count FROM test_digits_ext WHERE nullable_value IS NOT NULL AND decimal_value IS NOT NULL;
+SELECT id, countDigits(toDecimal128(COALESCE(nullable_value, '0'), 38)) FROM test_digits_ext GROUP BY id HAVING countDigits(decimal_value) + 1 > 10;
+SELECT id, countDigits(decimal_value) FROM (SELECT id, decimal_value FROM test_digits_ext WHERE decimal_value IS NOT NULL) t1 WHERE countDigits(decimal_value) IS NOT NULL;

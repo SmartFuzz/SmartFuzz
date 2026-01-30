@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/49986",
+  "title": "ERROR 1105 (HY000): runtime error: index out of range [0] with length 0",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```sql\r\ncreate table if not exists ast (i varchar(20));\r\ncreate table if not exists acc (j varchar(20), k varchar(20), l varchar(20), m varchar(20));\r\n\r\nexplain with t as(\r\nselect i,\r\n    (case\r\n        when b.j = '20001' then b.l\r\n        else b.k\r\n    end) an\r\nfrom\r\n    ast a\r\ninner join acc b on\r\n(a.i = b.m)\r\nand a.i = 'astp2019121731703151'),\r\nt1 as (select i, group_concat(an order by an separator '; ') an from t group by i)\r\nselect * from t1;\r\n```\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\nNo error.\r\n\r\n### 3. What did you see instead (Required)\r\nPanicked.\r\n\r\n### 4. What is your TiDB version? (Required)\r\n>= v6.5.3\r\nActually panic starts from v6.5.6, it returns an error `[2024/01/02 20:39:19.509 +08:00] [WARN] [session.go:2207] [\"compile SQL failed\"] [conn=2199023255955] [error=\"Can't find column Column#31 in schema Column: [test.ast.i,test.acc.j,test.acc.k,test.acc.l] Unique key: []\"] [SQL=\"explain with t as(\\nselect i,\\n    (case\\n        when b.j = '20001' then b.l\\n        else b.k\\n    end) an\\nfrom\\n    ast a\\ninner join acc b on\\n(a.i = b.m)\\nand a.i = 'astp2019121731703151'),\\nt1 as (select i, group_concat(an order by an separator '; ') an from t group by i)\\nselect * from t1\"]` on v6.5.3\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2024-01-02T12:51:20Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE IF NOT EXISTS ast (i String NOT NULL);",
+    "CREATE TABLE IF NOT EXISTS acc (j String, k String DEFAULT 'default_k', l String NOT NULL, m String UNIQUE);",
+    "INSERT INTO ast (i) VALUES (NULL), ('astp2019121731703151');",
+    "INSERT INTO acc (j, k, l, m) VALUES ('20001', 'value_k1', 'value_l1', 'm_value1'), ('20002', 'value_k2', 'value_l2', 'm_value2');",
+    "SELECT * FROM ast a INNER JOIN acc b ON (a.i = b.m) WHERE a.i IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Inner join with non-matching condition on empty table"
+  ]
+}

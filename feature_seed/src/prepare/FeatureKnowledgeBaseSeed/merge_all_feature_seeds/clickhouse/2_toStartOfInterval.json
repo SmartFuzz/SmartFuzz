@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id UInt32, event_time DateTime, value Float64, category String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_data (id, event_time, value, category) VALUES (1, '2023-01-01 00:00:00', 10.5, 'A'), (2, '2023-01-01 00:10:00', 15.25, 'B'), (3, '2023-01-01 15:30:00', NULL, 'C'), (4, '2023-01-01 20:15:00', 22.0, 'A'), (5, '2023-01-02 00:00:00', 5.5, 'B');
+SELECT category, toStartOfInterval(event_time, INTERVAL 1 HOUR) AS interval_start, SUM(value) AS total_value FROM test_data GROUP BY category, toStartOfInterval(event_time, INTERVAL 1 HOUR) HAVING total_value = ANY (SELECT SUM(value) FROM test_data WHERE category = 'A' GROUP BY category);
+SELECT DISTINCT category, toStartOfInterval(event_time, INTERVAL 1 DAY) AS day_start FROM test_data WHERE event_time >= '2023-01-01 00:00:00' AND value = ANY (SELECT value FROM test_data WHERE category = 'B');
+SELECT id, event_time, value FROM test_data WHERE value IS NOT NULL AND event_time = ANY (SELECT toStartOfInterval(event_time, INTERVAL 1 HOUR) FROM test_data WHERE value > 10) ORDER BY event_time;
+WITH (SELECT category, COUNT(*) AS cnt FROM test_data GROUP BY category HAVING cnt > 1) AS filtered_categories SELECT t.category, AVG(value) AS avg_value FROM test_data t JOIN filtered_categories f ON t.category = f.category GROUP BY t.category;
+SELECT id, toStartOfInterval(event_time, INTERVAL 1 MONTH, 'UTC') AS month_start FROM test_data WHERE id = ANY (SELECT id FROM test_data WHERE event_time < '2023-01-02 00:00:00' AND category = 'C');
+CREATE TABLE test_data_2 (id UInt32, event_time DateTime, value Float64) ENGINE = MergeTree() ORDER BY event_time;
+INSERT INTO test_data_2 (id, event_time, value) VALUES (6, '2023-01-01 01:00:00', 12.0), (7, '2023-01-01 02:00:00', 20.0), (8, '2023-01-01 03:00:00', NULL);
+SELECT t1.id, t1.event_time, t1.value FROM test_data t1 JOIN test_data_2 t2 ON t1.value > t2.value WHERE toStartOfInterval(t1.event_time, INTERVAL 1 HOUR) = ANY (SELECT toStartOfInterval(event_time, INTERVAL 1 HOUR) FROM test_data_2);

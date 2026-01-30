@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/18158",
+  "title": "Column projection on struct does not work with view",
+  "description": "### What happens?\n\nColumn projection on struct columns works ok when reading parquet file directly but does not work when using a view.\n\n### To Reproduce\n\n\n**With view:**\n```sql\ncopy (select { f1: 1::int, f2: 1::int } as c1) to 'test.parquet';\n\ncreate or replace view test as\nselect *\nfrom 'test.parquet';\n\nexplain analyse \nselect c1.f1\nfrom test;\n```\n\n**Profile:**\n```\n┌───────────────────────────┐\n│           QUERY           │\n└─────────────┬─────────────┘\n┌─────────────┴─────────────┐\n│      EXPLAIN_ANALYZE      │\n│    ────────────────────   │\n│           0 Rows          │\n│          (0.00s)          │\n└─────────────┬─────────────┘\n┌─────────────┴─────────────┐\n│         PROJECTION        │\n│    ────────────────────   │\n│  struct_extract(c1, 'f1') │\n│                           │\n│           1 Rows          │\n│          (0.00s)          │\n└─────────────┬─────────────┘\n┌─────────────┴─────────────┐\n│         TABLE_SCAN        │\n│    ────────────────────   │\n│         Function:         │\n│        PARQUET_SCAN       │\n│                           │\n│      Projections: c1      │\n│    Total Files Read: 1    │\n│                           │\n│           1 Rows          │\n│          (0.00s)          │\n└───────────────────────────┘\n```\n\n**Without view:**\n```sql\nexplain analyze \nselect c1.f1 \nfrom 'test.parquet';\n```\n\n**Profile:**\n```\n┌───────────────────────────┐\n│           QUERY           │\n└─────────────┬─────────────┘\n┌─────────────┴─────────────┐\n│      EXPLAIN_ANALYZE      │\n│    ────────────────────   │\n│           0 Rows          │\n│          (0.00s)          │\n└─────────────┬─────────────┘\n┌─────────────┴─────────────┐\n│         PROJECTION        │\n│    ────────────────────   │\n│  struct_extract(c1, 'f1') │\n│                           │\n│           1 Rows          │\n│          (0.00s)          │\n└─────────────┬─────────────┘\n┌─────────────┴─────────────┐\n│         TABLE_SCAN        │\n│    ────────────────────   │\n│         Function:         │\n│        PARQUET_SCAN       │\n│                           │\n│     Projections: c1.f1    │\n│    Total Files Read: 1    │\n│                           │\n│           1 Rows          │\n│          (0.00s)          │\n└───────────────────────────┘\n```\n\n### OS:\n\niOS, M3\n\n### DuckDB Version:\n\n1.3.1\n\n### DuckDB Client:\n\ncli\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nErik Jansen\n\n### Affiliation:\n\nI-Refact\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a stable release\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "date": "2025-07-05 06:11:33",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_struct (c1 STRUCT(f1 INT, f2 INT));",
+    "INSERT INTO test_struct VALUES (ROW(1, 2));",
+    "CREATE OR REPLACE VIEW test_view AS SELECT * FROM test_struct;",
+    "SELECT c1.f1 FROM test_view;",
+    "SELECT c1.f2 FROM test_struct WHERE c1.f1 IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Column projection on struct fails with view"
+  ]
+}

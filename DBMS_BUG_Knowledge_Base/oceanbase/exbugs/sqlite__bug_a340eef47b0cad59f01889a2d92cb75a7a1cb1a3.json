@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/a340eef47b",
+  "title": "PRAGMA case_sensitive_like can corrupt some databases.",
+  "description": "drh added on 2019-05-01 13:09:08:\nThe \"PRAGMA case_sensitive_like\" command changes the behavior of the\nLIKE operator.  But that means that if the LIKE operator is used in the\nschema, for example in a CHECK constraint or in a partial index or an\nindex on an expression, then a change in behavior of LIKE can cause\nthe database content to disagree with the schema.\nThis issue was brought to our attention by a mailing list post\nfrom Manuel Rigger.\nThis problem is unusual in that it is a defect in the design of SQLite,\nnot a defect in the implementation.\nIt is unclear what can or should be done to resolve this issue.  Possible\nresolutions include, but are not limited to, the following:\nMark the LIKE operator as non-deterministic so that it cannot\n      be used in the schema.  This solution runs into problems of\n      what to do with historical schemas that already use the LIKE\n      operator.  Note that (due to a separate coding error) the LIKE operator\n      already is marked as non-deterministic *after* the case_sensitive_like\n      pragma has been run, just not before.\nDisallow \"PRAGMA case_sensitive_like=on\" if the schema\n      contains a LIKE operator.\nCause LIKE operators in the schema to ignore case (the default\n      behavior) regardless of the case_sensitive_like setting.  In\n      other words, change case_sensitive_like to only affect LIKE\n      operators in transient queries.\nSimply document the fact that \"PRAGMA case_sensitive_like\" can\n      cause a corrupt database.  Perhaps also disable\n      case_sensitive_like when SQLITE_DBCONFIG_DEFENSIVE is enabled.\nAutomatically run REINDEX on indexes that contain a LIKE\n      operator when the case_sensitive_like setting changes.  This\n      would only fix problems in indexes, though, not in CHECK\n      constraints.\nDeprecate or disable the case_sensitive_like pragma.  Replace it\n      with a C-language API of some kind.  This prevents the database\n      from being corrupted by an SQL script.  The database schema can\n      still get out-of-sync with the database content by C code, but\n      that is also true if the C code does something like redefine\n      another built-in function using the sqlite3_create_function()\n      interface.\nIf the schema contains a LIKE operator and the case_sensitive_like\n      pragma is turned on, disable all indexes that use LIKE and mark\n      the whole database as read-only.  This prevents index corruption,\n      but does nothing to fix CHECK constraints that are rendered\n      invalid.\ndrh added on 2019-05-08 17:28:56:\nFor now, this issue is merely documented.  No change are made to the\ncode, except for a new compile-time option to complete disable the\nPRAGMA case_sensitive_like command.  We might revisit this choice later.",
+  "date": "2019-05-01 13:09:086.28 years ago",
+  "vulnerable_version": "3.28.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR(255), value INT CHECK (name LIKE 'A%'));",
+    "INSERT INTO test_table (name, value) VALUES ('Alice', 10);",
+    "SELECT * FROM test_table WHERE name LIKE 'A%';",
+    "UPDATE test_table SET value = NULL WHERE name LIKE 'A%';",
+    "SET SESSION TRANSACTION READ ONLY;"
+  ],
+  "key_bug_features": [
+    "PRAGMA case_sensitive_like alters LIKE operator behavior"
+  ]
+}

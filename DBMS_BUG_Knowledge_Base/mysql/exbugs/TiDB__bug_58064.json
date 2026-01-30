@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/58064",
+  "title": "Inconsistent results on partitioned table",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n```sql\ncreate table `t0` (`c1` int,`c2` varchar(255));\ninsert into `t0` values (1,'a'),(2,'d'),(3,'c');\n\ncreate table `t0_oracle1` (`c1` int,`c2` varchar(255)) partition by hash(c1) partitions 96;\ninsert into `t0_oracle1` values (1,'a'),(2,'d'),(3,'c');\n\nselect `t01`.`c1`,`t01`.`c2`,`t01`.`c3` from (select `t1`.*,@`c3`:=@`c3`+1 as `c3` from (select  `t0`.*,@`c3`:=0 from `t0` order by  `t0`.`c1`) as `t1`) as `t01` where `t01`.`c3`=2 and `t01`.`c2`='d';\nselect `t01`.`c1`,`t01`.`c2`,`t01`.`c3` from (select `t1`.*,@`c3`:=@`c3`+1 as `c3` from (select  `t0_oracle1`.*,@`c3`:=0 from `t0_oracle1` order by  `t0_oracle1`.`c1`) as `t1`) as `t01` where `t01`.`c3`=2 and `t01`.`c2`='d';\n```\n\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\nQueries return same result\n\n### 3. What did you see instead (Required)\n```sql\nmysql> select `t01`.`c1`,`t01`.`c2`,`t01`.`c3` from (select `t1`.*,@`c3`:=@`c3`+1 as `c3` from (select  `t0`.*,@`c3`:=0 from `t0` order by  `t0`.`c1`) as `t1`) as `t01` where `t01`.`c3`=2 and `t01`.`c2`='d';\n+------+------+------+\n| c1   | c2   | c3   |\n+------+------+------+\n|    2 | d    |    2 |\n+------+------+------+\n1 row in set (0.01 sec)\n\nmysql> select `t01`.`c1`,`t01`.`c2`,`t01`.`c3` from (select `t1`.*,@`c3`:=@`c3`+1 as `c3` from (select  `t0_oracle1`.*,@`c3`:=0 from `t0_oracle1` order by  `t0_oracle1`.`c1`) as `t1`) as `t01` where `t01`.`c3`=2 and `t01`.`c2`='d';\nEmpty set (0.01 sec)\n```\nThe result of the second query is unstable. \n\n### 4. What is your TiDB version? (Required)\n```sql\n Release Version: v8.5.0-alpha-281-g282430e657\nEdition: Community\nGit Commit Hash: 282430e657d49bb4bae578f0e0b732ac0df3ba57\nGit Branch: master\nUTC Build Time: 2024-12-04 09:16:29\nGoVersion: go1.23.4\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv \n```\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "date": "2024-12-06T23:59:45Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE `t1` (`id` int PRIMARY KEY, `name` varchar(100) NOT NULL, `value` decimal(10,2) DEFAULT NULL);",
+    "INSERT INTO `t1` VALUES (1, 'item1', 10.50), (2, 'item2', NULL), (3, 'item3', 20.00);",
+    "CREATE TABLE `t2` (`id` int, `description` text, `amount` float NOT NULL);",
+    "INSERT INTO `t2` VALUES (1, 'desc1', 100.00), (2, 'desc2', 200.00), (3, 'desc3', 300.00);",
+    "SELECT t1.id, t1.name, COALESCE(t1.value, 0) AS value, t2.amount FROM t1 LEFT JOIN t2 ON t1.id = t2.id WHERE t1.value IS NOT NULL ORDER BY t1.id;"
+  ],
+  "key_bug_features": [
+    "Partitioned table query returns inconsistent results"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/62303",
+  "title": "Generated column wrong value with ON DUPLICATE KEY UPDATE",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n```sql\nCREATE TABLE t(\n\tid INT PRIMARY KEY,\n\ttext1 TEXT,\n\ttext2 TEXT,\n\ttext3 TEXT GENERATED ALWAYS AS (CONCAT(text1, text2)) STORED,\n\tvec TEXT GENERATED ALWAYS AS (REPEAT(text3, 2)) STORED,\n\ttext4 TEXT GENERATED ALWAYS AS (REPEAT(text1, 2)) STORED\n);\n\nINSERT INTO t VALUES (1, \"foo\", \"bar\", DEFAULT, DEFAULT, DEFAULT);\n\nINSERT INTO t (id, text1, text2) VALUES (1, \"foo2\", \"bar2\") ON DUPLICATE KEY UPDATE text1 = \"foo3\", text2 = \"bar3\";\n\nSELECT * FROM t;\n\n```\n\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\n\nMySQL:\n\n```\n+----+-------+-------+----------+------------------+----------+\n| id | text1 | text2 | text3    | vec              | text4    |\n+----+-------+-------+----------+------------------+----------+\n|  1 | foo3  | bar3  | foo3bar3 | foo3bar3foo3bar3 | foo3foo3 |\n+----+-------+-------+----------+------------------+----------+\n```\n\n### 3. What did you see instead (Required)\n\nTiDB nightly:\n\n```\n+----+-------+-------+----------+--------------+----------+\n| id | text1 | text2 | text3    | vec          | text4    |\n+----+-------+-------+----------+--------------+----------+\n|  1 | foo3  | bar3  | foo3bar3 | foobarfoobar | foo3foo3 |\n+----+-------+-------+----------+--------------+----------+\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n```\nRelease Version: v9.0.0-beta.2.pre-76-g9accc3cfa3\nEdition: Community\nGit Commit Hash: 9accc3cfa3de44130537fcf9767623c436869aa6\nGit Branch: HEAD\nUTC Build Time: 2025-07-08 05:05:26\nGoVersion: go1.23.10\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv\nKernel Type: Classic\n```",
+  "date": "2025-07-08T12:59:01Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (id INT PRIMARY KEY, text1 VARCHAR(255), text2 VARCHAR(255), text3 VARCHAR(255) AS (CONCAT(text1, ' ', text2)), vec VARCHAR(255) AS (REPEAT(text3, 2));",
+    "INSERT INTO t2 VALUES (1, 'hello', 'world');",
+    "INSERT INTO t2 (id, text1, text2) VALUES (1, 'goodbye', 'earth') ON DUPLICATE KEY UPDATE text1 = 'farewell', text2 = 'planet';",
+    "SELECT * FROM t2;",
+    "CREATE TABLE t3 (id INT PRIMARY KEY, num1 INT, num2 INT, sum_col INT AS (num1 + num2));"
+  ],
+  "key_bug_features": [
+    "ON DUPLICATE KEY UPDATE with generated columns"
+  ]
+}

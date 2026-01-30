@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/332",
+  "title": "Bug With GEO query",
+  "description": "Hi,\nI have a geo query who has a weird behavior :\nSELECT ?venue ?distance\nWHERE {\n    {\n        SELECT ?venue (bif:st_distance(?geo, ?geoOrig) AS ?distance)\n        WHERE {\n            {\n                SELECT ?geoOrig\n                WHERE {\n\n                    <URI> schema:geo ?vGeo .\n                    ?vGeo schema:longitude ?vLong .\n                    ?vGeo schema:latitude ?vLat .\n                    BIND(bif:st_point(xsd:decimal(?vLong), xsd:decimal(?vLat)) as ?geoOrig)\n\n                }\n            }\n            ?venue a dul:Place .\n            ?venue schema:geo ?geoVenue .\n            ?geoVenue schema:longitude ?long .\n            ?geoVenue schema:latitude ?lat .\n            BIND(bif:st_point(xsd:decimal(?long), xsd:decimal(?lat)) as ?geo)\n\n            FILTER(bif:st_distance(?geo, ?geoOrig) <= 0.5) .\n        }\n    }\n\n}\nORDER BY ASC (?distance)\n\nGive me this error :\nVirtuoso 22023 Error GEO..: Function st_point needs a number as argument 1, not an arg of type DB_NULL (204)\n\nAnd If I remove the last FILTER it works. I cast the values in xsd:decimal and the function tells me, it's not a number. Unless I did something wrong in the query, I think it is a bug.",
+  "date": "2015-02-05 16:45:22",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE geo_data (id INT PRIMARY KEY, longitude DECIMAL(10, 8), latitude DECIMAL(10, 8), geo_point POINT);",
+    "INSERT INTO geo_data (id, longitude, latitude) VALUES (1, 12.345678, 34.567890);",
+    "INSERT INTO geo_data (id, longitude, latitude) VALUES (2, NULL, 45.678901);",
+    "SELECT id, LEAST(ST_Distance(ST_Point(longitude, latitude), ST_Point(12.345678, 34.567890)), 0.5) AS distance FROM geo_data WHERE distance <= 0.5;",
+    "SELECT id FROM geo_data WHERE longitude IS NULL OR latitude IS NULL;"
+  ],
+  "key_bug_features": [
+    "FILTER with st_distance function causes DB_NULL error"
+  ]
+}

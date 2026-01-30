@@ -1,0 +1,19 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=103781",
+  "title": "PREPARE DATE_ADD/DATE_SUB incorrectly returns DATETIME",
+  "description": "When using prepared statements, the DATE_ADD and DATE_SUB functions return value is in DateTime format, even if calculations involve only YEAR, MONTH, and DAY parts (that is, no time parts).\r\n\r\nThis behavior is changed from at least MySQL version 8.0.21, in which the statement only returned the date part.\r\n\r\nPREPARE stmt1 FROM \"SELECT DATE_ADD(?, INTERVAL 1 DAY) AS a\";\r\nSET @pc = '2021-05-22';\r\nEXECUTE stmt1 USING @pc;\r\n\r\nReturns # a -> '2021-05-23 00:00:00.000000'\n\nAs a note, the below statement yields another result:\r\n\r\nPREPARE stmt2 FROM \"SELECT DATE_ADD('2021-05-22', INTERVAL 1 DAY) AS a\";\r\nEXECUTE stmt2;\r\n\r\nReturns # a -> '2021-05-23'\nHow to repeat:\nPREPARE stmt1 FROM \"SELECT DATE_ADD(?, INTERVAL 1 DAY)\";\r\n\r\nSET @pc = '2021-05-22';\r\n\r\nEXECUTE stmt1 USING @pc;\nSuggested fix:\nReturning only the date part when calculations do not involve any time parts.",
+  "date": "2021-05-22 20:49:00",
+  "vulnerable_version": "8.0.23/8.0.25",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_dates (id INTEGER PRIMARY KEY, event_date DATE NOT NULL);",
+    "INSERT INTO test_dates (id, event_date) VALUES (1, DATE('2021-05-22'));",
+    "SELECT DATE_ADD(event_date, 1) AS next_day FROM test_dates WHERE id = 1;",
+    "SELECT DATE_ADD('2021-05-22', 1) AS next_day_static;"
+  ],
+  "key_bug_features": [
+    "Prepared statements return DateTime instead of Date"
+  ]
+}

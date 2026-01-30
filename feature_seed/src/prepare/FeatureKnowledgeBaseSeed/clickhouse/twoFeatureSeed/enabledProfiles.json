@@ -1,0 +1,18 @@
+{
+    "function": "enabledProfiles",
+    "operator": "a == b",
+    "sql_array": [
+        "CREATE TABLE test_profiles (id UInt32, profile_name String, created_at DateTime DEFAULT now());",
+        "INSERT INTO test_profiles VALUES (1, 'admin'), (2, 'user'), (3, 'guest');",
+        "CREATE TABLE test_data (user_id UInt32, settings Array(String));",
+        "INSERT INTO test_data VALUES (1, ['profile_A', 'profile_B']), (2, ['profile_C']), (3, []);",
+        "SELECT id, profile_name, (SELECT enabledProfiles() == 'user' FROM test_data WHERE user_id = id) AS is_user FROM test_profiles WHERE created_at > '2023-01-01 00:00:00' HAVING is_user;",
+        "SELECT id, profile_name FROM test_profiles WHERE id IN (SELECT user_id FROM test_data WHERE settings == ['profile_A'] OR settings == ['profile_BACKUP']);",
+        "SELECT user_id, count(*) AS profile_count FROM test_data GROUP BY user_id HAVING countIf(settings == enabledProfiles()) > 0;",
+        "SELECT id, profile_name, (SELECT enabledProfiles() FROM test_profiles WHERE id = test_profiles.id OR enabledProfiles() == 'admin') AS is_admin FROM test_profiles;",
+        "SELECT profile_name, (SELECT enabledProfiles() == 'guest') AS guest_access FROM test_profiles WHERE profile_name IS NOT NULL;",
+        "ALTER TABLE test_profiles ADD COLUMN active UInt8 DEFAULT 1;",
+        "UPDATE test_profiles SET active = 0 WHERE created_at < '2022-05-01 00:00:00';",
+        "SELECT profile_name FROM test_profiles WHERE profile_name NOT IN (SELECT enabledProfiles() UNION SELECT 'non_existing_profile');"
+    ]
+}

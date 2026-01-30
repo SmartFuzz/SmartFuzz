@@ -1,0 +1,13 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, created_at TIMESTAMP(6), data CLOB);
+INSERT INTO test_table (id, created_at, data) VALUES (1, timestamp(6) '2020-01-01 00:00:00.000000', 'Sample data 1');
+INSERT INTO test_table (id, created_at, data) VALUES (2, timestamp(6) '2020-02-01 00:00:00.000000', NULL);
+INSERT INTO test_table (id, created_at, data) VALUES (3, timestamp(6) '2020-03-01 00:00:00.000000', 'Sample data 3');
+SELECT id, sys.md5(data) AS md5_hash FROM test_table WHERE created_at = timestamp(6) '2020-01-01 00:00:00.000000';
+SELECT id, sys.md5(data) AS md5_hash FROM test_table WHERE data IS NOT NULL AND created_at >= timestamp(6) '2020-01-01 00:00:00.000000' AND created_at < timestamp(6) '2020-04-01 00:00:00.000000';
+SELECT id, COUNT(*) OVER (PARTITION BY sys.md5(data)) AS hash_count FROM test_table WHERE data IS NOT NULL;
+CREATE TABLE another_table (value FLOAT, data_id INT REFERENCES test_table(id));
+INSERT INTO another_table (value, data_id) VALUES (1.0, 1), (NULL, 2), (3.5, 3);
+SELECT t1.id, sys.md5(t1.data) AS md5_hash, AVG(t2.value) AS avg_value FROM test_table t1 JOIN another_table t2 ON t1.id = t2.data_id GROUP BY t1.id, t1.data;
+SELECT t1.id, sys.md5(t1.data) AS md5_hash, MIN(t2.value) AS min_value FROM test_table t1 LEFT JOIN another_table t2 ON t1.id = t2.data_id WHERE t1.created_at >= timestamp(6) '2020-01-01 00:00:00.000000' GROUP BY t1.id HAVING MIN(t2.value) IS NULL OR sys.md5(t1.data) LIKE 'a%';
+SELECT id, sys.md5(data) FROM (SELECT id, data FROM test_table WHERE created_at >= timestamp(6) '2020-01-01 00:00:00.000000') AS subquery;
+SELECT sys.md5('Boundary test: ' || data) FROM test_table WHERE created_at BETWEEN timestamp(6) '2020-01-01 00:00:00.000000' AND timestamp(6) '2020-03-01 00:00:00.000000' ORDER BY sys.md5(data), created_at DESC;

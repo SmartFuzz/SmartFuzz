@@ -1,0 +1,33 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/714",
+  "title": "CPU load goes up to 100% when Virtuoso runs its look up processing",
+  "vulnerable_database": "Virtuoso",
+  "date": "2018-02-21 01:37:19",
+  "vulnerable_version": "",
+  "description": "After we updated Virtuoso from v7.2.1 to v7.2.4.2,\nthe CPU load became to go up to 100% when we run its look up processing via SPARQL.\nWith Virtuoso v7.2.4.2, the CPU load goes up to 100% during the look up processing is running,\nand it takes 3 times longer than v7.2.1.\nThe number of stored data is 2000.\nThe spec of server is as follows:\n\nCPU: Intel Xeon X5670 2.93GHz\nRAM: 7.5GB\n\nIt is really appreciated if you kindly give us advice regarding the suspected root causes\nand the way to avoid this issue.\nThe following is our query to run SPARQL look up processing.\nsparql\nprefix odp: <http://www.example.com/LOD/ns#>\nprefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nprefix dc: <http://purl.org/dc/elements/1.1/>\nprefix dct: <http://purl.org/dc/terms/>\nprefix schema: <http://schema.org/>\nselect ?s ?label ?url ?locality ?description ?categoryURI ?facilityURI ?outdoor ?charge ?reservation\n ?ageFrom ?ageTo ?location ?promoter ?listImage ?detailImage ?date1 ?time1 ?date2 ?time2 ?created ?modified\n  from <http://www.example.com/LOD/spot>\n  from <http://www.example.com/LOD/place>\n where {\n  ?s a odp:Spot ;\n    odp:spot-type <http://www.example.com/LOD/sp/type/2> ;\n    rdfs:label ?label ;\n    odp:spot-category ?categoryURI ;\n    odp:locality ?locality ;\n    odp:location ?location ;\n    dct:created ?created ;\n    dct:modified ?modified ;\n    odp:outdoor ?outdoor ;\n    odp:charge ?charge ;\n    odp:reservation ?reservation ;\n    odp:age/odp:fromAge ?ageFrom ;\n    odp:age/odp:toAge ?ageTo .\n    OPTIONAL {\n      ?s schema:url ?url .\n    }\n    OPTIONAL {\n      ?s odp:listImage ?listImage .\n    }\n    OPTIONAL {\n      ?s odp:detailImage ?detailImage .\n    }\n    OPTIONAL {\n      ?s odp:openDate1 ?date1 .\n    }\n    OPTIONAL {\n      ?s odp:openTime1 ?time1 .\n    }\n    OPTIONAL {\n      ?s odp:openDate2 ?date2 .\n    }\n    OPTIONAL {\n      ?s odp:openTime2 ?time2 .\n    }\n    OPTIONAL {\n      ?s odp:promoter ?promoter .\n    }\n    OPTIONAL {\n      ?s odp:facility ?facilityURI .\n      ?location odp:facility ?facilityURI .\n    }\n    OPTIONAL {\n      ?s dc:description ?description .\n    }\n}",
+  "poc": [
+    "SPARQL SELECT ( COUNT(*) AS ?NumberOfQuads )\nWHERE { ?s ?p ?o } ;"
+  ],
+  "key_bug_features": [
+    "CPU load spikes during SPARQL look up processing"
+  ],
+  "bug_feature_seed": [
+    "SPARQL SELECT (COUNT(*) AS ?cnt) WHERE { ?s ?p ?o };",
+    "SPARQL PREFIX odp: <http://www.example.com/LOD/ns#> SELECT ?s FROM <http://www.example.com/LOD/spot> WHERE { ?s a odp:Spot };",
+    "SPARQL PREFIX odp: <http://www.example.com/LOD/ns#> SELECT ?s ?label FROM <http://www.example.com/LOD/spot> WHERE { ?s a odp:Spot ; <http://www.w3.org/2000/01/rdf-schema#label> ?label };",
+    "SPARQL PREFIX odp: <http://www.example.com/LOD/ns#> SELECT ?s ?location FROM <http://www.example.com/LOD/spot> WHERE { ?s a odp:Spot ; odp:location ?location };",
+    "SPARQL PREFIX odp: <http://www.example.com/LOD/ns#> SELECT ?s ?url FROM <http://www.example.com/LOD/spot> WHERE { ?s a odp:Spot OPTIONAL { ?s <http://schema.org/url> ?url } };",
+    "SPARQL PREFIX odp: <http://www.example.com/LOD/ns#> SELECT ?s ?image FROM <http://www.example.com/LOD/spot> WHERE { ?s a odp:Spot OPTIONAL { ?s odp:listImage ?image } };",
+    "SPARQL PREFIX odp: <http://www.example.com/LOD/ns#> SELECT ?s ?facility FROM <http://www.example.com/LOD/spot> WHERE { ?s a odp:Spot OPTIONAL { ?s odp:facility ?facility } };",
+    "SPARQL PREFIX odp: <http://www.example.com/LOD/ns#> SELECT ?s ?desc FROM <http://www.example.com/LOD/spot> WHERE { ?s a odp:Spot OPTIONAL { ?s <http://purl.org/dc/elements/1.1/description> ?desc } };",
+    "SPARQL PREFIX odp: <http://www.example.com/LOD/ns#> SELECT ?s WHERE { ?s a odp:Spot FILTER NOT EXISTS { ?s odp:facility ?f } };",
+    "SPARQL PREFIX odp: <http://www.example.com/LOD/ns#> SELECT ?s ?created ?modified FROM <http://www.example.com/LOD/spot> WHERE { ?s a odp:Spot ; <http://purl.org/dc/terms/created> ?created ; <http://purl.org/dc/terms/modified> ?modified } ;"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE Spot (id INT PRIMARY KEY, label VARCHAR(255), categoryURI VARCHAR(255), locality VARCHAR(255), created TIMESTAMP, modified TIMESTAMP, outdoor BOOLEAN, charge DECIMAL(10, 2), reservation BOOLEAN, ageFrom INT, ageTo INT, url VARCHAR(255), listImage VARCHAR(255), detailImage VARCHAR(255), openDate1 DATE, openTime1 TIME, openDate2 DATE, openTime2 TIME, promoter VARCHAR(255), facilityURI VARCHAR(255), description TEXT);",
+    "INSERT INTO Spot (id, label, categoryURI, locality, created, modified, outdoor, charge, reservation, ageFrom, ageTo) VALUES (1, 'Sample Spot', 'http://www.example.com/LOD/sp/category/1', 'Sample Locality', NOW(), NOW(), TRUE, 10.50, FALSE, 5, 15);",
+    "INSERT INTO Spot (id, label, categoryURI, locality, created, modified, outdoor, charge, reservation, ageFrom, ageTo) VALUES (2, NULL, 'http://www.example.com/LOD/sp/category/2', 'Sample Locality', NOW(), NOW(), FALSE, NULL, TRUE, 0, 10);",
+    "SELECT COUNT(*) AS NumberOfQuads FROM Spot WHERE ageFrom IS NOT NULL AND ageTo IS NOT NULL;",
+    "SELECT * FROM Spot WHERE locality = 'Sample Locality' AND (charge IS NULL OR charge < 20.00);"
+  ]
+}

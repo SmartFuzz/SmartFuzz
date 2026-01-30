@@ -1,0 +1,10 @@
+CREATE TABLE words (id UInt32, word String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO words VALUES (1, 'running'), (2, 'swimming'), (3, 'jumps'), (4, 'stayed'), (5, 'watches');
+CREATE TABLE results AS SELECT id, stem('en', word) as stemmed_word FROM words;
+UPDATE words SET word = 'swim' WHERE id = 2;
+SELECT id, stem('en', word) as stemmed_word, id - (SELECT COUNT(*) FROM words) as diff FROM words GROUP BY id, word HAVING diff < 10;
+CREATE TABLE complex_results AS SELECT id, stem('en', word) as stemmed_word FROM (SELECT * FROM words) as subquery WHERE stemmed_word = 'run';
+SELECT id, stem('en', (word || ' test')) as stemmed_word_with_suffix, id - 1 as adjusted_id FROM words HAVING adjusted_id > 0;
+SELECT x.id, stem('en', x.word) as stemmed_word, (SELECT AVG(id) FROM words) - x.id as offset FROM words x JOIN (SELECT id FROM words WHERE id < 4) y ON x.id = y.id;
+SELECT id, stem('en', word) AS stemmed_word, (id - CAST(NULL AS UInt32)) AS null_subtraction FROM words;
+WITH (SELECT MAX(id) FROM words) as max_id SELECT id, stem('en', word), (max_id - id) as remaining FROM words WHERE remaining < 5 ORDER BY remaining DESC;

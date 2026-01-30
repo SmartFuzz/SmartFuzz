@@ -1,0 +1,20 @@
+{
+    "function": "blockSerializedSize",
+    "operator": "a % b",
+    "sql_array": [
+        "CREATE TABLE test_table (id Int32, value Float32, text_value String, created_at DateTime);",
+        "INSERT INTO test_table VALUES (1, 1.5, 'test1', '2023-01-01 00:00:00'), (2, 2.5, NULL, '2023-02-01 00:00:00'), (3, 3.5, 'test3', '2023-03-01 00:00:00');",
+        "SELECT blockSerializedSize(value % 2) AS serialized_size FROM test_table;",
+        "SELECT value, blockSerializedSize(id % 2 + 1) AS serialized_size FROM test_table WHERE created_at < '2023-02-01 00:00:00';",
+        "CREATE TABLE another_table (id Int32, reference_id Int32, value Float32, extra_info String);",
+        "INSERT INTO another_table VALUES (1, 1, 1.1, 'extra1'), (2, 1, 2.2, 'extra2'), (3, NULL, 3.3, 'extra3');",
+        "SELECT t.id, t.value, blockSerializedSize((SELECT COUNT(*) FROM another_table a WHERE a.reference_id = t.id) % 3) AS size FROM test_table t;",
+        "SELECT AVG(value) AS average_value, HAVING blockSerializedSize(value) >= 4 FROM test_table GROUP BY text_value;",
+        "SELECT blockSerializedSize(NULLIF(value, 0)) AS non_zero_size FROM test_table;",
+        "CREATE TABLE edge_case_table (id Int32, value String DEFAULT 'default');",
+        "INSERT INTO edge_case_table VALUES (1, '123'), (2, 'abc'), (3, 'null'), (4, '');",
+        "SELECT blockSerializedSize(value % 1) AS mod_size FROM edge_case_table;",
+        "SELECT blockSerializedSize(value) AS size, blockSerializedSize(NULLIF(value, '')) AS non_empty_size FROM edge_case_table;",
+        "SELECT id, blockSerializedSize(text_value) + blockSerializedSize(value) AS total_size FROM test_table WHERE value > (SELECT MAX(value) FROM test_table);"
+    ]
+}

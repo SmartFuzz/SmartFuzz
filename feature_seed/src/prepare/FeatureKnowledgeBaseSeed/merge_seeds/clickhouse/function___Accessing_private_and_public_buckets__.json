@@ -1,0 +1,16 @@
+CREATE TABLE public_bucket (id UInt32, name String, data String) ENGINE = MergeTree() ORDER BY id;
+CREATE TABLE private_bucket (id UInt32, name String, data String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO public_bucket VALUES (1, 'public1', 'data1'), (2, 'public2', 'data2');
+INSERT INTO private_bucket VALUES (1, 'private1', 'data1'), (2, 'private2', 'data2');
+SELECT * FROM read_buffer('s3://public_bucket');
+SELECT * FROM read_buffer('s3://private_bucket') WHERE id = 1;
+SELECT pb.id, pb.name, pb.data FROM public_bucket pb JOIN private_bucket pr ON pb.id = pr.id;
+SELECT (SELECT COUNT(*) FROM public_bucket) + (SELECT COUNT(*) FROM private_bucket);
+WITH (SELECT AVG(id) FROM public_bucket) as avg_public_id, (SELECT AVG(id) FROM private_bucket) as avg_private_id SELECT avg_public_id, avg_private_id;
+SELECT pb.name, (SELECT count() FROM private_bucket) as private_count FROM public_bucket pb WHERE pb.id IN (SELECT id FROM private_bucket) ORDER BY pb.id;
+CREATE TABLE combined_bucket AS SELECT * FROM public_bucket UNION ALL SELECT * FROM private_bucket;
+SELECT * FROM read_buffer('s3://combined_bucket') WHERE name LIKE 'public%';
+SELECT pb.id, (SELECT COUNT(*) FROM private_bucket) FROM public_bucket pb GROUP BY pb.id HAVING COUNT(pb.id) > 1;
+CREATE TABLE filtered_bucket AS SELECT * FROM public_bucket WHERE data IS NOT NULL;
+SELECT pb.name, count(pr.id) FROM public_bucket pb LEFT JOIN private_bucket pr ON pb.id = pr.id GROUP BY pb.name ORDER BY count(pr.id);
+SELECT * FROM read_buffer('s3://public_bucket') WHERE id IN (SELECT id FROM private_bucket WHERE data LIKE '%data%');

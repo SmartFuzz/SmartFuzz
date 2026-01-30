@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=106241",
+  "title": "BIT column serialized incorrectly for aggregate function",
+  "description": "When a BIT(n) column is selected using an aggregate function (e.g., MIN, MAX), it is serialized on the wire incorrectly by MySQL Server. Specifically, BINARY_FLAG is set in the ColumnDefinition packet (which usually means the BIT(n) column is being sent as text), but the column value is actually sent as a MSB-first binary value.\r\n\r\nThis is similar to\nbug #97113\n, but the problem has gotten worse: now aggregate functions are affected, not just CASE expressions.\nHow to repeat:\nCreate a table with a BIT(n) column:\r\n\r\nCREATE TABLE bits(data BIT(32));\r\nINSERT INTO bits(data) VALUES(1);\r\n\r\nExecute the following two queries:\r\n\r\nSELECT data FROM bits;\r\nSELECT MAX(data) FROM bits;\r\n\r\nI will attach a packet capture if possible.\r\n\r\nThe first query sends FIELD_TYPE_BIT, length 32, UNSIGNED_FLAG with four data bytes: 00 00 00 01. BINARY_FLAG is not specified and data is sent as binary.\r\n\r\nThe second query sends FIELD_TYPE_BIT, length 32, UNSIGNED_FLAG|BINARY_FLAG with four data bytes: 00 00 00 01. The BINARY_FLAG is specified but data is sent as binary, when text is expected.\r\n\r\nIn MySQL Server 8.0.27, the second query is different. The server's column metadata is the same (FIELD_TYPE_BIT, length 32, UNSIGNED_FLAG|BINARY_FLAG) but there is just one data byte: 0x31 (i.e., ASCII '1').\r\n\r\nThus, in MySQL Server 8.0.28, data is serialized differently on the wire (binary, not text) but the column metadata hasn't changed. This will cause clients to interpret the data incorrectly.\r\n\r\nIf the query \"select max(data) from bits;\" is run in MySQL Workbench, it will show the answer as \"0\" when the expected result is actually \"1\".\nSuggested fix:\nRevert to MySQL Server 8.0.27's serialization logic and send the data in text format.",
+  "date": "2022-01-22 00:37:00",
+  "vulnerable_version": "8.0.28",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE bits(data BOOLEAN, id INTEGER PRIMARY KEY);",
+    "INSERT INTO bits(data) VALUES(TRUE), (FALSE), (NULL);",
+    "SELECT data FROM bits WHERE id = 1;",
+    "SELECT MAX(data) FROM bits WHERE data IS NOT NULL;",
+    "SELECT COUNT(*) FROM bits WHERE data = TRUE OR data IS NULL;"
+  ],
+  "key_bug_features": [
+    "BIT column serialized incorrectly with aggregate functions"
+  ]
+}

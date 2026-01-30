@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/84754",
+  "title": "[V:25.7.1.3997] DB::Exception: Cannot read all data. Bytes read: 0.",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nHi,\nI'm getting the following error and trying to understand why ?\nquery fail resulting in : `Code: 33. DB::Exception: Cannot read all data. Bytes read: 0. Bytes expected: 8. (CANNOT_READ_ALL_DATA) (version 25.7.1.3997 (official build))`\n```sql\nWITH\n['7XGrdJRYtXXXXXXXXXXXXXXXXXXXXXXsELwYpuuUu'] AS signers_list,\n['XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'] AS mints_list,\nisolated_data AS (\nSELECT\nmint,\nowner,\ninterval,\ninterval_start,\nafter,\ndecimals\nFROM\nstats.ledgers_buffer\nWHERE\ninterval = '15m'\nAND interval_start >= toStartOfInterval(now() - INTERVAL 24 HOUR, INTERVAL 15 MINUTE)\n),\naggregated_data AS (\nSELECT\nmint,\ninterval,\ninterval_start AS ts,\nargMaxMerge(after) AS amount,\nargMaxMerge(decimals) AS decimals\nFROM\nisolated_data\nWHERE\nowner IN signers_list\nAND mint IN mints_list\nGROUP BY\nmint,\ninterval_start ,\ninterval\n)\nSELECT * from aggregated_data\n```\nqueries working and returning data:\n```sql\nWITH\n['7XGrdJRYtXXXXXXXXXXXXXXXXXXXXXXsELwYpuuUu'] AS signers_list,\n['XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'] AS mints_list,\nisolated_data AS (\nSELECT",
+  "date": "2025-07-30T21:41:22Z",
+  "vulnerable_version": "25.7.1.3997",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE IF NOT EXISTS stats.ledgers_test (interval VARCHAR, interval_start TIMESTAMP, owner VARCHAR, mint VARCHAR, amount BIGINT, after BIGINT, decimals INTEGER);",
+    "INSERT INTO stats.ledgers_test VALUES ('15m', CURRENT_TIMESTAMP, 'owner1', 'mint1', 100, 200, 18);",
+    "INSERT INTO stats.ledgers_test VALUES ('15m', CURRENT_TIMESTAMP - INTERVAL '1 hour', 'owner2', 'mint2', 150, 250, 20);",
+    "SELECT mint, MAX(after) AS latest_after FROM stats.ledgers_test WHERE interval = '15m' GROUP BY mint;",
+    "SELECT * FROM stats.ledgers_test WHERE amount > 0 AND interval_start >= CURRENT_TIMESTAMP - INTERVAL '1 day';"
+  ],
+  "key_bug_features": [
+    "Cannot read all data during query execution"
+  ]
+}

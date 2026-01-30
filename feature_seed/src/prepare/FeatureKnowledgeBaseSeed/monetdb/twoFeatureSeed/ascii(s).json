@@ -1,0 +1,18 @@
+{
+    "function": "ascii(s)",
+    "operator": "json 'valid json string'",
+    "sql_array": [
+        "CREATE TABLE test_table (id INT PRIMARY KEY, data VARCHAR(255), json_data JSON);",
+        "INSERT INTO test_table (id, data, json_data) VALUES (1, '\u20ac', json '{\"a\":[1,2,4]}');",
+        "SELECT ascii(data) AS first_char_code, json_data->'a' AS json_array FROM test_table WHERE ascii(data) < 200;",
+        "SELECT id, data FROM test_table WHERE json_contains(json_data, CAST(data AS JSON), '$.a') AND data NOT IN (SELECT data FROM test_table WHERE data IS NOT NULL);",
+        "SELECT COUNT(*) FROM (SELECT id, data, ascii(data) AS ascii_value FROM test_table HAVING ascii_value IS NOT NULL GROUP BY id, data ORDER BY ascii_value) AS subquery;",
+        "CREATE TABLE another_table (code INT, info VARCHAR(100), json_info JSON DEFAULT json '{}');",
+        "INSERT INTO another_table (code, info, json_info) VALUES (1, 'test', json '{\"description\":\"sample\"}'), (2, '', json NULL), (3, NULL, json '{\"array\":[null]}');",
+        "SELECT a.id, a.data, ascii(a.data) AS ascii_value FROM test_table AS a INNER JOIN another_table AS b ON a.id = b.code WHERE b.json_info IS NOT NULL AND ascii(a.data) > 0;",
+        "SELECT a.id, COALESCE(json_length(b.json_info), 0) AS json_info_length FROM test_table AS a LEFT JOIN another_table AS b ON a.id = b.code GROUP BY a.id HAVING json_info_length > 0;",
+        "WITH recursive json_boundary AS (SELECT json '[]' AS empty_json UNION ALL SELECT json_concat(empty_json, json '[{\"key\":\"value\"}]') FROM json_boundary WHERE json_length(empty_json) < 5) SELECT ascii(data) AS code FROM test_table WHERE EXISTS (SELECT 1 FROM json_boundary WHERE json_valid(json_data));",
+        "DROP TABLE IF EXISTS test_table;",
+        "DROP TABLE IF EXISTS another_table;"
+    ]
+}

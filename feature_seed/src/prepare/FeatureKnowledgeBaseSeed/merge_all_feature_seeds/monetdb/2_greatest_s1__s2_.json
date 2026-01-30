@@ -1,0 +1,13 @@
+CREATE TABLE test_strings (id INT PRIMARY KEY, str1 VARCHAR(255), str2 VARCHAR(255));
+INSERT INTO test_strings (id, str1, str2) VALUES (1, 'abc', 'def'), (2, '', 'gh'), (3, NULL, 'ij'), (4, 'kl', NULL);
+SELECT id, greatest(e'A\nstr1', e'A\tstr2') AS max_str FROM test_strings WHERE str1 IS NOT NULL;
+SELECT id, greatest(str1, e'A\fstr2') AS max_str FROM test_strings WHERE greatest(str1, str2) IS NOT NULL;
+CREATE TABLE test_numbers (num1 INT, num2 INT);
+INSERT INTO test_numbers (num1, num2) VALUES (1, 2), (NULL, 3), (4, NULL), (5, 5);
+SELECT id, (SELECT greatest(str1, 'fallback') FROM test_strings WHERE id = test_strings.id) AS max_fallback FROM test_strings;
+SELECT id, greatest(str1, greatest(e'A\nstr1', e'A\mbigger')) AS combined_max_str FROM test_strings;
+SELECT a.id, greatest(a.str1, b.str1) AS combined_max_str FROM test_strings a JOIN test_strings b ON a.id < b.id GROUP BY a.id HAVING greatest(a.str1, b.str1) IS NOT NULL;
+SELECT id, greatest(str1, CAST(num1 AS VARCHAR)) AS mixed_max FROM test_strings JOIN test_numbers ON test_strings.id = test_numbers.num1;
+CREATE TABLE temp_data AS SELECT * FROM test_strings WHERE str1 IS NOT NULL;
+SELECT DISTINCT id, greatest(e'A\nfirst', str1) AS chosen_str FROM temp_data WHERE id < 3;
+SELECT id, greatest(COALESCE(str1, e'fallback'), str2) AS safest_str FROM test_strings ORDER BY id DESC;

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/42622",
+  "title": "Internal error triggered at expression.ExpressionsToPBList (expression/expr_to_pb.go:42)",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n**Setup the database:**\r\n\r\n```\r\nCREATE TABLE t0 (c0 int);\r\n```\r\n\r\n**Testcase**\r\n```\r\nselect *\r\nfrom\r\n  (select (92 / 4) as c4) as subq_0\r\nwhere exists (\r\n    select 1 as c0\r\n    union all\r\n    select\r\n        1 as c0\r\n      from\r\n        (t0 as ref_88)\r\n      where (subq_0.c4) >= (subq_0.c4)\r\n     );\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nNo error was triggered.\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nAn internal error was triggered:\r\n\r\n```\r\nERROR 1815 (HY000): expression ge(Column#1, Column#1) cannot be pushed down\r\n```\r\nTiDB log:\r\n```\r\nerr=\"[planner:1815]expression ge(Column#1, Column#1) cannot be pushed down\r\ngithub.com/pingcap/errors.AddStack\r\n    /root/go/pkg/mod/github.com/pingcap/errors@v0.11.5-0.20221009092201-b66cddb77c32/errors.go:174\r\ngithub.com/pingcap/errors.(*Error).GenWithStack\r\n    /root/go/pkg/mod/github.com/pingcap/errors@v0.11.5-0.20221009092201-b66cddb77c32/normalize.go:155\r\ngithub.com/pingcap/tidb/expression.ExpressionsToPBList\r\n    /root/tidb/expression/expr_to_pb.go:42\r\ngithub.com/pingcap/tidb/planner/core.(*PhysicalSelection).ToPB\r\n    /root/tidb/planner/core/plan_to_pb.go:129\r\ngithub.com/pingcap/tidb/executor.constructDistExec\r\n    /root/tidb/executor/builder.go:2997\r\ngithub.com/pingcap/tidb/executor.(*TableReaderExecutor).Open\r\n    /root/tidb/executor/table_reader.go:164\r\ngithub.com/pingcap/tidb/executor.(*baseExecutor).Open\r\n    /root/tidb/executor/executor.go:204\r\ngithub.com/pingcap/tidb/executor.(*ProjectionExec).Open\r\n    /root/tidb/executor/projection.go:86\r\ngithub.com/pingcap/tidb/executor.(*UnionExec).resultPuller\r\n    /root/tidb/executor/executor.go:1923\r\nruntime.goexit\r\n    /usr/local/go/src/runtime/asm_amd64.s:1598\"\r\n```\r\n\r\n\r\nWhen I replace the `(92 / 4)` with `23.0000`, the error goes away.\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| Release Version: v7.1.0-alpha-27-gf5ca27ef3\r\nEdition: Community\r\nGit Commit Hash: f5ca27ef326e94fb29b4ba35a5d59aa575f66880\r\nGit Branch: master\r\nUTC Build Time: 2023-03-23 13:57:53\r\nGoVersion: go1.20.2\r\nRace Enabled: false\r\nTiKV Min Version: 6.2.0-alpha\r\nCheck Table Before Drop: false\r\nStore: unistore |\r\n+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n\r\n",
+  "date": "2023-03-27T19:09:53Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (c1 INTEGER, c2 VARCHAR(255) NOT NULL, c3 FLOAT DEFAULT 0.0);",
+    "INSERT INTO t1 (c1, c2, c3) VALUES (1, 'test', 23.0000);",
+    "SELECT * FROM (SELECT (c1 + 1) AS c4 FROM t1) AS subq_1 WHERE EXISTS (SELECT 1 FROM t1 WHERE subq_1.c4 >= subq_1.c4);",
+    "CREATE TABLE t2 (c5 INTEGER, c6 DECIMAL(10,2) NULL);",
+    "INSERT INTO t2 (c5, c6) VALUES (NULL, 45.67);"
+  ],
+  "key_bug_features": [
+    "expression ge(Column#1, Column#1) cannot be pushed down"
+  ]
+}

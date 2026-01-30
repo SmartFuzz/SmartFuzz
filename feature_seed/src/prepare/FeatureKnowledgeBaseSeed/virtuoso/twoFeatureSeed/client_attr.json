@@ -1,0 +1,16 @@
+{
+    "function": "client_attr",
+    "operator": "SPARQL Operator: a (rdf:type)",
+    "sql_array": [
+        "CREATE TABLE test_data (id INT PRIMARY KEY, name VARCHAR(255), class_name VARCHAR(255), created_at DATETIME DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO test_data (id, name, class_name) VALUES (1, 'Alice', 'Person'), (2, 'Bob', 'Person'), (3, 'Charlie', 'Person'), (4, NULL, 'Person'), (5, '', 'Person');",
+        "SELECT client_attr('client_name') AS client_name, (SELECT COUNT(*) FROM test_data WHERE class_name = 'Person') AS person_count FROM dual WHERE client_attr('client_name') IS NOT NULL;",
+        "SELECT a.id, a.name, a.class_name FROM test_data AS a JOIN test_data AS b ON a.id = b.id WHERE a.class_name = client_attr('class_name') AND a.name IS NOT NULL;",
+        "SELECT a.name, COUNT(*) AS class_count FROM test_data AS a WHERE a.class_name IS NOT NULL GROUP BY a.class_name HAVING COUNT(*) > 1;",
+        "SELECT client_attr('client_ip') AS client_ip, a.name FROM test_data AS a WHERE a.class_name = (SELECT client_attr('class_name') WHERE client_attr('client_name') = 'Alice');",
+        "CREATE TEMPORARY TABLE temp_classes AS SELECT DISTINCT class_name FROM test_data;",
+        "INSERT INTO temp_classes (class_name) VALUES (client_attr('class_name'));",
+        "SELECT temp.class_name, COUNT(*) FROM temp_classes AS temp LEFT JOIN test_data AS a ON temp.class_name = a.class_name GROUP BY temp.class_name HAVING COUNT(*) IS NULL OR COUNT(*) = 0;",
+        "SELECT a.name, COALESCE(MAX(a.created_at), NOW()) AS last_seen FROM test_data AS a GROUP BY a.class_name HAVING last_seen > DATE_SUB(NOW(), INTERVAL 1 DAY);"
+    ]
+}

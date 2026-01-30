@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/13842",
+  "title": "Unexpected result after creating index on `DATE` column",
+  "description": "### What happens?\n\nConsider the following test case. The third query is unexpected as it falsely omitted one row. The second query shows that the expression `'1970-01-03' >= t0.c0` is true for all the rows and thus the third query should return all three rows of the original table.\r\n\r\nI built duckdb by `GEN=ninja make`. Not sure if the issue is related to https://github.com/duckdb/duckdb/issues/13785. \n\n### To Reproduce\n\n```sql\r\nDROP TABLE IF EXISTS t0;\r\n\r\nCREATE TABLE  t0(c0 DATE);\r\nINSERT INTO t0(c0) VALUES  ('1970-01-02');\r\nINSERT INTO t0(c0) VALUES ('1970-01-02');\r\nCREATE INDEX t0i0 ON t0(c0 DESC);\r\nINSERT INTO t0(c0) VALUES ('1970-01-03');\r\n\r\nSELECT * FROM t0; -- 1970-01-02, 1970-01-02, 1970-01-03\r\nSELECT ('1970-01-03' >= t0.c0) FROM t0; -- true, true, true (3 rows)\r\nSELECT * FROM t0 WHERE ('1970-01-03' >= t0.c0);\r\n-- Expected: 1970-01-02, 1970-01-02, 1970-01-03 (3 rows)\r\n-- Actual: 1970-01-02, 1970-01-02 (2 rows)\r\n\r\n```\n\n### OS:\n\nubuntu 22.04\n\n### DuckDB Version:\n\nv1.1.1-dev25 d9e89b5cc1\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nSuyang Zhong\n\n### Affiliation:\n\nNUS\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a source build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [X] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [X] Yes, I have",
+  "date": "2024-09-10 10:28:27",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t1;",
+    "CREATE TABLE t1(c0 DATE, c1 INTEGER NOT NULL);",
+    "INSERT INTO t1(c0, c1) VALUES ('1970-01-01', 1), ('1970-01-02', 2), ('1970-01-03', 3);",
+    "CREATE INDEX t1i0 ON t1(c0);",
+    "SELECT * FROM t1 WHERE c1 > (SELECT COUNT(*) FROM t1 WHERE c0 < '1970-01-02');"
+  ],
+  "key_bug_features": [
+    "Creating index on DATE column causes row omission"
+  ]
+}

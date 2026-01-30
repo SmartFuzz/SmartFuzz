@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=105186",
+  "title": "a null value is not treated as zero in hash partition table",
+  "description": "got:\r\nmysql> select * from th partition(p0);\r\n+------+-------+\r\n| c1   | c2    |\r\n+------+-------+\r\n|    0 | gigan |\r\n+------+-------+\r\n1 row in set (0.00 sec)\r\n\r\nmysql> select * from th partition(p3);\r\n+------+--------+\r\n| c1   | c2     |\r\n+------+--------+\r\n| NULL | mothra |\r\n+------+--------+\r\n1 row in set (0.00 sec)\n\nexpect:\r\n\r\nmysql> select * from th partition(p0);\r\n+------+--------+\r\n| c1   | c2     |\r\n+------+--------+\r\n|    0 | gigan  |\r\n| NULL | mothra |\r\n+------+--------+\r\n2 rows in set (0.01 sec)\r\n\r\nmysql> select * from th partition(p3);\r\nEmpty set (0.00 sec)\nHow to repeat:\ncreate table th(c1 int, c2 varchar(20)) partition by hash(c1) partitions 5;\r\nINSERT INTO th VALUES (NULL, 'mothra'), (0, 'gigan');\r\nselect * from th partition(p0);\r\nselect * from th partition(p3);",
+  "date": "2021-10-11 09:40:00",
+  "vulnerable_version": "8.0.26, 5.7.35",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE th(c1 INTEGER, c2 TEXT, c3 REAL);",
+    "INSERT INTO th VALUES (NULL, 'mothra', 10.50), (0, 'gigan', 20.00), (1, 'zilla', 15.75), (2, 'king', NULL);",
+    "SELECT * FROM th WHERE c1 IS NOT NULL;",
+    "SELECT * FROM th WHERE c1 IS NULL;",
+    "SELECT COUNT(*) FROM th WHERE c1 IS NULL;"
+  ],
+  "key_bug_features": [
+    "NULL value not treated as zero in hash partition"
+  ]
+}

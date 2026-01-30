@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id UInt64, num UInt32, str String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, 10, 'Hello'), (2, 20, 'World'), (3, NULL, 'Test'), (4, 0, 'Edge');
+SELECT num, rowNumberInAllBlocks() FROM (SELECT id, num FROM test_table WHERE EXISTS (SELECT 1 FROM test_table WHERE num > 15)) GROUP BY num HAVING num IS NOT NULL;
+SELECT EXISTS(SELECT 1 FROM test_table WHERE rowNumberInAllBlocks() > 1 AND str = 'Hello'), EXISTS(SELECT 1 FROM test_table WHERE str IS NULL);
+SELECT count(*) FROM test_table WHERE EXISTS (SELECT id FROM test_table WHERE rowNumberInAllBlocks() < 3 AND num IS NOT NULL);
+SELECT rowNumberInAllBlocks(), EXISTS(SELECT str FROM test_table WHERE num BETWEEN 0 AND 20) AS exists_check FROM test_table ORDER BY id;
+CREATE TABLE temp_test (num String, ts DateTime DEFAULT now()) ENGINE = Memory;
+INSERT INTO temp_test VALUES ('1', '2023-10-01 12:00:00'), ('2', '2023-10-02 12:00:00'), (NULL, NULL);
+SELECT rowNumberInAllBlocks(), EXISTS(SELECT 1 FROM temp_test WHERE ts > '2023-10-01 00:00:00') AS exist_time FROM temp_test WHERE str IS NULL;
+SELECT rowNumberInAllBlocks(), EXISTS(SELECT num FROM temp_test WHERE (num != '2' AND num != '3')) AS exist_num FROM temp_test GROUP BY num;
+SELECT DISTINCT rowNumberInAllBlocks() FROM (SELECT id, rowNumberInAllBlocks() OVER (PARTITION BY str ORDER BY id) as rn FROM test_table WHERE EXISTS (SELECT 1 FROM test_table WHERE num < 50)) HAVING rn > 1;

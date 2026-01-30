@@ -1,0 +1,16 @@
+[
+    "CREATE TABLE test_date_time (event_time String);",
+    "INSERT INTO test_date_time VALUES ('2023-10-01 12:00:00.123456'), ('invalid_date'), ('2021-05-21 08:30:00.654321');",
+    "SELECT parseDateTime64BestEffortOrNull(event_time, 6) AS parsed_time FROM test_date_time;",
+    "CREATE TABLE events (event_id Int32, event_time String) ENGINE = MergeTree() ORDER BY event_id;",
+    "INSERT INTO events VALUES (1, '2023-01-01 10:10:10.123456'), (2, 'ABC'), (3, '2022-12-12 20:20:20.654321');",
+    "SELECT event_id, parseDateTime64BestEffortOrNull(event_time, 6) AS parsed_event_time FROM events WHERE event_id IN (SELECT event_id FROM events WHERE event_time LIKE '2023%');",
+    "WITH (SELECT parseDateTime64BestEffortOrNull('2022-01-01 12:00:00.111111', 6)) AS dt1, (SELECT parseDateTime64BestEffortOrNull('not_a_date', 6)) AS dt2 SELECT dt1, dt2;",
+    "WITH (SELECT parseDateTime64BestEffortOrNull(event_time, 6) FROM test_date_time WHERE event_time LIKE '2023%') AS parsed_times SELECT COUNT(*) FROM parsed_times WHERE parsed_times IS NOT NULL;",
+    "CREATE TABLE log_dates (log_id Int32, log_date String) ENGINE = MergeTree() ORDER BY log_id;",
+    "INSERT INTO log_dates VALUES (1, '2022-11-25'), (2, '2023-10-05'), (3, 'non-date');",
+    "SELECT log_id, parseDateTime64BestEffortOrNull(log_date, 6) AS processed_date FROM log_dates WHERE log_id >= 1;",
+    "CREATE TABLE joined_dates (id Int32, date_str String) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO joined_dates VALUES (1, '2023-03-15 12:00:00.111111'), (2, '202x-10-10'), (3, '2022-05-05 10:10:10.123456');",
+    "SELECT jd.id, parseDateTime64BestEffortOrNull(jd.date_str, 6) FROM joined_dates AS jd JOIN events AS e ON e.event_id = jd.id;"
+]

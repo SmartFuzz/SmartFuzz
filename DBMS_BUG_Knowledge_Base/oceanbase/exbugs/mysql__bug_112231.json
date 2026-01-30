@@ -1,0 +1,21 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=112231",
+  "title": "Inconsistent result for OVER() when used in stored procedure over InnoDB table",
+  "description": "Simple window function use within stored procedure will return inconsistent results after first execution, only when table is InnoDB; In the snippet shown below, if we make tbTestBad2 temporary table use ENGINE=MyISAM then the problem goes away\nHow to repeat:\nDROP TEMPORARY TABLE IF EXISTS tbTestBad2;\r\nCREATE TEMPORARY TABLE tbTestBad2 (id int unsigned) ENGINE InnoDB;\r\nINSERT INTO tbTestBad2 SELECT 1 AS id;\r\n\r\nDROP PROCEDURE IF EXISTS spTestBad;\r\n\r\nDELIMITER $$\r\nCREATE PROCEDURE IF NOT EXISTS spTestBad()\r\n  BEGIN\r\n    SELECT 1, (SUM( 1 ) OVER()) + 0 FROM tbTestBad2 ;\r\n    SELECT * FROM tbTestBad2;\r\n  END$$\r\nDELIMITER ;\r\n\r\nCALL spTestBad();\r\nCALL spTestBad();",
+  "date": "2023-08-31 17:14:00",
+  "vulnerable_version": "8.0.33, 8.0.34",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TEMPORARY TABLE tbTestBad2 (id INT, value DECIMAL(10, 2), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO tbTestBad2 (id, value) VALUES (1, NULL), (2, 10.50), (3, 20.00);",
+    "CREATE PROCEDURE IF NOT EXISTS spTestBad() BEGIN SELECT id, (SELECT SUM(value) FROM tbTestBad2) AS total_value FROM tbTestBad2;",
+    "END;",
+    "CALL spTestBad();",
+    "SELECT COUNT(*) AS total_rows, AVG(value) AS average_value FROM tbTestBad2 WHERE value IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Inconsistent results from window function in InnoDB stored procedure"
+  ]
+}

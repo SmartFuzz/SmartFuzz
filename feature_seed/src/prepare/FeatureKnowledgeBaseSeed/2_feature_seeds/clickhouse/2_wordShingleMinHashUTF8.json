@@ -1,0 +1,10 @@
+CREATE TABLE test_strings (id UInt32, text String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_strings VALUES (1, 'ClickHouse® is a powerful columnar DBMS for OLAP.'), (2, NULL), (3, 'ClickHouse is fast.'), (4, 'ClickHouse® is a powerful columnar DBMS for OLAP.');
+SELECT id, wordShingleMinHashUTF8(text, 3, 6) AS hashes FROM test_strings WHERE text IS NOT NULL;
+SELECT id, hashes FROM (SELECT id, wordShingleMinHashUTF8(text, 2, 5) AS hashes FROM test_strings) AS sub WHERE id = ANY (SELECT id FROM test_strings WHERE text IS NOT NULL);
+CREATE TABLE test_numbers (num UInt32) ENGINE = MergeTree() ORDER BY num;
+INSERT INTO test_numbers VALUES (1), (2), (3), (4), (5);
+SELECT T1.id, T1.text, wordShingleMinHashUTF8(T1.text, 3, 6) AS hash FROM test_strings AS T1 JOIN test_numbers AS T2 ON T1.id = T2.num WHERE T1.text IS NOT NULL;
+SELECT id, wordShingleMinHashUTF8(text, 1, 10) AS hashes FROM test_strings GROUP BY text HAVING hashes.1 = ANY (SELECT hashes.1 FROM (SELECT wordShingleMinHashUTF8(text, 3, 6) AS hashes FROM test_strings) AS sub);
+WITH (SELECT DISTINCT wordShingleMinHashUTF8(text, 3, 6) AS hashes FROM test_strings WHERE text IS NOT NULL) AS distinct_hashes SELECT id, text FROM test_strings WHERE hashes = ANY (SELECT hashes FROM distinct_hashes);
+SELECT num, wordShingleMinHashUTF8(toString(num), 1, 5) AS num_hash FROM test_numbers WHERE num_hash.1 = ANY (SELECT DISTINCT hashes.1 FROM (SELECT id, wordShingleMinHashUTF8(text, 1, 4) AS hashes FROM test_strings));

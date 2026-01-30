@@ -1,0 +1,16 @@
+{
+    "function": "toDecimal32OrZero",
+    "operator": "a != b",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, str_value String, decimal_value Decimal(9, 5)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table VALUES (1, '10.12345', 10.12345), (2, 'NaN', 0), (3, 'Inf', 0), (4, '', 0);",
+        "SELECT id, toDecimal32OrZero(str_value, 5) AS decimal_converted, decimal_value FROM test_table WHERE toDecimal32OrZero(str_value, 5) != toDecimal32OrZero(toString(decimal_value), 5);",
+        "SELECT id, toDecimal32OrZero(toString(decimal_value), 5) AS converted_value, CASE WHEN converted_value != 0 THEN 'Not Zero' ELSE 'Zero' END AS status FROM (SELECT str_value, decimal_value FROM test_table) WHERE converted_value != 0;",
+        "SELECT a.id, a.decimal_value, b.decimal_converted FROM (SELECT id, toDecimal32OrZero(str_value, 4) AS decimal_value FROM test_table) AS a JOIN (SELECT id, toDecimal32OrZero(str_value, 5) AS decimal_converted FROM test_table) AS b ON a.decimal_value != b.decimal_converted;",
+        "WITH (SELECT AVG(toDecimal32OrZero(str_value, 2)) FROM test_table WHERE str_value != '') AS avg_conversion SELECT id, toDecimal32OrZero(str_value, 3) AS current_value FROM test_table WHERE current_value != avg_conversion;",
+        "CREATE TABLE secondary_table (s_id UInt32, decimal_sample Decimal(9, 3)) ENGINE = MergeTree() ORDER BY s_id;",
+        "INSERT INTO secondary_table VALUES (1, 123.456), (2, 789.012), (3, 0), (4, 910.111);",
+        "SELECT t1.id, t1.decimal_value, t2.decimal_sample FROM test_table t1 CROSS JOIN secondary_table t2 WHERE toDecimal32OrZero(toString(t1.decimal_value), 2) != t2.decimal_sample;",
+        "SELECT toDecimal32OrZero(str_value, 5) AS converted_value, COUNT(*) FROM test_table GROUP BY converted_value HAVING converted_value != 0 ORDER BY converted_value;"
+    ]
+}

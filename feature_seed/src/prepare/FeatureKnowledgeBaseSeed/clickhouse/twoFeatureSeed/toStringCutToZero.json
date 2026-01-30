@@ -1,0 +1,17 @@
+{
+    "function": "toStringCutToZero",
+    "operator": "a + b",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, str_col FixedString(10), num_col Float64, nullable_str Nullable(String));",
+        "INSERT INTO test_table VALUES (1, toFixedString('foo\\0bar', 10), 123.456, NULL), (2, toFixedString('hello', 10), 0.0, 'test'), (3, toFixedString('', 10), 42.42, 'NULL'), (4, toFixedString('c\\0d', 10), 98765.432, 'string');",
+        "SELECT id, num_col + toFloat64(toStringCutToZero(str_col)) AS combined_value FROM test_table WHERE num_col > 0.0;",
+        "SELECT id, toStringCutToZero(CONCAT(str_col, toString(num_col))) AS truncated_value FROM test_table HAVING length(truncated_value) > 5;",
+        "SELECT id, num_col, str_col, IF(nullable_str IS NULL, 0, toStringCutToZero(nullable_str)) AS processed_str FROM test_table ORDER BY processed_str;",
+        "WITH (SELECT AVG(num_col) AS avg_value FROM test_table WHERE id > 0) AS subquery_avg SELECT id, num_col + subquery_avg.avg_value AS total_value FROM test_table WHERE num_col < total_value;",
+        "SELECT id, str_col, toStringCutToZero(CONCAT(str_col, toString(num_col))) AS cut_value FROM test_table WHERE cut_value != '';",
+        "SELECT id, toString(COALESCE(str_col, 'default')) AS safe_str FROM test_table WHERE id IN (SELECT id FROM test_table WHERE num_col > 10000) HAVING safe_str != '';",
+        "CREATE TABLE test_table_copy AS test_table;",
+        "INSERT INTO test_table_copy SELECT id, toFixedString('entry\\0data', 10), num_col + 10.0, nullable_str FROM test_table;",
+        "SELECT id, toStringCutToZero(str_col) AS cut_str, cut_str + ' added' AS final_val FROM test_table_copy WHERE cut_str != '' ORDER BY final_val;"
+    ]
+}

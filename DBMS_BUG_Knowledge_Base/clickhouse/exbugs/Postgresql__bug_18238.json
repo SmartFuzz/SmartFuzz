@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/18238-2f2bdc7f720180b9%40postgresql.org",
+  "title": "BUG #18238: Cross-partitition MERGE/UPDATE with delete-preventing trigger leads to incorrect memory access",
+  "description": "The following bug has been logged on the website:\nBug reference:      18238\nLogged by:          Alexander Lakhin\nEmail address:      exclusion(at)gmail(dot)com\nPostgreSQL version: 16.1\nOperating system:   Ubuntu 22.04\nDescription:\nWhen the following query:\nCREATE TABLE t (a int) PARTITION BY LIST (a);\nCREATE TABLE tp1 PARTITION OF t FOR VALUES IN (1);\nCREATE TABLE tp2 PARTITION OF t FOR VALUES IN (2);\nINSERT INTO t VALUES (1);\nCREATE FUNCTION tf() RETURNS TRIGGER LANGUAGE plpgsql AS\n$$ BEGIN RETURN NULL; END; $$;\nCREATE TRIGGER tr BEFORE DELETE ON t\nFOR EACH ROW EXECUTE PROCEDURE tf();\nMERGE INTO t USING t st ON TRUE WHEN MATCHED THEN UPDATE SET a = 2;\nexecuted under Valgrind, an incorrect memory access detected:\n2023-12-09 13:31:37.178 UTC|law|regression|65744207.29a672|LOG:  statement:\nMERGE INTO t USING t st ON TRUE\nWHEN MATCHED THEN UPDATE SET a = 2;\n==00:00:00:08.207 2729586== Conditional jump or move depends on\nuninitialised value(s)\n==00:00:00:08.207 2729586==    at 0x43DB3A: ItemPointerIsValid\n(itemptr.h:85)\n==00:00:00:08.207 2729586==    by 0x43DB3A: ItemPointerGetOffsetNumber\n(itemptr.h:126)\n==00:00:00:08.207 2729586==    by 0x43DB3A:\nItemPointerIndicatesMovedPartitions (itemptr.h:200)\n==00:00:00:08.207 2729586==    by 0x43DB3A: ExecMergeMatched\n(nodeModifyTable.c:3051)\n==00:00:00:08.207 2729586==    by 0x43DE41: ExecMerge\n(nodeModifyTable.c:2762)\n==00:00:00:08.207 2729586==    by 0x43E846: ExecModifyTable\n(nodeModifyTable.c:3850)\n==00:00:00:08.207 2729586==    by 0x4106FE: ExecProcNodeFirst\n(execProcnode.c:464)\n==00:00:00:08.207 2729586==    by 0x408CC1: ExecProcNode (executor.h:273)\n==00:00:00:08.207 2729586==    by 0x408CC1: ExecutePlan (execMain.c:1670)\n==00:00:00:08.207 2729586==    by 0x408E84: standard_ExecutorRun\n(execMain.c:365)\n==00:00:00:08.207 2729586==    by 0x408F5E: ExecutorRun (execMain.c:309)\n==00:00:00:08.207 2729586==    by 0x5F032E: ProcessQuery (pquery.c:160)\n==00:00:00:08.207 2729586==    by 0x5F0EBD: PortalRunMulti (pquery.c:1277)\n==00:00:00:08.207 2729586==    by 0x5F1457: PortalRun (pquery.c:791)\n==00:00:00:08.207 2729586==    by 0x5ED5F4: exec_simple_query\n(postgres.c:1274)\n==00:00:00:08.207 2729586==    by 0x5EF502: PostgresMain (postgres.c:4637)\n==00:00:00:08.207 2729586==  Uninitialised value was created by a stack\nallocation\n==00:00:00:08.207 2729586==    at 0x3D8663: GetTupleForTrigger\n(trigger.c:3283)\n==00:00:00:08.207 2729586==\nWithout Valgrind, I saw a failed assertion:\n#5  0x00005609515b766e in ExceptionalCondition\n(conditionName=conditionName(at)entry=0x56095161309a\n\"ItemPointerIsValid(pointer)\", fileName=fileName(at)entry=0x56095163dc18\n\"../../../src/include/storage/itemptr.h\", lineNumber=lineNumber(at)entry=126)\nat assert.c:66\nand\nERROR:  could not open file \"base/16384/16393.1\" (target block 3081245700):\nprevious segment is only 1 blocks\nReproduced on REL_15_STABLE .. master.\nFirst bad commit for this anomaly is 9321c79c8.",
+  "date": "2023-12-09 16:00:02",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE t (a Int32, b String) ENGINE = MergeTree() ORDER BY a;",
+    "CREATE TABLE tp1 ENGINE = MergeTree() ORDER BY a AS SELECT * FROM t WHERE a = 1;",
+    "CREATE TABLE tp2 ENGINE = MergeTree() ORDER BY a AS SELECT * FROM t WHERE a = 2;",
+    "INSERT INTO t VALUES (1, 'one');",
+    "UPDATE t SET b = 'updated' WHERE a = 1;"
+  ],
+  "key_bug_features": [
+    "Cross-partition MERGE/UPDATE with delete-preventing trigger"
+  ]
+}

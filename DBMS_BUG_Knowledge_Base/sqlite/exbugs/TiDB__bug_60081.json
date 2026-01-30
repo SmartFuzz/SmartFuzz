@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/60081",
+  "title": "Query with WHERE subq_0.c_0 IS NULL Incorrectly Returns a Row with NULL",
+  "description": "## Bug Report\n### 1. Minimal reproduce step (Required)\nThe following SQL statements create the necessary tables and insert sample data:\n```\nDROP TABLE IF EXISTS `t0`;\nCREATE TABLE `t0` (\n  `c0` int\n);\nINSERT INTO `t0` VALUES (1),(2),(3),(4),(5),(6),(7),(8);\n\nDROP TABLE IF EXISTS `t1`;\nCREATE TABLE `t1` (\n  `c1` double\n);\nINSERT INTO `t1` VALUES (1),(2),(3),(4),(5),(6),(7),(8);\n\nDROP TABLE IF EXISTS `t2`;\nDROP VIEW IF EXISTS `t2`;\nCREATE VIEW `t2` (`c_0`,  `c_1`,  `c_2`) \n  AS SELECT DISTINCT `ref_0`.`c0` AS `c_0`,\n  RIGHT( ((_UTF8MB4'1>yQ') ), \n    CASE WHEN (((`ref_0`.`c0`)>(SELECT DISTINCT `ref_0`.`c0` AS `c_0` FROM `t0`  \n                  WHERE  ((SELECT `c1` AS `c1` FROM `t1` ORDER BY `t1`.`c1` LIMIT 2,1)) <\n                ((SELECT `c1` AS `c1` FROM `t1` ORDER BY `t1`.`c1` LIMIT 1,1)) ORDER BY `c_0` LIMIT 1))) \n    THEN (1) ELSE (2) END) AS `c_1`,\n  (SELECT SUM(`t1`.`c1`) AS `sum(t1.c1)` FROM `t1`) AS `c_2`\nFROM `t0` AS `ref_0` \nORDER BY`c_0`, `c_1`, `c_2`;\n```\n\nThen, executing the following two queries produces inconsistent behavior, which is unexpected:\nQuery 1:\n```\nselect distinct \n  subq_0.c_0 as c_0\nfrom \n  (select  \n        (select c_2 from t2 order by t2.c_2 limit 1 offset 6)\n           as c_0\n      from \n        t2 as ref_0\n      where (ref_0.c_2) is not null\n      order by c_0 desc\n       ) as subq_0\n```\n\nOutput:\n```\n+------+\n| c_0  |\n+------+\n|   36 |\n+------+\n1 row in set (0.01 sec)\n```\n\nQuery 1:\n```\nselect distinct \n  subq_0.c_0 as c_0\nfrom \n  (select  \n        (select c_2 from t2 order by t2.c_2 limit 1 offset 6)\n           as c_0\n      from \n        t2 as ref_0\n      where (ref_0.c_2) is not null\n      order by c_0 desc\n       ) as subq_0\nwhere \n   ((subq_0.c_0) is null)\n```\nOutput:\n```\n+------+\n| c_0  |\n+------+\n| NULL |\n+------+\n1 row in set (0.01 sec)\n```\n### 2. What did you expect to see? (Required)\nThe query2 should return no rows, as there is no NULL value for subq_0.c_0 in query1.\n\n### 3. What did you see instead (Required)\nThe query incorrectly returns one row with the value of c_0 as NULL.\n\n### 4. What is your TiDB version? (Required)\n8.0.11-TiDB\nmaster https://github.com/pingcap/tidb/commit/b6141ec589ed8e73176692dc982a210ad7cf070b\n\nGoVersion: go1.23.4\nRace Enabled: false\nCheck Table Before Drop: false\nStore: unistore |\n",
+  "date": "2025-03-14T04:07:31Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t3;",
+    "CREATE TABLE t3 (c3 TEXT NOT NULL, c4 INTEGER DEFAULT NULL, c5 REAL DEFAULT NULL);",
+    "INSERT INTO t3 VALUES ('test1', 10, 1.5), ('test2', NULL, 2.5), ('test3', 30, NULL);",
+    "SELECT DISTINCT subq_1.c_3 FROM (SELECT (SELECT c4 FROM t3 WHERE c5 IS NOT NULL ORDER BY c4 LIMIT 1) AS c_3 FROM t3 AS ref_1 WHERE ref_1.c4 IS NOT NULL) AS subq_1 WHERE subq_1.c_3 IS NULL;",
+    "SELECT DISTINCT subq_2.c_3 FROM (SELECT (SELECT c4 FROM t3 WHERE c5 IS NULL ORDER BY c4 LIMIT 1) AS c_3 FROM t3 AS ref_2 WHERE ref_2.c4 IS NOT NULL) AS subq_2 WHERE subq_2.c_3 IS NULL;"
+  ],
+  "key_bug_features": [
+    "WHERE subq_0.c_0 IS NULL returns unexpected NULL row"
+  ]
+}

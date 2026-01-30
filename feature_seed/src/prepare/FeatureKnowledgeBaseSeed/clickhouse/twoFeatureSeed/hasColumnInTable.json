@@ -1,0 +1,22 @@
+{
+    "function": "hasColumnInTable",
+    "operator": "x -> expr",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, name String, created_at DateTime, data Nested(value String, count UInt32)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table VALUES (1, 'sample1', '2023-01-01 00:00:00', (['value1', 'value2'], [10, 20])), (2, 'sample2', NULL, (['value3'], [30]));",
+        "SELECT hasColumnInTable('default', 'test_table', 'name') AS column_exists, (SELECT count(*) FROM test_table WHERE created_at IS NULL) AS null_count;",
+        "SELECT *, (x -> hasColumnInTable('default', 'test_table', x))('name') AS check_name, (x -> hasColumnInTable('default', 'test_table', x))('non_existing_column') AS check_non_existing FROM test_table;",
+        "SELECT DISTINCT name, (x -> count(x))('data.value') AS total_values FROM test_table WHERE hasColumnInTable('default', 'test_table', 'data') = 1 GROUP BY name HAVING total_values > 0;",
+        "SELECT id, (x -> hasColumnInTable('default', 'test_table', x))('created_at') AS check_time FROM test_table WHERE created_at IS NOT NULL;",
+        "SELECT id FROM (SELECT *, (x -> hasColumnInTable('default', 'test_table', x))('id') AS is_id_present FROM test_table) AS subquery WHERE is_id_present = 1;",
+        "SELECT id, (x -> hasColumnInTable('default', 'test_table', x))('data.count') AS check_nesting FROM test_table WHERE data.count IS NOT NULL;",
+        "WITH (x -> hasColumnInTable('default', 'test_table', 'data.value')) AS check_value_column SELECT id FROM test_table WHERE check_value_column = 1;",
+        "SELECT id, COALESCE((x -> hasColumnInTable('default', 'test_table', x))('data.value'), 0) AS column_check FROM test_table;",
+        "CREATE TABLE another_table (id UInt32, reference_id UInt32) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO another_table VALUES (1, 1), (2, 3), (3, NULL);",
+        "SELECT a.id, hasColumnInTable('default', 'another_table', 'reference_id') AS ref_exists FROM another_table a JOIN test_table t ON a.reference_id = t.id WHERE t.created_at IS NOT NULL;",
+        "SELECT name, SUM(data.count) FROM test_table GROUP BY name HAVING SUM(data.count) > (SELECT AVG(data.count) FROM test_table WHERE name IS NOT NULL);",
+        "ALTER TABLE test_table ADD COLUMN description String;",
+        "SELECT hasColumnInTable('default', 'test_table', 'description') AS desc_exists;"
+    ]
+}

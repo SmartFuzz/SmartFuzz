@@ -1,0 +1,11 @@
+CREATE TABLE test_hash_modulo (input_string String, input_binary String, input_number UInt64) ENGINE = MergeTree() ORDER BY input_number;
+INSERT INTO test_hash_modulo VALUES ('foo', '\x01', 3), ('bar', '\x02', 5), ('baz', '\x03', 0);
+SELECT hex(sipHash128Reference(input_string, input_binary, input_number % 2)) AS hash_value FROM test_hash_modulo WHERE input_number > 0;
+SELECT input_string, count(*) FROM test_hash_modulo GROUP BY input_string HAVING count(*) % 2 = 0;
+WITH (SELECT max(input_number) FROM test_hash_modulo) AS max_num SELECT hex(sipHash128Reference(input_string, input_binary, max_num - 1)) AS hash_value FROM test_hash_modulo WHERE input_number < (max_num % 4);
+SELECT hex(sipHash128Reference(input_string, '\x01', 0) % 2) FROM test_hash_modulo WHERE input_number IS NOT NULL ORDER BY input_number DESC LIMIT 5;
+CREATE TABLE test_hash_modulo_nullable (input_string Nullable(String), input_number Nullable(UInt64)) ENGINE = MergeTree() ORDER BY input_number;
+INSERT INTO test_hash_modulo_nullable VALUES (NULL, NULL), ('test', 1), ('example', 2), ('sample', 3);
+SELECT hex(sipHash128Reference(ifNull(input_string, 'default'), '\x01', ifNull(input_number, 0) % 2)) AS hash_value FROM test_hash_modulo_nullable;
+CREATE TEMPORARY TABLE temp_hash AS SELECT hex(sipHash128Reference(input_string, input_binary, input_number + 1)) AS temp_hash_value FROM test_hash_modulo;
+SELECT DISTINCT temp_hash_value FROM temp_hash WHERE temp_hash_value LIKE '%0';

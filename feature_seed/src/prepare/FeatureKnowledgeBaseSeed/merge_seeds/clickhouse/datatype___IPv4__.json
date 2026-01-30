@@ -1,0 +1,16 @@
+CREATE TABLE hits (url String, from IPv4) ENGINE = MergeTree() ORDER BY url;
+CREATE TABLE hits_v2 (url String, from IPv4) ENGINE = MergeTree() ORDER BY from;
+INSERT INTO hits (url, from) VALUES ('https://example.com', '192.168.0.1');
+INSERT INTO hits (url, from) VALUES ('https://test.com', '172.16.0.1'), ('https://demo.com', '10.0.0.1');
+SELECT * FROM hits WHERE from = '192.168.0.1';
+SELECT toTypeName(from), hex(from) FROM hits LIMIT 5;
+INSERT INTO hits (url, from) SELECT url, toIPv4('203.0.113.1') FROM another_table WHERE condition = true;
+SELECT COUNT(*) FROM hits WHERE from BETWEEN '10.0.0.0' AND '10.255.255.255';
+SELECT url FROM hits WHERE from IN (SELECT from FROM another_hits WHERE url LIKE '%.org');
+SELECT DISTINCT from, COUNT(url) FROM hits GROUP BY from HAVING COUNT(url) > 1;
+SELECT url, from FROM hits WHERE from = toIPv4('127.0.0.1') UNION SELECT url, from FROM hits_v2 WHERE from = '127.0.0.1';
+SELECT url, hex(from) FROM hits WHERE from IN (SELECT DISTINCT from FROM hits WHERE url LIKE 'https://%') ORDER BY url;
+SELECT toIPv4('192.0.2.146') = toIPv6('::ffff:192.0.2.146');
+SELECT url FROM hits WHERE from NOT IN (SELECT DISTINCT from FROM hits WHERE from <> '192.168.0.1');
+CREATE TABLE summary AS SELECT from, COUNT(*) as total_hits FROM hits GROUP BY from ORDER BY total_hits DESC;
+WITH (SELECT COUNT(url) FROM hits) AS total_count SELECT url, total_count FROM hits WHERE from::UInt32 % 2 = 0;

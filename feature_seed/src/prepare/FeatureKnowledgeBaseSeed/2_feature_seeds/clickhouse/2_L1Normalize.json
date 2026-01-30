@@ -1,0 +1,10 @@
+CREATE TABLE test_vectors (id UInt32, vector Tuple(Float32, Float32));
+INSERT INTO test_vectors VALUES (1, (1.0, 2.0)), (2, (3.0, 4.0)), (3, (0.0, 0.0)), (4, (2.5, NULL));
+SELECT L1Normalize((SUM(vector.1), SUM(vector.2))) FROM test_vectors GROUP BY id HAVING SUM(vector.1) >= 0.0;
+SELECT id, L1Normalize((COUNT(*), SUM(vector.1))) FROM test_vectors WHERE L1Normalize((vector.1, vector.2)) >= (0.5, 1) GROUP BY id;
+SELECT id, L1Normalize((1.0, (SELECT MAX(vector.1) FROM test_vectors))) AS normalized_vector FROM test_vectors WHERE normalized_vector >= (0.5, 0.5);
+SELECT id, L1Normalize((AVG(vector.1), NULLIF(AVG(vector.2), 0))) AS normalized_vector FROM test_vectors GROUP BY id HAVING normalized_vector >= (L1Normalize((1.0, 2.0)).1, 0.5);
+CREATE TABLE temp_vectors AS SELECT vector FROM test_vectors WHERE vector.2 IS NOT NULL;
+INSERT INTO temp_vectors SELECT L1Normalize((vector.1, vector.2)) FROM test_vectors WHERE vector.2 IS NOT NULL;
+SELECT L1Normalize((cast('5' AS Float32), cast(NULL AS Float32) + 1.0)) WHERE (cast('2' AS Float32) >= 2) OR (vector.1 IS NOT NULL) ORDER BY vector.1;
+SELECT id, (SELECT L1Normalize((MIN(vector.1), MAX(vector.2))) FROM test_vectors) AS edge_case FROM test_vectors WHERE edge_case >= (0, 1);

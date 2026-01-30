@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=105204",
+  "title": "ha_innopart traverse all partitions instead of only used partitions causing loss",
+  "description": "In innobase handler for partitioned table codes, there exist several places where the server traverses all partitions like ha_innopart::store_lock(), ha_innopart::external_lock() and ha_innopart::clear_blob_heaps(). The partitions not used in the query are also traversed, which is unnecessary and loss to performance.\nHow to repeat:\nSet breakpoints at the above functions.\r\n\r\nCREATE TABLE tr (\r\n  id INT,\r\n  name VARCHAR(50),\r\n  purchased DATE\r\n)\r\nPARTITION BY RANGE (YEAR(purchased)) (\r\n  PARTITION p0 VALUES LESS THAN (1990),\r\n  PARTITION p1 VALUES LESS THAN (1995),\r\n  PARTITION p2 VALUES LESS THAN (2000),\r\n  PARTITION p3 VALUES LESS THAN (2005),\r\n  PARTITION p4 VALUES LESS THAN (2010),\r\n  PARTITION p5 VALUES LESS THAN (2015)\r\n);\r\n\r\nSELECT * FROM tr PARTITION(p0);\r\n\r\nExecute this query, you can see the server traverses all partitions instead of only used partition p0.\nSuggested fix:\nIf we optimize the codes and let the server only traverse the partitions used in this query, like the following example (the complete changes are included in the patch). We can gain performance improvement.\r\n\r\n--- a/storage/innobase/handler/ha_innopart.cc\r\n+++ b/storage/innobase/handler/ha_innopart.cc\r\n@@ -4033,7 +4034,8 @@ int ha_innopart::external_lock(THD *thd, int lock_type) {\r\n   m_prebuilt->table = m_part_share->get_table_part(0);\r\n   error = ha_innobase::external_lock(thd, lock_type);\r\n\r\n-  for (uint i = 0; i < m_tot_parts; i++) {\r\n+  for (uint i = m_part_info->get_first_used_partition(); i < m_tot_parts;\r\n+       i = m_part_info->get_next_used_partition(i)) {\r\n     dict_table_t *table = m_part_share->get_table_part(i);\r\n\r\n     switch (table->quiesce) {\r\n\r\nWe make sysbench lua script support partitioned table to evaluate performance improvement by oltp_point_select.lua. The partitioned table contains 1000 partitions and 100 records for each partition. We use 10 client threads to simply prove the performance effect.\r\n\r\nBefore optimization:\r\nThroughput:\r\n    events/s (eps):                      120421.8384\r\n    time elapsed:                        180.0025s\r\n    total number of events:              21676232\r\n\r\nAfter optimization:\r\nThroughput:\r\n    events/s (eps):                      124797.5937\r\n    time elapsed:                        180.0025s\r\n    total number of events:              22463880\r\n\r\nThe performance improvement rate is about 3.5%.",
+  "date": "2021-10-13 11:22:00",
+  "vulnerable_version": "8.0.26",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE sales (id INT PRIMARY KEY, amount DECIMAL(10, 2), sale_date DATE);",
+    "INSERT INTO sales (id, amount, sale_date) VALUES (1, 100.00, '2019-06-15');",
+    "INSERT INTO sales (id, amount, sale_date) VALUES (2, 150.50, '2021-03-10');",
+    "SELECT * FROM sales WHERE sale_date < '2021-01-01' AND amount > 100.00;",
+    "SELECT COUNT(*) FROM sales WHERE sale_date IS NULL;"
+  ],
+  "key_bug_features": [
+    "Server traverses all partitions instead of only used partitions"
+  ]
+}

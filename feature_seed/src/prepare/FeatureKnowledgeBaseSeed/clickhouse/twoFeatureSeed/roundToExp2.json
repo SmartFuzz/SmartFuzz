@@ -1,0 +1,19 @@
+{
+    "function": "roundToExp2",
+    "operator": "a + b",
+    "sql_array": [
+        "CREATE TABLE test_numbers (num Float64, label String) ENGINE = MergeTree() ORDER BY num;",
+        "INSERT INTO test_numbers VALUES (0.5, 'low'), (1.0, 'one'), (2.5, 'two_point_five'), (8.0, 'eight'), (16.0, 'sixteen'), (32.0, 'thirty_two');",
+        "SELECT label, roundToExp2(num) AS rounded_exp2, num + roundToExp2(num) AS combined_value FROM test_numbers WHERE num < 20 GROUP BY label, rounded_exp2 HAVING num > 0;",
+        "SELECT roundToExp2(a.num + b.num) AS rounded_exp2 FROM test_numbers AS a JOIN test_numbers AS b ON a.num = 0.5 * b.num WHERE a.label != b.label;",
+        "CREATE TABLE temp_table AS SELECT roundToExp2(num) AS rounded FROM test_numbers WHERE num < 50;",
+        "SELECT rounded, COUNT(*) FROM temp_table GROUP BY rounded HAVING rounded IS NOT NULL ORDER BY rounded ASC;",
+        "CREATE TABLE edge_case (val Nullable(Float64) NOT NULL) ENGINE = MergeTree() ORDER BY val;",
+        "INSERT INTO edge_case VALUES (NULL), (0.0), (2.1), (3.5), (5.0);",
+        "SELECT val, roundToExp2(COALESCE(val, -1)) AS result FROM edge_case WHERE val IS NOT NULL;",
+        "SELECT ROUND(SUM(val)) AS total_sum, roundToExp2(total_sum) AS rounded_exp2_sum FROM edge_case WHERE val IS NOT NULL HAVING total_sum > 2;",
+        "SELECT label, roundToExp2(num + COALESCE(NULLIF(num, 0), 1)) AS adjusted_value FROM test_numbers ORDER BY adjusted_value DESC;",
+        "INSERT INTO test_numbers VALUES (NULL, 'null_case');",
+        "SELECT label, roundToExp2(num + IF(NULLIF(num, 0) IS NULL, 0, num)) AS adjusted_value FROM test_numbers ORDER BY adjusted_value ASC;"
+    ]
+}

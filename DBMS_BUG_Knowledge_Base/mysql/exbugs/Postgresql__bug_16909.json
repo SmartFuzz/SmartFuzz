@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/16909-3a6da1ab19f5652b%40postgresql.org",
+  "title": "BUG #16909: On update (not insert) the attisdropped flag is set for tables which are recreated with the same col",
+  "description": "The following bug has been logged on the website:\nBug reference:      16909\nLogged by:          Grumpylittleted\nEmail address:      grumpylittleted(at)googlemail(dot)com\nPostgreSQL version: 13.2\nOperating system:   Linux 5.8.0-44-generic #50~20.04.1-Ubuntu S\nDescription:\n/*\nBUG:\nUsing 13.2\nOn update (not insert) the attisdropped flag is set for tables which are\nrecreated with the same column names as the original but where preceding\ncolumns have been dropped\nMETHOD:\nCreate a table t with more than two columns: x, y, z\nDrop that table\nCreate a table t with a subset of the columns with the same name as the\nprevious table: here we remove y\nInsert a new row: there are two attributes (correct), neither of which\nhave the attisdropped flag set (correct) (so bug not apparent with\ninserts)\nUpdate the row: there are two attributes (correct), the first attribute\nhas the attisdropped flag unset (correct) BUT the second attribute has the\nattisdropped flag set (incorrect)\nmake\nsudo cp ./f.so `pg_config --pkglibdir`\nSQL:\ncreate or replace function f() returns trigger as './f.so','f' language c\nstrict;\ndrop table if exists t cascade;\ncreate table t(x int, y int, z int);\ndrop table t cascade;\ncreate table t(x int, z int);\ncreate trigger tf before insert or update on t for each row execute\nprocedure f();\ninsert into t values(4,5); -- attr num=1 attisdropped=0\nupdate t set x=2;\n*/\n#include <stdlib.h>\n#include <stdio.h>\n#include <limits.h>\n#include \"postgres.h\"\n#include \"fmgr.h\"\n#include \"executor/spi.h\"\n#include \"commands/trigger.h\"\n#include \"utils/rel.h\"\n#include \"utils/fmgrprotos.h\"\nPG_MODULE_MAGIC;\nPG_FUNCTION_INFO_V1( f );\nDatum f( PG_FUNCTION_ARGS ) {\nTriggerData *trigdata = ( TriggerData * ) fcinfo->context;\nconst TupleDesc tupdesc = trigdata->tg_relation->rd_att;\nHeapTuple tuple = TRIGGER_FIRED_BY_UPDATE( trigdata->tg_event ) ?\ntrigdata->tg_newtuple : trigdata->tg_trigtuple;\nfor( int i = 1; i <= tupdesc->natts; i++ ) {\nelog( INFO, \"attr num=%d attisdropped=%d\", i, TupleDescAttr( tupdesc, i\n)->attisdropped );\n}\nreturn PointerGetDatum( tuple );\n}",
+  "date": "2021-03-02 10:34:55",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t;",
+    "CREATE TABLE t(x INT, y TEXT NOT NULL, z DATE);",
+    "DROP TABLE t;",
+    "CREATE TABLE t(x INT, z DATE);",
+    "INSERT INTO t VALUES(4, '2023-01-01');"
+  ],
+  "key_bug_features": [
+    "attisdropped flag set on update for recreated tables"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+    "function": "UUIDToNum",
+    "operator": "a != b",
+    "sql_array": [
+        "CREATE TABLE test_uuids (id UInt32, uuid_column UUID, val_column String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_uuids (id, uuid_column, val_column) VALUES (1, toUUID('612f3c40-5d3b-217e-707b-6a546a3d7b29'), 'value1'), (2, toUUID('a6732a40-1d3a-427f-fba8-6342fb7f3311'), 'value2'), (3, toUUID('00000000-0000-0000-0000-000000000000'), NULL);",
+        "SELECT id, UUIDToNum(uuid_column, 1) AS bytes_big, UUIDToNum(uuid_column, 2) AS bytes_ms FROM test_uuids WHERE UUIDToNum(uuid_column) != UUIDToNum(toUUID('612f3c40-5d3b-217e-707b-6a546a3d7b29')) GROUP BY id HAVING bytes_big != bytes_ms ORDER BY id;",
+        "SELECT id, (SELECT COUNT() FROM test_uuids WHERE val_column IS NOT NULL) AS not_null_count, UUIDToNum(uuid_column) AS uuid_bytes FROM test_uuids WHERE uuid_column != toUUID('00000000-0000-0000-0000-000000000000') ORDER BY uuid_bytes DESC;",
+        "CREATE TABLE temp_uuids (temp_id UInt32, temp_uuid UUID DEFAULT toUUID('00000000-0000-0000-0000-000000000000')) ENGINE = Memory;",
+        "INSERT INTO temp_uuids (temp_id, temp_uuid) SELECT id, uuid_column FROM test_uuids WHERE val_column != '' AND uuid_column IS NOT NULL;",
+        "SELECT temp_id, UUIDToNum(temp_uuid) AS temp_bytes FROM temp_uuids HAVING temp_bytes != UUIDToNum(toUUID('612f3c40-5d3b-217e-707b-6a546a3d7b29')) ORDER BY temp_id;",
+        "SELECT id, COUNT(*) AS count FROM test_uuids GROUP BY (UUIDToNum(uuid_column, 1) != UUIDToNum(uuid_column, 2)) HAVING count > 1;"
+    ]
+}

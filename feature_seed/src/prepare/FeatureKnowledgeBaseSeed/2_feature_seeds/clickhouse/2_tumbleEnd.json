@@ -1,0 +1,12 @@
+CREATE TABLE test_tumbling (event_time DateTime, value Int32, description String);
+INSERT INTO test_tumbling VALUES (now() - INTERVAL 1 DAY, 10, 'event1'), (now(), 20, 'event2'), (now() + INTERVAL 1 DAY, NULL, 'event3');
+SELECT value, description, tumbleEnd(event_time, toIntervalDay(1)) AS window_end FROM test_tumbling GROUP BY value, description, window_end HAVING window_end IS NOT NULL;
+SELECT x, tumbleEnd(event_time, toIntervalDay(x)) FROM (SELECT value AS x FROM test_tumbling WHERE value IS NOT NULL) GROUP BY x;
+SELECT a.value, a.description, b.window_end FROM test_tumbling AS a JOIN (SELECT value, tumbleEnd(event_time, toIntervalHour(1)) AS window_end FROM test_tumbling) AS b ON a.value = b.value WHERE a.event_time IS NOT NULL;
+SELECT (x -> tumbleEnd(event_time, toIntervalDay(1))) (value) AS tumble_end_result FROM test_tumbling WHERE event_time < now();
+SELECT x, tumbleEnd(event_time, toIntervalMinute(30)) FROM (SELECT value AS x FROM test_tumbling WHERE value IS NOT NULL AND description LIKE '%event%') AS derived_table;
+SELECT value, (x -> tumbleEnd(event_time, toIntervalSecond(60))) (value) AS tumble_end FROM test_tumbling WHERE tumbleEnd(event_time, toIntervalHour(1)) > now();
+SELECT x, count(*) FROM (SELECT value AS x FROM test_tumbling WHERE description IS NOT NULL GROUP BY x HAVING x > 0) AS temp GROUP BY x HAVING count(*) > 1;
+CREATE TABLE temp_tumbling AS SELECT * FROM test_tumbling WHERE event_time IS NOT NULL;
+INSERT INTO temp_tumbling SELECT value, description, NULL FROM test_tumbling WHERE value IS NULL;
+SELECT tumbleEnd(event_time, toIntervalDay(1)) AS upper_bound FROM temp_tumbling WHERE description IS NOT NULL ORDER BY upper_bound DESC;

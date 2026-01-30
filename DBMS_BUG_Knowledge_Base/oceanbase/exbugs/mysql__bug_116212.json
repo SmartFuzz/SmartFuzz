@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=116212",
+  "title": "fts_delete is not crash-safe if binlog is disabled",
+  "description": "In function 'fts_commit_table' a new trx object is allocated to handle the insertion of fts_*_deleted.\r\nWhen binlog is disabled, an inconsistency may occur between fulltext index and clustered index.\nHow to repeat:\nA debug point should be added in function 'fts_commit_table':\n\ndiff --git a/storage/innobase/fts/fts0fts.cc b/storage/innobase/fts/fts0fts.cc\r\nindex c0e16dfd93d..ba48a628c63 100644\r\n--- a/storage/innobase/fts/fts0fts.cc\r\n+++ b/storage/innobase/fts/fts0fts.cc\r\n@@ -3239,6 +3239,10 @@ dberr_t fts_create_doc_id(dict_table_t *table, dtuple_t *row,\r\n \r\n   trx_free_for_background(trx);\r\n \r\n+  DBUG_EXECUTE_IF(\"fts_sync_cache_and_crash_after_commit_table\", {\r\n+    DBUG_SUICIDE();\r\n+  });\r\n+\r\n   return (error);\r\n }\n\nRun test script(option '--mysqld=--skip-log-bin' should be specified):\r\n\r\ncreate table opening_lines (\r\n       id INT UNSIGNED AUTO_INCREMENT NOT NULL PRIMARY KEY,\r\n       opening_line TEXT(500),\r\n       author VARCHAR(200),\r\n       title VARCHAR(200),\r\n       FULLTEXT idx (opening_line)\r\n       ) ENGINE=InnoDB;\r\n\r\ninsert into opening_lines(opening_line,author,title) VALUES\r\n       ('A screaming comes across the sky.','Thomas Pynchon','Gravity\\'s Rainbow');\r\nselect * from opening_lines WHERE MATCH(opening_line) AGAINST('screaming');\r\n\r\n--exec echo \"wait\" > $MYSQLTEST_VARDIR/tmp/mysqld.1.expect\r\nset debug='+d,fts_sync_cache_and_crash_after_commit_table';\r\n--error 2013\r\ndelete from opening_lines;\r\n--source include/wait_until_disconnected.inc\r\n--echo # Restart the master server\r\n--exec echo \"restart\" > $MYSQLTEST_VARDIR/tmp/mysqld.1.expect\r\n--source include/wait_until_connected_again.inc\r\n\r\nselect * from opening_lines;\r\n\r\nselect * from opening_lines WHERE MATCH(opening_line) AGAINST('screaming');\n\nNo row is returned in the result of the full-text search, although there should be one.\nSuggested fix:\nUse the original trx object if it's active.",
+  "date": "2024-09-24 09:29:00",
+  "vulnerable_version": "8.4.2",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE fts_test_table (id INT UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT, content TEXT, author VARCHAR(100), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FULLTEXT INDEX idx_content (content));",
+    "INSERT INTO fts_test_table (content, author) VALUES ('The quick brown fox jumps over the lazy dog', 'Author A');",
+    "INSERT INTO fts_test_table (content, author) VALUES (NULL, 'Author B');",
+    "SELECT * FROM fts_test_table WHERE MATCH(content) AGAINST('quick');",
+    "DELETE FROM fts_test_table WHERE author IS NULL;"
+  ],
+  "key_bug_features": [
+    "fts_commit_table inconsistency with binlog disabled"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/61567",
+  "title": "TIMESTAMPADD returns NULL when result is in DST transition.",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n```mysql\nCREATE TABLE t (id int primary key, ts timestamp);\nSET time_zone = 'UTC';\nINSERT INTO t VALUES (1, '2025-03-30 00:59:59');\nSET time_zone = 'Europe/Amsterdam';\nSELECT TIMESTAMPADD(HOUR, 1, ts) FROM t;\n```\n\n### 2. What did you expect to see? (Required)\nTIMESTAMPADD is actually working with DATETIME, not TIMESTAMP as the name suggests, so I would expect ts to first be casted to DATETIME, and then added one hour, like MySQL:\n```mysql\nmysql80> SELECT TIMESTAMPADD(HOUR, 1, ts) FROM t;\n+---------------------------+\n| TIMESTAMPADD(HOUR, 1, ts) |\n+---------------------------+\n| 2025-03-30 02:59:59       |\n+---------------------------+\n1 row in set (0.00 sec)\n```\n\n### 3. What did you see instead (Required)\nI don't consider this as a big issue, but when looking at the warning, it also says `Incorrect time value: '{2025 3 30 1 59 59 0}'` while it is actually a valid timestamp for the time zone (02:00:00-02:59:59 is not).\n\n```mysql\ntidb> SELECT TIMESTAMPADD(HOUR, 1, ts) FROM t;\n+---------------------------+\n| TIMESTAMPADD(HOUR, 1, ts) |\n+---------------------------+\n| NULL                      |\n+---------------------------+\n1 row in set, 1 warning (0.00 sec)\n\ntidb> show warnings;\n+---------+------+-----------------------------------------------+\n| Level   | Code | Message                                       |\n+---------+------+-----------------------------------------------+\n| Warning | 1292 | Incorrect time value: '{2025 3 30 1 59 59 0}' |\n+---------+------+-----------------------------------------------+\n1 row in set (0.00 sec)\n```\n\n### 4. What is your TiDB version? (Required)\n\n```\ntidb_version(): Release Version: v8.5.2\nEdition: Community\nGit Commit Hash: f43a13324440f92209e2a9f04c0bbe9cf763978d\nGit Branch: HEAD\nUTC Build Time: 2025-05-29 03:33:08\nGoVersion: go1.23.6\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv\n```\n\n",
+  "date": "2025-06-06T18:20:39Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (id INT PRIMARY KEY, ts TIMESTAMP, val VARCHAR(50));",
+    "INSERT INTO t1 VALUES (1, '2025-03-30 00:59:59', 'test1');",
+    "SET TIME ZONE 'Europe/Amsterdam';",
+    "SELECT CAST(ts AS DATETIME) + INTERVAL '1' HOUR AS new_time FROM t1 WHERE val IS NOT NULL;",
+    "SELECT CAST(NULL AS TIMESTAMP) + INTERVAL '1' HOUR AS null_time;"
+  ],
+  "key_bug_features": [
+    "TIMESTAMPADD returns NULL during DST transition"
+  ]
+}

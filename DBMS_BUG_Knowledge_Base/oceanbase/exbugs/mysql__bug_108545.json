@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=108545",
+  "title": "Erroneous MYSQL_TYPE_INVALID data type",
+  "description": "Server send wrong MYSQL_TYPE_INVALID datatype to client, resulting in error. \r\nThis data type is not expected to be send to connectors.\nHow to repeat:\nCREATE FUNCTION basic_function (t1 INT, t2 INT unsigned) RETURNS INT DETERMINISTIC RETURN t1 * t2;\r\n\r\nprepare \"SELECT basic_function(?,?)\"\n\nexchanges are : \r\nsend : \r\n--------------------------------------------------+\r\n|  0  1  2  3  4  5  6  7   8  9  a  b  c  d  e  f |\r\n+--------------------------------------------------+------------------+\r\n| 1B 00 00 00 16 53 45 4C  45 43 54 20 62 61 73 69 | .....SELECT basi |\r\n| 63 5F 66 75 6E 63 74 69  6F 6E 28 3F 2C 3F 29    | c_function(?,?)  |\r\n+--------------------------------------------------+------------------+\r\n\r\nreceive : \r\n+--------------------------------------------------+\r\n|  0  1  2  3  4  5  6  7   8  9  a  b  c  d  e  f |\r\n+--------------------------------------------------+------------------+\r\n| 0C 00 00 01 00 01 00 00  00 01 00 02 00 00 00 00 | ................ |\r\n+--------------------------------------------------+------------------+\n\n+--------------------------------------------------+\r\n|  0  1  2  3  4  5  6  7   8  9  a  b  c  d  e  f |\r\n+--------------------------------------------------+------------------+\r\n| 17 00 00 02 03 64 65 66  00 00 00 01 3F 00 0C 3F | .....def....?..? |\r\n| 00 15 00 00 00 08 80 00  00 00 00                | ...........      |\r\n+--------------------------------------------------+------------------+\r\n\r\n+--------------------------------------------------+\r\n|  0  1  2  3  4  5  6  7   8  9  a  b  c  d  e  f |\r\n+--------------------------------------------------+------------------+\r\n| 17 00 00 03 03 64 65 66  00 00 00 01 3F 00 0C 3F | .....def....?..? |\r\n| 00 00 00 00 00 F3 80 00  00 00 00                | ...........      |\r\n+--------------------------------------------------+------------------+\r\n...\r\n\r\nthis second column definition send a data type 0xf3 = MYSQL_TYPE_INVALID (0x08 expected) that is not expected ... creating various issue afterwhile.",
+  "date": "2022-09-19 21:19:00",
+  "vulnerable_version": "8.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT PRIMARY KEY, value INT, nullable_value INT);",
+    "INSERT INTO test_table (id, value, nullable_value) VALUES (1, 10, NULL);",
+    "INSERT INTO test_table (id, value, nullable_value) VALUES (2, 20, 5);",
+    "SELECT id, value * COALESCE(nullable_value, 0) AS result FROM test_table WHERE nullable_value IS NULL;",
+    "SELECT id, value * 0 AS result FROM test_table WHERE value < 15;"
+  ],
+  "key_bug_features": [
+    "MYSQL_TYPE_INVALID datatype sent to client"
+  ]
+}

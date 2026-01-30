@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=116087",
+  "title": "Time type not formatted correctly in SSPS mode",
+  "description": "For mysql odbc connector, when fetching time type column bind to SQL_C_CHAR the returned string is incorrect if SSPS is enabled and hour has 3 digits.\r\n\r\nIn mysql, the TIME values may range from '-838:59:59' to '838:59:59'. However, mysql odbc connector doesn't format it correctly to C-char if SSPS is enabled.\r\nFor example, the last digits of seconds are lost for corner-case values '-838:59:59', '838:59:59'.\nHow to repeat:\nThe program bellow prints different output in default SSPS enabled mode then in NO_SSPS mode.\r\n\r\nOn mysql database create table with TIME type and corner case values.\r\n\r\nCREATE TABLE time_tab (typetime TIME(0));\r\nINSERT INTO time_tab VALUES ('-838:59:59'), ('838:59:59');\n\nRun the following code \r\n\r\n#include <sql.h>\r\n#include <sqlext.h>\r\n#include <stdio.h>\r\n\r\n#define CONNECTION_STRING \"...\"\r\n#define CONNECTION_STRING_LEN sizeof(CONNECTION_STRING)\r\n#define    BUFF_SIZE 256\r\nint main() {\r\n    SQLHENV h_env = NULL;\r\n    SQLHDBC h_dbc = NULL;\r\n    SQLHSTMT h_stmt = NULL;\r\n    SQLLEN    i_text_len = 0;\r\n    SQLSMALLINT i_out_connection_string_len = 0;\r\n    char psz_txt_buff[BUFF_SIZE];\r\n    int ret = 0;\r\n\r\n    SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &h_env);\r\n    SQLSetEnvAttr( h_env, SQL_ATTR_ODBC_VERSION, (void *) SQL_OV_ODBC3, 0 );\r\n    SQLAllocHandle(SQL_HANDLE_DBC, h_env, &h_dbc);\r\n\r\n    SQLDriverConnect(h_dbc, NULL, CONNECTION_STRING, CONNECTION_STRING_LEN, NULL, 0, &i_out_connection_string_len, SQL_DRIVER_NOPROMPT);\r\n\r\n    SQLAllocHandle(SQL_HANDLE_STMT, h_dbc, &h_stmt);\r\n    SQLPrepare(h_stmt, \"SELECT typetime FROM time_tab;\", SQL_NTS);\r\n    SQLBindCol(h_stmt, 1, SQL_C_CHAR, &psz_txt_buff,    sizeof(psz_txt_buff), &i_text_len);\r\n\r\n    SQLExecute(h_stmt);\r\n    do {\r\n        ret = SQLFetch(h_stmt);\r\n        if (ret == SQL_SUCCESS || ret == SQL_SUCCESS_WITH_INFO)\r\n            printf(\"text='%s' len=%ld\\n\", psz_txt_buff, i_text_len);\r\n    } while (ret == SQL_SUCCESS);\r\n}\r\n\r\nIf the connection is in SSPS disabled mode (NO_SSPS=1; in connection string), then this code prints as expected:\r\n\r\ntext='-838:59:59' len=10\r\ntext='838:59:59' len=9\r\n\r\nWhen SSPS is enabled then the last characters are lost:\r\n\r\ntext='-838:59:5' len=9\r\ntext='838:59:5' len=8\nSuggested fix:\nThe program should print same output regardless of if SSPS is enabled or not.\r\n\r\nI think the issue is with the source code of mysql-connector-odbc, in file driver/my_prepared_stmt.cc, function fetch_varlength_columns.\r\nThe following code doesn't take into account that hour value for mysql can have 3 digits.\n\n    case MYSQL_TYPE_TIME:\r\n    {\r\n      MYSQL_TIME * t = (MYSQL_TIME *)(col_rbind->buffer);\r\n\r\n      buffer= ALLOC_IFNULL(buffer, 20);\r\n      myodbc_snprintf(buffer, 10, \"%s%02u:%02u:%02u\", t->neg? \"-\":\"\", t->hour,\r\n                                              t->minute, t->second);\r\n      *length= t->neg ? 9 : 8;\r\n\r\n      if (t->second_part > 0)\r\n      {\r\n        myodbc_snprintf(buffer+*length, 8, \".%06lu\", t->second_part);\r\n        *length+= 7;\r\n      }\r\n      return buffer;\r\n    }\n\nThe length and buffers are too small if t->hour >= 100.",
+  "date": "2024-09-12 10:44:00",
+  "vulnerable_version": "9.0.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE time_test (id INT PRIMARY KEY AUTO_INCREMENT, typetime TIME NOT NULL);",
+    "INSERT INTO time_test (typetime) VALUES ('-838:59:59'), ('838:59:59'), (NULL);",
+    "CREATE TABLE time_ref (ref_time TIME DEFAULT '00:00:00');",
+    "INSERT INTO time_ref (ref_time) VALUES ('12:30:45'), ('23:59:59');",
+    "SELECT t.id, t.typetime, r.ref_time FROM time_test t LEFT JOIN time_ref r ON t.typetime = r.ref_time WHERE t.typetime IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Incorrect time formatting with 3-digit hour in SSPS mode"
+  ]
+}

@@ -1,0 +1,16 @@
+CREATE TABLE data_sources (id INT PRIMARY KEY, dsn_attribute VARCHAR(255), config_type VARCHAR(10));
+INSERT INTO data_sources (id, dsn_attribute, config_type) VALUES (1, 'DSN=my_source;
+UID=user;
+PWD=password;
+', 'user');
+INSERT INTO data_sources (id, dsn_attribute, config_type) VALUES (2, 'DSN=my_source_2;
+UID=user2;
+PWD=password2;
+', 'system');
+SELECT id, dsn_attribute FROM data_sources WHERE sql_config_data_sources(dsn_attribute, (SELECT !config_type FROM data_sources WHERE id = 1)) = 'user';
+SELECT id, (SELECT !config_type FROM data_sources WHERE id = 2) AS negated_type FROM data_sources WHERE dsn_attribute IS NOT NULL;
+SELECT id, COUNT(*) AS total FROM data_sources GROUP BY config_type HAVING !total > 0;
+SELECT id, dsn_attribute, sql_config_data_sources(dsn_attribute, 'user') as config_result FROM data_sources WHERE dsn_attribute LIKE '%my_source%' AND !(config_type IS NULL);
+SELECT id, dsn_attribute FROM data_sources WHERE EXISTS (SELECT !1 FROM data_sources WHERE dsn_attribute = 'non_existing_dsn') ORDER BY id;
+CREATE TABLE logs (log_id INT PRIMARY KEY, message VARCHAR(255));
+INSERT INTO logs (log_id, message) SELECT id, dsn_attribute FROM data_sources WHERE config_type = (SELECT !'user');

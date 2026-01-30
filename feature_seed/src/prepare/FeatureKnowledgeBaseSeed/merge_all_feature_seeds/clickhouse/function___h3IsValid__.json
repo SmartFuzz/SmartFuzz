@@ -1,0 +1,18 @@
+CREATE TABLE h3_test (h3index UInt64);
+INSERT INTO h3_test VALUES (630814730351855103), (12345678901234567890), (0), (18446744073709551615);
+SELECT h3IsValid(h3index) AS validity FROM h3_test;
+SELECT h3IsValid((SELECT h3index FROM h3_test WHERE h3index < 100)) AS validity;
+SELECT h3IsValid(630814730351855103) AS validity;
+SELECT h3IsValid(0) AS validity;
+SELECT h3IsValid(18446744073709551615) AS validity;
+WITH (SELECT h3index FROM h3_test WHERE h3index = 630814730351855103) AS valid_index SELECT h3IsValid(valid_index) AS validity;
+SELECT outer.h3index, inner.validity FROM (SELECT h3index FROM h3_test) AS outer JOIN (SELECT h3index, h3IsValid(h3index) AS validity FROM h3_test) AS inner ON outer.h3index = inner.h3index;
+INSERT INTO h3_test VALUES ((SELECT MAX(h3index) FROM h3_test) + 1);
+CREATE TABLE more_h3_indexes (h3index UInt64) ENGINE = Memory;
+INSERT INTO more_h3_indexes VALUES (0), (1), (2), (123456789), (630814730351855103), (18446744073709551615);
+SELECT h3index, h3IsValid(h3index) AS is_valid FROM more_h3_indexes WHERE h3index > 0;
+SELECT COUNT(*) FROM h3_test WHERE h3IsValid(h3index) = 1;
+WITH (SELECT h3index FROM h3_test WHERE h3index = 12345678901234567890) AS invalid_index SELECT h3IsValid(invalid_index) AS is_valid;
+SELECT h3IsValid(630814730351855103) AS valid_index, h3IsValid((SELECT h3index FROM more_h3_indexes LIMIT 1)) AS another_check;
+CREATE TABLE test_results AS SELECT h3index, h3IsValid(h3index) AS validity FROM h3_test;
+SELECT COUNT(*) FROM test_results WHERE validity = 0;

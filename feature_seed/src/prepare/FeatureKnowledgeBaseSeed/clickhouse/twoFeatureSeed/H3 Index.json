@@ -1,0 +1,16 @@
+{
+    "function": "H3 Index",
+    "operator": "INTERVAL",
+    "sql_array": [
+        "CREATE TABLE geo_data (id UInt32, latitude Float64, longitude Float64, event_time DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO geo_data VALUES (1, 37.7749, -122.4194, now() - INTERVAL 2 DAY), (2, 40.7128, -74.0060, now() - INTERVAL 5 DAY), (3, 34.0522, -118.2437, now());",
+        "SELECT id, H3_TO_PARENT(H3_INDEX(latitude, longitude), 5) AS h3_parent_index, event_time + INTERVAL 1 HOUR AS adjusted_time FROM geo_data WHERE H3_TO_PARENT(H3_INDEX(latitude, longitude), 5) IS NOT NULL;",
+        "SELECT COUNT(*) AS total_events, H3_TO_CHILD(H3_INDEX(latitude, longitude), 5) AS h3_child_index FROM geo_data GROUP BY h3_child_index HAVING total_events > 1;",
+        "SELECT g.id, g.latitude, g.longitude, g.event_time + INTERVAL '10 minute' AS modified_time FROM geo_data g JOIN (SELECT id, latitude, longitude FROM geo_data WHERE latitude > 35) AS sub WHERE g.event_time > now() - INTERVAL 1 WEEK;",
+        "SELECT h3_index, COUNT(*) FROM (SELECT H3_INDEX(latitude, longitude) AS h3_index FROM geo_data GROUP BY H3_INDEX(latitude, longitude)) AS sub GROUP BY h3_index ORDER BY COUNT(*) DESC;",
+        "CREATE TABLE geo_data_copy AS geo_data WITH NO DATA;",
+        "INSERT INTO geo_data_copy SELECT id, latitude, longitude + INTERVAL '0.001' AS longitude, event_time - INTERVAL '2 DAY' AS event_time FROM geo_data;",
+        "SELECT g1.id, g1.latitude, g1.longitude, g1.event_time FROM geo_data g1 LEFT JOIN geo_data_copy g2 ON H3_INDEX(g1.latitude, g1.longitude) = H3_INDEX(g2.latitude, g2.longitude) WHERE g2.id IS NULL;",
+        "SELECT id, H3_TO_PARENT(H3_INDEX(latitude, longitude), 3) AS h3_parent_index, event_time + INTERVAL 1 SECOND AS adjusted_time FROM geo_data WHERE event_time IS NOT NULL AND latitude IS NOT NULL;"
+    ]
+}

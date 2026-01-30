@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=103920",
+  "title": "memory recycle improve in fts query",
+  "description": "If fts search return lots of matched rows in fts_query_phrase_search calling fts_index_fetch_nodes,  innodb will occupy memory which won't release after calling mem_heap_free.\nHow to repeat:\nCREATE TABLE `t_fts`\r\n(\r\n    `id` int,\r\n    `title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,\r\n    `content` varchar(2048) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,\r\n    FULLTEXT KEY `ft_title_content_2` (`title`,`content`) /*!50100 WITH PARSER `ngram` */\r\n);\n\ninsert into t_fts values (1, '黑龙江恒基天承建筑工程有限公司 上海东昌建筑装饰工程有限公司', '黑龙江恒基天承建筑工程有限公司 上海东昌建筑装饰工程有限公司');\r\n#1\r\ninsert into t_fts select id + (select max(id) from t_fts), title, content from t_fts;\r\n#2\r\ninsert into t_fts select id + (select max(id) from t_fts), title, content from t_fts;\r\n#3\r\ninsert into t_fts select id + (select max(id) from t_fts), title, content from t_fts;\r\n#4\r\ninsert into t_fts select id + (select max(id) from t_fts), title, content from t_fts;\r\n#5\r\ninsert into t_fts select id + (select max(id) from t_fts), title, content from t_fts;\r\n#6\r\ninsert into t_fts select id + (select max(id) from t_fts), title, content from t_fts;\r\n#7\r\ninsert into t_fts select id + (select max(id) from t_fts), title, content from t_fts;\r\n#8\r\ninsert into t_fts select id + (select max(id) from t_fts), title, content from t_fts;\r\n#9\r\ninsert into t_fts select id + (select max(id) from t_fts), title, content from t_fts;\r\n#10\r\ninsert into t_fts select id + (select max(id) from t_fts), title, content from t_fts;\r\n#11\r\ninsert into t_fts select id + (select max(id) from t_fts), title, content from t_fts;\r\n#12\r\ninsert into t_fts select id + (select max(id) from t_fts), title, content from t_fts;\r\n#13\r\ninsert into t_fts select id + (select max(id) from t_fts), title, content from t_fts;\r\n#14\r\ninsert into t_fts select id + (select max(id) from t_fts), title, content from t_fts;\r\n#15\r\ninsert into t_fts select id + (select max(id) from t_fts), title, content from t_fts;\r\n#16\r\ninsert into t_fts select id + (select max(id) from t_fts), title, content from t_fts;\r\n#17\r\ninsert into t_fts select id + (select max(id) from t_fts), title, content from t_fts;\r\n#18\r\ninsert into t_fts select id + (select max(id) from t_fts), title, content from t_fts;\r\n#19\n\nSELECT id FROM t_fts where MATCH (title,content) AGAINST ('+工程' IN BOOLEAN MODE) limit 1;\r\n\r\nand then checkout the total memory allocated.\nSuggested fix:\n1、Allocate memory in large pieces at first\r\n2、Force calling malloc_trim to recyle memory in future",
+  "date": "2021-06-06 09:52:00",
+  "vulnerable_version": "8.0, 8.0.25, 5.7.34",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t_fts_extended (id UInt32, title String, content String, created_at DateTime DEFAULT now(), PRIMARY KEY (id)) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO t_fts_extended (title, content) VALUES ('Example Title 1', 'This is some example content for testing purposes.');",
+    "INSERT INTO t_fts_extended (title, content) SELECT CONCAT('Example Title ', id), CONCAT('Content for ID ', id) FROM (SELECT number AS id FROM numbers(5));",
+    "SELECT id FROM t_fts_extended WHERE hasToken(title, 'example') OR hasToken(content, 'example') LIMIT 10;",
+    "ALTER TABLE t_fts_extended DELETE WHERE id IN (SELECT id FROM (SELECT id FROM t_fts_extended ORDER BY created_at DESC LIMIT 5) AS subquery);"
+  ],
+  "key_bug_features": [
+    "fts_query_phrase_search with many matched rows"
+  ]
+}

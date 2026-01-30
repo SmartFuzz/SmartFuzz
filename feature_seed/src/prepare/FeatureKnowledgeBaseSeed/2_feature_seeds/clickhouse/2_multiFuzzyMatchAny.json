@@ -1,0 +1,10 @@
+CREATE TABLE test_fuzzy_match (id UInt32, description String, tags Array(String), edit_distance Int32);
+INSERT INTO test_fuzzy_match VALUES (1, 'The quick brown fox', ['quick', 'brown', 'fox']), (2, 'Jumped over the lazy dog', ['jumped', 'lazy', 'dog']), (3, '', ['empty', 'string', 'test']);
+SELECT id, description FROM test_fuzzy_match WHERE multiFuzzyMatchAny(description, 2, ['quik', 'brow', 'dog']) = 1;
+SELECT id, description FROM test_fuzzy_match WHERE id IN (SELECT id FROM test_fuzzy_match WHERE multiFuzzyMatchAny(description, 1, ['lazy', 'jumped']) = 1);
+SELECT id, arrayJoin(tags) AS tag, multiFuzzyMatchAny(tag, 1, ['qwick', 'brwon']) AS tag_match FROM test_fuzzy_match GROUP BY id, tag HAVING tag_match = 1;
+SELECT edit_distance, arrayMap(x -> multiFuzzyMatchAny(x, edit_distance, ['test', 'example']), tags) AS fuzzy_results FROM test_fuzzy_match WHERE edit_distance < 5;
+SELECT id, COUNT() as matches FROM test_fuzzy_match WHERE arrayFilter(x -> multiFuzzyMatchAny(x, 1, ['quick', 'fox']), tags) != [] GROUP BY id HAVING matches > 0;
+SELECT id, multiFuzzyMatchAny(description, 0, ARRAY['The quick brown fox', 'Jumped']) AS exact_match FROM test_fuzzy_match WHERE exact_match = 1;
+ALTER TABLE test_fuzzy_match ADD COLUMN created_at DateTime DEFAULT now();
+SELECT id, description, multiFuzzyMatchAny(description, 3, arrayJoin(tags)) AS fuzzy_pattern_check FROM test_fuzzy_match WHERE created_at IS NOT NULL;

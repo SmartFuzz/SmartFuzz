@@ -1,0 +1,8 @@
+CREATE TABLE test_data (id Int32, event_time DateTime, value Int32, flag Nullable(Int8));
+INSERT INTO test_data (id, event_time, value, flag) VALUES (1, '2023-01-01 00:00:01', 5, 1), (2, '2023-01-02 00:00:02', 10, NULL), (3, '2023-01-03 00:00:03', 15, 0);
+SELECT id, bitAnd(value, EXTRACT(MONTH FROM event_time)) AS combined FROM test_data WHERE flag IS NOT NULL GROUP BY id, value HAVING combined > 0;
+SELECT id, EXTRACT(DAY FROM event_time) AS day_val, bitAnd(value, flag) AS value_flag FROM test_data WHERE flag IS NOT NULL AND (EXTRACT(HOUR FROM event_time) + 2 > 0) ORDER BY day_val;
+CREATE TABLE temp_analysis AS SELECT id, EXTRACT(YEAR FROM event_time) AS year_val FROM test_data WHERE value > 0;
+SELECT id, bitAnd(EXTRACT(MINUTE FROM event_time), value) AS bit_result FROM test_data WHERE flag IS NULL UNION ALL SELECT id, bitAnd(EXTRACT(SECOND FROM event_time), value) FROM test_data WHERE flag = 0;
+SELECT id, bitAnd(EXTRACT(DAY FROM event_time), value) AS day_value, SUM(value) OVER (PARTITION BY flag) AS total_value FROM test_data WHERE event_time > '2023-01-01 00:00:00' ORDER BY id;
+SELECT EXTRACT(YEAR FROM (SELECT MAX(event_time) FROM test_data)) AS last_year, bitAnd(1, (SELECT COUNT(*) FROM test_data WHERE flag = 1)) AS count_flag FROM test_data GROUP BY last_year HAVING count_flag > 0;

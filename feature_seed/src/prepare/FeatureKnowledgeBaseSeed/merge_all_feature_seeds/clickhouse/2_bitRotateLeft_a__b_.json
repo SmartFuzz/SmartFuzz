@@ -1,0 +1,12 @@
+CREATE TABLE test_table (id UInt32, data String, bit_value UInt8);
+INSERT INTO test_table VALUES (1, 'test', 5), (2, 'sample', 2), (3, NULL, 7);
+SELECT id, bitRotateLeft(bit_value, (SELECT count() FROM test_table WHERE data IS NOT NULL)) AS rotated_value FROM test_table WHERE bitRotateLeft(bit_value, 1) < 4;
+SELECT id, bit_value FROM test_table t1 JOIN (SELECT id, bitRotateLeft(bit_value, 2) AS rotated FROM test_table WHERE data IS NOT NULL) t2 ON t1.id = t2.id WHERE t1.bit_value < t2.rotated AND t2.rotated IS NOT NULL;
+SELECT id, bitRotateLeft(NULLIF(bit_value, 0), 3) AS rotated_value FROM test_table GROUP BY id HAVING rotated_value IS NOT NULL AND rotated_value < 5;
+SELECT data, bitRotateLeft(bit_value, (SELECT max(bit_value) FROM test_table WHERE data = 'test')) AS max_rotated FROM test_table ORDER BY max_rotated DESC;
+CREATE TABLE another_table (record_id UInt32, info String, amount Float64) ENGINE = MergeTree() ORDER BY record_id;
+INSERT INTO another_table VALUES (1, 'info1', 10.5), (2, 'info2', -3.0), (3, 'info3', null);
+SELECT a.id, a.data, bitRotateLeft(a.bit_value, 1) AS rotated_value FROM test_table a LEFT JOIN another_table b ON a.id < b.record_id WHERE a.id IS NOT NULL AND (bitRotateLeft(a.bit_value, 2) < (SELECT count() FROM another_table));
+CREATE TABLE temp_table (temp_id UInt8, value Int32) ENGINE = Memory;
+INSERT INTO temp_table VALUES (1, 100), (2, 200), (3, -300);
+SELECT * FROM temp_table WHERE bitRotateLeft(value, 4) < (SELECT max(temp_id) FROM temp_table WHERE temp_id IS NOT NULL) AND value IS NOT NULL;

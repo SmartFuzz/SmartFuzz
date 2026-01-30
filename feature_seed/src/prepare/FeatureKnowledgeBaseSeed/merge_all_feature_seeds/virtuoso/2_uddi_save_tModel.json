@@ -1,0 +1,16 @@
+CREATE TABLE tModel (id INT PRIMARY KEY, name VARCHAR(255), description TEXT, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO tModel (id, name, description) VALUES (1, 'TestModel1', 'This is a test tModel');
+INSERT INTO tModel (id, name, description) VALUES (2, 'TestModel2', NULL);
+INSERT INTO tModel (id, name, description) VALUES (3, 'TestModel3', 'Another test tModel');
+SELECT uddi_save_tModel((SELECT id FROM tModel WHERE name <> 'TestModel2'), 'UpdatedModel', 'Updated description') WHERE (SELECT COUNT(*) FROM tModel) <> 0;
+SELECT uddi_save_tModel(1, 'UpdatedTestModel', CASE WHEN name <> 'TestModel1' THEN 'Description for updated model' ELSE NULL END) FROM tModel WHERE updated_at < NOW() - INTERVAL '1 DAY';
+SELECT * FROM tModel WHERE id <> (SELECT id FROM tModel WHERE name = 'TestModel1') OR description IS NULL;
+SELECT uddi_save_tModel(1, 'EdgeCaseModel', 'Description for edge case where NULL is involved') WHERE EXISTS(SELECT 1 FROM tModel WHERE description IS NULL);
+CREATE TABLE RelatedModel (relation_id INT, tModel_id INT, CONSTRAINT fk_tModel FOREIGN KEY (tModel_id) REFERENCES tModel(id));
+INSERT INTO RelatedModel (relation_id, tModel_id) VALUES (1, 1), (2, 2);
+SELECT uddi_save_tModel((SELECT tModel_id FROM RelatedModel WHERE relation_id <> 1), 'RelationsUpdate', '') WHERE (SELECT COUNT(*) FROM RelatedModel WHERE tModel_id IS NOT NULL) <> 0;
+SELECT uddi_save_tModel(3, 'ExtremeCaseModel', '') FROM tModel WHERE EXISTS (SELECT 1 FROM tModel WHERE name <> '');
+SELECT uddi_save_tModel(2, 'CommonCaseModel', 'Updating a common model!') WHERE (SELECT COUNT(*) FROM RelatedModel WHERE tModel_id <> 3) <> 0;
+SELECT uddi_save_tModel((SELECT MAX(id) FROM tModel), 'MaxIDModel', 'Model with max ID') WHERE (SELECT MIN(updated_at) FROM tModel) IS NOT NULL;
+SELECT uddi_save_tModel(NULLIF((SELECT id FROM tModel WHERE name = 'TestModel3'), 0), 'NULLCheckModel', 'This checks NULL behavior') WHERE (SELECT COUNT(*) FROM tModel) > 1;
+SELECT uddi_save_tModel(1, 'DuplicationTestModel', 'This should not be duplicated') WHERE NOT EXISTS (SELECT * FROM tModel WHERE name = 'DuplicationTestModel');

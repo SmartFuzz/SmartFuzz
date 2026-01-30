@@ -1,0 +1,13 @@
+CREATE TABLE test_map (m Map(String, Int32), n Nullable(Int32), r Float64) ENGINE = Memory;
+INSERT INTO test_map VALUES ({'key1':1, 'key2':2}), ({'key3':NULL, 'key4':4}), ({'key5':5, 'key6':0.0});
+SELECT mapContains(m, concat('key', CAST(n AS String))) / (CASE WHEN n IS NOT NULL THEN n ELSE 1 END) AS result FROM test_map WHERE n > 0 HAVING result > 0;
+CREATE TABLE another_table (x Map(Int32, String), y Nullable(Int32)) ENGINE = Memory;
+INSERT INTO another_table VALUES ({1:'one', 2:'two'}), ({3:'three', NULL:NULL}), ({NULL:NULL, 4:'four'});
+SELECT (mapContains(x, toString(y)) / NULLIF(y, 0)) AS division_result FROM another_table WHERE mapContains(x, 2) = 1;
+SELECT mapContains(m, 'key1') / (SELECT COUNT(*) FROM another_table WHERE mapContains(x, 1)) AS map_check FROM test_map GROUP BY m HAVING map_check > 0;
+CREATE TABLE combined_table (map_col Map(String, UInt8), value Float64) ENGINE = Memory;
+INSERT INTO combined_table VALUES ({'a':1, 'b':2}, 5.0), ({'c':NULL, 'd':3}, 0.0);
+SELECT (mapContains(map_col, 'a') / (value + 1)) AS check_value FROM combined_table HAVING check_value > 0.5;
+CREATE TABLE dynamic_table (nested_map Map(Int32, Map(String, Int32)), id UInt32) ENGINE = Memory;
+INSERT INTO dynamic_table VALUES ({1: {'inner_key1': 5, 'inner_key2': 10}}, 1), ({2: {'inner_key3': 15}}, 2);
+SELECT mapContains(nested_map[1], 'inner_key1') / (id * 2) AS map_key_check FROM dynamic_table WHERE id < 3 HAVING map_key_check = 1;

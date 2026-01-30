@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/17978-12f3d93a55297266%40postgresql.org",
+  "title": "BUG #17978: Unexpected error: \"wrong varnullingrels (b) (expected (b 5)) for Var 6/2\" triggered by JOIN",
+  "description": "The following bug has been logged on the website:\nBug reference:      17978\nLogged by:          Zuming Jiang\nEmail address:      zuming(dot)jiang(at)inf(dot)ethz(dot)ch\nPostgreSQL version: 16beta1\nOperating system:   Ubuntu 20.04\nDescription:\nMy fuzzer finds a bug in Postgres, which triggers an unexpected error in\nPostgres.\n--- Set up database ---\nCREATE TABLE t0 (vkey integer, c1 timestamp);\nCREATE TABLE t1 (vkey integer, pkey integer);\nCREATE TABLE t2 (c11 timestamp, c14 timestamp);\nCREATE VIEW t3 AS\nSELECT ref_0.vkey AS c_0\nFROM (t0 ref_0\nLEFT JOIN t2 ref_1 ON ((ref_0.c1 = ref_1.c11)))\nWHERE ((false < ( SELECT (ref_0.c1 <> ref_1.c14) AS c_0\nFROM t2 ref_6\nORDER BY ref_0.c1, ref_1.c14\nLIMIT 1)));\nCREATE VIEW t6 AS SELECT 1 AS c_0, 2 AS c_1, 3 AS c_2;\nINSERT INTO t1 VALUES (80, 90000);\nALTER TABLE ONLY t1 ADD CONSTRAINT t1_pkey PRIMARY KEY (pkey);\n------------------------\nThe fuzzer generates Test case:\n--- Test case ---\nselect\nref_38.c_0 as c_10\nfrom\n((t3 as ref_38\nfull outer join t6 as ref_39\non (ref_38.c_0 = ref_39.c_1))\nright outer join t1 as ref_40\non (ref_38.c_0 = ref_40.vkey));\n------------------------\n--- Expected behavior ---\nThe test case should not trigger any error.\n--- Actual behavior ---\nThe test case trigger an error:\nERROR:  wrong varnullingrels (b) (expected (b 5)) for Var 6/2\n--- Postgres version ---\nGithub commit: 3f1aaaa180689f2015e7f7bd01c9be6d7a993b42\nVersion: PostgreSQL 16beta1 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu\n9.4.0-1ubuntu1~20.04.1) 9.4.0, 64-bit\n--- Platform information ---\nPlatform: Ubuntu 20.04\nKernel: Linux 5.4.0-147-generic",
+  "date": "2023-06-15 08:20:39",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE t4 (id INTEGER PRIMARY KEY, name VARCHAR(50), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t4 (name) VALUES ('Test Entry');",
+    "CREATE TABLE t5 (ref_id INTEGER, value DECIMAL CHECK (value >= 0), FOREIGN KEY (ref_id) REFERENCES t4(id));",
+    "INSERT INTO t5 (ref_id, value) VALUES (1, 100.50);",
+    "SELECT t4.name, t5.value FROM t4 LEFT JOIN t5 ON t4.id = t5.ref_id WHERE t5.value IS NULL;"
+  ],
+  "key_bug_features": [
+    "Unexpected error triggered by JOIN with varnullingrels"
+  ]
+}

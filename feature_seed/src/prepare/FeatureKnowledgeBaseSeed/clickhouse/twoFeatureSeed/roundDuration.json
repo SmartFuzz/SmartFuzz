@@ -1,0 +1,16 @@
+{
+    "function": "roundDuration",
+    "operator": "s1 || s2",
+    "sql_array": [
+        "CREATE TABLE test_round_duration (id UInt32, duration Float64, label String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_round_duration VALUES (1, 0.5, 'small'), (2, 10.5, 'ten point five'), (3, 30.1, 'thirty point one'), (4, 60.9, 'sixty point nine'), (5, 240.0, 'two hundred forty'), (6, 3600.0, 'one hour'), (7, NULL, 'null duration');",
+        "SELECT id, duration, roundDuration(duration) AS rounded_duration FROM test_round_duration WHERE roundDuration(IFNULL(duration, 0)) IN (0, 1, 10, 30, 60, 120, 180, 240, 300) ORDER BY id;",
+        "SELECT id, label, roundDuration(COALESCE(duration, 0)) || ' seconds' AS label_duration FROM test_round_duration WHERE duration < 60 GROUP BY id, label, duration;",
+        "SELECT id, roundDuration(duration) AS rounded FROM test_round_duration GROUP BY id, rounded HAVING rounded <= 300;",
+        "CREATE TABLE test_concat (part UInt32, description String) ENGINE = MergeTree() ORDER BY part;",
+        "INSERT INTO test_concat VALUES (1, 'The duration is '), (2, 'The value is: '), (3, 'Interval for: ');",
+        "SELECT c.part, c.description || roundDuration(d.duration) AS full_description FROM test_concat c JOIN test_round_duration d ON c.part = d.id WHERE d.duration IS NOT NULL;",
+        "SELECT id, duration, roundDuration(COALESCE(NULLIF(duration, 240.0), 0)) AS blurred_duration FROM test_round_duration WHERE blurred_duration > 1 ORDER BY blurred_duration DESC;",
+        "SELECT id, roundDuration(AVG(duration)) AS average_rounded FROM test_round_duration GROUP BY id HAVING average_rounded IN (1, 10, 30, 60) ORDER BY average_rounded;"
+    ]
+}

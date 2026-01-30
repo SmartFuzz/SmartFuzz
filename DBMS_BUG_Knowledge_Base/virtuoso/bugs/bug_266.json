@@ -1,0 +1,23 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/266",
+  "title": "Different SPARUL results via HTTP interface and Conductor",
+  "vulnerable_database": "Virtuoso",
+  "date": "2014-12-01 13:57:16",
+  "vulnerable_version": "",
+  "description": "Hi,\nwe're running a quite complex SPARQL Insert/Delete query to harmonize our data with respect to owl:sameAs relations between resource identifiers. Basically we want to reorganize all triples so that they're attached to one unique URI instead of multiple semantically equivalent ones.\nWe noticed that results are incorrect when executing the query via the HTTP interface, i.e., curl. However, when performing the same query in the Conductor interface everything looks ok.\nWe're running:\nVirtuoso Open Source Edition (Column Store) (multi threaded)\nVersion 7.1.1-dev.3211-pthreads as of Jul 21 2014\nCompiled for Linux (x86_64-unknown-linux-gnu)\nCopyright (C) 1998-2014 OpenLink Software\nThe query looks as follows:\nPREFIX cdm: http://publications.europa.eu/ontology/cdm#\nWITH http://cdm/data2\nDELETE {\n?z rdf:first ?head ;\nrdf:rest ?tail ;\n?x ?y.\n?w ?q ?id.\n?id ?p ?value;\n?p ?o.\n?b owl:annotatedSource ?id;\nowl:annotatedProperty ?p;\nowl:annotatedTarget ?at1;\nowl:annotatedTarget ?at2;\n?ann ?annotation.\n}\nINSERT\n{\n?z rdf:first ?head ;\nrdf:rest ?tail ;\n?x ?y.\n?w ?q ?cellar_subject.\n?cellar_subject ?p ?value;\n?p ?cellar_object.\n?b owl:annotatedSource ?cellar_subject;\nowl:annotatedProperty ?p;\nowl:annotatedTarget ?ct;\nowl:annotatedTarget ?at2;\n?ann ?annotation.\n}\nWHERE\n{\nhttp://publications.europa.eu/resource/cellar/6fe92ab0-c94c-48d5-9193-212f1e3a92dc owl:sameAs ?id.\n?id ^owl:sameAs ?cellar_subject.\n{ ?id ?p ?o. ?o ^owl:sameAs ?cellar_object. filter ( ?p!=owl:sameAs). } UNION\n{ ?id ?p ?value. filter isLiteral(?value) } UNION\n{ ?id ?p ?value. FILTER not exists {?value ^owl:sameAs ?cellar_id} }\nOPTIONAL {\n?w ?q ?id.\nfilter (?q!=owl:sameAs).\nfilter (!isBlank(?w))\n}\nOPTIONAL{\n?b owl:annotatedSource ?id;\nowl:annotatedProperty ?p;\n?ann ?annotation.\n{?b owl:annotatedTarget ?at1. ?at1 ^owl:sameAs ?ct1. } UNION\n{?b owl:annotatedTarget ?at2. filter (isLiteral(?at2) || not exists {?at2 ^owl:sameAs ?ct2.})}\nfilter not exists{ ?annotation ^owl:sameAs ?anyID}\n}\nOPTIONAL\n{\n?value (rdf:rest|rdf:first)* ?z.\n?z rdf:first ?head ;\nrdf:rest ?tail .\n?z ?x ?y. }\n}\nSample data can be obtained from: http://pastebin.com/DY6DYmXC\nIn order to reconstruct the issue perform the following steps:\n\nLoad sample data into named graph http://cdm/data2\nExecute Insert/Delete query via curl POST\nCheck results with following query: PREFIX cdm: http://publications.europa.eu/ontology/cdm# select * from http://cdm/data2 where {http://publications.europa.eu/resource/celex/11997E249 (owl:sameAs|^owl:sameAs)* ?id. ?id ?p ?o.}\nClean named graph http://cdm/data2\nReload sample data into named graph http://cdm/data2\nRun Insert/Delete query in Conductor interface\nCheck results with following query: PREFIX cdm: http://publications.europa.eu/ontology/cdm# select * from http://cdm/data2 where {http://publications.europa.eu/resource/celex/11997E249 (owl:sameAs|^owl:sameAs)* ?id. ?id ?p ?o.}\n\nAre you aware of any similar issues that might explain why those results differ?\nSebastian",
+  "poc": [
+    "insert { graph ?g2 { ?s a ?type }}\nwhere {\ngraph ?g {ex:something a ?type ;\n?s ex:sameAs ex:Something .}\nBIND(URI(CONCAT(?g, '/deduced')) AS ?g2)\n}",
+    "SELECT ?something\nFROM http://graph\nWHERE {\n?s http://predicate ?o .\n?o http://predicate2 ?something\n}\nlimit 10",
+    "SELECT ?something\n\nWHERE { GRAPH ?g {\n?s http://predicate ?o .\n?o http://predicate2 ?something }\n}\nlimit 10"
+  ],
+  "key_bug_features": [
+    "Different results from HTTP interface and Conductor execution"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE test_data (id INT PRIMARY KEY, name VARCHAR(255), value FLOAT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_data (id, name, value) VALUES (1, 'Test Item', 10.5);",
+    "UPDATE test_data SET value = NULL WHERE id = 1;",
+    "SELECT * FROM test_data WHERE value IS NULL;",
+    "DELETE FROM test_data WHERE id = 1;"
+  ]
+}

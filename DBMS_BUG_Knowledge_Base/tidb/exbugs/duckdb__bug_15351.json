@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/15351",
+  "title": "PostgreSQL incompatibility: Should regexp functions return NULLs when there are no matches?",
+  "description": "### What happens?\r\n\r\nThe `regexp_extract\\w+` functions all return empty strings when the specified pattern is not contained in the specified string.\r\n\r\nI believe it'd be more user friendly if they threw or returned `NULL`, the latter of which the PostgreSQL's `regexp_substr` function and `substring` operator do.\r\n\r\nIf the current behavior is intended, I'll add it to the docs and the PostgreSQL incompatibility page (despite the slight naming difference between PG and DuckDB).\r\n\r\n\r\n### To Reproduce\r\n\r\nThe following snippet returns two empty strings in DuckDB:\r\n\r\n```sql\r\n.nullvalue NULL\r\nSELECT\r\n    regexp_extract('a', '\\d+'),\r\n    regexp_extract('a', '\\d*');\r\n```\r\n```console\r\n┌────────────────────────────┬────────────────────────────┐\r\n│ regexp_extract('a', '\\d+') │ regexp_extract('a', '\\d*') │\r\n│          varchar           │          varchar           │\r\n├────────────────────────────┼────────────────────────────┤\r\n│                            │                            │\r\n└────────────────────────────┴────────────────────────────┘\r\n```\r\n\r\nwhereas the following snippet returns a `NULL` and an empty string in PostgreSQL:\r\n\r\n```sql\r\n\\pset null null\r\nSELECT\r\n    regexp_substr('a', '\\d+'),\r\n    regexp_substr('a', '\\d*');\r\n```\r\n\r\n```console\r\n regexp_substr | regexp_substr\r\n---------------+---------------\r\n null          |\r\n(1 row)\r\n```\r\n\r\n### OS:\r\n\r\nLinux\r\n\r\n### DuckDB Version:\r\n\r\n1.1.3\r\n\r\n### DuckDB Client:\r\n\r\nPython\r\n\r\n### Hardware:\r\n\r\n_No response_\r\n\r\n### Full Name:\r\n\r\nSoeren Wolfers\r\n\r\n### Affiliation:\r\n\r\nG-Research\r\n\r\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\r\n\r\nI have tested with a stable release\r\n\r\n### Did you include all relevant data sets for reproducing the issue?\r\n\r\nNot applicable - the reproduction does not require a data set\r\n\r\n### Did you include all code required to reproduce the issue?\r\n\r\n- [X] Yes, I have\r\n\r\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\r\n\r\n- [X] Yes, I have",
+  "date": "2024-12-15 20:07:07",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT PRIMARY KEY, text_column VARCHAR(255), number_column INT);",
+    "INSERT INTO test_table (id, text_column, number_column) VALUES (1, 'abc', 123), (2, 'def', NULL), (3, NULL, 456);",
+    "SELECT id, IFNULL(REGEXP_SUBSTR(text_column, '\\\\d+'), NULL) AS extracted_number FROM test_table WHERE number_column IS NOT NULL;",
+    "SELECT id, IFNULL(REGEXP_SUBSTR(text_column, '\\\\d*'), NULL) AS extracted_number FROM test_table WHERE text_column IS NOT NULL;",
+    "SELECT id, IFNULL(REGEXP_SUBSTR(text_column, '\\\\D+'), NULL) AS extracted_non_digits FROM test_table WHERE text_column IS NULL;"
+  ],
+  "key_bug_features": [
+    "regexp_extract returns empty strings instead of NULLs"
+  ]
+}

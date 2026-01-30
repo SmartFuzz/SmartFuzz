@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/18778-24cd399df6c806af%40postgresql.org",
+  "title": "BUG #18778: Query planning fails in ExecInitExprRec with unrecognized node type",
+  "description": "The following bug has been logged on the website:\nBug reference:      18778\nLogged by:          Alexander Lakhin\nEmail address:      exclusion(at)gmail(dot)com\nPostgreSQL version: 17.2\nOperating system:   Ubuntu 24.04\nDescription:\nThe following script:\nCREATE TABLE t (id int, PRIMARY KEY (id)) PARTITION BY RANGE (id);\nCREATE TABLE t0 PARTITION OF t FOR VALUES FROM (0) TO (1);\nCREATE TABLE t1 PARTITION OF t FOR VALUES FROM (1) TO (2);\nSELECT 1 FROM (SELECT EXISTS (SELECT 1 FROM t0 WHERE id = t00.id) AS b FROM\nt0 t00) r, t\nWHERE t.id > CASE WHEN jsonb_build_object(b) IS NULL THEN 1 ELSE 1 END;\nfails with:\nERROR:  XX000: unrecognized node type: 24\nLOCATION:  ExecInitExprRec, execExpr.c:2657\nThe first bad commit for this anomaly (discovered with SQLsmith) is\n41efb8340.",
+  "date": "2025-01-16 20:00:01",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE t (id int, name varchar, created_at timestamp DEFAULT CURRENT_TIMESTAMP);",
+    "CREATE TABLE t0 (id int, name varchar, created_at timestamp DEFAULT CURRENT_TIMESTAMP);",
+    "CREATE TABLE t1 (id int, name varchar, created_at timestamp DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t0 (id, name) VALUES (0, 'test0'), (1, 'test1');",
+    "SELECT 1 FROM (SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END AS b FROM t0 WHERE id = 0) r, t WHERE t.id > 1;"
+  ],
+  "key_bug_features": [
+    "Query planning fails with unrecognized node type in ExecInitExprRec"
+  ]
+}

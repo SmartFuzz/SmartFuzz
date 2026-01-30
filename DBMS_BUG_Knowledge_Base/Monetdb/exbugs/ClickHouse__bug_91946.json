@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/91946",
+  "title": "NOT_FOUND_COLUMN_IN_BLOCK when performing grouped select queries on tables that have row policies applied",
+  "description": "### Company or project name\n[PayNow](https://paynow.gg)\n### Describe what's wrong\nThe following error message is returned when attempting to perform a grouped select query on a table with a row policy applied.\nReceived exception from server (version 25.11.2):\nCode: 10. DB::Exception: Received from localhost:9000. DB::Exception: Not found column deleted in block. There are only columns: age. (NOT_FOUND_COLUMN_IN_BLOCK)\nhttps://fiddle.clickhouse.com/45fcc30f-6f46-424e-bb10-c740ee3d043d\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nVersion 25.11.2.24\nCreate a replacing merge tree with the version and deleted parameters configured, insert sample data, apply a row policy that only permits the visibility of rows that are not deleted and then simply perform a grouped select query.\nhttps://fiddle.clickhouse.com/45fcc30f-6f46-424e-bb10-c740ee3d043d\n```\nCREATE TABLE users (\nuid Int16,\nname String,\nage Int16,\ndeleted UInt8,\nversion UInt64,\n) ENGINE=ReplacingMergeTree(version, deleted)\nPRIMARY KEY uid\nORDER BY uid;\nINSERT INTO users VALUES (1231, 'John', 33, 0, 1);\nINSERT INTO users VALUES (6666, 'Ksenia', 48, 0, 1);\nINSERT INTO users VALUES (8888, 'Alice', 20, 0, 1);\nINSERT INTO users VALUES (1010, 'Jack', 50, 0, 1);\nINSERT INTO users VALUES (8288, 'Peter', 37, 0, 1);\nINSERT INTO users VALUES (8818, 'Sarah', 39, 0, 1);\nCREATE ROW POLICY only_male ON users USING deleted = 0 TO ALL;\n-- Broken\nSELECT age\nFROM users FINAL\nWHERE age > 30 AND age < 40\nGROUP BY age;\n-- Working\n-- SELECT age\n-- FROM users\n-- WHERE age > 30 AND age < 40\n-- GROUP BY age;\n```\n### Expected behavior\nReturn the data, not an error.\n### Error message and/or stacktrace\nReceived exception from server (version 25.11.2):\nCode: 10. DB::Exception: Received from localhost:9000. DB::Exception: Not found column deleted in block. There are only columns: age. (NOT_FOUND_COLUMN_IN_BLOCK)\n### Additional context\n_No response_",
+  "date": "2025-12-11T10:12:58Z",
+  "vulnerable_version": "25.11.2.24",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE users_extended (uid INT, name VARCHAR(255), age SMALLINT, deleted TINYINT, version BIGINT, salary DOUBLE PRECISION) PRIMARY KEY (uid);",
+    "INSERT INTO users_extended VALUES (1, 'John', 33, 0, 1, 50000.0);",
+    "INSERT INTO users_extended VALUES (2, 'Ksenia', 48, 0, 1, 60000.0);",
+    "CREATE ROW POLICY only_females ON users_extended USING (deleted = 0 AND name NOT LIKE 'J%');",
+    "SELECT AVG(salary) FROM users_extended WHERE age > 30 GROUP BY age;"
+  ],
+  "key_bug_features": [
+    "Grouped select query on table with row policy applied"
+  ]
+}

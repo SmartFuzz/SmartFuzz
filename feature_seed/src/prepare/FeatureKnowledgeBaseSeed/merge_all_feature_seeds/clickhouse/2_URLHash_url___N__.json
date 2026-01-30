@@ -1,0 +1,12 @@
+CREATE TABLE urls (id UInt32, url String, created_at DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO urls VALUES (1, 'http://example.com/path/to/resource?query=1&other=2#section'), (2, 'https://example.com/path/to/resource?query=3'), (3, 'ftp://example.org/resource/');
+SELECT URLHash(url, 2) AS url_hash FROM urls WHERE id IN (SELECT id FROM urls WHERE created_at > now() - INTERVAL 1 DAY) GROUP BY url_hash HAVING COUNT(*) > 1;
+SELECT * FROM (SELECT id, URLHash(url) AS hash_value FROM urls) WHERE hash_value IN (SELECT hash_value FROM (SELECT URLHash(url) AS hash_value FROM urls WHERE url LIKE 'https://%') GROUP BY hash_value) ORDER BY id;
+SELECT id, URLHash(url, 1) AS hash_1, URLHash(url, 2) AS hash_2 FROM urls WHERE hash_1 IN (SELECT hash_1 FROM (SELECT URLHash(url, 1) AS hash_1 FROM urls WHERE url IS NOT NULL) GROUP BY hash_1 HAVING count(*) < 3) AND hash_2 IS NULL;
+CREATE TABLE temp_urls (temp_url String) ENGINE = Memory;
+INSERT INTO temp_urls SELECT url FROM urls WHERE URLHash(url) = 0;
+SELECT DISTINCT u.id FROM urls AS u JOIN temp_urls AS t ON t.temp_url = u.url WHERE u.url IN (SELECT url FROM urls WHERE url NOT LIKE '%http%') ORDER BY u.id DESC;
+CREATE TABLE complex_urls (id UInt32, url String, status UInt8 DEFAULT 0) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO complex_urls (id, url) VALUES (1, 'http://test.com'), (2, 'http://sample.com/testing'), (3, 'http://example.com/path/?query=param#hash');
+SELECT URLHash(url) AS hash_value, COUNT(*) FROM complex_urls WHERE status IN (0, 1) GROUP BY hash_value HAVING COUNT(*) > 1;
+SELECT IF(URLHash(url) = 0, 'Empty hash', 'Valid hash') AS hash_check, COUNT(*) FROM complex_urls GROUP BY hash_check HAVING COUNT(*) > 0;

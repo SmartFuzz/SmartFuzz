@@ -1,0 +1,17 @@
+{
+    "function": "smime_encrypt",
+    "operator": "SPARQL: sameTerm",
+    "sql_array": [
+        "CREATE TABLE emails (id INT PRIMARY KEY, content TEXT, timestamp TIMESTAMP);",
+        "INSERT INTO emails (id, content, timestamp) VALUES (1, file_to_string('test.eml'), NOW());",
+        "CREATE TABLE certificates (id INT PRIMARY KEY, cert_data TEXT);",
+        "INSERT INTO certificates (id, cert_data) VALUES (1, file_to_string('testcerts.pem'));",
+        "SELECT smime_encrypt(content, pem_certificates_to_array((SELECT cert_data FROM certificates WHERE id = 1)), 'aes256') AS encrypted_email FROM emails WHERE id = 1;",
+        "SELECT smime_encrypt(content, pem_certificates_to_array(file_to_string('nonexistent.pem')), 'aes256') AS encrypted_email FROM emails WHERE id = (SELECT MAX(id) FROM emails);",
+        "SELECT smime_encrypt(NULL, pem_certificates_to_array((SELECT cert_data FROM certificates WHERE id = 1)), 'aes256') AS encrypted_email_with_null FROM emails WHERE id = 1;",
+        "SELECT sameTerm(SELECT content FROM emails WHERE id = 1, 'test') AS isSameTerm;",
+        "SELECT smime_encrypt(content, pem_certificates_to_array(ARRAY(SELECT cert_data FROM certificates WHERE id IS NOT NULL)), 'aes256') AS encrypted_emails FROM emails;",
+        "SELECT smime_encrypt(content, pem_certificates_to_array(NULLIF((SELECT cert_data FROM certificates WHERE id = 1), '')), 'aes256') AS encrypted_email_null_if FROM emails WHERE id = 1;",
+        "SELECT sameTerm(smime_encrypt(content, pem_certificates_to_array((SELECT cert_data FROM certificates)), 'aes256'), smime_encrypt(NULL, '', 'aes256')) AS isSameTermWithNull;"
+    ]
+}

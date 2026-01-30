@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/18442-aca4c9134416990e%40postgresql.org",
+  "title": "BUG #18442: Unnecessary Sort operator in indexScan Plan",
+  "description": "The following bug has been logged on the website:\nBug reference:      18442\nLogged by:          yajun Hu\nEmail address:      hu_yajun(at)qq(dot)com\nPostgreSQL version: 14.11\nOperating system:   CentOS7 with kernel version 5.10\nDescription:\nI have reproduced this problem in REL_14_11 and the latest master branch\n(84db9a0eb10dd1dbee6db509c0e427fa237177dc).\nThe steps to reproduce are as follows.\n1. ./configure  --enable-debug --enable-depend --enable-cassert CFLAGS=-O0\n2. make -j; make install -j; initdb -D ./primary; pg_ctl -D ../primary -l\nlogfile start\n3. run SQL:\n```\ncreate table t( a int, b int);\ninsert into t select null,i from generate_series(1,100)i;\ninsert into t select i,i from generate_series(1,100000)i;\nanalyze t;\ncreate index on t(a,b);\npostgres=# explain select * from t where a is null order by b; -- need\nsort\nQUERY PLAN\n--------------------------------------------------------------------------------\nSort  (cost=9.54..9.80 rows=103 width=8)\nSort Key: b\n->  Index Only Scan using t_a_b_idx on t  (cost=0.29..6.10 rows=103\nwidth=8)\nIndex Cond: (a IS NULL)\n(4 rows)\npostgres=# explain select * from t where a is null order by a, b; -- no need\nsort\nQUERY PLAN\n--------------------------------------------------------------------------\nIndex Only Scan using t_a_b_idx on t  (cost=0.29..6.10 rows=103 width=8)\nIndex Cond: (a IS NULL)\n(2 rows)\npostgres=# explain select * from t where a = 1 order by b; -- no need sort\nQUERY PLAN\n------------------------------------------------------------------------\nIndex Only Scan using t_a_b_idx on t  (cost=0.29..4.31 rows=1 width=8)\nIndex Cond: (a = 1)\n(2 rows)\n```\nIn my understanding, in the first SELECT, because a is always NULL, the\nscanned\ndata access by IndexOnlyScan is sorted according to b, which means that the\nupper\nSort operator is unnecessary overhead.The second and third SELECT are both\nas\nexpected.\nI tried to analyze the code and found that the EquivalenceClass of column a\nand NULL\nwas missing, which caused build_index_pathkeys to return NIL. No pathkeys\nmakes the\noptimizer decide that the upper layer needed Sort to ensure that the data\nwas in order.\nI roughly know that it may be because NullTest in the check_mergejoinable\nfunction is\nnot OpExpr. Is it possible here to generate special EquivalenceClass for\ncolumn a and\nNULL to solve this problem?\nI’m looking forward to someone answering my confusion, thank you very much！",
+  "date": "2024-04-19 03:10:24",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (a INT, b INT, c VARCHAR(255) DEFAULT 'default');",
+    "INSERT INTO t1 SELECT NULL, i, 'value' FROM dual CONNECT BY LEVEL <= 100;",
+    "CREATE INDEX idx_t1_a_b ON t1 (a, b);",
+    "EXPLAIN SELECT * FROM t1 WHERE a IS NULL ORDER BY b;",
+    "EXPLAIN SELECT * FROM t1 WHERE a = 1 OR a IS NULL ORDER BY c;"
+  ],
+  "key_bug_features": [
+    "Unnecessary Sort operator in Index Only Scan"
+  ]
+}

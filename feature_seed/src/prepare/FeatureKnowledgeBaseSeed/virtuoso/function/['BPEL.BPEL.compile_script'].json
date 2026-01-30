@@ -1,0 +1,14 @@
+[
+    "CREATE TABLE bpel_scripts (id int PRIMARY KEY, script_path varchar(255), name varchar(100));",
+    "INSERT INTO bpel_scripts (id, script_path, name) VALUES (1, 'file:/echo/bpel.xml', 'Echo');",
+    "CREATE TABLE wsdl_definitions (id int PRIMARY KEY, script_id int, wsdl_path varchar(255), FOREIGN KEY (script_id) REFERENCES bpel_scripts(id));",
+    "INSERT INTO wsdl_definitions (id, script_id, wsdl_path) VALUES (1, 1, 'file:/echo/wsdl.xml');",
+    "CREATE PROCEDURE echo_deploy () { DECLARE scp int; BPEL.BPEL.import_script ('file:/echo/bpel.xml', 'Echo', scp); BPEL.BPEL.compile_script (scp, '/Echo'); };",
+    "CREATE PROCEDURE multi_deploy () { DECLARE scp1 int; DECLARE scp2 int; BPEL.BPEL.import_script ('file:/process/first.bpel', 'FirstProcess', scp1); BPEL.BPEL.import_script ('file:/process/second.bpel', 'SecondProcess', scp2); BPEL.BPEL.compile_script (scp1, '/FirstProcess'); BPEL.BPEL.compile_script (scp2, '/SecondProcess'); };",
+    "CREATE PROCEDURE conditional_compile () { DECLARE scp int; BPEL.BPEL.import_script ('file:/conditional/process.bpel', 'ConditionalProcess', scp); IF (scp IS NOT NULL) THEN BPEL.BPEL.compile_script (scp, '/ConditionalProcess'); END IF; };",
+    "CREATE PROCEDURE nested_compile () { DECLARE scp int; DECLARE ws_id int; BPEL.BPEL.import_script ('file:/nested/script.bpel', 'NestedScript', scp); SET ws_id = (SELECT id FROM wsdl_definitions WHERE script_id = (SELECT id FROM bpel_scripts WHERE name = 'NestedScript')); BPEL.BPEL.compile_script (scp, CONCAT('/NestedScript/', ws_id)); };",
+    "DELETE FROM wsdl_definitions WHERE id = 1;",
+    "CREATE VIEW active_bpel_scripts AS SELECT b.id, b.name FROM bpel_scripts b JOIN wsdl_definitions w ON b.id = w.script_id WHERE w.wsdl_path IS NOT NULL;",
+    "INSERT INTO bpel_scripts (id, script_path, name) VALUES (2, 'file:/another/script.bpel', 'AnotherScript');",
+    "CREATE PROCEDURE compile_all () { DECLARE scp int; FOR rec IN SELECT * FROM bpel_scripts LOOP BPEL.BPEL.import_script (rec.script_path, rec.name, scp); BPEL.BPEL.compile_script (scp, CONCAT('/', rec.name)); END LOOP; };"
+]

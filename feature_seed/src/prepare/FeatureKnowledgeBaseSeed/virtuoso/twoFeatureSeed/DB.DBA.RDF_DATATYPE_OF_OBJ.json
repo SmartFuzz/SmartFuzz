@@ -1,0 +1,17 @@
+{
+    "function": "DB.DBA.RDF_DATATYPE_OF_OBJ",
+    "operator": "SPARQL Operator: isLiteral",
+    "sql_array": [
+        "CREATE TABLE test_datatype (id INT, value VARCHAR(255) NOT NULL);",
+        "INSERT INTO test_datatype VALUES (1, 'string 1'^^xsd:string), (2, NULL), (3, '123'^^xsd:integer), (4, 'string 2');",
+        "SELECT id, value, DB.DBA.RDF_DATATYPE_OF_OBJ(value, 'untyped!') AS datatype FROM test_datatype WHERE value IS NOT NULL;",
+        "SELECT id, value, DB.DBA.RDF_DATATYPE_OF_OBJ(CASE WHEN value IS NULL THEN 'default' ELSE value END, 'untyped!') AS datatype FROM test_datatype GROUP BY value HAVING MAX(length(value)) > 0;",
+        "SELECT t1.id, t1.value, DB.DBA.RDF_DATATYPE_OF_OBJ(t1.value, 'untyped!') AS datatype, t2.value AS correlated_value FROM test_datatype t1 JOIN test_datatype t2 ON t1.id = t2.id + 1 WHERE isLiteral(t1.value);",
+        "SELECT id, AVG(COALESCE(DB.DBA.RDF_DATATYPE_OF_OBJ(value, 'untyped!'), 'literal')) AS avg_datatype FROM test_datatype GROUP BY id HAVING COUNT(*) > 1 ORDER BY avg_datatype;",
+        "SELECT * FROM (SELECT id, value, DB.DBA.RDF_DATATYPE_OF_OBJ(value, '') AS datatype FROM test_datatype) AS subquery WHERE datatype = 'untyped!' AND isLiteral(value);",
+        "CREATE TABLE test_datatype_edge (id INT PRIMARY KEY, description VARCHAR(255) DEFAULT 'empty', num_value DECIMAL(10, 5));",
+        "INSERT INTO test_datatype_edge VALUES (1, 'string 1', 0.12345), (2, NULL, NULL), (3, 'valid number', 123.45678);",
+        "SELECT id, description, DB.DBA.RDF_DATATYPE_OF_OBJ(description, 'untyped!') AS datatype FROM test_datatype_edge WHERE isLiteral(description) OR isLiteral(num_value::VARCHAR);",
+        "SELECT id, COUNT(*) OVER (PARTITION BY DB.DBA.RDF_DATATYPE_OF_OBJ(description, 'untyped!')) AS datatype_count FROM test_datatype_edge;"
+    ]
+}

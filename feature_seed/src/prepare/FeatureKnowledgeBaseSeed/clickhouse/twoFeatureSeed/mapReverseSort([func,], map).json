@@ -1,0 +1,15 @@
+{
+    "function": "mapReverseSort([func,], map)",
+    "operator": "EXISTS",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, value String, map_col Map(String, UInt32)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table VALUES (1, 'a', map('key1', 10, 'key2', 20)), (2, 'b', map('key3', 5, 'key1', 15)), (3, 'c', map('key4', 40, NULL));",
+        "SELECT EXISTS(SELECT * FROM test_table WHERE value = 'a' AND EXISTS(SELECT id FROM test_table WHERE mapReverseSort(map('key1', map_col['key1'], 'key2', map_col['key2']))[1] > 15));",
+        "SELECT mapReverseSort((k, v) -> k, map('key2', (SELECT COUNT(*) FROM test_table WHERE value LIKE 'a%'), 'key3', (SELECT COUNT(*) FROM test_table WHERE value IS NOT NULL))) AS sorted_map;",
+        "SELECT id, EXISTS(SELECT * FROM (SELECT value FROM test_table WHERE value IS NOT NULL) AS temp WHERE temp.value = 'b') AS exists_b FROM test_table;",
+        "SELECT mapReverseSort((k, v) -> v, map('key1', value, 'key2', IF(id = 3, NULL, 30))) AS sorted_map FROM test_table WHERE EXISTS(SELECT number FROM numbers(3) WHERE number > 1);",
+        "SELECT id, mapReverseSort(map('key1', id + 5, 'key2', id % 3), map_col) AS sorted_map FROM test_table WHERE EXISTS(SELECT * FROM test_table WHERE id < 3);",
+        "SELECT value, mapReverseSort((k, v) -> CAST(k AS UInt32), map_col) as sorted_map FROM test_table GROUP BY value HAVING COUNT(*) > 1;",
+        "SELECT id, mapReverseSort((k, v) -> v, map('key1', CAST(value AS UInt32), 'key2', IF(value = '', NULL, value))) AS mapped_data FROM test_table WHERE EXISTS(SELECT * FROM test_table WHERE mapReverseSort(map('key1', value, 'key2', id))[1] IS NOT NULL) ORDER BY id;"
+    ]
+}

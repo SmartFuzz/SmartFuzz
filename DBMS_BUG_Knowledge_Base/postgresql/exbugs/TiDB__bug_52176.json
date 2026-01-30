@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/52176",
+  "title": "Truncated integer error when regexp is pushed down to TiKV",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\ncreate table t(a varchar(10));\r\ncreate table t1(a varchar(64));\r\ninsert into t1 values('316-354');\r\nwith test as (select case when a regexp '^[0-9]+\\\\.*[0-9]+$' then case when a<400 then '1' end end flg from t1) select max(flg) from test;\r\nreplace into t(a) with test as (select case when a regexp '^[0-9]+\\\\.*[0-9]+$' then case when a<400 then '1' end end flg from t1) select max(flg) from test;\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nWarning but not error is reported.\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n```\r\nmysql> with test as (select case when a regexp '^[0-9]+\\\\.*[0-9]+$' then case when a<400 then '1' end end flg from t1) select max(flg) from test;\r\n+----------+\r\n| max(flg) |\r\n+----------+\r\n| NULL     |\r\n+----------+\r\n1 row in set, 1 warning (0.01 sec)\r\n\r\nmysql> show warnings;\r\n+---------+------+-----------------------------------------------------------------+\r\n| Level   | Code | Message                                                         |\r\n+---------+------+-----------------------------------------------------------------+\r\n| Warning | 1292 | evaluation failed: Truncated incorrect INTEGER value: '316-354' |\r\n+---------+------+-----------------------------------------------------------------+\r\n1 row in set (0.00 sec)\r\n\r\nmysql> replace into t(a) with test as (select case when a regexp '^[0-9]+\\\\.*[0-9]+$' then case when a<400 then '1' end end flg from t1) select max(flg) from test;\r\nERROR 1292 (22007): Truncated incorrect INTEGER value: '316-354'\r\n\r\nmysql> INSERT INTO mysql.expr_pushdown_blacklist VALUES('regexp','tikv','');\r\nQuery OK, 1 row affected (0.00 sec)\r\n\r\nmysql> ADMIN reload expr_pushdown_blacklist;\r\nQuery OK, 0 rows affected (0.01 sec)\r\n\r\nmysql> replace into t(a) with test as (select case when a regexp '^[0-9]+\\\\.*[0-9]+$' then case when a<400 then '1' end end flg from t1) select max(flg) from test;\r\nQuery OK, 1 row affected (0.00 sec)\r\nRecords: 1  Duplicates: 0  Warnings: 0\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\nv7.5.0\r\n\r\n",
+  "date": "2024-03-28T03:56:15Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2(a VARCHAR(20) NOT NULL, b INT DEFAULT 0);",
+    "INSERT INTO t2 VALUES('123-456', 1);",
+    "CREATE TABLE t3(a VARCHAR(30), b FLOAT);",
+    "INSERT INTO t3 VALUES('789.01', NULL);",
+    "WITH test AS (SELECT CASE WHEN a ~ '^[0-9]+\\.*[0-9]+$' THEN CASE WHEN CAST(a AS INTEGER) < 800 THEN 'valid' END END flg FROM t2) SELECT MAX(flg) FROM test;"
+  ],
+  "key_bug_features": [
+    "regexp evaluation causing truncated integer error"
+  ]
+}

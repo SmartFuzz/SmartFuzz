@@ -1,0 +1,9 @@
+CREATE TABLE test_data (response_time Float64, weight Int32, id UInt32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_data VALUES (0.1, 1, 1), (0.5, 0, 2), (0.99, 1, 3), (NULL, 2, 4), (1.5, -1, 5);
+SELECT quantilesTimingWeighted(quantilesTimingWeighted(0.1 + 0.5, 0.5), 0.99)(response_time, weight) FROM test_data WHERE weight > 0;
+SELECT quantilesTimingWeighted(0.0, 0.25 + 0.75, 0.5 + 0.1)(response_time, weight) AS quantiles FROM (SELECT response_time, weight FROM test_data WHERE weight IS NOT NULL) GROUP BY quantiles HAVING quantiles[1] > 0.1;
+SELECT id, quantilesTimingWeighted(0.2 + NULLIF(0, 1), 0.5)(response_time, weight) FROM test_data GROUP BY id ORDER BY quantiles[1] DESC;
+CREATE TABLE temp_data AS (SELECT response_time, weight FROM test_data WHERE response_time IS NOT NULL) ENGINE = Memory;
+SELECT quantilesTimingWeighted(0, 1)(response_time, weight) FROM test_data JOIN temp_data USING (response_time) GROUP BY response_time ORDER BY weight + (response_time * 10) DESC;
+SELECT quantilesTimingWeighted(0, 0.99)(response_time, weight + 1) FROM test_data WHERE response_time > (SELECT MAX(response_time - 0.5) FROM test_data WHERE weight < 0) HAVING quantiles[2] < 1;
+DROP TABLE temp_data;

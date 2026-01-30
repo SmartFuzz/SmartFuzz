@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/f97c463710",
+  "title": "Incorrect ordering with ORDER BY and LIMIT",
+  "description": "drh added on 2015-01-19 15:31:16:\nThe following SQL outputs rows in the incorrect order for SQLite\nversions 3.8.7 and 3.8.8:\nCREATE TABLE t1(x);\nINSERT INTO t1(x) VALUES(1),(5),(3),(4),(2);\nSELECT\n   x, 01, 02, 03, 04, 05, 06, 07, 08, 09,\n  10, 11, 12, 13, 14, 15, 16, 17, 18, 19,\n  20, 21, 22, 23, 24, 25, 26, 27, 28, 29,\n  30, 31, 32, 33, 34, 35, 36, 37, 38, 39,\n  40, 41, 42, 43, 44, 45, 46, 47, 48, 49,\n  50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60\nFROM t1\nORDER BY x\nLIMIT -1;\nIn order to hit this bug, there must be an ORDER BY clause and a LIMIT\nclause and the number of columns in the query plus the number of sort\nkeys needs to sum to exactly 62.  Adding or removing a single column\nfrom the result set yields the correct answer.\nThis bug first appeared in check-in [b1c0f0bc1bd8a] which is when the\nmulti-threaded sorter was introduced.\ndrh added on 2015-01-19 15:40:42:\nCorrection: the total number of columns plus the number of sort terms needs\nto be 62 or greater, not exactly 62.  And, if some of the columns\ncontain large text or blob values that use more than one byte in their type\nheader, then numbers less than 62 will provoke the problem as well.\nSo a better characterization of the problem:\nAn ORDER BY clause that requires a sort (cannot use an index)\nA LIMIT clause\nThere are a large number of columns in the result\ndrh added on 2015-01-20 18:11:18:\nThe problem was introduced by the \nsqlite3VdbeRecordCompare() optimizations on 2014-03-04\ncheckin [3325ad5bdc2f81f63b55] (version 3.8.4).\n  The KeyInfo.nXField value was\nnot always accurate for emphemeral tables and so the\nsqlite3VdbeFindCompare() function might return one of the\nshort-circuit comparison routines when in fact the\ngeneralized comparison routine was required.  The problem\nbecame more acute with the introduction of multi-threaded \nsorting on on 2014-09-01 checkin [b1c0f0bc1bd8a347]\n(version 3.8.7) because\nthe new sorter creates tables with lots of extra fields\nafter the key.\nThe problem is fixed for version 3.8.8.1 by ensuring that\nthe KeyInfo.nXField is set correctly.  Two new assert()\nstatements are added to verify correct KeyInfo.nXField\nvalues moving forward.",
+  "date": "2015-01-19 15:31:1610.56 years ago",
+  "vulnerable_version": "3.8.8",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t2(a Int32, b String, c Float64, d String, e Int32 DEFAULT 0);",
+    "INSERT INTO t2(a, b, c, d) VALUES(1, 'text1', 1.1, unhex('001122')), (2, 'text2', 2.2, unhex('223344')), (3, 'text3', 3.3, unhex('445566'));",
+    "CREATE TABLE t3(f Int32, g String) ENGINE = MergeTree() ORDER BY f;",
+    "INSERT INTO t3(f, g) SELECT number, b FROM t2 ARRAY JOIN range(1) AS number WHERE a > 1;",
+    "SELECT a, b, c, d, e, 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60 FROM t2 ORDER BY a LIMIT 1000;"
+  ],
+  "key_bug_features": [
+    "ORDER BY with LIMIT and many columns in result set"
+  ]
+}

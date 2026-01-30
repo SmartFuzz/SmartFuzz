@@ -1,0 +1,11 @@
+CREATE TABLE test_strings (id INTEGER, value TEXT NOT NULL);
+INSERT INTO test_strings (id, value) VALUES (1, 'apple'), (2, 'banana'), (3, 'apricot'), (4, NULL), (5, 'cherry');
+CREATE TABLE test_numbers (num_id INTEGER, num_list LIST(INTEGER));
+INSERT INTO test_numbers (num_id, num_list) VALUES (1, [1, 2, 3]), (2, [1, 2, 5]), (3, NULL);
+SELECT id, value FROM test_strings WHERE starts_with(value, 'a') OR (SELECT COUNT(*) FROM test_numbers WHERE num_list <-> [1, 2, 3] > 0);
+SELECT value, COUNT(*) FROM test_strings GROUP BY value HAVING starts_with(value, 'a') AND (SELECT num_list <-> [1, 3] FROM test_numbers WHERE num_id = id) IS NOT NULL;
+SELECT id, value, (SELECT COUNT(*) FROM test_numbers WHERE num_list <-> [1, 2, 3] AND starts_with(value, 'a')) AS related_count FROM test_strings WHERE value IS NOT NULL ORDER BY related_count;
+CREATE TABLE test_dates (date_id INTEGER, event_date DATE);
+INSERT INTO test_dates (date_id, event_date) VALUES (1, '2023-01-01'), (2, NULL), (3, '2023-12-31');
+SELECT ts.id, ts.value FROM test_strings ts JOIN test_dates td ON starts_with(ts.value, 'b') WHERE td.event_date IS NOT NULL OR (SELECT start_date <-> end_date FROM (SELECT MIN(event_date) AS start_date, MAX(event_date) AS end_date FROM test_dates WHERE event_date IS NOT NULL) AS t) > 0;
+SELECT COUNT(*) FROM test_strings WHERE starts_with(value, '') AND (SELECT num_list <-> [9, 10, 11] FROM test_numbers WHERE num_id = 3) IS NULL;

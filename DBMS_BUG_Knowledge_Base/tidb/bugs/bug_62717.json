@@ -1,0 +1,28 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/62717",
+  "title": "`CASE WHEN` in prepared statement return wrong result on FLOAT value",
+  "vulnerable_database": "tidb",
+  "date": "2025-07-30T12:13:27Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n\nHi, the following test case contains a normal SELECT query and a prepared statement, they are equivalent but have different results. \n\n```\nCREATE TABLE t0(c0 FLOAT);\nREPLACE INTO t0(c0) VALUES (100000030);\nSET @c = false;\nSELECT t0.c0 FROM t0 WHERE ((t0.c0)NOT LIKE(CASE WHEN false THEN false ELSE t0.c0 END ));\nPREPARE prepare_query FROM 'SELECT t0.c0 FROM t0 WHERE ((t0.c0)NOT LIKE(CASE WHEN false THEN ? ELSE t0.c0 END ))';\nEXECUTE prepare_query USING @c;\n```\n\nThe SELECT query returns an empty result but the prepared statement returns `100000030`.\n\nThen I run the following query and find the `CASE WHEN` expression returns wrong value\n\n```\nSET @c = false;\nPREPARE prepare_query FROM 'SELECT ((CASE WHEN false THEN ? ELSE t0.c0 END )) FROM t0';\nEXECUTE prepare_query USING @c;  -- 100000032\n```\n\n### 2. What did you expect to see? (Required)\n\n`CASE WHEN` returns correct result in prepared statement.\n\n### 3. What did you see instead (Required)\n\n`CASE WHEN` returns wrong result in prepared statement.\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\ntidb_version()\nRelease Version: v9.0.0-beta.2.pre-149-g96f5396\\nEdition: Community\\nGit Commit Hash: 96f5396be12ae6c5bf440bd22b1e0bec532aff9e\\nGit Branch: HEAD\\nUTC Build Time: 2025-07-21 20:48:44\\nGoVersion: go1.23.11\\nRace Enabled: false\\nCheck Table Before Drop: false\\nStore: tikv\\nKernel Type: Classic\n\n",
+  "poc": [
+    "CREATE TABLE t0(c0 FLOAT);",
+    "REPLACE INTO t0(c0) VALUES (100000030);",
+    "SET @c = false;",
+    "SELECT t0.c0 FROM t0 WHERE ((t0.c0)NOT LIKE(CASE WHEN false THEN false ELSE t0.c0 END ));",
+    "PREPARE prepare_query FROM 'SELECT t0.c0 FROM t0 WHERE ((t0.c0)NOT LIKE(CASE WHEN false THEN ? ELSE t0.c0 END ))';",
+    "EXECUTE prepare_query USING @c;"
+  ],
+  "poc_type": "sql_text",
+  "state": "open",
+  "key_bug_features": [
+    "`CASE WHEN` expression returns incorrect value in prepared statement"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t1(c1 FLOAT, c2 INT NOT NULL);",
+    "INSERT INTO t1(c1, c2) VALUES (100000030, 1);",
+    "SET @d = NULL;",
+    "SELECT c1 FROM t1 WHERE c1 NOT LIKE (CASE WHEN @d IS NULL THEN c1 ELSE @d END);",
+    "PREPARE prepare_query2 FROM 'SELECT c1 FROM t1 WHERE c1 NOT LIKE (CASE WHEN ? IS NULL THEN c1 ELSE ? END)';"
+  ]
+}

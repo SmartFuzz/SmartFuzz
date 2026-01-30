@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=103289",
+  "title": "bit type display confusing",
+  "description": "drop table if exists t1;\r\ncreate table t1(c1 bit(10));\r\ninsert into t1 values(0b10101);\r\nselect c1 from t1;\r\nselect coalesce(c1) from t1;\r\n\r\nThe result of directly select is different with the result when used in coalesce . The first result is more resonable.\r\n\r\nWelcome to the MySQL monitor.  Commands end with ; or \\g.\r\nYour MySQL connection id is 11\r\nServer version: 8.0.23 MySQL Community Server - GPL\r\nmysql> select c1 from t1;\r\n+------------+\r\n| c1         |\r\n+------------+\r\n| 0x0015     |\r\n+------------+\r\n1 row in set (0.00 sec)\r\n\r\nmysql> select coalesce(c1) from t1;\r\n+----------------------------+\r\n| coalesce(c1)               |\r\n+----------------------------+\r\n| 0x3231                     |\r\n+----------------------------+\r\n1 row in set (0.00 sec)\nHow to repeat:\ndrop table if exists t1;\r\ncreate table t1(c1 bit(10));\r\ninsert into t1 values(0b10101);\r\nselect c1 from t1;\r\nselect coalesce(c1) from t1;",
+  "date": "2021-04-12 15:00:00",
+  "vulnerable_version": "8.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t2;",
+    "CREATE TABLE t2(c1 BIT(10), c2 INT NOT NULL DEFAULT 0);",
+    "INSERT INTO t2 VALUES(B'11000', NULL), (B'10101', 1);",
+    "SELECT c1, COALESCE(c1::TEXT, '0') AS coalesced_value FROM t2;",
+    "SELECT COALESCE(c1::TEXT, (SELECT MAX(c2) FROM t2)::TEXT) AS coalesced_with_subquery FROM t2;"
+  ],
+  "key_bug_features": [
+    "coalesce function displays different bit type results"
+  ]
+}

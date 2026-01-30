@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id Int32, value Float64, string_value String, is_active UInt8);
+INSERT INTO test_data VALUES (1, 2.5, '10.2', 1), (2, NULL, '25.9', 0), (3, 1.1, '30.0', 1), (4, 10.5, '5.0', 1);
+SELECT id, ceiling(value) AS rounded_value FROM test_data WHERE string_value IN (SELECT ceiling(CAST(value AS Float64)) FROM test_data WHERE is_active = 1) AND value IS NOT NULL;
+SELECT id, ceiling(value) AS rounded_value, COUNT(*) OVER (PARTITION BY string_value) AS value_count FROM test_data WHERE value IN (SELECT ceiling(value) FROM test_data WHERE value > 1.0) GROUP BY id, rounded_value HAVING rounded_value >= 3;
+SELECT id, ceiling(value) AS rounded_value FROM test_data WHERE id IN (SELECT id FROM test_data WHERE ceiling(value) IS NOT NULL) AND NOT (value = 1.1);
+SELECT id, ceiling(value) AS rounded_value, SUM(CASE WHEN value IS NULL THEN 0 ELSE 1 END) OVER () AS non_null_count FROM test_data WHERE value IN (SELECT ceiling(CAST(string_value AS Float64)) FROM test_data WHERE is_active = 1) ORDER BY rounded_value DESC;
+CREATE TEMPORARY TABLE temp_data AS SELECT id, ceiling(value) AS temp_round FROM test_data WHERE value IS NOT NULL;
+SELECT id FROM temp_data WHERE temp_round IN (SELECT ceiling(10.5) UNION SELECT ceiling(NULL)) ORDER BY id;
+SELECT id, ceiling(value) AS rounded_value FROM test_data GROUP BY id HAVING rounded_value < (SELECT MAX(value) FROM test_data WHERE is_active = 1);
+DROP TABLE IF EXISTS test_data;

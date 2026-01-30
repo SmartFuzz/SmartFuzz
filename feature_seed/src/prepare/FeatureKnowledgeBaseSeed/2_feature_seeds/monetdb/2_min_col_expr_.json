@@ -1,0 +1,14 @@
+CREATE TABLE test_table (id INT, ip_address INET, value INT, created_at TIMESTAMP);
+INSERT INTO test_table VALUES (1, inet '192.168.1.0/24', 10, '2023-01-01 12:00:00');
+INSERT INTO test_table VALUES (2, inet '192.168.1.1/24', NULL, '2023-01-02 12:00:00');
+INSERT INTO test_table VALUES (3, inet '192.168.1.10/24', 20, '2023-01-03 12:00:00');
+INSERT INTO test_table VALUES (4, inet '192.168.1.255/24', 5, '2023-01-04 12:00:00');
+SELECT MIN(value) FROM (SELECT id, value FROM test_table WHERE ip_address >>= inet '192.168.1.0/24') AS subquery;
+SELECT MIN(value) OVER (PARTITION BY (CASE WHEN ip_address >>= inet '192.168.1.0/24' THEN 1 ELSE 0 END)) FROM test_table;
+SELECT MIN(value) FROM test_table GROUP BY (CASE WHEN ip_address >>= inet '192.168.1.1/24' THEN 1 ELSE NULL END) HAVING MIN(value) IS NOT NULL;
+SELECT ip_address, MIN(value) AS min_value FROM test_table GROUP BY ip_address HAVING min_value IS NOT NULL;
+SELECT MIN(value) FROM test_table WHERE ip_address IS NOT NULL AND value IS NOT NULL AND ip_address >>= inet '192.168.1.0/24';
+CREATE TABLE temp_table (name VARCHAR(255), create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO temp_table VALUES ('Sample 1', DEFAULT), ('Sample 2', DEFAULT);
+SELECT COUNT(*) FROM (SELECT ip_address, MIN(value) FROM test_table GROUP BY ip_address HAVING MIN(value) IS NOT NULL) AS results WHERE results.ip_address >>= inet '192.168.1.10/24';
+SELECT MIN(value), ip_address FROM test_table WHERE NULL IS NULL AND value IS NOT NULL GROUP BY ip_address ORDER BY MIN(value);

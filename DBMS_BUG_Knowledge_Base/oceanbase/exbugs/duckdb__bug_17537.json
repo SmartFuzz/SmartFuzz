@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/17537",
+  "title": "read_json treats milliseconds as microseconds when decimal part has only 3 digits",
+  "description": "### What happens?\n\nWhen reading a JSON file that has a timestamp column with milliseconds precision (3 digits in fractional seconds), then the milliseconds are treated as microseconds (3 leading zeros are added).\n\n\n### To Reproduce\n\n```\ncreate table s (test varchar, ts varchar);\n\ninsert into s values \n('no_trailing_zeroes', '2024-11-28 23:59:00.312'), \n('trailing_zeroes',       '2024-11-28 23:59:00.312000');\n\ncopy (from s) to s.json;\nselect test, ts, date_part('microseconds', ts) as microseconds from read_json('s.json');\n```\n\nExpected result:\n```\n┌────────────────────┬─────────────────────────┬──────────────┐\n│        test        │           ts            │ microseconds │\n│      varchar       │        timestamp        │    int64     │\n├────────────────────┼─────────────────────────┼──────────────┤\n│ no_trailing_zeroes │ 2024-11-28 23:59:00.312 │       312000 │\n│ trailing_zeroes    │ 2024-11-28 23:59:00.312 │       312000 │\n└────────────────────┴─────────────────────────┴──────────────┘\n```\nActual result:\n```\n┌────────────────────┬────────────────────────────┬──────────────┐\n│        test        │             ts             │ microseconds │\n│      varchar       │         timestamp          │    int64     │\n├────────────────────┼────────────────────────────┼──────────────┤\n│ no_trailing_zeroes │ 2024-11-28 23:59:00.000312 │          312 │\n│ trailing_zeroes    │ 2024-11-28 23:59:00.312    │       312000 │\n└────────────────────┴────────────────────────────┴──────────────┘\n```\n\n### OS:\n\nMac OS\n\n### DuckDB Version:\n\nv1.2.2 7c039464e4\n\n### DuckDB Client:\n\ncli\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nMaarten Bosteels\n\n### Affiliation:\n\nDNS Belgium\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have not tested with any build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "date": "2025-05-19 08:42:13",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_timestamps (id INTEGER PRIMARY KEY, description VARCHAR(255), timestamp_col TIMESTAMP);",
+    "INSERT INTO test_timestamps VALUES (1, 'no_trailing_zeroes', '2024-11-28 23:59:00.312'), (2, 'trailing_zeroes', '2024-11-28 23:59:00.312000'), (3, 'null_value', NULL);",
+    "CREATE TABLE additional_data (ref_id INTEGER, value FLOAT, FOREIGN KEY (ref_id) REFERENCES test_timestamps(id));",
+    "INSERT INTO additional_data VALUES (1, 123.456), (2, 789.012), (3, NULL);",
+    "SELECT t.description, t.timestamp_col, EXTRACT(MICROSECOND FROM t.timestamp_col) AS microseconds FROM test_timestamps t LEFT JOIN additional_data a ON t.id = a.ref_id;"
+  ],
+  "key_bug_features": [
+    "read_json misinterprets milliseconds as microseconds"
+  ]
+}

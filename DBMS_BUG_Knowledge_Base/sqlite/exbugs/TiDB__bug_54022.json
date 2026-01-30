@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/54022",
+  "title": "TiDB memory leak after meets the `fail to get stats version for this histogram`",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n1. Change the async load stats code:\r\n```diff\r\ndiff --git a/pkg/sessionctx/variable/tidb_vars.go b/pkg/sessionctx/variable/tidb_vars.go\r\nindex e10aa9c5bbb9f..39153b4433448 100644\r\n--- a/pkg/sessionctx/variable/tidb_vars.go\r\n+++ b/pkg/sessionctx/variable/tidb_vars.go\r\n@@ -1287,7 +1287,7 @@ const (\r\n \tDefTiDBTableCacheLease                         = 3 // 3s\r\n \tDefTiDBPersistAnalyzeOptions                   = true\r\n \tDefTiDBEnableColumnTracking                    = false\r\n-\tDefTiDBStatsLoadSyncWait                       = 100\r\n+\tDefTiDBStatsLoadSyncWait                       = 0\r\n \tDefTiDBStatsLoadPseudoTimeout                  = true\r\n \tDefSysdateIsNow                                = false\r\n \tDefTiDBEnableMutationChecker                   = false\r\ndiff --git a/pkg/statistics/handle/storage/read.go b/pkg/statistics/handle/storage/read.go\r\nindex bacf43abef60f..e1f43e8ecdc65 100644\r\n--- a/pkg/statistics/handle/storage/read.go\r\n+++ b/pkg/statistics/handle/storage/read.go\r\n@@ -539,7 +539,7 @@ func loadNeededColumnHistograms(sctx sessionctx.Context, statsCache util.StatsCa\r\n \tif err != nil {\r\n \t\treturn errors.Trace(err)\r\n \t}\r\n-\tif len(rows) == 0 {\r\n+\tif true {\r\n \t\tlogutil.BgLogger().Error(\"fail to get stats version for this histogram\", zap.Int64(\"table_id\", col.TableID), zap.Int64(\"hist_id\", col.ID))\r\n \t\treturn errors.Trace(fmt.Errorf(\"fail to get stats version for this histogram, table_id:%v, hist_id:%v\", col.TableID, col.ID))\r\n \t}\r\n@@ -599,7 +599,7 @@ func loadNeededIndexHistograms(sctx sessionctx.Context, statsCache util.StatsCac\r\n \tif err != nil {\r\n \t\treturn errors.Trace(err)\r\n \t}\r\n-\tif len(rows) == 0 {\r\n+\tif true {\r\n \t\tlogutil.BgLogger().Error(\"fail to get stats version for this histogram\", zap.Int64(\"table_id\", idx.TableID), zap.Int64(\"hist_id\", idx.ID))\r\n \t\treturn errors.Trace(fmt.Errorf(\"fail to get stats version for this histogram, table_id:%v, hist_id:%v\", idx.TableID, idx.ID))\r\n \t}\r\n```\r\n2. Create some tables and analyze those tables\r\n3. Try to issue some select queries to TiDB\r\n\r\n### 2. What did you expect to see? (Required)\r\nThe memory usage of TiDB does not increase.\r\n\r\n### 3. What did you see instead (Required)\r\n![img_v3_02bq_c13de680-8d76-4927-8f90-70d0f55d1e5g](https://github.com/pingcap/tidb/assets/29879298/53050ddf-2eac-4ef2-98b9-620f95f10213)\r\n![img_v3_02bq_3ff29c9b-d5c3-40a1-b8d6-48242f5e8aag](https://github.com/pingcap/tidb/assets/29879298/c6dd8b6d-4f4f-4c88-8e25-2933d8ca0318)\r\n![img_v3_02bq_1278b481-a16b-4a56-ab13-5f86d68d0abg](https://github.com/pingcap/tidb/assets/29879298/8fcfa01a-91e7-4d00-8773-04b85978eb6e)\r\n\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\nv7.5.1\r\n\r\n",
+  "date": "2024-06-14T03:54:53Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_comment",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE test_table(id INTEGER PRIMARY KEY, name TEXT, value REAL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table(id, name, value) VALUES (1, 'test1', 10.50), (2, 'test2', NULL), (3, 'test3', 20.75);",
+    "CREATE INDEX idx_value ON test_table(value);",
+    "SELECT * FROM test_table WHERE value IS NULL OR value > 15.00;",
+    "DROP TABLE test_table;"
+  ],
+  "key_bug_features": [
+    "Fail to get stats version for this histogram"
+  ]
+}

@@ -1,0 +1,9 @@
+CREATE TABLE polygons_test (id UInt32, poly1 Array(Array(Array(Float64))), poly2 Array(Array(Array(Float64))) ENGINE = MergeTree() ORDER BY id);
+INSERT INTO polygons_test VALUES (1, [[[(0, 0), (0, 0.1), (0.1, 0.1), (0.1, 0)]]], [[[(10., 10.), (10., 40.), (40., 40.), (40., 10.), (10., 10.)]]]), (2, [[[(1, 1), (1, 1.2), (1.2, 1.2), (1.2, 1)]]], [[[(5., 5.), (5., 20.), (20., 20.), (20., 5.), (5., 5.)]]]);
+SELECT id, polygonsDistanceCartesian(poly1, poly2) AS distance FROM polygons_test WHERE distance IN (SELECT DISTINCT polygonsDistanceCartesian([[[(2, 2), (2, 2.2), (2.2, 2.2), (2.2, 2)]]], [[[(3., 3.), (3., 15.), (15., 15.), (15., 3.), (3., 3.)]]]) FROM polygons_test);
+SELECT COUNT(*) FROM polygons_test WHERE polygonsDistanceCartesian(poly1, poly2) IS NOT NULL HAVING COUNT(*) > 1;
+CREATE TABLE complex_polygon_test (id UInt32, poly1 Array(Array(Array(Float64))), poly2 Array(Array(Array(Float64))) ENGINE = MergeTree() ORDER BY id);
+INSERT INTO complex_polygon_test VALUES (1, [[[(0, 0), (0, 0.1), (0.1, 0.1), (0.1, 0)]]], [[[(10.0, 10.0), (10.0, 40.0), (40.0, 40.0), (40.0, 10.0), (10.0, 10.0)]]]), (2, [[[(1, 1), (1, 1.2), (1.2, 1.2), (1.2, 1)]]], [[[(20, 20), (20, 50), (50, 50), (50, 20), (20, 20)]]]);
+SELECT poly1, poly2, polygonsDistanceCartesian(poly1, poly2) FROM complex_polygon_test WHERE polygonsDistanceCartesian(poly1, poly2) IN (SELECT polygonsDistanceCartesian(poly1, poly2) FROM complex_polygon_test WHERE id IN (SELECT id FROM complex_polygon_test WHERE id > 1));
+SELECT COUNT(DISTINCT polygonsDistanceCartesian(poly1, poly2)) FROM complex_polygon_test WHERE poly1 IN (SELECT poly1 FROM polygons_test WHERE id = 1) AND poly2 IN (SELECT poly2 FROM polygons_test WHERE id = 2);
+SELECT id, polygonsDistanceCartesian(poly1, poly2) AS distance FROM polygons_test WHERE distance < 50.0 AND distance NOT IN (SELECT distance FROM (SELECT polygonsDistanceCartesian(poly1, poly2) AS distance FROM polygons_test));

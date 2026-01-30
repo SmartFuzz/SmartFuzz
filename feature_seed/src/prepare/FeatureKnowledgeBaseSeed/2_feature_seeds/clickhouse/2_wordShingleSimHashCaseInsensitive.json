@@ -1,0 +1,10 @@
+CREATE TABLE test_strings (id UInt64, content String) ENGINE = Memory;
+INSERT INTO test_strings VALUES (1, 'ClickHouse® is versatile!'), (2, 'CLICKhouse® IS VERSATILE?'), (3, 'ClickHouse is not just another database.'), (4, 'Unique words for hashing: 123, NULL, true, false');
+SELECT wordShingleSimHashCaseInsensitive(arrayElement((SELECT content FROM test_strings WHERE id = 1), 1), 3) AS Hash1, wordShingleSimHashCaseInsensitive(arrayElement((SELECT content FROM test_strings WHERE id = 2), 1), 3) AS Hash2 FROM test_strings;
+SELECT Hash1, Hash2, (wordShingleSimHashCaseInsensitive(arrayElement((SELECT content FROM test_strings WHERE id = 3), 1), 5) ^ Hash1) AS HammingDistance FROM (SELECT wordShingleSimHashCaseInsensitive(content) AS Hash1 FROM test_strings WHERE id = 1) AS t1 JOIN (SELECT wordShingleSimHashCaseInsensitive(content) AS Hash2 FROM test_strings WHERE id = 2) AS t2 ON 1 = 1;
+SELECT COUNT(*) AS SimilarCount FROM (SELECT content, wordShingleSimHashCaseInsensitive(content, 3) AS ShingleHash FROM test_strings) AS derived WHERE ShingleHash = (SELECT wordShingleSimHashCaseInsensitive(content, 3) FROM test_strings WHERE id = 4) HAVING COUNT(*) > 1;
+SELECT SUM(CASE WHEN NULL IS NULL THEN 1 ELSE 0 END) AS NullCheck, wordShingleSimHashCaseInsensitive('Test with NULL handling', 2) AS HashValue, arrayElement([1, 2, NULL], 3) AS NullArrayElement FROM test_strings;
+CREATE TABLE temp_test (id UInt32 DEFAULT 0, str_val String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO temp_test (id, str_val) VALUES (1, 'Boundary testing with maximum characters'), (2, ''), (3, 'A single unique string for testing');
+SELECT id, wordShingleSimHashCaseInsensitive(str_val, 1) AS HashValue FROM temp_test WHERE str_val != '' ORDER BY id;
+SELECT AVG(length) AS AvgLength FROM (SELECT length(str_val) FROM temp_test) AS Lengths HAVING AvgLength > 0;

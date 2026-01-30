@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/57860",
+  "title": "Fail to execute statement when not using expr_pushdown_blacklist",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n```sql\ncreate table `t0` (`a` timestamp);\ninsert into `t0` values ('1970-07-23 10:04:59'),('2038-01-19 03:14:07');\n\ninsert into mysql.expr_pushdown_blacklist values('=', 'tikv', '');\nadmin reload expr_pushdown_blacklist;\nselect * from `t0` where date_sub(`a`, interval 10 month)=date_sub('1970-07-23 10:04:59', interval 10 month);\ndelete from mysql.expr_pushdown_blacklist;\nadmin reload expr_pushdown_blacklist;\nselect * from `t0` where date_sub(`a`, interval 10 month)=date_sub('1970-07-23 10:04:59', interval 10 month);\n\n```\n\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\n\nStatements executed successfully.\n\n### 3. What did you see instead (Required)\n\n```sql\nmysql> insert into mysql.expr_pushdown_blacklist values('=', 'tikv', '');\nQuery OK, 1 row affected (0.01 sec)\n\nmysql> admin reload expr_pushdown_blacklist;\nQuery OK, 0 rows affected (0.04 sec)\n\nmysql> select * from `t0` where date_sub(`a`, interval 10 month)=date_sub('1970-07-23 10:04:59', interval 10 month);\n+---------------------+\n| a                   |\n+---------------------+\n| 1970-07-23 10:04:59 |\n+---------------------+\n1 row in set (0.00 sec)\n\nmysql> delete from mysql.expr_pushdown_blacklist;\nQuery OK, 2 rows affected (0.04 sec)\n\nmysql> admin reload expr_pushdown_blacklist;\nQuery OK, 0 rows affected (0.03 sec)\n\nmysql> select * from `t0` where date_sub(`a`, interval 10 month)=date_sub('1970-07-23 10:04:59', interval 10 month);\nERROR 1105 (HY000): other error: [components/tidb_query_expr/src/lib.rs:857]: ScalarFunction SubDateDatetimeInt is not supported in batch mode\n```\n\n### 4. What is your TiDB version? (Required)\n```sql\nRelease Version: v8.5.0-alpha-79-g426ce3e570\nEdition: Community\nGit Commit Hash: 426ce3e57069afbd8f061d7ae39c79d3f9e2ff5d\nGit Branch: master\nUTC Build Time: 2024-11-09 12:25:03\nGoVersion: go1.23.0\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv \n```\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "date": "2024-12-01T20:02:22Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (b Int32, c String, d DateTime DEFAULT now());",
+    "INSERT INTO t1 VALUES (1, 'test1', '2023-01-01 00:00:00'), (2, 'test2', NULL);",
+    "CREATE TABLE t2 (e Int32, f Int32 NOT NULL) ENGINE = MergeTree() ORDER BY e;",
+    "INSERT INTO t2 VALUES (1, 10), (2, NULL);",
+    "SELECT * FROM t1 WHERE b = (SELECT MAX(b) FROM t1) AND d IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Failure when expr_pushdown_blacklist is not used"
+  ]
+}

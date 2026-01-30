@@ -1,0 +1,17 @@
+{
+    "function": "soap_make_error",
+    "operator": "XPath /",
+    "sql_array": [
+        "CREATE TABLE soap_test (id INT PRIMARY KEY, input_xml XML, status VARCHAR(20));",
+        "INSERT INTO soap_test (id, input_xml, status) VALUES (1, '<root><child>First Child</child></root>', 'active');",
+        "INSERT INTO soap_test (id, input_xml, status) VALUES (2, '<root><child>Second Child</child></root>', 'active');",
+        "SELECT soap_make_error(XPath('child', xpath_string(input_xml)), 'Test Error') FROM soap_test WHERE status = 'active';",
+        "SELECT soap_make_error('', 'Generic Soap Error') FROM soap_test WHERE input_xml IS NULL;",
+        "SELECT soap_make_error(xpath_string('/root/child', input_xml), NULL) FROM soap_test WHERE id IN (SELECT id FROM soap_test WHERE status = 'active');",
+        "SELECT soap_make_error(xpath_string('/root/child', input_xml), 'SOAP Error for id: ' || id) FROM soap_test WHERE id > 0;",
+        "CREATE TABLE error_log (error_id INT PRIMARY KEY, soap_error VARCHAR(255), timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO error_log (error_id, soap_error) SELECT id, soap_make_error(xpath_string('/root/child', input_xml), 'Error Archived') FROM soap_test;",
+        "WITH xml_data AS (SELECT id, soap_make_error(xpath_string('/root/child', input_xml), 'Node error') AS generated_error FROM soap_test) SELECT * FROM xml_data WHERE generated_error IS NOT NULL;",
+        "SELECT MAX(LENGTH(soap_make_error(xpath_string('/root/child', input_xml), 'Long Error message'))), MIN(LENGTH(soap_make_error(xpath_string('/root/child', input_xml), '')) FROM soap_test GROUP BY id HAVING COUNT(*) > 0;"
+    ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/44051",
+  "title": "Wrong result when CTE used in non-correlated scalar subquery",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```sql\r\nCREATE TABLE `t1` (\r\n  `id` int(11) DEFAULT NULL,\r\n  `col1` varchar(10) DEFAULT NULL,\r\n  `col2` varchar(10) DEFAULT NULL,\r\n  `col3` varchar(10) DEFAULT NULL\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin\r\n;\r\nCREATE TABLE `t2` (\r\n  `id` int(11) DEFAULT NULL,\r\n  `col1` varchar(10) DEFAULT NULL,\r\n  `col2` varchar(10) DEFAULT NULL,\r\n  `col3` varchar(10) DEFAULT NULL\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin\r\n;\r\nINSERT INTO t1 values(1,NULL,NULL,null),(2,NULL,NULL,null),(3,NULL,NULL,null);\r\nINSERT INTO t2 values(1,'a','aa','aaa'),(2,'b','bb','bbb'),(3,'c','cc','ccc');\r\nWITH tmp AS (SELECT t2.* FROM t2)\r\nSELECT \r\n  *\r\nFROM\r\n  t1\r\nWHERE\r\n     t1.id = (select id from tmp where id = 1)\r\n  or t1.id = (select id from tmp where id = 2)\r\n  or t1.id = (select id from tmp where id = 3)\r\n;\r\n```\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nThree rows for id 1, 2, 3\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n```\r\nmysql> WITH tmp AS (SELECT t2.* FROM t2) SELECT    * FROM   t1 WHERE      t1.id = (select id from tmp where id = 1)   or t1.id = (select id from tmp where id = 2)   or t1.id = (select id from tmp where id = 3);\r\n+------+------+------+------+\r\n| id   | col1 | col2 | col3 |\r\n+------+------+------+------+\r\n|    1 | NULL | NULL | NULL |\r\n+------+------+------+------+\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\ncurrent master\r\n",
+  "date": "2023-05-22T08:17:59Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE `t3` ( `id` int(11) NOT NULL, `value` float DEFAULT NULL, PRIMARY KEY (`id`) ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;",
+    "INSERT INTO t3 VALUES (1, 1.1), (2, NULL), (3, 3.3);",
+    "CREATE TABLE `t4` ( `id` int(11) NOT NULL, `description` text DEFAULT NULL, PRIMARY KEY (`id`) ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;",
+    "INSERT INTO t4 VALUES (1, 'first'), (2, 'second'), (3, NULL);",
+    "SELECT * FROM t3 WHERE id IN (SELECT id FROM t4 WHERE description IS NOT NULL);"
+  ],
+  "key_bug_features": [
+    "CTE used in non-correlated scalar subquery"
+  ]
+}

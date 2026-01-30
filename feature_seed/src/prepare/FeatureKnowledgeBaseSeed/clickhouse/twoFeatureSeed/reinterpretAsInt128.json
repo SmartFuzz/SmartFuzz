@@ -1,0 +1,14 @@
+{
+    "function": "reinterpretAsInt128",
+    "operator": "a % b",
+    "sql_array": [
+        "CREATE TABLE test_data (id UInt64, value Float32, string_value String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_data VALUES (1, 15.5, 'test'), (2, NULL, 'another test'), (3, -23.1, '123'), (4, 34.56, 'Hello'), (5, 0.0, 'NULL'), (6, 255.99, '255.99');",
+        "SELECT id, reinterpretAsInt128(value) AS int_value, value % reinterpretAsInt128(NULLIF(string_value, 'NULL')) AS mod_result FROM test_data WHERE value > 0 AND string_value LIKE '%test%';",
+        "SELECT id, value, reinterpretAsInt128(value % 3) AS mod_value FROM test_data WHERE value IS NOT NULL ORDER BY mod_value;",
+        "SELECT id, reinterpretAsInt128(value) AS int_rep, string_value, reinterpretAsInt128(value) % CAST(string_value AS UInt64) AS mod_str_value FROM test_data WHERE string_value NOT LIKE '%NULL%' HAVING mod_str_value >= 0;",
+        "SELECT id, value, reinterpretAsInt128(value) AS reinterpret_value, (reinterpretAsInt128(value) % 100) + (reinterpretAsInt128(value) % 5) AS complex_mod FROM test_data WHERE reinterpretAsInt128(value) > 0 ORDER BY complex_mod;",
+        "WITH (SELECT avg(reinterpretAsInt128(value)) FROM test_data WHERE value < 100) AS avg_value SELECT id, value, (reinterpretAsInt128(value) % avg_value) AS mod_avg FROM test_data WHERE id IN (SELECT id FROM test_data WHERE string_value = 'Hello');",
+        "SELECT COUNT(*), reinterpretAsInt128(value) AS reinterpret_value FROM test_data GROUP BY reinterpret_value HAVING COUNT(*) > 1;"
+    ]
+}

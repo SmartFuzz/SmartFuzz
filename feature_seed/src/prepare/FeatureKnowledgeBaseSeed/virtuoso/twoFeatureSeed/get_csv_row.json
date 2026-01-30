@@ -1,0 +1,21 @@
+{
+    "function": "get_csv_row",
+    "operator": "%",
+    "sql_array": [
+        "CREATE TABLE test_data (id INTEGER, csv_content VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO test_data (id, csv_content) VALUES (1, 'First Name;Last Name;Age;Email;' || CAST(10 % 3 AS VARCHAR));",
+        "SELECT get_csv_row(csv_content) AS parsed_row FROM test_data WHERE id = 1;",
+        "CREATE TEMPORARY TABLE temp_results AS SELECT get_csv_row(csv_content) AS parsed_row FROM test_data WHERE CAST(id AS VARCHAR) = '1';",
+        "SELECT COUNT(*) FROM temp_results WHERE parsed_row[2] IS NOT NULL;",
+        "CREATE TABLE data_analysis (field_value VARCHAR, value_type VARCHAR);",
+        "INSERT INTO data_analysis (field_value, value_type) SELECT parsed_row[3], CASE WHEN CAST(parsed_row[3] AS INTEGER) IS NOT NULL THEN 'integer' ELSE 'varchar' END FROM temp_results;",
+        "SELECT value_type, COUNT(*) AS type_count FROM data_analysis GROUP BY value_type HAVING COUNT(*) > 0;",
+        "SELECT get_csv_row(CAST(csv_content AS VARCHAR)) FROM test_data WHERE id = 1 AND (id + 1) % 2 = 0;",
+        "SELECT parsed_row, 10 % (SELECT COUNT(*) FROM data_analysis) AS mod_count FROM (SELECT get_csv_row(csv_content) AS parsed_row FROM test_data) AS subquery;",
+        "UPDATE test_data SET csv_content = 'Updated Value;' || (SELECT CONCAT(parsed_row[1], parsed_row[2]) FROM (SELECT get_csv_row(csv_content) AS parsed_row FROM test_data WHERE id = 1) AS inner_subquery) WHERE id = 1;",
+        "SELECT * FROM data_analysis WHERE value_type = 'varchar' AND LENGTH(field_value) = (SELECT MAX(LENGTH(field_value)) FROM data_analysis);",
+        "SELECT DISTINCT csv_content FROM test_data WHERE created_at < CURRENT_TIMESTAMP AND csv_content IS NOT NULL;",
+        "SELECT get_csv_row('test;data;') WHERE (SELECT COUNT(*) FROM test_data) % 3 = 0;",
+        "INSERT INTO test_data (id, csv_content) VALUES (2, (SELECT parsed_row[1] || ';' || parsed_row[2] FROM (SELECT get_csv_row('Name;Email;') AS parsed_row) AS inner));"
+    ]
+}

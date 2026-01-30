@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/88120",
+  "title": "Slow performance for selecting many columns",
+  "description": "### Company or project name\n_No response_\n### Describe the situation\nWe have recently faced a situation where we need to analyze the data stored, and we need to get all columns (22 columns), for about 200 million records. Projections are setup and used, partitioning is done, but the query takes about 25 seconds to execute.\nI know even running such a query is a bit odd, but I wanted to make sure whether such an execution duration is expected from ClickHouse (due to its Columnar design) or it's even better and I'm doing something wrong?\n### Which ClickHouse versions are affected?\nServer version: 25.7.3\n### How to reproduce\n```\nCREATE TABLE IF NOT EXISTS logs\n(22 columns with numeric, string and low cardinality strings)\nENGINE = MergeTree()\nPARTITION BY toYYYYMM(date)\nORDER BY (toDate(date), host_id)\nTTL date + INTERVAL 90 DAY\nSETTINGS index_granularity = 8192, min_bytes_for_wide_part = 0;\n```\n`SELECT * FROM logs WHERE host_id = 200 FORMAT NULL; -- for benchmarking`\n### Expected performance\n_No response_\n### Additional context\n_No response_",
+  "date": "2025-10-06T08:56:35Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE IF NOT EXISTS logs (id INT UNSIGNED, date DATE, host_id INT UNSIGNED, message VARCHAR(255), status ENUM('low', 'medium', 'high'), value DOUBLE, count BIGINT UNSIGNED, created_at DATETIME, updated_at DATETIME, user_id INT UNSIGNED, error_code INT, description VARCHAR(255), tags JSON, metadata JSON, priority ENUM('low', 'medium', 'high'), session_id CHAR(36), ip_address VARCHAR(15), region VARCHAR(255), duration INT UNSIGNED, response_time FLOAT, is_active TINYINT) PARTITION BY YEAR(date) ORDER BY (date, host_id);",
+    "INSERT INTO logs VALUES (1, '2023-01-01', 200, 'Log message 1', 'medium', 123.45, 10, '2023-01-01 10:00:00', '2023-01-01 10:00:00', 1, 0, 'No error', JSON_ARRAY('tag1', 'tag2'), JSON_OBJECT('key1', 'value1'), 'medium', UUID(), '192.168.1.1', 'us-west', 100, 0.123, 1);",
+    "INSERT INTO logs VALUES (2, '2023-01-01', 200, 'Log message 2', 'high', 67.89, 5, '2023-01-01 10:01:00', '2023-01-01 10:01:00', 2, 404, 'Not found', JSON_ARRAY('tag3'), JSON_OBJECT('key2', 'value2'), 'high', UUID(), '192.168.1.2', 'us-east', 200, 0.456, 0);",
+    "SELECT * FROM logs WHERE host_id = 200 AND value > 50;",
+    "SELECT COUNT(*) FROM logs WHERE status = 'error' AND created_at >= '2023-01-01 00:00:00' AND created_at < '2023-02-01 00:00:00';"
+  ],
+  "key_bug_features": [
+    "Selecting many columns from large datasets"
+  ]
+}

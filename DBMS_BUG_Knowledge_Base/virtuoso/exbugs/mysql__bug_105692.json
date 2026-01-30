@@ -1,0 +1,21 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=105692",
+  "title": "Incorrect result with aggregation by temporary table",
+  "description": "This gives the wrong result (one row gets missing) in the old join optimizer:\r\n\r\nCREATE TABLE t1 ( a INTEGER, b VARCHAR(1) );\r\nINSERT INTO t1 VALUES (3, 'Q'), (4, '5');\r\n\r\nCREATE TABLE t2 ( a INTEGER );\r\nINSERT INTO t2 VALUES (3), (4);\r\n\r\nSELECT\r\n  t2_alias.a,\r\n  SUM(t1.b) AS field2\r\nFROM\r\n  t1\r\n  JOIN ( SELECT * FROM t2 ) AS t2_alias ON t1.a = t2_alias.a\r\nGROUP BY t2_alias.a\r\nHAVING t2_alias.a <> 3 OR field2 < 5;\r\n\r\nDROP TABLE t1, t2;\r\n\r\nThe exact cause is not understood, but it's probably something related to that fields need to be copied first.\nHow to repeat:\nN/A\nSuggested fix:\nN/A",
+  "date": "2021-11-24 10:20:00",
+  "vulnerable_version": "8.0.29",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t1 ( a INTEGER, b VARCHAR(10) NOT NULL, c DATE NULL );",
+    "INSERT INTO t1 VALUES (1, 'X', '2023-01-01'), (2, 'Y', NULL), (3, 'Z', '2023-01-03');",
+    "CREATE TABLE t2 ( a INTEGER PRIMARY KEY, d FLOAT DEFAULT 0.0 );",
+    "INSERT INTO t2 VALUES (1, 1.5), (2, 2.5), (3, NULL);",
+    "SELECT t2.a, SUM(COALESCE(t1.b, '')) AS total FROM t1 JOIN t2 ON t1.a = t2.a GROUP BY t2.a HAVING (t2.a IS NOT NULL OR total < 5);",
+    "DROP TABLE t1;"
+  ],
+  "key_bug_features": [
+    "Aggregation with temporary table in old join optimizer"
+  ]
+}

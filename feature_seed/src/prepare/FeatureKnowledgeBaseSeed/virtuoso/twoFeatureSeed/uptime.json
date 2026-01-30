@@ -1,0 +1,15 @@
+{
+    "function": "uptime",
+    "operator": "REGEXP",
+    "sql_array": [
+        "CREATE TABLE server_status (id INT PRIMARY KEY, status_message VARCHAR(255), check_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO server_status (id, status_message) VALUES (1, 'Server active'), (2, 'Server downtime'), (3, 'Server under maintenance');",
+        "SELECT (SELECT uptime() REGEXP '([0-9]+) hour') AS uptime_check, status_message FROM server_status WHERE status_message REGEXP 'active';",
+        "SELECT server.id, server.status_message, (SELECT uptime() REGEXP '([0-9]+) hour') AS uptime_check FROM server_status server LEFT JOIN (SELECT 1 AS join_check WHERE 'check' REGEXP '.*') subquery ON server.id = subquery.join_check WHERE status_message IS NOT NULL GROUP BY server.id HAVING uptime_check IS NOT NULL;",
+        "SELECT server.status_message, (SELECT uptime() REGEXP 'minute') AS uptime_minutes FROM server_status server WHERE status_message IS NOT NULL ORDER BY LENGTH(status_message);",
+        "CREATE TABLE server_records (record_id INT, record_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, record_message VARCHAR(255), FOREIGN KEY (record_id) REFERENCES server_status(id));",
+        "INSERT INTO server_records (record_id, record_message) VALUES (1, 'Record 1'), (2, 'Record 2'), (1, NULL), (2, 'Check passed'), (3, 'NULL case');",
+        "SELECT sr.record_id, sr.record_message, (SELECT uptime()) AS uptime_info FROM server_records sr WHERE sr.record_message IS NOT NULL AND sr.record_message REGEXP '^Record';",
+        "SELECT server.id, (SELECT uptime() WHERE id = server.id) AS uptime_info FROM server_status server WHERE NULL IS NOT NULL AND uptime_info REGEXP 'hour';"
+    ]
+}

@@ -1,0 +1,12 @@
+CREATE TABLE test_data (id INT PRIMARY KEY, xml_content XML, value VARCHAR(255), is_active BOOLEAN);
+INSERT INTO test_data (id, xml_content, value, is_active) VALUES (1, '<root><item>Value1</item></root>', '123', TRUE);
+INSERT INTO test_data (id, xml_content, value, is_active) VALUES (2, '<root><item>Value2</item></root>', '456.789', NULL);
+INSERT INTO test_data (id, xml_content, value, is_active) VALUES (3, NULL, 'NULL VALUE', FALSE);
+SELECT id, xpf_extension_remove(value) AS cleaned_value FROM test_data WHERE xpf_extension_remove(value) IS NOT NULL OR is_active = TRUE;
+SELECT id FROM test_data WHERE (xpf_extension_remove(value) IS NOT NULL || value = '') AND (value IS NOT NULL);
+SELECT id, COUNT(*) OVER (PARTITION BY is_active) AS total_active FROM test_data GROUP BY is_active HAVING (total_active > 1 || XMLExists('/root/item[text() = "Value1"]' PASSING xml_content));
+WITH correlated AS (SELECT id, value FROM test_data WHERE is_active IS TRUE) SELECT id FROM correlated WHERE xpf_extension_remove(value) IS NOT NULL || (SELECT COUNT(*) FROM test_data WHERE is_active = FALSE) > 0;
+CREATE TABLE temp_data (description TEXT, numeric_value FLOAT);
+INSERT INTO temp_data (description, numeric_value) VALUES ('Min Bound', 0.0000000001), ('Max Bound', 9999999999.9999999999);
+SELECT d.id, d.value, t.description FROM test_data d JOIN temp_data t ON (xpf_extension_remove(d.value) IS NOT NULL && t.numeric_value > 0.0) WHERE (t.description || d.value) IS NOT NULL ORDER BY d.id;
+DROP TABLE IF EXISTS temp_data;

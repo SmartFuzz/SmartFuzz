@@ -1,0 +1,16 @@
+CREATE TABLE bpel_scripts (id INT PRIMARY KEY, script_source VARCHAR(255), compiled_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO bpel_scripts (id, script_source) VALUES (1, 'file:/echo/bpel.xml');
+CREATE TYPE example_type AS (value INT, description VARCHAR(100));
+INSERT INTO bpel_scripts (id, script_source) VALUES (2, 'file:/another/bpel.xml');
+SELECT BPEL.BPEL.compile_script(NEW example_type(value, ''), '/Echo') FROM bpel_scripts WHERE id = 1;
+SELECT BPEL.BPEL.compile_script((SELECT NEW example_type(1, 'Test') FROM bpel_scripts WHERE id = 2), '/Another') AS compiled FROM DUAL;
+CREATE TABLE compiled_results (result_id INT, result_description VARCHAR(100));
+INSERT INTO compiled_results (result_id, result_description) SELECT BPEL.BPEL.compile_script(NEW example_type(3, 'Edge Case'), '/Edge') AS result_id, 'Compilation Success' FROM bpel_scripts WHERE id = 1;
+SELECT result_id FROM compiled_results WHERE result_id IN (SELECT result_id FROM compiled_results WHERE result_description IS NOT NULL);
+SELECT COUNT(*) FROM compiled_results GROUP BY result_description HAVING COUNT(result_description) > 1;
+DROP TABLE IF EXISTS temp_table;
+CREATE TEMPORARY TABLE temp_table AS SELECT NEW example_type(0, NULL)::example_type AS new_instance FROM bpel_scripts;
+SELECT BPEL.BPEL.compile_script((SELECT NEW example_type(9999999999, 'Overflow Case') FROM temp_table), '/Overflow') AS result FROM temp_table WHERE new_instance IS NOT NULL;
+INSERT INTO compiled_results (result_id, result_description) SELECT result, 'Successful Compilation' FROM (SELECT BPEL.BPEL.compile_script(NEW example_type(100, 'Ready For Compile'), '/Temp') AS result) AS sub;
+SELECT BPEL.BPEL.compile_script(NEW example_type(NULL, 'NULL Value'), '/NullTest') AS result FROM dual;
+SELECT BPEL.BPEL.compile_script(NEW example_type(CAST(NULL AS INT), 'Null Cast'), '/NullCastTest') AS result FROM dual;

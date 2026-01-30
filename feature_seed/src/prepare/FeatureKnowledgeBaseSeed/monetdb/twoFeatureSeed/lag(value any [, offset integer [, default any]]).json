@@ -1,0 +1,16 @@
+{
+    "function": "lag(value any [, offset integer [, default any]])",
+    "operator": ">",
+    "sql_array": [
+        "CREATE TABLE test_table (id INT, value1 FLOAT, value2 FLOAT, created_at TIMESTAMP, category VARCHAR(50));",
+        "INSERT INTO test_table (id, value1, value2, created_at, category) VALUES (1, 10.99, 5.25, '2023-01-01 12:00:00', 'A'), (2, 20.65, NULL, '2023-01-02 13:00:00', 'B'), (3, NULL, 15.75, '2023-01-03 14:00:00', 'C'), (4, 30.50, NULL, '2023-01-04 15:00:00', 'D');",
+        "SELECT id, lag(value1, 1, 0) OVER (ORDER BY created_at) AS lag_value1, (value1 > lag(value2, 1, 0)) AS comparison_result FROM test_table WHERE category = 'A' OR category = 'B';",
+        "SELECT id, sum(value1) OVER (PARTITION BY category ORDER BY created_at) AS running_total, lag(value1) OVER (PARTITION BY category ORDER BY created_at) AS prev_value FROM test_table HAVING running_total > prev_value AND (prev_value IS NOT NULL OR running_total > 15);",
+        "CREATE TABLE second_table (id INT, category VARCHAR(50), threshold FLOAT);",
+        "INSERT INTO second_table (id, category, threshold) VALUES (1, 'A', 5.0), (2, 'B', 10.0), (3, 'C', 0.0);",
+        "SELECT t1.id, COUNT(*) AS count_rows FROM test_table t1 JOIN second_table t2 ON (t1.value1 > t2.threshold) GROUP BY t1.id HAVING count_rows > lag(count_rows, 1, 0) OVER (ORDER BY t1.id);",
+        "SELECT A.id, A.value1, A.value2 FROM test_table A WHERE EXISTS (SELECT 1 FROM test_table B WHERE B.value1 > A.value2 AND B.created_at < A.created_at);",
+        "SELECT id, count(*) AS total_entries, (lag(value1, 1, 0) OVER (ORDER BY created_at) + value1) AS combined_value FROM test_table GROUP BY id HAVING total_entries > 1 AND combined_value > 10.5;",
+        "SELECT category, MAX(value1) AS max_value, MIN(value2) AS min_value FROM test_table GROUP BY category HAVING (min_value IS NULL OR max_value > 20) AND (lag(max_value, 1, 0) > 15 OR category = 'D');"
+    ]
+}

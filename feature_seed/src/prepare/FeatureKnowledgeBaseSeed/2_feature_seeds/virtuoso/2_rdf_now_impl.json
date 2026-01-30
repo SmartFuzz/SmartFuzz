@@ -1,0 +1,10 @@
+CREATE TABLE transactions (id INT PRIMARY KEY, amount DECIMAL(10, 2), created_at DATETIME DEFAULT rdf_now_impl());
+INSERT INTO transactions (id, amount, created_at) VALUES (1, 100.00, rdf_now_impl()), (2, 200.50, rdf_now_impl());
+SELECT id, amount, created_at, (SELECT COUNT(*) FROM transactions t2 WHERE t2.amount > transactions.amount) AS higher_count FROM transactions ORDER BY created_at DESC;
+SELECT t1.id, t1.amount, COALESCE((SELECT SUM(t2.amount) FROM transactions t2 WHERE t2.created_at > t1.created_at), 0) AS future_sum FROM transactions t1 WHERE t1.amount > 150.00;
+SELECT t.id, t.amount, COUNT(*) OVER (PARTITION BY t.amount) AS count_per_amount FROM transactions t WHERE t.created_at > (SELECT rdf_now_impl() - INTERVAL '1 DAY') ORDER BY count_per_amount DESC;
+SELECT t.id, t.amount, RDF_NOW_IMPL() AS current_time FROM transactions t WHERE t.created_at = (SELECT MAX(created_at) FROM transactions) OR t.amount IS NULL;
+CREATE TABLE temp_data (data_id INT, data_value VARCHAR(255));
+INSERT INTO temp_data (data_id, data_value) VALUES (1, 'test'), (2, NULL);
+SELECT td.data_id, td.data_value, (SELECT COUNT(*) FROM transactions WHERE created_at = rdf_now_impl()) AS recent_count FROM temp_data td LEFT JOIN transactions t ON td.data_id = t.id;
+SELECT id, SUM(amount) AS total_amount FROM transactions GROUP BY id HAVING total_amount > (SELECT MIN(amount) FROM transactions WHERE amount IS NOT NULL) + 50;

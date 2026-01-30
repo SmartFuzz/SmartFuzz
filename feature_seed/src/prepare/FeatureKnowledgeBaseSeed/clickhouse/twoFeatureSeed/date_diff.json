@@ -1,0 +1,20 @@
+{
+    "function": "date_diff",
+    "operator": "a != ALL (subquery)",
+    "sql_array": [
+        "CREATE TABLE test_dates (start_date DateTime, end_date DateTime, description String);",
+        "INSERT INTO test_dates (start_date, end_date, description) VALUES (toDateTime('2018-01-01 22:00:00'), toDateTime('2018-01-02 23:00:00'), 'Test Case 1');",
+        "INSERT INTO test_dates (start_date, end_date, description) VALUES (toDateTime('2022-01-01 00:00:00'), toDateTime('2021-12-29 23:59:59'), 'Test Case 2');",
+        "SELECT d.description, dateDiff('hour', d.start_date, d.end_date) AS hour_diff FROM (SELECT * FROM test_dates d WHERE d.start_date != ALL (SELECT end_date FROM test_dates WHERE end_date < toDateTime('2022-01-01 00:00:00')));",
+        "SELECT d.description, dateDiff('day', d.start_date, d.end_date) AS day_diff, COUNT(*) OVER (PARTITION BY dateDiff('month', d.start_date, d.end_date)) AS month_count FROM test_dates d WHERE d.start_date IS NOT NULL ORDER BY day_diff DESC;",
+        "SELECT d.description, dateDiff('year', d.start_date, d.end_date) AS year_diff FROM test_dates d WHERE d.start_date != ALL (SELECT start_date FROM test_dates WHERE description LIKE '%Test Case%') AND d.end_date IS NOT NULL;",
+        "SELECT d.description, AVG(dateDiff('minute', d.start_date, d.end_date)) AS avg_minutes FROM test_dates d GROUP BY d.description HAVING avg_minutes > 60;",
+        "SELECT d1.description FROM test_dates d1 JOIN test_dates d2 ON dateDiff('day', d1.start_date, d2.end_date) = 0 WHERE d1.start_date != ALL (SELECT d3.start_date FROM test_dates d3 WHERE d3.end_date < d1.start_date);",
+        "SELECT d.description, dateDiff('week', d.start_date, d.end_date) AS week_diff FROM test_dates d HAVING week_diff IS NOT NULL AND week_diff != ALL (SELECT dateDiff('week', d2.start_date, d2.end_date) FROM test_dates d2 WHERE d2.start_date != d.start_date);",
+        "CREATE TABLE edge_cases_dates (start_date DateTime64(6), end_date DateTime64(6), nullable_date DateTime64(6) DEFAULT NULL);",
+        "INSERT INTO edge_cases_dates (start_date, end_date) VALUES (toDateTime64('2022-01-01 00:00:00.123456'), toDateTime64('2022-01-02 00:00:00.654321'));",
+        "INSERT INTO edge_cases_dates (start_date, end_date) VALUES (toDateTime64('2022-01-01 00:00:00.123456'), toDateTime64('2022-01-01 00:00:00.123455'));",
+        "SELECT dateDiff('microsecond', start_date, end_date) AS micro_diff FROM edge_cases_dates WHERE NULLIF(start_date, end_date) IS NULL;",
+        "SELECT d.description, MAX(dateDiff('month', d.start_date, d.end_date)) AS max_month_diff FROM test_dates d GROUP BY d.description HAVING max_month_diff IS NOT NULL AND max_month_diff != ALL (SELECT max(dateDiff('month', d2.start_date, d2.end_date)) FROM test_dates d2 WHERE d2.start_date = '2018-01-01 22:00:00');"
+    ]
+}

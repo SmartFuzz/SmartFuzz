@@ -1,0 +1,15 @@
+CREATE TABLE hits (SearchPhrase String, UserID Int32) ENGINE = MergeTree() ORDER BY (SearchPhrase);
+INSERT INTO hits VALUES ('search1', 1), ('search1', 2), ('search2', 1), ('search3', 3), ('search', 4), ('search2', 2);
+SET query_profiler_cpu_time_period_ns=10000000;
+SELECT SearchPhrase, COUNT(DISTINCT UserID) AS u FROM hits WHERE SearchPhrase <> '' GROUP BY SearchPhrase ORDER BY u DESC LIMIT 10;
+SET max_untracked_memory=1;
+SELECT SearchPhrase, SUM(UserID) AS total_users FROM hits GROUP BY SearchPhrase HAVING COUNT(UserID) > 1 ORDER BY total_users DESC;
+SELECT SearchPhrase, COUNT(DISTINCT UserID) AS unique_users FROM (SELECT SearchPhrase, UserID FROM hits WHERE SearchPhrase IS NOT NULL) GROUP BY SearchPhrase ORDER BY unique_users DESC LIMIT 5;
+SET memory_profiler_sample_probability=1;
+SELECT SearchPhrase, COUNT(DISTINCT UserID) AS u FROM hits WHERE SearchPhrase LIKE 'search%' GROUP BY SearchPhrase HAVING u > 1 ORDER BY u DESC;
+SET memory_profiler_sample_probability=1, use_uncompressed_cache=1;
+SELECT SearchPhrase, COUNT(DISTINCT UserID) AS u, SUM(UserID) AS total_user_ids FROM hits GROUP BY SearchPhrase HAVING u > 0 ORDER BY total_user_ids LIMIT 10;
+CREATE TABLE trace_log (event_time DateTime, size UInt64, query_id String, trace_type String) ENGINE = MergeTree() ORDER BY event_time;
+INSERT INTO trace_log VALUES (now(), 100, 'xxx', 'MemorySample'), (now() + interval 1 second, 150, 'xxx', 'MemorySample');
+SELECT event_time, SUM(size) OVER (ORDER BY event_time) AS total_size FROM trace_log WHERE query_id = 'xxx' AND trace_type = 'MemorySample' GROUP BY event_time ORDER BY event_time;
+SELECT argMax(event_time, total_size) AS latest_event, max(total_size) AS max_memory FROM (SELECT event_time, SUM(size) OVER (ORDER BY event_time) AS total_size FROM trace_log WHERE query_id = 'xxx' AND trace_type = 'MemorySample') GROUP BY event_time;

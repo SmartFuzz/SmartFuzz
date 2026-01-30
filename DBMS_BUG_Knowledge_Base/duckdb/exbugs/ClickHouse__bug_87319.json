@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/87319",
+  "title": "Comparing does not work if a JSON column field have different dynamicType",
+  "description": "### Company or project name\n_No response_\n### Describe the unexpected behaviour\n**Example 1:**\nWe have a JSON field in ClickHouse that sometimes contains datetime values and sometimes strings.\nWhen we use this field in a WHERE clause, ClickHouse automatically tries to parse the literal in the condition as a DateTime and if it is not parseable, it throws CANNOT_PARSE_DATETIME exception.\n<img width=\"2553\" height=\"1333\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/cf580974-f646-4a69-ba86-c80bd9f4065e\" />\n**Example 2:**\nAnother weird behaviour is when a JSON field has both String and Int64 values.  It returns Int64 and String rows if where conditions literal is String but throws NO_COMMON_TYPE exception if where condition is integer. See below screenshot\n<img width=\"2541\" height=\"1080\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/3375e192-3244-4be7-8127-0616b06d623c\" />\n### Which ClickHouse versions are affected?\nit was working in the previous versions (24.9.2.42) as you can see in the screenshot below.\n<img width=\"1496\" height=\"1237\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/d66f0c13-5af8-4e53-b2ab-c82ee7026751\" />\nWe upgraded to newer version(25.4.1) since JSON column is not prod-ready and we started to encounter this error.\n### How to reproduce\n```\nCREATE TABLE events\n(\nts           DateTime,\nattributes   JSON\n)\nENGINE = MergeTree\nORDER BY (ts);\nINSERT INTO events FORMAT JSONEachRow {\"ts\":\"2025-09-18 12:00:00\",\"attributes\":{\"label\":\"order\"}}\nINSERT INTO events FORMAT JSONEachRow {\"ts\":\"2023-09-18 12:00:00\",\"attributes\":{\"label\":\"2024-09-18 12:00:00\"}}\nSELECT * FROM events where attributes.label = 'xyz';\nINSERT INTO events FORMAT JSONEachRow {\"ts\":\"2025-09-18 12:00:00\",\"attributes\":{\"label_1\":\"5\"}}\nINSERT INTO events FORMAT JSONEachRow {\"ts\":\"2023-09-18 12:00:00\",\"attributes\":{\"label_1\": 5}}\nSELECT attributes.label_1, dynamicType(attributes.label_1) FROM events;\nSELECT * FROM events where attributes.label_1 = '5';\n```\n### Expected behavior\nDoes not return rows if literal type in where condition and column type are not the same. It was working in this way.\n### Error message and/or stacktrace\n```\nReceived exception from server (version 25.8.4):\nCode: 41. DB::Exception: Received from localhost:9000. DB::Exception: Cannot parse datetime: while converting 'xyz' to DateTime: while executing 'FUNCTION equals(attributes.label : 0, 'xyz'_String :: 1) -> equals(__table1.attributes.label, 'xyz'_String) Nullable(UInt8) : 2': While executing MergeTreeSelect(pool: ReadPool, algorithm: Thread). (CANNOT_PARSE_DATETIME)\n```\nOR\n```\nReceived exception from server (version 25.8.4):\nCode: 386. DB::Exception: Received from localhost:9000. DB::Exception: There is no supertype for types String, UInt8 because some of them are String/FixedString/Enum and some of them are not: while executing 'FUNCTION equals(attributes.label_1 : 0, 5_UInt8 :: 1) -> equals(__table1.attributes.label_1, 5_UInt8) Nullable(UInt8) : 2': While executing MergeTreeSelect(pool: ReadPool, algorithm: Thread). (NO_COMMON_TYPE)\n```\n### Additional context\n_No response_",
+  "date": "2025-09-19T07:36:27Z",
+  "vulnerable_version": "24.9.2.42",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE events_v2 (ts TIMESTAMP, attributes JSON);",
+    "INSERT INTO events_v2 VALUES ('2025-09-18 12:00:00', '{\"label\":\"order\"}');",
+    "INSERT INTO events_v2 VALUES ('2023-09-18 12:00:00', '{\"label\":\"2024-09-18 12:00:00\"}');",
+    "SELECT * FROM events_v2 WHERE attributes->>'label' = 'order';",
+    "SELECT attributes->>'label', typeof(attributes->>'label') FROM events_v2 WHERE attributes->>'label' = '5';"
+  ],
+  "key_bug_features": [
+    "JSON column with mixed types causes comparison errors"
+  ]
+}

@@ -1,0 +1,36 @@
+CREATE TABLE wikistat_iceberg_v2
+(
+    `time` DateTime,
+    `project` String,
+    `subproject` String,
+    `path` String,
+    `hits` UInt64,
+    `created_at` Date DEFAULT today()
+)
+ENGINE = IcebergS3('https://s3.us-east-2.amazonaws.com/wikistatbucket/', '***', '***')
+PARTITION BY (identity(path), identity(created_at));
+INSERT INTO wikistat_iceberg_v2
+SELECT
+    now() AS time,
+    'project1' AS project,
+    'subproject1' AS subproject,
+    '/path/to/resource' AS path,
+    CAST(100 AS UInt64),
+    today() AS created_at;
+CREATE TABLE wikistat_temp
+(
+    `temp_time` DateTime,
+    `temp_hits` UInt64
+) ENGINE = Memory;
+INSERT INTO wikistat_temp
+SELECT
+    time,
+    hits
+FROM wikistat_iceberg_v2
+WHERE hits > 50;
+SELECT
+    temp_time,
+    SUM(temp_hits) AS total_hits
+FROM wikistat_temp
+GROUP BY temp_time
+HAVING total_hits > 100;

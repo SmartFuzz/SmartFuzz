@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=114815",
+  "title": "Prepared statement in stored procedure - error on util.checkForServerUpgrade",
+  "description": "For some reason, the presence of a prepared statement triggers an error \"unexpected token\" when checking with Upgrade Checker Utility.\r\n\r\nThe very same SP can be created in MySQL 8.0 without any warnings, so I don't see any reason for upgrade check critical event!\nHow to repeat:\nCREATE TABLE `t1` (\r\n  `id` int(11) DEFAULT NULL,\r\n  `code` int(11) DEFAULT NULL\r\n) ENGINE=InnoDB DEFAULT CHARSET=latin1;\r\n\r\nINSERT INTO t1 values (1,44), (2,30), (3, 50);\r\n\r\ndelimiter //\r\nCREATE PROCEDURE sptest2 (IN c1 CHAR(3))\r\n       BEGIN\r\n         PREPARE STMT1 FROM \"SELECT COUNT(*) FROM test.t1 WHERE code = ?\";\r\n         SET @a = c1;\r\n         EXECUTE STMT1 USING @a;\r\n       END//\r\ndelimiter ;\r\ncall sptest2(44); -- to confirm the SP works as expected\n\n MySQL  localhost:5754 ssl  JS > util.checkForServerUpgrade('root:msandbox@localhost:5754',{\"outputFormat\":\"JSON\"})\r\n{\r\n    \"serverAddress\": \"localhost:5754\",\r\n    \"serverVersion\": \"5.7.44 - MySQL Community Server (GPL)\",\r\n    \"targetVersion\": \"8.0.36\",\r\n    \"errorCount\": 1,\r\n    \"warningCount\": 27,\r\n    \"noticeCount\": 2,\r\n    \"summary\": \"1 errors were found. Please correct these issues before upgrading to avoid compatibility issues.\",\r\n    \"checksPerformed\": [\r\n        {\r\n            \"id\": \"oldTemporalCheck\",\r\n            \"title\": \"Usage of old temporal type\",\r\n            \"status\": \"OK\",\r\n            \"detectedProblems\": []\r\n        },\r\n        {\r\n            \"id\": \"routinesSyntaxCheck\",\r\n            \"title\": \"MySQL 8.0 syntax check for routine-like objects\",\r\n            \"status\": \"OK\",\r\n            \"description\": \"The following objects did not pass a syntax check with the latest MySQL 8.0 grammar. A common reason is that they reference names that conflict with new reserved keywords. You must update these routine definitions and `quote` any such references before upgrading.\",\r\n            \"documentationLink\": \"\nhttps://dev.mysql.com/doc/refman/en/keywords.html\n\",\r\n            \"detectedProblems\": [\r\n                {\r\n                    \"level\": \"Error\",\r\n                    \"dbObject\": \"test.sptest2\",\r\n                    \"description\": \"at line 2,28: unexpected token '\\\"SELECT COUNT(*) FROM test.t1 WHERE code = ?\\\"'\"\r\n                }\r\n            ]\r\n        },\r\n(...)\nSuggested fix:\nThe upgrade checker util needs to be corrected to not print this false positive.",
+  "date": "2024-04-29 12:15:00",
+  "vulnerable_version": "8.0.36",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (id INTEGER PRIMARY KEY AUTOINCREMENT, value TEXT DEFAULT NULL);",
+    "INSERT INTO t2 (value) VALUES ('test1'), (NULL), ('test3');",
+    "CREATE VIEW sp_test AS SELECT * FROM t2;",
+    "SELECT * FROM sp_test WHERE id = 1;",
+    "SELECT * FROM t2 WHERE id = 1;"
+  ],
+  "key_bug_features": [
+    "Prepared statement triggers unexpected token error during upgrade check"
+  ]
+}

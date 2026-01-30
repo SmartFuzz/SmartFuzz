@@ -1,0 +1,12 @@
+CREATE TABLE test_timestamps (id INTEGER, ts_string TEXT, ts TIMESTAMP);
+INSERT INTO test_timestamps (id, ts_string) VALUES (1, 'Wed, 1 January 1992 - 08:38:40 PM'), (2, NULL), (3, 'Invalid Timestamp'), (4, 'Thu, 30 December 1999 - 12:00:00 AM');
+SELECT id, try_strptime(ts_string, '%a, %-d %B %Y - %I:%M:%S %p') AS parsed_ts FROM test_timestamps;
+CREATE TABLE test_bitstrings (id INTEGER, bit_col BITSTRING);
+INSERT INTO test_bitstrings (id, bit_col) VALUES (1, '1001011'::BITSTRING), (2, NULL), (3, '1111'::BITSTRING);
+SELECT id, bit_col >> 2 AS shifted_bits FROM test_bitstrings WHERE id > 1;
+SELECT id, try_strptime(ts_string, '%a, %-d %B %Y - %I:%M:%S %p') AS parsed_ts, bit_col >> 1 AS shifted_bits FROM test_timestamps JOIN test_bitstrings ON test_timestamps.id = test_bitstrings.id;
+SELECT id, COUNT(*) FILTER (WHERE ts IS NULL OR bit_col IS NULL) AS null_count FROM test_timestamps FULL OUTER JOIN test_bitstrings ON test_timestamps.id = test_bitstrings.id GROUP BY id HAVING null_count > 0;
+SELECT id, (try_strptime(ts_string, '%a, %-d %B %Y - %I:%M:%S %p') IS NOT NULL) AS is_valid_ts, (bit_col >> 1) IS NOT NULL AS valid_bits FROM test_timestamps CROSS JOIN test_bitstrings WHERE try_strptime(ts_string, '%a, %-d %B %Y - %I:%M:%S %p') IS NOT NULL OR (bit_col >> 1) IS NOT NULL;
+SELECT id, COALESCE(try_strptime(ts_string, '%a, %-d %B %Y - %I:%M:%S %p'), '1970-01-01 00:00:00') AS coalesced_ts FROM test_timestamps WHERE ts_string IS NOT NULL;
+CREATE TEMPORARY TABLE temp_results AS SELECT id, (try_strptime(ts_string, '%a, %-d %B %Y - %I:%M:%S %p') >> 1) AS shifted_ts FROM test_timestamps WHERE try_strptime(ts_string, '%a, %-d %B %Y - %I:%M:%S %p') IS NOT NULL;
+SELECT COUNT(*) FROM temp_results WHERE shifted_ts IS NULL;

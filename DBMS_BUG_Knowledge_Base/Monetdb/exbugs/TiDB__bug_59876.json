@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/59876",
+  "title": "Covering indexes do not work in update joins",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n```\nCREATE TABLE a (\n  id int(11) not NULL,\n  bal decimal(10,4) DEFAULT NULL,\n  bal2 float DEFAULT NULL,\n  primary KEY  (id) NONCLUSTERED\n) ;\n\nCREATE TABLE b (\n  id int(11) NOT NULL,\n  bal decimal(18,4)  ,\n  bal2 decimal(18,1) DEFAULT NULL,\n  PRIMARY KEY (id) NONCLUSTERED \n  ,key idx2(id, bal)\n);\n\nexplain\nupdate /*+ inl_join(b) use_index(b,idx2) */ a \njoin b on a.id = b.id \nset a.bal = b.bal; \n```\n\n### 2. What did you expect to see? (Required)\nwhen table a join table b,  just access the index idx2 of table b，without the need for a table lookup. \n\n### 3. What did you see instead (Required)\n```\nid                              |estRows |task     |access object               |operator info                                                                                                  |\n--------------------------------+--------+---------+----------------------------+---------------------------------------------------------------------------------------------------------------+\nUpdate_6                        |N/A     |root     |                            |N/A                                                                                                            |\n└─Projection_7                  |12500.00|root     |                            |test.a.id, test.a.bal, test.a.bal2, test.a._tidb_rowid, test.b.id, test.b.bal, test.b.bal2, test.b._tidb_rowid |\n  └─IndexJoin_12                |12500.00|root     |                            |inner join, inner:IndexLookUp_11, outer key:test.a.id, inner key:test.b.id, equal cond:eq(test.a.id, test.b.id)|\n    ├─TableReader_32(Build)     |10000.00|root     |                            |data:TableFullScan_31                                                                                          |\n    │ └─TableFullScan_31        |10000.00|cop[tikv]|table:a                     |keep order:false, stats:pseudo                                                                                 |\n    └─IndexLookUp_11(Probe)     |12500.00|root     |                            |                                                                                                               |\n      ├─IndexRangeScan_9(Build) |12500.00|cop[tikv]|table:b, index:idx2(id, bal)|range: decided by [eq(test.b.id, test.a.id)], keep order:false, stats:pseudo                                   |\n      └─TableRowIDScan_10(Probe)|12500.00|cop[tikv]|table:b                     |keep order:false, stats:pseudo                                                                                 |\n```\n### 4. What is your TiDB version? (Required)\nRelease Version: v7.5.3\nEdition: Community\nGit Commit Hash: 70bfd90035cc81e80d78b4f1f76ca4baef8a5756\nGit Branch: HEAD\nUTC Build Time: 2024-07-31 13:17:12\nGoVersion: go1.21.10\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv\n\n",
+  "date": "2025-03-03T13:02:43Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE c (id int NOT NULL, val varchar(255) DEFAULT NULL, PRIMARY KEY (id));",
+    "CREATE TABLE d (id int NOT NULL, val decimal(10,2) DEFAULT NULL, PRIMARY KEY (id), INDEX idx3(id, val));",
+    "INSERT INTO c (id, val) VALUES (1, '100.00'), (2, '200.50'), (3, NULL);",
+    "INSERT INTO d (id, val) VALUES (1, 100.00), (2, 200.50), (3, NULL);",
+    "UPDATE c SET val = (SELECT CAST(d.val AS varchar) FROM d WHERE c.id = d.id);"
+  ],
+  "key_bug_features": [
+    "Covering indexes fail in update joins"
+  ]
+}

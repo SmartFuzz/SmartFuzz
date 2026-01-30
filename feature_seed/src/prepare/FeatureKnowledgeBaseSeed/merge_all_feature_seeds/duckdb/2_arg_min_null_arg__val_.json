@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id INTEGER, value DECIMAL, timestamp_column TIMESTAMP);
+INSERT INTO test_table VALUES (1, NULL, TIMESTAMP '2023-01-01 00:00:00'), (2, 10.5, TIMESTAMP '2023-01-02 00:00:00'), (3, 5.5, TIMESTAMP '2023-01-03 00:00:00'), (4, 8.0, TIMESTAMP '2023-01-04 00:00:00');
+SELECT id, arg_min_null(value, timestamp_column + INTERVAL (5) DAY) AS min_value_time FROM test_table GROUP BY id HAVING min_value_time IS NOT NULL;
+SELECT id, arg_min_null(value, (timestamp_column + INTERVAL (2) DAY) * 2) AS min_value_time FROM test_table WHERE value IS NOT NULL ORDER BY min_value_time ASC;
+SELECT id, arg_min_null(value, (SELECT SUM(value) FROM test_table) + INTERVAL (3) DAY) AS min_value_time FROM test_table GROUP BY id HAVING min_value_time < 15.0;
+SELECT DISTINCT id FROM (SELECT id, arg_min_null(value + 1, timestamp_column) AS adjusted_value FROM test_table WHERE timestamp_column > TIMESTAMP '2023-01-01') AS subquery HAVING adjusted_value IS NOT NULL;
+CREATE TABLE another_table (ref_id INTEGER REFERENCES test_table(id), interval_column INTERVAL);
+INSERT INTO another_table VALUES (1, INTERVAL '1 DAY'), (2, INTERVAL '2 DAY'), (3, INTERVAL '3 DAY');
+SELECT a.ref_id, arg_min_null(t.value, t.timestamp_column + a.interval_column) FROM another_table a JOIN test_table t ON a.ref_id = t.id GROUP BY a.ref_id HAVING arg_min_null(t.value, t.timestamp_column + a.interval_column) IS NOT NULL;
+SELECT id, arg_min_null(COALESCE(value, 0), (timestamp_column + INTERVAL (4) DAY) + INTERVAL (0) DAY) AS min_time FROM test_table GROUP BY id HAVING min_time >= TIMESTAMP '2023-01-02';

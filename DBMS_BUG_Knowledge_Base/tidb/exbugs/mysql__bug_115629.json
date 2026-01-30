@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=115629",
+  "title": "Upgrading from 8.0.20 to 8.0.28 corrupts a db table with a check constraint",
+  "description": "Upgrading from 8.0.20 to 8.0.28 makes tables containing a check constraint calling regexp_like() with parameters of incompatible charsets inaccessible (the table is shown by 'show tables', but it's impossible to select data from the table, repair the table, alter the table, or delete the table).\r\n\r\nBesides fixing the bug, please let me know if there is a way to get access to the data (in my real table there is much more columns than listed in \"How to repeat\" scenario and real data that I would like to restore).\nHow to repeat:\n1. On 8.0.20 create a table\r\n\r\nCREATE TABLE `t` (\r\n  `custom_prefix` varchar(14) NOT NULL,\r\n  CONSTRAINT `ck_t_custom_prefix` CHECK (regexp_like(cast(`custom_prefix` as char charset binary),_utf8mb4'^[a-z0-9-]+$'))\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8;\r\n\r\n2. Upgrade to 8.0.28.\r\n3.\r\n\r\nREPAIR TABLE `t` EXTENDED;\r\n+-------+--------+----------+--------------------------------------------------------------------------------------------------------+\r\n| Table | Op     | Msg_type | Msg_text                                                                                               |\r\n+-------+--------+----------+--------------------------------------------------------------------------------------------------------+\r\n| db.t  | repair | Error    | Character set 'binary' cannot be used in conjunction with 'utf8mb4_0900_ai_ci' in call to regexp_like. |\r\n| db.t  | repair | Error    | Incorrect information in file: './db/t.frm'                                                            |\r\n| db.t  | repair | error    | Corrupt                                                                                                |\r\n+-------------------------+--------+----------+--------------------------------------------------------------------------------------+\r\nmysql> select * from `t`;\r\nERROR 3995 (HY000): Character set 'binary' cannot be used in conjunction with 'utf8mb4_0900_ai_ci' in call to regexp_like.\r\nmysql> ALTER TABLE `t` DROP CHECK `ck_t_custom_prefix`;\r\nERROR 3995 (HY000): Character set 'binary' cannot be used in conjunction with 'utf8mb4_0900_ai_ci' in call to regexp_like.\r\nmysql> show create table `t`;\r\nERROR 3995 (HY000): Character set 'binary' cannot be used in conjunction with 'utf8mb4_0900_ai_ci' in call to regexp_like.\r\nmysql> drop table `t`;\r\nERROR 3995 (HY000): Character set 'binary' cannot be used in conjunction with 'utf8mb4_0900_ai_ci' in call to regexp_like.\nSuggested fix:\nProbably the MySQL server should fail on upgrading DBs with such tables keeping the DBs unchanged.",
+  "date": "2024-07-17 12:23:00",
+  "vulnerable_version": "8.0.28",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE `t2` (\n`id` INT NOT NULL AUTO_INCREMENT,\n`custom_prefix` VARCHAR(14) NOT NULL,\n`created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\nCONSTRAINT `ck_t2_custom_prefix` CHECK (custom_prefix REGEXP '^[a-z0-9-]+$'),\nPRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8;",
+    "INSERT INTO `t2` (`custom_prefix`) VALUES ('valid-prefix'), ('invalid_prefix!');",
+    "SELECT * FROM `t2` WHERE `custom_prefix` IS NOT NULL;",
+    "UPDATE `t2` SET `custom_prefix` = NULL WHERE `id` = 1;",
+    "ALTER TABLE `t2` DROP CHECK `ck_t2_custom_prefix`;"
+  ],
+  "key_bug_features": [
+    "Check constraint with incompatible charsets during upgrade"
+  ]
+}

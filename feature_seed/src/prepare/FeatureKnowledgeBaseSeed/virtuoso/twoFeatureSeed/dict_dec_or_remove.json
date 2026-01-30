@@ -1,0 +1,18 @@
+{
+    "function": "dict_dec_or_remove",
+    "operator": "bif:st_distance",
+    "sql_array": [
+        "CREATE TABLE geom_data (id INT PRIMARY KEY, location GEOMETRY, counter INT);",
+        "INSERT INTO geom_data (id, location, counter) VALUES (1, 'POINT(1 1)', 5), (2, 'POINT(2 2)', 10), (3, 'POINT(3 3)', 0);",
+        "SELECT dict_dec_or_remove(counter), bif:st_distance(location, 'POINT(2 2)') FROM geom_data WHERE id = 1;",
+        "SELECT id, dict_dec_or_remove(counter) AS new_counter FROM (SELECT id, dict_dec_or_remove(counter) AS counter FROM geom_data HAVING counter > 0) AS subquery WHERE new_counter IS NOT NULL;",
+        "SELECT g.id, g.counter, dict_dec_or_remove(g.counter) FROM geom_data g JOIN (SELECT id, bif:st_distance(location, 'POINT(1 1)') AS distance FROM geom_data) AS distances ON g.id = distances.id WHERE distances.distance < 2;",
+        "CREATE TEMPORARY TABLE temp_geom AS SELECT id, location FROM geom_data WHERE counter > 0;",
+        "INSERT INTO temp_geom (id, location) VALUES (4, 'POINT(4 4)');",
+        "SELECT id, dict_dec_or_remove(NULLIF(counter, 0)) FROM geom_data WHERE counter IS NOT NULL;",
+        "CREATE TABLE test_cases (key VARCHAR(255) NOT NULL, value INT NOT NULL CHECK (value >= 0));",
+        "INSERT INTO test_cases (key, value) VALUES ('a', 1), ('b', 2), ('c', -1), ('d', 0);",
+        "SELECT dict_dec_or_remove(value) FROM test_cases WHERE key = 'd' AND value >= 0;",
+        "SELECT t.key, dict_dec_or_remove(COALESCE(value, 0)), bif:st_distance(geom_data.location, 'POINT(4 4)') FROM test_cases t JOIN geom_data ON t.key = CAST(geom_data.id AS VARCHAR) WHERE value > 0;"
+    ]
+}

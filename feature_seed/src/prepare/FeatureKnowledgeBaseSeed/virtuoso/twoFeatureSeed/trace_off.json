@@ -1,0 +1,18 @@
+{
+    "function": "trace_off",
+    "operator": "JSON Operator: json_array_length",
+    "sql_array": [
+        "CREATE TABLE fuzz_test (id INT PRIMARY KEY, data JSON, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO fuzz_test (id, data) VALUES (1, '[{\"key\": \"value1\"}, {\"key\": \"value2\"}]');",
+        "SELECT trace_off('user_log', 'failed_log') FROM (SELECT json_array_length(data) AS length FROM fuzz_test WHERE id = 1 HAVING length > 0);",
+        "INSERT INTO fuzz_test (id, data) VALUES (2, '[]');",
+        "SELECT trace_off('user_log', 'failed_log') FROM fuzz_test WHERE json_array_length(data) IS NULL;",
+        "SELECT trace_off('user_log', 'failed_log'), id, data FROM fuzz_test WHERE created_at > NOW() - INTERVAL '1 DAY' GROUP BY id HAVING json_array_length(data) = 0;",
+        "WITH temp AS (SELECT json_array_length(data) AS length FROM fuzz_test) SELECT trace_off('user_log', 'failed_log') FROM temp WHERE length > 1;",
+        "CREATE TABLE additional_test (id INT, ref_id INT, data JSON, FOREIGN KEY(ref_id) REFERENCES fuzz_test(id));",
+        "INSERT INTO additional_test (id, ref_id, data) SELECT 1, id, '[{\"key\": \"cross_ref1\"}]' FROM fuzz_test WHERE id = 1;",
+        "SELECT trace_off('user_log', 'failed_log'), a.id, json_array_length(a.data) FROM fuzz_test a JOIN additional_test b ON a.id = b.ref_id WHERE json_array_length(a.data) > 0;",
+        "SELECT trace_off('user_log', 'failed_log') FROM additional_test WHERE json_array_length(data) = (SELECT MAX(json_array_length(data)) FROM fuzz_test);",
+        "SELECT trace_off('user_log', 'failed_log') FROM fuzz_test WHERE created_at IS NOT NULL AND json_array_length(data) BETWEEN 0 AND (SELECT COUNT(*) FROM fuzz_test);"
+    ]
+}

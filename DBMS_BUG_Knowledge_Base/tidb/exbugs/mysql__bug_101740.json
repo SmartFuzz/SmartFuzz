@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=101740",
+  "title": "mysqldump and SHOW CREATE VIEW produce invalid syntax for VIEWs with ROLL UP",
+  "description": "The SHOW CREATE VIEW command (and thus mysqldump) produces invalid syntax for VIEWS that were created with a ROLL UP clause. The VIEW query appears to have C function names like `rollup_sum_switcher` and `rollup_group_item` inserted into it.\r\n\r\nImportantly, backups generated with mysqldump will not show an error but will fail when restored due to this bug. Failure may only be noticed later when a user attempts to access the view.\r\n\r\nI've confirmed this bug on 8.0.21-0ubuntu0.20.04.4 for Linux on x86_64 but the bug is also reported to be an issue since > 18.0.18 on Mac see here:\nhttps://stackoverflow.com/questions/64985354/mysql-8-0-18-dump-restore-problems-with-views...\nHow to repeat:\nDROP DATABASE IF EXISTS rollup_test;\r\nCREATE DATABASE rollup_test;\r\nUSE rollup_test;\r\n\r\nDROP TABLE IF EXISTS tmp_table_rollup;\r\nCREATE TABLE tmp_table_rollup (\r\n id bigint(20) NOT NULL AUTO_INCREMENT,\r\n groupKey varchar(250)  DEFAULT NULL,\r\n groupValue varchar(250) DEFAULT NULL,\r\n PRIMARY KEY (id)\r\n);\r\n\r\nDROP VIEW IF EXISTS tmp_view_rollup;\r\nCREATE VIEW tmp_view_rollup\r\n  AS\r\n    SELECT groupKey,\r\n    COUNT(id) AS groupCount\r\n    FROM tmp_table_rollup\r\n    GROUP BY groupKey\r\n    WITH ROLLUP;\r\n\r\nSHOW CREATE VIEW tmp_view_rollup;\r\n\r\n# Output is:\r\n# CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`%` SQL SECURITY DEFINER VIEW `tmp_view_rollup` AS select rollup_group_item(`tmp_table_rollup`.`groupKey`,0) AS `groupKey`,rollup_sum_switcher(count(`tmp_table_rollup`.`id`)) AS `groupCount` from `tmp_table_rollup` group by `tmp_table_rollup`.`groupKey` with rollup\r\n\r\n# Note the view definition contains C function names such as `rollup_sum_switcher` and `rollup_group_item` instead of the proper ROLL UP query. This bug causes mysqldump to produce invalid backups.",
+  "date": "2020-11-25 00:44:00",
+  "vulnerable_version": "8.0.22",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE DATABASE rollup_test;",
+    "USE rollup_test;",
+    "CREATE TABLE tmp_table_rollup (id bigint(20) NOT NULL AUTO_INCREMENT, groupKey varchar(250) DEFAULT NULL, groupValue varchar(250) DEFAULT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id));",
+    "INSERT INTO tmp_table_rollup (groupKey, groupValue) VALUES ('A', 'Value1'), ('B', 'Value2'), (NULL, 'Value3'), ('C', NULL);",
+    "CREATE VIEW tmp_view_rollup AS SELECT groupKey, COUNT(id) AS groupCount FROM tmp_table_rollup GROUP BY groupKey;"
+  ],
+  "key_bug_features": [
+    "SHOW CREATE VIEW with ROLL UP produces invalid syntax"
+  ]
+}

@@ -1,0 +1,15 @@
+CREATE TABLE test_table (id INTEGER PRIMARY KEY, event_date DATE, event_time TIMESTAMP, offset_value INTEGER, nullable_value INTEGER);
+INSERT INTO test_table (id, event_date, event_time, offset_value, nullable_value) VALUES (1, DATE '1992-02-15', TIMESTAMP '1992-02-15 08:00:00', NULL, 5);
+INSERT INTO test_table (id, event_date, event_time, offset_value, nullable_value) VALUES (2, DATE '2022-01-01', TIMESTAMP '2022-01-01 10:00:00', -120, NULL);
+SELECT id, event_date, timezone(event_date) // 60 AS timezone_offset_hours FROM test_table WHERE nullable_value IS NOT NULL;
+SELECT id, COUNT(*) OVER (PARTITION BY timezone(event_date) // 60) AS count_per_timezone FROM test_table;
+SELECT id, event_date, event_time, offset_value, (timezone(event_date) + offset_value) // NULLIF(nullable_value, 0) AS adjusted_timezone FROM test_table;
+SELECT id FROM test_table WHERE (timezone(event_date) // 60) = (SELECT AVG(timezone(event_date) // 60) FROM test_table WHERE offset_value IS NOT NULL) HAVING COUNT(*) > 1;
+CREATE TABLE another_table (id INTEGER PRIMARY KEY, related_id INTEGER REFERENCES test_table(id), relevancy_score FLOAT);
+INSERT INTO another_table (id, related_id, relevancy_score) VALUES (1, 1, 8.5), (2, 1, NULL);
+SELECT a.id, t.event_date, (SELECT COUNT() FROM another_table WHERE related_id = t.id) // COALESCE(NULLIF(t.nullable_value, 0), 1) AS relevance_adjusted FROM test_table t JOIN another_table a ON a.related_id = t.id WHERE t.offset_value IS NOT NULL;
+SELECT t.id, timezone(event_date) AS tz_offset_minutes, (timezone(event_date) + offset_value) // 2 AS average_adjusted_timezone FROM test_table t WHERE event_date > DATE '2000-01-01';
+SELECT t.id, (MAX(timezone(t.event_date)) OVER (PARTITION BY t.nullable_value)) // 2 AS max_timezone_adjusted FROM test_table t WHERE t.nullable_value IS NOT NULL;
+ALTER TABLE test_table ADD COLUMN new_nullable FLOAT;
+UPDATE test_table SET new_nullable = timezone(event_date) // NULLIF(offset_value, 0) WHERE id = 1;
+DELETE FROM test_table WHERE timezone(event_date) // 60 < 0;

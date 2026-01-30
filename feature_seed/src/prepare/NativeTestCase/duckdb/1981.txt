@@ -1,0 +1,11 @@
+PRAGMA enable_verification;
+PRAGMA threads = 4;
+CREATE TABLE bigdata AS SELECT i AS col_a, i AS col_b FROM range(0, 10000) tbl(i);
+PRAGMA enable_profiling = 'json';
+PRAGMA profiling_output = '__TEST_DIR__/profiling_output.json';
+PRAGMA custom_profiling_settings='{"BLOCKED_THREAD_TIME": "true"}';
+SELECT (SELECT COUNT(*) FROM bigdata WHERE col_a = 1) + (SELECT COUNT(*) FROM bigdata WHERE col_b = 1);
+PRAGMA disable_profiling;
+SELECT unnest(res) FROM ( 	SELECT current_setting('custom_profiling_settings') AS raw_setting, 	raw_setting.trim('{}') AS setting, 	string_split(setting, ', ') AS res ) ORDER BY ALL;
+CREATE OR REPLACE TABLE metrics_output AS SELECT * FROM '__TEST_DIR__/profiling_output.json';
+SELECT COUNT(blocked_thread_time) FROM metrics_output;

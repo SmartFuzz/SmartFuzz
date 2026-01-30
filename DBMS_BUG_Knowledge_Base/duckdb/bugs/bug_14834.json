@@ -1,0 +1,28 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14834",
+  "title": "Unexpected result when using `INTERVAL` and `INNER JOIN` subquery",
+  "vulnerable_database": "DuckDB",
+  "date": "2024-11-14 15:35:17",
+  "vulnerable_version": "",
+  "description": "### What happens?\n\nConsider the following test case. The second query with a `WHERE` filter returns 36 rows, and it's more than the first query without a `WHERE` filter, which is unexpected. \r\n\r\nConsidering PostgreSQL returns 36 rows for both queries, I suppose the first query is unexpected.\n\n### To Reproduce\n\n```sql\r\nCREATE  TABLE  t0(c1 INTERVAL);\r\nINSERT INTO t0(c1) VALUES ('2 years 3 months');\r\nINSERT INTO t0(c1) VALUES ('-1734799452 DAYS'), ('2 DAYS');\r\nINSERT INTO t0(c1) VALUES ('13 days');\r\nINSERT INTO t0(c1) VALUES ('1 month');\r\nINSERT INTO t0(c1) VALUES ('3 days');\r\n\r\nSELECT * FROM t0 INNER  JOIN  (SELECT  INTERVAL 1000 DAY AS col0 FROM t0) AS sub0  ON (t0.c1 < sub0.col0); -- 24 rows (unexpected)\r\nSELECT * FROM t0 INNER  JOIN  (SELECT  INTERVAL 1000 DAY AS col0 FROM t0) AS sub0  ON (t0.c1 < sub0.col0) WHERE (NOT (t0.c1 != t0.c1)); -- 36 rows\r\n\r\n\r\n```\n\n### OS:\n\nUbuntu 22.04\n\n### DuckDB Version:\n\nv1.1.4-dev1859 b484c2d96f\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nSuyang Zhong\n\n### Affiliation:\n\nNUS\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a source build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [X] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [X] Yes, I have",
+  "poc": [
+    "CREATE  TABLE  t0(c1 INTERVAL);",
+    "INSERT INTO t0(c1) VALUES ('2 years 3 months');",
+    "INSERT INTO t0(c1) VALUES ('-1734799452 DAYS'), ('2 DAYS');",
+    "INSERT INTO t0(c1) VALUES ('13 days');",
+    "INSERT INTO t0(c1) VALUES ('1 month');",
+    "INSERT INTO t0(c1) VALUES ('3 days');",
+    "SELECT * FROM t0 INNER  JOIN  (SELECT  INTERVAL 1000 DAY AS col0 FROM t0) AS sub0  ON (t0.c1 < sub0.col0);",
+    "SELECT * FROM t0 INNER  JOIN  (SELECT  INTERVAL 1000 DAY AS col0 FROM t0) AS sub0  ON (t0.c1 < sub0.col0) WHERE (NOT (t0.c1 != t0.c1));"
+  ],
+  "key_bug_features": [
+    "INNER JOIN with INTERVAL causes unexpected row count"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t1(c1 INTERVAL, c2 INTEGER NOT NULL);",
+    "INSERT INTO t1(c1, c2) VALUES ('1 year'), ('-1 month'), ('5 days'), ('0 days');",
+    "SELECT * FROM t1 INNER JOIN (SELECT INTERVAL 500 DAY AS col0 FROM t1) AS sub1 ON (t1.c1 < sub1.col0);",
+    "SELECT * FROM t1 INNER JOIN (SELECT INTERVAL 500 DAY AS col0 FROM t1) AS sub1 ON (t1.c1 < sub1.col0) WHERE (t1.c2 IS NOT NULL);",
+    "SELECT * FROM t1 WHERE c1 IS NULL OR c2 = 0;"
+  ]
+}

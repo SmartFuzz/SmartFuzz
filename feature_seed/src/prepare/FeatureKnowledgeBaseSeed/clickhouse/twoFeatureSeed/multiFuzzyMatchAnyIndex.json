@@ -1,0 +1,19 @@
+{
+    "function": "multiFuzzyMatchAnyIndex",
+    "operator": "a IN ...",
+    "sql_array": [
+        "CREATE TABLE test_strings (id UInt32, haystack String, pattern String);",
+        "INSERT INTO test_strings VALUES (1, 'fuzzy testing', 'fuzzy'), (2, 'datum', 'data'), (3, 'clickhouse', 'click');",
+        "SELECT id, multiFuzzyMatchAnyIndex(haystack, 1, [pattern]) AS match_index FROM test_strings WHERE 1 IN (SELECT id FROM test_strings WHERE length(haystack) > 5);",
+        "CREATE TABLE test_numbers (val Float64, description String);",
+        "INSERT INTO test_numbers VALUES (3.14159, 'pi'), (2.71828, 'e'), (1.41421, 'sqrt(2)');",
+        "SELECT val, description FROM test_numbers WHERE val IN (SELECT val * 10 FROM test_numbers WHERE description LIKE '%pi%');",
+        "CREATE TABLE test_edge_cases (int_val Int32, float_val Float32, str_val String, nullable_val Nullable(String));",
+        "INSERT INTO test_edge_cases VALUES (1, NULL, '', NULL), (2, 3.14, 'test', 'value'), (3, 0.0, NULL, 'none');",
+        "SELECT int_val, float_val FROM test_edge_cases WHERE 1 IN (SELECT id FROM (SELECT multiFuzzyMatchAnyIndex(str_val, 1, ['val', 'none']) as index FROM test_edge_cases));",
+        "SELECT COUNT(*) FROM (SELECT str_val FROM test_edge_cases WHERE nullable_val IS NULL HAVING multiFuzzyMatchAnyIndex(str_val, 1, ['value']) > 0) as subquery HAVING float_val = 0.0;",
+        "CREATE TABLE test_join (id UInt32, value Int32);",
+        "INSERT INTO test_join VALUES (1, 5), (2, 10), (3, 15);",
+        "SELECT a.id, multiFuzzyMatchAnyIndex(a.value, 1, [b.value]) AS fuzzy_index FROM test_join a JOIN (SELECT id, value FROM test_join WHERE value IN (5, 10)) b ON a.value < b.value;"
+    ]
+}

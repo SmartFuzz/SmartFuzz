@@ -1,0 +1,6 @@
+CREATE TABLE test_table (id Int32, value String, float_value Float32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, '15'), (2, 'abc'), (3, ''), (4, '0xc0fe'), (5, 'NaN');
+SELECT id, toFloat32OrDefault(value, CAST('0', 'Float32')) AS default_float FROM test_table WHERE value NOT IN (SELECT value FROM test_table WHERE value NOT IN ('abc', '15'));
+SELECT id, value, toFloat32OrDefault(value, CAST('0', 'Float32')) AS converted_value FROM test_table WHERE id > 2 AND NOT (converted_value GLOBAL NOT IN (SELECT float_value FROM test_table WHERE float_value IS NOT NULL));
+SELECT id, COUNT(*) AS cnt FROM test_table GROUP BY id HAVING toFloat32OrDefault(value, CAST('0', 'Float32')) >= 1.0 AND cnt > 1;
+SELECT id, float_value FROM (SELECT id, toFloat32OrDefault(value, CAST('0', 'Float32')) AS float_value FROM test_table) AS subquery WHERE float_value > (SELECT AVG(float_value) FROM test_table);

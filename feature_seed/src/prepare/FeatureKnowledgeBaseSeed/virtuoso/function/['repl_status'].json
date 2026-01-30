@@ -1,0 +1,13 @@
+[
+    "CREATE TABLE DB.DBA.SYS_REPL_ACCOUNTS (SERVER VARCHAR, ACCOUNT VARCHAR);",
+    "INSERT INTO DB.DBA.SYS_REPL_ACCOUNTS (SERVER, ACCOUNT) VALUES ('server1', 'account1');",
+    "INSERT INTO DB.DBA.SYS_REPL_ACCOUNTS (SERVER, ACCOUNT) VALUES ('server2', 'account2');",
+    "INSERT INTO DB.DBA.SYS_REPL_ACCOUNTS (SERVER, ACCOUNT) VALUES ('server3', 'account3');",
+    "CREATE PROCEDURE MY_TEST_REPL_STATUS () { DECLARE server, account, status VARCHAR; DECLARE level, stat INTEGER; status := VECTOR ('OFF', 'SYNCING', 'IN SYNC', 'REMOTE DISCONNECTED', 'DISCONNECTED', 'TO DISCONNECT'); result_names (server, account, level, stat); FOR SELECT SERVER, ACCOUNT FROM DB.DBA.SYS_REPL_ACCOUNTS DO { repl_status (SERVER, ACCOUNT, level, stat); result (SERVER, ACCOUNT, level, aref (status, stat)); }; };",
+    "CREATE PROCEDURE TEST_REPL_STATUS_BOUNDARY () { DECLARE server, account, status VARCHAR; DECLARE level, stat INTEGER; status := VECTOR ('OFF', 'SYNCING', 'IN SYNC', 'REMOTE DISCONNECTED', 'DISCONNECTED', 'TO DISCONNECT'); result_names (server, account, level, stat); FOR SELECT SERVER, ACCOUNT FROM (SELECT DISTINCT SERVER, ACCOUNT FROM DB.DBA.SYS_REPL_ACCOUNTS WHERE ACCOUNT LIKE 'account%') AS temp DO { repl_status (SERVER, ACCOUNT, level, stat); result (SERVER, ACCOUNT, level, aref (status, stat)); }; };",
+    "CREATE PROCEDURE TEST_REPL_STATUS_JOIN () { DECLARE server, account, status VARCHAR; DECLARE level, stat INTEGER; status := VECTOR ('OFF', 'SYNCING', 'IN SYNC', 'REMOTE DISCONNECTED', 'DISCONNECTED', 'TO DISCONNECT'); result_names (server, account, level, stat); FOR SELECT a.SERVER, a.ACCOUNT FROM DB.DBA.SYS_REPL_ACCOUNTS AS a JOIN DB.DBA.OTHER_TABLE AS b ON a.SERVER = b.SERVER_ID WHERE b.REPL_ENABLED = TRUE DO { repl_status (a.SERVER, a.ACCOUNT, level, stat); result (a.SERVER, a.ACCOUNT, level, aref (status, stat)); }; };",
+    "CREATE PROCEDURE TEST_REPL_STATUS_SUBQUERY () { DECLARE server, account, status VARCHAR; DECLARE level, stat INTEGER; status := VECTOR ('OFF', 'SYNCING', 'IN SYNC', 'REMOTE DISCONNECTED', 'DISCONNECTED', 'TO DISCONNECT'); result_names (server, account, level, stat); FOR SELECT server, account FROM (SELECT SERVER, ACCOUNT FROM DB.DBA.SYS_REPL_ACCOUNTS WHERE SERVER IN (SELECT SERVER FROM DB.DBA.SYS_REPL_ACCOUNTS WHERE ACCOUNT LIKE 'account%')) AS subquery DO { repl_status (server, account, level, stat); result (server, account, level, aref (status, stat)); }; };",
+    "CREATE TABLE DB.DBA.OTHER_TABLE (SERVER_ID VARCHAR, REPL_ENABLED BOOLEAN);",
+    "INSERT INTO DB.DBA.OTHER_TABLE (SERVER_ID, REPL_ENABLED) VALUES ('server1', TRUE);",
+    "INSERT INTO DB.DBA.OTHER_TABLE (SERVER_ID, REPL_ENABLED) VALUES ('server2', FALSE);"
+]

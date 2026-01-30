@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/88899",
+  "title": "Aggregations like count(), max() return zero values for Distributed tables with enable_parallel_replicas=1",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nSELECT max(col_name) FROM DB.table;\nreturns zero value (1970-01-01 for DateTime) for Distributed tables on 3-node replicated cluster with allow_experimental_parallel_reading_from_replicas=1 setting.\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\n- version 25.8.10 official build\n- 25.8 and 25.9 seem to be affected, 25.7.8.71 works as expected\n- 3-node cluster with replication and allow_experimental_parallel_reading_from_replicas=1\n```SQL\nCREATE TABLE TestDB.test_repl on cluster cluster\n(\n`time_col` DateTime\n)\nENGINE = ReplicatedMergeTree('/clickhouse/tables/{shard}/TestDB/test_repl-{uuid}', '{replica}')\nPARTITION BY tuple()\nORDER BY time_col;\ncreate table TestDB.test on cluster cluster\nas TestDB.test_repl\nengine = Distributed('cluster', 'TestDB', 'test_repl', rand());\ninsert into TestDB.test (time_col) values (now());\ninsert into TestDB.test (time_col) values (now());\nselect count(), max(time_col) from TestDB.test;\n```\nproduces\n0, 1970-01-01 00:00:00\n### Expected behavior\n_No response_\n### Error message and/or stacktrace\n_No response_\n### Additional context\nWith\nSETTINGS enable_parallel_replicas=0 or optimize_use_implicit_projections=0\nresults are correct\nSELECT max(toDateTime(time_col)) ...\nSELECT countIf(...)\nSELECT max(time_col) FROM TestDB.table WHERE time_col>1;\nreturn correct results too",
+  "date": "2025-10-22T15:53:11Z",
+  "vulnerable_version": "25.7.8.71",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE TestDB.test_repl (id SERIAL PRIMARY KEY, time_col TIMESTAMP, value FLOAT8);",
+    "CREATE TABLE TestDB.test (LIKE TestDB.test_repl INCLUDING ALL);",
+    "INSERT INTO TestDB.test (id, time_col, value) VALUES (1, NOW(), 10.5);",
+    "INSERT INTO TestDB.test (id, time_col, value) VALUES (2, NOW(), NULL);",
+    "SELECT COUNT(*), MAX(time_col) FROM TestDB.test WHERE value IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Aggregations return zero values for Distributed tables"
+  ]
+}

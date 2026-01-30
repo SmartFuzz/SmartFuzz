@@ -1,0 +1,26 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/48821",
+  "title": "Query result may be wrong when use `like` to do index range scan on PAD SPACE column",
+  "vulnerable_database": "tidb",
+  "date": "2023-11-23T02:14:34Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```sql\r\ncreate table t(a varchar(20) collate utf8mb4_bin, index ia(a));\r\ninsert into t value('测试'),('测试  ');\r\nselect *,length(a) from t where a like '测试 %';\r\nselect *,length(a) from t where a like '测试';\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nFrom mysql:\r\n```\r\n> select *,length(a) from t where a like '测试 %';\r\n+----------+-----------+\r\n| a        | length(a) |\r\n+----------+-----------+\r\n| 测试     |         8 |\r\n+----------+-----------+\r\n\r\n> select *,length(a) from t where a like '测试';\r\n+--------+-----------+\r\n| a      | length(a) |\r\n+--------+-----------+\r\n| 测试   |         6 |\r\n+--------+-----------+\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n```\r\n> select *,length(a) from t use index () where a like '测试 %';\r\n+----------+-----------+\r\n| a        | length(a) |\r\n+----------+-----------+\r\n| 测试     |         8 |\r\n+----------+-----------+\r\n\r\n> select *,length(a) from t use index (ia) where a like '测试 %';\r\n+----------+-----------+\r\n| a        | length(a) |\r\n+----------+-----------+\r\n| 测试     |         6 |\r\n| 测试     |         8 |\r\n+----------+-----------+\r\n\r\n> select *,length(a) from t use index () where a like '测试';\r\n+--------+-----------+\r\n| a      | length(a) |\r\n+--------+-----------+\r\n| 测试   |         6 |\r\n+--------+-----------+\r\n\r\n> select *,length(a) from t use index (ia) where a like '测试';\r\n+----------+-----------+\r\n| a        | length(a) |\r\n+----------+-----------+\r\n| 测试     |         6 |\r\n| 测试     |         8 |\r\n+----------+-----------+\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\nFrom v6.0.0 to latest master\r\n\r\n",
+  "poc": [
+    "create table t(a varchar(20) collate utf8mb4_bin, index ia(a));",
+    "insert into t value('测试'),('测试  ');",
+    "select *,length(a) from t where a like '测试 %';",
+    "select *,length(a) from t where a like '测试';"
+  ],
+  "poc_type": "sql_text",
+  "state": "closed",
+  "key_bug_features": [
+    "Index range scan on PAD SPACE column with `like`"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t1(a VARCHAR(20) COLLATE utf8mb4_bin, b INT, INDEX ib(a));",
+    "INSERT INTO t1 VALUES('测试'),('测试  '),('测试123'),('测试  123');",
+    "SELECT *, LENGTH(a) FROM t1 WHERE a LIKE '测试 %';",
+    "SELECT *, LENGTH(a) FROM t1 WHERE b IS NULL OR a LIKE '测试';",
+    "SELECT a, LENGTH(a) FROM t1 WHERE a LIKE CONCAT('测试', '  ');"
+  ]
+}

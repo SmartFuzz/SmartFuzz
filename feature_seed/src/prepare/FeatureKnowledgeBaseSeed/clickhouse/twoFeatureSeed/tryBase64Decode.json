@@ -1,0 +1,16 @@
+{
+    "function": "tryBase64Decode",
+    "operator": "EXISTS",
+    "sql_array": [
+        "CREATE TABLE test_data (id UInt32, encoded_string String, some_number Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_data (id, encoded_string, some_number) VALUES (1, 'RW5jb2RlZA==', 1.0), (2, 'invalid', NULL), (3, '', 2.5), (4, 'VGhpcyBpcyBhIHRlc3Q=', 3.5), (5, 'QmFzZTY0IEVuY29kZWQ=', 4.5);",
+        "SELECT id, tryBase64Decode(encoded_string) as decoded, some_number FROM test_data WHERE EXISTS (SELECT 1 FROM test_data WHERE some_number > 3.0);",
+        "SELECT id, tryBase64Decode(encoded_string) as decoded FROM test_data WHERE EXISTS (SELECT 1 FROM test_data WHERE EXISTS (SELECT 1 FROM test_data WHERE some_number IS NULL));",
+        "SELECT COUNT(*) FROM test_data WHERE EXISTS (SELECT some_number FROM test_data WHERE tryBase64Decode(encoded_string) = '' AND some_number > 4.0);",
+        "SELECT id, tryBase64Decode(encoded_string) as decoded FROM test_data WHERE EXISTS (SELECT 1 FROM test_data WHERE encoded_string LIKE '%test%');",
+        "SELECT id, tryBase64Decode(encoded_string) as decoded FROM test_data WHERE EXISTS (SELECT 1 FROM test_data GROUP BY some_number HAVING COUNT(*) > 1);",
+        "SELECT EXISTS(SELECT * FROM test_data WHERE tryBase64Decode(encoded_string) = '') AND EXISTS(SELECT * FROM test_data WHERE some_number < 0);",
+        "CREATE TABLE temp_data AS SELECT * FROM test_data WHERE EXISTS (SELECT * FROM numbers(10) WHERE number >= 5);",
+        "INSERT INTO temp_data SELECT id, tryBase64Decode(encoded_string), some_number FROM test_data WHERE tryBase64Decode(encoded_string) <> '' ORDER BY id;"
+    ]
+}

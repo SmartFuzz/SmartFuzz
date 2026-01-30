@@ -1,0 +1,11 @@
+CREATE TABLE regions (id UInt32, name String, population UInt32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO regions VALUES (1, 'Region A', 1000), (2, 'Region B', 2000), (3, 'Region C', 0), (4, 'Region D', NULL), (5, '', 500);
+SELECT regionToName(id, 'en') AS region_name, COUNT(*) FROM regions GROUP BY region_name HAVING region_name != '';
+SELECT r.id, regionToName(r.id, 'en') FROM regions r JOIN (SELECT id FROM regions WHERE population IS NULL) AS subquery ON r.id >= subquery.id;
+SELECT regionToName(number::UInt32, 'en') FROM numbers(1, 6) WHERE number::UInt32 >= (SELECT MIN(id) FROM regions WHERE name != '');
+SELECT regionToName(id, 'en') FROM (SELECT DISTINCT id FROM regions WHERE id >= 3) AS subquery HAVING regionToName(id, 'en') != '' ORDER BY id;
+SELECT regionToName(ifNull(NULL, 2), 'en') AS region_name WHERE (regionToName(1, 'en') != regionToName(2, 'en')) OR (1 >= 1);
+WITH (SELECT AVG(population) FROM regions) AS avg_population SELECT regionToName(id, 'en'), CASE WHEN population >= avg_population THEN 'above average' ELSE 'below average' END AS population_status FROM regions;
+SELECT DISTINCT regionToName(id, 'en') AS region_name FROM regions WHERE id IN (SELECT id FROM regions WHERE id >= 0) AND region_name != '';
+CREATE TABLE temp_regions AS SELECT regionToName(id, 'en') AS region_name FROM regions WHERE population IS NOT NULL;
+INSERT INTO temp_regions SELECT regionToName(number::UInt32, 'en') FROM numbers(1, 6) WHERE number::UInt32 >= (SELECT MAX(id) FROM regions);

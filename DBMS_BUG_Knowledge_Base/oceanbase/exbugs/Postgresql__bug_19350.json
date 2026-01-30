@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/19350-aed90efec73c66cc%40postgresql.org",
+  "title": "BUG #19350: Short circuit optimization missed when running sql scriptes in JDBC",
+  "description": "The following bug has been logged on the website:\nBug reference:      19350\nLogged by:          Chi Zhang\nEmail address:      798604270(at)qq(dot)com\nPostgreSQL version: 17.6\nOperating system:   ubuntu 24.04 with docker\nDescription:\nHi,\nIn the following test case, if I run it in JDBC, the prepared statement will\ntrigger a divide by zero error. But if run it in command line, there will\nnot be the same error.\n```\nSET plan_cache_mode = force_generic_plan;\nCREATE TABLE t0(c0 int4range);\nINSERT INTO t0(c0) VALUES('[-1920846305,-1018839689)'::int4range);\nPREPARE prepare_query (int8, int8) AS SELECT\n((((((upper(t0.c0))))/($1)))*(($2::int8))) FROM ONLY t0;\nEXECUTE prepare_query(0, NULL);   -- trigger error in JDBC\nSELECT ((((((upper(t0.c0))))/(0::int8)))*((NULL::int8))) FROM ONLY t0;   --\nalways no error\n```\nThis is the Java workload:\n```\nimport java.io.*;\nimport java.sql.*;\nimport java.util.Properties;\npublic class PostgresExecutor {\npublic static void main(String[] args) {\nif (args.length != 1) {\nSystem.err.println(\"usage: java PostgresExecutor <sql file\npath>\");\nSystem.exit(1);\n}\nString filePath = args[0];\nString url = \"jdbc:postgresql://localhost:5433/test\";\nString user = \"sqlancer\";\nString password = \"sqlancer\";\ntry (Connection conn = DriverManager.getConnection(url, user,\npassword);\nBufferedReader reader = new BufferedReader(new\nFileReader(filePath))) {\nSystem.out.println(\"Successfully connected to Postgres\ndatabase.\");\nString line;\ntry (Statement stmt = conn.createStatement()) {\nwhile ((line = reader.readLine()) != null) {\nline = line.trim();\nif (line.isEmpty() || line.startsWith(\"--\")) {\ncontinue;\n}\ntry {\nSystem.out.println(\"Executing SQL: \" + line);\nboolean hasResult = stmt.execute(line);\nif (hasResult) {\ntry (ResultSet rs = stmt.getResultSet()) {\nResultSetMetaData meta = rs.getMetaData();\nint columnCount = meta.getColumnCount();\nwhile (rs.next()) {\nfor (int i = 1; i <= columnCount; i++) {\nSystem.out.print(rs.getString(i));\nif (i < columnCount)\nSystem.out.print(\"\\t\");\n}\nSystem.out.println();\n}\n}\n} else {\nint updateCount = stmt.getUpdateCount();\nSystem.out.println(\"Execute successfully: \" +\nupdateCount + \" rows affected\");\n}\n} catch (SQLException e) {\nSystem.err.println(\"Execute error: \" + line);\ne.printStackTrace();\n}\n}\n}\n} catch (Exception e) {\ne.printStackTrace();\n}\n}\n}\nI can reproduce this with postgresql-42.7.8.jar\n```\njava -cp\n/root/.m2/repository/org/postgresql/postgresql/42.7.8/postgresql-42.7.8.jar\nPostgresExecutor.java test.sql",
+  "date": "2025-12-10 10:31:04",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE t1(id BIGINT PRIMARY KEY AUTO_INCREMENT, value INT NOT NULL);",
+    "INSERT INTO t1(value) VALUES (1), (2), (3), (4);",
+    "CREATE TABLE t2(a INT, b INT CHECK (b <> 0));",
+    "INSERT INTO t2(a, b) VALUES (10, 2), (20, 1), (30, 5);",
+    "SELECT (SELECT value FROM t1 WHERE value > 2) / (SELECT b FROM t2 WHERE a = 20);"
+  ],
+  "key_bug_features": [
+    "Divide by zero error in JDBC prepared statement execution"
+  ]
+}

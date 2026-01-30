@@ -1,0 +1,22 @@
+[
+    "CREATE TABLE test_table_1 (id UInt32, val String) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO test_table_1 VALUES (1, 'A'), (2, 'B'), (3, 'C');",
+    "CREATE DICTIONARY test_dict (id UInt32, attr1 String, attr2 UInt32) PRIMARY KEY id SOURCE(CLICKHOUSE(HOST 'localhost' PORT tcpPort() TABLE 'test_table_1')) LIFETIME(MIN 1 MAX 1000) LAYOUT(FLAT);",
+    "SELECT dictGet('test_dict', 'attr1', id) AS attr1_val FROM test_table_1;",
+    "SELECT dictGetOrDefault('test_dict', 'attr1', 5, 'Default') AS default_val FROM test_table_1;",
+    "SELECT dictGetOrNull('test_dict', 'attr1', id) AS attr1_null_val FROM test_table_1 WHERE id > 5;",
+    "CREATE TABLE test_table_2 (key UInt64, value String) ENGINE = MergeTree() ORDER BY key;",
+    "INSERT INTO test_table_2 VALUES (1, 'X'), (2, 'Y'), (3, 'Z');",
+    "CREATE DICTIONARY test_dict_multi (key UInt64, val1 String, val2 String) PRIMARY KEY key SOURCE(CLICKHOUSE(HOST 'localhost' PORT tcpPort() TABLE 'test_table_2')) LIFETIME(MIN 1 MAX 1000) LAYOUT(FLAT);",
+    "SELECT dictGet('test_dict_multi', ('val1', 'val2'), 1) AS multi_attr_val FROM test_table_2;",
+    "SELECT dictGet('test_dict_multi', ('val1', 'val2'), 5) AS multi_attr_val_default FROM test_table_2;",
+    "SELECT dictGetOrNull('test_dict_multi', 'val1', key) AS nullable_val1, dictGetOrNull('test_dict_multi', 'val2', key) AS nullable_val2 FROM test_table_2 WHERE key < 1;",
+    "SELECT dictGetOrNull('test_dict_multi', ('val1', 'val2'), key) AS nullable_tuple_val FROM test_table_2 WHERE key = 2;",
+    "CREATE TABLE range_key_dict_source (key UInt64, start_date Date, end_date Date, val String) ENGINE = TinyLog;",
+    "INSERT INTO range_key_dict_source VALUES (1, toDate('2023-01-01'), toDate('2023-01-02'), 'One'), (2, toDate('2023-01-01'), toDate('2023-01-02'), 'Two');",
+    "CREATE DICTIONARY range_key_dict (key UInt64, start_date Date, end_date Date, val String) PRIMARY KEY key SOURCE(CLICKHOUSE(HOST 'localhost' PORT tcpPort() TABLE 'range_key_dict_source')) LIFETIME(MIN 1 MAX 1000) LAYOUT(RANGE_HASHED()) RANGE(MIN start_date MAX end_date);",
+    "SELECT dictGetOrNull('range_key_dict', 'val', number, toDate('2023-01-01')) AS range_val FROM system.numbers LIMIT 5;",
+    "SELECT (number, toDate('2023-01-01')), dictGetOrNull('range_key_dict', 'val', number, toDate('2023-01-01')) FROM system.numbers LIMIT 10;",
+    "SELECT dictGetOrDefault('range_key_dict', 'val', number, 'Not Found') AS val_or_default FROM system.numbers WHERE number < 1;",
+    "SELECT dictGetOrNull('range_key_dict', ('val',), number, toDate('2023-01-02')) AS tuple_val FROM system.numbers;"
+]

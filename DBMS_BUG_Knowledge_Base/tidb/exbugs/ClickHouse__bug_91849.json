@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/91849",
+  "title": "Special columns are not handled properly with prewhere in ReadFromMergeTree",
+  "description": "A lot of `NOT_FOUND_COLUMN_IN_BLOCK` errors. [Repro](https://fiddle.clickhouse.com/09c5839e-78bd-4b04-b50a-80abe787ceee). Queries used:\n```\nDROP TABLE IF EXISTS test_replacing_mt;\nCREATE TABLE test_replacing_mt(\nkey Int64,\nsomeCol String,\nver DateTime\n) ENGINE = ReplacingMergeTree(ver)\nORDER BY key;\nINSERT INTO test_replacing_mt VALUES\n(1, 'test1', '2020-01-01'),\n(1, 'test2', '2021-01-01'),\n(2, 'test3', '2020-06-01'),\n(2, 'test4', '2021-06-01');\n-- Use version column only in PREWHERE with other columns in SELECT\nSELECT key, someCol FROM test_replacing_mt FINAL PREWHERE ver > '2020-01-01' ORDER BY key;\nDROP TABLE IF EXISTS test_replacing_mt_with_is_deleted;\nCREATE TABLE test_replacing_mt_with_is_deleted(\nkey Int64,\nsomeCol String,\nver UInt64,\nis_deleted UInt8\n) ENGINE = ReplacingMergeTree(ver, is_deleted)\nORDER BY key;\nINSERT INTO test_replacing_mt_with_is_deleted VALUES\n(1, 'test1', 1, 0),\n(1, 'test2', 2, 0),\n(2, 'test3', 1, 0),\n(2, 'test4', 2, 1),\n(3, 'test5', 1, 1);\n-- Use both version and is_deleted in PREWHERE but not in SELECT\nSELECT count() FROM test_replacing_mt_with_is_deleted FINAL PREWHERE ver > 0 AND is_deleted = 0;\n-- Use is_deleted in PREWHERE and version in SELECT\nSELECT count(ver) FROM test_replacing_mt_with_is_deleted FINAL PREWHERE is_deleted = 0;\n-- Use both special columns in PREWHERE, but only data columns in SELECT\nSELECT key, someCol FROM test_replacing_mt_with_is_deleted FINAL PREWHERE ver > 0 AND is_deleted = 0 ORDER BY key;\nDROP TABLE IF EXISTS test_collapsing_mt;\nCREATE TABLE test_collapsing_mt(\nkey Int64,\nsomeCol String,\nsign Int8\n) ENGINE = CollapsingMergeTree(sign)\nORDER BY key;\nINSERT INTO test_collapsing_mt VALUES\n(1, 'test1', 1),\n(1, 'test1', -1),\n(2, 'test2', 1),\n(3, 'test3', 1);\n-- Use sign column only in PREWHERE with other columns in SELECT\nSELECT key, someCol FROM test_collapsing_mt FINAL PREWHERE sign = 1 ORDER BY key;",
+  "date": "2025-12-10T10:42:55Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS test_special_columns;",
+    "CREATE TABLE test_special_columns (key BIGINT, value VARCHAR(255), timestamp DATETIME, is_active TINYINT) ENGINE=InnoDB;",
+    "INSERT INTO test_special_columns (key, value, timestamp, is_active) VALUES (1, 'active', '2023-01-01 00:00:00', 1), (2, 'inactive', '2023-01-02 00:00:00', 0), (3, 'active', '2023-01-03 00:00:00', 1);",
+    "SELECT key, value FROM test_special_columns WHERE is_active = 1 AND timestamp > '2023-01-01 00:00:00' ORDER BY key;",
+    "SELECT COUNT(*) FROM test_special_columns WHERE is_active = 0;"
+  ],
+  "key_bug_features": [
+    "Special columns not handled in PREWHERE with ReadFromMergeTree"
+  ]
+}

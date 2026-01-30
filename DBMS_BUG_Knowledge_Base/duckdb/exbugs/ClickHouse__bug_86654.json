@@ -1,0 +1,19 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/86654",
+  "title": "Partition pruning does not consider session timezone correctly for datetime-based partition keys",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nPartition pruning does not consider session timezone correctly when using toStartOfDay() (or any other epoch) function as partition key.\nThis affects all the multi-timezone applications that use DateTime column based functions as partition key, and break validness of the query output.\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nProblem is reproduceable on the latest version. Was last working on this 24.3-LTS, broken on 24.8-LTS and above (didn't check interim non-LTS versions).\n[fiddle.clickhouse.com/9b578911-b237-4381-8c76-1164f9a4bd65](https://fiddle.clickhouse.com/15b88a1d-f04c-4d89-a2b0-9f3b539f31ad)\n```\nselect '--- CH version';\nselect version();\nselect '--- setting TZ to America/New_York';\nset session_timezone='America/New_York';\nDROP TABLE IF EXISTS default.testpartitiondat_toStartOfDay;\nCREATE TABLE default.testpartitiondat_toStartOfDay(\ndtkey DateTime,\na UInt32,\nb UInt32\n)\nENGINE = MergeTree\nPARTITION BY (toStartOfDay(dtkey))\nORDER BY tuple()\nSETTINGS index_granularity = 8192;\n-- load data in US tz session setting WITHOUT tz info\nselect '--- load data in US tz session setting WITHOUT tz info';\ninsert into default.testpartitiondat_toStartOfDay VALUES (toDateTime('2025-09-03 02:58:00'), 1, 1);\n--- query with datetime explicitly in US TZ\nselect '--- query with datetime explicitly in US TZ - works';\nselect dtkey, _partition_value from default.testpartitiondat_toStartOfDay\nwhere dtkey>=toDateTime('2025-09-03 00:00:00', 'America/New_York')\nand dtkey<toDateTime('2025-09-03 05:00:00', 'America/New_York');\n-- query without explicit TZ, relying on session tz - works\nselect '-- query without explicit TZ, relying on session tz - works';\nselect dtkey, _partition_value from default.testpartitiondat_toStartOfDay\nwhere dtkey>=toDateTime('2025-09-03 00:00:00')\nand dtkey<toDateTime('2025-09-03 05:00:00');\n-- change session tz\nselect '-- change session tz';\nset session_timezone='Europe/Bucharest';\n--- query with datetime explicitly in US TZ -- fails!!!\nselect '--- query with datetime explicitly in US TZ -- fails!!!';\nselect dtkey, _partition_value from default.testpartitiondat_toStartOfDay\nwhere dtkey>=toDateTime('2025-09-03 00:00:00', 'America/New_York')\nand dtkey<toDateTime('2025-09-03 05:00:00', 'America/New_York');\n-- explain plan shows that it's trying to apply pruning in server TZ, instead of using session TZ (PK works correctly)\nselect '-- explain plan shows that its trying to apply pruning in server TZ, instead of using session TZ (PK works correctly)';\nexplain indexes=1, actions=0  select dtkey, _partition_value from default.testpartitiondat_toStartOfDay\nwhere dtkey>=toDateTime('2025-09-03 00:00:00', 'America/New_York')",
+  "date": "2025-09-04T03:43:09Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS test_partition;",
+    "CREATE TABLE test_partition(dtkey TIMESTAMP, a INTEGER, b VARCHAR);",
+    "INSERT INTO test_partition VALUES (TIMESTAMP '2025-09-03 02:58:00', 1, 'test1');",
+    "SELECT dtkey FROM test_partition WHERE dtkey >= TIMESTAMP '2025-09-03 00:00:00' AND dtkey < TIMESTAMP '2025-09-03 05:00:00';"
+  ],
+  "key_bug_features": [
+    "Partition pruning ignores session timezone for datetime keys"
+  ]
+}

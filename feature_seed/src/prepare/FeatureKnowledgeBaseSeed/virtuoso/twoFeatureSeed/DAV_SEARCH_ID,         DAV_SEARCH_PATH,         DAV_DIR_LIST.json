@@ -1,0 +1,17 @@
+{
+    "function": "DAV_SEARCH_ID\n, \n        DAV_SEARCH_PATH\n, \n        DAV_DIR_LIST",
+    "operator": "XPath Operator: xpath_contains",
+    "sql_array": [
+        "CREATE TABLE dav_resources (id INT PRIMARY KEY, path VARCHAR(255), type CHAR(1) CHECK (type IN ('R', 'C')));",
+        "INSERT INTO dav_resources (id, path, type) VALUES (1, '/DAV/Folder1/', 'C');",
+        "INSERT INTO dav_resources (id, path, type) VALUES (2, '/DAV/Folder1/File1.txt', 'R');",
+        "INSERT INTO dav_resources (id, path, type) VALUES (3, '/DAV/Folder2/', 'C');",
+        "INSERT INTO dav_resources (id, path, type) VALUES (4, '/DAV/Folder2/File2.txt', 'R');",
+        "SELECT DB.DBA.DAV_SEARCH_ID(DAV_SEARCH_PATH(r.id, 'r'), 'r') AS resource_id FROM dav_resources r WHERE r.id IN (SELECT r2.id FROM dav_resources r2 WHERE r2.type = 'C');",
+        "SELECT DB.DBA.DAV_SEARCH_PATH(NULLIF(MIN(r.id), 0), 'c') AS path FROM dav_resources r GROUP BY r.type HAVING COUNT(DISTINCT r.path) > 1;",
+        "SELECT DISTINCT r1.path, DB.DBA.DAV_SEARCH_ID(r1.path, r1.type) AS id, CASE WHEN xpath_contains('<root><element>Test</element></root>', r1.path) THEN 'Yes' ELSE 'No' END AS contains_xpath FROM dav_resources r1 JOIN dav_resources r2 ON r1.type <> r2.type WHERE r1.id != r2.id;",
+        "SELECT DB.DBA.DAV_DIR_LIST('/DAV/') AS dir_list FROM dav_resources WHERE path LIKE '/DAV/%' AND type = 'C' ORDER BY path;",
+        "SELECT COUNT(*) FILTER (WHERE id IS NULL) FROM (SELECT DB.DBA.DAV_SEARCH_ID(DAV_SEARCH_PATH(r.id, 'c'), 'r') FROM dav_resources r) AS subquery;",
+        "SELECT DB.DBA.DAV_SEARCH_PATH(DAV_SEARCH_ID('/DAV/Folder1/', 'c'), 'r') AS full_path, UPPER(r.path) AS upper_path FROM dav_resources r WHERE r.id IN (SELECT r2.id FROM dav_resources r2 WHERE r2.type = 'R') ORDER BY lower(r.path) DESC;"
+    ]
+}

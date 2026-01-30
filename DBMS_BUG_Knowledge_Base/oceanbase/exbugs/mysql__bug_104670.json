@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=104670",
+  "title": "NO_SKIP_SCAN hint disables skip scan for all indexes",
+  "description": "When using NO_SKIP_SCAN(tableA indexB), the expected behaviour is that we only disable using skip scan with indexB but it looks like it can potentially disable skip scan for the whole table.\r\n\r\nQuoting from the documentation:\nhttps://dev.mysql.com/doc/refman/8.0/en/optimizer-hints.html#optimizer-hints-index-level\nThe NO_SKIP_SCAN hint disables Skip Scan for the specified indexes. If the hint specifies no indexes, Skip Scan is not permitted for the table.\nHow to repeat:\nRun this:\r\ncreate table t (i int, j int, k int, primary key(i, j, k), key(k));\r\ncreate table u (i int);\r\ninsert into u values (0), (1), (2), (3), (4), (5), (6), (7), (8), (9);\r\ninsert into t  select a.i, a.i * 10 + b.i, a.i * 100 + b.i * 10 + c.i from u a, u b, u c;\r\nanalyze table t;\r\n\r\nexplain select * from t where j < 2;\r\nexplain select /*+ NO_SKIP_SCAN(t k) */ * from t where j < 2;\r\n\r\nI get this output:\r\n\r\nexplain select * from t where j < 2;\r\nid      select_type     table   partitions      type    possible_keys   key     key_len ref     rows    filtered        Extra\r\n1       SIMPLE  t       NULL    range   PRIMARY,k       PRIMARY 8       NULL    333     100.00  Using where; Using index for skip scan\r\nWarnings:\r\nNote    1003    /* select#1 */ select `test`.`t`.`i` AS `i`,`test`.`t`.`j` AS `j`,`test`.`t`.`k` AS `k` from `test`.`t` where (`test`.`t`.`j` < 2)\r\nexplain select /*+ NO_SKIP_SCAN(t k) */ * from t where j < 2;\r\nid      select_type     table   partitions      type    possible_keys   key     key_len ref     rows    filtered        Extra\r\n1       SIMPLE  t       NULL    index   NULL    k       4       NULL    1000    33.33   Using where; Using index\r\n\r\nNote that we should still be able to use the primary key for skip scan, even though we disallowed skip scan on index k.\nSuggested fix:\nThe hint_table_state call in add_loose_index_scan_and_skip_scan_keys needs to check whether the entire table is disallowed, or just a handful of indexes. It should then add the allowed indexes into join_tab->skip_scan_keys.",
+  "date": "2021-08-19 23:00:00",
+  "vulnerable_version": "8.0.26",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t (i INT, j INT, k INT, PRIMARY KEY(i, j, k), INDEX(k));",
+    "CREATE TABLE u (i INT NOT NULL UNIQUE);",
+    "INSERT INTO u VALUES (0), (1), (2), (3), (4), (5), (6), (7), (8), (9);",
+    "INSERT INTO t SELECT a.i, a.i * 10 + b.i, a.i * 100 + b.i * 10 + c.i FROM u a JOIN u b ON a.i = b.i LEFT JOIN u c ON b.i = c.i;",
+    "SELECT /*+ NO_SKIP_SCAN(t k) */ * FROM t WHERE j < 2;"
+  ],
+  "key_bug_features": [
+    "NO_SKIP_SCAN hint affects entire table skip scan behavior"
+  ]
+}

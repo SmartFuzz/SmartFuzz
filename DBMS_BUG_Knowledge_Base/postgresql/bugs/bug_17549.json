@@ -1,0 +1,26 @@
+{
+  "url": "https://www.postgresql.org/message-id/17549-5114159516d34c2d%40postgresql.org",
+  "title": "BUG #17549: wrong index scan plan with RLS",
+  "vulnerable_database": "postgresql",
+  "date": "2022-07-13 11:45:54",
+  "vulnerable_version": "Unknown",
+  "description": "The following bug has been logged on the website:\nBug reference:      17549\nLogged by:          Zhao Rui\nEmail address:      875941708(at)qq(dot)com\nPostgreSQL version: 14.4\nOperating system:   All\nDescription:\nYou can reproduce in this way:\ncreate table abc (a integer, b text);\ninsert into abc select (random()*(10^4))::integer, (random()*(10^4))::text\nfrom generate_series(1,100000);\ncreate index on abc(a, lower(b));\nALTER TABLE abc enable ROW LEVEL SECURITY;\nALTER TABLE abc FORCE  ROW LEVEL SECURITY;\nCREATE POLICY abc_id_iso_ply on abc to CURRENT_USER USING (a =\n(current_setting('app.a'::text))::int);\n# for bypass user, index scan works fine\nexplain analyse select * from abc where a=1 and lower(b)='1234';\nIndex Scan using abc_a_lower_idx on abc\nIndex Cond: ((a = 1) AND (lower(b) = '1234'::text))\n# for RLS user, index scan can only use column a, and filter by lower(b)\nset app.a=1;\nexplain analyse select * from abc where a=1 and lower(b)='1234';\nIndex Scan using abc_a_lower_idx on abc\nIndex Cond: (a = 1)\nFilter: (lower(b) = '1234'::text)\nThis only occurs when using non-leak-proof functional index. Everything\nworks fine in following way:\ncreate index on abc(a, b);\nexplain analyse select * from abc where a=1 and b='1234';\nI think crucial function is restriction_is_securely_promotable. Maybe it is\ntoo strict to reject normal clause match.\nCould you please recheck RLS with functional index?",
+  "poc": [
+    "CREATE TABLE abc (a int, b text);",
+    "CREATE POLICY abc_rls_policy ON abc USING (true);",
+    "create index on abc(a, lower(b));",
+    "ALTER TABLE abc enable ROW LEVEL SECURITY;",
+    "ALTER TABLE abc FORCE ROW LEVEL SECURITY;"
+  ],
+  "poc_type": "sql_text",
+  "key_bug_features": [
+    "RLS restricts index usage with non-leak-proof functional index"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE def (x integer, y text, z boolean DEFAULT true);",
+    "INSERT INTO def SELECT (random()*(10^4))::integer, (random()*(10^4))::text, (random() > 0.5);",
+    "CREATE INDEX ON def(x, lower(y));",
+    "ALTER TABLE def ENABLE ROW LEVEL SECURITY;",
+    "CREATE POLICY def_rls_policy ON def USING (x = (current_setting('app.x'::text))::int);"
+  ]
+}

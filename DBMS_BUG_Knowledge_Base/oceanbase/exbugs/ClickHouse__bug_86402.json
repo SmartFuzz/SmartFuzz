@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/86402",
+  "title": "Feat: kafka_format for Bson data",
+  "description": "### Feat\n```\nCREATE TABLE IF NOT EXISTS kafka_topic_queue\n(\noperationType String, -- not nested, works correctly\nfullDocument String,\n) ENGINE = Kafka()\nSETTINGS\nkafka_broker_list = 'k01.local:9093',\nkafka_topic_list = 'xxx',\nkafka_group_name = 'clickhouse',\nkafka_format = 'BSONEachRow';\n```\nMy data stored in kafka as BSON with nested fields and I'm trying to syncronize that topic into CH.\noperationType String, -- field not nested, works correctly\nfullDocument JSON  - error: Type JSON is not supported for output in BSON format: while parsing Kafka message\nfullDocument String -  error: Cannot insert BSON Document into String column: while parsing Kafka message `\nIf I understand correctly, the `BSONEachRow` form returns BSON document for each column which cannot be converted to supported column formats.\n### Use case\nTo syncronize mongo and clickhouse easier\n### Describe the solution you'd like\nFor example, implemet new format `BSONEachRowAsJSON` or any other solution to convert data from BSON fields on the fly (`BSONAsString`)",
+  "date": "2025-08-29T08:49:43Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE IF NOT EXISTS kafka_topic_queue (operationType VARCHAR(255), fullDocument VARCHAR(4000)) ENGINE = KAFKA SETTINGS kafka_broker_list = 'k01.local:9093', kafka_topic_list = 'xxx', kafka_group_name = 'clickhouse', kafka_format = 'BSONAsString';",
+    "INSERT INTO kafka_topic_queue (operationType, fullDocument) VALUES ('insert', '{\"nestedField\": {\"subField\": \"value\"}}');",
+    "CREATE TABLE IF NOT EXISTS kafka_topic_queue_test (id INT, data VARCHAR(4000)) ENGINE = MERGE TREE ORDER BY id;",
+    "INSERT INTO kafka_topic_queue_test (id, data) SELECT ROW_NUMBER() OVER () AS id, fullDocument FROM kafka_topic_queue WHERE operationType = 'insert';",
+    "SELECT id, data FROM kafka_topic_queue_test WHERE data LIKE '%nestedField%';"
+  ],
+  "key_bug_features": [
+    "BSONEachRow format fails with nested BSON fields"
+  ]
+}

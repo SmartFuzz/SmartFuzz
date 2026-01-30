@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id INTEGER PRIMARY KEY, values LIST<INTEGER>);
+INSERT INTO test_table VALUES (1, [1, 2, 3]), (2, [4, 5, 6]), (3, [7, 8, NULL]);
+SELECT id, list_filter(values, x -> x / 2 > 2) AS filtered_values FROM test_table WHERE id > 0;
+CREATE TABLE another_table (data FLOAT, description VARCHAR);
+INSERT INTO another_table VALUES (5.0, 'Test'), (10.0, 'Sample'), (15.0, NULL);
+SELECT a.id, (SELECT COUNT(*) FROM another_table WHERE data / (SELECT MAX(data) FROM another_table WHERE description IS NOT NULL) > 0.5) AS count_filtered FROM test_table a GROUP BY a.id HAVING count_filtered > 0;
+CREATE TABLE yet_another_table AS SELECT id, list_filter(values, x -> x IS NOT NULL) AS non_null_values FROM test_table;
+SELECT y.id, y.non_null_values, (SELECT SUM(item) FROM unnest(y.non_null_values) AS item) / NULLIF(ARRAY_LENGTH(y.non_null_values), 0) AS average FROM yet_another_table y;
+CREATE TEMPORARY TABLE temp_table AS SELECT DISTINCT id, (values[1] / 2) AS halved FROM test_table WHERE values IS NOT NULL;
+SELECT * FROM temp_table WHERE halved > 2;

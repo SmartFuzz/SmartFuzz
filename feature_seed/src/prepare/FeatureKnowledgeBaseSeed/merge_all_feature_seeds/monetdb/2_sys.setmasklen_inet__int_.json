@@ -1,0 +1,10 @@
+CREATE TABLE ip_addresses (id INT PRIMARY KEY, address INET, netmask_length INT);
+INSERT INTO ip_addresses (id, address, netmask_length) VALUES (1, inet '192.168.1.5/24', 24), (2, inet '10.0.0.1/8', 8), (3, inet '172.16.0.1/12', 12);
+SELECT id, sys.setmasklen(address, 16) AS modified_address FROM ip_addresses WHERE sys.setmasklen(address, 16) = inet '192.168.0.0/16';
+SELECT COUNT(*) FROM ip_addresses WHERE sys.setmasklen(address, NULL) IS NULL;
+SELECT address FROM ip_addresses a JOIN (SELECT address AS addr FROM ip_addresses WHERE netmask_length = 24) b ON a.address = b.addr;
+CREATE TABLE logs (log_id INT PRIMARY KEY, log_message VARCHAR(255), created_at TIMESTAMP);
+INSERT INTO logs (log_id, log_message, created_at) VALUES (1, 'Test log', NOW()), (2, 'Another log', NOW());
+SELECT l.log_message, (SELECT COUNT(*) FROM ip_addresses) AS ip_count FROM logs l WHERE l.created_at = (SELECT MIN(created_at) FROM logs);
+SELECT a.address FROM ip_addresses a LEFT JOIN logs l ON (sys.setmasklen(a.address, 16) IS NOT NULL AND l.log_id = 1) WHERE l.log_id IS NULL;
+SELECT a.address FROM ip_addresses a WHERE sys.setmasklen(a.address, 8) = inet '10.0.0.0/8' HAVING COUNT(a.id) > 0;

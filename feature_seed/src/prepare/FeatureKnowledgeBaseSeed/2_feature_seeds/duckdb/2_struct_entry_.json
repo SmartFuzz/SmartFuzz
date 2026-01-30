@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id INTEGER PRIMARY KEY, data STRUCT<j INTEGER, k VARCHAR>);
+INSERT INTO test_table VALUES (1, {'j': 10, 'k': 'Hello'}), (2, {'j': NULL, 'k': 'World'}), (3, {'j': 5, 'k': ''});
+SELECT id, struct['j'] + 5 AS incremented_value FROM test_table WHERE struct['k'] IS NOT NULL;
+CREATE TABLE time_table (event_time TIMESTAMPTZ, event_id INTEGER);
+INSERT INTO time_table VALUES (TIMESTAMPTZ '2023-10-01 10:00:00', 1), (TIMESTAMPTZ '2023-10-01 12:00:00', 2);
+SELECT event_id, event_time + INTERVAL (struct['j'] + 1) DAY AS new_time FROM time_table JOIN test_table ON test_table.id = time_table.event_id;
+CREATE TABLE join_table (join_id INTEGER, join_data STRUCT<a TIMESTAMP, b VARCHAR>);
+INSERT INTO join_table VALUES (1, {'a': TIMESTAMP '2023-01-01 01:01:01', 'b': 'Join Data'}), (2, {'a': NULL, 'b': 'Join Value'});
+SELECT t.id, struct['k'] || ' - On Event: ' || (j.join_data)['b'] AS combined_info FROM test_table t LEFT JOIN join_table j ON struct['j'] = j.join_id;
+SELECT COUNT(*), AVG(IFNULL(struct['j'], 0)) AS avg_j FROM test_table GROUP BY struct['k'] HAVING avg_j > 0;
+WITH ranked_events AS (SELECT event_id, ROW_NUMBER() OVER (ORDER BY event_time + INTERVAL 2 DAY) AS rnk FROM time_table) SELECT r.event_id FROM ranked_events r WHERE r.rnk = 1;

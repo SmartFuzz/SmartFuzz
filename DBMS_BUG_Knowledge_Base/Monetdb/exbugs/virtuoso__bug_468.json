@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/468",
+  "title": "Calling SQL from SPARQL: Transaction deadlocked",
+  "description": "Hi,\ncalling SQL from SPARQL does not work correctly in my case.\nI perform a clean installation of virtuoso, and then I load data:\nld_dir ('/home/galgonek' ,'chebi_test.nt.gz', 'http://bioinfo.uochb.cas.cz/data/chebi#');\nrdf_loader_run();\nData can be downloaded from https://drive.google.com/file/d/0B3EkPc9W8U0USFJzTzRsUzhfWHc/view?usp=sharing.\nFor the purpose of this report, I define the following procedure:\ncreate procedure testProcedure(in par1 varchar, in par2 varchar,\n        in par3 varchar, in par4 varchar) {\n    result('http://bioinfo.uochb.cas.cz/test1');\n    result('http://bioinfo.uochb.cas.cz/test2');\n};\nThen I submit the followig query:\nsparql\nselect (sql:testProcedure(?ROLE, 'MOL', 0.8, 1) as ?TEST) where {\n    ?ATB <http://bioinfo.uochb.cas.cz/0.9/chebi#isA> *\n         / <http://bioinfo.uochb.cas.cz/0.9/chebi#hasRole> ?ROLE.\n};\nAfter the submission, isql prints http://bioinfo.uochb.cas.cz/test1 and http://bioinfo.uochb.cas.cz/test2 as it is expected. However, it also prints 0. And finally, the following error is returned *** Error 40001: [Virtuoso Driver][Virtuoso Server]SR172: Transaction deadlocked.",
+  "date": "2015-08-24 17:23:01",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR(255), value FLOAT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table (id, name, value) VALUES (1, 'Sample A', 0.8);",
+    "INSERT INTO test_table (id, name, value) VALUES (2, 'Sample B', NULL);",
+    "SELECT * FROM test_table WHERE value IS NOT NULL AND value > (SELECT AVG(value) FROM test_table);",
+    "UPDATE test_table SET value = 1.5 WHERE id = 1;"
+  ],
+  "key_bug_features": [
+    "Calling SQL from SPARQL causes transaction deadlock"
+  ]
+}

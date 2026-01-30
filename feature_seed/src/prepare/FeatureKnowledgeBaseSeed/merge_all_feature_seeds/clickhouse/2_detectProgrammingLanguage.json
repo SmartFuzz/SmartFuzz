@@ -1,0 +1,15 @@
+CREATE TABLE source_codes (id UInt32, code String, created_at DateTime DEFAULT now()) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO source_codes (id, code) VALUES (1, '#include <iostream>'), (2, 'def main(): print("Hello World")'), (3, 'console.log("Hello, world!");
+');
+SELECT detectProgrammingLanguage(code) AS language, id FROM source_codes;
+SELECT id, multiIf(detectProgrammingLanguage(code) = 'C++', 'cpp', detectProgrammingLanguage(code) = 'Python', 'py', detectProgrammingLanguage(code) = 'JavaScript', 'js', 'unknown') AS lang_short FROM source_codes;
+SELECT id, detectProgrammingLanguage(code) AS language, if(isNull(code), 'No code provided', detectProgrammingLanguage(code)) AS language_with_null_check FROM source_codes;
+SELECT id, code, detectProgrammingLanguage(if(code = '', null, code)) AS detected_language FROM source_codes;
+WITH (SELECT detectProgrammingLanguage(code) FROM source_codes WHERE code IS NOT NULL ORDER BY id DESC LIMIT 1) AS latest_lang_detected SELECT id, latest_lang_detected FROM source_codes WHERE code LIKE '%def%';
+CREATE TABLE programming_languages (lang String, weight Float64) ENGINE = Memory;
+INSERT INTO programming_languages (lang, weight) VALUES ('C++', 0.8), ('Python', 0.9), ('JavaScript', 0.7);
+SELECT pl.lang, pl.weight FROM programming_languages pl JOIN (SELECT detectProgrammingLanguage(code) AS detected_lang, id FROM source_codes) ds ON pl.lang = ds.detected_lang WHERE pl.weight > 0.75;
+SELECT detectProgrammingLanguage('') AS empty_source, detectProgrammingLanguage(NULL) AS null_source;
+SELECT id, code, detectProgrammingLanguage(code) AS lang, multiIf(lang = 'C++', 'C++ Language Detected', lang = 'Python', 'Python Language Detected', true, 'Unknown Language') AS lang_status FROM source_codes HAVING lang_status = 'C++ Language Detected';
+SELECT id, code, detectProgrammingLanguage(code) AS lang, lang != 'unknown' AS is_known FROM source_codes WHERE is_known = true;
+SELECT DISTINCT detectProgrammingLanguage(code) AS lang FROM source_codes GROUP BY lang HAVING COUNT(*) > 1;

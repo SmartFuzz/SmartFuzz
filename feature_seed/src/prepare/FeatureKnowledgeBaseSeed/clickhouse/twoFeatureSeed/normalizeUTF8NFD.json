@@ -1,0 +1,16 @@
+{
+    "function": "normalizeUTF8NFD",
+    "operator": "x",
+    "sql_array": [
+        "CREATE TABLE fuzz_test (id UInt32, utf8_col String, nfd_col String, nullable_col Nullable(Int32)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO fuzz_test VALUES (1, '\u00e2', normalizeUTF8NFD('\u00e2')), (2, '\u00e8', normalizeUTF8NFD('\u00e8')), (3, '', normalizeUTF8NFD('')), (4, NULL, NULL);",
+        "SELECT id, utf8_col, nfd_col, transform(length(utf8_col) > 0, [1, 2], [normalizeUTF8NFD(utf8_col), NULL], nfd_col) AS transformed FROM fuzz_test WHERE nullable_col IS NULL;",
+        "SELECT AVG(length(nfd_col)) AS avg_length FROM (SELECT nfd_col, multiIf(length(nfd_col) > 1, 1, length(nfd_col)) AS non_zero_length FROM fuzz_test) AS subquery GROUP BY non_zero_length HAVING non_zero_length > 0;",
+        "SELECT id, multiIf(NULLIF(utf8_col, '') = '', NULL, normalizeUTF8NFD(utf8_col)) AS normalized_while_null FROM fuzz_test ORDER BY normalized_while_null;",
+        "CREATE TABLE test_join (join_id UInt32, join_utf8 String) ENGINE = MergeTree() ORDER BY join_id;",
+        "INSERT INTO test_join VALUES (1, '\u00e2'), (2, '\u00e7'), (3, NULL);",
+        "SELECT f.id, f.utf8_col, j.join_utf8, transform(normalizeUTF8NFD(f.utf8_col), [length(f.utf8_col)], [1], length(j.join_utf8)) AS join_transform FROM fuzz_test f JOIN test_join j ON f.id = j.join_id OR normalizeUTF8NFD(f.utf8_col) = j.join_utf8;",
+        "SELECT id, COUNT(*) AS count FROM fuzz_test GROUP BY multiIf(length(utf8_col) >= 3, 1, 0) HAVING count > 1;",
+        "SELECT normalizeUTF8NFD(f.utf8_col) AS nfd_utf8 FROM fuzz_test WHERE nullable_col IS NOT NULL OR utf8_col = '';"
+    ]
+}

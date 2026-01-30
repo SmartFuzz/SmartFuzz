@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/42941",
+  "title": "Unexpected error in `ORDER BY`",
+  "description": "## Bug Report\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\nThe following program triggers an error\r\n```\r\nCREATE TABLE t0(c0 DECIMAL, c1 FLOAT, c2 DOUBLE);\r\nCREATE TABLE t1 LIKE t0;\r\nSELECT t1.c1 AS c0 FROM  t0 NATURAL LEFT JOIN t1  WHERE t0.c2 ORDER BY (CASE (CASE NULL WHEN t1.c1 THEN t0.c1 ELSE DEFAULT(t1.c0) END ) WHEN t1.c0 THEN 1 ELSE t0.c2 END );\r\n```\r\n\r\nThis is the error message:\r\n```\r\nERROR 1052 (23000) at line 8: Column 't1.c0' in field list is ambiguous\r\n```\r\n\r\nBut I run this query in MySQL, it can run normally.  https://www.db-fiddle.com/f/bE5V1Nx1CjEPSzt6Cucs8B/0\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nNo error.\r\n\r\n### 3. What did you see instead (Required)\r\n```\r\nERROR 1052 (23000) at line 8: Column 't1.c0' in field list is ambiguous\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n```\r\nRelease Version: v7.1.0-alpha-162-gc233969b2\r\nEdition: Community\r\nGit Commit Hash: c233969b2c385b4292a7caaf16517dd8b152d7f1\r\nGit Branch: master\r\nUTC Build Time: 2023-04-11 03:01:14\r\nGoVersion: go1.20.3\r\nRace Enabled: false\r\nTiKV Min Version: 6.2.0-alpha\r\nCheck Table Before Drop: false\r\nStore: unistore\r\n```\r\n\r\n",
+  "date": "2023-04-11T12:46:23Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2(id Int32, value String, amount Decimal(10, 2));",
+    "CREATE TABLE t3(id Int32, ref_id Int32, score Float32 DEFAULT 0.0);",
+    "INSERT INTO t2(id, value, amount) VALUES (1, 'test', 100.50), (2, 'example', 200.75);",
+    "INSERT INTO t3(id, ref_id, score) VALUES (1, 1, 10.5), (2, 2, NULL);",
+    "SELECT t2.value FROM t2 JOIN t3 ON t2.id = t3.ref_id WHERE t3.score IS NOT NULL ORDER BY (CASE WHEN t3.score IS NULL THEN t2.amount ELSE t3.score END);"
+  ],
+  "key_bug_features": [
+    "Ambiguous column reference in ORDER BY clause"
+  ]
+}

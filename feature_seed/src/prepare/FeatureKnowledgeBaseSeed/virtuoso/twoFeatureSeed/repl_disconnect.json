@@ -1,0 +1,22 @@
+{
+    "function": "repl_disconnect",
+    "operator": "bif:st_within",
+    "sql_array": [
+        "CREATE TABLE replication_data (id INT PRIMARY KEY, location GEOMETRY NOT NULL, status VARCHAR(20));",
+        "INSERT INTO replication_data (id, location, status) VALUES (1, ST_GeomFromText('POINT(1 2)'), 'ACTIVE');",
+        "INSERT INTO replication_data (id, location, status) VALUES (2, ST_GeomFromText('POINT(2 3)'), 'ACTIVE');",
+        "INSERT INTO replication_data (id, location, status) VALUES (3, ST_GeomFromText('POINT(3 4)'), 'INACTIVE');",
+        "SELECT * FROM replication_data WHERE status = 'ACTIVE' AND ST_Within(location, ST_GeomFromText('POLYGON((0 0, 4 0, 4 4, 0 4, 0 0))'));",
+        "SELECT id, status FROM replication_data WHERE id IN (SELECT id FROM replication_data WHERE status IS NOT NULL) AND ST_Within(location, ST_GeomFromText('POLYGON((1 1, 2 1, 2 2, 1 2, 1 1))'));",
+        "SELECT COUNT(*) FROM (SELECT id FROM replication_data WHERE ST_Within(location, ST_GeomFromText('LINESTRING(0 0, 1 1)')) GROUP BY status HAVING COUNT(*) > 1) AS derived_table;",
+        "SELECT (SELECT repl_disconnect('demo-srv') WHERE EXISTS (SELECT 1 FROM replication_data WHERE status = 'ACTIVE')) AS disconnect_status;",
+        "CREATE TABLE temp_data (point_location GEOMETRY NOT NULL);",
+        "INSERT INTO temp_data (point_location) VALUES (ST_GeomFromText('POINT(0 0)'), ST_GeomFromText('POINT(1 1)'));",
+        "SELECT CASE WHEN ST_Within((SELECT point_location FROM temp_data LIMIT 1), ST_GeomFromText('POLYGON((0 0, 2 0, 2 2, 0 2, 0 0))')) THEN 'WITHIN' ELSE 'OUTSIDE' END AS spatial_status;",
+        "SELECT repl_disconnect((SELECT status FROM replication_data WHERE status LIKE '%ACTIVE%')) WHERE EXISTS (SELECT id FROM replication_data WHERE location IS NOT NULL);",
+        "SELECT id FROM replication_data WHERE ST_Within(location, (SELECT ST_Envelope(ST_GeomFromText('POLYGON((0 0, 2 0, 2 2, 0 2, 0 0))'))));",
+        "SELECT repl_disconnect('demo-srv') WHERE (SELECT COUNT(*) FROM replication_data) > 0;",
+        "ALTER TABLE replication_data ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;",
+        "UPDATE replication_data SET updated_at = NOW() WHERE ST_Within(location, ST_Buffer(ST_GeomFromText('POINT(1 1)'), 1));"
+    ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/86313",
+  "title": "Merge table engine sorting not using ReadInOrder in some plans",
+  "description": "### Company or project name\nClickHouse\n### Describe the situation\nWhen using the `merge()` function or table engine, queries that use an `WHERE <partial PK> ORDER BY <primary key> LIMIT 1` are slower than expected compared to querying the table directly.\n### Which ClickHouse versions are affected?\n25.4 at least\n### How to reproduce\n```\nCREATE TABLE users (uid Int16, name String, age Int16, time Int8, PRIMARY KEY(time, age, name) ) ENGINE=MergeTree;\nINSERT INTO users VALUES (1231, 'Ksenia', 33, 2);\nINSERT INTO users VALUES (6666, 'Ksenia', 48, 2);\nINSERT INTO users VALUES (8888, 'John', 50, 2);\nEXPLAIN PLAN actions=1 SELECT name FROM default.users WHERE time > 1 ORDER BY time, age LIMIT 1;\nEXPLAIN PLAN actions=1 SELECT name FROM merge('default', '^users$') WHERE time > 1 ORDER BY time, age LIMIT 1;\n```\nFiddle: https://fiddle.clickhouse.com/6026e24d-964e-49ab-bc97-9a1f75ba3287\n### Expected performance\nI would expect that the `ReadType` would be `InOrder` for the `merge` function. If I omit the `Where`, it uses a `ReadType` `InOrder`, and reading the table directly also allows the ReadType to be InOrder.\n### Additional context\n_No response_",
+  "date": "2025-08-27T20:02:45Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE users (uid SMALLINT, name VARCHAR(255), age SMALLINT, time TINYINT, PRIMARY KEY(time, age, name));",
+    "INSERT INTO users (uid, name, age, time) VALUES (1231, 'Ksenia', 33, 2);",
+    "INSERT INTO users (uid, name, age, time) VALUES (6666, 'Ksenia', 48, 2);",
+    "INSERT INTO users (uid, name, age, time) VALUES (8888, 'John', 50, 2);",
+    "SELECT name FROM users WHERE time IS NULL ORDER BY time, age LIMIT 1;"
+  ],
+  "key_bug_features": [
+    "Merge function not using InOrder read type with WHERE clause"
+  ]
+}

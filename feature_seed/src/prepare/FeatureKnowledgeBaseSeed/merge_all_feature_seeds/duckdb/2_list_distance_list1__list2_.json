@@ -1,0 +1,11 @@
+CREATE TABLE points_table (id INTEGER PRIMARY KEY, coordinates_list LIST<FLOAT>);
+INSERT INTO points_table VALUES (1, [1.5, 2.5, 3.5]), (2, [4.5, 5.5, 6.5]), (3, [7.5, 8.5, NULL]);
+SELECT id, list_distance(coordinates_list, [3, 3, 3]) AS distance FROM points_table WHERE distance IS NOT NULL;
+CREATE TABLE reference_table (ref_id INTEGER PRIMARY KEY, ref_coordinates LIST<FLOAT>);
+INSERT INTO reference_table VALUES (1, [0, 0, 0]), (2, [3, 4, 5]), (3, [NULL, NULL, NULL]);
+SELECT p.id, r.ref_id, list_distance(p.coordinates_list, r.ref_coordinates) % 2 AS mod_result FROM points_table p JOIN reference_table r ON list_distance(p.coordinates_list, r.ref_coordinates) IS NOT NULL;
+SELECT AVG(distance) AS avg_distance FROM (SELECT list_distance(coordinates_list, [1, 1, 1]) AS distance FROM points_table);
+SELECT id, list_distance(coordinates_list, [5, 5, 5]) AS distance FROM points_table WHERE distance > (SELECT MAX(list_distance(ref_coordinates, [1, 1, 1])) FROM reference_table) % 2;
+SELECT p.id, SUM(list_distance(p.coordinates_list, r.ref_coordinates)) AS total_distance FROM points_table p JOIN reference_table r ON list_distance(p.coordinates_list, r.ref_coordinates) IS NOT NULL GROUP BY p.id HAVING total_distance > (SELECT AVG(list_distance([1, 1, 1], [2, 2, 2])) FROM reference_table);
+CREATE TEMPORARY TABLE temp_points AS SELECT id, list_distance(coordinates_list, [NULL, 6, 7]) AS temp_distance FROM points_table WHERE coordinates_list IS NOT NULL;
+SELECT DISTINCT mod_result, COUNT(*) FROM (SELECT id, list_distance(coordinates_list, [10, 10, 10]) % 3 AS mod_result FROM points_table) GROUP BY mod_result HAVING COUNT(*) > 1;

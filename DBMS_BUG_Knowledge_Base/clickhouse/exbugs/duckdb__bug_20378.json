@@ -1,0 +1,19 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/20378",
+  "title": "Inconsistent behaviour of normal and prepared statement when use values with different types in CASE WHEN",
+  "description": "### What happens?\n\nHi, in the following test case, the normal SELECT is equivalent to the prepared one, however, the normal SELECT triggers an error:\n\n```sql\nCREATE TABLE t97(c0 DOUBLE);\nINSERT INTO t97(c0) VALUES (0.7430236362015866);\nSELECT (CASE t97.c0 WHEN t97.c0 THEN t97.c0 ELSE '' END ) FROM t97 GROUP BY '', t97.c0; -- Binder Error: Cannot mix values of type VARCHAR and DOUBLE in CASE expression - an explicit cast is required\nPREPARE prepare_query AS SELECT (CASE t97.c0 WHEN t97.c0 THEN t97.c0 ELSE ? END ) FROM t97 GROUP BY '', t97.c0;\nEXECUTE prepare_query(''); -- 0.7430236362015866\n```\n\nFurthermore, if I remove the GROUP BY in the normal SELECT, it will not trigger any error.\n\n```sql\nCREATE TABLE t97(c0 DOUBLE);\nINSERT INTO t97(c0) VALUES (0.7430236362015866);\nSELECT (CASE t97.c0 WHEN t97.c0 THEN t97.c0 ELSE '' END ) FROM t97; -- 0.7430236362015866\n```\n\n### To Reproduce\n\n```sql\nCREATE TABLE t97(c0 DOUBLE);\nINSERT INTO t97(c0) VALUES (0.7430236362015866);\nSELECT (CASE t97.c0 WHEN t97.c0 THEN t97.c0 ELSE '' END ) FROM t97 GROUP BY '', t97.c0;\nPREPARE prepare_query AS SELECT (CASE t97.c0 WHEN t97.c0 THEN t97.c0 ELSE ? END ) FROM t97 GROUP BY '', t97.c0;\nEXECUTE prepare_query('');\n\nSELECT (CASE t97.c0 WHEN t97.c0 THEN t97.c0 ELSE '' END ) FROM t97;\n```\n\n### OS:\n\nUbuntu 24.04\n\n### DuckDB Version:\n\n4b7a6b7bd0f8c968bfecab08e801cdc1f0a5cdfd\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nChi Zhang\n\n### Affiliation:\n\nTHU\n\n### Did you include all relevant configuration (e.g., CPU architecture, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes",
+  "date": "2026-01-04 13:11:47",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE t98(c0 Float64, c1 String);",
+    "INSERT INTO t98(c0, c1) VALUES (1.23456789, 'test');",
+    "SELECT (CASE WHEN t98.c0 > 1 THEN t98.c1 ELSE NULL END) FROM t98 GROUP BY t98.c1, t98.c0;",
+    "SELECT (CASE WHEN t98.c0 < 2 THEN 'fallback_value' ELSE t98.c0 END) FROM t98 GROUP BY t98.c1, t98.c0;"
+  ],
+  "key_bug_features": [
+    "CASE WHEN with mixed types in GROUP BY clause"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/17754-0c04a53e0078e5d6%40postgresql.org",
+  "title": "BUG #17754: Subquery IN clause returns row matches where subquery is invalid",
+  "description": "The following bug has been logged on the website:\nBug reference:      17754\nLogged by:          Gurmokh Sangha\nEmail address:      gurmokh(dot)sangha(at)starlingbank(dot)com\nPostgreSQL version: 15.1\nOperating system:   Debian GNU/Linux 11 (bullseye)\nDescription:\nA subquery that has an incorrect column name, that happens to match a column\nname in the outer query evaluates as true for all rows in the outer query.\nsetup :\ndrop table if exists atable ;\ndrop table if exists btable ;\ncreate table atable (a int, b int) ;\ncreate table btable (c int, d int) ;\ninsert into atable select generate_series(1,10) as a, generate_series(1,10)\nas b ;\ninsert into btable select generate_series(1,10) as c, generate_series(1,10)\nas d ;\nTake query:\nSelect a from btable where c =10;\nThis evaluates an error as column 'a' is not in 'btable'\nHowever if this query is used as a subquery IN on atable such as:\nselect count(*)\nfrom atable\nwhere a in ( select a from btable where c = 10) ;\ncount|\n-----+\n10|\nThis evaluates as true for all rows left of IN.\nexplain plan:\nQUERY PLAN\nAggregate  (cost=43294.65..43294.66 rows=1 width=8) (actual\ntime=0.045..0.045 rows=1 loops=1)\n->  Seq Scan on atable  (cost=0.00..43291.83 rows=1130 width=0) (actual\ntime=0.019..0.041 rows=10 loops=1)\nFilter: (SubPlan 1)\nSubPlan 1\n->  Seq Scan on btable  (cost=0.00..38.25 rows=11 width=4) (actual\ntime=0.001..0.001 rows=1 loops=10)\nFilter: (c = 10)\nRows Removed by Filter: 9\nPlanning Time: 0.084 ms\nExecution Time: 0.082 ms\nHowever if using a column in the subquery that is not in the outer query the\nstatement will fail as you would expect.\nselect count(*)\nfrom atable\nwhere a in ( select g from btable where c = 10) ;\nSQL Error [42703]: ERROR: column \"g\" does not exist\nI have checked the docks on subquery expressions and not sure if this\nexpected behaviour, although it doesn't appear so.\nhttps://www.postgresql.org/docs/current/functions-subquery.html#FUNCTIONS-SUBQUERY-IN",
+  "date": "2023-01-19 18:02:11",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS atable;",
+    "DROP TABLE IF EXISTS btable;",
+    "CREATE TABLE atable (a INTEGER, b INTEGER, c TEXT DEFAULT 'default', d BOOLEAN NOT NULL);",
+    "CREATE TABLE btable (c INTEGER, d INTEGER, e DOUBLE CHECK (e > 0));",
+    "INSERT INTO atable SELECT generate_series(1, 10) AS a, generate_series(1, 10) AS b, NULL, TRUE;"
+  ],
+  "key_bug_features": [
+    "Subquery IN clause matches invalid column names incorrectly"
+  ]
+}

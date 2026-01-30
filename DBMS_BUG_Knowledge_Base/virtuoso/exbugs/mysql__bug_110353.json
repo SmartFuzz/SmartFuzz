@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=110353",
+  "title": "got unexpected result when inserting duplicate records",
+  "description": "I use MySQL Connector J to connect to the database. \r\nWhen I executed my test case, I found that when inserting duplicate data, instead of reporting a java.sql.SQLIntegrityConstraintViolationException error, it returns 1.\r\nyou can check the provided test case for detailed information.\nHow to repeat:\n@Test\r\n    public void test() throws SQLException {\r\n        Connection con = DriverManager.getConnection(\"jdbc:mysql://localhost:3368?user=user&password=password&sessionVariables=sql_mode=''&jdbcCompliantTruncation=false\");\r\n        execute(con, \"DROP DATABASE IF EXISTS test\");\r\n        execute(con, \"CREATE DATABASE test\");\r\n        execute(con, \"USE test\");\r\n        execute(con, \"CREATE TABLE t0(c0 BOOLEAN , c1 DATE , PRIMARY KEY(c1, c0)) engine=Aria\");\r\n\r\n        batchExecute(con, new String[]{\"INSERT INTO t0 VALUES (1795252662, '2023-03-13')\"});\r\n        // this one throw error\r\n        execute(con, \"INSERT INTO t0 VALUES (1795252662, '2023-03-13')\");\r\n        batchExecute(con, new String[]{\"TRUNCATE t0\"});\r\n\r\n        Statement statement = con.createStatement();\r\n        int res = statement.executeUpdate(\"INSERT INTO t0 VALUES (1795252662, '2023-03-13')\");\r\n        // why return 1?\r\n        System.out.println(res);\r\n    }\r\n\r\n    public void execute(Connection con, String sql)  {\r\n        try {\r\n            Statement statement = con.createStatement();\r\n            statement.execute(sql);\r\n            statement.close();\r\n        } catch (SQLException e) {\r\n            e.printStackTrace();\r\n        }\r\n    }\r\n\r\n    public void batchExecute(Connection con, String[] sql)  {\r\n        try {\r\n            Statement statement = con.createStatement();\r\n            for (String s : sql) {\r\n                statement.addBatch(s);\r\n            }\r\n            statement.executeBatch();\r\n            statement.close();\r\n        } catch (SQLException e) {\r\n            e.printStackTrace();\r\n        }\r\n    }\nSuggested fix:\nit should throw java.sql.SQLIntegrityConstraintViolationException instead of returning 1, which is a misleading value.",
+  "date": "2023-03-14 03:04:00",
+  "vulnerable_version": "8.0.32",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t1(id INTEGER NOT NULL, name VARCHAR(50), age INTEGER, PRIMARY KEY(id));",
+    "INSERT INTO t1 VALUES (1, 'Alice', 30);",
+    "INSERT INTO t1 VALUES (1, 'Alice', 30);",
+    "INSERT INTO t1 VALUES (2, NULL, 25);",
+    "SELECT * FROM t1 WHERE age > (SELECT AVG(age) FROM t1);"
+  ],
+  "key_bug_features": [
+    "Inserting duplicate data does not throw expected exception"
+  ]
+}

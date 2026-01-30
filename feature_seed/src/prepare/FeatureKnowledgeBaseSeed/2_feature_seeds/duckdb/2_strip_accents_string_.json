@@ -1,0 +1,9 @@
+CREATE TABLE test_table (id INTEGER PRIMARY KEY, names VARCHAR, values FLOAT, accents VARCHAR);
+INSERT INTO test_table (id, names, values, accents) VALUES (1, 'mühleisen', 5.0, 'èéê'), (2, 'Björk', 8.0, 'åç'), (3, 'Café', NULL, 'àè');
+SELECT id, strip_accents(names) AS clean_name, (values / (SELECT COUNT(*) FROM test_table WHERE values IS NOT NULL)) AS adjusted_value FROM test_table;
+SELECT id, strip_accents(names) AS clean_name, (SELECT strip_accents(AVG(values::TEXT)) FROM test_table) AS avg_values FROM test_table WHERE values IS NOT NULL;
+SELECT A.id, A.names, A.values, (strip_accents(A.accents) / NULLIF(B.val_count, 0)) AS division_result FROM test_table AS A JOIN (SELECT COUNT(*) AS val_count FROM test_table WHERE values IS NOT NULL) AS B ON A.values IS NOT NULL;
+SELECT id, strip_accents(names) AS clean_name, COUNT(*) OVER (PARTITION BY strip_accents(names)) AS name_count FROM test_table HAVING AVG(values) < 10.0;
+SELECT id, (strip_accents(names) || ' - ' || CAST(values AS VARCHAR)) AS complex_string FROM test_table WHERE values IS NOT NULL ORDER BY complex_string DESC;
+CREATE TABLE temp_table AS SELECT id, strip_accents(names) AS clean_name, (values / NULLIF(AVG(values) OVER (), 0)) AS relative_value FROM test_table;
+SELECT id FROM temp_table WHERE relative_value IS NOT NULL AND strip_accents(clean_name) LIKE 'B%';

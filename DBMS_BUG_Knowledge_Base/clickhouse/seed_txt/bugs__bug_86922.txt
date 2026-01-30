@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS `test`.`mv_src_table` UUID 'dc60928b-ff47-448d-806c-2dc2e06714fb' ON CLUSTER 'cluster' (id UInt64, name String, created_at DateTime) Engine=ReplicatedMergeTree('/clickhouse/tables/{database}/{table}','replica1') ORDER BY id;
+INSERT INTO `test`.`mv_src_table` (id, name, created_at) VALUES (1, 'test1', now()), (2, 'test2', now());
+CREATE TABLE IF NOT EXISTS `test`.`mv_refreshable_dst_table` UUID '620be150-bdef-47b2-a295-428dd8e79c97' ON CLUSTER 'cluster' (id UInt64, value Float64) Engine=MergeTree ORDER BY id;
+CREATE MATERIALIZED VIEW IF NOT EXISTS `test`.`mv_refreshable` UUID '98be4ca8-fe55-471a-9c56-2e722a7cd8c1' ON CLUSTER 'cluster' REFRESH EVERY 1 MINUTE TO `test`.`mv_refreshable_dst_table` AS SELECT id, max(id) * 1.0 AS value FROM `test`.`mv_src_table` GROUP BY id;
+DROP TABLE `test`.`mv_refreshable_dst_table` SYNC;

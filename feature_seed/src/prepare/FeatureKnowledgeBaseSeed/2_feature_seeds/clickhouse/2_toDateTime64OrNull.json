@@ -1,0 +1,11 @@
+CREATE TABLE test_timestamps (id UInt32, timestamp_col String) ENGINE = Memory;
+INSERT INTO test_timestamps VALUES (1, '1976-10-18 00:00:00.30'), (2, 'invalid_timestamp'), (3, '2023-10-10 12:00:00.999'), (4, '');
+SELECT id, toDateTime64OrNull(timestamp_col, 3) AS datetime_value FROM test_timestamps WHERE toDateTime64OrNull(timestamp_col, 3) NOT IN (SELECT toDateTime64OrNull('2000-01-01 00:00:00', 3) UNION ALL SELECT toDateTime64OrNull('1976-10-18 00:00:00.30', 3));
+CREATE TABLE test_data (id UInt32, metric Float64) ENGINE = Memory;
+INSERT INTO test_data VALUES (1, 1.5), (2, NULL), (3, 3.14159), (4, 6.28318);
+SELECT id, toDateTime64OrNull(LEFT('1970-01-01 00:00:00', LENGTH('1970-01-01 00:00:00')) || '.' || CAST(metric AS String), 5) AS datetime_value FROM test_data WHERE toDateTime64OrNull(LEFT('1970-01-01 00:00:00', LENGTH('1970-01-01 00:00:00')) || '.' || CAST(metric AS String), 5) NOT IN (SELECT metric FROM test_data WHERE metric IS NOT NULL);
+SELECT id FROM test_timestamps WHERE toDateTime64OrNull(timestamp_col, 3) NOT IN (SELECT toDateTime64OrNull(COALESCE(timestamp_col, '1970-01-01 00:00:00'), 3) FROM test_timestamps WHERE id = 1);
+CREATE TABLE join_test (group_id UInt32, start_time String) ENGINE = Memory;
+INSERT INTO join_test VALUES (1, '1976-10-18 00:00:00.333'), (2, '1976-10-18 00:00:00.666'), (3, NULL);
+SELECT a.id, a.timestamp_col, b.start_time FROM test_timestamps AS a LEFT JOIN join_test AS b ON toDateTime64OrNull(a.timestamp_col, 3) NOT IN (SELECT toDateTime64OrNull(start_time, 3) FROM join_test WHERE group_id = a.id);
+SELECT id, COUNT(*) FROM test_timestamps WHERE toDateTime64OrNull(timestamp_col, 3) IS NOT NULL GROUP BY toDateTime64OrNull(timestamp_col, 3) HAVING COUNT(*) NOT IN (0, 2, NULL) ORDER BY id;

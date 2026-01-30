@@ -1,0 +1,17 @@
+CREATE TABLE test_data (id INT, value VARCHAR(255));
+INSERT INTO test_data (id, value) VALUES (1, 'Sample 1');
+INSERT INTO test_data (id, value) VALUES (2, 'Sample 2');
+INSERT INTO test_data (id, value) VALUES (3, 'Sample 3');
+CREATE TABLE additional_data (id INT, test_id INT, description VARCHAR(255));
+INSERT INTO additional_data (id, test_id, description) VALUES (1, 1, 'Desc 1');
+INSERT INTO additional_data (id, test_id, description) VALUES (2, 1, 'Desc 2');
+INSERT INTO additional_data (id, test_id, description) VALUES (3, 2, 'Desc 3');
+INSERT INTO additional_data (id, test_id, description) VALUES (4, 3, 'Desc 4');
+SELECT x.id, x.value, (SELECT COUNT(*) FROM additional_data ad WHERE ad.test_id = x.id) AS description_count FROM test_data x;
+SELECT x.id, x.value, y.description FROM test_data x JOIN additional_data y ON x.id = y.test_id WHERE x.value LIKE 'Sample%';
+SELECT x.id, y.description FROM test_data x LEFT JOIN additional_data y ON x.id = y.test_id WHERE y.id IS NULL;
+SELECT x.id, (SELECT COUNT(*) FROM additional_data ad WHERE ad.test_id = x.id) AS additional_count FROM test_data x WHERE x.id IN (SELECT test_id FROM additional_data GROUP BY test_id HAVING COUNT(*) > 1);
+SELECT x.*, (SELECT MAX(value) FROM test_data) AS max_value FROM test_data x WHERE x.id IN (SELECT test_id FROM additional_data WHERE description LIKE 'Desc%') ORDER BY x.value;
+SELECT t.id, t.value, a.description FROM test_data t JOIN additional_data a ON t.id = a.test_id WHERE a.description NOT IN (SELECT description FROM additional_data WHERE test_id = 3);
+SELECT x.id, (SELECT ARRAY_AGG(a.description) FROM additional_data a WHERE a.test_id = x.id) AS descriptions FROM test_data x;
+SELECT x.id, x.value, (SELECT SUM(length(a.description)) FROM additional_data a WHERE a.test_id = x.id) AS total_description_length FROM test_data x GROUP BY x.id;

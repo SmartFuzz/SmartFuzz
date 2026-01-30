@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/44123",
+  "title": "data inconsistency is reported when query with for update clause",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n``` SQL\r\nCREATE TABLE `ccf0ed15` (\r\n  `f9e69bc7` bigint(20) DEFAULT '1112823069779687543',\r\n  `d33b6c1b` decimal(41,16) DEFAULT '5518242590970756357909774.8550717763805231',\r\n  `56231d4d` set('35','pi','dqurb','yita3','kczu','a','t8','4d','bh4qs','lk9a','75k') DEFAULT '35,pi,kczu,a,t8,4d,bh4qs,75k',\r\n  UNIQUE KEY `d2200701` (`d33b6c1b`,`f9e69bc7`),\r\n  UNIQUE KEY `9efc4c6b` (`f9e69bc7`),\r\n  KEY `8a590049` (`56231d4d`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=gbk COLLATE=gbk_chinese_ci COMMENT='46791f67'\r\nPARTITION BY HASH (`f9e69bc7`) PARTITIONS 5;\r\nINSERT INTO `ccf0ed15` VALUES\r\n(-7801043551743108407,4626.1410000000000000,'yita3'),\r\n(5755921862464422919,0.4787000000000000,'dqurb'),\r\n(6818225316668061803,5800.0000000000000000,'35'),\r\n(1112823069779687543,5518242590970756357909774.8550717763805231,'dqurb'),\r\n(3823184061824785364,31.7690000000000000,'bh4qs'),\r\n(6741424187029746717,7264.0000000000000000,'pi'),\r\n(7056863346120328265,17.5560000000000000,'dqurb'),\r\n(5552107058771389209,7444.4900000000000000,'a');\r\n\r\nselect  /*+ use_index_merge( `ccf0ed15` ) */   `ccf0ed15`.`56231d4d` as r0 from `ccf0ed15`    order by r0 limit 82 for update;\r\n``` \r\n\r\n### 2. What did you expect to see? (Required)\r\nNo error\r\n\r\n### 3. What did you see instead (Required)\r\n``` SQL\r\nmysql> select  /*+ use_index_merge( `ccf0ed15` ) */   `ccf0ed15`.`56231d4d` as r0 from `ccf0ed15`    order by r0 limit 82 for update;\r\nERROR 8133 (HY000): data inconsistency in table: ccf0ed15, index: 8a590049, index-count:2 != record-count:1\r\n```\r\n### 4. What is your TiDB version? (Required)\r\nmaster\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2023-05-23T14:27:10Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE `test_table` ( `id` INT PRIMARY KEY, `value` VARCHAR(255), `amount` DECIMAL(10,2) NOT NULL, `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP );",
+    "INSERT INTO `test_table` (`id`, `value`, `amount`) VALUES (1, 'test1', 100.00), (2, 'test2', 200.50), (3, 'test3', NULL);",
+    "CREATE TABLE `related_table` ( `ref_id` INT, `description` TEXT, FOREIGN KEY (`ref_id`) REFERENCES `test_table`(`id`) ON DELETE CASCADE );",
+    "INSERT INTO `related_table` (`ref_id`, `description`) VALUES (1, 'related to test1'), (2, 'related to test2');",
+    "SELECT * FROM `test_table` WHERE `amount` > (SELECT AVG(`amount`) FROM `test_table`) FOR UPDATE;"
+  ],
+  "key_bug_features": [
+    "query with for update clause causes data inconsistency"
+  ]
+}

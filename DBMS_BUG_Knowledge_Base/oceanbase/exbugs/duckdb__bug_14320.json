@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14320",
+  "title": "String to struct problem",
+  "description": "### What happens?\r\n\r\nWe have a CSV file with a string column which in fact contains a struct.\r\nWe want to convert this string to a struct. This works fine except when the value of one of the column contains a single quote.\r\n\r\nIs there a solution/workaround how to represent the string in column c2 when it should contain a single quote (escape it, ...)?\r\n\r\n### To Reproduce\r\n\r\n**Input CSV file (`test_struct.csv`), first line is the header**\r\n```\r\ninput\r\n\"{'c1':1, 'c2':'erik'}\"\r\n\"{'c1':1, 'c2':'er\\\"ik'}\"\r\n\"{'c1':1, 'c2':'er''ik'}\"\r\n\"{'c1':1, 'c2':'er'ik'}\"\r\n```\r\n\r\n**SQL statement**\r\n```sql\r\nselect *, try_cast(input as struct(c1 integer, c2 varchar)) from 'test_struct.csv';\r\n```\r\n\r\n**SQL Result**\r\n```\r\ninput                    TRY_CAST(\"input\" AS STRUCT(c1 INTEGER, c2 VARCHAR))\r\n-----------------------  ---------------------------------------------------\r\n{'c1':1, 'c2':'erik'}    {'c1': 1, 'c2': erik}                              \r\n{'c1':1, 'c2':'er\"ik'}   {'c1': 1, 'c2': er\"ik}                             \r\n{'c1':1, 'c2':'er''ik'}  {'c1': 1, 'c2': er''ik}                            \r\n{'c1':1, 'c2':'er'ik'}                                  \r\n```\r\n\r\n**Note: you can try without reading from a csv file as well:**\r\n\r\n```sql\r\n-- result of try cast is null\r\nselect '{c1:1, c2:er''ik}' as s, try_cast(s as struct(c1 integer, c2 varchar)) as t, {c1:1, c2: 'er''ik'} as u;\r\n\r\n-- result of try cast again is null\r\nselect '{c1:1, c2:''er''ik''}' as s, try_cast(s as struct(c1 integer, c2 varchar)) as t, {c1:1, c2: 'er''ik'} as u;\r\n\r\n-- result of try cast is not null but we do get 2 single quotes instead of one\r\nselect '{c1:1, c2:''er''''ik''}' as s, try_cast(s as struct(c1 integer, c2 varchar)) as t, {c1:1, c2: 'er''ik'} as u;\r\n\r\n```\r\n\r\n### OS:\r\n\r\niOS\r\n\r\n### DuckDB Version:\r\n\r\n1.1.1\r\n\r\n### DuckDB Client:\r\n\r\ncli\r\n\r\n### Hardware:\r\n\r\n_No response_\r\n\r\n### Full Name:\r\n\r\nErik Jansen\r\n\r\n### Affiliation:\r\n\r\ni-Refact BV\r\n\r\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\r\n\r\nI have tested with a stable release\r\n\r\n### Did you include all relevant data sets for reproducing the issue?\r\n\r\nYes\r\n\r\n### Did you include all code required to reproduce the issue?\r\n\r\n- [X] Yes, I have\r\n\r\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\r\n\r\n- [X] Yes, I have",
+  "date": "2024-10-10 15:44:26",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_struct (input VARCHAR);",
+    "INSERT INTO test_struct VALUES ('{''c1'':1, ''c2'':''erik''}');",
+    "INSERT INTO test_struct VALUES ('{''c1'':1, ''c2'':''er''ik''}');",
+    "INSERT INTO test_struct VALUES ('{''c1'':1, ''c2:er''ik}');",
+    "SELECT *, CAST(REPLACE(input, ''', '''') AS JSON) AS json_input FROM test_struct;"
+  ],
+  "key_bug_features": [
+    "Single quote in string causes struct conversion failure"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7144",
+  "title": "Type up-casting (INT to BIGINT) doesn't always happen automatically",
+  "description": "When inserting data from a INT column into a BIGINT column, INT is automatically cast to BIGINT in some queries, but not in some other queries.\n\n**To Reproduce**\nRun the following queries:\n```\ncreate table t (i bigint, j bigint);\n# works:\ninsert into t(i) select id from sys.functions;\n# works:\ninsert into t(j) select id from sys.functions;\n# Error \"Append failed\", mserver5 says: \"BATappend2: !ERROR: Incompatible operands\"\ninsert into t(i, j) select id, id from sys.functions;\n# works:\ninsert into t(i, j) select cast(id as bigint), id from sys.functions;\n# Error \"Append failed\", mserver5 says: \"BATappend2: !ERROR: Incompatible operands\"\ninsert into t(i, j) select id, cast(id as bigint) from sys.functions;\n```\n\n**Expected behavior**\nSince MonetDB seems to do automatically up-casting, all the above queries should work.\n\n**Software versions**\n - MonetDB version number [Oct2020-SP5]\n - OS and version: [e.g. Mac OS Catalina]\n - Installed from release package",
+  "date": "2021-06-24T08:42:26Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (a INT, b BIGINT, c VARCHAR(50));",
+    "INSERT INTO test_table (a, b) VALUES (1, 100000);",
+    "INSERT INTO test_table (b) SELECT id FROM sys.functions WHERE id < 100;",
+    "INSERT INTO test_table (a, b) SELECT id, id FROM sys.functions WHERE id IS NOT NULL;",
+    "INSERT INTO test_table (a, b) SELECT CAST(id AS BIGINT), id FROM sys.functions WHERE id > 100;"
+  ],
+  "key_bug_features": [
+    "Inconsistent automatic up-casting from INT to BIGINT"
+  ]
+}

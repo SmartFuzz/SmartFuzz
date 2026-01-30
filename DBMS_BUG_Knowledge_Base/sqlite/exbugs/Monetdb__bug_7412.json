@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7412",
+  "title": "MonetDB server crashes in `vscanf`",
+  "description": "MonetDB server crashes in `vscanf`.\n\n**To Reproduce**\n```sql\nSELECT CAST ( '::192.168.1.226' AS INTERVAL HOUR ( 3 ) TO SECOND );\n```\n\n**Backtrace of the Crash**\n```c\n#0 0x7f79b2a8af81 (vscanf+0x131)\n#1 0x7f79b2a60df6 (__snprintf+0x96)\n#2 0x7f79b2eb416d (parse_interval_+0x54d)\n#3 0x7f79b2eb4218 (parse_interval_+0x5f8)\n#4 0x7f79b2eb3a22 (parse_interval+0x612)\n#5 0x7f79b2eb44d5 (interval_from_str+0x245)\n#6 0x7f79b2dd8643 (second_interval_str+0x273)\n#7 0x7f79b325929f (runMALsequence+0xf0f)\n#8 0x7f79b325c2af (reenterMAL+0x5f)\n#9 0x7f79b3489861 (OPTevaluateImplementation+0x671)\n#10 0x7f79b34b97a2 (OPTwrapper+0x2c2)\n#11 0x7f79b3281a7f (optimizeMALBlock+0x1cf)\n#12 0x7f79b2d6bb63 (SQLoptimizeQuery+0x353)\n#13 0x7f79b2d0563d (SQLparser+0x10dd)\n#14 0x7f79b2d03cbc (SQLengine_+0xa5c)\n#15 0x7f79b2d014fe (SQLengine+0x3e)\n#16 0x7f79b327f2cf (runScenario+0x6f)\n#17 0x7f79b32804de (MSscheduleClient+0xb6e)\n#18 0x7f79b33b7182 (doChallenge+0x132)\n#19 0x7f79b40e08a7 (thread_starter+0xc7)\n#20 0x7f79b2bfb609 (start_thread+0xd9)\n#21 0x7f79b2b1e133 (clone+0x43)\n```\n\n**Software versions**\n - MonetDB version number: v11.47.11 (Jun2023-SP2)\n - OS and version: Ubuntu 20.04\n - From docker image monetdb/monetdb:Jun2023-SP2\n\nAn example of steps to reproduce in docker container (**write the poc into /tmp/test.sql first**):\n```bash\ndocker container rm monetdb_test -f                                 # remove the old one\ndocker run -e MDB_DB_ADMIN_PASS=monetdb --name monetdb_test -itd monetdb/monetdb:Jun2023-SP2\n                                                                    # start monetdb in docker\ndocker exec monetdb_test bash -c 'echo -n -e \"user=monetdb\\npassword=monetdb\\n\" > /root/.monetdb'\n                                                                    # set username and password\nsleep 10                                                            # wait the server start\ndocker exec monetdb_test bash -c \"grep '/usr/bin/[m]server5' /proc/*/cmdline -lR\"\n                                                                    # check the existence of mserver5 process\ncat /tmp/test.sql | docker exec -i monetdb_test mclient monetdb     # run test case\ndocker exec monetdb_test bash -c \"grep '/usr/bin/[m]server5' /proc/*/cmdline -lR\" || { echo \"[CRASH] Mserver5 process does NOT exist.\"; exit 1; }\n                                                                    # check the existence of mserver5 process\necho \"[INFO] Server normal.\"\n```\n\nIt can also be reproduced on MonetDB Dec2023_root, self-compiled by `CC=clang-12 CXX=clang++-12 cmake /root/monetdb -DCMAKE_BUILD_TYPE=RelWithDebInfo`.\n\n**Issue labeling**\nbug",
+  "date": "2023-11-15T16:33:15Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_intervals (id INTEGER PRIMARY KEY, interval_value TEXT);",
+    "INSERT INTO test_intervals (id, interval_value) VALUES (1, '192:168:1:226');",
+    "INSERT INTO test_intervals (id, interval_value) VALUES (2, '1:30:00');",
+    "SELECT id, interval_value FROM test_intervals WHERE interval_value IS NOT NULL;",
+    "SELECT id FROM test_intervals WHERE interval_value > '0:00:00';"
+  ],
+  "key_bug_features": [
+    "SELECT CAST ( '::192.168.1.226' AS INTERVAL"
+  ]
+}

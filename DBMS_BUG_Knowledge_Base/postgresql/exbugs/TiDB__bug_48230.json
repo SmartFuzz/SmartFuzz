@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/48230",
+  "title": "Tidb crashes when sql with shuffleExec quit unexpectedly",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n```\r\nuse test;\r\ndrop table if exists t1;\r\ncreate table t1(i int, j int, k int);\r\ninsert into t1 VALUES (1,1,1),(2,2,2),(3,3,3),(4,4,4);\r\nINSERT INTO t1 SELECT 10*i,j,5*j FROM t1 UNION SELECT 20*i,j,5*j FROM t1 UNION SELECT 30*i,j,5*j FROM t1;\r\nINSERT INTO t1 SELECT 10*i,j,5*j FROM t1 UNION SELECT 20*i,j,5*j FROM t1 UNION SELECT 30*i,j,5*j FROM t1;\r\nINSERT INTO t1 SELECT 10*i,j,5*j FROM t1 UNION SELECT 20*i,j,5*j FROM t1 UNION SELECT 30*i,j,5*j FROM t1;\r\nset @@session.tidb_enable_window_function=1;\r\nset tidb_window_concurrency = 128;\r\nset tidb_mem_quota_query = 13000;\r\n```\r\n\r\nrun the sql many times(more than 100000 times):\r\nSELECT SUM(i) OVER W FROM t1 WINDOW w AS (PARTITION BY j ORDER BY i) ORDER BY 1+SUM(i) OVER w;\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\n### 3. What did you see instead (Required)\r\nTiDB crashes.\r\n```\r\npanic: send on closed channel [recovered]\r\n\tpanic: send on closed channel\r\n\r\ngoroutine 108646 [running]:\r\ngithub.com/pingcap/tidb/pkg/executor.recoveryShuffleExec(0x62f14f0?, {0x52bf360, 0x62acbf0})\r\n\t/home/jenkins/agent/workspace/build-common/go/src/github.com/pingcap/tidb/pkg/executor/shuffle.go:259 +0x199\r\ngithub.com/pingcap/tidb/pkg/executor.(*ShuffleExec).fetchDataAndSplit.func1()\r\n\t/home/jenkins/agent/workspace/build-common/go/src/github.com/pingcap/tidb/pkg/executor/shuffle.go:273 +0x4d\r\npanic({0x52bf360?, 0x62acbf0?})\r\n\t/usr/local/go/src/runtime/panic.go:914 +0x21f\r\ngithub.com/pingcap/tidb/pkg/executor.(*ShuffleExec).fetchDataAndSplit(0xc005cf4d20, {0x62f14f0, 0xc00763fb00}, 0x0)\r\n\t/home/jenkins/agent/workspace/build-common/go/src/github.com/pingcap/tidb/pkg/executor/shuffle.go:283 +0x44c\r\ncreated by github.com/pingcap/tidb/pkg/executor.(*ShuffleExec).prepare4ParallelExec in goroutine 20378\r\n\t/home/jenkins/agent/workspace/build-common/go/src/github.com/pingcap/tidb/pkg/executor/shuffle.go:208 +0x48\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\nnightly-20231101\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2023-11-02T08:02:01Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2(a INT, b VARCHAR(255), c FLOAT, d DATE, e BOOLEAN);",
+    "INSERT INTO t2 VALUES (1, 'test', 1.1, '2023-01-01', TRUE), (2, 'example', 2.2, '2023-01-02', FALSE);",
+    "INSERT INTO t2 SELECT a, b, c, d, e FROM t2 WHERE a > 1;",
+    "SELECT SUM(a) OVER (PARTITION BY b ORDER BY c) FROM t2 WHERE e IS NOT NULL;",
+    "UPDATE t2 SET c = c + 1 WHERE a = (SELECT MAX(a) FROM t2);"
+  ],
+  "key_bug_features": [
+    "TiDB crashes on executing shuffleExec with large queries"
+  ]
+}

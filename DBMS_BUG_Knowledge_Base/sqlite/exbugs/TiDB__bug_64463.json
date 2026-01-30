@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/64463",
+  "title": "tidb report error 'Some columns of Limit_69 cannot find the reference from its child(ren)'",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n```\nuse `test`;\ndrop table if exists t1;\nCREATE TABLE `t1` (\n  `id` varchar(32) NOT NULL,\n  `col0` datetime NOT NULL ,\n  `col1` varchar(32) NOT NULL,\n  PRIMARY KEY (`col1`,`id`,`col0`),\n  KEY `idx1` (`col1`,`col0`)\n);\n\ndrop table if exists t2;\nCREATE TABLE `t2` (\n  `id` varchar(32) NOT NULL,\n  `col0` datetime NOT NULL ,\n  `col1` varchar(32) NOT NULL,\n  PRIMARY KEY (`col1`,`id`,`col0`)\n);\n\nexplain WITH cte1 AS (\n    SELECT\n        col1\n    FROM (\n        SELECT\n            col1, col0,\n            ROW_NUMBER() OVER (PARTITION BY col1 ORDER BY col0 DESC) as rn\n        FROM t2\n        WHERE col0 >= '1999-10-10' AND col1 >= 'abc' and col1 < 'def'\n    ) t\n    WHERE rn = 1\n),\ncte2 AS (\n    SELECT\n        col1, col0\n    FROM (\n        SELECT\n            col1, col0,\n            ROW_NUMBER() OVER (PARTITION BY col1 ORDER BY col0 DESC) as rn\n        FROM t1\n        WHERE col0 >= '1999-10-09' AND col1 >= 'abc' and col1 < 'def'\n    ) t\n    WHERE rn = 1\n)\nSELECT  cte2.col1\nFROM cte2\nLEFT JOIN cte1 ON cte2.col1 = cte1.col1\n  ORDER BY  `cte2` . `col1` , `cte2` . `col0` DESC\n  LIMIT     1000;\n```\n### 2. What did you expect to see? (Required)\nno error\n### 3. What did you see instead (Required)\n(1105, 'Some columns of Limit_69 cannot find the reference from its child(ren)')\n### 4. What is your TiDB version? (Required)\n```\nTiDB root@127.0.0.1:test> select tidb_version();\n+-----------------------------------------------------------+\n| tidb_version()                                            |\n+-----------------------------------------------------------+\n| Release Version: v9.0.0-beta.2.pre-761-g7ef5efd7ee        |\n| Edition: Community                                        |\n| Git Commit Hash: 7ef5efd7eecf137917b3213bb800b4a07fd8da54 |\n| Git Branch: master                                        |\n| UTC Build Time: 2025-11-12 09:09:19                       |\n| GoVersion: go1.24.5                                       |\n| Race Enabled: false                                       |\n| Check Table Before Drop: false                            |\n| Store: unistore                                           |\n| Kernel Type: Classic                                      |\n+-----------------------------------------------------------+\n```\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "date": "2025-11-13T08:34:47Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t3 (id INTEGER NOT NULL, name TEXT NOT NULL, created_at DATETIME NOT NULL, PRIMARY KEY (id));",
+    "INSERT INTO t3 (id, name, created_at) VALUES (1, 'Alice', '2023-01-01 10:00:00');",
+    "INSERT INTO t3 (id, name, created_at) VALUES (2, 'Bob', '2023-01-02 11:00:00');",
+    "SELECT name FROM (SELECT name, ROW_NUMBER() OVER (ORDER BY created_at) as rn FROM t3) WHERE rn <= 1;",
+    "SELECT name FROM t3 WHERE created_at IS NOT NULL ORDER BY created_at DESC LIMIT 1;"
+  ],
+  "key_bug_features": [
+    "Limit clause unable to reference child columns"
+  ]
+}

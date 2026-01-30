@@ -1,0 +1,10 @@
+CREATE TABLE test_dates (id INT PRIMARY KEY, event_date TIMESTAMP, status BOOLEAN);
+INSERT INTO test_dates (id, event_date, status) VALUES (1, '2020-09-28 00:00:00', true);
+INSERT INTO test_dates (id, event_date, status) VALUES (2, '2021-01-01 12:00:00', NULL);
+INSERT INTO test_dates (id, event_date, status) VALUES (3, '2022-05-20 15:30:00', false);
+SELECT id, event_date + (interval '1' second * (7 * 24 * 60 * 60)), or(status, false) FROM test_dates WHERE or(status, false) IS NULL;
+SELECT id, status, (event_date + (interval '1' second * (7 * 24 * 60 * 60))) AS new_date FROM test_dates WHERE or(status, (event_date IS NOT NULL));
+SELECT id, or((SELECT status FROM test_dates WHERE id = 2), (SELECT COUNT(*) FROM test_dates WHERE status IS NULL)) AS combined_status FROM test_dates GROUP BY id HAVING combined_status IS NOT NULL;
+SELECT id, or(event_date IS NOT NULL, status) AS event_status FROM (SELECT id, event_date + (interval '1' day) AS adjusted_date, status FROM test_dates) AS adjusted_dates WHERE or(status IS NULL, adjusted_date IS NOT NULL) GROUP BY id;
+SELECT id, or(FALSE, (SELECT COUNT(*) FROM test_dates WHERE event_date < '2020-01-01')) AS edge_case FROM test_dates HAVING edge_case = 0;
+SELECT id, or((SELECT COUNT(*) FROM test_dates WHERE event_date BETWEEN date '2020-01-01' AND date '2022-01-01'), status) AS status_flags FROM test_dates ORDER BY status_flags DESC;

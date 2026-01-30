@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/fac496b617",
+  "title": "Over-aggressive LEFT JOIN optimization on virtual tables",
+  "description": "drh added on 2018-04-03 12:48:12:\nSQLite version 3.23.0 added the new LEFT JOIN strength reduction optimization\nthat converts a LEFT JOIN into an ordinary JOIN if it can be proven that some\ncolumn of the right-hand table of the LEFT JOIN must be non-NULL on every output\nrow.  But the prover is overzealous and believes that equality constraints\na virtual table column require elements of the equality to be non-NULL.  That\nmay or may not be the case, depending on the virtual table.  Here is an\nexample using the generate_series() table-valued function where it is not:\nCREATE TABLE t1(x); INSERT INTO t1 VALUES(1),(2);\nCREATE TABLE t2(y,z); INSERT INTO t2 VALUES(2,1);\nSELECT * FROM t1 LEFT JOIN t2 ON x=y JOIN generate_series\n WHERE start=z AND stop=2;\nBecause of the way the generate_series virtual table works, \nthe WHERE clause term start=z\ncan be true even if z is NULL.  But the prover does not realize that and assumes\nthat z must never be NULL, and hence the LEFT JOIN is allowed to change\ninto a JOIN.  An incorrect answer results.\nOne could argue that this is a bug in the generate_series virtual table\nimplementation, not in the LEFT JOIN strength reduction prover.  Nevertheless,\nwe think this kind of problem is common with virtual tables, so it seems\ngood to enhance the prover to assume that constraints against a virtual\ntable might be true even if elements of the expression are NULL.\nThis problem was discovered by E.Pasma and reported on the SQLite users\nmailing list.\ndrh added on 2018-04-03 13:38:48:\nFurther investigation confirms that the problem is really in the\ngenerate_series virtual table.  If the series.c file is compiled with\nthe -DSQLITE_SERIES_CONSTRAINT_VERIFY=1 flag, then the generate_series\nvirtual table does the right thing, and the correct answer is obtained.\nMeanwhile, Peter Nichvolodov observes that the test case can be\nsimplified using CTEs:\nWITH\n  t1(x) AS (VALUES(1),(2)),\n  t2(y,z) AS (VALUES(2,1))\nSELECT x, z, value, 'x' FROM t1 LEFT JOIN t2 ON x=y JOIN generate_series\n WHERE start=z AND stop=2;\ndrh added on 2018-04-03 14:37:43:\nI am increasingly viewing this problem as a long-standing bug in the\ngenerate_series implementation that was merely exposed by the LEFT JOIN\nstrength reduction optimization (LJSRO), and not a bug in the LJSRO.\nFor that reason, the severity of this ticket is downgraded to \"Important\".",
+  "date": "2018-04-03 12:48:127.36 years ago",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(x INTEGER, y TEXT);",
+    "INSERT INTO t1 VALUES(1, 'a'), (2, NULL);",
+    "CREATE TABLE t2(y INTEGER, z DOUBLE);",
+    "INSERT INTO t2 VALUES(2, 1.0), (NULL, 2.0);",
+    "WITH t1 AS (SELECT * FROM t1), t2 AS (SELECT * FROM t2) SELECT t1.x, t2.z, gs.value, 'x' FROM t1 LEFT JOIN t2 ON t1.x=t2.y, generate_series(1, 3) AS gs WHERE gs.start=t2.z AND gs.stop=2;"
+  ],
+  "key_bug_features": [
+    "Over-aggressive LEFT JOIN optimization on virtual tables"
+  ]
+}

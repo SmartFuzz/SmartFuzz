@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id INT, created_at DATE, value DECIMAL(10, 5));
+INSERT INTO test_table VALUES (1, DATE '2022-01-01', 2.71828), (2, DATE '2022-01-02', NULL), (3, DATE '2022-01-03', 3.14159);
+SELECT id, ln(COALESCE(value, 1.0)) AS ln_value, created_at + INTERVAL CAST(id AS INTEGER) DAY AS new_date FROM test_table WHERE value IS NOT NULL;
+SELECT AVG(ln(value)) AS avg_ln_value FROM test_table WHERE value IS NOT NULL GROUP BY created_at HAVING avg_ln_value > ln(3);
+SELECT id, value, ln(ABS(value)) OVER (PARTITION BY created_at ORDER BY id) AS ln_partitioned_value FROM test_table WHERE LN(COALESCE(value, 1)) < (SELECT MAX(ln(COALESCE(value, 1))) FROM test_table);
+CREATE TABLE another_table (another_id INT PRIMARY KEY, another_date DATE NOT NULL);
+INSERT INTO another_table VALUES (1, DATE '2022-01-01'), (2, DATE '2022-01-02');
+SELECT a.another_id, a.another_date + INTERVAL (SELECT COUNT(*) FROM test_table) DAY AS modified_date FROM another_table a JOIN test_table t ON CAST(a.another_id AS VARCHAR) = CAST(t.id AS VARCHAR);
+INSERT INTO test_table VALUES (NULL, DATE '2022-01-04', 1.23456);
+SELECT id, ln(value) AS ln_value, new_date FROM (SELECT id, ln(value) AS ln_value, created_at + INTERVAL 3 DAY AS new_date FROM test_table) AS derived WHERE ln_value IS NOT NULL;
+DROP TABLE IF EXISTS another_table;

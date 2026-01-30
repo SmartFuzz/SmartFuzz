@@ -1,0 +1,26 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/d805526eae",
+  "title": "Incorrect join result or assertion fault due to transitive constraints",
+  "vulnerable_version": "3.7.17",
+  "date": "2013-07-08 18:02:5312.09 years ago",
+  "path": "/home/crawl_bugs/sqlite/ticket_output/ticket_info_d805526eae.json",
+  "poc": [
+    "CREATE TABLE t1(w INTEGER PRIMARY KEY, x);",
+    "CREATE TABLE t2(y INTEGER, z);",
+    "INSERT INTO t1 VALUES(1,2);",
+    "INSERT INTO t2 VALUES(1,3);",
+    "SELECT *\n  FROM t1 CROSS JOIN t2\n WHERE w=y AND y IS NOT NULL;"
+  ],
+  "vulnerable_database": "sqlite",
+  "description": "drh added on 2013-07-08 18:02:53:\nThe following SQL should return a single row of result.  But due to the\ntransitive constraint optimization, it either hits an assertion fault or\nit returns zero rows (depending on whether the SQLITE_DEBUG compile-time option\nis used.)  Note that SQLITE_ENABLE_STAT3 is required for this bug to appear.\nCREATE TABLE t1(w INTEGER PRIMARY KEY, x);\nCREATE TABLE t2(y INTEGER, z);\nINSERT INTO t1 VALUES(1,2);\nINSERT INTO t2 VALUES(1,3);\nSELECT *\n  FROM t1 CROSS JOIN t2\n WHERE w=y AND y IS NOT NULL;\nThe problem appears to have been introduced by check-in [38852f158ab].\nLow-level technical details:  The \"y IS NOT NULL\" constraint is translated\ninto a \"y>NULL\" virtual constraint when SQLITE_ENABLE_STAT3 is defined.  \nThe y>NULL constraint tagged to indicate that the usual not-NULL check on \nthe right-hand side should be\nskipped since this is an artificial constraint.  The normal index handler \nknows to check for that tag and skip the not-NULL check.  But after the\ntransitive constraints were added, there is now also a \"w>NULL\" virtual\nconstraint (because w=x).  The w>NULL constraint is also tagged, but the \nINTEGER PRIMARY KEY handlers does not know to check for that tag and to \nskip the not-NULL check.  It sees that the right-hand side of the constraint\nis NULL and all fails the constraint, resulting in no output rows.",
+  "key_bug_features": [
+    "Transitive constraint optimization causing incorrect join results"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE t3(a INTEGER, b TEXT, c REAL, d BOOLEAN);",
+    "INSERT INTO t3 VALUES(1, 'test', 3.14, 1);",
+    "CREATE TABLE t4(e INTEGER PRIMARY KEY, f INTEGER, g TEXT);",
+    "INSERT INTO t4 VALUES(1, NULL, 'example');",
+    "SELECT * FROM t3 CROSS JOIN t4 WHERE a = e AND f IS NOT NULL;"
+  ]
+}

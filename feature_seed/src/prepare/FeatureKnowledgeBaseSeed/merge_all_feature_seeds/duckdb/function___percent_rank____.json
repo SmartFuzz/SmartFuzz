@@ -1,0 +1,13 @@
+CREATE TABLE test_table (id INT, value FLOAT);
+INSERT INTO test_table VALUES (1, 10.0), (2, 20.0), (3, 30.0), (4, 40.0);
+SELECT id, value, percent_rank() OVER (ORDER BY value) AS rank FROM test_table;
+CREATE TABLE another_table (alpha INT, beta FLOAT);
+INSERT INTO another_table VALUES (1, 5.0), (2, 15.0), (3, 25.0), (4, 35.0);
+SELECT a.alpha, a.beta, t.value, percent_rank() OVER (PARTITION BY a.alpha ORDER BY t.value) AS rank FROM another_table a JOIN test_table t ON a.alpha = t.id;
+WITH ranked_values AS (SELECT id, value, percent_rank() OVER (ORDER BY value) AS rank FROM test_table) SELECT * FROM ranked_values WHERE rank > 0.5;
+SELECT id, value, percent_rank() OVER (PARTITION BY value ORDER BY id) AS rank FROM test_table WHERE value >= 20.0;
+CREATE TABLE combined_table (num INT, amount FLOAT);
+INSERT INTO combined_table VALUES (1, 100.0), (2, 200.0), (3, 300.0), (4, 400.0);
+SELECT ct.num, ct.amount, percent_rank() OVER (ORDER BY ct.amount) AS rank FROM combined_table ct LEFT JOIN test_table tt ON ct.num = tt.id;
+SELECT tt.id, tt.value, percent_rank() OVER (ORDER BY tt.value) AS rank FROM test_table tt WHERE tt.id IN (SELECT id FROM another_table WHERE beta < 30.0);
+SELECT tt.id, tt.value, percent_rank() OVER (PARTITION BY (CASE WHEN tt.value < 20 THEN 'low' ELSE 'high' END) ORDER BY tt.value) AS rank FROM test_table tt;

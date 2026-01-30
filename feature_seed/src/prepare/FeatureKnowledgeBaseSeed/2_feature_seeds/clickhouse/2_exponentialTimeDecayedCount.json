@@ -1,0 +1,10 @@
+CREATE TABLE time_series_data (id UInt32, value Float64, event_time DateTime, precision Float64 DEFAULT 0.1);
+INSERT INTO time_series_data VALUES (1, 100.0, '2023-01-01 00:00:01', 0.1), (2, 200.0, '2023-01-02 00:00:01', 0.1), (3, 300.0, '2023-01-03 00:00:01', 0.1);
+SELECT id, exponentialTimeDecayedCount(value)(event_time) AS exp_smooth, NOT (value > 150) AS is_below_threshold FROM time_series_data WHERE NOT (event_time < '2023-01-02 00:00:00') GROUP BY id, value, event_time HAVING exp_smooth IS NOT NULL ORDER BY event_time;
+SELECT id, exponentialTimeDecayedCount(value)(event_time) AS exp_smooth FROM (SELECT id, value, event_time FROM time_series_data WHERE NOT (value < 100) UNION ALL SELECT id, value * NULL AS value, event_time FROM time_series_data) GROUP BY id, exp_smooth;
+SELECT t.id, t.value, exponentialTimeDecayedCount(COALESCE(t.value, 0.0))(t.event_time) AS exp_smooth_decay FROM (SELECT id, value, event_time FROM time_series_data WHERE value IS NOT NULL) AS t WHERE NOT (exp_smooth_decay < 0) ORDER BY t.event_time DESC;
+CREATE TABLE join_table (join_id UInt32, id UInt32, additional_info String);
+INSERT INTO join_table VALUES (1, 1, 'info1'), (2, 2, 'info2'), (3, NULL, 'info3');
+SELECT ts.id, ts.value, exponentialTimeDecayedCount(ts.value)(ts.event_time) AS exp_smooth, jt.additional_info FROM time_series_data ts LEFT JOIN join_table jt ON ts.id = jt.id WHERE NOT (jt.additional_info IS NULL) ORDER BY exp_smooth DESC;
+SELECT id, MAX(NOT (event_time > '2023-01-02 00:00:01')) AS is_event_after FROM time_series_data GROUP BY id HAVING is_event_after = 1;
+SELECT e.id, e.event_time, exponentialTimeDecayedCount(e.value)(e.event_time) AS decayed_value FROM (SELECT id, value, event_time FROM time_series_data WHERE value >= 150 UNION SELECT id, EXP(-20) * value AS value, event_time FROM time_series_data WHERE event_time < '2023-01-01 00:00:02') AS e WHERE NOT (decayed_value IS NULL) ORDER BY event_time ASC;

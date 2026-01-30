@@ -1,0 +1,18 @@
+{
+    "function": "DB.DBA.AMAZON_CREATE_SNAPSHOT",
+    "operator": "bif:st_within",
+    "sql_array": [
+        "CREATE TABLE volumes (vol_id VARCHAR(20) PRIMARY KEY, size INT, region VARCHAR(50));",
+        "INSERT INTO volumes VALUES ('vol-1a2b3c4d', 100, 'us-west-1');",
+        "CREATE TABLE snapshots (snapshot_id VARCHAR(20), vol_id VARCHAR(20), created_at TIMESTAMP, FOREIGN KEY (vol_id) REFERENCES volumes(vol_id));",
+        "INSERT INTO snapshots VALUES ('snap-0001', 'vol-1a2b3c4d', CURRENT_TIMESTAMP);",
+        "CREATE PROCEDURE complex_test() {\n  DECLARE access_key, sec_token VARCHAR;\n  DECLARE v_id VARCHAR;\n  SET access_key = 'AKIAJI7ZL427TI5EDF5A';\n  SET sec_token = 'CGI/UMaXf2LRUctaj/HGJ57UNy/t7fNCshh8wpJg';\n  SET v_id = (\n    SELECT vol_id FROM volumes WHERE size > (SELECT AVG(size) FROM volumes) LIMIT 1\n  );\n  DB.DBA.AMAZON_CREATE_SNAPSHOT(access_key, v_id, sec_token);\n};",
+        "SELECT v.vol_id, \n       CASE WHEN s.snapshot_id IS NOT NULL THEN 'exists' ELSE 'not exists' END AS snapshot_status\nFROM volumes v\nLEFT JOIN snapshots s ON v.vol_id = s.vol_id\nWHERE bif:st_within(POINT(1, 1), POINT(1, 1)) IS TRUE;\n",
+        "INSERT INTO snapshots VALUES ('snap-0002', 'vol-1a2b3c4d', CURRENT_TIMESTAMP - INTERVAL '1 DAY');",
+        "SELECT COUNT(*), AVG(size) FROM volumes GROUP BY region HAVING AVG(size) > 50;",
+        "SELECT v.vol_id, COALESCE(MAX(s.created_at), 'no snapshots') AS last_snapshot FROM volumes v LEFT JOIN snapshots s ON v.vol_id = s.vol_id GROUP BY v.vol_id HAVING COALESCE(MAX(s.created_at), 'no snapshots') <> 'no snapshots';",
+        "CREATE TEMPORARY TABLE temp_volumes AS SELECT vol_id, size FROM volumes WHERE size IS NOT NULL;",
+        "SELECT t.vol_id, t.size, DB.DBA.AMAZON_CREATE_SNAPSHOT(access_key, t.vol_id, sec_token) FROM temp_volumes t;",
+        "DELETE FROM snapshots WHERE created_at < NOW() - INTERVAL '30 DAYS';"
+    ]
+}

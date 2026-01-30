@@ -1,0 +1,10 @@
+CREATE TABLE time_series (id UInt32, timestamp DateTime, value Float64) ENGINE = MergeTree() ORDER BY (id, timestamp);
+INSERT INTO time_series VALUES (1, now() - INTERVAL '10' DAY, 10.5), (1, now() - INTERVAL '9' DAY, 20.5), (2, now() - INTERVAL '5' DAY, 30.5);
+SELECT id, hopEnd(timestamp, INTERVAL (value + 2) DAY, INTERVAL '2' DAY) AS upper_bound FROM time_series GROUP BY id HAVING upper_bound > now();
+SELECT MAX(value), hopEnd(timestamp, INTERVAL 2 * (MAX(value) + 3), INTERVAL '1' DAY) FROM time_series GROUP BY id HAVING MAX(value) IS NOT NULL;
+SELECT t1.id, hopEnd(t1.timestamp, INTERVAL ROUND(t1.value) DAY, INTERVAL ROUND(t1.value) + INTERVAL '1' DAY) + INTERVAL '2' DAY AS adjusted_upper_bound FROM time_series t1 JOIN (SELECT id, AVG(value) AS avg_value FROM time_series GROUP BY id) t2 ON t1.id = t2.id WHERE adjusted_upper_bound IS NOT NULL ORDER BY adjusted_upper_bound;
+SELECT id, hopEnd(timestamp, INTERVAL IFNULL(value, 0) DAY, INTERVAL '3' DAY) AS upper_bound FROM time_series WHERE upper_bound < now() + INTERVAL '1' DAY;
+SELECT id, hopEnd(timestamp, INTERVAL value + 1 DAY, INTERVAL 5 DAY) AS hop_ends FROM time_series WHERE NOT isNull(hop_ends) AND timestamp > now() - INTERVAL '30' DAY;
+CREATE TABLE temp_series AS SELECT * FROM time_series WHERE value > 15;
+INSERT INTO temp_series SELECT id, hopEnd(timestamp, INTERVAL value DAY, INTERVAL '2' DAY) AS new_timestamp FROM time_series;
+SELECT DISTINCT id, hopEnd(new_timestamp, INTERVAL '1' DAY, INTERVAL 3 DAY) FROM temp_series WHERE new_timestamp IS NOT NULL;

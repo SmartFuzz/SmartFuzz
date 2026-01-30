@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=108963",
+  "title": "Range analysis for IN list has O(n^2) runtime complexity",
+  "description": "When performing range analysis for IN lists with row value expressions (as described in\nhttps://dev.mysql.com/doc/refman/5.7/en/range-optimization.html#row-constructor-range-opti...\n), the runtime complexity is O(n^2) where n is the number of elements in the IN list.\r\n\r\nThis means that some queries with many elements could take a long time to finish optimizing, and during that time the query is unkillable.\nHow to repeat:\nWe have to generate a query with 10000 elements in the IN list. One way to do that is to run this in bash. The first command generates a query with row value expressions. The second command generates one with scalar expressions (which does not have this bug).\n\n$ echo \"SELECT * FROM t WHERE (a, b) IN ($(for i in $(seq -f \"%05g\" 0 9999); do echo \"('$i', 1),\"; done; echo \"('10000', 1)\"))\" > slowquery\r\n$ echo \"SELECT * FROM t WHERE a IN ($(for i in $(seq -f \"%05g\" 0 9999); do echo \"'$i',\"; done; echo \"'10000'\"))\" > fastquery\r\n\r\nOn a release build:\r\n\r\nmysql> create table t (a varchar(255), b int, primary key(a, b)) charset=latin1;\r\nmysql> set range_optimizer_max_mem_size = 1000000000;\r\n\r\nmysql> source ~/fastquery\r\nEmpty set (0.02 sec)\r\n\r\nmysql> source ~/slowquery\r\nEmpty set (23.92 sec)\r\n\r\nYou can also verify that the slow query is unkillable (ie. stays in Killed state while consuming CPU) by issuing a KILL command from another connection.\nSuggested fix:\nThe issue is in get_func_mm_tree_from_in_predicate, we construct the range tree by iteratively calling tree_or, which merges single element trees taken from the IN list.\r\n\r\ntree_or merges two trees by inserting into the 1st tree by iterating through the 2nd tree. The issue is that we pass the single element tree as the 1st tree, and the current range tree as the 2nd tree. This means that we're constantly re-inserting the whole tree into a near empty tree for every element in the IN list.\r\n\r\nA simple fix would be to switch the order of arguments to tree_or in get_func_mm_tree_from_in_predicate (similar to the scalar path). Another possible fix is to improve tree_or to always merge into the larger tree, so that the caller does not need to worry about the order of arguments.",
+  "date": "2022-11-02 07:40:00",
+  "vulnerable_version": "8.0.31, 5.7.40",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t (a VARCHAR(255) NOT NULL, b INT DEFAULT 0, c DATE, PRIMARY KEY(a, b));",
+    "INSERT DATA { ( '00000', 1, '2023-01-01' ), ( '00001', 2, '2023-01-02' ), ( '99999', 3, '2023-01-03' ) };",
+    "SELECT * FROM t WHERE (a, b) IN (('00000', 1), ('00001', 2), ('99999', 3));",
+    "SELECT * FROM t WHERE a IN ('00000', '00001', '99999');",
+    "SELECT * FROM t WHERE (a, b) IN { SELECT a, b FROM t WHERE b > 0 };"
+  ],
+  "key_bug_features": [
+    "Range analysis for IN lists with row value expressions"
+  ]
+}

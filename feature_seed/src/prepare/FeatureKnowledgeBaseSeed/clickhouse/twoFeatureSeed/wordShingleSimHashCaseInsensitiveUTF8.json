@@ -1,0 +1,16 @@
+{
+    "function": "wordShingleSimHashCaseInsensitiveUTF8",
+    "operator": "s1 || s2",
+    "sql_array": [
+        "CREATE TABLE test_strings (id UInt32, content String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_strings VALUES (1, 'ClickHouse is a powerful database management system.'), (2, 'clickhouse is a powerful Database Management System.'), (3, 'CLICKHOUSE IS A POWERFUL DATABASE MANAGEMENT SYSTEM!');",
+        "SELECT wordShingleSimHashCaseInsensitiveUTF8(content || ' Extra data', 4) AS simhash FROM test_strings;",
+        "SELECT id, wordShingleSimHashCaseInsensitiveUTF8(content || ' Sequel', 2) AS simhash FROM test_strings WHERE simhash IS NOT NULL;",
+        "WITH (SELECT wordShingleSimHashCaseInsensitiveUTF8(content || ' Join text', 3) FROM test_strings WHERE id = 1) AS subquery_hash SELECT wordShingleSimHashCaseInsensitiveUTF8(content || subquery_hash, 3) AS combined_simhash FROM test_strings;",
+        "SELECT COUNT() FROM (SELECT wordShingleSimHashCaseInsensitiveUTF8(content || ' Filters', 5) AS shingle_hash FROM test_strings GROUP BY shingle_hash HAVING shingle_hash IS NOT NULL) AS filtered_hashes;",
+        "CREATE TABLE test_strings_null (id UInt32, content Nullable(String)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_strings_null VALUES (1, NULL), (2, 'Data with NULL'), (3, 'Another nullable text');",
+        "SELECT id, wordShingleSimHashCaseInsensitiveUTF8(COALESCE(content || ' Check', 'Fallback'), 3) AS simhash FROM test_strings_null;",
+        "SELECT ARRAY_JOIN(ARRAY(SELECT wordShingleSimHashCaseInsensitiveUTF8('Sample text' || CAST(id AS String), 3) FROM test_strings)) AS simhashes;"
+    ]
+}

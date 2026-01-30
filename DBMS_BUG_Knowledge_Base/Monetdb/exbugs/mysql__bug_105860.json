@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=105860",
+  "title": "UNION with JOIN USING puts results under wrong column",
+  "description": "If you execute the following, you will find that a T2.T2_Val (40.4) will be mapped to a T1.T1_Val column when doing a 'JOIN USING' construct, but 'JOIN ON' works as expected. Also, 'JOIN USING' results in inaccuracy in the floating point output:\r\n\r\ncreate table T1 ( Id int auto_increment primary key, T1_Val int );\r\ncreate table T2 ( Id int auto_increment primary key, T2_Val float );\r\ninsert into T1 values ( 1, 1 ), ( 2, 2 ), ( 3, 3 );\r\ninsert into T2 values ( 2, 20.2 ), ( 3, 30.3 ), ( 4, 40.4 );\r\n\r\n(  select * from T1 left join T2 using( id ) )\r\nunion\r\n( select * from T1 right join T2 using( Id ) where T1.Id is null )\r\n;\r\n\r\n(  select * from T1 left join T2 on T2.Id = T1.Id )\r\nunion\r\n( select * from T1 right join T2 on T2.Id = T1.Id where T1.Id is null )\r\n;\nHow to repeat:\nThis same behaviour is found on Window 10 MySQL 8.0.26 as well as on AWS RDS MySQL 8.0.23.",
+  "date": "2021-12-10 10:17:00",
+  "vulnerable_version": "8.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE T3 ( Id int primary key, T3_Val varchar(255) NOT NULL );",
+    "INSERT INTO T3 (T3_Val) VALUES ('Value1'), ('Value2'), ('Value3');",
+    "SELECT * FROM T1 LEFT JOIN T3 ON T3.Id = T1.Id UNION SELECT * FROM T2 RIGHT JOIN T3 ON T3.Id = T2.Id WHERE T3.Id IS NULL;",
+    "SELECT * FROM T1 LEFT JOIN T2 ON T2.Id = T1.Id UNION SELECT * FROM T1 RIGHT JOIN T3 ON T3.Id = T1.Id WHERE T1.Id IS NULL;",
+    "CREATE TABLE T4 ( Id int NOT NULL, T4_Val decimal(10,2) DEFAULT 0.00, PRIMARY KEY (Id) );"
+  ],
+  "key_bug_features": [
+    "JOIN USING causes incorrect column mapping in UNION results"
+  ]
+}

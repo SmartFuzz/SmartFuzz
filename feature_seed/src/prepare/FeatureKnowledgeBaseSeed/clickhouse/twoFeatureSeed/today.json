@@ -1,0 +1,19 @@
+{
+    "function": "today",
+    "operator": "a >= b",
+    "sql_array": [
+        "CREATE TABLE test_dates (id Int32, event_date DateTime, description String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_dates VALUES (1, now() - INTERVAL 1 DAY, 'Previous day event'), (2, now(), 'Current day event'), (3, now() + INTERVAL 1 DAY, 'Next day event'), (4, toDate('2023-10-01'), 'Boundary event');",
+        "SELECT id, event_date, description, (event_date >= today()) AS is_future_event FROM test_dates WHERE is_future_event = true ORDER BY event_date;",
+        "SELECT id, count() AS count_events FROM (SELECT id, event_date FROM test_dates WHERE event_date >= today() GROUP BY id, event_date) GROUP BY id HAVING count_events > 0;",
+        "SELECT id, if(event_date >= today(), 'Future', 'Past') AS event_status FROM test_dates WHERE event_status IS NOT NULL;",
+        "SELECT id FROM (SELECT id, event_date FROM test_dates WHERE today() >= event_date AND event_date IS NOT NULL) AS filtered_events WHERE id = 1;",
+        "SELECT description FROM test_dates WHERE event_date >= (SELECT today() FROM test_dates WHERE id = 4);",
+        "CREATE TABLE nullable_dates (id Int32, nullable_date Nullable(DateTime)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO nullable_dates VALUES (1, NULL), (2, now()), (3, toDate('2023-01-01'));",
+        "SELECT id, (nullable_date IS NULL) AS has_no_date FROM nullable_dates WHERE has_no_date = true;",
+        "SELECT id, (nullable_date >= today()) AS is_late FROM nullable_dates WHERE is_late AND nullable_date IS NOT NULL ORDER BY id;",
+        "SELECT count() AS future_events_count FROM test_dates WHERE event_date >= today() AND description LIKE '%event%';",
+        "SELECT id, description FROM test_dates WHERE event_date < today() OR event_date IS NULL; "
+    ]
+}

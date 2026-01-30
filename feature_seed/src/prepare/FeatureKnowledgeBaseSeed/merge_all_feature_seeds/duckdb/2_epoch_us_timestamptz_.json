@@ -1,0 +1,10 @@
+CREATE TABLE test_timestamps (id INT, event_time TIMESTAMPTZ NOT NULL, value INT);
+INSERT INTO test_timestamps VALUES (1, '2022-01-01 12:00:00+00', 10), (2, '2022-12-31 23:59:59+00', 20), (3, '2022-06-15 15:30:30+00', 30);
+SELECT id, epoch_us(event_time) - INTERVAL '5 days' AS adjusted_time FROM test_timestamps WHERE value > 10;
+SELECT id, epoch_us(event_time) - INTERVAL (SELECT AVG(value) FROM test_timestamps) DAY AS time_difference FROM test_timestamps;
+SELECT id, epoch_us(event_time) AS epoch_time, (epoch_us(event_time) - INTERVAL (SELECT MAX(value) FROM test_timestamps)) AS diff FROM test_timestamps GROUP BY id HAVING value IS NOT NULL;
+WITH date_diff AS (SELECT id, epoch_us(event_time) AS epoch_time, epoch_us(event_time) - INTERVAL '1 hour' AS one_hour_earlier FROM test_timestamps) SELECT id, epoch_time, one_hour_earlier FROM date_diff WHERE one_hour_earlier > 0;
+CREATE TABLE interval_test (days INT);
+INSERT INTO interval_test VALUES (5), (10), (15);
+SELECT t.id, t.value, epoch_us(t.event_time) - (SELECT SUM(days) FROM interval_test) * INTERVAL '1 day' AS adjusted_epoch FROM test_timestamps t WHERE t.value IS NULL OR t.value < 30;
+SELECT (epoch_us(MAX(event_time)) - epoch_us(MIN(event_time))) - INTERVAL (SELECT AVG(days) FROM interval_test) DAY AS total_adjustment FROM test_timestamps;

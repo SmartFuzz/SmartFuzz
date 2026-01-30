@@ -1,0 +1,16 @@
+{
+    "function": "polygonAreaSpherical",
+    "operator": "a != ALL (subquery)",
+    "sql_array": [
+        "CREATE TABLE geo_test (id Int32, coordinates Array(LowCardinality(Tuple(Float64, Float64))), region String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO geo_test VALUES (1, [[(4.346693, 50.858306), (4.367945, 50.852455), (4.366227, 50.840809), (4.344961, 50.833264), (4.338074, 50.848677), (4.346693, 50.858306)]], 'RegionA'), (2, [[(4.346000, 50.858000), (4.367100, 50.852100), (4.366000, 50.840000), (4.344000, 50.833000), (4.338000, 50.848000), (4.346000, 50.858000)]], 'RegionB');",
+        "SELECT polygonAreaSpherical(coordinates) AS area FROM geo_test WHERE id != ALL (SELECT id FROM geo_test WHERE region = 'RegionC');",
+        "SELECT id, polygonAreaSpherical(coordinates) AS area FROM geo_test WHERE (SELECT COUNT(*) FROM geo_test WHERE region = 'RegionB') > 0 AND area != ALL (SELECT area FROM geo_test WHERE region = 'RegionA');",
+        "CREATE TABLE temp_geo AS geo_test WITH NO DATA;",
+        "INSERT INTO temp_geo SELECT * FROM geo_test WHERE region != ALL (SELECT region FROM geo_test WHERE id = 1);",
+        "SELECT MAX(area) OVER (PARTITION BY region) FROM (SELECT polygonAreaSpherical(coordinates) AS area FROM geo_test);",
+        "SELECT round(polygonAreaSpherical(coordinates), 14) AS rounded_area FROM geo_test HAVING rounded_area < (SELECT AVG(polygonAreaSpherical(coordinates)) FROM geo_test WHERE coordinates != ALL (SELECT coordinates FROM geo_test WHERE region = 'RegionA')) ORDER BY rounded_area DESC;",
+        "SELECT COUNT(*) FROM geo_test WHERE coordinates != ALL (SELECT coordinates FROM geo_test WHERE id IS NULL);",
+        "SELECT id FROM geo_test WHERE (SELECT COUNT(*) FROM temp_geo) = 0 AND coordinates != ALL ((SELECT coordinates FROM geo_test WHERE region IS NOT NULL LIMIT 1) UNION ALL SELECT coordinates FROM geo_test WHERE id < 0);"
+    ]
+}

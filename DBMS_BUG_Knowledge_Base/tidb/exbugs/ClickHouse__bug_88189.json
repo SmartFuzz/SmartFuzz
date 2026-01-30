@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/88189",
+  "title": "No filter pushdown when reading from view with parallel replicas",
+  "description": "### Describe the situation\nFor the following view and query from it\n```\ncreate table t(a UInt32, b String) engine=MergeTree order by ();\ncreate view v as select * from t;\nSELECT * FROM v WHERE a = 0;\n```\nwe'll send a query without `WHERE` to replicas\n```\nSELECT `__table1`.`a` AS `a`, `__table1`.`b` AS `b` FROM (SELECT `__table2`.`a` AS `a`, `__table2`.`b` AS `b` FROM `default`.`t` AS `__table2`) AS `__table1\n```\nsee https://pastila.nl/?00198989/716be67917b940dd715ed620912b334e#hLlpBeTf6gB7f3mbVXvIsw==\nwhile execution of\n```\nSELECT * FROM (SELECT * FROM t) WHERE a = 0;\n```\nwill do a proper job, see - https://pastila.nl/?01e02e49/b4e92259485c6a267abb590fece0f732#ZmdQBroFtREMpSgMJ16wWw==\n### Which ClickHouse versions are affected?\n25.9\n### How to reproduce\nSee above\n### Expected performance\n_No response_\n### Additional context\n_No response_",
+  "date": "2025-10-07T13:55:19Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (a INT UNSIGNED, b VARCHAR(255), c INT);",
+    "CREATE VIEW v1 AS SELECT a, b FROM t1 WHERE c IS NOT NULL;",
+    "INSERT INTO t1 VALUES (0, 'test1', NULL), (1, 'test2', 2), (2, 'test3', 3);",
+    "SELECT * FROM v1 WHERE a = 1;",
+    "SELECT * FROM (SELECT a, b FROM t1 WHERE a > 0) AS subquery WHERE b LIKE 'test%';"
+  ],
+  "key_bug_features": [
+    "No filter pushdown for views with parallel replicas"
+  ]
+}

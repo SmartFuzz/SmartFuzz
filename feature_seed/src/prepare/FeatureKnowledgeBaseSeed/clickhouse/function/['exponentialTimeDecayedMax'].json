@@ -1,0 +1,13 @@
+[
+    "CREATE TABLE test_data (value Float64, time UInt32) ENGINE = MergeTree() ORDER BY time;",
+    "INSERT INTO test_data VALUES (0.0, 1), (1.0, 2), (5.0, 3), (10.0, 4), (25.0, 5), (30.0, 6);",
+    "SELECT time, value, exponentialTimeDecayedMax(10)(value, time) OVER (ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS exp_smooth FROM test_data;",
+    "SELECT time, value, round(exponentialTimeDecayedMax(5)(value, time) OVER (ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW), 3) AS exp_smooth FROM test_data WHERE value > 1.0;",
+    "SELECT time, value, exponentialTimeDecayedMax(2.5)(value, time) OVER (ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS exp_smooth FROM (SELECT value, time FROM test_data WHERE time % 2 = 0) AS even_values;",
+    "CREATE TABLE additional_data (key UInt32, value Float64) ENGINE = MergeTree() ORDER BY key;",
+    "INSERT INTO additional_data VALUES (1, 1.5), (2, 2.5), (3, 3.5);",
+    "SELECT td.time, td.value, round(exponentialTimeDecayedMax(10)(td.value, td.time), 3) AS exp_smooth, ad.value AS additional_value FROM test_data td JOIN additional_data ad ON td.time = ad.key;",
+    "SELECT td.time, td.value, exponentialTimeDecayedMax(10)(td.value, td.time) AS exp_smooth FROM test_data td WHERE td.time > (SELECT AVG(time) FROM test_data);",
+    "SELECT (number % 10) AS time, round(exp_smooth, 3) FROM (SELECT number, exponentialTimeDecayedMax(7)(value, number) OVER (ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS exp_smooth FROM (SELECT number FROM numbers(100) WHERE number < 100) AS numbers_table JOIN test_data ON numbers_table.number = test_data.time);",
+    "SELECT time, value, cumulative_sum(exp_smooth) AS total_exp_smooth FROM (SELECT time, value, exponentialTimeDecayedMax(10)(value, time) AS exp_smooth FROM test_data) GROUP BY time ORDER BY time;"
+]

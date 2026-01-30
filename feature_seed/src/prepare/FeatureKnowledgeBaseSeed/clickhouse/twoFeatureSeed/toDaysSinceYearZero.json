@@ -1,0 +1,19 @@
+{
+    "function": "toDaysSinceYearZero",
+    "operator": "a % b",
+    "sql_array": [
+        "CREATE TABLE test_dates (id UInt32, dateField Date, ratioField Float64);",
+        "INSERT INTO test_dates VALUES (1, toDate('2023-09-08'), 15.5), (2, toDate('2023-01-01'), 20.0), (3, NULL, 5.0);",
+        "SELECT id, toDaysSinceYearZero(dateField) % ratioField AS days_ratio FROM test_dates WHERE dateField IS NOT NULL;",
+        "SELECT id, COUNT(*), AVG(toDaysSinceYearZero(dateField) % ratioField) OVER (PARTITION BY dateField IS NULL) AS avg_days_ratio FROM test_dates GROUP BY id, dateField;",
+        "SELECT id, (toDaysSinceYearZero(dateField) + toDaysSinceYearZero(dateField)) % (ratioField + 1) AS adjusted_days_ratio FROM test_dates WHERE ratioField > 0;",
+        "CREATE TABLE other_dates (id UInt32, eventDate Date);",
+        "INSERT INTO other_dates VALUES (1, toDate('2000-02-29')), (2, toDate('2020-02-29'));",
+        "SELECT a.id AS test_id, a.dateField, b.eventDate, (toDaysSinceYearZero(a.dateField) % 7) AS week_days_passed FROM test_dates a JOIN other_dates b ON toDaysSinceYearZero(a.dateField) = toDaysSinceYearZero(b.eventDate) WHERE a.ratioField IS NOT NULL;",
+        "SELECT id, toDaysSinceYearZero(dateField) AS days_since_zero, (CASE WHEN days_since_zero % 10 = 0 THEN NULL ELSE days_since_zero END) AS adjusted_value FROM (SELECT id, toDaysSinceYearZero(dateField) AS days_since_zero FROM test_dates) WHERE adjusted_value IS NOT NULL;",
+        "CREATE TABLE boundary_test (value Float64, strValue String);",
+        "INSERT INTO boundary_test VALUES (1.0, '1'), (2.5, '2.5'), (0.9999999999999999, 'almost one');",
+        "SELECT value, toDaysSinceYearZero(toDate(strValue)) % 3 AS mod_result FROM boundary_test;",
+        "SELECT id, (toDaysSinceYearZero(dateField) % 7) + (toDaysSinceYearZero(dateField) % 3) AS total_mod FROM test_dates HAVING total_mod = 0;"
+    ]
+}

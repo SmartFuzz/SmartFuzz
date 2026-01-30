@@ -1,0 +1,17 @@
+{
+    "function": "quantilesGK",
+    "operator": "x",
+    "sql_array": [
+        "CREATE TABLE test_quantiles (id UInt32, value Float64, created_at DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_quantiles VALUES (1, 1.5, '2023-01-01 00:00:00'), (2, 2.5, '2023-01-01 01:00:00'), (3, NULL, '2023-01-01 02:00:00'), (4, 4.5, '2023-01-01 03:00:00');",
+        "SELECT quantilesGK(10, 0.25, 0.5, 0.75)(multiIf(value IS NULL, 0, value) + 1) FROM test_quantiles;",
+        "SELECT id, quantilesGK(1, 0.25, 0.5, 0.75)(value) AS quantiles FROM test_quantiles GROUP BY id HAVING quantiles[2] > 1.0;",
+        "SELECT id, quantilesGK(100, 0.25, 0.5, 0.75)(value + 1.0) FROM (SELECT value, id FROM test_quantiles WHERE created_at > '2023-01-01 00:00:00') AS subquery WHERE id < 4;",
+        "SELECT quantilesGK(100, 0.25, 0.5, 0.75)(multiIf(value IS NULL, -1, value * 2) + transform(value, [0.0], [NULL], 1)) FROM test_quantiles;",
+        "SELECT id, quantilesGK(1000, 0.25, 0.5, 0.75)(value) AS quantiles FROM test_quantiles WHERE value BETWEEN -1 AND 5 GROUP BY id ORDER BY quantiles[1] DESC;",
+        "SELECT DISTINCT ON (id) quantilesGK(100, 0.25, 0.5, 0.75)(CASE WHEN value > 2 THEN value ELSE NULL END) AS quantiles FROM test_quantiles;",
+        "CREATE TEMPORARY TABLE test_temp AS SELECT *, multiIf(value IS NULL, 0, value) AS adjusted_value FROM test_quantiles;",
+        "SELECT quantilesGK(10, 0.25, 0.5, 0.75)(adjusted_value) FROM test_temp;",
+        "SELECT avg(val) as average, quantilesGK(100, 0.25, 0.5, 0.75)(val) FROM (SELECT value AS val FROM test_temp WHERE adjusted_value > 0) AS avg_subquery GROUP BY adjusted_value HAVING average > 1.0;"
+    ]
+}

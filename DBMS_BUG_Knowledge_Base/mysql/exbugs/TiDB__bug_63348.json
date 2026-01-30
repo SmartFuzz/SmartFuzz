@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/63348",
+  "title": "NO_DECORRELATE EXISTS subquery does not early-out",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n```\nCREATE TABLE `t1` (\n  `a` int,\n  `b` int,\n  `c` int,\n  Primary KEY (`a`),\n  KEY `ib` (`b`)\n);\nset @@cte_max_recursion_depth=10000000;\nINSERT INTO t1 (a, b, c)\nSELECT a, mod(a, 1000) AS b, mod(a, 10) AS c\nFROM (\n    WITH RECURSIVE x AS (\n        SELECT 1 AS a\n        UNION ALL\n        SELECT a + 1 AS a\n        FROM x\n        WHERE a < 1000000\n    )\n    SELECT a\n    FROM x\n) AS subquery;\nAnalyze table t1;\n```\nThen test the following SQLs - where adding LIMIT 1 will simulate early-out.\nNote - column a is PK. column b is indexed. column c is not indexed. Each example has one SQL without limit, and one with limit.\n```\nexplain analyze select a, if(exists(select /*+ NO_DECORRELATE() */ 1 from t2 t2 where t2.b = t1.b),1,0) from t2 t1 where c < 2;\nexplain analyze select a, if(exists(select /*+ NO_DECORRELATE() */ 1 from t2 t2 where t2.b = t1.b limit 1),1,0) from t2 t1 where c < 2;\nexplain analyze select a, if(exists(select /*+ NO_DECORRELATE() */ 1 from t2 t2 where t2.c = t1.c),1,0) from t2 t1 where c < 2;\nexplain analyze select a, if(exists(select /*+ NO_DECORRELATE() */ 1 from t2 t2 where t2.c = t1.c limit 1),1,0) from t2 t1 where c < 2;\n```\n### 2. What did you expect to see? (Required)\n\nWould expect to see similar performance with and without LIMIT 1.\n\n### 3. What did you see instead (Required)\n\nCorrelated on b\nwithout LIMIT == 2 min 50 sec\nwith LIMIT == approx 600 millisec\n\nCorrelated on c\nwithout LIMIT == 940 millisec\nwith LIMIT == approx 350 millisec\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\nmaster branch\n\n",
+  "date": "2025-09-02T16:39:26Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE `t2` ( `id` int, `b` int, `c` varchar(10), PRIMARY KEY (`id`), KEY `ib` (`b`) );",
+    "INSERT INTO t2 (id, b, c) VALUES (1, 100, 'test1'), (2, 200, 'test2'), (3, 300, 'test3');",
+    "SELECT a, IF(EXISTS(SELECT 1 FROM t2 t2 WHERE t2.b = t1.b), 1, 0) FROM t1 WHERE c < 5;",
+    "SELECT a, IF(EXISTS(SELECT 1 FROM t2 t2 WHERE t2.b = t1.b LIMIT 1), 1, 0) FROM t1 WHERE c < 5;",
+    "SELECT a, IF(EXISTS(SELECT 1 FROM t2 t2 WHERE t2.c = 'test1'), 1, 0) FROM t1 WHERE c < 5;"
+  ],
+  "key_bug_features": [
+    "NO_DECORRELATE() subquery does not early-out with LIMIT"
+  ]
+}

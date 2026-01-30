@@ -1,0 +1,15 @@
+CREATE TABLE test_strings (id UInt32, text String);
+INSERT INTO test_strings VALUES (1, 'Ich bleibe für ein paar Tage.'), (2, 'これはテストです。'), (3, 'C'est un test.'), (4, 'Тестовое сообщение.');
+CREATE TABLE test_results (id UInt32, charset_detected String);
+INSERT INTO test_results SELECT id, detectCharset(text) FROM test_strings;
+SELECT id, detectCharset(CONCAT(text, ' - additional context: ', detectCharset(text))) AS charset Detailed FROM test_strings;
+SELECT id FROM (SELECT id, detectCharset(text) AS detected_charset FROM test_strings) WHERE detected_charset IS NOT NULL;
+SELECT id, detectCharset(text) AS detected_charset FROM test_strings WHERE detectCharset(text) IS NOT NULL GROUP BY detected_charset HAVING detected_charset LIKE 'UTF%';
+SELECT (id, detectCharset(IFNULL(text, 'empty'))) FROM test_strings WHERE id < 4;
+SELECT id, COUNT(*) OVER(PARTITION BY detectCharset(text)) AS charset_count FROM test_strings;
+SELECT (text, detectCharset(text)) FROM test_strings WHERE detectCharset(text) = detectCharset('C'est un test.');
+SELECT (id, detectCharset(text), (id % 2)) FROM test_strings GROUP BY (id, detectCharset(text)) HAVING id > 3;
+SELECT (text, detectCharset(CAST(id AS String))) FROM test_strings HAVING detectCharset(CAST(id AS String)) IS NOT NULL ORDER BY id;
+CREATE TABLE test_tuples AS SELECT (id, detectCharset(text)) AS char_tuple FROM test_strings;
+SELECT * FROM test_tuples WHERE detectCharset(((text, detectCharset(text)))) IS NULL;
+INSERT INTO test_results SELECT id, detectCharset(CONCAT(text, ' random text ', detectCharset(text))) FROM test_strings WHERE detectCharset(text) IS NOT NULL;

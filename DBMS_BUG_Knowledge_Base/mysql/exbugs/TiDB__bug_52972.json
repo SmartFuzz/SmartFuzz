@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/52972",
+  "title": "When sql_mode is empty, there is a problem creating default values for columns that are out of bounds",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n```\r\nset @@sql_mode='';\r\ndrop table if exists t1;\r\ncreate table t1(b tinyint default '11111111');\r\nalter table t1 add column(c tinyint default '11111111');\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\nMySQL 5.7.44 and MySQL 8.0.18\r\n```\r\nmysql> create table t1(c tinyint default '11111111');\r\nERROR 1067 (42000): Invalid default value for 'b'\r\n\r\ncreate table t1(b tinyint);\r\nmysql> alter table t1 add column(c tinyint default '11111111');\r\nERROR 1067 (42000): Invalid default value for 'c'\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n```\r\ntidb> create table t1(b tinyint default '11111111');\r\nQuery OK, 0 rows affected, 1 warning (0.01 sec)\r\n\r\ntidb> show warnings;\r\n+---------+------+-------------------------------------+\r\n| Level   | Code | Message                             |\r\n+---------+------+-------------------------------------+\r\n| Warning | 1690 | constant 11111111 overflows tinyint |\r\n+---------+------+-------------------------------------+\r\n1 row in set (0.00 sec)\r\n\r\ntidb> alter table t1 add column(c tinyint default '11111111');\r\nQuery OK, 0 rows affected, 1 warning (0.02 sec)\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\nmaster\r\n\r\nrelated https://github.com/pingcap/tidb/issues/51320\r\n",
+  "date": "2024-04-29T06:35:16Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "SET @@sql_mode='';",
+    "DROP TABLE IF EXISTS t2;",
+    "CREATE TABLE t2(a SMALLINT DEFAULT 0);",
+    "ALTER TABLE t2 ADD COLUMN(d INT DEFAULT 0);",
+    "SELECT * FROM t2 WHERE a > 1000;"
+  ],
+  "key_bug_features": [
+    "Empty sql_mode allows out of bounds default values"
+  ]
+}

@@ -1,0 +1,9 @@
+CREATE TABLE test_dates (id INTEGER PRIMARY KEY, event_time TIMESTAMP, description VARCHAR(255));
+INSERT INTO test_dates (id, event_time, description) VALUES (1, TIMESTAMP '2021-08-03 11:59:44.123456', 'Event A'), (2, TIMESTAMP '2021-08-03 11:59:44.123', 'Event B'), (3, TIMESTAMP NULL, 'Event C');
+SELECT id, event_time, microsecond(event_time) AS microsecond_part FROM test_dates WHERE event_time IS NOT NULL ORDER BY microsecond_part;
+SELECT id, COUNT(*) AS event_count FROM (SELECT id, event_time - INTERVAL microsecond(event_time) SECOND AS adjusted_time FROM test_dates) AS adjusted WHERE adjusted_time IS NOT NULL GROUP BY id HAVING event_count > 0;
+WITH event_adjustments AS (SELECT id, event_time, microsecond(event_time) AS microsec FROM test_dates) SELECT e1.id, e1.microsec - INTERVAL 1 DAY AS prior_microsec FROM event_adjustments e1 JOIN event_adjustments e2 ON e1.id = e2.id WHERE e1.microsec > 500000;
+SELECT id, event_time, microsecond(event_time) FROM test_dates WHERE event_time IS NOT NULL AND (event_time - INTERVAL 1 DAY) IS NOT NULL ORDER BY event_time;
+SELECT id, microsecond(event_time) AS microsec, (SELECT COUNT(*) FROM test_dates t2 WHERE t2.event_time IS NOT NULL) AS total_events FROM test_dates GROUP BY id HAVING microsec IS NOT NULL;
+DROP TABLE IF EXISTS temp_dates;
+CREATE TABLE temp_dates AS SELECT id, event_time - INTERVAL 2 DAY AS two_days_prior FROM test_dates WHERE event_time IS NOT NULL;

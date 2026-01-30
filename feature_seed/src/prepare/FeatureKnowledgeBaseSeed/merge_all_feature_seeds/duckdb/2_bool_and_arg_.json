@@ -1,0 +1,12 @@
+CREATE TABLE test_table (id INTEGER, value BOOLEAN, amount FLOAT, description TEXT);
+INSERT INTO test_table VALUES (1, TRUE, 2.5, 'test1'), (2, NULL, 3.5, 'test2'), (3, FALSE, 0.0, 'test3'), (4, TRUE, 4.1, 'edge case true'), (5, FALSE, 8.2, 'edge case false');
+CREATE TABLE another_table (foreign_id INTEGER, extra_amount FLOAT);
+INSERT INTO another_table VALUES (1, 1.0), (2, 2.1), (3, NULL);
+SELECT bool_and(value + (CASE WHEN amount IS NULL THEN 0 ELSE amount END)) FROM test_table GROUP BY id HAVING AVG(amount) > 2.0;
+SELECT bool_and((SELECT value FROM test_table WHERE id = another_table.foreign_id)) FROM another_table GROUP BY foreign_id;
+SELECT bool_and(value + (amount / 2.5)) AS combined_check FROM test_table HAVING combined_check IS TRUE;
+SELECT id, bool_and(value) OVER (PARTITION BY (CASE WHEN amount > 2.5 THEN 1 ELSE 0 END)) AS bool_grouped FROM test_table;
+SELECT bool_and(NULLIF(amount, 0) + (CASE WHEN description LIKE '%edge case%' THEN 1.0 ELSE 0.0 END)) FROM test_table GROUP BY description HAVING bool_and(value) IS NOT NULL;
+DROP TABLE IF EXISTS temp_table;
+CREATE TEMP TABLE temp_table AS SELECT id, value, amount * 1.1 AS adjusted_amount FROM test_table WHERE value IS NOT NULL;
+SELECT bool_and(value + (COALESCE(adjusted_amount, 0) * -1)) FROM temp_table GROUP BY id HAVING count(*) > 0;

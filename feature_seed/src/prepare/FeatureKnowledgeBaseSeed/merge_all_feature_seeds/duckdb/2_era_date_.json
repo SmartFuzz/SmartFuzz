@@ -1,0 +1,12 @@
+CREATE TABLE test_dates (id INTEGER, event_date DATE, description TEXT);
+INSERT INTO test_dates VALUES (1, date '0044-03-15 (BC)', 'Test event with BC date'), (2, date '2023-10-12', 'Normal event'), (3, NULL, 'Null event');
+SELECT id, era(event_date) ^ 2 AS era_exponent FROM test_dates WHERE event_date IS NOT NULL;
+SELECT id, event_date, era(event_date) AS era_from_date FROM test_dates HAVING era(event_date) IS NOT NULL;
+CREATE TABLE test_numbers (num1 INTEGER, num2 INTEGER);
+INSERT INTO test_numbers VALUES (2, 3), (NULL, 4), (5, NULL);
+SELECT tn.num1, tn.num2, (era(date '2020-01-01') ^ (tn.num1 + tn.num2)) AS adjusted_era FROM test_numbers tn WHERE tn.num1 IS NOT NULL OR tn.num2 IS NOT NULL;
+CREATE TABLE aggregated_dates AS SELECT id, era(event_date) AS era_val FROM test_dates GROUP BY id, era(event_date);
+SELECT COUNT(*), MAX(era(event_date)) ^ 2 AS max_era_squared FROM test_dates WHERE event_date IS NOT NULL GROUP BY description HAVING COUNT(*) > 1;
+SELECT td.id, td.description, (era(td.event_date) + COALESCE(MAX(tn.num1), 0)) AS enriched_era FROM test_dates td LEFT JOIN test_numbers tn ON tn.num2 = td.id GROUP BY td.id, td.description HAVING enriched_era IS NOT NULL ORDER BY enriched_era;
+CREATE TEMP TABLE temp_composite AS SELECT id, (era(event_date) ^ 3) AS cube_era FROM test_dates WHERE event_date IS NOT NULL;
+SELECT tc.id, (tc.cube_era + tn.num1) AS final_value FROM temp_composite tc JOIN test_numbers tn ON tc.id = tn.num1 WHERE tn.num1 IS NOT NULL;

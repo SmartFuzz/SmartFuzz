@@ -1,0 +1,18 @@
+{
+    "function": "list_inner_product",
+    "operator": "-",
+    "sql_array": [
+        "CREATE TABLE test_data (id INTEGER, num_list1 LIST<DOUBLE>, num_list2 LIST<DOUBLE>, event_date DATE, some_value INTEGER);",
+        "INSERT INTO test_data (id, num_list1, num_list2, event_date, some_value) VALUES (1, [1.0, 2.0, 3.0, 4.0], [1.0, 2.0, 5.0, 0.0], DATE '2023-01-01', 10);",
+        "INSERT INTO test_data (id, num_list1, num_list2, event_date, some_value) VALUES (2, [1.0, NULL, 3.5, 4.5], [2.0, 3.0, 1.0, 2.0], DATE '2023-01-02', 20);",
+        "INSERT INTO test_data (id, num_list1, num_list2, event_date, some_value) VALUES (3, [], [0.0, 0.0, 0.0, 0.0], DATE '2023-01-03', NULL);",
+        "INSERT INTO test_data (id, num_list1, num_list2, event_date, some_value) VALUES (4, [10.0, 20.0, 30.0], [10.0, 20.0, 30.0], DATE '1970-01-01', 40);",
+        "SELECT id, list_inner_product(num_list1, num_list2) AS dot_product, event_date - INTERVAL some_value DAY AS modified_date FROM test_data WHERE list_inner_product(num_list1, num_list2) > 10 OR modified_date < DATE '2022-01-01';",
+        "SELECT COUNT(*) FROM (SELECT id, list_inner_product(num_list1, num_list2) AS dot_product, event_date - INTERVAL SOME_VALUE DAY AS modified_date FROM test_data GROUP BY id, num_list1, num_list2, event_date HAVING modified_date < CURRENT_DATE - INTERVAL 1 MONTH) AS subquery;",
+        "CREATE TABLE another_test (ref_date DATE, computed_value DOUBLE);",
+        "INSERT INTO another_test (ref_date, computed_value) SELECT event_date, list_inner_product(num_list1, num_list2) FROM test_data WHERE some_value IS NOT NULL;",
+        "SELECT AT.min_date, AT.computed_value, AT.ref_date FROM (SELECT MIN(event_date) AS min_date FROM test_data GROUP BY id) AS AT JOIN another_test AS A ON AT.min_date = A.ref_date WHERE A.computed_value < 0.0;",
+        "SELECT DISTINCT modified_date, list_inner_product(num_list1, num_list2) AS dot_product FROM (SELECT id, num_list1, num_list2, event_date - INTERVAL 1 DAY AS modified_date FROM test_data WHERE some_value = 20) AS inner_query HAVING dot_product IS NOT NULL ORDER BY dot_product;",
+        "SELECT event_date, LIST_AGG(num_list1) AS aggregated_list FROM test_data WHERE num_list1 IS NOT NULL GROUP BY event_date HAVING COUNT(*) > 0;"
+    ]
+}

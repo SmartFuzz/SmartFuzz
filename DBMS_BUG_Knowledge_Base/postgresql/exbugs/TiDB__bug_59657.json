@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/59657",
+  "title": "Partition table changes attribute column type ERROR",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n\ntable4 schema:\n\n```sql\ncreate table `table4`\n(\n    `pkId`          integer,\n    `pkAttr0`       integer auto_increment,\n    `commonAttr0_0` integer,\n    `commonAttr1_0` varchar(10),\n    `commonAttr2_0` decimal(10, 2),\n    `commonAttr3_0` varchar(10),\n    `commonAttr4_0` varchar(10),\n    primary key (`pkAttr0`) NONCLUSTERED\n) ROW_FORMAT = DYNAMIC PARTITION BY RANGE (`pkAttr0`) ( PARTITION `p0` VALUES LESS THAN (80), PARTITION `p1` VALUES LESS THAN (1000) );\n\n\nalter table `table4` add index `table4index_pk` (`pkAttr0`);\n```\n\n\n\n### 2. What did you expect to see? (Required)\n\n```sql\nmysql > alter table table4 change commonAttr3_0 commonAttr3_0 varchar(10);\n-- ok\nmysql > alter table table4 auto_increment = 273060;\n-- ok\nmysql > alter table table4 change commonAttr0_0 commonAttr0_0 decimal(12, 3);\n-- ok\n```\n\n\n\nMySQL v8.4 can correctly handle changes in attribute columns of partition tables.\n\n\n\n### 3. What did you see instead (Required)\n\n```sql\nmysql > alter table table4 change commonAttr3_0 commonAttr3_0 varchar(10);\n-- ok\nmysql > alter table table4 auto_increment = 273060;\n-- ok\nmysql > alter table table4 change commonAttr0_0 commonAttr0_0 decimal(12, 3);\n-- ERROR 8200 (HY000): Unsupported modify column: table is partition table\n```\n\n\n\nBut TiDB v8.5.0 can not handle these changes.\n\n\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\nTiDB v8.5.0\n\n\n\n\n\n\n\n\n\n",
+  "date": "2025-02-20T02:48:30Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE table5 ( id INT PRIMARY KEY, name VARCHAR(50), age INT, salary DECIMAL(10, 2) ) PARTITION BY RANGE (age) ( PARTITION pYoung VALUES LESS THAN (30), PARTITION pAdult VALUES LESS THAN (60), PARTITION pSenior VALUES LESS THAN (100) );",
+    "CREATE INDEX idx_age ON table5 (age);",
+    "INSERT INTO table5 (id, name, age, salary) VALUES (1, 'Alice', 25, 50000.00);",
+    "INSERT INTO table5 (id, name, age, salary) VALUES (2, 'Bob', 35, 60000.00);",
+    "ALTER TABLE table5 ALTER COLUMN salary TYPE DECIMAL(12, 4);"
+  ],
+  "key_bug_features": [
+    "Unsupported modify column in partition table"
+  ]
+}

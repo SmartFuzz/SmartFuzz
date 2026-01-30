@@ -1,0 +1,9 @@
+CREATE TABLE test_data (id INT, value_list LIST, specific_date DATE, idx_list LIST);
+INSERT INTO test_data VALUES (1, [10, 20, 30, 40], DATE '2022-01-01', [1, 4]), (2, [NULL, NULL, NULL], DATE '2020-05-15', [2, 5]), (3, [15.5, 25.3, 35.7, 45.2], DATE '1995-03-10', [0, 3]);
+SELECT id, array_select(value_list, idx_list) + INTERVAL (SELECT COUNT(*) FROM test_data WHERE id = 1) DAY AS advanced_selection FROM test_data WHERE specific_date < DATE '2022-01-01';
+SELECT id, array_select(value_list, [1, 2]) + INTERVAL (SELECT COUNT(*) FROM test_data WHERE specific_date IS NULL) DAY AS adjusted_selection FROM test_data WHERE ARRAY_LENGTH(value_list) > 2;
+SELECT id, specific_date + INTERVAL array_select([5, 10, 15, 20], [1]) DAY AS new_date FROM test_data WHERE id IN (SELECT id FROM test_data WHERE specific_date >= DATE '1990-01-01' AND value_list IS NOT NULL);
+SELECT id, array_select(value_list, idx_list) + INTERVAL 3 DAY AS fuzzed_value FROM test_data GROUP BY idx_list ORDER BY new_date DESC HAVING COUNT(*) > 1;
+SELECT id, array_select(value_list, [1, 2]) + INTERVAL 10 DAY AS computed_value FROM test_data WHERE value_list IS NOT NULL AND specific_date IS NOT NULL;
+SELECT id, (array_select(value_list, [1]) + INTERVAL 5 DAY) AS modified_date FROM test_data WHERE specific_date IS NOT NULL AND id NOT IN (SELECT id FROM test_data WHERE value_list[1] IS NULL);
+SELECT id, COALESCE(array_select(value_list, [0]), 0) + INTERVAL 0 DAY AS fallback_value FROM test_data WHERE array_select(value_list, [1]) IS NOT NULL ORDER BY value_list[0] ASC;

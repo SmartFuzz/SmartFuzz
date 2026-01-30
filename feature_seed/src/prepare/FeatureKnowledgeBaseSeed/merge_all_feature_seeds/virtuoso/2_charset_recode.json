@@ -1,0 +1,10 @@
+CREATE TABLE test_charsets (id INT PRIMARY KEY, source_str VARCHAR(255), src_charset VARCHAR(50), dst_charset VARCHAR(50));
+INSERT INTO test_charsets VALUES (1, '\xA9', 'ISO-8859-1', 'UTF-8'), (2, '\xC0', 'WINDOWS-1251', 'ISO-8859-5'), (3, N'\x410', '_WIDE_', 'WINDOWS-1251'), (4, N'\x410', '_WIDE_', 'ISO-8859-1'), (5, NULL, NULL, NULL);
+SELECT id, charset_recode(source_str, src_charset, dst_charset) AS recoded_str FROM test_charsets WHERE src_charset IS NOT NULL;
+SELECT id, charset_recode(source_str, COALESCE(src_charset, 'UTF-8'), COALESCE(dst_charset, '_WIDE_')) AS coerced_recode FROM test_charsets WHERE src_charset IS NULL;
+SELECT id, charset_recode(N'\x410', '_WIDE_', 'ISO-8859-5') AS wide_to_iso, CASE WHEN charset_recode(N'\x410', '_WIDE_', 'ISO-8859-5') IS NULL THEN 'Conversion Failed' ELSE 'Success' END AS conversion_status FROM test_charsets;
+SELECT id, COUNT(*) AS recode_count FROM test_charsets WHERE charset_recode(source_str, src_charset, dst_charset) IS NOT NULL GROUP BY id HAVING COUNT(*) > 0;
+SELECT id, (SELECT COUNT(*) FROM test_charsets WHERE charset_recode(source_str, src_charset, dst_charset) IS NOT NULL) AS total_recode_count FROM test_charsets WHERE source_str IS NULL;
+SELECT t1.id, t2.id, charset_recode(t1.source_str, t1.src_charset, t2.dst_charset) AS dual_conversion FROM test_charsets t1 JOIN test_charsets t2 ON t1.id = t2.id WHERE t1.source_str IS NOT NULL AND t2.src_charset IS NOT NULL;
+SELECT id FROM test_charsets WHERE charset_recode(source_str, src_charset, dst_charset) IS NULL AND src_charset IS NULL;
+SELECT id, charset_recode(source_str, 'UTF-8', 'ISO-8859-1') AS utf8_to_iso FROM test_charsets WHERE LENGTH(source_str) = 0;

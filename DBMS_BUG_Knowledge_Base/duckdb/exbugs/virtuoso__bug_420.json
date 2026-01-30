@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/420",
+  "title": "Extension function specification (SPARQL 1.1) not respected",
+  "description": "Problem description\nThe SPARQL 1.1 extensions functions states that additional functions are accepted in queries defined under IRIs: A PrimaryExpression grammar rule can be a call to an extension function _named by an IRI_\nbif:contains is actually no valid IRI (assuming no prefix was defined), so the usage of the prefix should be mandatory (or at least accepted, since so it is stated in the Spec), but Virtuoso does not accept it.\nProblem reproduction\nVirtuoso v7.2.0.1 was used. Following preparation (in isql)\nSPARQL\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nINSERT DATA {GRAPH <urn:g> {<urn:s> rdfs:label \"example label\"}};\n\nDB.DBA.VT_INC_INDEX_DB_DBA_RDF_OBJ ();\n\nOnce the data is inserted this query succeeds (as expected due to the custom support by Virtuoso)\nSPARQL\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nSELECT DISTINCT ?o WHERE {<urn:s> rdfs:label ?o . FILTER(bif:contains(?o, \"example\"))}\n\nHowever, this query fails even if it fits the spec and the used namespace is correct (meaning that the resulting IRI leads to the expected function):\nSPARQL\nPREFIX bif: <http://www.openlinksw.com/schema/sparql/extensions#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nselect distinct ?o where {<urn:s> rdfs:label ?o . FILTER(bif:contains(?o, \"example\"))}\n\nleading to this error\nSQLState: 37000\nMessage: SQ074: Line 4: SP030: SPARQL compiler, line 2: Prefixes 'sql:' and 'bif:' are reserved for SQL names at '<http://www.openlinksw.com/schema/sparql/extensions#>' before 'PREFIX'\n SPARQL\nPREFIX bif: <http://www.openlinksw.com/schema/sparql/extensions#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nselect distinct ?o where {<urn:s> rdfs:label ?o . FILTER(bif:contains(?o, \"example\"))}\n\nProposed solution\nIn order to be SPARQL 1.1 compliant, the prefix PREFIX bif: <http://www.openlinksw.com/schema/sparql/extensions#> should be allowed.\nFurthermore, Virtuoso should not only react to the specific bif:contains string, but also to the whole function IRI (http://www.openlinksw.com/schema/sparql/extensions#contains), since query parsing engines might decide to delete prefixes. This last point sounds useless, but such a query would have the same semantics, so it should be processed in the same way by the SPARQL engine (in this case Virtuoso)\nIf the value of the prefix is not the expected one, throwing the mentioned error would be acceptable (reserving prefixes is not foreseen, since the real information is the complete IRI, but it is a minor compromise).",
+  "date": "2015-06-09 08:21:47",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INTEGER PRIMARY KEY, name VARCHAR, description TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table (id, name, description) VALUES (1, 'example label', 'This is a test description.');",
+    "SELECT DISTINCT name FROM test_table WHERE description IS NOT NULL AND name LIKE '%example%';",
+    "UPDATE test_table SET description = NULL WHERE id = 1;",
+    "SELECT COUNT(*) FROM test_table WHERE created_at < CURRENT_TIMESTAMP - INTERVAL '1 day';"
+  ],
+  "key_bug_features": [
+    "bif:contains function not accepted without prefix"
+  ]
+}

@@ -1,0 +1,15 @@
+CREATE TABLE test_urls (id INT PRIMARY KEY, url_string CLOB, response_code INT, created_at TIMESTAMP);
+INSERT INTO test_urls (id, url_string, response_code, created_at) VALUES (1, 'http://www.example.com', 200, NOW());
+INSERT INTO test_urls (id, url_string, response_code, created_at) VALUES (2, 'https://subdomain.example.org/path?query=1', NULL, NOW());
+INSERT INTO test_urls (id, url_string, response_code, created_at) VALUES (3, '', 404, NOW());
+INSERT INTO test_urls (id, url_string, response_code, created_at) VALUES (4, NULL, 500, NOW());
+CREATE TABLE additional_data (url_id INT, metadata CLOB, FOREIGN KEY (url_id) REFERENCES test_urls(id));
+INSERT INTO additional_data (url_id, metadata) VALUES (1, 'Meta data for example.com');
+INSERT INTO additional_data (url_id, metadata) VALUES (2, 'Meta data for subdomain.example.org');
+SELECT t.id, t.url_string, sys.url_extract_host(t.url_string, true) >> 1 AS extracted_host_shifted FROM test_urls t WHERE t.response_code IS NOT NULL;
+SELECT a.url_id, sys.url_extract_host(t.url_string, false) AS extracted_host, COUNT(*) OVER (PARTITION BY a.url_id) AS metadata_count FROM test_urls t JOIN additional_data a ON a.url_id = t.id WHERE t.url_string IS NOT NULL GROUP BY a.url_id, t.url_string HAVING COUNT(*) > 0;
+SELECT tt.id, sys.url_extract_host(tt.url_string, true) AS host_extracted FROM test_urls tt WHERE tt.id IN (SELECT url_id FROM additional_data) AND tt.response_code IS NOT NULL;
+SELECT tt.id, sys.url_extract_host(tt.url_string, false) AS host FROM test_urls tt WHERE tt.url_string IS NOT NULL AND (SELECT COUNT(*) FROM additional_data aa WHERE aa.url_id = tt.id) >> 1 = 1;
+SELECT MIN(response_code) >> 1 AS min_shifted_code FROM test_urls WHERE response_code IS NOT NULL;
+SELECT AVG(COALESCE(NULLIF(response_code, 200), 404)) AS adjusted_avg_code FROM test_urls;
+SELECT id, sys.url_extract_host(COALESCE(url_string, 'http://default.com'), false) AS extracted_host FROM test_urls WHERE url_string <> '' ORDER BY created_at DESC;

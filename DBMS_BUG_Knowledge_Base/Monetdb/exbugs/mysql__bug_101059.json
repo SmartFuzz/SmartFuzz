@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=101059",
+  "title": "Query result inconsistent for the year type in NOT IN expression",
+  "description": "The SELECT results are inconsistent when the year(4) type columns are used in NOT IN expression as index range conditions.\r\n\r\nmysql> create table t (a year(4), key(a));\r\nQuery OK, 0 rows affected, 1 warning (0.01 sec)\r\n\r\nmysql> insert into t values (0), (1), (69), (70), (71);\r\nQuery OK, 5 rows affected (0.01 sec)\r\nRecords: 5  Duplicates: 0  Warnings: 0\r\n\r\nmysql> select * from t where a not in (70);\r\n+------+\r\n| a    |\r\n+------+\r\n| 0000 |\r\n| 1971 |\r\n| 2001 |\r\n| 2069 |\r\n+------+\r\n4 rows in set (0.00 sec)\r\n\r\nmysql> select * from t where a not in (1, 70);\r\n+------+\r\n| a    |\r\n+------+\r\n| 0000 |\r\n| 1970 |\r\n| 1971 |\r\n| 2001 |\r\n| 2069 |\r\n+------+\r\n5 rows in set (0.00 sec)\r\n\r\nmysql> select * from t where a not in (70, 71);\r\n+------+\r\n| a    |\r\n+------+\r\n| 0000 |\r\n| 2001 |\r\n| 2069 |\r\n+------+\r\n3 rows in set (0.00 sec)\nHow to repeat:\ndrop table if exists t;\r\ncreate table t (a year(4), key(a));\r\ninsert into t values (0), (1), (69), (70), (71);\r\nselect * from t where a not in (70);\r\nselect * from t where a not in (1, 70);\r\nselect * from t where a not in (70, 71);\nSuggested fix:\nThe results should either be: (mapping 70-99, 1-69 to 1970-2069)\r\n\r\nmysql> select * from t where a not in (70);\r\n+------+\r\n| a    |\r\n+------+\r\n| 0000 |\r\n| 1971 |\r\n| 2001 |\r\n| 2069 |\r\n+------+\r\n4 rows in set (0.00 sec)\r\n\r\nmysql> select * from t where a not in (1, 70);\r\n+------+\r\n| a    |\r\n+------+\r\n| 0000 |\r\n| 1971 |\r\n| 2069 |\r\n+------+\r\n3 rows in set (0.00 sec)\r\n\r\nmysql> select * from t where a not in (70, 71);\r\n+------+\r\n| a    |\r\n+------+\r\n| 0000 |\r\n| 2001 |\r\n| 2069 |\r\n+------+\r\n3 rows in set (0.00 sec)\r\n\r\nOr: (without mapping)\r\n\r\nmysql> select * from t where a not in (70);\r\n+------+\r\n| a    |\r\n+------+\r\n| 0000 |\r\n| 1970 |\r\n| 1971 |\r\n| 2001 |\r\n| 2069 |\r\n+------+\r\n5 rows in set (0.00 sec)\r\n\r\nmysql> select * from t where a not in (1, 70);\r\n+------+\r\n| a    |\r\n+------+\r\n| 0000 |\r\n| 1970 |\r\n| 1971 |\r\n| 2001 |\r\n| 2069 |\r\n+------+\r\n5 rows in set (0.00 sec)\r\n\r\nmysql> select * from t where a not in (70, 71);\r\n+------+\r\n| a    |\r\n+------+\r\n| 0000 |\r\n| 1970 |\r\n| 1971 |\r\n| 2001 |\r\n| 2069 |\r\n+------+\r\n5 rows in set (0.00 sec)",
+  "date": "2020-10-06 02:47:00",
+  "vulnerable_version": "8.0.19, 8.0.21, 5.7.31, 5.6.49",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (a INT, b INT);",
+    "INSERT INTO t1 VALUES (0, 1), (1, 2), (69, 3), (70, 4), (71, 5);",
+    "SELECT * FROM t1 WHERE a NOT IN (70, 71);",
+    "SELECT * FROM t1 WHERE a NOT IN (1) AND b IS NOT NULL;",
+    "SELECT * FROM t1 WHERE a NOT IN (SELECT a FROM t1 WHERE b > 2);"
+  ],
+  "key_bug_features": [
+    "Inconsistent results for year(4) in NOT IN expression"
+  ]
+}

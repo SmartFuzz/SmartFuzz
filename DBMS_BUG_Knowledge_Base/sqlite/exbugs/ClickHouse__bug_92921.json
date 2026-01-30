@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/92921",
+  "title": "Logical error: '!finalized'",
+  "description": "### Describe the bug\nTrivial error, not sure if related to full text search or projections. cc @amosbird ?\n### How to reproduce\nRun:\n```sql\nSET enable_full_text_index = 1;\nCREATE TABLE t0 (c0 Array(String), INDEX i0 c0 TYPE text(tokenizer = sparseGrams), PROJECTION p0 (SELECT c0 ORDER BY c0)) ENGINE = MergeTree() ORDER BY tuple() SETTINGS merge_selector_base = 0;\nINSERT INTO TABLE t0 (c0) VALUES (['A']);\nINSERT INTO TABLE t0 (c0) VALUES (['B']);\nTRUNCATE t0 SYNC;\n```\n### Error message and/or stacktrace\nStack trace:\n```\n<Fatal> : Logical error: '!finalized'.\n<Fatal> : Stack trace (when copying this message, always include the lines below):\n0. src/Common/StackTrace.cpp:397: StackTrace::StackTrace() @ 0x0000000016227124\n1. src/Common/Exception.cpp:62: DB::abortOnFailedAssertion(String const&) @ 0x0000000016184a95\n2. src/Storages/MergeTree/MergedPartOffsets.h:224: DB::MergedPartOffsets::flush() @ 0x000000001f7dae6a\n3. src/Storages/MergeTree/MergeTask.cpp:1516: DB::MergeTask::MergeProjectionsStage::mergeMinMaxIndexAndPrepareProjections() const @ 0x000000001f7d35da\n4. src/Storages/MergeTree/MergeTask.cpp:1814: DB::MergeTask::MergeProjectionsStage::execute() @ 0x000000001f7d6555\n5. src/Storages/MergeTree/MergeTask.cpp:1875: DB::MergeTask::execute() @ 0x000000001f7d4b37\n6. src/Storages/MergeTree/MergePlainMergeTreeTask.cpp:59: DB::MergePlainMergeTreeTask::executeStep() @ 0x000000001f7bdb8e\n7. src/Storages/MergeTree/MergeTreeBackgroundExecutor.h:74: DB::TaskRuntimeData::executeStep() const @ 0x000000001f80691f\n8. src/Storages/MergeTree/MergeTreeBackgroundExecutor.cpp:358: DB::MergeTreeBackgroundExecutor<DB::DynamicRuntimeQueue>::routine(std::shared_ptr<DB::TaskRuntimeData>) @ 0x000000001f80b68c\n9. src/Storages/MergeTree/MergeTreeBackgroundExecutor.cpp:423: DB::MergeTreeBackgroundExecutor<DB::DynamicRuntimeQueue>::threadFunction() @ 0x000000001f80da6f\n10. contrib/llvm-project/libcxx/include/__functional/function.h:508: ? @ 0x00000000162d2379\n11. contrib/llvm-project/libcxx/include/__type_traits/invoke.h:0: ThreadFromGlobalPoolImpl<false, true>::ThreadFromGlobalPoolImpl<void (ThreadPoolImpl<ThreadFromGlobalPoolImpl<false, true>>::ThreadFromThreadPool::*)(), ThreadPoolImpl<ThreadFromGlobalPoolImpl<false, true>>::ThreadFromThreadPool*>(void (ThreadPoolImpl<ThreadFromGlobalPoolImpl<false, true>>::ThreadFromThreadPool::*&&)(), ThreadPoolImpl<ThreadFromGlobalPoolImpl<false, true>>::ThreadFromThreadPool*&&)::'lambda'()::operator()() @ 0x00000000162d8768\n12. contrib/llvm-project/libcxx/include/__functional/function.h:508: ? @ 0x00000000162cf883\n13. contrib/llvm-project/libcxx/include/__type_traits/invoke.h:0: void* std::__thread_proxy[abi:se210105]<std::tuple<std::unique_ptr<std::__thread_struct, std::default_delete<std::__thread_struct>>, void (ThreadPoolImpl<std::thread>::ThreadFromThreadPool::*)(), ThreadPoolImpl<std::thread>::ThreadFromThreadPool*>>(void*) @ 0x00000000162d640e\n14. ? @ 0x00000000000a3d64\n15. __GI___clone3 @ 0x00000000001373bc\n```",
+  "date": "2025-12-23T17:13:14Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (id INTEGER PRIMARY KEY, name TEXT, value REAL, tags TEXT);",
+    "INSERT INTO t1 (id, name, value, tags) VALUES (1, 'Test', 10.5, 'tag1,tag2');",
+    "INSERT INTO t1 (id, name, value, tags) VALUES (2, 'Example', 20.0, 'tag3');",
+    "CREATE TABLE t2 AS SELECT * FROM t1;",
+    "DELETE FROM t2;"
+  ],
+  "key_bug_features": [
+    "TRUNCATE on MergeTree table with projections"
+  ]
+}

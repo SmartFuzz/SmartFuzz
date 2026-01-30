@@ -1,0 +1,10 @@
+CREATE TABLE tmp_a (id Int32, str Nullable(String)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO tmp_a VALUES (1, 'test'), (2, NULL), (3, 'another test');
+CREATE TABLE tmp_b (val Nullable(Int32)) ENGINE = Log;
+INSERT INTO tmp_b VALUES (NULL), (5), (10);
+SELECT COUNT(*) FROM (SELECT queryID() AS qid FROM tmp_a WHERE str IS NOT NULL AND id > 1 GROUP BY queryID()) AS sub;
+SELECT a.id, a.str, b.val FROM tmp_a a LEFT JOIN tmp_b b ON a.id = b.val WHERE a.str IS NOT NULL OR b.val IS NULL;
+SELECT queryID() AS current_query_id, COUNT(*) FROM (SELECT queryID() AS inner_query_id FROM tmp_a GROUP BY queryID()) AS inner WHERE inner_query_id IS NOT NULL HAVING COUNT(*) > 0;
+SELECT queryID() AS query_id, COUNT(DISTINCT id) FROM tmp_a WHERE id IS NOT NULL OR EXISTS (SELECT 1 FROM tmp_b WHERE tmp_b.val IS NOT NULL) GROUP BY query_id;
+SELECT DISTINCT queryID() AS qid FROM (SELECT a.id, queryID() AS inner_query_id FROM tmp_a a WHERE a.str IS NOT NULL GROUP BY a.id) AS b WHERE b.inner_query_id IS NOT NULL;
+SELECT a.id, queryID() AS qid FROM tmp_a a WHERE a.str IS NOT NULL OR queryID() IS NOT NULL GROUP BY a.id, qid HAVING COUNT(*) > 1;

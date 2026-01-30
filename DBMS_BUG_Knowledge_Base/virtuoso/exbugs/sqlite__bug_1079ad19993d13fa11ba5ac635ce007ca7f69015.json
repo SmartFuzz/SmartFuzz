@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/1079ad1999",
+  "title": "Crash in query with FILTER clause on normal aggregate that refers to a column of a subquery",
+  "description": "dan added on 2019-10-10 13:58:01:\nExample:\nCREATE TABLE item (id int, price int);\nINSERT INTO item (id, price) VALUES (1, 1);\nSELECT COUNT(id) FILTER (WHERE double_price > 42) FROM (\n  SELECT id, (price * 2) as double_price FROM item\n);\nThis only affects 3.30.0, the only version to date that supports FILTER on normal (not window) aggregate function invocations.\ndan added on 2019-10-10 14:51:32:\nThe following has a similar underlying cause, but requires a window function, not just a normal aggregate. This variant goes back to version 3.25.0.\nCREATE TABLE t1(a, b);\n  CREATE TABLE t2(c, d);\n  CREATE TABLE t3(e, f);\n\n  INSERT INTO t1 VALUES(1, 1);\n  INSERT INTO t2 VALUES(1, 1);\n  INSERT INTO t3 VALUES(1, 1);\n\n  SELECT d IN (SELECT sum(c) OVER (ORDER BY e+c) FROM t3) FROM (\n    SELECT * FROM t2\n  );",
+  "date": "2019-10-10 13:58:015.84 years ago",
+  "vulnerable_version": "3.30",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE products (id INTEGER PRIMARY KEY, name VARCHAR(255), price FLOAT, quantity INTEGER NOT NULL DEFAULT 0);",
+    "INSERT INTO products (name, price, quantity) VALUES ('Widget', 19.99, 10);",
+    "SELECT COUNT(id) FROM (SELECT id, (price * quantity) AS total_price FROM products WHERE (price * quantity) > 100);",
+    "CREATE TABLE orders (order_id INTEGER PRIMARY KEY, product_id INTEGER, order_date TIMESTAMP, FOREIGN KEY(product_id) REFERENCES products(id));",
+    "INSERT INTO orders (product_id, order_date) VALUES (1, TIMESTAMP '2023-10-01 00:00:00');"
+  ],
+  "key_bug_features": [
+    "FILTER clause on normal aggregate with subquery column"
+  ]
+}

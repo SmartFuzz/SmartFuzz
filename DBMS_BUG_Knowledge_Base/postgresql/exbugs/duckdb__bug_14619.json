@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14619",
+  "title": "Inconsistent Index Origin in list_transform() and list_reduce() ",
+  "description": "### What happens?\n\nIn a nutshell, list_transform() uses 1 as its index-origin (IO=1)\r\nwhereas list_reduce() uses 0 instead:\r\n```\r\nD select list_transform([10,20,30], (x,ix) -> ix) as ix;\r\n┌───────────┐\r\n│    ix     │\r\n│  int64[]  │\r\n├───────────┤\r\n│ [1, 2, 3] │\r\n└───────────┘\r\n\r\nD select list_reduce([10,20,30], (acc,x,ix) -> ix) as ix;\r\n┌───────┐\r\n│  ix   │\r\n│ int32 │\r\n├───────┤\r\n│     2 │\r\n└───────┘\r\n```\r\n\n\n### To Reproduce\n\n```\r\nselect list_transform([10,20,30], (x,ix) -> ix) as ix;\r\nselect list_reduce([10,20,30], (acc,x,ix) -> ix) as ix;\r\n```\n\n### OS:\n\nMacOS\n\n### DuckDB Version:\n\nv1.1.3-dev75 c73cfca650 et al\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nPeter Koppstein\n\n### Affiliation:\n\nPrinceton University\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a source build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nNot applicable - the reproduction does not require a data set\n\n### Did you include all code required to reproduce the issue?\n\n- [X] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [X] Yes, I have",
+  "date": "2024-10-29 18:02:53",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT, values INT[]);",
+    "INSERT INTO test_table VALUES (1, ARRAY[10, 20, 30]), (2, ARRAY[NULL, 40, 50]), (3, ARRAY[60, 70, NULL]);",
+    "SELECT id, ARRAY(SELECT ix FROM generate_series(1, array_length(values, 1)) AS ix) AS transformed_ix FROM test_table;",
+    "SELECT id, (SELECT ix FROM generate_series(0, array_length(values, 1) - 1) AS ix ORDER BY ix DESC LIMIT 1) AS reduced_ix FROM test_table;",
+    "SELECT id, ARRAY(SELECT x + 1 FROM unnest(values) AS x) AS incremented_values FROM test_table WHERE values IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Different index origins in list_transform() and list_reduce()"
+  ]
+}

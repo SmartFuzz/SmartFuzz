@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=106683",
+  "title": "Query using prepared statement return wrong result",
+  "description": "Query using prepared statement return wrong result.  The query works from using SQLExecuteDirect().\r\n\r\nThis issue started with ODBC driver 8.0.27 and it's reproducible in 8.0.28.\r\n\r\nIf we remove OPTION=1048576 from the connection string, the issue is not reproducible.\r\n\r\nIf we add NO_SSPS=1 to the connection string, the issue is not reproducible.\nHow to repeat:\n1. Create table test\r\n[Field]\t\t[Type]\t\t[Null]\t[Key]\t[Default]\t[Extra]\r\ndatetime0\tdatetime\tYES\r\n\r\n2. Insert data\r\n[datetime0]\r\n2010-06-01 14:56:00\r\nnull\r\n\r\n3. Connect to server using the following connection string example.\r\nDRIVER=\"{MySQL ODBC 8.0 Unicode Driver}\";DESC=;DATABASE=dbo;SERVER=mysql;UID=test;PASSWORD=password;PORT=3306;SOCKET=;OPTION=1048576;STMT=;SSLMODE=disabled\r\n\r\n4. Run the query using following statements.\r\n    SQLAllocHandle(SQL_HANDLE_STMT, hDbc, &hStmt);\r\n    SQLSetStmtAttr(hStmt, SQL_ATTR_CURSOR_TYPE, (SQLPOINTER)SQL_CURSOR_FORWARD_ONLY, SQL_IS_UINTEGER);\r\n    SQLWCHAR* query = (SQLWCHAR*)L\"select * from `1358602`;\";\r\n    SQLPrepare(hStmt, query, SQL_NTS);\r\n    RetCode = SQLExecute(hStmt);\n\nThe actual result is,\r\n| datetime0            |\r\n| <NULL>               |\r\n| <NULL>               |\n\nThe expected result is,\r\n| datetime0            |\r\n| 2010-06-01 14:56:00  |\r\n| <NULL>               |",
+  "date": "2022-03-09 23:31:00",
+  "vulnerable_version": "8.0.27",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS test;",
+    "CREATE TABLE test (id INTEGER PRIMARY KEY, datetime0 TEXT, value TEXT);",
+    "INSERT INTO test (id, datetime0, value) VALUES (1, '2010-06-01 14:56:00', 'Sample Data');",
+    "INSERT INTO test (id, datetime0, value) VALUES (2, NULL, 'Null Entry');",
+    "SELECT * FROM test WHERE datetime0 IS NULL OR datetime0 = (SELECT MAX(datetime0) FROM test);"
+  ],
+  "key_bug_features": [
+    "Prepared statement with OPTION=1048576 returns incorrect results"
+  ]
+}

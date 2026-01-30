@@ -1,0 +1,12 @@
+CREATE TABLE test_dates (id Int32, event_time DateTime64(3, 'Asia/Shanghai'));
+INSERT INTO test_dates VALUES (1, toDateTime64('2021-08-15 18:57:56.492', 3, 'Asia/Shanghai'));
+INSERT INTO test_dates VALUES (2, toDateTime64('2022-01-01 00:00:00.000', 3, 'Asia/Shanghai'));
+INSERT INTO test_dates VALUES (3, toDateTime64('2022-02-30 00:00:00.000', 3, 'Asia/Shanghai'));
+INSERT INTO test_dates VALUES (4, toDateTime64('INVALID_DATE_STRING', 3, 'Asia/Shanghai'));
+SELECT dateTime64ToSnowflake(event_time) AS snowflake_id FROM test_dates WHERE event_time IS NOT NULL;
+SELECT id, dateTime64ToSnowflake(event_time) AS snowflake_id FROM test_dates WHERE event_time BETWEEN toDateTime64('2021-08-15', 3, 'Asia/Shanghai') AND toDateTime64('2021-08-16', 3, 'Asia/Shanghai');
+SELECT dateTime64ToSnowflake(event_time) AS snowflake_id, count(*) FROM test_dates GROUP BY snowflake_id HAVING snowflake_id < 1000000000000000000;
+WITH array_date AS (SELECT arrayJoin([toDateTime64('2021-08-15 18:57:56.492', 3, 'Asia/Shanghai'), toDateTime64('2021-08-15 18:58:56.492', 3, 'Asia/Shanghai')]) AS multiple_dates) SELECT arrayJoin(multuple_dates) AS dt, dateTime64ToSnowflake(dt) FROM array_date;
+SELECT ARRAY(SELECT dateTime64ToSnowflake(event_time) FROM test_dates) AS snowflake_ids WHERE arrayExists(x -> x > 0, snowflake_ids);
+CREATE TEMPORARY TABLE temp_dates AS SELECT * FROM test_dates WHERE event_time IS NOT NULL;
+SELECT d.event_time, dateTime64ToSnowflake(d.event_time) FROM temp_dates AS d JOIN test_dates AS t ON d.id = t.id ORDER BY dateTime64ToSnowflake(d.event_time);

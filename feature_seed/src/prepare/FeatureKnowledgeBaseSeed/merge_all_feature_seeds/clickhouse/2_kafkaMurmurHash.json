@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id UInt32, name String, value Float64, event_time DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, 'test1', 1.5, toDateTime('2023-10-01 12:00:00')), (2, 'test2', 2.5, toDateTime('2023-10-02 13:00:00')), (3, NULL, NULL, toDateTime('2023-10-03 14:00:00'));
+SELECT kafkaMurmurHash(name, value * 2) AS hash_value FROM test_table WHERE value IS NOT NULL;
+SELECT id, kafkaMurmurHash(name, value), kafkaMurmurHash(toString(value) * 100) AS transformed_hash FROM test_table GROUP BY id, name HAVING transformed_hash > 0;
+SELECT id, (SELECT kafkaMurmurHash(name) FROM test_table WHERE id = t.id) * (value * 3) AS nested_hash FROM test_table AS t;
+SELECT DISTINCT kafkaMurmurHash(name, event_time) AS unique_hash FROM test_table WHERE event_time BETWEEN toDateTime('2023-10-01') AND toDateTime('2023-10-03') ORDER BY unique_hash;
+CREATE TABLE IF NOT EXISTS temp_table (reference UInt32, amount String, expiry DateTime) ENGINE = Memory;
+INSERT INTO temp_table VALUES (1, '10.5', toDateTime('2023-12-01 08:00:00')), (2, 'Invalid', toDateTime('2023-12-02 09:00:00')), (3, '0', toDateTime('2023-12-03 10:00:00'));
+SELECT t.id, kafkaMurmurHash(t.name, toFloat64(NULLIF(temp.amount, 'Invalid') * 2)) AS complex_hash FROM test_table AS t JOIN temp_table AS temp ON t.id = temp.reference WHERE temp.amount IS NOT NULL;
+SELECT id, kafkaMurmurHash(name, value) * NULLIF(value, 0) AS conditional_hash FROM test_table;

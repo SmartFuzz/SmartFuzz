@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/1b266395d6",
+  "title": "INSERT OR REPLACE with a foreign key constraint leads to assertion fault",
+  "description": "drh added on 2015-09-30 12:10:31:\nThe following script causes an assertion fault:\nPRAGMA foreign_keys=1;\nCREATE TABLE Foo (Id INTEGER PRIMARY KEY, ParentId INTEGER REFERENCES Foo(Id) ON DELETE CASCADE, C1);\nINSERT OR REPLACE INTO Foo(Id, ParentId, C1) VALUES (1, null, 'A');\nINSERT OR REPLACE INTO Foo(Id, ParentId, C1) VALUES (2, 1, 'A-2-1');\nINSERT OR REPLACE INTO Foo(Id, ParentId, C1) VALUES (3, 2, 'A-3-2');\nINSERT OR REPLACE INTO Foo(Id, ParentId, C1) VALUES (4, 3, 'A-4-3');\nINSERT OR REPLACE INTO Foo(Id, ParentId, C1) VALUES (2, 3, 'A-2-3');\nThis problem appears to have been introduced with version 3.8.4, specifically\nat check-in [56bc5ce8958c8e625].\ndrh added on 2015-09-30 12:36:57:\nA simpler test case:\nPRAGMA foreign_keys=ON;\nCREATE TABLE t1(x INTEGER PRIMARY KEY, parent REFERENCES t1 ON DELETE CASCADE);\nINSERT INTO t1 VALUES(1, NULL),(2, 1),(3, 2);\nINSERT OR REPLACE INTO t1 VALUES(2, 3);",
+  "date": "2015-09-30 12:10:319.86 years ago",
+  "vulnerable_version": "3.8.11.1",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "SET CONSTRAINTS ALL IMMEDIATE;",
+    "CREATE TABLE Bar (Id SERIAL PRIMARY KEY, ParentId INTEGER REFERENCES Bar(Id) ON DELETE SET NULL, C1 TEXT NOT NULL);",
+    "INSERT INTO Bar(Id, ParentId, C1) VALUES (1, NULL, 'Root');",
+    "INSERT INTO Bar(Id, ParentId, C1) VALUES (2, 1, 'Child 1');",
+    "INSERT INTO Bar(Id, ParentId, C1) VALUES (2, 3, 'Updated Child 1') ON CONFLICT (Id) DO UPDATE SET ParentId = EXCLUDED.ParentId, C1 = EXCLUDED.C1;"
+  ],
+  "key_bug_features": [
+    "INSERT OR REPLACE with foreign key constraint"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+    "function": "anyLast",
+    "operator": "EXTRACT",
+    "sql_array": [
+        "CREATE TABLE date_values (event_time DateTime, description String) ENGINE=Log;",
+        "INSERT INTO date_values (event_time, description) VALUES (toDateTime('2021-12-01 10:00:00'), 'Event A'), (toDateTime('2021-12-01 10:05:00'), 'Event B'), (toDateTime('2021-12-01 10:10:00'), NULL), (toDateTime('2021-12-01 10:15:00'), 'Event D'), (NULL, 'Event E');",
+        "CREATE TABLE any_last_test (value Nullable(Int32)) ENGINE=Log;",
+        "INSERT INTO any_last_test (value) VALUES (1), (NULL), (3), (4), (NULL), (2);",
+        "SELECT anyLast(EXTRACT(HOUR FROM event_time)) AS last_hour FROM date_values;",
+        "SELECT description, anyLast(value) OVER (PARTITION BY description ORDER BY event_time) AS last_value FROM any_last_test JOIN date_values ON EXTRACT(DAY FROM event_time) = anyLast(value) GROUP BY description, event_time;",
+        "SELECT EXTRACT(MONTH FROM toDate('2022-02-29')) AS leap_month, anyLast(description RESPECT NULLS) AS last_event FROM date_values WHERE EXTRACT(YEAR FROM event_time) IS NOT NULL GROUP BY leap_month;",
+        "CREATE TABLE mixed_types (mixed_column Nullable(String), event_time DateTime) ENGINE=Log;",
+        "INSERT INTO mixed_types (mixed_column, event_time) VALUES ('2021-12-01', toDateTime('2021-12-01 12:00:00')), ('2021-12-02', toDateTime('2021-12-02 12:00:00')), (NULL, toDateTime('2021-12-03 12:00:00')), ('2021-12-05', NULL);",
+        "SELECT anyLast(mixed_column) AS last_string, EXTRACT(DAY FROM event_time) AS event_day FROM mixed_types GROUP BY event_day;",
+        "WITH (SELECT COUNT(*) FROM any_last_test WHERE value IS NOT NULL) AS non_null_count SELECT EXTRACT(YEAR FROM toDate('2021-01-01')) AS year_extracted, anyLast(value) FROM any_last_test GROUP BY year_extracted HAVING non_null_count > 0;"
+    ]
+}

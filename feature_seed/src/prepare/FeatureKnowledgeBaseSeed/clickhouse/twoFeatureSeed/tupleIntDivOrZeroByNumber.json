@@ -1,0 +1,17 @@
+{
+    "function": "tupleIntDivOrZeroByNumber",
+    "operator": "a == b",
+    "sql_array": [
+        "CREATE TABLE test_table (id Int32, value Float64, divisor Int32) ENGINE = Memory;",
+        "INSERT INTO test_table VALUES (1, 15.8, 5), (2, 10.3, 0), (3, 5.1, 3), (4, NULL, 4), (5, 20.7, -7);",
+        "SELECT id, tupleIntDivOrZeroByNumber((value, 10, divisor), 0) AS results FROM test_table WHERE divisor != 0;",
+        "SELECT id, value, tupleIntDivOrZeroByNumber((value, IF(value > 10, 0, 1), 0), divisor) FROM test_table WHERE (value IS NOT NULL) AND (divisor <= 0);",
+        "CREATE TABLE other_table (col1 Int32, col2 String) ENGINE = Memory;",
+        "INSERT INTO other_table VALUES (1, '10'), (2, '20'), (3, 'NotANumber');",
+        "SELECT t.id, tupleIntDivOrZeroByNumber((CAST(col2 AS Int32), CAST(value AS Int32)), divisor) FROM test_table t JOIN other_table o ON t.id = o.col1 WHERE tupleIntDivOrZeroByNumber((CAST(col2 AS Int32), value), 0) == (0, 0);",
+        "SELECT COUNT(*) FROM (SELECT id, tupleIntDivOrZeroByNumber((value, divisor), CASE WHEN divisor = 0 THEN 1 ELSE divisor END) FROM test_table GROUP BY id HAVING results[2] == 0);",
+        "ALTER TABLE test_table ADD COLUMN extra_value String;",
+        "UPDATE test_table SET extra_value = toString(value) WHERE id = 1;",
+        "SELECT id, tupleIntDivOrZeroByNumber((value, CAST(extra_value AS Int32)), divisor) FROM test_table;"
+    ]
+}

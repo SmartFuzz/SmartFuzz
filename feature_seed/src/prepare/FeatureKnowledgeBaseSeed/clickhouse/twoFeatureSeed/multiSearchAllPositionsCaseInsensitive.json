@@ -1,0 +1,22 @@
+{
+    "function": "multiSearchAllPositionsCaseInsensitive",
+    "operator": "a ILIKE s",
+    "sql_array": [
+        "CREATE TABLE test_strings (id Int32, text String, num UInt32) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_strings VALUES (1, 'ClickHouse is cool', 100), (2, 'clickhouse', 200), (3, 'Clickhouse OR NOT', 300), (4, 'CH', 400);",
+        "SELECT id, multiSearchAllPositionsCaseInsensitive(text, ['click', 'NOT']) AS positions FROM test_strings WHERE positions[1] > 0;",
+        "SELECT id, text FROM test_strings WHERE text ILIKE 'click%' OR text ILIKE '%cool';",
+        "SELECT id, text FROM test_strings WHERE multiSearchAllPositionsCaseInsensitive(text, ['c', 'h']) ILIKE ARRAY['%C%', '%h%'];",
+        "SELECT id, text FROM test_strings WHERE text ILIKE multiSearchAllPositionsCaseInsensitive('ClickHouse', ['c']);",
+        "SELECT id, text, multiSearchAllPositionsCaseInsensitive(text, ['z', 'cool']) as positions FROM test_strings HAVING positions[1] = 0;",
+        "SELECT a.id, a.text FROM test_strings a JOIN test_strings b ON multiSearchAllPositionsCaseInsensitive(a.text, ['Click']) ILIKE b.text OR b.text ILIKE a.text;",
+        "SELECT id, text FROM test_strings WHERE text ILIKE (SELECT arrayJoin(multiSearchAllPositionsCaseInsensitive(text, ['cool', 'not'])) FROM test_strings WHERE text IS NOT NULL) LIMIT 10;",
+        "CREATE TABLE numbers (value Int32) ENGINE = MergeTree() ORDER BY value;",
+        "INSERT INTO numbers VALUES (0), (1), (2147483647), (-2147483648);",
+        "SELECT n.value, multiSearchAllPositionsCaseInsensitive(CAST(value AS String), ['0', '2147483647']) AS positions FROM numbers n WHERE n.value ILIKE '-2147483648';",
+        "CREATE TEMPORARY TABLE temp_data AS SELECT multiSearchAllPositionsCaseInsensitive(text, ['or', 'AND']) AS temp_positions FROM test_strings;",
+        "SELECT id FROM temp_data WHERE temp_positions[1] = 0 AND temp_positions[2] IS NOT NULL;",
+        "SELECT multiSearchAllPositionsCaseInsensitive(NULL, ['test']) AS null_test, 5 ILIKE '5';",
+        "SELECT id FROM test_strings WHERE multiSearchAllPositionsCaseInsensitive(text, ['']) = 0;"
+    ]
+}

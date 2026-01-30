@@ -1,0 +1,17 @@
+{
+    "function": "toInt256OrZero",
+    "operator": "a != ALL (subquery)",
+    "sql_array": [
+        "CREATE TABLE fuzz_test (id UInt32, value String, other_value Int32) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO fuzz_test VALUES (1, '-256'), (2, 'abc'), (3, '123.456'), (4, '0xc0fe'), (5, '99999999999999999999999999999999999999999999999999999999999999999999999'), (6, NULL);",
+        "SELECT value, toInt256OrZero(value) AS converted_value FROM fuzz_test WHERE toInt256OrZero(value) != ALL (SELECT toInt256OrZero(NULLIF(other_value, 0)) FROM fuzz_test WHERE other_value IS NOT NULL);",
+        "SELECT id, value, toInt256OrZero(value) FROM fuzz_test GROUP BY id HAVING toInt256OrZero(value) != ALL (SELECT DISTINCT toInt256OrZero(value) FROM fuzz_test WHERE value != 'abc');",
+        "SELECT a.id, a.value FROM fuzz_test AS a JOIN fuzz_test AS b ON toInt256OrZero(a.value) != ALL (SELECT toInt256OrZero(b.value) WHERE b.other_value < 0) ORDER BY a.id;",
+        "SELECT value, COUNT(*) FROM fuzz_test WHERE toInt256OrZero(value) != 0 GROUP BY value HAVING COUNT(*) > (SELECT COUNT() FROM fuzz_test WHERE value = '') ORDER BY COUNT(*) DESC;",
+        "CREATE TABLE temp_fuzz (temp_id UInt32, temp_value String) ENGINE = Memory;",
+        "INSERT INTO temp_fuzz VALUES (1, ''), (2, '1e+30'), (3, 'NaN'), (4, 'Inf');",
+        "SELECT temp_id, temp_value, toInt256OrZero(temp_value) AS temp_converted FROM temp_fuzz WHERE toInt256OrZero(temp_value) != ALL (SELECT toInt256OrZero(value) FROM fuzz_test);",
+        "ALTER TABLE fuzz_test ADD COLUMN random_value Float64;",
+        "UPDATE fuzz_test SET random_value = toInt256OrZero(value) * 0.1 WHERE id = 1;"
+    ]
+}

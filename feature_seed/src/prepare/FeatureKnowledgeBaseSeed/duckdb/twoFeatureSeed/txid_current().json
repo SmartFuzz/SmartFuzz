@@ -1,0 +1,15 @@
+{
+    "function": "txid_current()",
+    "operator": "||",
+    "sql_array": [
+        "CREATE TABLE test_table (id BIGINT PRIMARY KEY, value BIGINT NOT NULL, data TEXT);",
+        "INSERT INTO test_table VALUES (1, 10, 'test1'), (2, 20, 'test2'), (3, NULL, 'test3'), (4, 30, NULL);",
+        "SELECT txid_current() AS transaction_id, (SELECT value FROM test_table WHERE value IS NOT NULL) || (SELECT data FROM test_table WHERE data IS NOT NULL) AS combined_output FROM (SELECT txid_current() AS nested_txid FROM test_table) AS inner_query;",
+        "SELECT txid_current() AS transaction_id, COUNT(*) OVER (PARTITION BY value) AS value_count FROM test_table WHERE data IS NOT NULL || [NULL] ORDER BY value_count DESC;",
+        "SELECT txid_current() AS transaction_id, (SELECT COUNT(*) FROM test_table WHERE value < 100) || [txid_current()] AS total_values FROM test_table GROUP BY value HAVING total_values IS NOT NULL;",
+        "CREATE TABLE another_table (id BIGINT PRIMARY KEY, test_id BIGINT, FOREIGN KEY(test_id) REFERENCES test_table(id));",
+        "INSERT INTO another_table VALUES (1, 1), (2, 2), (3, NULL);",
+        "SELECT a.id, (txid_current() || [a.id]) AS complex_output FROM another_table a JOIN test_table t ON a.test_id = t.id WHERE t.value IS NOT NULL;",
+        "SELECT txid_current() AS transaction_id, (SELECT MAX(value) FROM test_table) || (SELECT MIN(data || '') FROM test_table WHERE data IS NOT NULL) AS boundary_values_output FROM test_table WHERE value IS NOT NULL;"
+    ]
+}

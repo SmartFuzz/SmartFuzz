@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/31a19d11b9",
+  "title": "Name resolution issue with compound SELECTs and Common Table Expressions",
+  "description": "drh added on 2014-02-09 02:15:05:\nSELECT statements in a compound SELECT other than the right-most SELECT are\nunable to use common table expressions.  Example:\nWITH RECURSIVE\n  t1(x) AS (VALUES(2) UNION ALL SELECT x+2 FROM t1 WHERE x<20),\n  t2(y) AS (VALUES(3) UNION ALL SELECT y+3 FROM t2 WHERE y<20)\nSELECT x FROM t1 EXCEPT SELECT y FROM t2 ORDER BY 1;\nThe query above is suppose to return all even integers less than 20 that are\nnot divisible by 3.  But instead we get a message: \"no such table: t1\".",
+  "date": "2014-02-09 02:15:0511.50 years ago",
+  "vulnerable_version": "3.8.3",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE numbers (id UInt32, value Int32) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO numbers (value) VALUES (2), (4), (6), (8), (10), (12), (14), (16), (18);",
+    "CREATE TABLE divisors (id UInt32, divisor Int32) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO divisors (divisor) VALUES (3), (5);",
+    "SELECT x FROM (SELECT value AS x FROM numbers WHERE value < 20 UNION ALL SELECT x + 2 FROM (SELECT value AS x FROM numbers WHERE value < 20) WHERE x < 20) AS t1;"
+  ],
+  "key_bug_features": [
+    "Compound SELECTs cannot access common table expressions"
+  ]
+}

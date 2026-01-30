@@ -1,0 +1,10 @@
+CREATE TABLE test_lists (id INTEGER PRIMARY KEY, list1 LIST<FLOAT>, list2 LIST<FLOAT>);
+INSERT INTO test_lists VALUES (1, [1.5, 2.5, 3.5], [2.0, 3.0, 4.0]), (2, [NULL, 5.5, 6.5], [2.0, NULL, 4.0]), (3, [1.0, 0.0, -1.0], [-1.0, 0.0, 1.0]), (4, [1e-10, 2e-10, 3e-10], [1e10, 2e10, 3e10]);
+SELECT id, list_negative_inner_product(list1, list2) AS neg_inner_prod FROM test_lists WHERE [1, NULL] <@ list1;
+SELECT id, SUM(list_negative_inner_product(list1, list2)) AS total_neg_prod FROM test_lists GROUP BY id HAVING total_neg_prod IS NOT NULL;
+SELECT id, list_negative_inner_product(list1, list2) AS neg_inner_prod FROM (SELECT id, list1, list2 FROM test_lists WHERE list1 <@ [1.0, 2.0]) subquery WHERE neg_inner_prod < -10;
+SELECT id, list_negative_inner_product(list1, list2) AS neg_inner_prod FROM test_lists WHERE EXISTS (SELECT 1 FROM test_lists AS a WHERE a.id < test_lists.id AND a.list2 <@ list1);
+CREATE TABLE additional_lists (list_id INTEGER PRIMARY KEY, list_data LIST<STRING>);
+INSERT INTO additional_lists VALUES (1, ['a', 'b', 'c']), (2, ['x', 'y', 'z']);
+SELECT t.id, t.neg_inner_prod, a.list_data FROM (SELECT id, list_negative_inner_product(list1, list2) AS neg_inner_prod FROM test_lists) t JOIN additional_lists a ON a.list_id < t.id;
+SELECT l1.id, l1.list1, l1.list2, list_negative_inner_product(l1.list1, l2.list2) AS combined_neg_prod FROM test_lists l1 JOIN test_lists l2 ON l1.id != l2.id WHERE l1.list1 <@ [1.0, 2.0, 3.0] AND l2.list2 <@ [4.0, 5.0, 6.0];

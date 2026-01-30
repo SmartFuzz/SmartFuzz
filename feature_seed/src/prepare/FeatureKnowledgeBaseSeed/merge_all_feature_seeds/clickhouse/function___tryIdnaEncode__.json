@@ -1,0 +1,13 @@
+CREATE TABLE test_idna (input String, expected_output String);
+INSERT INTO test_idna VALUES ('xn--ls8h', 'ö'), ('invalid_domain\', ''), ('xn--example.com', 'example.com'), ('', '');
+SELECT input, tryIdnaEncode(input) AS encoded FROM test_idna;
+SELECT input, tryIdnaEncode(input) AS encoded FROM test_idna WHERE expected_output = encoded;
+CREATE TABLE valid_domains AS SELECT input, tryIdnaEncode(input) AS encoded FROM test_idna WHERE tryIdnaEncode(input) != '';
+SELECT count() AS valid_count FROM valid_domains;
+WITH (SELECT input FROM test_idna WHERE tryIdnaEncode(input) = '') AS invalid_requests SELECT count() FROM invalid_requests;
+CREATE TABLE invalid_domains AS SELECT input FROM test_idna WHERE tryIdnaEncode(input) = '';
+SELECT input FROM test_idna WHERE input LIKE '%\%' ESCAPE '\' AND tryIdnaEncode(input) = '';
+SELECT input, tryIdnaEncode(concat(input, '.com')) AS encoded FROM test_idna;
+CREATE TABLE joined_domains AS SELECT td.input, ti.encoded FROM test_idna td LEFT JOIN valid_domains ti ON td.input = ti.input;
+SELECT COUNT(*) FROM joined_domains WHERE encoded IS NOT NULL;
+WITH (SELECT distinct input FROM test_idna) AS distinct_inputs SELECT count() FROM distinct_inputs WHERE tryIdnaEncode(input) = '';

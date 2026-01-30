@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=109013",
+  "title": "useServerPrepStmts and useLocalTransactionState could cause rollback failure",
+  "description": "Using both useServerPrepStmtsv and useLocalTransactionState together on a connection causes rollback to fail.\r\n\r\nHere is a use-case that readily fails.\r\n- start a transaction (connection has auto-commit=false).\r\n- insert a row successfully in a table.\r\n- insert another row with the same key (should fail)\r\n- rollback the transaction(conn.rollback())\r\n\r\nObserve that the first row stays in the table.\nHow to repeat:\n// Here is a sample program that would demonstrate the problem.\r\n// Prep:\r\n// CREATE TABLE `xyz` (`id` int NOT NULL, PRIMARY KEY(`id`)) ENGINE=InnoDB;\r\n\r\nimport java.sql.*;\r\n\r\n/**\r\n * Created by ravis on 11/3/22\r\n *\r\n * CREATE TABLE `xyz` (`id` int NOT NULL, PRIMARY KEY(`id`)) ENGINE=InnoDB;\r\n */\r\npublic class MySQLBug {\r\n\r\n    public static void main(final String[] args) {\r\n\r\n        try {\r\n\r\n            for (int i = 0; i < 5; i++) {\r\n                final Connection conn = DriverManager.getConnection(\"jdbc:mysql://127.0.0.1:3306/somedb?useSSL=false&useServerPrepStmts=true&useLocalTransactionState=true\", \"user\",\"passwd\");\r\n                conn.setAutoCommit(false);\r\n                //doItBatch(conn); // one way \r\n                doItOneByOne(conn); // another way\r\n                conn.setAutoCommit(true); // past this, the actual bad data is committed\r\n                conn.close();\r\n            }\r\n        } catch (final Exception e) {\r\n            e.printStackTrace();\r\n        }\r\n    }\r\n\r\n    private static void doItBatch(final Connection conn) throws SQLException {\r\n\r\n        try (final PreparedStatement st = conn.prepareStatement(\"insert into xyz values(?)\")) {\r\n            st.setInt(1, 1);\r\n            st.addBatch();\r\n            st.setInt(1, 1);\r\n            st.addBatch();\r\n\r\n            st.executeBatch();\r\n            conn.commit(); // unreachable\r\n        } catch (final Exception e) {\r\n            e.printStackTrace();\r\n            conn.rollback(); // this functionally fails\r\n        }\r\n    }\r\n\r\n    private static void doItOneByOne(final Connection conn) throws SQLException {\r\n\r\n        try (final PreparedStatement st = conn.prepareStatement(\"insert into xyz values(?)\")) {\r\n            st.clearParameters();\r\n            st.setInt(1, 1);\r\n            st.executeUpdate();\r\n\r\n            st.clearParameters();\r\n            st.setInt(1, 1);\r\n            st.executeUpdate();\r\n\r\n            conn.commit(); // unreachable\r\n        } catch (final Exception e) {\r\n            e.printStackTrace();\r\n            conn.rollback(); // this functionally fails\r\n        }\r\n    }\r\n}\nSuggested fix:\nNo idea.",
+  "date": "2022-11-06 19:57:00",
+  "vulnerable_version": "8.0.29, 8.0.31",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE xyz (id INTEGER NOT NULL, name VARCHAR(255), PRIMARY KEY(id));",
+    "INSERT INTO xyz (id, name) VALUES (1, 'First');",
+    "INSERT INTO xyz (id, name) VALUES (1, 'Duplicate');",
+    "SELECT * FROM xyz WHERE id = 1;",
+    "DELETE FROM xyz WHERE id IS NULL;"
+  ],
+  "key_bug_features": [
+    "useServerPrepStmts and useLocalTransactionState together"
+  ]
+}

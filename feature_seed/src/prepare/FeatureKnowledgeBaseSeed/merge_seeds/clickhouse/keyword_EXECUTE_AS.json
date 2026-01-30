@@ -1,0 +1,18 @@
+CREATE TABLE user_data (user_id Int32, username String) ENGINE = MergeTree() ORDER BY user_id;
+INSERT INTO user_data (user_id, username) VALUES (1, 'user1'), (2, 'user2');
+CREATE TABLE user_permissions (user_id Int32, permission String) ENGINE = MergeTree() ORDER BY user_id;
+INSERT INTO user_permissions (user_id, permission) VALUES (1, 'read'), (1, 'write'), (2, 'read');
+EXECUTE AS user1;
+SELECT currentUser();
+SELECT authenticatedUser();
+EXECUTE AS user2;
+SELECT * FROM user_data WHERE username IN (SELECT username FROM user_data WHERE user_id = 2);
+EXECUTE AS user3;
+SELECT user_id, COUNT(*) FROM user_permissions GROUP BY user_id HAVING COUNT(*) > 1;
+EXECUTE AS user1 (SELECT username FROM user_data WHERE user_id IN (SELECT user_id FROM user_permissions WHERE permission = 'write'));
+EXECUTE AS user3 (SELECT DISTINCT username FROM user_data WHERE user_id = (SELECT DISTINCT user_id FROM user_permissions WHERE permission = 'read'));
+EXECUTE AS user1;
+SELECT * FROM user_data WHERE user_id IN (SELECT user_id FROM user_permissions WHERE permission = 'read') AND username NOT IN (SELECT username FROM user_data WHERE user_id = 1);
+EXECUTE AS user2;
+SELECT MAX(user_id) FROM user_data;
+EXECUTE AS user1 (SELECT user_id FROM user_data WHERE username LIKE 'user%');

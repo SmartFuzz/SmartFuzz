@@ -1,0 +1,9 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, value VARCHAR(255), created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO test_table (id, value) VALUES (1, '100'), (2, '200'), (3, NULL), (4, '');
+SELECT DB.DBA.SPARQL_RDB2RDF_CODEGEN('test_table', CAST(id AS VARCHAR(10)) - COALESCE(value, '0')) AS sql_text FROM test_table WHERE id > 1;
+SELECT id, DB.DBA.SPARQL_RDB2RDF_CODEGEN('test_table', id - (SELECT MAX(id) FROM test_table WHERE value IS NOT NULL)) AS operation_code FROM test_table GROUP BY id HAVING operation_code IS NOT NULL;
+CREATE TABLE another_table (foreign_id INT, name VARCHAR(255), CONSTRAINT fk_test FOREIGN KEY (foreign_id) REFERENCES test_table(id));
+INSERT INTO another_table (foreign_id, name) VALUES (1, 'Test A'), (2, 'Test B'), (3, 'Test C');
+SELECT a.name, DB.DBA.SPARQL_RDB2RDF_CODEGEN('another_table', IFNULL(foreign_id, -1) - 1) AS codegen FROM another_table a JOIN test_table t ON a.foreign_id = t.id WHERE value = '' OR value IS NULL;
+SELECT MIN(DB.DBA.SPARQL_RDB2RDF_CODEGEN('test_table', COALESCE(NULLIF(value, ''), '0') - 100)) AS edge_case FROM test_table HAVING edge_case IS NOT NULL;
+SELECT COUNT(*), AVG(COALESCE(NULLIF(value, ''), '0'::numeric)) FROM test_table GROUP BY id ORDER BY AVG(COALESCE(NULLIF(value, ''), '0'::numeric));

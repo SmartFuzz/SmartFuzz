@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=111290",
+  "title": "No matching rows when joining multiple tables on binary/varbinary key",
+  "description": "I _think_ the problem I'm experiencing is happening because the ORM we're using created `binary(16)` primary keys, but `varbinary(16)` foreign keys.\r\n\r\nEverything was mostly working fine, except recently we've upgraded to 8.0.23 and some complex queries are now not working as expected.\r\n\r\nThe problem is that some rows that should be matched are not.\r\n\r\nWhat makes me think this is a bug:\r\n- the problem did not happen on MySQL 5.6 as far as I can tell\r\n- adding `AND parents.id = 0x93222796caba43ca979f5c96eb6898b7` to the query makes it work (return 1 result instead of 0)\r\n\r\nThe most reliable workaround is to use the same type everywhere (either `binary(16)` or `varbinary(16)`).\r\n\r\nOtherwise doing less joins / nested subqueries at once (using CTE or splitting complex queries into multiple ones on the app side) you might be able to avoid this bug.\nHow to repeat:\nDROP TABLE IF EXISTS `foos`;\r\nDROP TABLE IF EXISTS `bars`;\r\nDROP TABLE IF EXISTS `parents`;\r\n\r\nCREATE TABLE `parents` (\r\n  `id` binary(16) NOT NULL,\r\n  PRIMARY KEY (`id`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;\r\n\r\nCREATE TABLE `foos` (\r\n  `id` bigint NOT NULL AUTO_INCREMENT,\r\n  `parent_id` varbinary(16) NOT NULL,\r\n  `text` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,\r\n  PRIMARY KEY (`id`),\r\n  KEY `index_foos_on_parent_id` (`parent_id`)\r\n) ENGINE=InnoDB AUTO_INCREMENT=12345 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;\r\n\r\nCREATE TABLE `bars` (\r\n  `id` binary(16) NOT NULL,\r\n  `parent_id` varbinary(16) NOT NULL,\r\n  PRIMARY KEY (`id`),\r\n  KEY `index_bars_on_parent_id` (`parent_id`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;\r\n\r\n-- Create some test data\r\nINSERT INTO parents VALUES (0x93222796caba43ca979f5c96eb6898b7);\r\nINSERT INTO foos (parent_id, text) SELECT parents.id, 'correct output' FROM parents;\r\nINSERT INTO bars (id, parent_id) SELECT 0x79cea9ab6fe14a8ebdfed711a7727763, parents.id FROM parents;\r\n\r\n-- Reproduce the problem:\r\nSELECT foos.text\r\nFROM foos\r\nJOIN parents ON parents.id = foos.parent_id\r\nJOIN bars ON bars.parent_id = parents.id\r\nWHERE bars.parent_id = 0x93222796caba43ca979f5c96eb6898b7;",
+  "date": "2023-06-06 07:48:00",
+  "vulnerable_version": "8.0.23, 8.0.33, 5.7",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test_parents (id binary(16) NOT NULL, PRIMARY KEY (id));",
+    "CREATE TABLE test_foos (id bigint NOT NULL, parent_id varbinary(16) NOT NULL, text varchar(255) NOT NULL, PRIMARY KEY (id));",
+    "INSERT INTO test_parents VALUES (0x1234567890abcdef1234567890abcdef);",
+    "INSERT INTO test_foos (parent_id, text) VALUES (0x1234567890abcdef1234567890abcdef, 'test output');",
+    "SELECT test_foos.text FROM test_foos JOIN test_parents ON test_parents.id = test_foos.parent_id WHERE test_parents.id = 0x1234567890abcdef1234567890abcdef;"
+  ],
+  "key_bug_features": [
+    "Joining tables with binary and varbinary key mismatch"
+  ]
+}

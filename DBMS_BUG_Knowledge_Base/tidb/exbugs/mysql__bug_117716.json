@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=117716",
+  "title": "Inconsistent result when using ndb cluster",
+  "description": "I created a table and run a query on mysql ndb cluster 9.1.0 and got a result, then I run same query with mysql 8.0 but not deployed as cluster, and nothing output\nHow to repeat:\ncreate table `t0` (`c1` int,`c2` varchar(255));\r\ninsert into `t0` values (1,'a'),(2,'d'),(3,'c');\r\n\r\nselect `t01`.`c1`,`t01`.`c2`,`t01`.`c3` from (select `t1`.*,@`c3`:=@`c3`+1 as `c3` from (select  `t0`.*,@`c3`:=0 from `t0` order by  `t0`.`c1`) as `t1`) as `t01` where `t01`.`c3`=2 and `t01`.`c2`='d';",
+  "date": "2025-03-15 19:05:00",
+  "vulnerable_version": "9.1.0-cluster",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE `t1` (`id` INT PRIMARY KEY, `name` VARCHAR(100), `value` DECIMAL(10,2), `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO `t1` VALUES (1, 'item1', 10.50, NULL), (2, 'item2', 20.75, NULL), (3, 'item3', NULL, NULL);",
+    "CREATE TABLE `t2` (`ref_id` INT, `description` TEXT, FOREIGN KEY (`ref_id`) REFERENCES `t1`(`id`));",
+    "INSERT INTO `t2` VALUES (1, 'description1'), (2, 'description2'), (3, 'description3');",
+    "SELECT `t1`.`id`, `t1`.`name`, IFNULL(`t2`.`description`, 'no description') AS `description` FROM `t1` LEFT JOIN `t2` ON `t1`.`id` = `t2`.`ref_id` WHERE `t1`.`value` IS NOT NULL ORDER BY `t1`.`id`;"
+  ],
+  "key_bug_features": [
+    "Inconsistent query results between ndb cluster and non-cluster"
+  ]
+}

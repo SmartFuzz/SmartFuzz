@@ -1,0 +1,15 @@
+CREATE TABLE demo.Orders (id INT PRIMARY KEY, order_date DATE, customer_id INT, amount DECIMAL(10, 2), xml_col XML);
+INSERT INTO demo.Orders (id, order_date, customer_id, amount, xml_col) VALUES (1, '2023-01-01', 101, 100.00, '<root><a>Order 1</a></root>');
+INSERT INTO demo.Orders (id, order_date, customer_id, amount, xml_col) VALUES (2, '2023-01-02', 102, NULL, '<root><a>Order 2</a></root>');
+INSERT INTO demo.Orders (id, order_date, customer_id, amount, xml_col) VALUES (3, '2023-01-03', 103, 50.50, NULL);
+INSERT INTO demo.Orders (id, order_date, customer_id, amount, xml_col) VALUES (4, NULL, 104, 25.00, '<root><a></a></root>');
+SELECT REPL_PUB_ADD('table_publication', xpath_string('/root/a', xml_col), COALESCE(NULL, 0), NULLIF(amount, 0), amount) FROM demo.Orders WHERE amount IS NOT NULL;
+SELECT * FROM demo.Orders WHERE order_date IS NOT NULL AND id IN (SELECT id FROM demo.Orders WHERE amount > 50);
+SELECT customer_id, SUM(amount) AS total_amount FROM demo.Orders GROUP BY customer_id HAVING total_amount > (SELECT AVG(amount) FROM demo.Orders WHERE amount IS NOT NULL);
+SELECT REPL_PUB_ADD('table_publication', xpath_string('/root/a', xml_col), 1 + (SELECT COUNT(*) FROM demo.Orders), NULLIF(NULL, NULL), CASE WHEN amount IS NULL THEN 0 ELSE amount END) FROM demo.Orders ORDER BY order_date DESC;
+CREATE TABLE demo.Customers (id INT PRIMARY KEY, name VARCHAR(100), active BOOLEAN);
+INSERT INTO demo.Customers (id, name, active) VALUES (1, 'Customer 1', TRUE);
+INSERT INTO demo.Customers (id, name, active) VALUES (2, 'Customer 2', FALSE);
+SELECT c.name, COUNT(o.id) AS order_count FROM demo.Customers c LEFT JOIN demo.Orders o ON c.id = o.customer_id GROUP BY c.id HAVING COUNT(o.id) < (SELECT COUNT(*) FROM demo.Orders) * 0.5;
+SELECT REPL_PUB_ADD('table_publication', xpath_string('/root/a', xml_col), (SELECT MAX(amount) FROM demo.Orders), 1, NULL) FROM demo.Orders WHERE customer_id IN (SELECT id FROM demo.Customers WHERE active = TRUE);
+SELECT REPL_PUB_ADD('table_publication', xpath_string('/root/a', xml_col), (SELECT COUNT(*) FROM demo.Orders WHERE amount IS NOT NULL), NULLIF((SELECT AVG(COALESCE(amount, 0)) FROM demo.Orders), 0), 1), amount) FROM demo.Orders WHERE amount IS NOT NULL ORDER BY order_date ASC FETCH FIRST 10 ROWS ONLY;

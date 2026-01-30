@@ -1,0 +1,12 @@
+CREATE TABLE test_users (user_id UInt32, username String, created_at DateTime DEFAULT now());
+INSERT INTO test_users VALUES (1, 'user1', now()), (2, 'user2', now()), (3, NULL, now());
+SELECT username, currentUser() AS current_user, user_id / IF(user_id > 0, user_id, 1) AS division_check FROM test_users WHERE created_at > now() - INTERVAL 1 HOUR;
+SELECT currentUser(), user_id, (count(*) / nullIf(count(username), 0)) AS user_ratio FROM test_users GROUP BY currentUser(), user_id HAVING count(username) < 10;
+SELECT *, currentUser() AS current_user FROM (SELECT user_id, username FROM test_users WHERE username IS NOT NULL) AS subquery WHERE user_id / (user_id + 1) < 1;
+SELECT (currentUser() = 'user1') AS is_user1, (1.0 / user_id) AS inverse_id FROM test_users WHERE user_id BETWEEN 1 AND 3;
+SELECT currentUser(), user_id, (username || ' - ' || toString(user_id / NULLIF(user_id, 0))) AS user_info FROM test_users ORDER BY user_info;
+WITH (SELECT count(*) FROM test_users) AS user_count SELECT currentUser(), user_count, user_id / user_count AS user_density FROM test_users;
+CREATE TABLE test_data (data_id Int32, user_id Int32, value Float32);
+INSERT INTO test_data VALUES (1, 1, 100.5), (2, 1, NULL), (3, 2, 0), (4, 3, -10.0);
+SELECT currentUser(), user_id, value / NULLIF(value, 0.0) AS safe_division FROM test_data WHERE value IS NOT NULL;
+SELECT currentUser(), user_id, AVG(value) / MAX(user_id) AS avg_to_max_ratio FROM test_data GROUP BY user_id HAVING user_id > 0;

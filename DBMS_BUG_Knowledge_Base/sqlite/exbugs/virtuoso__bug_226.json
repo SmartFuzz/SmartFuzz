@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/226",
+  "title": "SPARQL result format JSON types bnodes as literal or uri",
+  "description": "When querying a graph containing blank nodes the JSON format will type them inconsistently as literal or uri as in the following snippet. You can reproduce this with the http://vocab.ub.uni-leipzig.de/bibrm/ model, which you can find in our github repo: https://github.com/ERM-HD/vocab.bibrm/blob/develop/bibrm.ttl\n…\n{ \"resourceUri\": { \"type\": \"uri\", \"value\": \"_:node1\" }  , \"p\": { \"type\": \"uri\", \"value\": \"http://www.w3.org/1999/02/22-rdf-syntax-ns#first\" }   , \"o\": { \"type\": \"uri\", \"value\": \"http://vocab.ub.uni-leipzig.de/bibrm/Database\" }},\n{ \"resourceUri\": { \"type\": \"uri\", \"value\": \"_:node1\" }  , \"p\": { \"type\": \"uri\", \"value\": \"http://www.w3.org/1999/02/22-rdf-syntax-ns#rest\" }    , \"o\": { \"type\": \"literal\", \"value\": \"_:node2\" }},\n{ \"resourceUri\": { \"type\": \"uri\", \"value\": \"_:node2\" }  , \"p\": { \"type\": \"uri\", \"value\": \"http://www.w3.org/1999/02/22-rdf-syntax-ns#first\" }   , \"o\": { \"type\": \"uri\", \"value\": \"http://vocab.ub.uni-leipzig.de/bibrm/Ejournal\" }},\n{ \"resourceUri\": { \"type\": \"uri\", \"value\": \"_:node2\" }  , \"p\": { \"type\": \"uri\", \"value\": \"http://www.w3.org/1999/02/22-rdf-syntax-ns#rest\" }    , \"o\": { \"type\": \"literal\", \"value\": \"_:node3\" }},\n{ \"resourceUri\": { \"type\": \"uri\", \"value\": \"_:node3\" }  , \"p\": { \"type\": \"uri\", \"value\": \"http://www.w3.org/1999/02/22-rdf-syntax-ns#first\" }   , \"o\": { \"type\": \"uri\", \"value\": \"http://vocab.ub.uni-leipzig.de/bibrm/EjournalPackage\" }},\n…\n\nThe correct output would be { \"type\": \"bnode\", \"value\": \"node2\" } as I understand the SPARQL recommendation.\nI ran\nSELECT ?resourceUri ?p ?o {\n    ?resourceUri ?p ?o\n}\n\nans selected JSON as „Results Format“.",
+  "date": "2014-08-13 15:25:39",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE bnodes (id INTEGER PRIMARY KEY AUTOINCREMENT, resourceUri TEXT, p TEXT, o TEXT);",
+    "INSERT INTO bnodes (resourceUri, p, o) VALUES ('_:node1', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#first', 'http://vocab.ub.uni-leipzig.de/bibrm/Database');",
+    "INSERT INTO bnodes (resourceUri, p, o) VALUES ('_:node1', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#rest', NULL);",
+    "SELECT resourceUri, p, COALESCE(o, 'NULL') AS o FROM bnodes WHERE resourceUri IS NOT NULL;",
+    "UPDATE bnodes SET o = '_:node2' WHERE resourceUri = '_:node1' AND o IS NULL;"
+  ],
+  "key_bug_features": [
+    "Inconsistent typing of blank nodes in JSON output"
+  ]
+}

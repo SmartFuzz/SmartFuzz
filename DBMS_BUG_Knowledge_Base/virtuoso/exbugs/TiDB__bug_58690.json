@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/58690",
+  "title": "Wrong Result in TiKV on Right Join",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n\n```sql\nDROP TABLE IF EXISTS t0;\nDROP TABLE IF EXISTS t1;\nCREATE TABLE t0(c0 NUMERIC ZEROFILL);\nCREATE TABLE t1(c0 NUMERIC UNSIGNED);\nINSERT IGNORE INTO t0 VALUES (-1234);\nINSERT INTO t1 VALUES (NULL);\nSELECT COUNT(*) FROM t1 NATURAL RIGHT JOIN t0 WHERE ((1^(t0.c0 AND NULL)) <> (t1.c0 IS NOT NULL));\n```\n\n### 2. What did you expect to see? (Required)\n\nI find that tikv show different behavior with MySQL\n\n### 3. What did you see instead (Required)\n\n```sql\n// MySQL 8.4.1\nMySQL [test]> SELECT COUNT(*) FROM t1 NATURAL RIGHT JOIN t0 WHERE ((1^(t0.c0 AND NULL)) <> (t1.c0 IS NOT NULL));\n+----------+\n| COUNT(*) |\n+----------+\n|        1 |\n+----------+\n1 row in set (0.00 sec)\n\n// TiDB\nmysql> SELECT COUNT(*) FROM t1 NATURAL RIGHT JOIN t0 WHERE ((1^(t0.c0 AND NULL)) <> (t1.c0 IS NOT NULL));\n+----------+\n| COUNT(*) |\n+----------+\n|        0 |\n+----------+\n1 row in set (0.04 sec)\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\nTiDB v8.5.0",
+  "date": "2025-01-05T14:00:53Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t2;",
+    "CREATE TABLE t2(c1 VARCHAR(10) NOT NULL, c2 FLOAT);",
+    "INSERT INTO t2 VALUES ('test', NULL), ('example', 3.14);",
+    "SELECT COUNT(*) FROM t2 LEFT JOIN t1 ON 1=1 WHERE (c2 IS NULL OR c1 = 'test');",
+    "SELECT COUNT(*) FROM t1 LEFT JOIN t0 ON 1=1 WHERE (t0.c0 < 0) AND (t1.c0 IS NULL);"
+  ],
+  "key_bug_features": [
+    "NATURAL RIGHT JOIN with NULL handling in TiKV"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/1349",
+  "title": "Some questions about `T_DIRECTION 3`",
+  "description": "❗️Issue Title:\nSPARQL TRANSITIVE query fails to find bidirectional path through common node\n📄 Description\nI encountered an issue when trying to use a TRANSITIVE SPARQL query to find a bidirectional path between two entities.\nGiven the following triples:\n:idv1 :op1 :idv2 .\n:idv2 :op2 :idv3 .\n:idv4 :op3 :idv3 .\n\nThis forms a graph structure as:\n:idv1 → :idv2 → :idv3 ← :idv4\n⚙️ Query Used\nPREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX owl: <http://www.w3.org/2002/07/owl#>\nPREFIX : <http://www.baocloud.cn/kg/ontologies/2020/aiops#>\nPREFIX alias: <http://www.baocloud.cn/kg/ontologies/2020/aiops#dm-pone019-76556>\nPREFIX ename: <http://www.baocloud.cn/kg/ontologies/2020/aiops#dm-pone019-1108740>\n\nSELECT ?link ?step\nWHERE\n{\n {\n   SELECT ?s ?o\n   WHERE {\n       ?s ?p ?o\n       FILTER (?p NOT IN (:dm-pone019-1155160, :dm-pone019-1154683, :dm-pone019-1154685))\n   }\n }\n OPTION (\n   TRANSITIVE,\n   t_distinct,\n   t_in(?s),\n   t_out(?o),\n   T_MIN(0),\n   T_MAX(10),\n   t_no_cycles,\n   t_step(?s) AS ?link,\n   t_step('path_id') AS ?path,\n   t_step('step_no') AS ?step,\n   t_direction 3\n )\n FILTER (\n   ?s = :idv1 &&\n   ?o IN (:idv4)\n )\n}\nORDER BY ?step\nLIMIT 100\n\n✅ Expected Behavior\nI expect to find a path like:\n:idv1 → :idv2 → :idv3 ← :idv4\nThat is, a bidirectional path from :idv1 to :idv4, which passes through :idv2 and :idv3. The total path length should be 4.\n❌ Actual Behavior\nThe query fails to discover the path reaching :idv4 via :idv3, even with t_direction 3 (bidirectional traversal) set. If I set ?o IN (:idv3), I can find :idv1 → :idv2 → :idv3. So I guess the problem is about this path :idv3 ← :idv4.\n🙋 Questions\n\nIs this a known limitation of t_direction=3?\nDoes the TRANSITIVE keyword not support reversed edge traversal via shared nodes?\nIs there a recommended workaround to discover such indirect bidirectional paths?",
+  "date": "2025-04-17 08:01:27",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE entities (id TEXT PRIMARY KEY, name TEXT, type TEXT NOT NULL);",
+    "INSERT INTO entities (id, name, type) VALUES ('idv1', 'Entity 1', 'Type A');",
+    "INSERT INTO entities (id, name, type) VALUES ('idv2', 'Entity 2', 'Type A');",
+    "INSERT INTO entities (id, name, type) VALUES ('idv3', 'Entity 3', 'Type B');",
+    "INSERT INTO entities (id, name, type) VALUES ('idv4', 'Entity 4', 'Type B');",
+    "SELECT * FROM entities ORDER BY id;"
+  ],
+  "key_bug_features": [
+    "TRANSITIVE SPARQL query fails with t_direction set to 3"
+  ]
+}

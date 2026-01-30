@@ -1,0 +1,23 @@
+{
+    "function": "__xml_get_ns_prefix",
+    "operator": "SPARQL: sameTerm",
+    "sql_array": [
+        "CREATE TABLE rdf_data (id INT PRIMARY KEY, uri VARCHAR(255), value VARCHAR(255));",
+        "INSERT INTO rdf_data (id, uri, value) VALUES (1, 'http://example.org/ns#item', 'Test Item');",
+        "INSERT INTO rdf_data (id, uri, value) VALUES (2, 'http://example.org/ns#item', 'Another Item');",
+        "INSERT INTO rdf_data (id, uri, value) VALUES (3, NULL, 'Null Item');",
+        "CREATE TABLE ns_data (prefix VARCHAR(50), uri VARCHAR(255));",
+        "INSERT INTO ns_data (prefix, uri) VALUES ('ex', 'http://example.org/ns#');",
+        "INSERT INTO ns_data (prefix, uri) VALUES ('ex2', 'http://example.com/ns#');",
+        "INSERT INTO ns_data (prefix, uri) VALUES (NULL, NULL);",
+        "SELECT __xml_get_ns_prefix(NULL) AS ns_prefix FROM rdf_data WHERE value IS NOT NULL;",
+        "SELECT __xml_get_ns_prefix('http://example.org/ns#item') AS ns_prefix, sameTerm(value, 'Test Item') AS term_check FROM rdf_data;",
+        "SELECT r.id, r.value, n.prefix FROM rdf_data r JOIN ns_data n ON r.uri = n.uri WHERE sameTerm(r.value, 'Another Item') AND r.uri IS NOT NULL;",
+        "SELECT r.id, r.value, __xml_get_ns_prefix(r.uri) AS ns_prefix FROM rdf_data r WHERE sameTerm(r.value, 'Null Item') OR r.uri IS NULL;",
+        "SELECT r.id, r.value FROM rdf_data r GROUP BY r.value HAVING COUNT(*) > 1 AND sameTerm(r.value, r.value);",
+        "SELECT COUNT(*) FROM rdf_data r WHERE r.value IS NULL OR __xml_get_ns_prefix(r.uri) IS NULL;",
+        "SELECT __xml_get_ns_prefix('http://example.org/not_found') AS non_existing_ns; DROP TABLE IF EXISTS rdf_data;",
+        "CREATE TEMPORARY TABLE temp_rdf AS SELECT id, value FROM rdf_data WHERE id < 3;",
+        "SELECT id, COUNT(*) OVER (PARTITION BY __xml_get_ns_prefix(uri)) AS prefix_count FROM rdf_data WHERE sameTerm(value, 'Test Item');"
+    ]
+}

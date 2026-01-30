@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/306",
+  "title": "ORDER BY variable with mixed types",
+  "description": "Query:\nSELECT DISTINCT ?X WHERE\n{\n{SELECT ?X WHERE {}}\nUNION\n{BIND(<http://www.uochb.org/chebi/1.0/terms#chebiName> AS ?X)}\nUNION\n{BIND(<http://www.uochb.org/chebi/1.0/terms#chebiValue> AS ?X)}\nUNION\n{BIND(\"x\" AS ?X)}\nUNION\n{BIND(\"a\"^^<http://www.w3.org/2001/XMLSchema#string> AS ?X)}\n}\nORDER BY asc(?X)\n\nResult:\n\n\n\nX\n\n\n\n\n\n\n\nx\n\n\n\"a\"^^http://www.w3.org/2001/XMLSchema#string\n\n\nhttp://www.uochb.org/chebi/1.0/terms#chebiName\n\n\nhttp://www.uochb.org/chebi/1.0/terms#chebiValue\n\n\n\nBut according to SPARQL 1.1 documentation (http://www.w3.org/TR/sparql11-query/#modOrderBy) the right order is this:\n\n\n\nRDF Term\nReason\n\n\n\n\n\nUnbound results sort earliest.\n\n\n_:z\nBlank nodes follow unbound.\n\n\n_:a\nThere is no relative ordering of blank nodes.\n\n\nhttp://script.example/Latin\nIRIs follow blank nodes.\n\n\nhttp://script.example/Кириллица\nThe character in the 23rd position, \"К\", has a unicode codepoint 0x41A, which is higher than 0x4C (\"L\").\n\n\nhttp://script.example/漢字\nThe character in the 23rd position, \"漢\", has a unicode codepoint 0x6F22, which is higher than 0x41A (\"К\").\n\n\n\"http://script.example/Latin\"\nSimple literals follow IRIs.\n\n\n\"http://script.example/Latin\"^^xsd:string\nxsd:strings follow simple literals.",
+  "date": "2015-01-22 15:55:52",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INTEGER PRIMARY KEY, name TEXT, value REAL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table (id, name, value) VALUES (1, 'example', 10.5);",
+    "INSERT INTO test_table (id, name, value) VALUES (2, 'test', NULL);",
+    "SELECT DISTINCT name FROM test_table WHERE value IS NOT NULL ORDER BY name ASC;",
+    "SELECT id, name, value FROM test_table ORDER BY COALESCE(value, 0) DESC;"
+  ],
+  "key_bug_features": [
+    "ORDER BY with mixed variable types in SPARQL query"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+    "function": "generateSnowflakeID",
+    "operator": "a IN ...",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt64, generated_id UInt64, category String) ENGINE = Memory;",
+        "INSERT INTO test_table SELECT generateSnowflakeID(), 'A' WHERE 42 IN (SELECT COUNT(*) FROM system.parts WHERE active = 1);",
+        "SELECT id, generated_id, category FROM test_table WHERE generated_id IN (SELECT generateSnowflakeID(CURRENT_TIMESTAMP()), generateSnowflakeID(1)) AND category IN ('A', 'B', NULL);",
+        "CREATE TABLE another_table (feature UInt32) ENGINE = Memory; INSERT INTO another_table SELECT 0, NULL UNION ALL SELECT 2, 3;",
+        "SELECT tt.id, tt.generated_id FROM test_table tt JOIN another_table at ON tt.id IN (SELECT at.feature) GROUP BY tt.id, tt.generated_id HAVING COUNT(tt.generated_id) > 0;",
+        "CREATE TABLE complex_table (col1 UInt64, col2 String) ENGINE = MergeTree() ORDER BY col1; INSERT INTO complex_table SELECT generateSnowflakeID(), 'Test' WHERE 1 IN (SELECT COUNT(* FROM test_table));",
+        "SELECT col1, col2 FROM complex_table WHERE col1 IN (SELECT generateSnowflakeID(1), generateSnowflakeID(NULL)) AND col2 IN ('Test', 'Invalid', NULL);",
+        "SELECT DISTINCT generateSnowflakeID() AS unique_id FROM test_table ORDER BY unique_id;",
+        "UPDATE test_table SET category = 'B' WHERE id IN (SELECT id FROM another_table WHERE feature IS NOT NULL);"
+    ]
+}

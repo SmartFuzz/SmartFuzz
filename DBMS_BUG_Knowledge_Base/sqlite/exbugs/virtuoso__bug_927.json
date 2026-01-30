@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/927",
+  "title": "Arithmetic expression fails to return result",
+  "description": "I could not find it this bug has already been reported, but I noticed some weird behaviour when using Arithmetic expressions in a SPARQL query. Specifically with respect to the -. Where the minus Symbol is used in conjunction with a multiplication symbol, the results are not shown.\nThe following minimal working example returned no results for ?p where I was expecting results for ?p.  Weirdly, if one of the two - is changed into a +, it will return a result for ?p.\nSELECT ?s ((((?s) - 1.65) * (( ?s) - 1.65))  AS ?p) WHERE {\n  VALUES(?s){\n    (1.1)\n    (2.2)\n  }\n}\nTesting it on multiple different SPARQL endpoints did not result in different results:\n\nhttps://api.triplydb.com/datasets/wikimedia/dbpedia/services/dbpedia/sparql version 7.2.6\nhttp://linkeddata.finki.ukim.mk/sparql Virtuoso version 07.20.3232\nhttp://lod.openlinksw.com/sparql Virtuoso version 07.20.3217\n\nWorkaround:\nFor Now I've rewritten the query to explicitly cast it to xsd:decimal. Then the query does return a result for ?p\nPREFIX xsd: <http://www.w3.org/2001/XMLSchema#>\nSELECT ?s ((xsd:decimal((?s) - 1.65) * xsd:decimal(( ?s) - 1.65))  AS ?p)\nWHERE {\n  VALUES(?s){\n    (1.1)\n    (2.2)\n  }\n}",
+  "date": "2020-09-25 12:26:39",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE test_arithmetic (id INTEGER PRIMARY KEY, value REAL NOT NULL);",
+    "INSERT INTO test_arithmetic (id, value) VALUES (1, 1.1), (2, 2.2);",
+    "SELECT value, ((value - 1.65) * (value - 1.65)) AS result FROM test_arithmetic WHERE value IS NOT NULL;",
+    "SELECT value, ((CAST(value AS REAL) - 1.65) * (CAST(value AS REAL) - 1.65)) AS result FROM test_arithmetic;",
+    "SELECT value, ((value + 1.65) * (value - 1.65)) AS result FROM test_arithmetic WHERE value < 2.5;"
+  ],
+  "key_bug_features": [
+    "Arithmetic expressions with minus and multiplication yield no results"
+  ]
+}

@@ -1,0 +1,9 @@
+CREATE TABLE punycode_test (id UInt32, encoded_string String, value Tuple(String, Int32));
+INSERT INTO punycode_test VALUES (1, 'Mnchen-3ya', ('Mnchen', 10)), (2, 'xn--nchen-3ya', ('München', 20)), (3, '', ('Empty', 30));
+SELECT punycodeDecode(encoded_string) AS decoded, value.1, value.2 FROM punycode_test WHERE value.2 > (SELECT AVG(value.2) FROM punycode_test) HAVING decoded != '' ORDER BY value.2;
+SELECT id, punycodeDecode(encoded_string) AS decoded_value FROM punycode_test WHERE id IN (SELECT id FROM punycode_test WHERE value.2 IS NULL) OR decoded_value = punycodeDecode('Mnchen-3ya') ORDER BY decoded_value;
+SELECT COUNT(*) AS total, punycodeDecode(encoded_string) AS decoded_value FROM punycode_test GROUP BY decoded_value HAVING COUNT(*) > 1;
+SELECT DISTINCT punycodeDecode(encoded_string.a.N) AS decoded FROM (SELECT encoded_string, [1, 2] AS a) GROUP BY decoded;
+SELECT decoded FROM (SELECT punycodeDecode(encoded_string) AS decoded, value.1 FROM punycode_test UNION ALL SELECT punycodeDecode('xn--nchen-3ya') AS decoded, 'Test' FROM system.numbers LIMIT 5) AS combined WHERE decoded != '' ORDER BY decoded;
+SELECT id, IF(punycodeDecode(encoded_string) IS NULL, 'NULL decoded', punycodeDecode(encoded_string)) AS decoded_output FROM punycode_test WHERE decoded_output = '';
+SELECT punycodeDecode(CONCAT(encoded_string, ' test')) AS combined_decoded FROM punycode_test WHERE encoded_string != '';

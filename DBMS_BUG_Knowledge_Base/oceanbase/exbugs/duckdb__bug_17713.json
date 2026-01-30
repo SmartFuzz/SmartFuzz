@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/17713",
+  "title": "Bug in the output of dataframes converted to Polars when using float numbers (Only in version: 1.3.0)",
+  "description": "### What happens?\n\nWhen including float numbers within SQL CASE statements, the output of dataframes converted to polars does not work correctly. The output returns random and absurdly large numbers.\n\nExample (duckdb 1.3.0):\n```python\nimport duckdb\n\nsql_query = \"\"\"\nSELECT \nCASE \n\tWHEN 5 > 0.999998 THEN 0.99 \nEND AS test_float;\n\"\"\"\n\n# Pandas conversion (Works Fine)\ndf_pandas = duckdb.query(sql_query).to_df()\nvalue_pandas = df_pandas.iloc[0, 0]\nprint('Pandas:', value_pandas, type(value_pandas))\n\n\n# Polars conversion (BUG)\ndf_polars = duckdb.query(sql_query).pl()\nvalue_polars = df_polars.item(0, 0)\nprint('Polars: ', value_polars, type(value_polars))\n```\n\nOutput:\n```\nPandas: 0.99 <class 'numpy.float64'>\nPolars:  -1502022434699545331453827307115611421.73 <class 'decimal.Decimal'>\n``` \n\n### To Reproduce\n\nExample (duckdb 1.3.0):\n```python\nimport duckdb\n\nsql_query = \"\"\"\nSELECT \nCASE \n\tWHEN 5 > 0.999998 THEN 0.99 \nEND AS test_float;\n\"\"\"\n\n# Pandas conversion (Works Fine)\ndf_pandas = duckdb.query(sql_query).to_df()\nvalue_pandas = df_pandas.iloc[0, 0]\nprint('Pandas:', value_pandas, type(value_pandas))\n\n\n# Polars conversion (BUG)\ndf_polars = duckdb.query(sql_query).pl()\nvalue_polars = df_polars.item(0, 0)\nprint('Polars: ', value_polars, type(value_polars))\n```\n\nOutput:\n```\nPandas: 0.99 <class 'numpy.float64'>\nPolars:  -1502022434699545331453827307115611421.73 <class 'decimal.Decimal'>\n``` \n\n### OS:\n\nWindows\n\n### DuckDB Version:\n\n1.3.0\n\n### DuckDB Client:\n\nPython\n\n### Hardware:\n\n13th Gen Intel(R) Core(TM) i7-1355U   1.70 GHz,  RAM: 32,0 GB\n\n### Full Name:\n\nNatanael Oliveira\n\n### Affiliation:\n\nGrupo New\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a stable release\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "date": "2025-05-29 20:11:47",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_floats (id INTEGER PRIMARY KEY, value FLOAT);",
+    "INSERT INTO test_floats (id, value) VALUES (1, 0.99), (2, 1.01), (3, NULL);",
+    "SELECT CASE WHEN value IS NULL THEN 'NULL' ELSE value END AS float_check FROM test_floats;",
+    "SELECT CASE WHEN value < 1.0 THEN 'Less than one' ELSE 'One or more' END AS float_category FROM test_floats;",
+    "SELECT (SELECT AVG(value) FROM test_floats WHERE value IS NOT NULL) AS average_value;"
+  ],
+  "key_bug_features": [
+    "Incorrect output of float numbers in Polars conversion"
+  ]
+}

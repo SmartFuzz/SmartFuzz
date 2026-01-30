@@ -1,0 +1,21 @@
+{
+    "HTML": [
+        "https://docs.openlinksw.com/virtuoso/fn_read_log/"
+    ],
+    "Title": [
+        "read_log"
+    ],
+    "Feature": [
+        "read_log(file, pos)"
+    ],
+    "Description": [
+        "reads Virtuoso log",
+        "The read_log function reads from the Virtuoso Transactions log file from a given position."
+    ],
+    "Examples": [
+        "-- insert sample data so to change the rdf_quad index:\nSQL> SPARQL INSERT INTO <g> { <s> <p> <o> };\n-- create the following example procedure\nSQL>\ncreate procedure rlt (in f any, in inpos int := 0)\n{\n  declare h, op, g, s, p, o any;\n  declare pos int;\n  result_names (op, g, s, p, o);\n  h := file_open (f, inpos);\n  declare r, rr any;\n  while ((rr := read_log (h, pos)) is not null)\n    {\n      declare rw, k any;\n      declare i int;\n      rw := null;\n      k := null;\n      for (i := 1; i < length (rr); i := i + 1)\n        {\n\t  r := rr[i];\n\t  if (r[0] = 13) -- key insert\n\t    {\n\t      rw := r[2];\n\t      op := 'I';\n\t    }\n\t  else if (r[0] in (1,8,9)) -- insert,soft,replacing\n\t    {\n\t      rw := r[1];\n\t      op := 'I';\n\t    }\n\t  else if (r[0] in (3,14)) -- delete\n\t    {\n\t      rw := r[1];\n\t      op := 'D';\n\t    }\n\t  if (rw is not null)\n\t    {\n\t      k := rw[0];\n\t      if (k = 273) -- RDF_QUAD, should check with SYS_KEYS\n\t\t{\n\t\t  result (op, __ro2sq (rw[1]), __ro2sq (rw[2]), __ro2sq (rw[3]), __ro2sq (rw[4]));\n\t\t}\n\t    }\n\t}\n    }\n  result (pos + inpos, '', '', '', '');\n}\n;\n-- Call the procedure:\n-- in case of no changes to the rdf_quad index are done, it will return:\nSQL> rlt('tmp/Virtuoso.trx');\nQuery result:\nop \t  g   s   p    o\nANY   ANY ANY ANY  ANY\n8403\nNo. of rows in result: 1\n-- in case of changes to the rdf_quad index are done ( example with the short INSERT we did above), it will return for example:\nSQL> rlt('tmp/Virtuoso.trx');\nQuery result:\nop \t   g   s   p    o\nANY    ANY ANY ANY  ANY\nI      g   s   p    o\n71446\nNo. of rows in result: 2"
+    ],
+    "Category": [
+        "Administration function"
+    ]
+}

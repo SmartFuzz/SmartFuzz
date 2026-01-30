@@ -1,0 +1,21 @@
+{
+    "function": "REPL_ADD_CR",
+    "operator": "XPath //",
+    "sql_array": [
+        "CREATE TABLE items(item_id integer primary key, name varchar, count decimal, created_at timestamp);",
+        "INSERT INTO items(item_id, name, count, created_at) VALUES (1, 'item1', 1.5, '2022-01-01 01:00:00');",
+        "INSERT INTO items(item_id, name, count, created_at) VALUES (2, 'item2', NULL, '2022-01-02 02:00:00');",
+        "INSERT INTO items(item_id, name, count, created_at) VALUES (3, 'item3', 3.0, NULL);",
+        "CREATE TABLE items_log(item_id integer, action_type varchar, change_count decimal, PRIMARY KEY(item_id, action_type));",
+        "INSERT INTO items_log(item_id, action_type, change_count) SELECT item_id, 'insert', count FROM items WHERE count IS NOT NULL;",
+        "SELECT REPL_ADD_CR('DB.DBA.items', 'count', 'U', 10, 'add', 'count') AS conflict_resolved FROM items;",
+        "SELECT xpath_string('//item[not(count=0)]', (SELECT xml_agg(x) FROM (SELECT item_id, name, count as \"count\" FROM items WHERE count IS NOT NULL FOR XML PATH('item')) AS x));",
+        "SELECT item_id, count FROM items WHERE count IS NOT NULL HAVING count > (SELECT MAX(count) FROM items_log WHERE change_count IS NOT NULL);",
+        "SELECT item_id, COUNT(*) OVER (PARTITION BY item_id ORDER BY item_id) AS item_count FROM items ORDER BY item_count DESC;",
+        "SELECT DISTINCT item_id, REPL_ADD_CR('DB.DBA.items', 'count', 'U', NULLIF(count, 0), 'add', count) FROM items WHERE count IS NOT NULL AND item_id IN (SELECT item_id FROM items WHERE name LIKE 'item%');",
+        "CREATE TEMPORARY TABLE temp_items AS SELECT item_id, count FROM items WHERE count IS NOT NULL;",
+        "INSERT INTO temp_items(item_id, count) SELECT item_id, SUM(count) FROM items GROUP BY item_id HAVING COUNT(item_id) > 1;",
+        "SELECT REPL_ADD_CR('DB.DBA.items', 'count', 'U', max_count, 'add', count) FROM (SELECT item_id, MAX(count) AS max_count FROM items GROUP BY item_id) AS max_table;",
+        "SELECT xpath_string('//item[count(./count)<1]', (SELECT xml_agg(z) FROM (SELECT item_id, count FROM items WHERE count IS NULL FOR XML PATH('item')) AS z));"
+    ]
+}

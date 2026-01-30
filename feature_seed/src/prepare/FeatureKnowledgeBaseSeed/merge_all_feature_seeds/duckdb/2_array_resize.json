@@ -1,0 +1,13 @@
+CREATE TABLE test_data (id INT, created_at TIMESTAMPTZ, data_list LIST<int>);
+INSERT INTO test_data VALUES (1, TIMESTAMPTZ '2023-01-01 10:00:00+00', [1, 2]), (2, TIMESTAMPTZ '2023-01-02 11:00:00+00', [3]);
+SELECT id, array_resize(data_list, 5, 0) AS resized_list FROM test_data WHERE created_at - TIMESTAMPTZ '2023-01-01 00:00:00+00' < INTERVAL '1 day';
+SELECT id, (SELECT array_resize(data_list, 3) FROM test_data WHERE id = 1) AS sub_resized_list FROM test_data;
+CREATE TABLE additional_data (value VARCHAR, timestamp TIMESTAMPTZ);
+INSERT INTO additional_data VALUES ('Test1', TIMESTAMPTZ '2023-01-01 15:00:00+00'), (NULL, TIMESTAMPTZ '2023-01-05 12:00:00+00');
+SELECT a.id, array_resize(a.data_list, 4, (SELECT MIN(value) FROM additional_data WHERE value IS NOT NULL)) AS conditional_resize FROM test_data a JOIN additional_data b ON a.created_at - b.timestamp < INTERVAL '2 day' GROUP BY a.id, a.data_list;
+SELECT id, array_resize(data_list, 0) AS empty_resize FROM test_data HAVING id IS NULL;
+SELECT id, array_resize(data_list, 10, (created_at - TIMESTAMPTZ '2022-12-31 00:00:00+00')::INTEGER) AS resized_based_on_time FROM test_data WHERE created_at < NOW();
+SELECT id, (array_resize(NULL, 5) IS NOT NULL) AS null_test FROM test_data;
+CREATE TABLE boundary_test (value FLOAT, timestamp TIMESTAMPTZ);
+INSERT INTO boundary_test VALUES (0.000001, TIMESTAMPTZ '2023-01-01 01:00:00+00'), (NULL, TIMESTAMPTZ '2023-01-01 02:00:00+00');
+SELECT a.id, array_resize(data_list, (SELECT COUNT(*) FROM boundary_test), value) FROM test_data a JOIN boundary_test b ON a.id = CAST(b.value AS INT);

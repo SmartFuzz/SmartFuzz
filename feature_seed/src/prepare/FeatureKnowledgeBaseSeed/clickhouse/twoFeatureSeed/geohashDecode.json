@@ -1,0 +1,17 @@
+{
+    "function": "geohashDecode",
+    "operator": "a != ALL (subquery)",
+    "sql_array": [
+        "CREATE TABLE geo_data (id UInt32, geohash String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO geo_data VALUES (1, 'ezs42'), (2, 'gcpvx'), (3, 'b1234'), (4, NULL);",
+        "SELECT geohashDecode(geohash) AS (longitude, latitude) FROM geo_data WHERE geohash IS NOT NULL;",
+        "SELECT id FROM geo_data WHERE geohashDecode(geohash) != ALL (SELECT geohashDecode(geohash) FROM geo_data WHERE geohash IS NOT NULL);",
+        "SELECT id, geohashDecode(geohash) AS (longitude, latitude) FROM geo_data GROUP BY longitude HAVING longitude != ALL (SELECT longitude FROM geo_data WHERE geohash IS NOT NULL);",
+        "SELECT id, geohash FROM geo_data WHERE id != ALL (SELECT id FROM geo_data WHERE geohash IS NULL) AND geohashDecode(COALESCE(geohash, '')) != ALL (SELECT geohashDecode(geohash) FROM geo_data);",
+        "CREATE TABLE temp_geo AS SELECT id, geohash FROM geo_data WHERE geohash IS NOT NULL;",
+        "INSERT INTO temp_geo SELECT id, geohash FROM geo_data WHERE LEN(geohash) > 5;",
+        "SELECT id, geohashDecode(geohash) FROM temp_geo ORDER BY longitude DESC LIMIT 3;",
+        "SELECT DISTINCT longitude FROM temp_geo WHERE longitude != ALL (SELECT DISTINCT longitude FROM temp_geo HAVING longitude <= 0);",
+        "SELECT AVG(longitude) AS avg_longitude, COUNT(*) FROM temp_geo GROUP BY latitude HAVING avg_longitude < (SELECT MAX(longitude) FROM temp_geo);"
+    ]
+}

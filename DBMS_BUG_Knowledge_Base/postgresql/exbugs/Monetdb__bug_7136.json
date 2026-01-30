@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7136",
+  "title": "MERGE statement is deleting rows if the column is set as NOT NULL even though it should not",
+  "description": "MERGE statement is deleting rows if the column is set as NOT NULL even though it should not.\n\n**To Reproduce**\n```\ndrop table sys.v;\nCREATE TABLE \"sys\".\"v\" (\n\t\"id\"      INTEGER NOT NULL,\n\t\"version\" INTEGER NOT NULL,\n\t\"value\"   DOUBLE\n);\n\ninsert into sys.\"v\" values (1,1622470128,1);\ninsert into sys.\"v\" values (2,1622470128,2);\ninsert into sys.\"v\" values (3,1622470128,3);\ninsert into sys.\"v\" values (4,1622470128,4);\ninsert into sys.\"v\" values (5,1622470128,5);\n\nMERGE INTO sys.\"v\" dst \nUSING (SELECT id, version FROM (SELECT id, version, DENSE_RANK() OVER (PARTITION BY id ORDER BY id, version DESC) AS rn FROM sys.\"v\")t WHERE rn > 1 ) src\nON src.id = dst.id AND src.version = dst.version\nWHEN MATCHED THEN DELETE;\n```\nAbove merge statement deletes all rows in the table, even if it should not.\n\n**Expected behavior**\n```\ndrop table sys.v;\nCREATE TABLE \"sys\".\"v\" (\n\t\"id\"      INTEGER,\n\t\"version\" INTEGER,\n\t\"value\"   DOUBLE\n);\n\ninsert into sys.\"v\" values (1,1622470128,1);\ninsert into sys.\"v\" values (2,1622470128,2);\ninsert into sys.\"v\" values (3,1622470128,3);\ninsert into sys.\"v\" values (4,1622470128,4);\ninsert into sys.\"v\" values (5,1622470128,5);\n\nMERGE INTO sys.\"v\" dst \nUSING (SELECT id, version FROM (SELECT id, version, DENSE_RANK() OVER (PARTITION BY id ORDER BY id, version DESC) AS rn FROM sys.\"v\")t WHERE rn > 1 ) src\nON src.id = dst.id AND src.version = dst.version\nWHEN MATCHED THEN DELETE;\n```\nIf the column is NOT set as NOT NULL, the statement works as expected.\n\n**Software versions**\nLinux, Docker, latest version od MDB (MonetDB v11.39.17 (Oct2020-SP5))",
+  "date": "2021-05-31T14:30:32Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS sys.v;",
+    "CREATE TABLE sys.v (id INTEGER, version INTEGER, value DOUBLE, status VARCHAR(10));",
+    "INSERT INTO sys.v VALUES (1, 1622470128, 1.0, 'active');",
+    "INSERT INTO sys.v VALUES (2, 1622470128, 2.0, 'inactive');",
+    "DELETE FROM sys.v WHERE (id, version) IN (SELECT id, version FROM (SELECT id, version, DENSE_RANK() OVER (PARTITION BY id ORDER BY id, version DESC) AS rn FROM sys.v) t WHERE rn > 1);",
+    "CREATE TABLE sys.v_temp (id INTEGER, version INTEGER, value DOUBLE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);"
+  ],
+  "key_bug_features": [
+    "MERGE statement deletes rows with NOT NULL columns incorrectly"
+  ]
+}

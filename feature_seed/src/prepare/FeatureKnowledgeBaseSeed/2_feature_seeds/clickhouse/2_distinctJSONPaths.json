@@ -1,0 +1,13 @@
+DROP TABLE IF EXISTS test_json;
+CREATE TABLE test_json(json JSON) ENGINE = Memory;
+INSERT INTO test_json VALUES ('{"a": 42, "b": "Hello"}'), (NULL), ('{"b": [1, 2, 3], "c": {"d": {"e": "2020-01-01"}}}'), ("{}");
+SELECT distinctJSONPaths(json) FROM test_json WHERE distinctJSONPaths(json) != [];
+SELECT json, DISTINCT DISTINCTJSONPaths(json) AS paths FROM (SELECT json FROM test_json) GROUP BY json HAVING paths[1] != 'c.d.e';
+WITH (SELECT json FROM test_json WHERE json != '{}') AS non_empty_json SELECT DISTINCT distinctJSONPaths(json) FROM non_empty_json;
+CREATE TABLE test_json_edges (id Int32, json JSON) ENGINE = Memory;
+INSERT INTO test_json_edges VALUES (1, '{"key": "value"}'), (2, NULL), (3, '{"key": 5.67}');
+SELECT distinctJSONPaths(json) FROM test_json_edges WHERE json != CAST('{' AS JSON) AND json != (SELECT json FROM test_json_edges WHERE id = 1);
+SELECT id, distinctJSONPaths(json) FROM test_json_edges GROUP BY id HAVING id != 2;
+CREATE TABLE temp_json AS SELECT * FROM test_json_edges WHERE json IS NOT NULL;
+SELECT distinctJSONPaths(json) FROM temp_json WHERE distinctJSONPaths(json) != ['key'];
+SELECT distinctJSONPaths(json) FROM (SELECT json FROM test_json_edges UNION ALL SELECT json FROM test_json WHERE json IS NOT NULL) AS unioned_json WHERE distinctJSONPaths(json) != ['key'] ORDER BY id;

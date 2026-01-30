@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/42761",
+  "title": "prepare statement count gives negative value",
+  "description": "Use the following sysbench lua script:\r\n\r\n```lua\r\nfunction thread_init()\r\n  drv = sysbench.sql.driver()\r\n  con = drv:connect()\r\n\r\n  stmt = con:prepare(string.format([[\r\n        INSERT INTO t(j, v) VALUES (?, '%s')\r\n       ]], rand_varstr(35840, 35840)))\r\nend\r\n\r\nfunction thread_done()\r\n  stmt:close()\r\n  con:disconnect()\r\nend\r\n```\r\n\r\nAfter stopping and restarting this benchmark several times, the grafana panel of prepare statement count turns into negative value:\r\n\r\n![image](https://user-images.githubusercontent.com/5244316/229440983-97bd2068-0852-4be8-b378-78af2d50e579.png)\r\n",
+  "date": "2023-04-03T07:30:11Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t (j INT PRIMARY KEY, v VARCHAR(35840) NOT NULL);",
+    "INSERT INTO t(j, v) VALUES (1, 'Test value 1');",
+    "INSERT INTO t(j, v) VALUES (2, NULL);",
+    "UPDATE t SET v = 'Updated value' WHERE j = 1;",
+    "SELECT * FROM t WHERE j IN (SELECT j FROM t WHERE v IS NOT NULL);"
+  ],
+  "key_bug_features": [
+    "prepare statement count turns negative after multiple benchmark restarts"
+  ]
+}

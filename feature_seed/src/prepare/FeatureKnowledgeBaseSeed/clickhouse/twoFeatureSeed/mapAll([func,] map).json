@@ -1,0 +1,17 @@
+{
+    "function": "mapAll([func,] map)",
+    "operator": "a NOT BETWEEN b AND c",
+    "sql_array": [
+        "CREATE TABLE test_map (key String, value Int32, extra Float64) ENGINE = MergeTree() ORDER BY key;",
+        "INSERT INTO test_map VALUES ('k1', 1, 1.1), ('k2', 2, 2.2), ('k3', NULL, 3.3), ('k4', 4, 4.4), ('k5', 5, NULL);",
+        "SELECT mapAll((k, v) -> (v NOT BETWEEN 2 AND 4), map(key, value)) AS res FROM test_map WHERE key NOT IN ('k1', 'k3');",
+        "SELECT key, value, mapAll((k, v) -> (CAST(v AS Float64) = 3.3), map(key, value)) AS res FROM test_map GROUP BY key HAVING res = 1;",
+        "SELECT key, value, mapAll((k, v) -> (v > 2 AND v NOT BETWEEN 4 AND 5), map(key, value)) AS res FROM test_map WHERE value IS NOT NULL;",
+        "SELECT key, mapAll((k, v) -> (v < 0 OR v > 5), map(key, value)) AS res FROM test_map WHERE key LIKE '%k%';",
+        "SELECT mapAll((k, v) -> (k NOT IN ('k2', 'k4') AND v IS NOT NULL), map(key, CASE WHEN value IS NOT NULL THEN value ELSE -1 END)) AS res FROM test_map;",
+        "SELECT key, value, COUNT(*) AS cnt FROM test_map WHERE mapAll((k,v) -> (v IS NOT NULL), map(key, value)) = 1 GROUP BY key HAVING cnt > 1;",
+        "CREATE TABLE test_empty (key String, value Int32) ENGINE = MergeTree() ORDER BY key;",
+        "INSERT INTO test_empty VALUES ('k1', NULL);",
+        "SELECT mapAll((k, v) -> (v NOT BETWEEN 0 AND 0), map(key, value)) AS res FROM test_empty;"
+    ]
+}

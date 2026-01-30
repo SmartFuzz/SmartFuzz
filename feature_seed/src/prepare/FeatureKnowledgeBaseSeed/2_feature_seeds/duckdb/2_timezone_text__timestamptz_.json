@@ -1,0 +1,10 @@
+CREATE TABLE test_tz (id INTEGER, event_time TIMESTAMPTZ, tags LIST<INTEGER>);
+INSERT INTO test_tz VALUES (1, TIMESTAMPTZ '2001-02-16 20:38:40-05', [1, 2, 3]), (2, TIMESTAMPTZ '2002-03-17 14:00:00-05', [2, 3, 4]), (3, TIMESTAMPTZ '2003-04-18 09:30:00-05', [1, 4]);
+SELECT id, timezone('America/New_York', event_time) AS local_time FROM test_tz WHERE tags @> (SELECT [2, 3]);
+SELECT id, timezone('Europe/London', MIN(event_time)) AS min_event_time FROM test_tz GROUP BY id HAVING COUNT(*) @> 1;
+SELECT id, tags FROM test_tz WHERE timezone('America/Los_Angeles', event_time) IS NOT NULL AND tags @> (SELECT [3]);
+CREATE TABLE user_tags (user_id INTEGER, tag_list LIST<INTEGER>, tag_count INTEGER);
+INSERT INTO user_tags VALUES (1, [2, 3], 2), (2, [1, 4], 3), (3, [2, 4, 5], 3);
+SELECT ut.user_id, ut.tag_list, tz.local_time FROM user_tags ut JOIN (SELECT id, timezone('Asia/Tokyo', event_time) AS local_time FROM test_tz) tz ON ut.tag_list @> (SELECT [1]);
+SELECT COUNT(*) FROM test_tz WHERE timezone('America/Chicago', event_time) IS NULL;
+SELECT id, COUNT(*) FROM test_tz WHERE tags @> [3, 4] GROUP BY id HAVING COUNT(*) > 0 EXCEPT SELECT user_id FROM user_tags WHERE tag_count < 2;

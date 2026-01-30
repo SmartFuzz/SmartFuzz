@@ -1,0 +1,15 @@
+{
+    "function": "DB.DBA.AMAZON_IMPORT_KEY_PAIR",
+    "operator": "AND",
+    "sql_array": [
+        "CREATE TABLE key_pairs (id INT PRIMARY KEY, access_key VARCHAR(100), sec_token VARCHAR(100), key_name VARCHAR(100), pub_key VARCHAR(100));",
+        "INSERT INTO key_pairs VALUES (1, 'AKIAJI7ZL427TI5EDF5A', 'CGI/UMaXf2LRUctaj/HGJ57UNy/t7fNCshh8wpJg', 'my_key', 'some_public_key_value');",
+        "SELECT CASE WHEN DB.DBA.AMAZON_IMPORT_KEY_PAIR(access_key, key_name, encode_base64(cast(pub_key AS VARCHAR)), sec_token) IS NOT NULL THEN TRUE AND TRUE ELSE FALSE AND FALSE END AS import_result FROM key_pairs;",
+        "WITH key_import AS (SELECT pub_key, key_name FROM key_pairs WHERE access_key IS NOT NULL AND sec_token IS NOT NULL) SELECT encode_base64(CAST((SELECT pub_key FROM key_import WHERE key_name = 'my_key') AS VARCHAR)) AS encoded_pub_key; ",
+        "SELECT TRUE AS result FROM key_pairs WHERE key_name = 'my_key' AND DB.DBA.AMAZON_IMPORT_KEY_PAIR(access_key, key_name, pub_key, sec_token) IS NULL;",
+        "SELECT * FROM key_pairs WHERE access_key IN (SELECT access_key FROM key_pairs WHERE sec_token IS NOT NULL AND DB.DBA.AMAZON_IMPORT_KEY_PAIR(access_key, key_name, pub_key, sec_token) IS NOT NULL) AND key_name LIKE '%key%';",
+        "SELECT (SELECT COUNT(*) FROM key_pairs) AS total_keys, (SELECT COUNT(*) FROM key_pairs WHERE pub_key IS NOT NULL) AS valid_keys WHERE total_keys > valid_keys;",
+        "UPDATE key_pairs SET pub_key = encode_base64(NULLIF(pub_key, '')) WHERE id = 1 AND DB.DBA.AMAZON_IMPORT_KEY_PAIR(access_key, key_name, pub_key, sec_token) IS NOT NULL;",
+        "SELECT GROUP_CONCAT(key_name ORDER BY id) AS concatenated_keys FROM key_pairs HAVING COUNT(*) > 1 AND COUNT(key_name) > 0 AND DB.DBA.AMAZON_IMPORT_KEY_PAIR(access_key, key_name, pub_key, sec_token) IS NOT NULL;"
+    ]
+}

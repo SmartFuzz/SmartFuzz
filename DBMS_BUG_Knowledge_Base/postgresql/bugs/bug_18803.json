@@ -1,0 +1,24 @@
+{
+  "url": "https://www.postgresql.org/message-id/18803-27d209f78dff2d2b%40postgresql.org",
+  "title": "BUG #18803: ERROR:  wrong varnullingrels (b) (expected (b 4)) for Var 2/1",
+  "vulnerable_database": "postgresql",
+  "date": "2025-02-11 14:15:51",
+  "vulnerable_version": "Unknown",
+  "description": "The following bug has been logged on the website:\nBug reference:      18803\nLogged by:          Marko Tiikkaja\nEmail address:      marko(at)joh(dot)to\nPostgreSQL version: 16.6\nOperating system:   Linux\nDescription:\nGiven this schema:\nBEGIN;\nCREATE TABLE Users();\nCREATE TABLE Orders(MessageID text);\nCREATE TABLE Transfers (TransferID bigint);\nCOMMIT;\nRunning this query:\nDO $$\nBEGIN\nEXECUTE $SQL$\nSELECT\nCASE WHEN $1 < 1\nTHEN 1\nELSE sum(1) OVER ()\nEND AS Total,\nMessageID\nFROM (\nSELECT\ncoalesce(\nECR.MessageID,\nOrders.MessageID\n) AS MessageID\nFROM Orders\nLEFT JOIN LATERAL (\nSELECT\nTransfers.TransferID || Orders.MessageID AS MessageID\nFROM Transfers\n) ECR ON TRUE\n) Txn\n$SQL$\nUSING 1;\nEND\n$$;\nproduces the following error:\nERROR:  wrong varnullingrels (b) (expected (b 4)) for Var 2/1\n(where the \"1\" seems to correspond to the pg_attribute.attnum of\nOrders.MessageID)",
+  "poc": [
+    "CREATE TABLE Users();",
+    "CREATE TABLE Orders(MessageID text);",
+    "CREATE TABLE Transfers (TransferID bigint);"
+  ],
+  "poc_type": "sql_text",
+  "key_bug_features": [
+    "Error in varnullingrels during lateral join execution"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE Users(UserID serial PRIMARY KEY, UserName text NOT NULL);",
+    "CREATE TABLE Orders(MessageID text NOT NULL, OrderDate timestamp DEFAULT CURRENT_TIMESTAMP);",
+    "CREATE TABLE Transfers(TransferID bigint PRIMARY KEY, Amount numeric CHECK (Amount > 0));",
+    "INSERT INTO Users(UserName) VALUES ('Alice'), ('Bob'), ('Charlie');",
+    "INSERT INTO Orders(MessageID) VALUES (NULL), ('Order1'), ('Order2');"
+  ]
+}

@@ -1,0 +1,10 @@
+CREATE TABLE test_dates (id UInt32, dt String, value Float64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_dates VALUES (1, '2008-10-12 00:00:01', 1.5), (2, 'invalid_date_string', 2.5), (3, '', 3.5), (4, '2023-01-01 00:00:00', NULL);
+SELECT id, toDateTime64OrZero(dt, 3) AS dt_converted FROM test_dates WHERE toDateTime64OrZero(dt, 3) > toDateTime64OrZero('1970-01-01 01:00:00', 3);
+SELECT id, toDateTime64OrZero(dt, 3) AS dt_converted FROM test_dates WHERE dt_converted > 0;
+SELECT id, dt, COUNT(*) OVER (PARTITION BY toDateTime64OrZero(dt, 3) ORDER BY id) AS count_by_dt FROM test_dates;
+CREATE TABLE test_join (id UInt32, value1 UInt32, value2 String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_join VALUES (1, 10, '2008-10-12 00:00:00'), (2, 20, 'invalid_date'), (3, 30, '2023-01-01 01:00:00');
+SELECT t1.id, t2.value1 FROM test_dates AS t1 JOIN test_join AS t2 ON toDateTime64OrZero(t1.dt, 3) > toDateTime64OrZero(t2.value2, 3);
+SELECT id, (toDateTime64OrZero(dt, 3) - toDateTime64OrZero('1970-01-01 01:00:00', 3)) as dt_diff FROM test_dates HAVING dt_diff > 0;
+SELECT id, dt, toDateTime64OrZero(dt, 3) AS converted_dt FROM test_dates ORDER BY converted_dt DESC LIMIT 5;

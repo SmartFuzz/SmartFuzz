@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/87974",
+  "title": "Wrong join output with allow_experimental_join_right_table_sorting",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nhttps://fiddle.clickhouse.com/472f5b1c-32b9-47b3-a2d9-c8f8e2281ae2\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\n```SQL\ndrop table if exists test_left;\ndrop table if exists test_right;\nCREATE TABLE test_left (a Int64, b String, c LowCardinality(String)) ENGINE = MergeTree() ORDER BY a;\nCREATE TABLE test_right (a Int64, b String, c LowCardinality(String)) ENGINE = MergeTree() ORDER BY a;\nINSERT INTO test_left SELECT number % 10000, number % 10000, number % 10000 FROM numbers(100000);\nINSERT INTO test_right SELECT number % 10 , number % 10, number % 10 FROM numbers(10000);\nSELECT MAX(test_right.a), count() FROM test_left INNER JOIN test_right on test_left.b = test_right.b\nSETTINGS allow_experimental_join_right_table_sorting=true\n, join_output_by_rowlist_perkey_rows_threshold=10000;\nSELECT MAX(test_right.a), count() FROM test_left INNER JOIN test_right on test_left.b = test_right.b\nSETTINGS allow_experimental_join_right_table_sorting=true\n, join_output_by_rowlist_perkey_rows_threshold=5;\nSELECT MAX(test_right.a), count() FROM test_left INNER JOIN test_right on test_left.b = test_right.b\nSETTINGS allow_experimental_join_right_table_sorting=false\n, join_output_by_rowlist_perkey_rows_threshold=5;\nSELECT MAX(test_right.a), count() FROM test_left INNER JOIN test_right on test_left.b = test_right.b\nSETTINGS allow_experimental_join_right_table_sorting=false\n, join_output_by_rowlist_perkey_rows_threshold=10000;\n```\n### Expected behavior\n_No response_\n### Error message and/or stacktrace\n_No response_\n### Additional context\n_No response_",
+  "date": "2025-10-01T14:36:22Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS test_left;",
+    "DROP TABLE IF EXISTS test_right;",
+    "CREATE TABLE test_left (a BIGINT, b VARCHAR(255), c VARCHAR(255), d INT) USING MEMORY;",
+    "CREATE TABLE test_right (a BIGINT, b VARCHAR(255), c VARCHAR(255), d INT) USING MEMORY;",
+    "INSERT INTO test_left SELECT MOD(number, 10000), CAST(MOD(number, 10000) AS VARCHAR), CAST(MOD(number, 10000) AS VARCHAR), MOD(number, 5) FROM (SELECT ROW_NUMBER() OVER () AS number FROM sysibm.sysdummy1 LIMIT 100000);",
+    "INSERT INTO test_right SELECT MOD(number, 10), CAST(MOD(number, 10) AS VARCHAR), CAST(MOD(number, 10) AS VARCHAR), NULL FROM (SELECT ROW_NUMBER() OVER () AS number FROM sysibm.sysdummy1 LIMIT 10000);"
+  ],
+  "key_bug_features": [
+    "allow_experimental_join_right_table_sorting setting"
+  ]
+}

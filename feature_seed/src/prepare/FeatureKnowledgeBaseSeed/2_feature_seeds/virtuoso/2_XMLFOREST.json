@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, data VARCHAR(255), xml_data XML);
+INSERT INTO test_table (id, data, xml_data) VALUES (1, 'Sample data', '<root><a>1</a></root>');
+INSERT INTO test_table (id, data, xml_data) VALUES (2, NULL, '<root><b>2</b></root>');
+INSERT INTO test_table (id, data, xml_data) VALUES (3, 'Another entry', NULL);
+SELECT XMLFOREST(data AS 'dataElement', (SELECT xml_tree_doc(xml_data) FROM test_table WHERE id = 2) AS 'relatedXml') FROM test_table WHERE id = 1;
+SELECT * FROM test_table WHERE xml_data IS NOT NULL AND EXISTS (SELECT 1 FROM test_table t2 WHERE t2.id = test_table.id AND t2.data = 'Sample data');
+SELECT XMLFOREST(NULL AS 'nullElement', data AS 'validData', xml_data AS 'xmlFromTable') FROM test_table WHERE data IN (SELECT data FROM test_table WHERE id < 3) GROUP BY data HAVING COUNT(*) > 0;
+SELECT XMLFOREST(data, (SELECT xml_tree_doc('<root><c>' || MAX(id) || '</c></root>') FROM test_table)) AS xmlResult FROM test_table GROUP BY data ORDER BY data DESC;
+CREATE TEMPORARY TABLE temp_table AS SELECT id, xml_data FROM test_table WHERE data IS NOT NULL;
+SELECT XMLFOREST(id AS 'id', (SELECT xml_tree_doc(xml_data) FROM temp_table WHERE temp_table.id = test_table.id) AS 'xmlData') FROM test_table WHERE data IS NOT NULL;

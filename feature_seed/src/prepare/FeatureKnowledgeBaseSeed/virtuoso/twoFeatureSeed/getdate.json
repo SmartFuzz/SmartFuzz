@@ -1,0 +1,19 @@
+{
+    "function": "getdate",
+    "operator": "%",
+    "sql_array": [
+        "CREATE TABLE test_dates (id SERIAL PRIMARY KEY, event_timestamp TIMESTAMP DEFAULT getdate(), value INT);",
+        "INSERT INTO test_dates (event_timestamp, value) VALUES (getdate() - INTERVAL '1 day', 100), (NULL, 200), (getdate(), 300);",
+        "INSERT INTO test_dates (event_timestamp, value) VALUES (getdate() + INTERVAL '1 day', 150), (getdate() + INTERVAL '1 month', 250);",
+        "SELECT event_timestamp, value, (value % 2) AS is_even FROM test_dates WHERE (event_timestamp > getdate() - INTERVAL '2 days') AND (value IS NOT NULL);",
+        "SELECT AVG(value) AS average_value, SUM(value % 5) AS sum_modulo FROM test_dates GROUP BY (EXTRACT(DAY FROM event_timestamp) % 2) HAVING average_value > 100;",
+        "SELECT id, event_timestamp, (getdate() % 1) AS mod_result FROM test_dates WHERE (event_timestamp IS NULL OR value < 200) OR (getdate() <= event_timestamp);",
+        "SELECT id, event_timestamp, value, getdate() - event_timestamp AS time_difference FROM test_dates WHERE time_difference < INTERVAL '3 days' ORDER BY (value + (getdate() % 3));",
+        "CREATE TABLE test_joins (id SERIAL PRIMARY KEY, fk_id INT REFERENCES test_dates(id), join_value INT);",
+        "INSERT INTO test_joins (fk_id, join_value) SELECT id, value % 7 FROM test_dates WHERE value IS NOT NULL;",
+        "SELECT td.event_timestamp, tj.join_value FROM test_dates td JOIN test_joins tj ON (td.id = tj.fk_id AND (td.value % 3 = 0 OR tj.join_value IS NULL));",
+        "SELECT COUNT(*) AS null_count FROM test_dates WHERE event_timestamp IS NULL;",
+        "SELECT COUNT(*) AS event_counts FROM test_dates WHERE value = (SELECT MAX(value) FROM test_dates) OR value IS NULL;",
+        "SELECT getdate(), (SELECT COUNT(*) FROM test_dates) % 5 AS count_mod FROM test_dates LIMIT 1;"
+    ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/53385",
+  "title": "Will lose rows after execute `remove partitioning` on a partition table with `exchange partition`",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```\r\ncreate table t (id int not null, store_id int not null )  partition by range (store_id) (partition p0 values less than (6), partition p1 values less than (11), partition p2 values less than (16), partition p3 values less than (21) );\r\ncreate table t1(id int not null, store_id int not null);\r\ninsert into t values (1, 1);\r\ninsert into t values (2, 17);\r\ninsert into t1 values (0, 18);\r\nalter table t exchange partition p3 with table t1;\r\nalter table t remove partitioning;\r\nselect * from t;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\n```\r\nmysql> select * from t;\r\n+----+----------+\r\n| id | store_id |\r\n+----+----------+\r\n|  1 |        1 |\r\n|  0 |       18 |\r\n+----+----------+\r\n2 rows in set (0.00 sec)\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n```\r\nmysql> select * from t;\r\n+----+----------+\r\n| id | store_id |\r\n+----+----------+\r\n|  0 |       18 |\r\n+----+----------+\r\n1 row in set (0.01 sec)\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n```\r\nmysql> select tidb_version();\r\n+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| tidb_version()                                                                                                                                                                                                                                                           |\r\n+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| Release Version: v8.2.0-alpha-192-g397a460dd0\r\nEdition: Community\r\nGit Commit Hash: 397a460dd067986d585d71a729a51b9e77a4c7ac\r\nGit Branch: master\r\nUTC Build Time: 2024-05-20 06:27:50\r\nGoVersion: go1.21.5\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: unistore |\r\n+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n1 row in set (0.04 sec)\r\n```\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2024-05-20T06:36:14Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (id Int32 NOT NULL, store_id Int32 NOT NULL, name String DEFAULT NULL);",
+    "INSERT INTO t2 VALUES (1, 5, 'Store A');",
+    "INSERT INTO t2 VALUES (2, 15, 'Store B');",
+    "ALTER TABLE t2 ADD CONSTRAINT chk_store_id CHECK (store_id >= 0);",
+    "SELECT * FROM t2 WHERE store_id IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "remove partitioning on table after exchange partition"
+  ]
+}

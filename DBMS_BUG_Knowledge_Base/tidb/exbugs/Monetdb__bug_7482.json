@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7482",
+  "title": "MonetDB server crashes in `bin_find_smallest_column`",
+  "description": "MonetDB server crashes in `bin_find_smallest_column`.\n\n**To Reproduce**\n```sql\nSELECT var_samp ( '12' ) OVER ( ORDER BY CAST ( ( CASE WHEN ( 99 ) THEN COUNT ( * ) ELSE CASE WHEN 1 THEN ( FALSE ) END END ) AS BIGINT ) );\n```\n\n**Backtrace of the Crash**\n```c\n#0 0x7fb8fa8b4ebf (bin_find_smallest_column+0x4f)\n#1 0x7fb8fa8ad3e2 (exp_bin+0xff2)\n#2 0x7fb8fa8bb289 (subrel_bin+0x5d69)\n#3 0x7fb8fa8c34c9 (rel2bin_project+0x1f9)\n#4 0x7fb8fa8b61dc (subrel_bin+0xcbc)\n#5 0x7fb8fa8c34c9 (rel2bin_project+0x1f9)\n#6 0x7fb8fa8b61dc (subrel_bin+0xcbc)\n#7 0x7fb8fa8c34c9 (rel2bin_project+0x1f9)\n#8 0x7fb8fa8b61dc (subrel_bin+0xcbc)\n#9 0x7fb8fa8c34c9 (rel2bin_project+0x1f9)\n#10 0x7fb8fa8b61dc (subrel_bin+0xcbc)\n#11 0x7fb8fa8b53b9 (output_rel_bin+0xb9)\n#12 0x7fb8fa901a59 (backend_dumpstmt_body+0x2c9)\n#13 0x7fb8fa9016a2 (backend_dumpstmt+0x192)\n#14 0x7fb8fa89d184 (SQLparser+0xf04)\n#15 0x7fb8fa89ba0a (SQLengine_+0xa5a)\n#16 0x7fb8fa8991fe (SQLengine+0x3e)\n#17 0x7fb8fae1db2f (runScenario+0x6f)\n#18 0x7fb8fae1ecfe (MSscheduleClient+0xb6e)\n#19 0x7fb8faf626c2 (doChallenge+0x132)\n#20 0x7fb8fbd7fb38 (thread_starter+0x318)\n#21 0x7fb8fa790609 (start_thread+0xd9)\n#22 0x7fb8fa6b3353 (clone+0x43)\n```\n\n**Software versions**\n - MonetDB version number: v11.49.1 (Dec2023)\n - OS and version: Ubuntu 20.04\n - From docker image monetdb/monetdb:Dec2023 (or monetdb/dev-builds:default)\n\nAn example of steps to reproduce in docker container (**write the poc into /tmp/test.sql first**):\n```bash\ndocker container rm monetdb_test -f\ndocker run -e MDB_DB_ADMIN_PASS=monetdb --name monetdb_test -itd monetdb/monetdb:Dec2023\ndocker exec monetdb_test bash -c 'echo -n -e \"user=monetdb\\npassword=monetdb\\n\" > /root/.monetdb'\n\nsleep 10\ncat /tmp/test.sql | timeout 5s docker exec -i monetdb_test mclient monetdb     # run test case\n\nif docker exec monetdb_test bash -c \"grep '[m]server5' /proc/*/cmdline -lR\"; then\n    echo \"[INFO] Server normal.\"\nelse\n    echo \"[CRASH] Mserver5 process does NOT exist.\"\nfi\n```\n\nIt can also be reproduced on the docker image `monetdb/dev-builds:default`.\n\n**Issue labeling**\nbug",
+  "date": "2024-03-17T11:26:46Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INT PRIMARY KEY, value FLOAT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO test_table (id, value) VALUES (1, 12.5), (2, NULL), (3, 15.0);",
+    "CREATE TABLE another_table (ref_id INT, description VARCHAR(255), FOREIGN KEY (ref_id) REFERENCES test_table(id));",
+    "INSERT INTO another_table (ref_id, description) VALUES (1, 'Sample 1'), (2, 'Sample 2');",
+    "SELECT VAR_SAMP(value) OVER (ORDER BY (CASE WHEN created_at IS NULL THEN 0 ELSE 1 END), ref_id) FROM test_table JOIN another_table ON test_table.id = another_table.ref_id;"
+  ],
+  "key_bug_features": [
+    "SELECT var_samp with complex ORDER BY clause"
+  ]
+}

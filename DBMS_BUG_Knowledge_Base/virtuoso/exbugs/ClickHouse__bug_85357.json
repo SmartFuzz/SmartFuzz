@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/85357",
+  "title": "Enhance toIntervalSecond and add CONVERT_TZ to improve quicksight integration in ClickHouse.",
+  "description": "### Company or project name\nAWS QuickSight's incremental refresh feature generates MySQL-specific queries that fail in ClickHouse due to missing functions and type support, preventing users from efficiently processing large datasets.\nIntegration: AWS QuickSight via MySQL driver\nDocumentation reference: https://clickhouse.com/docs/integrations/quicksight\n### Use case\nProblem Description\nWhen using QuickSight's incremental refresh capability with ClickHouse, the following query is generated and fails:\n```\nupdated_at > CONVERT_TZ(\nfromUnixTimestamp(0) + toIntervalSecond(\nCAST(CAST(1753254013359, 'char(10)'), 'decimal')\n),\nglobalVariable('time_zone'),\n'UTC'\n)\n```\nError Message\n```\nCode: 46. DB::Exception: Unknown function CONVERT_TZ: While processing updated_at > CONVERT_TZ(fromUnixTimestamp(0) + toIntervalSecond(CAST(CAST(1753254013359, 'char(10)'), 'decimal')), globalVariable('time_zone'), 'UTC'). (UNKNOWN_FUNCTION)\n```\nRoot Causes\nMissing `CONVERT_TZ` function\nIssue: ClickHouse doesn't have MySQL's `CONVERT_TZ` function\nImpact: Medium (workaround possible via UDF)\nMySQL behaviour: Converts datetime from one timezone to another\n`toIntervalSecond` doesn't support decimal types.\nIssue: Function only accepts (U)Int*/Float*/String, not Decimal.\nImpact: High (no workaround available)\nCurrent supported types: UInt8/16/32/64, Int8/16/32/64, Float32/64, String\nQuickSight requirement: Needs Decimal support for timestamp calculations\n### Describe the solution you'd like\nAdd decimal type support to `toIntervalSecond` function.\nAdd native `CONVERT_TZ` function.\n### Describe alternatives you've considered\nA UDF implementation:\n```\nCREATE FUNCTION CONVERT_TZ AS (dt, from_tz, to_tz) ->\ntoTimeZone(fromTimeZone(dt, from_tz), to_tz);\n```\n### Additional context\n_No response_",
+  "date": "2025-08-11T10:59:01Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INTEGER, updated_at TIMESTAMP, value DECIMAL(10, 2));",
+    "INSERT INTO test_table (id, updated_at, value) VALUES (1, CURRENT_TIMESTAMP, 1753254013.59);",
+    "SELECT id, updated_at, CAST(value AS DECIMAL(10, 2)) FROM test_table WHERE updated_at > TIMESTAMP '1970-01-01 00:00:00' + INTERVAL '0' SECOND;",
+    "CREATE TABLE timezone_table (tz VARCHAR(255));",
+    "INSERT INTO timezone_table (tz) VALUES ('UTC'), ('America/New_York'), ('Europe/London');"
+  ],
+  "key_bug_features": [
+    "Missing CONVERT_TZ function in ClickHouse"
+  ]
+}

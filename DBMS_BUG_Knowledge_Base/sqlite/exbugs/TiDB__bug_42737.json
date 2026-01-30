@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/42737",
+  "title": "Panic triggered at chunk.(*Column).AppendFloat64 (util/chunk/column.go:265)",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n**Setup the database:**\r\n\r\n```\r\nCREATE TABLE t0 (c0 double, c1 varchar(100));\r\nINSERT INTO t0 VALUES (1, NULL);\r\n```\r\n\r\n**Testcase**\r\n```\r\nselect\r\n  exists (\r\n    select\r\n        FIRST_VALUE(ref_131.c0) over (partition by ref_131.c1) as c0\r\n      from\r\n        t0 as ref_131\r\n  ) as c4\r\nfrom\r\n  t0 as ref_0;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nNo panic.\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n```\r\nERROR 1105 (HY000): runtime error: index out of range [0] with length 0\r\n```\r\nTiDB log:\r\n```\r\n[err=\"runtime error: index out of range [0] with length 0\r\ngithub.com/pingcap/tidb/executor.recoveryShuffleExec\r\n    /root/tidb/executor/shuffle.go:255\r\ngithub.com/pingcap/tidb/executor.(*shuffleWorker).run.func1\r\n    /root/tidb/executor/shuffle.go:384\r\nruntime.gopanic\r\n    /usr/local/go/src/runtime/panic.go:884\r\nruntime.goPanicIndex\r\n    /usr/local/go/src/runtime/panic.go:113\r\ngithub.com/pingcap/tidb/util/chunk.(*Column).AppendFloat64\r\n    /root/tidb/util/chunk/column.go:265\r\ngithub.com/pingcap/tidb/util/chunk.(*Chunk).AppendFloat64\r\n    /root/tidb/util/chunk/chunk.go:507\r\ngithub.com/pingcap/tidb/executor/aggfuncs.(*value4Float64).appendResult\r\n    /root/tidb/executor/aggfuncs/func_value.go:132\r\ngithub.com/pingcap/tidb/executor/aggfuncs.(*firstValue).AppendFinalResult2Chunk\r\n    /root/tidb/executor/aggfuncs/func_value.go:282\r\ngithub.com/pingcap/tidb/executor.(*PipelinedWindowExec).produce\r\n    /root/tidb/executor/pipelined_window.go:402\r\ngithub.com/pingcap/tidb/executor.(*PipelinedWindowExec).Next\r\n    /root/tidb/executor/pipelined_window.go:153\r\ngithub.com/pingcap/tidb/executor.Next\r\n    /root/tidb/executor/executor.go:326\r\ngithub.com/pingcap/tidb/executor.(*shuffleWorker).run\r\n    /root/tidb/executor/shuffle.go:394\r\nruntime.goexit\r\n    /usr/local/go/src/runtime/asm_amd64.s:1598\"]\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| Release Version: v7.1.0-alpha-27-gf5ca27ef3\r\nEdition: Community\r\nGit Commit Hash: f5ca27ef326e94fb29b4ba35a5d59aa575f66880\r\nGit Branch: master\r\nUTC Build Time: 2023-03-23 13:57:53\r\nGoVersion: go1.20.2\r\nRace Enabled: false\r\nTiKV Min Version: 6.2.0-alpha\r\nCheck Table Before Drop: false\r\nStore: unistore |\r\n+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n\r\n",
+  "date": "2023-04-01T22:56:00Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (c0 REAL, c1 INTEGER, c2 TEXT NOT NULL);",
+    "INSERT INTO t1 VALUES (NULL, 1, 'test');",
+    "INSERT INTO t1 VALUES (2.5, NULL, 'example');",
+    "SELECT EXISTS (SELECT c0 FROM t1 WHERE c1 IS NOT NULL LIMIT 1) AS result;",
+    "SELECT c0 + 1.0 FROM t1 WHERE c1 IS NULL;"
+  ],
+  "key_bug_features": [
+    "Appending Float64 to chunk with empty index"
+  ]
+}

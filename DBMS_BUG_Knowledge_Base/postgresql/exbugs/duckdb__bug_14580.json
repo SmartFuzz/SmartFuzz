@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14580",
+  "title": "Silent numerical errors using UHUGEINT",
+  "description": "### What happens?\n\nBelow is a subfactorial function definition that works perfectly well\r\nwhen UHUGEINT is replaced by HUGEINT.\r\n\r\nUsing HUGEINT, the query `from subfact(20);` produces correct results, including !19 and !20:\r\n```\r\n┌───────┬────────────────────┐\r\n│   n   │        sub         │\r\n│ int32 │       int128       │\r\n...\r\n│    19 │  44750731559645106 │\r\n│    20 │ 895014631192902121 │\r\n```\r\n\r\nThe problem is that when HUGEINT is replaced by UHUGEINT, it\r\nstarts to produce erroneous results at !19:\r\n```\r\n┌───────┬────────────────────┐\r\n│   n   │        sub         │\r\n│ int32 │      uint128       │\r\n├───────┼────────────────────┤\r\n...\r\n│    19 │  44750731559645104 │ wrong\r\n│    20 │ 895014631192902016 │ wrong\r\n├───────┴────────────────────┤\r\n│ 21 rows          2 columns │\r\n└────────────────────────────┘\r\n```\r\n\r\nHere is the function with UHUGEINT.\r\n\r\n*/\r\n\n\n### To Reproduce\n\n```\r\nCREATE OR REPLACE FUNCTION subfact(num) as table (\r\n  with recursive cte(n,psub,sub) as (\r\n    -- psub means `previous sub`\r\n    select 0 as n, 1::UHUGEINT as psub, 1::UHUGEINT as sub\r\n    union all\r\n    select\r\n     n+1 as n,\r\n     sub as psub,\r\n     (n * (sub + psub)) as sub\r\n    from cte\r\n    where n < num\r\n  ) select n, sub from cte\r\n)  ;\r\n\r\nfrom subfact(20);\r\n```\n\n### OS:\n\nMacOS\n\n### DuckDB Version:\n\nv1.0.0 and v1.1.3-dev75 etc\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nPeter Koppstein\n\n### Affiliation:\n\nPrinceton University\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a source build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nNot applicable - the reproduction does not require a data set\n\n### Did you include all code required to reproduce the issue?\n\n- [X] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [X] Yes, I have",
+  "date": "2024-10-28 01:43:28",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_numbers (id INT, value NUMERIC);",
+    "INSERT INTO test_numbers VALUES (1, 1::NUMERIC), (2, 2::NUMERIC), (3, 3::NUMERIC);",
+    "SELECT id, value, value * 2 AS doubled_value FROM test_numbers;",
+    "CREATE OR REPLACE FUNCTION test_subfact(num INT) RETURNS TABLE (n INT, sub NUMERIC) AS $$ WITH RECURSIVE cte(n, psub, sub) AS (SELECT 0 AS n, 1::NUMERIC AS psub, 1::NUMERIC AS sub UNION ALL SELECT n + 1 AS n, sub AS psub, (n * (sub + psub)) AS sub FROM cte WHERE n < num) SELECT n, sub FROM cte $$ LANGUAGE SQL;",
+    "SELECT * FROM test_subfact(20);"
+  ],
+  "key_bug_features": [
+    "Incorrect results when using UHUGEINT in calculations"
+  ]
+}

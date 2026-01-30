@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=102777",
+  "title": "A replace statement with more than 2 unique values cause breaking replication",
+  "description": "my environment is as follows:\r\nverison: 5.7.22-log MySQL Community Server (GPL)\r\ntx_isolation: REPEATABLE-READ \r\nbinlog_format: ROW\r\n\r\ntable structure:\r\nCREATE TABLE `unique_test` (\r\n  `a` int(11) DEFAULT NULL,\r\n  `b` int(11) DEFAULT NULL,\r\n  `c` int(11) DEFAULT NULL,\r\n  UNIQUE KEY `a` (`a`,`b`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8\r\n\r\nSQL case 1：\r\nreplace into unique_test values(1,1,1);\r\nresult: replication is ok\r\n\r\nSQL case 2：\r\nreplace into unique_test values(1,1,1),(1,1,2);\r\nresult: replication is ok\r\n\r\nSQL case 3：\r\nreplace into unique_test values(1,1,1),(1,1,2),(1,1,3);\r\nQuery OK, 5 rows affected (0.00 sec)\r\nRecords: 3  Duplicates: 2  Warnings: 0\r\n\r\nresult: replication is bad\r\nLast_SQL_Error: Could not execute Update_rows event on table dba_workspace.unique_test; Can't find record in 'unique_test', Error_code: 1032; Can't find record in 'unique_test', Error_code: 1032; handler error HA_ERR_KEY_NOT_FOUND; the event's master log mysql-bin.000027, end_log_pos 33177\r\n\r\nSQL case 4:\r\nreplace into unique_test values(1,1,1),(1,1,2),(1,1,3),(1,1,4);\r\nresult: same as case 4.\nHow to repeat:\nan replace statement with unique key values that has more than 2, it will always cause breaking replication.",
+  "date": "2021-03-02 08:36:00",
+  "vulnerable_version": "5.7.22",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE unique_test (a INT DEFAULT NULL, b INT DEFAULT NULL, c INT DEFAULT NULL, CONSTRAINT unique_a_b UNIQUE (a, b));",
+    "INSERT INTO unique_test (a, b, c) VALUES (1, 1, 1) ON CONFLICT (a, b) DO UPDATE SET c = EXCLUDED.c;",
+    "INSERT INTO unique_test (a, b, c) VALUES (1, 1, 2), (1, 1, 3) ON CONFLICT (a, b) DO UPDATE SET c = EXCLUDED.c;",
+    "INSERT INTO unique_test (a, b, c) VALUES (1, 1, 1), (1, 1, 2), (1, 1, 3), (1, 1, 4) ON CONFLICT (a, b) DO UPDATE SET c = EXCLUDED.c;",
+    "INSERT INTO unique_test (a, b, c) VALUES (1, 1, NULL), (1, 2, 2), (1, 3, 3) ON CONFLICT (a, b) DO UPDATE SET c = EXCLUDED.c;"
+  ],
+  "key_bug_features": [
+    "Replace statement with more than 2 unique values"
+  ]
+}

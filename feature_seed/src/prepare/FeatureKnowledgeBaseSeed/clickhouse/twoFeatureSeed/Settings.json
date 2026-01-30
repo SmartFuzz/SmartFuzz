@@ -1,0 +1,18 @@
+{
+    "function": "Settings",
+    "operator": "a - b",
+    "sql_array": [
+        "CREATE TABLE test_data (id UUID DEFAULT generateUUIDv4(), value1 String, value2 Int32) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_data (value1, value2) VALUES ('value_test', 1), ('', NULL), ('experimental', -2147483648), ('boundary', 2147483647);",
+        "SELECT value1, value2, (value2 - (SELECT COUNT(*) FROM test_data WHERE value1 = 'experimental')) AS adjusted_value2 FROM test_data WHERE value1 != '' GROUP BY value1, value2 HAVING adjusted_value2 IS NOT NULL ORDER BY adjusted_value2 DESC;",
+        "SELECT id, (max(value2) - min(value2)) AS range_value FROM test_data GROUP BY id HAVING range_value > 0;",
+        "SELECT value1, (Settings('engine_file_empty_if_not_exists') - value2) AS file_empty_adjusted FROM test_data WHERE value2 IS NOT NULL AND value1 != '' ORDER BY file_empty_adjusted;",
+        "CREATE TABLE test_data_2 (id UUID, ref_id UUID) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_data_2 SELECT id, generateUUIDv4() FROM test_data WHERE value2 > 0;",
+        "SELECT a.value1, b.ref_id, (Settings('engine_file_allow_create_multiple_files') - toFloat32(NULLIF(a.value2, 0))) AS new_value FROM test_data a JOIN test_data_2 b ON a.id = b.ref_id WHERE new_value IS NOT NULL GROUP BY a.value1, b.ref_id;",
+        "WITH temp AS (SELECT value1, (Settings('engine_file_truncate_on_insert') + value2) AS modified_value2 FROM test_data WHERE value1 IS NOT NULL) SELECT modified_value2 FROM temp GROUP BY value1 HAVING modified_value2 > 0 ORDER BY modified_value2 ASC;",
+        "CREATE TABLE temp_file_data (file_path String) ENGINE = File( 'CSV', 'file_structure.csv');",
+        "INSERT INTO temp_file_data (file_path) VALUES ('/nonexistent_path.csv'), ('/empty_file.csv');",
+        "SELECT path, (Settings('engine_file_skip_empty_files') - COUNT(*)) AS empty_file_check FROM temp_file_data GROUP BY path HAVING empty_file_check < 0;"
+    ]
+}

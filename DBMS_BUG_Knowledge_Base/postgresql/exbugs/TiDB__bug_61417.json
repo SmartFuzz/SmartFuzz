@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/61417",
+  "title": "TiKV and TiFlash process INET_ATON() function with different results",
+  "description": "1. Minimal reproduce step (Required)\n```\nDROP TABLE IF EXISTS t0;\nCREATE TABLE t0(c0 MEDIUMINT ZEROFILL);\nALTER TABLE t0 SET TIFLASH REPLICA 1;\nALTER TABLE t0 MODIFY c0 FLOAT;\nINSERT INTO t0 VALUES (1.4E-45);\n\nSELECT /*+ read_from_storage(tiflash[t0]) */ t0.c0 FROM t0 WHERE INET_ATON(t0.c0);\nSELECT /*+ read_from_storage(tikv[t0]) */ t0.c0 FROM t0 WHERE INET_ATON(t0.c0);\n```\n2. What did you expect to see? (Required)\nThe same query returns the same results on both TiKV and TiFlash.\n3. What did you see instead (Required)\n```\nmysql> SELECT /*+ read_from_storage(tiflash[t0]) */ t0.c0 FROM t0 WHERE INET_ATON(t0.c0);\nEmpty set (0.01 sec)\n\nmysql> SELECT /*+ read_from_storage(tikv[t0]) */ t0.c0 FROM t0 WHERE INET_ATON(t0.c0);\n+------------+\n| c0         |\n+------------+\n| 1.4013e-45 |\n+------------+\n1 row in set (0.00 sec)\n```\n4. What is your TiDB version? (Required)\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| tidb_version()                                                                                                                                                                                                                               |\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| Release Version: v8.5.0\nEdition: Community\nGit Commit Hash: d13e52ed6e22cc5789bed7c64c861578cd2ed55b\nGit Branch: HEAD\nUTC Build Time: 2024-12-18 02:26:06\nGoVersion: go1.23.3\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv |\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+",
+  "date": "2025-05-29T13:46:48Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t1;",
+    "CREATE TABLE t1(c1 VARCHAR(15));",
+    "INSERT INTO t1 VALUES ('192.168.1.1'), (NULL), ('256.256.256.256');",
+    "SELECT t1.c1, (CASE WHEN t1.c1 IS NOT NULL THEN (SELECT (split_part(t1.c1, '.', 1)::int * 256 * 256 * 256 + split_part(t1.c1, '.', 2)::int * 256 * 256 + split_part(t1.c1, '.', 3)::int * 256 + split_part(t1.c1, '.', 4)::int) END) AS inet_aton FROM t1 WHERE t1.c1 IS NOT NULL;",
+    "SELECT t1.c1, (CASE WHEN t1.c1 IS NOT NULL THEN (SELECT (split_part(t1.c1, '.', 1)::int * 256 * 256 * 256 + split_part(t1.c1, '.', 2)::int * 256 * 256 + split_part(t1.c1, '.', 3)::int * 256 + split_part(t1.c1, '.', 4)::int) END) AS inet_aton FROM t1 WHERE t1.c1 IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Different results from INET_ATON() in TiKV and TiFlash"
+  ]
+}

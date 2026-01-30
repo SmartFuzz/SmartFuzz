@@ -1,0 +1,18 @@
+CREATE TABLE geom_shapes (id INT PRIMARY KEY, geom GEOMETRY NOT NULL, description TEXT);
+INSERT INTO geom_shapes (id, geom, description) VALUES (1, ST_GeomFromText('POINT(0 0)'), 'Origin Point');
+INSERT INTO geom_shapes (id, geom, description) VALUES (2, ST_GeomFromText('POINT(1 1)'), 'Point One');
+CREATE TABLE r_tree_index (id INT PRIMARY KEY, geom GEOMETRY);
+INSERT INTO r_tree_index (id, geom) VALUES (1, ST_GeomFromText('POLYGON((0 0, 0 2, 2 2, 2 0, 0 0))'));
+INSERT INTO r_tree_index (id, geom) VALUES (2, ST_GeomFromText('LINESTRING(0 0, 1 1)'));
+SELECT * FROM r_tree_index WHERE bif:st_intersects(geom, (SELECT geom FROM geom_shapes WHERE id = 1));
+SELECT bif:st_intersects((SELECT geom FROM geom_shapes WHERE id = 2), geom) FROM r_tree_index WHERE id = 1;
+INSERT INTO geom_shapes (id, geom, description) VALUES (3, ST_GeomFromText(NULL), 'Null Geometry');
+DELETE FROM r_tree_index WHERE bif:st_intersects(geom, (SELECT geom FROM geom_shapes WHERE description IS NULL));
+SELECT COUNT(*) FROM geom_shapes WHERE bif:st_intersects(geom, (SELECT geom FROM r_tree_index WHERE id = 1));
+SELECT a.id FROM geom_shapes a JOIN r_tree_index b ON bif:st_intersects(a.geom, b.geom) GROUP BY a.id HAVING COUNT(*) > 0;
+SELECT bif:st_intersects(geom, ST_GeomFromText('POINT(NULL NULL)')) FROM geom_shapes;
+DELETE FROM r_tree_index WHERE geo_delete('r_tree_index', (SELECT geom FROM geom_shapes WHERE id = 3));
+CREATE TABLE temp_shapes AS SELECT geom, ST_Area(geom) AS area FROM r_tree_index;
+INSERT INTO temp_shapes (geom) VALUES (ST_GeomFromText('POLYGON((3 3, 3 4, 4 4, 4 3, 3 3))'));
+SELECT * FROM temp_shapes WHERE area > (SELECT MAX(area) FROM temp_shapes WHERE area IS NOT NULL);
+ALTER TABLE geom_shapes ALTER COLUMN description SET NOT NULL;

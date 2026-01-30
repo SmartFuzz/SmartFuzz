@@ -1,0 +1,16 @@
+CREATE TABLE time_zone_test (event_id INT PRIMARY KEY, event_time TIME WITH TIME ZONE);
+INSERT INTO time_zone_test VALUES (1, TIME '12:30:00' AT TIME ZONE 'UTC');
+INSERT INTO time_zone_test VALUES (2, TIME '14:45:00.123456' AT TIME ZONE 'Europe/Amsterdam');
+INSERT INTO time_zone_test VALUES (3, TIME '18:00:00' AT TIME ZONE 'America/New_York');
+SELECT event_id, event_time FROM time_zone_test WHERE event_time > TIME '13:00:00' AT TIME ZONE 'UTC';
+CREATE TABLE event_schedule (schedule_id INT PRIMARY KEY, schedule_time TIME WITH TIME ZONE, event_id INT REFERENCES time_zone_test(event_id));
+INSERT INTO event_schedule VALUES (1, TIME '10:15:00' AT TIME ZONE 'UTC', 1);
+INSERT INTO event_schedule VALUES (2, TIME '16:30:00.789' AT TIME ZONE 'UTC', 2);
+SELECT a.event_id, a.event_time, b.schedule_time FROM time_zone_test a JOIN event_schedule b ON a.event_id = b.event_id WHERE b.schedule_time < a.event_time;
+SELECT event_id, event_time AT TIME ZONE 'UTC' FROM time_zone_test WHERE event_time AT TIME ZONE 'America/Los_Angeles' < TIME '15:00:00' AT TIME ZONE 'UTC';
+SELECT event_id, event_time FROM time_zone_test WHERE (event_time::time + INTERVAL '1 hour') AT TIME ZONE 'UTC' = TIME '13:30:00' AT TIME ZONE 'UTC';
+SELECT COUNT(*) FROM event_schedule WHERE schedule_time = (SELECT MIN(schedule_time) FROM event_schedule);
+CREATE TABLE timezone_adjusted_events AS SELECT event_id, event_time AT TIME ZONE 'UTC' AS utc_time FROM time_zone_test;
+SELECT utc_time FROM timezone_adjusted_events WHERE utc_time BETWEEN TIME '09:00:00' AND TIME '17:00:00';
+SELECT AVG(EXTRACT(EPOCH FROM (event_time AT TIME ZONE 'UTC'))) FROM time_zone_test WHERE event_time > TIME '06:00:00' AT TIME ZONE 'UTC';
+UPDATE time_zone_test SET event_time = event_time AT TIME ZONE 'America/New_York' WHERE event_id = 3;

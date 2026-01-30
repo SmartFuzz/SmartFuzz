@@ -1,0 +1,15 @@
+CREATE TABLE test_strings (id INTEGER, str1 VARCHAR, str2 VARCHAR);
+INSERT INTO test_strings VALUES (1, 'abcd', 'abcf'), (2, 'hello', 'helloo'), (3, 'duck', 'luck'), (4, 'test', 'test');
+SELECT id, mismatches(str1, str2) AS mismatch_count FROM test_strings WHERE mismatches(str1, str2) > 0;
+CREATE TABLE number_tests (num1 FLOAT, num2 FLOAT);
+INSERT INTO number_tests VALUES (2.0, 3.0), (4.0, 0.0), (0.0, 5.0);
+SELECT num1, num2, (num1 ^ 2) AS squared, (num2 ^ 3) AS cubed, mismatches(CAST(num1 AS VARCHAR), CAST(num2 AS VARCHAR)) AS string_mismatches FROM number_tests;
+SELECT id, str1, str2, mismatches(str1, str2) + (SELECT COUNT(*) FROM number_tests) AS total_mismatches FROM test_strings WHERE mismatches(str1, str2) + (SELECT COUNT(*) FROM number_tests) > 2;
+WITH mismatched_counts AS (SELECT id, mismatches(str1, str2) AS mismatch_count FROM test_strings) SELECT mismatch_count, COUNT(*) FROM mismatched_counts GROUP BY mismatch_count HAVING mismatch_count > 0;
+CREATE TABLE complex_test (a VARCHAR, b VARCHAR NOT NULL, c INTEGER);
+INSERT INTO complex_test VALUES ('x', 'y', 1), (NULL, 'a', 2), ('z', NULL, 3);
+SELECT a, b, c, mismatches(a, COALESCE(b, 'default')) AS coalesce_mismatches, (c ^ 2) AS squared_c FROM complex_test WHERE b IS NOT NULL;
+SELECT *, mismatches(a, b) AS total_mismatches FROM (SELECT a, b FROM complex_test WHERE c ^ 2 < 10) AS subquery;
+CREATE TEMP TABLE temp_shapes (length FLOAT, width FLOAT);
+INSERT INTO temp_shapes VALUES (3.0, 4.0), (5.0, NULL), (2.5, 2.5);
+SELECT length, width, mismatches(CAST(length AS VARCHAR), CAST(width AS VARCHAR)) AS shape_mismatches FROM temp_shapes WHERE width IS NULL OR mismatches(CAST(length AS VARCHAR), CAST(width AS VARCHAR)) > 0;

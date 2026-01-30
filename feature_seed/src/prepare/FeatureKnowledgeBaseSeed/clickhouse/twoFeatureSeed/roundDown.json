@@ -1,0 +1,18 @@
+{
+    "function": "roundDown",
+    "operator": "a != ALL (subquery)",
+    "sql_array": [
+        "CREATE TABLE test_rounding (id UInt32, number Float64, arr Array(Float64));",
+        "INSERT INTO test_rounding VALUES (1, 2.7, [1.0, 2.0, 3.5]), (2, 5.1, [4.5, 5.0, 6.5]), (3, 0.3, [0, 1, 2]), (4, NULL, [0, 1, 2]);",
+        "SELECT id, roundDown(number, arr) AS rounded FROM test_rounding WHERE number != ALL (SELECT number FROM test_rounding WHERE number > 3) ORDER BY rounded;",
+        "SELECT id, roundDown(number, arr) AS rounded, count(*) OVER (PARTITION BY roundDown(number, arr)) AS count_group FROM test_rounding WHERE number != ALL (SELECT number FROM test_rounding WHERE arr[1] < 3) HAVING count_group > 1;",
+        "CREATE TABLE temp_test (id UInt32, value Nullable(Float64));",
+        "INSERT INTO temp_test VALUES (1, NULL), (2, 1.5), (3, 2.2);",
+        "SELECT id, roundDown(value, [2, 3, 4]) AS rounded_value FROM temp_test WHERE value != ALL (SELECT value FROM temp_test WHERE value IS NOT NULL) ORDER BY rounded_value;",
+        "SELECT id, roundDown(IFNULL(value, 0), [1, 2, 3]) AS adjusted_value FROM (SELECT value FROM temp_test) WHERE adjusted_value != ALL (SELECT adjusted_value FROM (SELECT roundDown(value, [1, 2, 3]) AS adjusted_value FROM temp_test));",
+        "CREATE TABLE fuzzy_test (num UInt32, double_val Float64, text_val String);",
+        "INSERT INTO fuzzy_test VALUES (1, 1.1, 'a'), (2, 2.2, 'b'), (3, 3.3, 'c');",
+        "SELECT num, roundDown(double_val, [0, 1, 2]) AS rounded_down FROM fuzzy_test WHERE double_val != ALL (SELECT double_val FROM fuzzy_test WHERE num < 3) ORDER BY rounded_down;",
+        "SELECT num, roundDown(text_val, [0, 1, 2]) AS invalid_cast FROM fuzzy_test WHERE invalid_cast != ALL (SELECT invalid_cast FROM (SELECT roundDown(double_val, [1, 2, 3]) AS invalid_cast FROM fuzzy_test));"
+    ]
+}

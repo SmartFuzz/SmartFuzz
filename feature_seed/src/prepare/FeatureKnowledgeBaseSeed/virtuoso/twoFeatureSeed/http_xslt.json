@@ -1,0 +1,17 @@
+{
+    "function": "http_xslt",
+    "operator": "AND",
+    "sql_array": [
+        "CREATE TABLE xslt_test (id INT PRIMARY KEY, xml_content XML, stylesheet_uri VARCHAR(255));",
+        "INSERT INTO xslt_test (id, xml_content, stylesheet_uri) VALUES (1, '<?xml version=\"1.0\"?><root><element>Data</element></root>', 'file://stylesheet.xsl');",
+        "SELECT http_xslt(xml_content) AS transformed_xml FROM xslt_test WHERE id = 1 AND (SELECT COUNT(*) FROM xslt_test) > 0;",
+        "SELECT http_xslt(xml_content) FROM xslt_test WHERE (SELECT COUNT(*) FROM xslt_test) > 0 AND EXISTS (SELECT 1 FROM xslt_test WHERE id IS NULL);",
+        "SELECT http_xslt((SELECT xml_content FROM xslt_test WHERE id = 1)) AS result FROM xslt_test WHERE stylesheet_uri IS NOT NULL AND (SELECT 1 / NULLIF(COUNT(*), 0) FROM xslt_test) IS NOT NULL;",
+        "SELECT CASE WHEN http_xslt(xml_content) IS NOT NULL AND xml_content IS NOT NULL THEN 'Success' ELSE 'Failure' END AS status FROM xslt_test WHERE id = 1 AND xml_content != '';",
+        "CREATE TABLE data_test (data_id INT, value1 VARCHAR(50), value2 INT, CONSTRAINT chk_value2 CHECK (value2 > 0));",
+        "INSERT INTO data_test (data_id, value1, value2) VALUES (1, 'Test', 5), (2, 'Another Test', 10);",
+        "SELECT http_xslt('<!--XSLT content-->', xml_content) FROM xslt_test WHERE EXISTS (SELECT * FROM data_test WHERE data_id = xslt_test.id AND value2 > 0) AND value1 LIKE 'T%';",
+        "SELECT COUNT(*) FROM xslt_test WHERE http_xslt((SELECT xml_content FROM xslt_test WHERE id = 1) || xml_content) IS NOT NULL AND stylesheet_uri IS NOT NULL;",
+        "UPDATE xslt_test SET xml_content = '<?xml version=\"1.0\"?><root><element>Updated Data</element></root>' WHERE id = 1 AND EXISTS (SELECT * FROM data_test WHERE value2 > 0 AND (SELECT COUNT(*) FROM xslt_test) > 0);"
+    ]
+}

@@ -1,0 +1,16 @@
+{
+    "function": "first_value",
+    "operator": "a.N",
+    "sql_array": [
+        "CREATE TABLE player_stats (team String, player String, salary UInt32, position String, start_date Date) ENGINE = Memory;",
+        "INSERT INTO player_stats FORMAT Values ('Port Elizabeth Barbarians', 'Gary Chen', 196000, 'F', '2020-01-15'), ('New Coreystad Archdukes', 'Charles Juarez', 190000, 'F', '2021-05-18'), ('Port Elizabeth Barbarians', 'Michael Stanley', 100000, 'D', NULL), ('New Coreystad Archdukes', 'Scott Harrison', 180000, 'D', '2021-07-20'), ('Port Elizabeth Barbarians', 'Robert George', 195000, 'M', NULL), ('South Hampton Seagulls', 'Douglas Benson', 150000, 'M', '2019-09-25'), ('South Hampton Seagulls', 'James Henderson', 140000, 'M', '2023-03-05');",
+        "SELECT a.N AS team_data, first_value(player) OVER (PARTITION BY position ORDER BY start_date DESC) AS earliest_player FROM (SELECT team, player, position, salary, tuple(position, salary) AS a FROM player_stats ORDER BY salary) AS a;",
+        "SELECT team, first_value(salary) FROM player_stats GROUP BY team ORDER BY team;",
+        "SELECT team, player, first_value(first_value(player) OVER (ORDER BY salary)) OVER (PARTITION BY team) AS top_player FROM player_stats WHERE start_date IS NOT NULL;",
+        "CREATE TABLE salary_data (team String, average_salary Float64) ENGINE = Memory;",
+        "INSERT INTO salary_data FORMAT Values ('Port Elizabeth Barbarians', 156666.67), ('New Coreystad Archdukes', 185000.00), ('South Hampton Seagulls', 145000.00);",
+        "SELECT first_value(average_salary) OVER (ORDER BY average_salary DESC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS top_average_salary FROM salary_data;",
+        "SELECT team, first_value(COALESCE(salary, 0)) OVER (PARTITION BY position ORDER BY salary DESC RESPECT NULLS) FROM player_stats;",
+        "SELECT player, first_value(NULLIF(salary, 0)) OVER (PARTITION BY team ORDER BY start_date) AS non_zero_salary FROM player_stats WHERE salary != 0;"
+    ]
+}

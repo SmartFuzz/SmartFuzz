@@ -1,0 +1,10 @@
+CREATE TABLE t1 (id INTEGER, created_at DATE, value TEXT);
+CREATE TABLE t2 (id INTEGER, updated_at DATE, old_value TEXT);
+INSERT INTO t1 VALUES (1, DATE '2021-01-01', 'foo'), (2, DATE '2021-01-02', 'bar');
+INSERT INTO t2 VALUES (1, DATE '2021-01-03', 'baz'), (2, DATE '2021-01-04', 'qux');
+SELECT id, created_at + 1 AS next_day FROM query_table(['t1', 't2']);
+SELECT id, old_value, value, created_at FROM t1 INNER JOIN t2 ON t1.id = t2.id WHERE created_at + 5 > updated_at;
+SELECT id, COUNT(*) AS total, AVG(COALESCE(value, '0')) FROM query_table(['t1', 't2']) GROUP BY id HAVING total > 1;
+SELECT DISTINCT id, (created_at + 10) AS future_date FROM (SELECT * FROM query_table(['t1', 't2'])) ORDER BY future_date DESC;
+WITH normalized AS (SELECT id, CAST(value AS INTEGER) AS int_value FROM t1 WHERE value IS NOT NULL) SELECT COUNT(*) FROM normalized WHERE int_value >= 1;
+SELECT t1.id, t1.value, (DATE '2023-10-01' + (SELECT COUNT(*) FROM t2 WHERE t2.id = t1.id)) AS days_added FROM t1 LEFT JOIN t2 ON t1.id = t2.id WHERE t1.created_at < DATE '2023-10-01';

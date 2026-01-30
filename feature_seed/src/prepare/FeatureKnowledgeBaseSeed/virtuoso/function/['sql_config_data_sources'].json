@@ -1,0 +1,18 @@
+[
+    "CREATE TABLE dsn_config (id SERIAL PRIMARY KEY, dsn_name VARCHAR(255) NOT NULL, dsn_attributes TEXT NOT NULL, dsn_type VARCHAR(10) CHECK (dsn_type IN ('user', 'system')));",
+    "INSERT INTO dsn_config (dsn_name, dsn_attributes, dsn_type) VALUES ('TestDSN1', 'Driver={PostgreSQL};Server=localhost;Port=5432;Database=testdb;Uid=user;Pwd=password;', 'user');",
+    "INSERT INTO dsn_config (dsn_name, dsn_attributes, dsn_type) VALUES ('TestDSN2', 'Driver={MySQL};Server=localhost;Database=testdb;User=user;Password=password;', 'system');",
+    "UPDATE dsn_config SET dsn_attributes = 'Driver={SQL Server};Server=localhost;Database=testdb;Uid=user;Pwd=password;' WHERE dsn_name = 'TestDSN1';",
+    "DELETE FROM dsn_config WHERE dsn_name = 'TestDSN2';",
+    "SELECT * FROM dsn_config WHERE dsn_type = 'user' AND dsn_attributes LIKE '%Driver={PostgreSQL}%';",
+    "CREATE TABLE test_table (id SERIAL PRIMARY KEY, config_id INT REFERENCES dsn_config(id), test_data TEXT);",
+    "INSERT INTO test_table (config_id, test_data) SELECT id, 'Sample data' FROM dsn_config WHERE dsn_type = 'user';",
+    "SELECT dt.id, dc.dsn_name FROM test_table dt JOIN dsn_config dc ON dt.config_id = dc.id WHERE dc.dsn_type = 'system' ORDER BY dt.id DESC;",
+    "WITH dsns AS (SELECT dsn_name, COUNT(*) AS total FROM dsn_config GROUP BY dsn_name) SELECT * FROM dsns WHERE total > 1;",
+    "INSERT INTO dsn_config (dsn_name, dsn_attributes, dsn_type) VALUES ('TestDSN3', 'Driver={SQLite};Database=test.db;', 'user') ON CONFLICT(dsn_name) DO UPDATE SET dsn_attributes = 'Driver={SQLite};Database=new_test.db;';",
+    "SELECT DISTINCT dc.dsn_type FROM dsn_config dc WHERE dc.dsn_attributes NOT LIKE '%Uid=%' AND dc.dsn_name IN (SELECT dsn_name FROM dsn_config WHERE dsn_type = 'system');",
+    "CREATE INDEX idx_dsn_type ON dsn_config(dsn_type);",
+    "SELECT COUNT(*) AS user_count FROM dsn_config WHERE dsn_type = 'user';",
+    "SELECT MAX(id) FROM dsn_config WHERE dsn_type = 'user' AND dsn_name LIKE 'TestDSN%';",
+    "SELECT a.dsn_name, b.dsn_name FROM dsn_config a, dsn_config b WHERE a.dsn_type = 'user' AND b.dsn_type = 'system' AND a.id <> b.id;"
+]

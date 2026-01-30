@@ -1,0 +1,16 @@
+CREATE TABLE time_test (id INT PRIMARY KEY, time_col TIMETZ);
+INSERT INTO time_test (id, time_col) VALUES (1, current_time());
+INSERT INTO time_test (id, time_col) VALUES (2, current_time() + interval '1 hour');
+INSERT INTO time_test (id, time_col) VALUES (3, current_time() - interval '1 hour');
+SELECT id, time_col FROM time_test WHERE time_col = current_time();
+SELECT id, time_col FROM time_test WHERE time_col BETWEEN current_time() - interval '30 minutes' AND current_time();
+SELECT id, time_col FROM time_test WHERE time_col > (SELECT current_time() - interval '15 minutes');
+CREATE TABLE another_time_test (ref_id INT, foreign_time TIMETZ, FOREIGN KEY(ref_id) REFERENCES time_test(id));
+INSERT INTO another_time_test (ref_id, foreign_time) VALUES (1, current_time());
+SELECT at.ref_id, at.foreign_time, tt.time_col FROM another_time_test at JOIN time_test tt ON at.ref_id = tt.id WHERE at.foreign_time < current_time();
+SELECT COUNT(*) FROM time_test WHERE time_col IS NOT NULL AND time_col > (SELECT current_time() - interval '1 day');
+SELECT current_time() AS current_time_now, current_time() + interval '1 day' AS tomorrow_from_now;
+WITH latest_time AS (SELECT current_time() AS latest FROM time_test ORDER BY time_col DESC LIMIT 1) SELECT latest FROM latest_time;
+SELECT current_time() AS current_time_now, (SELECT AVG(time_col) FROM time_test) AS avg_time FROM time_test;
+CREATE TABLE time_summary (summary_time TIMETZ, summary_count INT);
+INSERT INTO time_summary (summary_time, summary_count) SELECT current_time(), COUNT(*) FROM time_test GROUP BY time_col;

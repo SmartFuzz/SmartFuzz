@@ -1,0 +1,19 @@
+{
+    "function": "tupleNames",
+    "operator": "a ? b : c",
+    "sql_array": [
+        "CREATE TABLE tupletest (col Tuple(user_ID UInt64, session_ID UInt64, session_time UInt32)) ENGINE = Memory;",
+        "INSERT INTO tupletest VALUES (tuple(1, 2, 3600)), (tuple(3, 4, NULL)), (tuple(NULL, NULL, 7200)), (tuple(5, 6, 0));",
+        "SELECT tupleNames(col) ? tupleNames(col) : array('empty') AS names FROM tupletest WHERE col.2 IS NULL;",
+        "SELECT tupleNames(tuple(5, 'test', 3.14)) AS names, (SELECT count() FROM tupletest) AS count FROM tupletest LIMIT 1;",
+        "CREATE TABLE user_sessions (session_id UInt64, user_data Tuple(user_ID String, session_start DateTime)) ENGINE = Memory;",
+        "INSERT INTO user_sessions VALUES (1, tuple('user_1', '2023-01-01 10:00:00')), (2, tuple('user_2', '2023-01-02 12:00:00'));",
+        "SELECT session_id, tupleNames(user_data) ? session_id : 0 AS session_check FROM user_sessions WHERE user_data.1 = 'user_1' OR user_data.1 IS NULL;",
+        "SELECT (SELECT tupleNames(user_data) FROM user_sessions WHERE session_id = 1) ? 'user_session_found' : 'user_session_not_found' AS session_status;",
+        "SELECT user_id, tupleNames(tuple(user_id, user_data)) AS user_info FROM (SELECT tuple(1, tuple('user_3', '2023-01-03 14:00:00')) AS user_data, 1 AS user_id) AS sub;",
+        "CREATE TABLE edge_cases (data Tuple(a Int8, b Float64, c String)) ENGINE = Memory;",
+        "INSERT INTO edge_cases VALUES (tuple(-128, 1.7976931348623157E+308, 'max_float')), (tuple(0, 0, 'empty_string')), (tuple(127, -1.0, NULL));",
+        "SELECT tupleNames(data) AS names, (data.1 ? data.2 : 'no_float') AS valid_float FROM edge_cases WHERE data.3 IS NOT NULL;",
+        "SELECT COUNT(*) FROM (SELECT tupleNames(data) AS names, (data.1 ? data.2 : 'fallback') AS checked_value FROM edge_cases) WHERE checked_value != 'fallback';"
+    ]
+}

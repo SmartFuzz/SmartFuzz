@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/56655",
+  "title": "`INSERT IGNORE` didn't lock the referenced row in parent table",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\nPrepare:\r\n\r\n```sql\r\ncreate table parent (id int primary key);\r\ncreate table child(id int primary key, ref int, foreign key (ref) references parent(id));\r\n\r\ninsert into parent values (1);\r\n```\r\n\r\nExecute:\r\n\r\n| Transaction 1    | Transaction 2 |\r\n| -------- | ------- |\r\n| BEGIN;  | BEGIN;    |\r\n| INSERT IGNORE INTO child VALUES (1, 1); |     |\r\n|     | UPDATE parent SET id = 2 WHERE id = 1    |\r\n| COMMIT; | |\r\n| |  COMMIT;|\r\n\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nThe statement `UPDATE` in transaction 2 is blocked until the transaction 1 `COMMIT`, and it will finally return an error.\r\n\r\n### 3. What did you see instead (Required)\r\n\r\nBoth transactions are not blocked. The constraint is broken:\r\n\r\nThen the constraint is not consistent:\r\n\r\n```sql\r\nmysql> select * from parent;\r\n+----+\r\n| id |\r\n+----+\r\n|  2 |\r\n+----+\r\n1 row in set (0.00 sec)\r\n\r\nmysql> select * from child;\r\n+----+------+\r\n| id | ref  |\r\n+----+------+\r\n|  1 |    1 |\r\n+----+------+\r\n1 row in set (0.01 sec)\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n```\r\nmysql> select tidb_version();\r\n+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| tidb_version()                                                                                                                                                                                                  |\r\n+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| Release Version: v8.4.0-this-is-a-placeholder\r\nEdition: Community\r\nGit Commit Hash: None\r\nGit Branch: None\r\nUTC Build Time: None\r\nGoVersion: go1.23.0\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv |\r\n+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n1 row in set (0.00 sec)\r\n```",
+  "date": "2024-10-15T08:23:40Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE parent (id INTEGER PRIMARY KEY, name VARCHAR(50));",
+    "CREATE TABLE child (id INTEGER PRIMARY KEY, ref INTEGER, value DECIMAL(10, 2), FOREIGN KEY (ref) REFERENCES parent(id));",
+    "INSERT INTO parent (id, name) VALUES (1, 'Parent 1');",
+    "INSERT INTO child (id, ref, value) VALUES (1, 1, 100.00);",
+    "UPDATE parent SET id = 2 WHERE id = 1;"
+  ],
+  "key_bug_features": [
+    "`INSERT IGNORE` does not lock parent table rows"
+  ]
+}

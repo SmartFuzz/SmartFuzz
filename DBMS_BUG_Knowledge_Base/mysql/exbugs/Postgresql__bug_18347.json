@@ -1,0 +1,20 @@
+{
+  "url": "https://www.postgresql.org/message-id/18347-5173e18188783674%40postgresql.org",
+  "title": "BUG #18347: problem with restore functional index",
+  "description": "The following bug has been logged on the website:\nBug reference:      18347\nLogged by:          David Turoň\nEmail address:      david(dot)turon(at)linuxbox(dot)cz\nPostgreSQL version: 16.2\nOperating system:   Debian 16.2-1.pgdg120+2\nDescription:\nHello,\nI have some issue with restoring index due missing grants - index is created\nbefore grants.\nroot(at)8c8da0755196:/# psql postgres postgres\npsql (16.2 (Debian 16.2-1.pgdg120+2))\nCREATE ROLE user_a;\nCREATE ROLE user_b;\nCREATE SCHEMA a AUTHORIZATION user_a;\nCREATE SCHEMA b AUTHORIZATION user_b;\nGRANT USAGE ON SCHEMA b TO user_a;\nCREATE FUNCTION b.f(text) RETURNS TEXT AS $$ SELECT lower($1) $$ LANGUAGE\nSQL IMMUTABLE;\nALTER FUNCTION b.f(text) OWNER TO user_b;\nCREATE FUNCTION a.f(text) RETURNS TEXT AS $$ SELECT b.f($1) $$ LANGUAGE SQL\nIMMUTABLE;\nALTER FUNCTION a.f(text) OWNER TO user_a;\nCREATE TABLE a.test(data text);\nALTER TABLE a.test OWNER TO user_a;\nCREATE INDEX ON a.test (a.f(data));\nINSERT INTO a.test VALUES ('ASDF');\n---------------------------------------------------------------------------\nnow all is working, function a.f(text) use function from schema \"b\"\na.f(text) -> b.f(text)\nuser_a is owner of schema \"a\"\nuser_b is owner of schema \"b\"\nbut when i want dump & restore\nroot(at)8c8da0755196:/# pg_dump -Fc -U postgres postgres > postgres.pg_dump\nroot(at)8c8da0755196:/# createdb test -U postgres\nroot(at)8c8da0755196:/# pg_restore -U postgres -d test -1 postgres.pg_dump\npg_restore: error: could not execute query: ERROR:  permission denied for\nschema b\nLINE 1:  SELECT b.f($1)\n^\nQUERY:   SELECT b.f($1)\nCONTEXT:  SQL function \"f\" during inlining\nCommand was: CREATE INDEX test_f_idx ON a.test USING btree (a.f(data));\nin dump all is in correct order:\nroot(at)8c8da0755196:/# pg_restore -l postgres.pg_dump\n;\n; Archive created at 2024-02-16 09:38:01 UTC\n;     dbname: postgres\n;     TOC Entries: 13\n;     Compression: gzip\n;     Dump Version: 1.15-0\n;     Format: CUSTOM\n;     Integer: 4 bytes\n;     Offset: 8 bytes\n;     Dumped from database version: 16.2 (Debian 16.2-1.pgdg120+2)\n;     Dumped by pg_dump version: 16.2 (Debian 16.2-1.pgdg120+2)\n;\n;\n; Selected TOC Entries:\n;\n6; 2615 16386 SCHEMA - a user_a\n7; 2615 16387 SCHEMA - b user_b\n3358; 0 0 ACL - SCHEMA b user_b\n219; 1255 16389 FUNCTION a f(text) user_a\n218; 1255 16388 FUNCTION b f(text) user_b\n217; 1259 16390 TABLE a test user_a\n3350; 0 16390 TABLE DATA a test user_a\n3206; 1259 16395 INDEX a test_f_idx user_a\nbut restore put grants after index creation ..., so lets restore all but\nwithout index\nroot(at)8c8da0755196:/# pg_restore -l postgres.pg_dump | wc -l\n23\n#last line is index creation ...\nroot(at)8c8da0755196:/# pg_restore -l postgres.pg_dump | head -n 22 >\n/tmp/without_index\nroot(at)8c8da0755196:/# pg_restore -l postgres.pg_dump | tail -n 1 >\n/tmp/only_index\n#restore all schema without index\nroot(at)8c8da0755196:/# pg_restore -U postgres -d test -1 -L /tmp/without_index\npostgres.pg_dump\n#restore just index\nroot(at)8c8da0755196:/# pg_restore -U postgres -d test -1 -L /tmp/only_index\npostgres.pg_dump\nthis works well without exception ...\nI am not sure if it is bug or again strange use of postgres, bad design\n...its not working on 14.10 too. Thanks for any tips ho to do it better:)\nDavid",
+  "date": "2024-02-16 10:15:18",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE USER user_c;",
+    "CREATE SCHEMA c;",
+    "CREATE TABLE c.test(data INT, description TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO c.test(data, description) VALUES (1, 'First entry'), (NULL, 'Second entry'), (2, 'Third entry');",
+    "CREATE INDEX idx_description ON c.test (description);"
+  ],
+  "key_bug_features": [
+    "Restoring index before granting schema permissions"
+  ]
+}

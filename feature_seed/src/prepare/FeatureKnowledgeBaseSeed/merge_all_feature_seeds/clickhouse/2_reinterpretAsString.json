@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id UInt32, value Float64, event_time DateTime, nullable_value Nullable(String));
+INSERT INTO test_table (id, value, event_time, nullable_value) VALUES (1, 255.0, toDateTime('2023-10-01 00:00:00'), 'test'), (2, NULL, toDateTime('2023-10-01 01:00:00'), NULL);
+SELECT reinterpretAsString(value) AS value_string FROM test_table WHERE reinterpretAsString(value) == 'test';
+SELECT id, reinterpretAsString(event_time) AS event_string FROM test_table WHERE reinterpretAsString(event_time) == reinterpretAsString(toDateTime('2023-10-01 01:00:00'));
+SELECT id FROM test_table WHERE reinterpretAsString(value) == reinterpretAsString(0);
+SELECT id, reinterpretAsString(value) AS value_string FROM test_table WHERE reinterpretAsString(value) == reinterpretAsString(toDate(1970, 3, 7));
+SELECT id, COUNT(*) FROM (SELECT id, reinterpretAsString(event_time) AS event_string FROM test_table GROUP BY id, event_string HAVING event_string == reinterpretAsString(NULL)) AS subquery GROUP BY id;
+CREATE TABLE test_table_2 (user_id UInt32, user_data String);
+INSERT INTO test_table_2 (user_id, user_data) VALUES (1, 'A'), (2, 'B');
+SELECT t1.id, SUM(CASE WHEN reinterpretAsString(t2.user_id) == reinterpretAsString(t1.id) THEN 1 ELSE 0 END) AS match_count FROM test_table AS t1 LEFT JOIN test_table_2 AS t2 ON reinterpretAsString(t2.user_id) == reinterpretAsString(t1.id) GROUP BY t1.id HAVING match_count > 0;
+SELECT reinterpretAsString(value) AS reinterpret_value, reinterpretAsString(NULL) AS null_string FROM test_table WHERE reinterpret_value IS NOT NULL OR null_string IS NULL;

@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id INTEGER PRIMARY KEY, status BITSTRING, created_at TIMESTAMP DEFAULT get_current_time());
+INSERT INTO test_table (id, status) VALUES (1, '101'::BITSTRING), (2, '110'::BITSTRING), (3, NULL);
+SELECT id, xor(status, '001'::BITSTRING) AS modified_status FROM test_table WHERE created_at > (SELECT get_current_time() - INTERVAL '1 day');
+SELECT id, COUNT(*) OVER (PARTITION BY xor(status, '001'::BITSTRING)) AS count_per_status FROM test_table GROUP BY id, status HAVING count_per_status > 1;
+SELECT id, xor(CAST(EXTRACT(EPOCH FROM created_at) AS BITSTRING), '111'::BITSTRING) AS time_key FROM test_table WHERE status IS NOT NULL;
+CREATE TABLE another_table (user_id INTEGER, user_status BITSTRING);
+INSERT INTO another_table (user_id, user_status) VALUES (1, '101'::BITSTRING), (2, '001'::BITSTRING), (3, '110'::BITSTRING), (4, NULL);
+SELECT a.id, xor(a.status, b.user_status) AS final_xor FROM test_table a JOIN another_table b ON a.id = b.user_id WHERE a.created_at < get_current_time();
+SELECT id, COUNT(*) AS count_nulls FROM test_table GROUP BY id HAVING xor(status IS NULL, TRUE) = TRUE;
+INSERT INTO test_table (id, status) VALUES (5, '');
+SELECT id, xor(status, CAST(NULL AS BITSTRING)) AS null_case FROM test_table WHERE id = 5;

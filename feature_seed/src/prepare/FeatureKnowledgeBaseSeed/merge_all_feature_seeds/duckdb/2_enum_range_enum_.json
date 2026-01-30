@@ -1,0 +1,8 @@
+CREATE TYPE mood AS ENUM ('happy', 'sad', 'neutral');
+CREATE TABLE emotions (id INTEGER PRIMARY KEY, mood_type mood, value DOUBLE PRECISION);
+INSERT INTO emotions (id, mood_type, value) VALUES (1, 'happy', 1.0), (2, 'sad', 0.5), (3, 'neutral', 0.75);
+SELECT id, enum_range(mood_type) FROM emotions WHERE value > (SELECT AVG(value) FROM emotions) ^ 2;
+WITH mood_values AS (SELECT mood_type, COUNT(*) AS count FROM emotions GROUP BY mood_type HAVING COUNT(*) > 0) SELECT mood_type, count ^ 2 FROM mood_values WHERE mood_type IN (SELECT UNNEST(enum_range(NULL::mood)) WHERE mood_type IS NOT NULL);
+SELECT e1.id, e1.mood_type, (SELECT AVG(value) FROM emotions e2 WHERE e2.value IS NOT NULL) ^ (SELECT COUNT(*) FROM emotions e3 WHERE e3.mood_type = e1.mood_type) FROM emotions e1 JOIN emotions e2 ON e1.id = e2.id WHERE e1.value IS NULL;
+CREATE TEMPORARY TABLE temp_emotions AS SELECT e.mood_type, (3.0 ^ value) AS adjusted_value FROM emotions e WHERE value IS NOT NULL;
+INSERT INTO temp_emotions (mood_type, adjusted_value) SELECT mood_type, NULLIF(adjusted_value, 0) FROM temp_emotions ORDER BY adjusted_value DESC LIMIT 10;

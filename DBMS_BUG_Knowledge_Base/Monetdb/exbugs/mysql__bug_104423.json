@@ -1,0 +1,21 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=104423",
+  "title": "SHOW CREATE DATABASE fails with a role that has global level privilege",
+  "description": "SHOW CREATE DATABASE fails with a user whose role has the global level privilege.\n\nThe implementation as follows only checks database-level privileges and seems not to take global level privileges into account when it checks if the role has privileges to access the database which means that it has at least one or more of SELECT, INSERT, and UPDATE.\nhttps://github.com/mysql/mysql-server/blob/mysql-8.0.26/sql/sql_show.cc#L1266\nHow to repeat:\n1. Create a user whose default role has a global level privilege. (The base user account doesn't have any privileges to the certain database)\r\n2. Run SHOW CREATE DATABASE to a database.\n\ntest SQL\r\n\r\n```\r\nCREATE ROLE test_role;\r\nGRANT SELECT ON *.* TO test_role;\r\nCREATE USER test_user DEFAULT ROLE test_role;\r\n-- Login as test_user\r\nSHOW CREATE DATABASE mysql;\r\n```\r\n\r\n```\r\nmysql> select current_role();\r\n+-----------------+\r\n| current_role()  |\r\n+-----------------+\r\n| `test_role`@`%` |\r\n+-----------------+\r\n1 row in set (0.00 sec)\r\n\r\nmysql> show grants for test_role;\r\n+----------------------------------------+\r\n| Grants for test_role@%                 |\r\n+----------------------------------------+\r\n| GRANT SELECT ON *.* TO `test_role`@`%` |\r\n+----------------------------------------+\r\n1 row in set (0.00 sec)\r\n\r\nmysql> SHOW CREATE DATABASE mysql;\r\nERROR 1044 (42000): Access denied for user 'test_user'@'localhost' to database 'mysql'\r\n```",
+  "date": "2021-07-27 09:12:00",
+  "vulnerable_version": "8.0.26",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE DATABASE test_db;",
+    "CREATE TABLE test_db.test_table (id INT PRIMARY KEY, name VARCHAR(255) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "CREATE ROLE test_role;",
+    "GRANT SELECT, INSERT ON test_db.test_table TO test_role;",
+    "CREATE USER test_user WITH PASSWORD 'password';",
+    "SET ROLE test_role;"
+  ],
+  "key_bug_features": [
+    "SHOW CREATE DATABASE fails with global role privileges"
+  ]
+}

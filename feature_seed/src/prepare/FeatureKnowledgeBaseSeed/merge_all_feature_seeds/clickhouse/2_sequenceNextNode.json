@@ -1,0 +1,12 @@
+CREATE TABLE test_funnel (dt DateTime, id Int32, event String) ENGINE = MergeTree() PARTITION BY toYYYYMMDD(dt) ORDER BY id;
+INSERT INTO test_funnel VALUES (toDateTime('2023-01-01 00:00:01'), 1, 'start'), (toDateTime('2023-01-01 00:00:02'), 1, 'middle'), (toDateTime('2023-01-01 00:00:03'), 1, 'end'), (toDateTime('2023-01-01 00:00:01'), 2, 'start'), (toDateTime('2023-01-01 00:00:03'), 2, 'middle'), (toDateTime('2023-01-01 00:00:03'), 2, 'end');
+SELECT id, sequenceNextNode('forward', 'head')(dt, event, event = 'start', event = 'middle', event = 'end') AS next_event FROM test_funnel GROUP BY id, event;
+SELECT id, sequenceNextNode('backward', 'tail')(dt, event, event = 'end', event = 'middle', event = 'start') AS previous_event FROM test_funnel GROUP BY id ORDER BY id;
+CREATE TABLE test_funnel_edgecase (dt DateTime, id Int32, event Nullable(String)) ENGINE = MergeTree() PARTITION BY toYYYYMMDD(dt) ORDER BY id;
+INSERT INTO test_funnel_edgecase VALUES (toDateTime('2023-01-01 00:00:01'), 1, 'start'), (toDateTime('2023-01-01 00:00:02'), 1, NULL), (toDateTime('2023-01-01 00:00:03'), 1, 'end'), (toDateTime('2023-01-01 00:00:01'), 2, NULL), (toDateTime('2023-01-01 00:00:03'), 2, 'middle');
+SELECT id, sequenceNextNode('forward', 'first_match')(dt, event, event IS NULL, event = 'start') AS next_event FROM test_funnel_edgecase GROUP BY id;
+CREATE TABLE test_funnel_complex (dt DateTime, id Int32, event String, ref String) ENGINE = MergeTree() PARTITION BY toYYYYMMDD(dt) ORDER BY id;
+INSERT INTO test_funnel_complex VALUES (toDateTime('2023-01-01 00:00:01'), 1, 'A', 'ref1'), (toDateTime('2023-01-01 00:00:02'), 1, 'B', 'ref2'), (toDateTime('2023-01-01 00:00:03'), 1, 'C', 'ref3'), (toDateTime('2023-01-01 00:00:01'), 2, 'D', 'ref1');
+SELECT id, MAX(sequenceNextNode('backward', 'last_match')(dt, event, ref = 'ref1', event = 'B')) AS last_event FROM test_funnel_complex GROUP BY id HAVING last_event IS NOT NULL;
+DELETE FROM test_funnel WHERE id = 1;
+SELECT id, sequenceNextNode('forward', 'first_match')(dt, event, event = 'B', event = 'A', event IS NULL) AS next_event FROM test_funnel GROUP BY id;

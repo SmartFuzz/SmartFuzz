@@ -1,0 +1,12 @@
+CREATE TABLE xml_test (id INT PRIMARY KEY, data XML);
+INSERT INTO xml_test (id, data) VALUES (1, xtree_doc('<root><item>Value1</item></root>'));
+INSERT INTO xml_test (id, data) VALUES (2, xtree_doc('<root><item>Value2</item></root>'));
+SELECT id, XMLAppendChildren(data, xtree_doc('<newChild/>'), ' Text', xtree_doc('<anotherChild/>')) AS modified_data FROM xml_test WHERE id > 1;
+SELECT id, XMLAppendChildren(data, xtree_doc('<newChild/>'), CAST('SomeText' AS XML), xtree_doc('<greatChild/>')) AS modified_data FROM xml_test WHERE XMLAppendChildren(data, xtree_doc('<newChild/>'), ' Text', xtree_doc('<anotherChild/>')) IS NOT NULL;
+SELECT id, XMLAppendChildren(data, xtree_doc('<newChild/>'), '', xtree_doc('<greatChild/>')) AS modified_data FROM xml_test WHERE id < (SELECT COUNT(*) FROM xml_test) AND id IS NOT NULL;
+SELECT id, XMLAppendChildren(data, xtree_doc('<newChild/>'), CASE WHEN id > 1 THEN 'CaseValue' ELSE 'DefaultValue' END, xtree_doc('<greatChild/>')) AS modified_data FROM xml_test WHERE XMLAppendChildren(data, xtree_doc('<newChild/>'), ' Text', xtree_doc('<anotherChild/>')) > xtree_doc('<comparison/>');
+SELECT id, XMLAppendChildren(data, xtree_doc('<newChild/>'), ' ', xtree_doc('<anotherChild/>')) AS modified_data FROM xml_test WHERE (SELECT COUNT(*) FROM xml_test) > id HAVING COUNT(data) > 0;
+CREATE TABLE join_test (id INT, xml_id INT, FOREIGN KEY (xml_id) REFERENCES xml_test(id));
+INSERT INTO join_test (id, xml_id) VALUES (1, 1), (2, 2);
+SELECT jt.id, XMLAppendChildren(x.data, xtree_doc('<appended/>'), COALESCE(NULLIF('Text', ''), 'Default'), xtree_doc('<new/>')) AS updated_data FROM join_test jt JOIN xml_test x ON jt.xml_id = x.id WHERE jt.id > 1;
+SELECT jt.id, XMLAppendChildren((SELECT x.data FROM xml_test x WHERE x.id = jt.xml_id), xtree_doc('<added/>'), ' Extra', xtree_doc('<child/>')) AS updated_data FROM join_test jt WHERE jt.id = (SELECT MAX(id) FROM join_test) HAVING COUNT(*) > 0;

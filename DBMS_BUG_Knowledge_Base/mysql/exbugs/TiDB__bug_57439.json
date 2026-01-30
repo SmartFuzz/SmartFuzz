@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/57439",
+  "title": "Fail to execute statements in TiDB but success in MySQL",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n```sql\r\ncreate table `t1` (`a` int default 1,`b` int generated always as(-`a`) virtual,`c` int generated always as(-`a`) stored) partition by hash(b) partitions 64;\r\ninsert into `t1` values (10,default,default),(20,default,default);\r\nupdate `t1` set `b`=default;\r\nupdate `t1` set `a`=30, `b`=default where `a`=10;\r\nupdate `t1` set `b`=default(`a`);\r\n```\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nStatements executed succussfully. \r\n\r\n### 3. What did you see instead (Required)\r\n```sql\r\nmysql> update `t1` set `a`=30, `b`=default where `a`=10;\r\nERROR 8141 (HY000): assertion failed: key: 7480000000000006505f728000000000000003, assertion: Exist, start_ts: 454001608752103434, existing start ts: 0, existing commit ts: 0\r\nmysql> \r\nmysql> update `t1` set `b`=default(`a`);\r\nERROR 3105 (HY000): The value specified for generated column 'b' in table 't1' is not allowed.\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n```sql\r\n Release Version: v8.5.0-alpha-79-g426ce3e570\r\nEdition: Community\r\nGit Commit Hash: 426ce3e57069afbd8f061d7ae39c79d3f9e2ff5d\r\nGit Branch: master\r\nUTC Build Time: 2024-11-09 12:25:03\r\nGoVersion: go1.23.0\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv \r\n```\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2024-11-17T21:26:50Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE `t2` (`x` int DEFAULT 5, `y` int AS (2 * `x`) VIRTUAL, `z` int AS (3 * `x`) STORED) PARTITION BY RANGE (`y`) (PARTITION p0 VALUES LESS THAN (10), PARTITION p1 VALUES LESS THAN (20));",
+    "INSERT INTO `t2` (`x`, `y`, `z`) VALUES (1, 2, 3), (2, 4, 6);",
+    "UPDATE `t2` SET `y` = (2 * `x`) WHERE `x` = 1;",
+    "UPDATE `t2` SET `x` = 4, `y` = (2 * 4) WHERE `x` = 2;",
+    "UPDATE `t2` SET `y` = (2 * `x`);"
+  ],
+  "key_bug_features": [
+    "Updating generated columns with default values fails"
+  ]
+}

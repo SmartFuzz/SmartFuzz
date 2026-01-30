@@ -1,0 +1,10 @@
+CREATE TABLE test_schema (id INTEGER PRIMARY KEY, value VARCHAR, score FLOAT, created_at TIMESTAMP);
+INSERT INTO test_schema (id, value, score, created_at) VALUES (1, 'test1', 3.14, CURRENT_TIMESTAMP), (2, NULL, 2.71, CURRENT_TIMESTAMP), (3, 'test3', NULL, CURRENT_TIMESTAMP);
+SELECT current_schemas(true) AS schemas, (1 << 5) AS bit_shifted_value FROM test_schema WHERE score IS NOT NULL;
+SELECT id, value, (current_schemas(false) || ', ' || (1 << 3) :: VARCHAR) AS combined_expr FROM test_schema WHERE id = (SELECT MAX(id) FROM test_schema);
+SELECT id, SUM(score) << 1 AS shifted_score FROM test_schema GROUP BY id HAVING shifted_score > 5;
+SELECT A.id, A.value, (1 << COALESCE(B.score, 0)) AS shifted_value FROM test_schema A LEFT JOIN (SELECT id, score FROM test_schema WHERE score IS NOT NULL) B ON A.id = B.id;
+CREATE TEMPORARY TABLE temp_table AS SELECT id, (1 << 4) AS extra_value FROM test_schema;
+SELECT id, value, (SELECT current_schemas(true) FROM temp_table) AS current_schemas FROM test_schema WHERE id IN (SELECT id FROM temp_table WHERE extra_value > 0);
+SELECT id, AVG(score) AS average_score FROM test_schema GROUP BY id HAVING (current_schemas(true) IS NOT NULL) << 1 = 2;
+INSERT INTO test_schema (id, value, score) SELECT 4, 'test4', NULL UNION ALL SELECT 5, NULL, 0.0;

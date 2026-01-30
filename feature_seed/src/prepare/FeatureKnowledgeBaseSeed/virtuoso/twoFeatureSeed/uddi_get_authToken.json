@@ -1,0 +1,25 @@
+{
+    "function": "uddi_get_authToken",
+    "operator": "XPath Operator: xpath_integer",
+    "sql_array": [
+        "CREATE TABLE users (id INT PRIMARY KEY, auth_token VARCHAR(255), data XML);",
+        "INSERT INTO users (id, auth_token, data) VALUES (1, 'token1', '<data><value>42</value></data>');",
+        "INSERT INTO users (id, auth_token, data) VALUES (2, 'token2', '<data><value>100</value></data>');",
+        "INSERT INTO users (id, auth_token, data) VALUES (3, 'token3', '<data><value>max</value></data>');",
+        "SELECT id, auth_token, xpath_integer('/data/value', data) AS extracted_value FROM users WHERE extracted_value IS NOT NULL;",
+        "SELECT u.id, u.auth_token, (SELECT COUNT(*) FROM users WHERE xpath_integer('/data/value', data) > 50) AS count_greater_than_fifty FROM users u HAVING count_greater_than_fifty > 1;",
+        "SELECT id, auth_token FROM users WHERE auth_token IS NOT NULL AND xpath_integer('/data/value', data) IS NULL;",
+        "SELECT u1.id, u1.auth_token FROM users u1 JOIN users u2 ON u1.id = u2.id WHERE xpath_integer('/data/value', u1.data) = xpath_integer('/data/value', u2.data) AND u1.auth_token = 'token1';",
+        "CREATE TABLE session_tokens (session_id INT, token VARCHAR(255), FOREIGN KEY (session_id) REFERENCES users(id));",
+        "INSERT INTO session_tokens (session_id, token) VALUES (1, 'session_token1'), (2, 'session_token2');",
+        "SELECT st.session_id, st.token, xpath_integer('/data/value', (SELECT data FROM users WHERE id = st.session_id)) AS extracted_value FROM session_tokens st WHERE extracted_value >= 100;",
+        "SELECT u.id, xpath_integer('/data/value', u.data) AS extracted_value FROM users u ORDER BY extracted_value DESC;",
+        "UPDATE users SET data = '<data><value>NULL</value></data>' WHERE id = 3;",
+        "SELECT * FROM users WHERE xpath_integer('/data/value', data) IS NULL;",
+        "DELETE FROM users WHERE id IN (SELECT id FROM users WHERE auth_token IS NULL);",
+        "ALTER TABLE users ADD COLUMN description VARCHAR(255);",
+        "CREATE TABLE settings (key VARCHAR(255) PRIMARY KEY, value INT);",
+        "INSERT INTO settings (key, value) VALUES ('max_connections', 200), ('timeout', NULL);",
+        "SELECT u.id, u.auth_token, (SELECT COUNT(*) FROM settings s WHERE s.value > 100) AS high_values FROM users u WHERE u.auth_token LIKE 'token%';"
+    ]
+}

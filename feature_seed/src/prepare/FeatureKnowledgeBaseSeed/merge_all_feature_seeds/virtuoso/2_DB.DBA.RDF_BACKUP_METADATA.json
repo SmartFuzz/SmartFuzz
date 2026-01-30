@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR(255), data RDF, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO test_table (id, name, data) VALUES (1, 'Test Data', NEW RDFTYPE('example', 123));
+INSERT INTO test_table (id, name, data) VALUES (2, 'Edge Case', NEW RDFTYPE('edge', NULL));
+INSERT INTO test_table (id, name, data) VALUES (3, NULL, NEW RDFTYPE('null_case', 456));
+SELECT id, name, DB.DBA.RDF_BACKUP_METADATA(0, NEW RDFTYPE('backup_graph', created_at)) AS backup_info FROM test_table WHERE created_at IS NOT NULL;
+SELECT id, name, DB.DBA.RDF_BACKUP_METADATA(1, NEW RDFTYPE('backup_file', CAST(created_at AS VARCHAR))) AS backup_info FROM test_table WHERE name IS NOT NULL AND id IN (SELECT id FROM test_table WHERE data IS NOT NULL);
+SELECT COUNT(*), DB.DBA.RDF_BACKUP_METADATA(0, NEW RDFTYPE('count_graph', NULL)) AS count_backup FROM test_table GROUP BY name HAVING COUNT(id) > 1;
+SELECT id, name, DB.DBA.RDF_BACKUP_METADATA(1, NEW RDFTYPE('edge_case', CAST(NULL AS VARCHAR))) FROM test_table ORDER BY created_at DESC FETCH FIRST 10 ROWS ONLY;
+SELECT id, NEW RDFTYPE('nested', id + (SELECT COUNT(*) FROM test_table WHERE name IS NOT NULL)) FROM test_table WHERE EXISTS (SELECT 1 FROM test_table WHERE data IS NOT NULL) AND name IS NOT NULL;
+SELECT id, name, DB.DBA.RDF_BACKUP_METADATA(0, NEW RDFTYPE('complex_backup', (SELECT MAX(created_at) FROM test_table))) FROM test_table ORDER BY COALESCE(name, 'default_name');

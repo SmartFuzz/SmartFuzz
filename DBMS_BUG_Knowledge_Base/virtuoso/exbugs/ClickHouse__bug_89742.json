@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/89742",
+  "title": "PR: INSERT INTO materialized view with JOINS",
+  "description": "### Describe the unexpected behaviour\nIt fails\n### How to reproduce\n```sql\nCREATE TABLE n1 (key UInt64, value String) ENGINE = MergeTree ORDER BY key SETTINGS index_granularity=1;\nCREATE TABLE n2 (key UInt64, value Int64) ENGINE = MergeTree ORDER BY key SETTINGS index_granularity=1;\nCREATE TABLE n1_n2_join (k UInt64, v1 String, v2 Int64) ENGINE = MergeTree ORDER BY k;\nCREATE MATERIALIZED VIEW mv TO n1_n2_join\nAS SELECT n1.key as k, n1.value as v1, n2.value as v2 from n1 JOIN n2 ON n1.key = n2.key ORDER BY n1.key;\nINSERT INTO n2 SELECT number, -number FROM numbers(10);\nSET enable_parallel_replicas=1, max_parallel_replicas=3, cluster_for_parallel_replicas='test_cluster_one_shard_three_replicas_localhost', parallel_replicas_for_non_replicated_merge_tree=1;\n-- this INSERT triggers JOIN in the materialized view, it fails with parallel replicas\nINSERT INTO n1 SELECT number as key, toString(key) FROM numbers(10);\n```\nFails differently depending on `query_plan_use_logical_join_step` setting\n`query_plan_use_logical_join_step` enabled (default)\n```\n<Error> executeQuery: Code: 10. DB::Exception: Columns [__table2.key] are not found in blocks [__table1.key, __table1.value], [__table1.key, __table1.value, __table2.value]: while pushing to view default.mv. (NOT_FOUND_COLUMN_IN_BLOCK) (version 25.11.1.1) (from 127.0.0.1:48512) (query 1, line 1) (in query: INSERT INTO n1 SELECT number as key, toString(key) FROM numbers(10)), Stack trace (when copying this message, always include the lines below):\n```\nhttps://pastila.nl/?0014b72b/5b2e8d8e4419354dd733528ed5595dc1#TLOyOR6K7A4rZsY9O8KGYg==\n`query_plan_use_logical_join_step` disabled\n```\n<Error> executeQuery: Code: 1. DB::Exception: JOIN  INNER JOIN ... ON n1.key = n2.key right table expression expected to process query to fetch columns stage. Actual WithMergeableState: while pushing to view default.mv. (UNSUPPORTED_METHOD) (version 25.11.1.1) (from 127.0.0.1:48512) (query 1, line 1) (in query: INSERT INTO n1 SELECT number as key, toString(key) FROM numbers(10) settings query_plan_use_logical_join_step=0), Stack trace (when copying this message, always include the lines below):\n```\nhttps://pastila.nl/?003d57b9/2e6030b572db02d47a360fff1576fa52#2eJR1gQSm/RxoeLRlv+pew==\n### Expected behavior\n_No response_\n### Error message and/or stacktrace\n_No response_\n### Additional context\n_No response_",
+  "date": "2025-11-07T18:45:57Z",
+  "vulnerable_version": "25.11.1.1",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE n3 (key xsd:unsignedLong, value xsd:double);",
+    "CREATE VIEW mv2 AS SELECT n1.key AS k, n1.value AS v1, n3.value AS v2 FROM n1 JOIN n3 ON n1.key = n3.key;",
+    "INSERT DATA { (n3, (0, 0.0)), (1, 0.5), (2, 1.0), (3, 1.5), (4, 2.0), (5, 2.5), (6, 3.0), (7, 3.5), (8, 4.0), (9, 4.5) };",
+    "INSERT DATA { (n1, (0, '0')), (1, '1'), (2, '2'), (3, '3'), (4, '4'), (5, '5'), (6, '6'), (7, '7'), (8, '8'), (9, '9')) };",
+    "INSERT DATA { (n2, (0, 0)), (1, 10), (2, 20), (3, 30), (4, 40)) };"
+  ],
+  "key_bug_features": [
+    "INSERT triggers JOIN in the materialized view"
+  ]
+}

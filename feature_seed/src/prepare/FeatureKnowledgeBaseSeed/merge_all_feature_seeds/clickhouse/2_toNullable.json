@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id Int32, value Nullable(String), created_at DateTime DEFAULT now());
+INSERT INTO test_table (id, value) VALUES (1, 'Test'), (2, NULL), (3, 'Sample');
+SELECT id, toNullable(value) AS nullable_value FROM test_table WHERE id GLOBAL IN (SELECT id FROM test_table WHERE value IS NOT NULL);
+SELECT id, COUNT(*) AS count FROM (SELECT id, toNullable(value) FROM test_table) GROUP BY id HAVING count > 1;
+SELECT a.id, a.value FROM (SELECT id, toNullable(value) AS nullable_value FROM test_table) AS a JOIN (SELECT id FROM test_table WHERE value GLOBAL IN (SELECT value FROM test_table WHERE created_at < now() - INTERVAL 1 DAY)) AS b ON a.id = b.id;
+SELECT id, COUNT(*) FROM (SELECT id, toNullable(value) AS nullable_value FROM test_table) GROUP BY id HAVING COUNT(*) = 1;
+SELECT id, toNullable(SUM(value)) AS total_value FROM test_table GROUP BY id;
+SELECT id FROM test_table WHERE toNullable(value) GLOBAL IN (SELECT toNullable('Sample')) AND value IS NOT NULL;
+CREATE TABLE temp_table AS SELECT * FROM test_table WHERE value IS NULL;
+SELECT id, toNullable(value) FROM temp_table WHERE id GLOBAL IN (SELECT id FROM (SELECT DISTINCT id FROM test_table));

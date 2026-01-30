@@ -1,0 +1,15 @@
+CREATE TABLE test_table (id UInt32, name String, description String);
+INSERT INTO test_table VALUES (1, 'Sample <data>', '& value'), (2, 'Another "test"', '<xml> content');
+SELECT encodeXMLComponent(name), encodeXMLComponent(description) FROM test_table WHERE id != ANY (SELECT id FROM test_table WHERE description = '');
+SELECT id, COUNT(*) FROM test_table GROUP BY encodeXMLComponent(name) HAVING COUNT(*) != ANY (SELECT COUNT() FROM test_table WHERE description LIKE '%content%');
+CREATE TABLE temp_table AS SELECT DISTINCT id, encodeXMLComponent(name) AS encoded_name FROM test_table;
+INSERT INTO temp_table SELECT id, encodeXMLComponent('Edge case: Empty string') FROM test_table WHERE name != ANY (SELECT name FROM test_table WHERE id = 1);
+SELECT encoded_name FROM temp_table WHERE encoded_name != ANY (SELECT encodeXMLComponent('Invalid <xml> data') FROM test_table);
+SELECT COUNT(*) FROM (SELECT id, encodeXMLComponent(NULLIF(name, '')) AS escaped_name FROM test_table WHERE escaped_name != ANY (SELECT encodeXMLComponent(name) FROM test_table));
+SELECT id, encodeXMLComponent(name) AS encoded_name FROM test_table ORDER BY encoded_name != ANY (SELECT encodeXMLComponent('<data>') FROM test_table) DESC;
+CREATE TABLE another_table (value String, status Nullable(UInt8));
+INSERT INTO another_table VALUES ('<hello>', 1), (encodeXMLComponent('&test'), NULL);
+SELECT * FROM another_table WHERE status != ANY (SELECT status FROM another_table WHERE value = '') ORDER BY value;
+CREATE TABLE complex_table (category String, amount Decimal(10, 2), created_at DateTime);
+INSERT INTO complex_table VALUES ('catA', 100.99, now()), ('catB', 200.50, now() - INTERVAL 1 DAY);
+SELECT category, encodeXMLComponent(category) AS xml_encoded FROM complex_table GROUP BY xml_encoded HAVING SUM(amount) != ANY (SELECT AVG(amount) FROM complex_table WHERE created_at >= now() - INTERVAL 1 DAY);

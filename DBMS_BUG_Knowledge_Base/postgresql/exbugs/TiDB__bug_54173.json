@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/54173",
+  "title": "value of `INDEX_LENGTH` column is incorrect with global index",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n```\r\ncreate table t(a int, b int, c int) partition by hash(c) partitions 4;\r\nalter table t add unique index b(b);\r\ninsert into t values (1,1,1);\r\nanalyze table t;\r\nselect * from information_schema.partitions where table_name like 't';\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\n```\r\nmysql> select partition_name, index_length from information_schema.partitions where table_name like 't';\r\n+----------------+--------------+\r\n| partition_name | index_length |\r\n+----------------+--------------+\r\n| p0             |            0 |\r\n| p1             |            0 |\r\n| p2             |            0 |\r\n| p3             |            0 |\r\n+----------------+--------------+\r\n4 rows in set (0.01 sec)\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n```\r\nmysql> select partition_name, index_length from information_schema.partitions where table_name like 't';\r\n+----------------+--------------+\r\n| partition_name | index_length |\r\n+----------------+--------------+\r\n| p0             |            0 |\r\n| p1             |            8 |\r\n| p2             |            0 |\r\n| p3             |            0 |\r\n+----------------+--------------+\r\n4 rows in set (0.01 sec)\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2024-06-24T03:43:36Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1(a INT, b VARCHAR(255), c DATE) PARTITION BY RANGE (EXTRACT(YEAR FROM c)) (PARTITION p0 VALUES LESS THAN (2020), PARTITION p1 VALUES LESS THAN (2021), PARTITION p2 VALUES LESS THAN (2022), PARTITION p3 VALUES LESS THAN (2023));",
+    "CREATE UNIQUE INDEX idx_b ON t1(b);",
+    "INSERT INTO t1 VALUES (1, 'test', '2019-01-01');",
+    "INSERT INTO t1 VALUES (2, NULL, '2020-01-01');",
+    "ANALYZE t1;"
+  ],
+  "key_bug_features": [
+    "Incorrect `INDEX_LENGTH` with global index on partitioned table"
+  ]
+}

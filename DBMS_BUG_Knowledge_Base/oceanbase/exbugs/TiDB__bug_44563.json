@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/44563",
+  "title": "planner: EXPLAIN estimate large row count for empty table",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\ninit\r\n```mysql\r\ndrop table t1;\r\ncreate table t1 (a int primary key);\r\nanalyze table t1;\r\nexplain SELECT  * FROM t1;\r\n```\r\n### 2. What did you expect to see? (Required)\r\n\r\nA small number for estRows, since t1 is a empty table. e.g.\r\n\r\n```mysql\r\n+-----------------------+---------+-----------+---------------+----------------------+\r\n| id                    | estRows | task      | access object | operator info        |\r\n+-----------------------+---------+-----------+---------------+----------------------+\r\n| TableReader_5         | 1.00    | root      |               | data:TableFullScan_4 |\r\n| └─TableFullScan_4     | 1.00    | cop[tikv] | table:t1      | keep order:false     |\r\n+-----------------------+---------+-----------+---------------+----------------------+\r\n```\r\n\r\nIn fact, sometime TiDB returns this result.\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n```mysql\r\n+-----------------------+----------+-----------+---------------+--------------------------------+\r\n| id                    | estRows  | task      | access object | operator info                  |\r\n+-----------------------+----------+-----------+---------------+--------------------------------+\r\n| TableReader_5         | 10000.00 | root      |               | data:TableFullScan_4           |\r\n| └─TableFullScan_4     | 10000.00 | cop[tikv] | table:t1      | keep order:false, stats:pseudo |\r\n+-----------------------+----------+-----------+---------------+--------------------------------+\r\n```\r\n\r\n### 4. Some other info\r\n\r\nIt seems that this bug is unstable due to unknown reasons. Some behaviours may help to trigger this bug.\r\n\r\n```mysql\r\nsession1 > begin;\r\nsession2 > begin;\r\nsession2 > explain SELECT  * FROM t1;\r\nsession2 > explain SELECT  * FROM t1 for update;\r\nsession1 > commit;\r\nsession2 > commit;\r\n```\r\n\r\n### 5. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n```mysql\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| Release Version: v6.5.0\r\nEdition: Community\r\nGit Commit Hash: 706c3fa3c526cdba5b3e9f066b1a568fb96c56e3\r\nGit Branch: heads/refs/tags/v6.5.0\r\nUTC Build Time: 2022-12-27 03:50:44\r\nGoVersion: go1.19.3\r\nRace Enabled: false\r\nTiKV Min Version: 6.2.0-alpha\r\nCheck Table Before Drop: false\r\nStore: tikv |\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n```\r\n",
+  "date": "2023-06-10T10:00:58Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t2;",
+    "CREATE TABLE t2 (b VARCHAR(255), c INT, d DATE, PRIMARY KEY (b));",
+    "INSERT INTO t2 (b, c, d) VALUES (NULL, 1, '2023-01-01');",
+    "ANALYZE TABLE t2;",
+    "EXPLAIN SELECT * FROM t2 WHERE c IS NULL;"
+  ],
+  "key_bug_features": [
+    "EXPLAIN returns incorrect row estimate for empty table"
+  ]
+}

@@ -1,0 +1,14 @@
+CREATE TABLE test_strings (id UInt32, data String, nullable_data Nullable(String));
+INSERT INTO test_strings VALUES (1, '\x43\x6c\x69\x63\x6b\x48\x6f\x75\x73\x65', NULL), (2, '\x43\x48', '\x48\x69\x64\x65'), (3, '', 'Non-NULL');
+SELECT id, multiSearchAllPositionsUTF8(data, ['\x43','\x48']) FROM test_strings WHERE nullable_data IS NULL;
+SELECT id, multiSearchAllPositionsUTF8(data, ['\x43', '\x74']) FROM test_strings WHERE data IS NULL OR nullable_data IS NULL;
+SELECT id, COUNTIf(multiSearchAllPositionsUTF8(data, ['\x43','\x48'])[1] IS NOT NULL) AS count_found FROM test_strings GROUP BY id HAVING count_found > 0;
+WITH (SELECT data FROM test_strings WHERE nullable_data IS NOT NULL) AS filtered_data SELECT multiSearchAllPositionsUTF8(data, ['\x6e']) FROM filtered_data WHERE IS_NULLABLE(data) = 0;
+SELECT id, multiSearchAllPositionsUTF8(data, ['\x43', '\x72']) FROM (SELECT id, data FROM test_strings) AS sub WHERE data IS NULL;
+SELECT id, multiSearchAllPositionsUTF8(data, ['\x49']) FROM (SELECT id, data, nullable_data FROM test_strings WHERE nullable_data IS NOT NULL) AS sub WHERE IS_NULL(data) = 0;
+WITH (SELECT data FROM test_strings WHERE IS NULL(nullable_data)) AS empty_strings SELECT multiSearchAllPositionsUTF8(data, ['\x41','\x42']) FROM empty_strings;
+CREATE TABLE test_fuzz (fuzzed_data String, nullable_fuzz Nullable(String));
+INSERT INTO test_fuzz VALUES ('Sample text for fuzzing!', NULL), ('Fuzzy logic', 'Fuzz is a footloose'), ('', 'Non-empty'), (NULL, NULL);
+SELECT multiSearchAllPositionsUTF8(fuzzed_data, ['\x6f','\x66']) FROM test_fuzz WHERE nullable_fuzz IS NOT NULL;
+SELECT COUNT(*) FROM (SELECT multiSearchAllPositionsUTF8(fuzzed_data, ['\x66'])[1] FROM test_fuzz) AS result WHERE result IS NOT NULL;
+SELECT id, multiSearchAllPositionsUTF8(fuzzed_data, []) AS search_result FROM test_fuzz WHERE multiSearchAllPositionsUTF8(nullable_fuzz, ['\x43']) IS NULL;

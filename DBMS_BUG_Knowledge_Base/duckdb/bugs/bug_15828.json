@@ -1,0 +1,25 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/15828",
+  "title": "Broken auto-casting JSON from VARCHAR into list elements - surplus quotes",
+  "vulnerable_database": "DuckDB",
+  "date": "2025-01-21 14:58:02",
+  "vulnerable_version": "",
+  "description": "### What happens?\n\nWhen inserting a JSON list as a string into a LIST column, making use of the auto-casting inside DuckDB, then DuckDB will add surplus double quote characters to the list elements.\n\nThis results in wrong data being inserted into a table.\n\n\n### To Reproduce\n\nTo reproduce, execute the following DuckDB SQL:\n```\ncreate table reproduce_json_thing\n(\n  my_value string[]\n);\n\ninsert into reproduce_json_thing\nselect\n  '[ \"1\", \"2\" ]' as my_value\n;\n```\n\nThe following query then should return an _empty_ result set:\n```\nselect \n  unnested.*\nfrom \n\treproduce_json_thing, \n\tunnest(reproduce_json_thing.my_value) as unnested(val)\nwhere\n  unnested.val like '%\"%'\n;\n```\nIt does return all inserted list elements with surplus double quotes, though.\n\nInstead of inserting the literal `1`, the DuckDB defect is that it inserts `\"1\"`\n\n\n### OS:\n\nx86_64\n\n### DuckDB Version:\n\n1.1.3\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nStefan Hoffmeister\n\n### Affiliation:\n\nn/a\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a stable release\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "poc": [
+    "create table reproduce_json_thing\n(\n  my_value string[]\n);",
+    "insert into reproduce_json_thing\nselect\n  '[ \"1\", \"2\" ]' as my_value\n;",
+    "select '[ \"1\", \"2\" ]'::string[] sa;",
+    "select '\"1\"'::varchar s;",
+    "insert it into the column with type `STRING[]`, DuckDB will use the `JSON` to `STRING[]` cast instead, and produce the result that you want:\n```sql\nD select '[ \"1\", \"2\" ]'::json::string[] sa;"
+  ],
+  "key_bug_features": [
+    "Surplus double quotes in auto-casted JSON list elements"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE json_test (id INTEGER, my_value STRING[]);",
+    "INSERT INTO json_test VALUES (1, '[ \"1\", \"2\" ]');",
+    "INSERT INTO json_test VALUES (2, '[ \"3\", \"4\", \"5\" ]');",
+    "SELECT unnested.val FROM json_test, unnest(json_test.my_value) AS unnested(val) WHERE unnested.val LIKE '%\"%';",
+    "SELECT COUNT(*) FROM json_test WHERE my_value IS NULL;"
+  ]
+}

@@ -1,0 +1,10 @@
+CREATE TABLE net_addresses (id SERIAL PRIMARY KEY, ip inet NOT NULL, description TEXT);
+INSERT INTO net_addresses (ip, description) VALUES (inet '192.168.1.1', 'Edge Case 1'), (inet '192.168.1.2', 'Edge Case 2'), (inet '192.168.255.255', 'Max Address'), (inet '0.0.0.0', 'Min Address'), (inet NULL, 'NULL Case');
+CREATE TABLE net_analysis AS SELECT ip, sys.text(ip) AS ip_text FROM net_addresses WHERE ip IS NOT NULL;
+CREATE TABLE analysis_results AS SELECT ip_text, COUNT(*) AS occurrences FROM net_analysis GROUP BY ip_text HAVING occurrences > 1;
+CREATE TABLE filtered_addresses AS SELECT ip FROM net_addresses WHERE sys.text(ip) > 'inet 192.168.1.0';
+SELECT a.id, a.ip, sys.text(a.ip) AS ip_text FROM net_addresses AS a WHERE EXISTS (SELECT 1 FROM filtered_addresses AS b WHERE a.ip > b.ip);
+SELECT ip, sys.text(ip) AS text_output FROM net_addresses WHERE sys.text(ip) IS NOT NULL AND ip > inet '192.168.0.0' ORDER BY sys.text(ip);
+SELECT a.ip, sys.text(a.ip) FROM net_addresses a LEFT JOIN net_addresses b ON a.ip > b.ip WHERE b.ip IS NULL;
+SELECT DISTINCT ip, sys.text(ip) FROM net_analysis WHERE ip IS NOT NULL AND sys.text(ip) < 'inet 192.169.1.1' ORDER BY sys.text(ip);
+SELECT SUM(CASE WHEN ip IS NOT NULL THEN 1 ELSE 0 END) AS non_null_count, COUNT(ip) AS total_count FROM net_addresses WHERE sys.text(ip) > 'inet 192.168.0.0';

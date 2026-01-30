@@ -1,0 +1,16 @@
+{
+    "function": "h3GetIndexesFromUnidirectionalEdge",
+    "operator": "SELECT a AND b",
+    "sql_array": [
+        "CREATE TABLE test_edges (id UInt64, edge UInt64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_edges VALUES (1, 1248204388774707199), (2, 1248204388774707198), (3, 0);",
+        "SELECT h3GetIndexesFromUnidirectionalEdge(edge) AS indexes FROM test_edges WHERE edge != 0 AND edge < 1248204388774707199;",
+        "SELECT id, h3GetIndexesFromUnidirectionalEdge(edge) AS indexes FROM test_edges WHERE (edge = 1248204388774707198) AND (indexOf(toString(edge), '124') > 0);",
+        "CREATE TABLE test_indexes (idx UInt64, origin UInt64, destination UInt64) ENGINE = MergeTree() ORDER BY idx;",
+        "INSERT INTO test_indexes VALUES (1, 0, 0), (2, 1248204388774707199, 1248204388774707200), (3, 1248204388774707198, NULL);",
+        "SELECT idx, origin, destination FROM test_indexes WHERE (origin, destination) IN (SELECT h3GetIndexesFromUnidirectionalEdge(edge) FROM test_edges WHERE edge IS NOT NULL) AND (origin AND destination) != (0 AND 0);",
+        "SELECT COUNT(*) AS valid_count FROM test_edges WHERE h3GetIndexesFromUnidirectionalEdge(edge) AND edge NOT IN (SELECT NULL);",
+        "CREATE TEMPORARY TABLE temp_edges AS SELECT edge FROM test_edges WHERE edge > 0;",
+        "SELECT h3GetIndexesFromUnidirectionalEdge(edge) AS indexes FROM temp_edges GROUP BY indexes HAVING (count(indexes) > 1) AND (origin AND destination) = (1 AND 1);"
+    ]
+}

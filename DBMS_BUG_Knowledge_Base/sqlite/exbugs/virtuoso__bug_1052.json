@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/1052",
+  "title": "Wrong result of SPARQL queries with UNION and OPTIONALs",
+  "description": "Version\nVirtuoso version 08.03.3323 on Linux (x86_64-generic-linux-glibc25) Single Server Edition (61 GB total memory, 48 GB memory in use)\n\nHow to reproduce\n\nOpen two tabs of https://dbpedia.org/sparql/ in a browser.\nUncheck \"Strict checking of void variables\" in both tabs.\nRun Q1 below in tab 1.\nRun Q2 below in tab 2.\n\nQ1:\nSELECT ?a ?b ?c WHERE {\n  { VALUES ?a { 0 } } UNION { VALUES ?a { 1 } }\n  OPTIONAL { VALUES (?a ?b) { (0 1) } }\n  OPTIONAL { VALUES (?a ?c) { (1 2) } }\n}\n\nQ2 (Q1 with swapped OPTIONAL clauses):\nSELECT ?a ?b ?c WHERE {\n  { VALUES ?a { 0 } } UNION { VALUES ?a { 1 } }\n  OPTIONAL { VALUES (?a ?c) { (1 2) } }\n  OPTIONAL { VALUES (?a ?b) { (0 1) } }\n}\n\nActual result\nTab 1:\n?a ?b ?c\n       2\n\nTab 2:\n?a ?b ?c\n    1\n\nExpected result\nBoth queries should produce the following result (modulo ordering):\n?a ?b ?c\n 0  1\n 1     2\n\nSPARQL playground and Wikidata also produce the correct result.",
+  "date": "2022-06-12 22:10:02",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE test_table (id INTEGER PRIMARY KEY, value1 INTEGER, value2 INTEGER, value3 INTEGER);",
+    "INSERT INTO test_table (id, value1, value2, value3) VALUES (0, 1, NULL, 2);",
+    "INSERT INTO test_table (id, value1, value2, value3) VALUES (1, NULL, 1, NULL);",
+    "SELECT id, value1, value2, value3 FROM test_table WHERE value1 IS NOT NULL UNION SELECT id, value2, value3, value1 FROM test_table WHERE value2 IS NOT NULL;",
+    "SELECT id, value1, value3 FROM test_table WHERE value3 IS NOT NULL OR id IN (SELECT id FROM test_table WHERE value1 = 1);"
+  ],
+  "key_bug_features": [
+    "SPARQL queries with UNION and OPTIONAL clauses"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=102137",
+  "title": "Clone donor's innodb_validate_tablespace_paths = OFF leads ER_TABLESPACE_MISSING",
+  "description": "When Clone **donor** setting \"innodb_validate_tablespace_paths = OFF\", CLONE INSTANCE operation is wrong.\r\n\r\nCLONE INSTANCE operation seems succeeding but SELECT statement fails by ER_TABLESPACE_MISSING (Error 1812)\nHow to repeat:\nOn doner-node (172.17.0.2:3306)\r\n\r\nmysql> SELECT @@innodb_validate_tablespace_paths;\r\n+------------------------------------+\r\n| @@innodb_validate_tablespace_paths |\r\n+------------------------------------+\r\n|                                  0 |\r\n+------------------------------------+\r\n1 row in set (0.05 sec)\r\n\r\nmysql> INSTALL PLUGIN clone SONAME 'mysql_clone.so';\r\nQuery OK, 0 rows affected (0.07 sec)\r\n\r\nmysql> CREATE DATABASE d1;\r\nQuery OK, 1 row affected (0.19 sec)\r\n\r\nmysql> use d1\r\nDatabase changed\r\n\r\nmysql> CREATE TABLE t1 (num int PRIMARY KEY);\r\nQuery OK, 0 rows affected (0.06 sec)\r\n\r\n------\r\n\r\nOn recipient-node(172.17.0.3:3306) returns Error 1812,  both innodb_validate_tablespace_paths = ON and OFF.\r\n\r\nmysql> SELECT @@innodb_validate_tablespace_paths;\r\n+------------------------------------+\r\n| @@innodb_validate_tablespace_paths |\r\n+------------------------------------+\r\n|                                  1 |\r\n+------------------------------------+\r\n1 row in set (0.05 sec)\r\n\r\nmysql> INSTALL PLUGIN clone SONAME 'mysql_clone.so';\r\nQuery OK, 0 rows affected (0.01 sec)\r\n\r\nmysql> SET GLOBAL clone_valid_donor_list = '172.17.0.2:3306';\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nmysql> CLONE INSTANCE FROM root@172.17.0.2:3306 IDENTIFIED BY '';\r\nQuery OK, 0 rows affected (2.01 sec)\n\n-- After restart,\r\n\r\nmysql> SELECT * FROM d1.t1;\r\nERROR 1812 (HY000): Tablespace is missing for table `d1`.`t1`.\n\nIn recipient-node's error log.\n\n2021-01-04T06:47:54.626934Z 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.\r\n2021-01-04T06:47:55.163934Z 1 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.\r\n2021-01-04T06:47:55.326973Z 1 [Warning] [MY-012351] [InnoDB] Tablespace 2, name 'd1/t1', file './d1/t1.ibd' is missing!",
+  "date": "2021-01-04 07:00:00",
+  "vulnerable_version": "8.0.22",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE DATABASE d2;",
+    "CREATE TABLE t2 (id INTEGER PRIMARY KEY, name VARCHAR(255) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t2 (name) VALUES ('Test Name');",
+    "SELECT * FROM t2 WHERE id = (SELECT MAX(id) FROM t2);",
+    "SPARQL INSERT DATA { GRAPH <http://example.org/d2> { <http://example.org/d2/t2> <http://example.org/columns/name> 'Test Name' . } };"
+  ],
+  "key_bug_features": [
+    "innodb_validate_tablespace_paths = OFF during CLONE INSTANCE"
+  ]
+}

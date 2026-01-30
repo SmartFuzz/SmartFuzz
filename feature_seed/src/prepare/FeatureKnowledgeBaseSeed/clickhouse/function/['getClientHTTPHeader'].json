@@ -1,0 +1,17 @@
+[
+    "CREATE TABLE requests (id UInt32, header_name String, header_value String) ENGINE = Memory;",
+    "INSERT INTO requests VALUES (1, 'User-Agent', 'Mozilla/5.0'), (2, 'Content-Type', 'application/json'), (3, 'X-ClickHouse-Some-Header', 'some_value');",
+    "SELECT getClientHTTPHeader('User-Agent') FROM requests WHERE id = 1;",
+    "SELECT getClientHTTPHeader('X-ClickHouse-Some-Header') FROM requests WHERE id = 3;",
+    "SELECT getClientHTTPHeader('Content-Type') FROM (SELECT header_value FROM requests WHERE header_name = 'Content-Type') AS subquery;",
+    "SELECT getClientHTTPHeader('Non-Existent-Header') FROM requests WHERE id = 1;",
+    "SELECT id, getClientHTTPHeader(header_name) FROM requests WHERE header_name IN ('User-Agent', 'Content-Type');",
+    "CREATE TABLE headers (request_id UInt32, header_name String, header_value String) ENGINE = Distributed('cluster', 'default', 'requests', rand());",
+    "SELECT getClientHTTPHeader('User-Agent') FROM (SELECT * FROM headers) AS distributed_headers;",
+    "SET allow_get_client_http_header = 1; SELECT getClientHTTPHeader('User-Agent') FROM requests WHERE id = 1;",
+    "SELECT getClientHTTPHeader('Set-Cookie') FROM requests WHERE id = 1;",
+    "SELECT getClientHTTPHeader('X-ClickHouse-Custom') FROM requests WHERE id = 2 HAVING header_value = 'some_value';",
+    "SELECT getClientHTTPHeader('User-Agent') FROM (SELECT header_value FROM requests GROUP BY header_name) AS grouped_headers;",
+    "WITH (SELECT getClientHTTPHeader('User-Agent')) AS user_agent FROM requests WHERE id = 1;",
+    "SELECT getClientHTTPHeader(header_name) FROM requests WHERE header_name = ANY(['User-Agent', 'Content-Type']);"
+]

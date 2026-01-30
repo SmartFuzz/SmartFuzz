@@ -1,0 +1,11 @@
+CREATE TABLE test_dates (id INT PRIMARY KEY, event_time TIMESTAMP, link STRING);
+INSERT INTO test_dates VALUES (1, TIMESTAMP '2020-01-15 12:34:56', 'https://example.com/event1'), (2, TIMESTAMP '2020-02-20 08:00:00', 'https://example.com/event2');
+SELECT id, quarter(event_time) AS event_quarter, url(link) AS valid_url FROM test_dates WHERE url(link) IS NOT NULL;
+SELECT id, quarter(event_time) AS event_quarter FROM test_dates WHERE quarter(event_time) = (SELECT MAX(quarter(event_time)) FROM test_dates);
+SELECT id, COUNT(*) OVER (PARTITION BY quarter(event_time)) AS event_count FROM test_dates;
+SELECT id, quarter(event_time) AS event_quarter FROM test_dates WHERE event_time IS NULL OR quarter(event_time) IN (SELECT DISTINCT quarter(event_time) FROM test_dates WHERE event_time IS NOT NULL);
+CREATE TABLE temp_joins (link STRING, event_id INT);
+INSERT INTO temp_joins VALUES ('https://example.com/event1', 1), ('https://example.com/event2', 2);
+SELECT td.id, q.event_quarter, tj.link FROM test_dates td JOIN (SELECT id, quarter(event_time) AS event_quarter FROM test_dates) q ON td.id = q.id JOIN temp_joins tj ON td.id = tj.event_id WHERE url(tj.link) IS NOT NULL;
+SELECT COUNT(*) FROM test_dates WHERE url(link) IS NULL;
+SELECT id FROM test_dates WHERE quarter(event_time) IS NOT NULL HAVING COUNT(*) > 1;

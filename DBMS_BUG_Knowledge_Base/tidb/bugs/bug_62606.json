@@ -1,0 +1,48 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/62606",
+  "title": "`GROUP BY` returns different results in prepared statement and normal SELECT query",
+  "vulnerable_database": "tidb",
+  "date": "2025-07-24T07:40:47Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\n\nThe following test case contains two equivalent queries, one is a normal SELECT query and another one is a prepared statement. However, they have different results. The normal SELECT query returns 2, while the prepared statement returns 1. Moreover, if I remove the `PRIMARY KEY` keyword, these two queries will have the same results.\n\n```\nCREATE TABLE t0(c0 BOOL PRIMARY KEY);\nINSERT INTO t0 VALUES (true), (false);\nSELECT count(*) FROM t0 WHERE 1 GROUP BY DATE_FORMAT(t0.c0, t0.c0);\nSET @b = 1;\nPREPARE prepare_query FROM 'SELECT count(*) FROM t0 WHERE ? GROUP BY DATE_FORMAT(t0.c0, t0.c0)';\nEXECUTE prepare_query USING @b;\n```\n\n### 2. What did you expect to see? (Required)\n\nThe prepared statement should return the same result with the normal SELECT query.\n\n### 3. What did you see instead (Required)\n\nThe prepared statement returns a different result from the normal SELECT query.\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\ntidb_version()\nRelease Version: v9.0.0-beta.2.pre-149-g96f5396\\nEdition: Community\\nGit Commit Hash: 96f5396be12ae6c5bf440bd22b1e0bec532aff9e\\nGit Branch: HEAD\\nUTC Build Time: 2025-07-21 20:48:44\\nGoVersion: go1.23.11\\nRace Enabled: false\\nCheck Table Before Drop: false\\nStore: tikv\\nKernel Type: Classic",
+  "poc": [
+    "CREATE TABLE t0(c0 BOOL PRIMARY KEY);",
+    "INSERT INTO t0 VALUES (true), (false);",
+    "SELECT count(*) FROM t0 WHERE 1 GROUP BY DATE_FORMAT(t0.c0, t0.c0);",
+    "SET @b = 1;",
+    "PREPARE prepare_query FROM 'SELECT count(*) FROM t0 WHERE ? GROUP BY DATE_FORMAT(t0.c0, t0.c0)';",
+    "EXECUTE prepare_query USING @b;"
+  ],
+  "poc_type": "sql_text",
+  "state": "open",
+  "key_bug_features": [
+    "`GROUP BY` inconsistency between prepared statement and normal query"
+  ],
+  "bug_feature_seed": [
+  "SET GLOBAL tidb_enable_instance_plan_cache = 1;",
+  "DROP TABLE IF EXISTS t0;",
+  "CREATE TABLE t0(c0 BOOL PRIMARY KEY);",
+  "INSERT INTO t0 VALUES (true),(false);",
+  "SELECT COUNT(*) FROM t0 WHERE 1 GROUP BY DATE_FORMAT(t0.c0, t0.c0);",
+  "SELECT COUNT(*) FROM t0 WHERE TRUE GROUP BY DATE_FORMAT(t0.c0, t0.c0);",
+  "SELECT COUNT(*) FROM t0 WHERE 1=1 GROUP BY DATE_FORMAT(t0.c0, t0.c0);",
+  "SET @b = 1;",
+  "PREPARE ps1 FROM 'SELECT COUNT(*) FROM t0 WHERE ? GROUP BY DATE_FORMAT(t0.c0, t0.c0)';",
+  "EXECUTE ps1 USING @b;",
+  "SET @b = TRUE;",
+  "EXECUTE ps1 USING @b;",
+  "DEALLOCATE PREPARE ps1;",
+  "PREPARE ps2 FROM 'SELECT COUNT(*) FROM t0 WHERE ?=1 GROUP BY DATE_FORMAT(t0.c0, t0.c0)';",
+  "SET @b = 1;",
+  "EXECUTE ps2 USING @b;",
+  "DEALLOCATE PREPARE ps2;",
+  "PREPARE ps3 FROM 'SELECT COUNT(*) FROM t0 WHERE ? GROUP BY DATE_FORMAT(c0, c0)';",
+  "SET @b = 1;",
+  "EXECUTE ps3 USING @b;",
+  "DEALLOCATE PREPARE ps3;",
+  "PREPARE ps4 FROM 'SELECT COUNT(*) FROM t0 WHERE ? GROUP BY DATE_FORMAT(c0, ?)';",
+  "SET @b = 1;",
+  "EXECUTE ps4 USING @b, @b;"
+]
+
+}

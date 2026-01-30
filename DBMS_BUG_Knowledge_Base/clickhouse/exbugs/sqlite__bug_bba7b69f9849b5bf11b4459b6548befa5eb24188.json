@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/bba7b69f98",
+  "title": "REINDEX on WITHOUT ROWID table with DESC PRIMARY KEY corrupts automatic UNIQUE index",
+  "description": "dan added on 2019-05-13 20:44:24:\nFor example:\nCREATE TABLE t0 (c0 INTEGER PRIMARY KEY DESC, c1 UNIQUE DEFAULT NULL) WITHOUT ROWID;\n  INSERT INTO t0(c0) VALUES (1), (2), (3), (4), (5);\n  REINDEX;\n  PRAGMA integrity_check;\ndrh added on 2019-05-14 00:22:42:\nThis problem arises from an oversight in the implementation of WITHOUT ROWID.\nThe original error dates from 2013, and cannot be fixed without breaking\nbackwards compatibility.\nA UNIQUE constraint is just a UNIQUE index on the columns named.\nEvery index is a btree that is keyed by the columns being indexed followed\nby the primary key for the main table.  (Special rules apply if the primary\nkey of the table is one of the columns being indexed.)  Normally, the sort\norder of the primary key column(s) in the index match the sort order of the\nprimary key column(s) in the main table.  However, if\nThe table is a WITHOUT ROWID table, and\nThe PRIMARY KEY of the table uses DESC sort order, and\nThe index results from a UNIQUE constraint in the original\n      CREATE TABLE statement, not from a separate CREATE INDEX \n      or CREATE UNIQUE INDEX statement,\nThen the primary key columns in the index will use ASC sort order and\nwill thus have a different sort order from the main table.  Call\nthis situation the \"WITHOUT ROWID DESC PRIMARY KEY UNIQUE constraint\nindex anomaly\".\nI suspect that this anomaly does not occur in the wild, since I do not\nrecall ever seeing a real-world schema that included a PRIMARY KEY\nwith a DESC sort order.\nNormally, the anomaly is without consequence.  All queries still work\ncorrectly.\nHowever, the REINDEX command was trying to take advantage of the fact\nthat the keys in the main table are in the same order as the keys in the\nindex.  Normally this is true and the REINDEX runs much faster because it\ncould avoid some unnecessary seek operations.  But this condition is not true\nfor the obscure indexes described above, and will cause the REINDEX to\ncompute an incorrect index.\nThe fix here is to omit the REINDEX optimization in the corner case where\nthe WITHOUT ROWID DESC PRIMARY KEY UNIQUE constraint index anomaly\noccurs.",
+  "date": "2019-05-13 20:44:246.25 years ago",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (id Int32, name String, age Int32) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO t1(id, name, age) VALUES (1, 'Alice', 30), (2, 'Bob', 25), (3, 'Charlie', 35);",
+    "CREATE TABLE t2 (ref_id Int32, description String) ENGINE = MergeTree() ORDER BY ref_id;",
+    "ALTER TABLE t2 ADD CONSTRAINT unique_ref_id_description UNIQUE(ref_id, description);",
+    "SELECT * FROM t1 WHERE age >= 0;"
+  ],
+  "key_bug_features": [
+    "REINDEX on WITHOUT ROWID table with DESC PRIMARY KEY"
+  ]
+}

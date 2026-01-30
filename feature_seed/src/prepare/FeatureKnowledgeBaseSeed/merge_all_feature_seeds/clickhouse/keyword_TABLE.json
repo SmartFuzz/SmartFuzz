@@ -1,0 +1,13 @@
+CREATE TABLE IF NOT EXISTS test_table (id UInt32, name String, age UInt8, created_at DateTime DEFAULT now()) ENGINE = MergeTree PRIMARY KEY id;
+CREATE TABLE temp_table AS test_table ENGINE = Memory;
+CREATE TABLE user_profiles (user_id UInt32, email String DEFAULT '', name String DEFAULT 'Unknown', created_at DateTime DEFAULT now()) ENGINE = MergeTree ORDER BY user_id;
+CREATE TABLE orders (order_id UInt32, user_id UInt32, amount Float64, order_date Date DEFAULT now()) ENGINE = ReplicatedMergeTree('/orders', 'replica1') PARTITION BY toYYYYMM(order_date) ORDER BY (order_id, user_id);
+CREATE TABLE IF NOT EXISTS blog_posts (post_id UInt32, author_id UInt32, title String, content String, created_at DateTime DEFAULT now(), PRIMARY KEY (post_id)) ENGINE = MergeTree ORDER BY post_id;
+CREATE TABLE analytics AS SELECT user_id, count(*) as visits FROM user_profiles GROUP BY user_id;
+CREATE TABLE products (product_id UInt32, product_name String, price Float64, stock UInt32) ENGINE = MergeTree PRIMARY KEY product_id;
+CREATE TABLE IF NOT EXISTS sales (sale_id UInt32, product_id UInt32, sale_date DateTime, quantity UInt32, revenue Float64 DEFAULT quantity * (SELECT price FROM products WHERE product_id = sales.product_id)) ENGINE = MergeTree PARTITION BY toYYYYMM(sale_date) ORDER BY sale_id;
+CREATE TABLE if not exists order_summary AS SELECT user_id, sum(amount) as total_spent FROM orders GROUP BY user_id;
+CREATE TABLE events (event_id UInt32, user_id UInt32, event_type String, event_time DateTime) ENGINE = MergeTree PARTITION BY toYYYYMM(event_time) ORDER BY (event_time, user_id);
+CREATE TABLE logs (log_id UInt32, message String, log_date DateTime DEFAULT now()) ENGINE = MergeTree ORDER BY log_id;
+CREATE TABLE IF NOT EXISTS user_activity (user_id UInt32, activity_type String, activity_date DateTime DEFAULT now(), PRIMARY KEY (user_id, activity_date)) ENGINE = MergeTree PARTITION BY toYYYYMM(activity_date) ORDER BY (user_id, activity_date);
+CREATE TABLE temp_sales AS SELECT sale_id, product_id, sale_date, quantity FROM sales WHERE sale_date >= '2021-01-01';

@@ -1,0 +1,18 @@
+CREATE TABLE weights_table (id UInt32, value Float64, weight UInt32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO weights_table VALUES (1, 1.0, 3), (2, 2.0, 5), (3, 3.0, 10);
+SELECT quantileExactWeighted(0.5)(value, weight) FROM weights_table;
+CREATE TABLE input_table (value Float64) ENGINE = MergeTree() ORDER BY value;
+INSERT INTO input_table VALUES (0.1), (0.5), (0.9), (0.3), (0.7);
+SELECT quantileExactWeighted(0.75)(value, 2) FROM input_table;
+SELECT quantileExactWeighted(0.99)(value, 1) FROM input_table;
+CREATE TABLE mixed_table (value Float64, weight UInt32) ENGINE = MergeTree() ORDER BY value;
+INSERT INTO mixed_table VALUES (1.0, 1), (2.0, 4), (3.0, 2), (4.0, 3);
+SELECT quantileExactWeighted(0.25)(value, weight) FROM mixed_table;
+CREATE TABLE subquery_table AS SELECT value, weight FROM mixed_table;
+SELECT quantileExactWeighted(0.5)(value, weight) FROM (SELECT value, weight FROM subquery_table) AS sub;
+CREATE TABLE another_table (date Date, weight UInt32) ENGINE = MergeTree() ORDER BY date;
+INSERT INTO another_table VALUES (CAST('2023-01-01' AS Date), 5), (CAST('2023-01-02' AS Date), 3), (CAST('2023-01-03' AS Date), 7);
+SELECT quantileExactWeighted(0.5)(date, weight) FROM another_table;
+CREATE TABLE joined_table (id UInt32, value Float64, weight UInt32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO joined_table VALUES (1, 1.0, 3), (1, 2.0, 2), (2, 3.0, 5), (2, 4.0, 4);
+SELECT id, quantileExactWeighted(0.75)(value, weight) FROM joined_table GROUP BY id;

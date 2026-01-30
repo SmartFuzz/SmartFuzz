@@ -1,0 +1,14 @@
+CREATE TABLE test_xml (id INT PRIMARY KEY, data XML);
+INSERT INTO test_xml (id, data) VALUES (1, xtree_doc('<root><item>A</item></root>'));
+INSERT INTO test_xml (id, data) VALUES (2, xtree_doc('<root><item>B</item></root>'));
+INSERT INTO test_xml (id, data) VALUES (3, xtree_doc('<root><item>C</item></root>'));
+CREATE TABLE test_hash (doc_id INT, crc_hash BIGINT, FOREIGN KEY (doc_id) REFERENCES test_xml(id));
+INSERT INTO test_hash (doc_id, crc_hash) SELECT id, bif:crc64(data) FROM test_xml;
+SELECT id, XMLReplace(data, xquery_eval('//item', data), xtree_doc('<replacement>A1</replacement>')) AS modified_data FROM test_xml WHERE id = 1;
+SELECT id, XMLReplace(data, xquery_eval('//item', data), NULL) AS modified_data FROM test_xml WHERE id IN (SELECT doc_id FROM test_hash WHERE crc_hash = bif:crc64(xtree_doc('<root><item>A</item></root>')));
+SELECT id, XMLReplace(XMLReplace(data, xquery_eval('//item', data), 'Replaced'), xquery_eval('//item', data), '<newitem>New</newitem>') AS modified_data FROM test_xml WHERE id >= 1;
+SELECT id, bif:crc64(XMLReplace(data, xquery_eval('//item', data), xtree_doc('<replacement>B1</replacement>'))) AS new_hash FROM test_xml WHERE data IS NOT NULL;
+CREATE TABLE xml_updates (update_id INT PRIMARY KEY, update_comment XML);
+INSERT INTO xml_updates (update_id, update_comment) VALUES (1, xtree_doc('<comment>Initial Update</comment>'));
+INSERT INTO xml_updates (update_id, update_comment) VALUES (2, xtree_doc('<comment>Second Update</comment>'));
+SELECT id, update_comment, XMLReplace(update_comment, xquery_eval('//comment', update_comment), xtree_doc('<comment>Updated Comment</comment>')) AS modified_comment FROM xml_updates WHERE update_id IN (SELECT doc_id FROM test_hash);

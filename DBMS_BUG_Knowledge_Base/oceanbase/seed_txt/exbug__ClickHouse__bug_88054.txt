@@ -1,0 +1,6 @@
+CREATE TABLE source_test (client_id Int32, site_id Int32, date Date, visitors Int64, _peerdb_synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, _peerdb_is_deleted UInt8 DEFAULT 0, _peerdb_version Int64) ENGINE = ReplacingMergeTree(_peerdb_version, _peerdb_is_deleted) PRIMARY KEY (client_id, site_id, date) ORDER BY (client_id, site_id, date);
+INSERT INTO source_test (client_id, site_id, date, visitors, _peerdb_version) VALUES (1, 100, '2023-10-01', 50, 1);
+INSERT INTO source_test (client_id, site_id, date, visitors, _peerdb_version) VALUES (1, 100, '2023-10-01', 70, 2);
+CREATE TABLE target_test (client_id Int32, date Date, visitors Int64, deleted UInt8, version Int64) ENGINE = ReplacingMergeTree(version, deleted) PRIMARY KEY (client_id, date) ORDER BY (client_id, date);
+INSERT INTO target_test (client_id, date, visitors, deleted, version) SELECT client_id, date, SUM(visitors), 0, MAX(_peerdb_version) FROM source_test GROUP BY client_id, date;
+SELECT * FROM target_test WHERE visitors > 0 ORDER BY client_id, date;

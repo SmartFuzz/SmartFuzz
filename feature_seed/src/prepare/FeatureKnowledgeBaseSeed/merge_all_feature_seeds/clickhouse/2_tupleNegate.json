@@ -1,0 +1,13 @@
+CREATE TABLE test_table (id UInt32, val Tuple(Nullable(Int32), String), str_val String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table (id, val, str_val) VALUES (1, (1, 'test1'), 'test1'), (2, (NULL, 'test2'), NULL), (3, (3, 'test3'), 'test3'), (4, (4, 'test4'), 'test4'), (5, (5, ''), '');
+SELECT id, tupleNegate(val) AS negated_val FROM test_table WHERE str_val LIKE 'test%';
+SELECT id FROM (SELECT id, tupleNegate(val) AS negated_val FROM test_table) AS t WHERE negated_val.1 IS NOT NULL;
+SELECT count(*) FROM test_table GROUP BY tupleNegate(val) HAVING count(*) > 0;
+SELECT id, str_val FROM test_table WHERE val.1 LIKE CONCAT('%', str_val, '%') OR val.1 IS NULL;
+SELECT id, COUNT(*) OVER (PARTITION BY tupleNegate(val)) AS count_negated FROM test_table;
+SELECT tupleNegate((SELECT val FROM test_table WHERE id = 1)) AS nested_negate WHERE str_val LIKE 'test1';
+SELECT id FROM test_table WHERE val LIKE tupleNegate((1, '')) OR str_val IS NULL;
+CREATE TABLE temp_table AS SELECT * FROM test_table WHERE str_val IS NOT NULL;
+INSERT INTO temp_table (id, val, str_val) VALUES (6, (10, 'test5'), 'test5'), (7, (20, NULL), 'test6');
+SELECT id, tupleNegate(val) AS negated_val FROM temp_table WHERE negated_val.2 LIKE 'test%';
+DROP TABLE IF EXISTS temp_table;

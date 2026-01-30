@@ -1,0 +1,11 @@
+CREATE TABLE test_strings (id Int32, haystack String, pattern String);
+INSERT INTO test_strings VALUES (1, 'hello world', 'hello'), (2, 'SQL Fuzz Testing 2023', 'fuzz'), (3, 'ClickHouse is great!', 'great'), (4, '', 'empty');
+SELECT id, haystack, match(haystack, pattern) AS is_match FROM test_strings WHERE id IN (SELECT id FROM test_strings WHERE match(haystack, 'test'));
+SELECT id, haystack, pattern FROM test_strings WHERE id IN (SELECT id FROM test_strings WHERE match(haystack, pattern));
+CREATE TABLE test_data (id Int32, content String, num_value Float64);
+INSERT INTO test_data VALUES (1, 'value1', NULL), (2, 'value2', 3.14), (3, '', 1.0), (4, 'value4', -1.0);
+SELECT id, content FROM test_data WHERE num_value IN (SELECT num_value FROM test_data WHERE match(content, 'value'));
+SELECT count(*) FROM (SELECT content, num_value FROM test_data WHERE match(content, '(?s)value.*?') GROUP BY content HAVING match(content, pattern) IN (3.14, -1.0));
+SELECT id FROM test_data WHERE content IN (SELECT content FROM test_data WHERE match(content, 'value%'));
+SELECT id, content, y.num_value FROM test_data JOIN (SELECT id, num_value FROM test_data WHERE num_value < 0) AS y ON test_data.id = y.id WHERE match(content, 'value');
+CREATE TEMPORARY TABLE temp_results AS SELECT id, haystack, match(haystack, '^[a-z]+$') AS is_alpha FROM test_strings HAVING is_alpha = 1;

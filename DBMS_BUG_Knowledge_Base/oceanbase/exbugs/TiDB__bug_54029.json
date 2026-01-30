@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/54029",
+  "title": "Using JSON_TYPE on non-JSON values should return an error",
+  "description": "## Bug Report\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n\r\n```sql\r\nCREATE TABLE t1(id INT PRIMARY KEY, d1 DATE, d2 DATETIME, t1 TIME, t2 TIMESTAMP, b1 BIT, b2 BINARY);\r\nINSERT INTO t1 VALUES (1, '2024-06-14', '2024-06-14 09:37:00', '09:37:00', '2024-06-14 09:37:00', b'0', 0x41);\r\nSELECT JSON_TYPE(d1),JSON_TYPE(d2),JSON_TYPE(t1),JSON_TYPE(t2),JSON_TYPE(b1),JSON_TYPE(b2) FROM t1;\r\n```\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\n```\r\nmysql-8.4.0> CREATE TABLE t1(id INT PRIMARY KEY, d1 DATE, d2 DATETIME, t1 TIME, t2 TIMESTAMP, b1 BIT, b2 BINARY);\r\nQuery OK, 0 rows affected (0.02 sec)\r\n\r\nmysql-8.4.0> INSERT INTO t1 VALUES (1, '2024-06-14', '2024-06-14 09:37:00', '09:37:00', '2024-06-14 09:37:00', b'0', 0x41);\r\nQuery OK, 1 row affected (0.01 sec)\r\n\r\nmysql-8.4.0> SELECT JSON_TYPE(d1),JSON_TYPE(d2),JSON_TYPE(t1),JSON_TYPE(t2),JSON_TYPE(b1),JSON_TYPE(b2) FROM t1;\r\nERROR 3146 (22032): Invalid data type for JSON data in argument 1 to function json_type; a JSON string or JSON type is required.\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n```\r\nmysql-8.0.11-TiDB-v8.1.0> CREATE TABLE t1(id INT PRIMARY KEY, d1 DATE, d2 DATETIME, t1 TIME, t2 TIMESTAMP, b1 BIT, b2 BINARY);\r\nQuery OK, 0 rows affected (0.11 sec)\r\n\r\nmysql-8.0.11-TiDB-v8.1.0> INSERT INTO t1 VALUES (1, '2024-06-14', '2024-06-14 09:37:00', '09:37:00', '2024-06-14 09:37:00', b'0', 0x41);\r\nQuery OK, 1 row affected (0.01 sec)\r\n\r\nmysql-8.0.11-TiDB-v8.1.0> SELECT JSON_TYPE(d1),JSON_TYPE(d2),JSON_TYPE(t1),JSON_TYPE(t2),JSON_TYPE(b1),JSON_TYPE(b2) FROM t1;\r\n+---------------+---------------+---------------+---------------+------------------+---------------+\r\n| JSON_TYPE(d1) | JSON_TYPE(d2) | JSON_TYPE(t1) | JSON_TYPE(t2) | JSON_TYPE(b1)    | JSON_TYPE(b2) |\r\n+---------------+---------------+---------------+---------------+------------------+---------------+\r\n| DATE          | DATETIME      | TIME          | DATETIME      | UNSIGNED INTEGER | BLOB          |\r\n+---------------+---------------+---------------+---------------+------------------+---------------+\r\n1 row in set (0.00 sec)\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n```\r\nRelease Version: v8.1.0\r\nEdition: Community\r\nGit Commit Hash: 945d07c5d5c7a1ae212f6013adfb187f2de24b23\r\nGit Branch: HEAD\r\nUTC Build Time: 2024-05-21 03:51:57\r\nGoVersion: go1.21.10\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: tikv\r\n```",
+  "date": "2024-06-14T07:43:42Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2(id INT PRIMARY KEY, d1 VARCHAR(50), d2 FLOAT, d3 BOOLEAN, d4 VARCHAR(255));",
+    "INSERT INTO t2 VALUES (1, 'test', 3.14, TRUE, '{\"key\": \"value\"}');",
+    "SELECT CASE WHEN d1 IS NOT NULL THEN 'STRING' ELSE 'NULL' END AS JSON_TYPE_d1, CASE WHEN d2 IS NOT NULL THEN 'FLOAT' ELSE 'NULL' END AS JSON_TYPE_d2, CASE WHEN d3 IS NOT NULL THEN 'BOOLEAN' ELSE 'NULL' END AS JSON_TYPE_d3, CASE WHEN d4 IS NOT NULL THEN 'STRING' ELSE 'NULL' END AS JSON_TYPE_d4 FROM t2;",
+    "CREATE TABLE t3(id INT PRIMARY KEY, d1 INT, d2 DECIMAL(10,2), d3 TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t3 VALUES (1, 100, 99.99, NULL);"
+  ],
+  "key_bug_features": [
+    "Using JSON_TYPE on non-JSON values returns incorrect results"
+  ]
+}

@@ -1,0 +1,11 @@
+CREATE TABLE test_mongodb (log_type String, host String, command String) ENGINE = Memory;
+INSERT INTO test_mongodb VALUES ('event', '120.5.33.9', 'check-cpu-usage -w 75 -c 90'), ('event', NULL, 'system-check'), ('event', '120.5.33.4', '');
+SELECT * FROM mongodb('127.0.0.1:27017', 'test', 'my_collection', 'test_user', 'password', 'log_type String, host String, command String', 'connectTimeoutMS=10000') WHERE host IS NOT NULL OR command = '';
+SELECT log_type, host FROM mongodb('mongodb://test_user:password@127.0.0.1:27017/test?connectionTimeoutMS=10000', 'my_collection', 'log_type String, host String, command String') WHERE (length(command) >= 0 AND host >= '120.5.33.0') GROUP BY log_type, host HAVING COUNT(*) >= 1;
+WITH (SELECT COUNT(*) FROM mongodb('127.0.0.1:27017', 'test', 'my_collection', 'test_user', 'password', 'log_type String, host String, command String')) AS cnt SELECT cnt, (SELECT COUNT(*) FROM test_mongodb WHERE host IS NOT NULL) >= 2;
+CREATE TABLE temp_mongodb (log_type String, command String, timestamp DateTime) ENGINE = MergeTree() ORDER BY timestamp;
+INSERT INTO temp_mongodb VALUES ('event', 'check-disk-space', now()), ('event', 'check-cpu-usage', now() - INTERVAL 2 HOUR);
+SELECT log_type, host FROM test_mongodb WHERE EXISTS (SELECT 1 FROM temp_mongodb WHERE command = 'check-cpu-usage') AND (SELECT COUNT(*) FROM temp_mongodb) >= 1;
+SELECT log_type, command, host FROM test_mongodb WHERE command LIKE '%-c%' AND LENGTH(command) >= 5 GROUP BY log_type HAVING COUNT(DISTINCT host) >= 1;
+SELECT log_type, MAX(CASE WHEN command IS NULL THEN 0 ELSE 1 END) AS is_command_present FROM test_mongodb GROUP BY log_type HAVING COUNT(*) >= 1;
+SELECT log_type, MIN(host) AS min_host FROM test_mongodb WHERE LENGTH(host) >= 10 GROUP BY log_type ORDER BY min_host >= '120.5.33.1';

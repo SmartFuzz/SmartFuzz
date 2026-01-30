@@ -1,0 +1,16 @@
+{
+    "function": "replaceRegexpOne",
+    "operator": "a = ANY (subquery)",
+    "sql_array": [
+        "CREATE TABLE test.hits (EventDate DateTime, EventName String, UserId UInt64) ENGINE = MergeTree() ORDER BY EventDate;",
+        "INSERT INTO test.hits VALUES (now(), 'Login', 1), (now() - INTERVAL 1 DAY, 'Logout', 2), (now() - INTERVAL 2 DAY, 'Purchase', 3);",
+        "SELECT replaceRegexpOne(replaceRegexpOne(toString(EventName), 'Login', 'Sign In'), 'Logout', 'Sign Out') AS updated_event FROM test.hits WHERE UserId = ANY (SELECT UserId FROM test.hits WHERE EventName = 'Purchase') ORDER BY EventDate;",
+        "SELECT EventDate, COUNT(*) AS count FROM test.hits GROUP BY replaceRegexpOne(EventName, '^(.*)', '\\1') HAVING count > ANY (SELECT COUNT(*) FROM test.hits WHERE EventName = 'Login') ORDER BY EventDate DESC;",
+        "SELECT DISTINCT EventDate, replaceRegexpOne(EventName, '^(.*)$', '\\0 - processed') AS processed_event FROM test.hits WHERE EventDate = ANY (SELECT EventDate FROM test.hits WHERE UserId = 1) AND replaceRegexpOne(toString(EventDate), '(\\\\d{4})-(\\\\d{2})-(\\\\d{2})', '\\\\3/\\\\2/\\\\1') LIKE '%.02/%.01/%.23';",
+        "SELECT replaceRegexpOne(EventName, '.+', 'User: \\0') AS user_event FROM test.hits WHERE UserId = ANY (SELECT DISTINCT UserId FROM test.hits WHERE EventDate >= now() - INTERVAL 7 DAY) LIMIT 5;",
+        "SELECT EventDate, COUNT(*) AS login_count FROM test.hits WHERE EventName = ANY (SELECT replaceRegexpOne(toString(EventName), '.*(Login).*', '\\\\1') FROM test.hits) GROUP BY replaceRegexpOne(toString(EventDate), '(\\\\d{4})-(\\\\d{2})-(\\\\d{2})', '\\\\1/\\\\2/\\\\3') ORDER BY EventDate;",
+        "CREATE TABLE test.session_data (SessionId UUID, UserId UInt64, SessionStart DateTime, SessionEnd DateTime) ENGINE = MergeTree() ORDER BY SessionStart;",
+        "INSERT INTO test.session_data VALUES (generateUUIDv4(), 1, now() - INTERVAL 5 HOUR, now() - INTERVAL 4 HOUR);",
+        "SELECT replaceRegexpOne(SessionId, '[{(]([0-9a-fA-F-]+)[)}]', '\\1') AS clean_session_id FROM test.session_data WHERE SessionStart > ANY (SELECT MAX(SessionStart) FROM test.hits) AND UserId = ANY (SELECT DISTINCT UserId FROM test.hits);"
+    ]
+}

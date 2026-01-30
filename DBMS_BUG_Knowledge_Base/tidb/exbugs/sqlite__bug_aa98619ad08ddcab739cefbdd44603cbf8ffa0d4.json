@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/aa98619ad0",
+  "title": "Assertion fault on an IN operator using a constant index",
+  "description": "drh added on 2017-08-14 12:52:08:\nThe following SQLite causes an assertion fault:\nCREATE TABLE t1(x TEXT);\nCREATE INDEX t1x1 ON t1(1);\nSELECT 1 IN (SELECT 2) FROM t1;\nNotice the goofy index - an index on a constant expression.  An index on\na constant expression appears to be required to expression this problem.\nBisecting shows that this problem was introduced by check-in [a47efb7c8520a011]\n(2017-04-11) and first appeared in the 3.19.0 release (2017-05-22).\nThis problem was discovered by OSSFuzz.\ndan added on 2017-11-06 12:01:27:\nAnother reproduction:\nCREATE TABLE t1 ( x );\n  CREATE INDEX i1 ON t1 ( upper(x) );\n  SELECT 1 FROM t1 dfs WHERE upper(x)=1 AND upper(x) IN ('a', 'b', 'c');\ndan added on 2017-11-06 12:04:01:\nFixed here: [d0da791ba0edfb65]",
+  "date": "2017-08-14 12:52:087.99 years ago",
+  "vulnerable_version": "3.19.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(x TEXT, y INT);",
+    "CREATE INDEX idx_constant ON t1(y);",
+    "INSERT INTO t1(x, y) VALUES ('a', 1), ('b', 2), (NULL, 3);",
+    "SELECT 1 IN (SELECT y FROM t1 WHERE x IS NULL) AS result;",
+    "SELECT y FROM t1 WHERE y IN (1, 2) AND x IN ('a', 'b', 'c');"
+  ],
+  "key_bug_features": [
+    "Index on a constant expression causes assertion fault"
+  ]
+}

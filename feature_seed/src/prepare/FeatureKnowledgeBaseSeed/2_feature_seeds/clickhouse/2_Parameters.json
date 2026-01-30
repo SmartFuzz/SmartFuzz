@@ -1,0 +1,10 @@
+CREATE TABLE test_allocations (id UInt64, stacktrace Array(UInt64), allocation_size UInt64, allocation_address UInt64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_allocations VALUES (1, [100, 200, 300], 1, 0), (2, [400, 500, 600], 1, 0);
+SELECT id FROM test_allocations WHERE allocation_size != ALL (SELECT allocation_size FROM test_allocations WHERE id = 1);
+SELECT id, Parameters(stacktrace, allocation_size, allocation_address) AS profile FROM test_allocations GROUP BY id HAVING profile != ALL (SELECT profile FROM test_allocations WHERE id = 2);
+SELECT id, allocation_size, Parameters(stacktrace) AS profile FROM test_allocations WHERE allocation_size != ALL (SELECT DATEDIFF('second', toDateTime(0), toDateTime(allocation_address)) FROM test_allocations) AND profile IS NOT NULL;
+SELECT id, Parameters(stacktrace) AS allocation_profile FROM (SELECT id, allocation_size, allocation_address FROM test_allocations WHERE allocation_size > 0) AS derived_table GROUP BY id HAVING allocation_profile != ALL (SELECT b.allocation_profile FROM (SELECT id, Parameters(stacktrace) AS allocation_profile FROM test_allocations) AS b);
+CREATE TABLE temp_alloc (id UInt64, stacktrace Array(UInt64), allocation_size Float32) ENGINE = Memory;
+INSERT INTO temp_alloc SELECT id, stacktrace, allocation_size * 1.0 FROM test_allocations WHERE allocation_size != NULL;
+SELECT a.id FROM test_allocations a JOIN temp_alloc b ON a.id = b.id WHERE b.allocation_size != ALL (SELECT allocation_size FROM test_allocations WHERE allocation_size < 1);
+SELECT Parameters(a.stacktrace) AS profile FROM test_allocations a WHERE a.allocation_size BETWEEN (SELECT MIN(allocation_size) FROM test_allocations WHERE allocation_size > 0) AND (SELECT MAX(allocation_size) FROM test_allocations);

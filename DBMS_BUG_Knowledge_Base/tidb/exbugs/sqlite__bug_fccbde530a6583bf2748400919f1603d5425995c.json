@@ -1,0 +1,21 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/fccbde530a",
+  "title": "DISTINCT thinks a zeroblob() and blob of all zeros are different",
+  "description": "drh added on 2014-02-08 18:47:06:\nThe logic that computes DISTINCT sometimes thinks that a zeroblob() and a\nblob of all zeros are different when they should be the same.  The following\nquery illustrates the problem:\nCREATE TABLE t1(a INTEGER);\nINSERT INTO t1 VALUES(3);\nINSERT INTO t1 VALUES(2);\nINSERT INTO t1 VALUES(1);\nINSERT INTO t1 VALUES(2);\nINSERT INTO t1 VALUES(3);\nCREATE TABLE t2(x);\nINSERT INTO t2\n  SELECT DISTINCT\n    CASE a WHEN 1 THEN x'0000000000'\n           WHEN 2 THEN zeroblob(5)\n           ELSE 'xyzzy' END\n    FROM t1;\nSELECT quote(x) FROM t2;\nThe final output above should only generate two rows: x'0000000000' and 'xyzzy'\nsince x'0000000000' and zeroblob(5) are logically equivalent.  But it ends up\ngenerating three rows.  There are two x'0000000000' values in the output.\nBisecting shows that this problem was introduced by check-in\n[45e581bff7a75db] on 2011-07-02 for SQLite version 3.7.8.\nThis problem was discovered by the developers during code analysis and\nhas never been reported in the wild.",
+  "date": "2014-02-08 18:47:0611.50 years ago",
+  "vulnerable_version": "3.8.3",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(a INT, b BLOB);",
+    "INSERT INTO t1 VALUES(1, x'0000000000');",
+    "INSERT INTO t1 VALUES(2, CAST(REPEAT(x'00', 5) AS BLOB));",
+    "INSERT INTO t1 VALUES(3, x'0000000000');",
+    "CREATE TABLE t2(x BLOB NOT NULL);",
+    "INSERT INTO t2 SELECT DISTINCT CASE a WHEN 1 THEN x'0000000000' WHEN 2 THEN CAST(REPEAT(x'00', 5) AS BLOB) ELSE 'xyzzy' END FROM t1;"
+  ],
+  "key_bug_features": [
+    "DISTINCT treats zeroblob() and blob of zeros as different"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+    "function": "toFloat32OrZero",
+    "operator": "a != ANY (subquery)",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, number String, value String);",
+        "INSERT INTO test_table VALUES (1, '42.0', 'value1'), (2, 'not_a_number', 'value2'), (3, '', 'value3'), (4, '3.4028235E38', 'value4'), (5, '0xc1', 'value5');",
+        "SELECT id, toFloat32OrZero(number) AS converted_number FROM test_table WHERE converted_number != ANY (SELECT toFloat32OrZero(value) FROM test_table WHERE id <> 1) ORDER BY id;",
+        "SELECT id, toFloat32OrZero(number) AS converted_number FROM test_table WHERE converted_number != ANY (SELECT DISTINCT toFloat32OrZero(value) FROM test_table GROUP BY value HAVING value != '') ORDER BY converted_number DESC;",
+        "SELECT id, value, toFloat32OrZero(number) AS converted_number FROM test_table WHERE converted_number != ANY (SELECT toFloat32OrZero(value) FROM (SELECT DISTINCT value FROM test_table) t) AND converted_number != 0 ORDER BY converted_number;",
+        "CREATE TABLE temp_test (num Float32, text String);",
+        "INSERT INTO temp_test VALUES (toFloat32OrZero('42.7'), 'example1'), (toFloat32OrZero('0xcafe'), 'example2'), (toFloat32OrZero(''), 'example3');",
+        "SELECT * FROM temp_test WHERE num != ANY (SELECT DISTINCT toFloat32OrZero(text) FROM temp_test WHERE text != 'example2');",
+        "WITH (SELECT toFloat32OrZero(number) AS conv_value FROM test_table) AS val SELECT id FROM test_table WHERE val.conv_value != ANY (SELECT conv_value);",
+        "SELECT id, toFloat32OrZero(value) AS float_value FROM (SELECT number AS value FROM test_table WHERE id < 3) WHERE float_value != 0;"
+    ]
+}

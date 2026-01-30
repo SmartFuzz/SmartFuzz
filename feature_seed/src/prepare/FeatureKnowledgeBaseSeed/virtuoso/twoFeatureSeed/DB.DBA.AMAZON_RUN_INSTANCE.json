@@ -1,0 +1,18 @@
+{
+    "function": "DB.DBA.AMAZON_RUN_INSTANCE",
+    "operator": "bif:exec",
+    "sql_array": [
+        "CREATE TABLE instances (id INT PRIMARY KEY, access_key VARCHAR(100), sec_token VARCHAR(100), key_name VARCHAR(100), p_name VARCHAR(100));",
+        "INSERT INTO instances (id, access_key, sec_token, key_name, p_name) VALUES (1, 'AKIAABCDEFGHIJK123', 'CGI/EXAMPLE_SECRET/Token/For_Entry1', 'key1', 'instance1'), (2, 'AKIAJKLMNOPQRSTUV456', NULL, 'key2', 'instance2');",
+        "CREATE TABLE instance_logs (log_id INT PRIMARY KEY, instance_id INT, log_message VARCHAR(255));",
+        "INSERT INTO instance_logs (log_id, instance_id, log_message) VALUES (1, 1, 'Instance started successfully.'), (2, 1, NULL);",
+        "CREATE PROCEDURE test_amazon_run_instance AS BEGIN DECLARE dynamic_command VARCHAR; dynamic_command := 'DB.DBA.AMAZON_RUN_INSTANCE(' || (SELECT access_key FROM instances WHERE id = 1) || ', ''image_name'', COALESCE((SELECT sec_token FROM instances WHERE id = 2), ''default_token''), (SELECT key_name FROM instances WHERE id = 1));'; bif:exec(dynamic_command); END;",
+        "CREATE PROCEDURE boundary_test AS BEGIN DECLARE test_input VARCHAR; test_input := '12345678901234567890'; DB.DBA.AMAZON_RUN_INSTANCE('AKIAEXAMPLENULL', '', test_input, 'test_key'); END;",
+        "CREATE TEMPORARY TABLE complex_data AS SELECT id, access_key, sec_token FROM instances WHERE (sec_token IS NOT NULL OR access_key LIKE 'AKIA%') GROUP BY access_key HAVING COUNT(id) > 0;",
+        "INSERT INTO complex_data (id, access_key, sec_token) SELECT 3, 'AKIA987654321', 'TOKEN123' FROM instances WHERE id IN (SELECT id FROM instances WHERE key_name = 'key1');",
+        "CREATE PROCEDURE run_instance_with_subquery AS BEGIN DECLARE subquery_result VARCHAR; subquery_result := (SELECT sec_token FROM instances WHERE id = (SELECT MAX(id) FROM instances)); DB.DBA.AMAZON_RUN_INSTANCE('AKIAUSER', 'new_image', subquery_result, (SELECT key_name FROM instances WHERE id = 1)); END;",
+        "EXECUTE PROCEDURE test_amazon_run_instance;",
+        "EXECUTE PROCEDURE boundary_test;",
+        "EXECUTE PROCEDURE run_instance_with_subquery;"
+    ]
+}

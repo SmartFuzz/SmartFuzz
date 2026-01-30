@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id UInt32, value String, created_at DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table (id, value, created_at) VALUES (1, '1,2,3,4', now()), (2, '5,6,,8', now()), (3, '', now()), (4, '9,10,11,12', toDateTime('2023-01-01 00:00:00'));
+SELECT id, splitByChar(',', value) AS splitted_value FROM test_table WHERE id == 1;
+SELECT id, count(*) FROM (SELECT id, splitByChar(',', value) AS splitted_value FROM test_table) GROUP BY id HAVING count(*) > 2;
+SELECT id, arrayJoin(splitByChar(',', value)) AS single_value FROM test_table WHERE single_value == '5';
+SELECT id, value, splitByChar(',', value) AS substrings FROM test_table WHERE created_at >= toDateTime('2023-01-01 00:00:00') AND value != '';
+SELECT id FROM (SELECT id, splitByChar(',', value) AS splitted_value FROM test_table WHERE value != '') AS subquery WHERE splitted_value[2] == '6';
+CREATE TABLE test_table2 (user_id UInt32, email String, status Int8) ENGINE = MergeTree() ORDER BY user_id;
+INSERT INTO test_table2 (user_id, email, status) VALUES (1, 'user1@example.com', 1), (2, NULL, 0), (3, 'user3@example.com', 1);
+SELECT user_id, splitByChar('@', email)[1] AS domain FROM test_table2 WHERE status == 1 AND email IS NOT NULL;
+SELECT user_id, count(DISTINCT splitByChar(',', email) AS parts) FROM test_table2 GROUP BY user_id HAVING parts > 0;

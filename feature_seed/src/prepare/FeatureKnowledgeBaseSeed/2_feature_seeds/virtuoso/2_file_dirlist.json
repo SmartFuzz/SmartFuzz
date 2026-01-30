@@ -1,0 +1,12 @@
+CREATE TABLE file_data (id INT PRIMARY KEY, filepath VARCHAR(255) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO file_data (id, filepath) VALUES (1, '/some/directory'), (2, '/another/directory'), (3, NULL);
+INSERT INTO file_data (id, filepath) VALUES (4, 'C:\Windows'), (5, 'invalid\path');
+SELECT DISTINCT xpath_string('/root/child', xml_parse('<root><child>Example</child></root>')) AS extracted FROM (SELECT file_dirlist(filepath) AS dir_contents FROM file_data) AS content WHERE file_contents IS NOT NULL;
+SELECT COUNT(*) FROM (SELECT id, xpath_string('/root/child', xml_parse('<root><child>Data</child></root>')) AS extracted FROM file_data WHERE filepath IS NOT NULL) AS results HAVING COUNT(extracted) > 1;
+SELECT file_dirlist(filepath) FROM file_data WHERE filepath LIKE 'C:\%' UNION SELECT file_dirlist(NULL) FROM file_data WHERE filepath IS NULL;
+SELECT id, AVG(length(filepath)) OVER (PARTITION BY LENGTH(filepath) > 10) AS avg_length FROM file_data HAVING avg_length IS NOT NULL;
+SELECT filepath, xpath_string('/root/child', xml_parse('<root><child>Test</child></root>')) FROM file_data WHERE id IN (SELECT id FROM file_data WHERE filepath IS NOT NULL) ORDER BY filepath;
+SELECT filepath FROM file_data WHERE filepath IS NULL OR LENGTH(filepath) = 0;
+CREATE TABLE directory_contents (id INT, content VARCHAR(255), FOREIGN KEY (id) REFERENCES file_data(id));
+INSERT INTO directory_contents (id, content) SELECT id, UNNEST(file_dirlist(filepath)) FROM file_data WHERE filepath IS NOT NULL;
+SELECT d.id, COUNT(*) FROM directory_contents d JOIN file_data f ON d.id = f.id GROUP BY d.id HAVING COUNT(content) > 1;

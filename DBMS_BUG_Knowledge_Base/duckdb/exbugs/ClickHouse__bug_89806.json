@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/89806",
+  "title": "PR: incorrect query result with MV and JOIN",
+  "description": "### Company or project name\n_No response_\n### Describe the unexpected behaviour\nQuery with JOIN and MV on left side can produce incorrect result\n### How to reproduce\n```sql\nCREATE TABLE n1 (key UInt64, value String) ENGINE = MergeTree ORDER BY key SETTINGS index_granularity=1;\nCREATE TABLE n2 (key UInt64, value Int64) ENGINE = MergeTree ORDER BY key SETTINGS index_granularity=1;\nCREATE TABLE n1_n2_join (k UInt64, v1 String, v2 Int64) ENGINE = MergeTree ORDER BY k;\nCREATE MATERIALIZED VIEW mv TO n1_n2_join\nAS SELECT n1.key as k, n1.value as v1, n2.value as v2 from n1 JOIN n2 ON n1.key = n2.key ORDER BY n1.key;\nINSERT INTO n2 SELECT number, -number FROM numbers(10);\nINSERT INTO n1 SELECT number as key, toString(key) FROM numbers(10) settings enable_parallel_replicas=0;\nCREATE TABLE n3 (key UInt64, value String) ENGINE = MergeTree ORDER BY key SETTINGS index_granularity=1;\nINSERT INTO n3 SELECT number, toString(number + 100) FROM numbers(10);\nSET enable_parallel_replicas=1, max_parallel_replicas=3, cluster_for_parallel_replicas='test_cluster_one_shard_three_replicas_localhost', parallel_replicas_for_non_replicated_merge_tree=1;\nSELECT * FROM mv JOIN n3 ON mv.k = n3.key ORDER BY mv.k, n3.key;\n```\n### Expected behavior\n_No response_\n### Error message and/or stacktrace\n_No response_\n### Additional context\n_No response_",
+  "date": "2025-11-10T13:11:24Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE n4 (key BIGINT, value DOUBLE);",
+    "INSERT INTO n4 SELECT number, number / 2.0 FROM generate_series(0, 9);",
+    "CREATE VIEW mv2 AS SELECT n1.key as k, n1.value as v1, n4.value as v2 FROM n1 JOIN n4 ON n1.key = n4.key;",
+    "INSERT INTO n1 SELECT number as key, CAST(number + 50 AS VARCHAR) FROM generate_series(0, 9);",
+    "SELECT * FROM mv2 JOIN n3 ON mv2.k = n3.key WHERE mv2.v2 IS NOT NULL ORDER BY mv2.k, n3.key;"
+  ],
+  "key_bug_features": [
+    "Query with JOIN and MV on left side"
+  ]
+}

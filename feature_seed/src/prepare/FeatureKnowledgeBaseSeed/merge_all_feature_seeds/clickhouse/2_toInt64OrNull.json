@@ -1,0 +1,12 @@
+CREATE TABLE test_table (id Int32, value String, timestamp DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, '100'), (2, '200'), (3, 'abc'), (4, NULL), (5, '-64'), (6, '0'), (7, '300.75'), (8, '0xc0fe');
+SELECT id, toInt64OrNull(value) AS int_value FROM test_table WHERE toInt64OrNull(value) >= 100 FORMAT Vertical;
+SELECT id, value, toInt64OrNull(value) AS int_value FROM test_table WHERE value != 'abc' AND toInt64OrNull(value) IS NOT NULL ORDER BY int_value DESC;
+SELECT id, value FROM test_table WHERE toInt64OrNull(value) >= (SELECT AVG(toInt64OrNull(value)) FROM test_table WHERE value IS NOT NULL) ORDER BY id;
+SELECT id, value FROM test_table GROUP BY id HAVING toInt64OrNull(value) IS NULL OR toInt64OrNull(value) >= -100 ORDER BY id;
+SELECT COUNT(*) AS valid_count FROM (SELECT id, toInt64OrNull(value) AS int_value FROM test_table) WHERE int_value IS NOT NULL;
+CREATE TABLE test_table_2 (col1 String, col2 Int32) ENGINE = MergeTree() ORDER BY col1;
+INSERT INTO test_table_2 VALUES ('test', 1), ('test2', 2), ('test3', NULL), ('test4', 4);
+INSERT INTO test_table_2 SELECT value, toInt64OrNull(value) FROM test_table WHERE value IS NOT NULL;
+SELECT col1, SUM(col2) FROM test_table_2 GROUP BY col1 HAVING SUM(col2) > (SELECT AVG(col2) FROM test_table_2 WHERE col2 IS NOT NULL) ORDER BY SUM(col2) DESC;
+SELECT nt.id, nt.value, (SELECT COUNT(*) FROM test_table t WHERE toInt64OrNull(nt.value) >= toInt64OrNull(t.value) AND t.value IS NOT NULL) AS count FROM test_table nt WHERE nt.value IS NOT NULL;

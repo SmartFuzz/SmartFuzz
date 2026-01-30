@@ -1,0 +1,10 @@
+CREATE TABLE test_ngram (id Int32, str_col String, num_col UInt8);
+INSERT INTO test_ngram VALUES (1, 'ClickHouse'), (2, 'ClicKhouse'), (3, 'ChickHouse');
+SELECT ngramMinHashUTF8(str_col, 3, 6) AS hashes FROM test_ngram WHERE num_col = 1;
+SELECT (SELECT ngramMinHashUTF8(str_col, 5, 8) FROM test_ngram WHERE id = 1) AS minimum_hash FROM test_ngram;
+SELECT id, str_col, ngramMinHashUTF8(str_col, 4, 6) AS hashes FROM test_ngram GROUP BY id, str_col HAVING hashes.1 IS NOT NULL;
+WITH (SELECT ngramMinHashUTF8('SampleText', 2, 5)) AS sample_hashes SELECT (sample_hashes.1, sample_hashes.2, ngramMinHashUTF8(str_col, 10, 15)) FROM test_ngram;
+SELECT str_col FROM test_ngram WHERE ngramMinHashUTF8(CAST(num_col AS String), 3, 6).1 IS NOT NULL;
+CREATE TABLE test_join AS SELECT ngramMinHashUTF8(str_col, 3, 6) AS hashes FROM test_ngram;
+INSERT INTO test_join VALUES ('TestString1'), ('TestString2');
+SELECT hashes FROM (SELECT ngramMinHashUTF8(str_col, 3, 6) AS hashes FROM test_ngram WHERE NOT str_col = '') AS derived_table JOIN test_join ON derived_table.hashes.1 = test_join.hashes;

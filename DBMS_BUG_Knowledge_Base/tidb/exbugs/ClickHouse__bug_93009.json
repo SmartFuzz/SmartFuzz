@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/93009",
+  "title": "Logical error: 'Files metadata is empty' with fault injection",
+  "description": "### Describe the bug\ncc @kssenii easy to reproduce\n### How to reproduce\nWith:\n```xml\n<named_collections>\n<s3>\n<url>....</url>\n<access_key_id>...</access_key_id>\n<secret_access_key>...</secret_access_key>\n</s3>\n</named_collections>\n<storage_configuration>\n<disks>\n<disk0>\n<type>object_storage</type>\n<object_storage_type>s3</object_storage_type>\n<metadata_type>plain_rewritable</metadata_type>\n<endpoint>...</endpoint>\n<access_key_id>...</access_key_id>\n<secret_access_key>..</secret_access_key>\n</disk0>\n</disks>\n</storage_configuration>\n```\nRun:\n```sql\nCREATE DATABASE d0 ENGINE = Atomic SETTINGS disk = 'disk0';\nCREATE TABLE d0.t0 (c0 Int) ENGINE = S3Queue(s3, filename = 'subdir/', format = 'CSV') SETTINGS mode = 'ordered';\nSYSTEM ENABLE FAILPOINT plain_object_storage_write_fail_on_directory_create;\nDROP TABLE d0.t0; --DB::Exception: Injecting fault when creating 'metadata_dropped/' directory: While committing metadata operation #0. (FAULT_INJECTED)\nALTER TABLE d0.t0 MODIFY SETTING commit_on_select = 1;\n```\n### Error message and/or stacktrace\nStack trace:\n```\n<Fatal> : Logical error: 'Files metadata is empty'.\n<Fatal> : Format string: 'Files metadata is empty'.\n<Fatal> : Stack trace (when copying this message, always include the lines below):\n0. contrib/llvm-project/libcxx/include/__exception/exception.h:113: Poco::Exception::Exception(String const&, int) @ 0x0000000026499572\n1. src/Common/Exception.cpp:136: DB::Exception::Exception(DB::Exception::MessageMasked&&, int, bool) @ 0x00000000161b37e9\n2. src/Common/Exception.h:172: DB::Exception::Exception(String&&, int, String, bool) @ 0x000000000d801bd4\n3. src/Common/Exception.h:58: DB::Exception::Exception(PreformattedMessage&&, int) @ 0x000000000d8016d1\n4. src/Common/Exception.h:190: DB::Exception::Exception<>(int, FormatStringHelperImpl<>) @ 0x00000000161bc239\n5. src/Storages/ObjectStorageQueue/StorageObjectStorageQueue.cpp:1390: DB::StorageObjectStorageQueue::checkAlterIsPossible(DB::AlterCommands const&, std::shared_ptr<DB::Context const>) const @ 0x000000001fe5412d\n6. src/Interpreters/InterpreterAlterQuery.cpp:274: DB::InterpreterAlterQuery::executeToTable(DB::ASTAlterQuery const&) @ 0x000000001c4320c2\n7. src/Interpreters/InterpreterAlterQuery.cpp:85: DB::InterpreterAlterQuery::execute() @ 0x000000001c42f44d\n8. src/Interpreters/executeQuery.cpp:1748: DB::executeQueryImpl(char const*, char const*, std::shared_ptr<DB::Context>, DB::QueryFlags, DB::QueryProcessingStage::Enum, std::unique_ptr<DB::ReadBuffer, std::default_delete<DB::ReadBuffer>>&, std::shared_ptr<DB::IAST>&, std::shared_ptr<DB::ImplicitTransactionControlExecutor>, std::function<void ()>, DB::QueryResultDetails&) @ 0x000000001c85c1a8\n9. src/Interpreters/executeQuery.cpp:1972: DB::executeQuery(String const&, std::shared_ptr<DB::Context>, DB::QueryFlags, DB::QueryProcessingStage::Enum) @ 0x000000001c855914\n10. src/Server/TCPHandler.cpp:774: DB::TCPHandler::runImpl() @ 0x00000000200a4109",
+  "date": "2025-12-24T14:03:30Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE DATABASE d1;",
+    "CREATE TABLE d1.t1 (c1 VARCHAR(255), c2 DOUBLE, c3 INT);",
+    "INSERT INTO d1.t1 VALUES ('test', 3.14, NULL);",
+    "SELECT * FROM d1.t1;",
+    "DROP TABLE d1.t1;"
+  ],
+  "key_bug_features": [
+    "Fault injection during metadata operation causes empty files error"
+  ]
+}

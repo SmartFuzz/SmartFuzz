@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, compressed_data VARBINARY(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO test_table (id, compressed_data) VALUES (1, gz_compress('Hello World')), (2, gz_compress('Testing NULL compression')) , (3, NULL);
+SELECT id, gz_uncompress(compressed_data) AS uncompressed_data FROM test_table WHERE gz_uncompress(compressed_data) <> 'Hello World' OR compressed_data IS NULL;
+SELECT id FROM test_table WHERE (gz_uncompress(compressed_data) <> 'Unknown Data' AND compressed_data IS NOT NULL) AND created_at < NOW();
+SELECT id, SUM(CASE WHEN gz_uncompress(compressed_data) <> 'Testing NULL compression' THEN 1 ELSE 0 END) AS uncompressed_count FROM test_table GROUP BY id HAVING uncompressed_count > 0;
+CREATE TABLE another_table (value VARCHAR(100), id INT REFERENCES test_table(id));
+INSERT INTO another_table (value, id) VALUES ('test', 1), ('example', 2), ('NULL_test', NULL);
+SELECT t1.id, t1.compressed_data, t2.value FROM test_table t1 JOIN another_table t2 ON t1.id <> t2.id WHERE gz_uncompress(t1.compressed_data) IS NOT NULL;
+SELECT gz_uncompress(compressed_data) FROM (SELECT compressed_data FROM test_table WHERE created_at >= '2023-01-01' AND compressed_data IS NOT NULL) AS temp WHERE gz_uncompress(compressed_data) <> '';
+SELECT MIN(id) FROM test_table WHERE gz_uncompress(compressed_data) IS NULL OR gz_uncompress(compressed_data) <> 'Empty';

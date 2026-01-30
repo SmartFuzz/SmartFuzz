@@ -1,0 +1,16 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, ip_address INET, description VARCHAR(100));
+INSERT INTO test_table (id, ip_address, description) VALUES (1, inet '192.168.1.1', 'Test entry 1');
+INSERT INTO test_table (id, ip_address, description) VALUES (2, inet '192.168.1.2', 'Test entry 2');
+INSERT INTO test_table (id, ip_address, description) VALUES (3, inet '192.168.1.3', 'Another test');
+SELECT id FROM test_table WHERE startswith(description, 'Test') AND ip_address << inet '192.168.1/24';
+CREATE TABLE related_table (rid INT PRIMARY KEY, id INT, value INT, FOREIGN KEY (id) REFERENCES test_table(id));
+INSERT INTO related_table (rid, id, value) VALUES (1, 1, 10), (2, 2, 20);
+SELECT t.id, (SELECT COUNT(*) FROM related_table r WHERE r.id = t.id) AS total FROM test_table t WHERE startswith(description, 'T') AND (ip_address << inet '192.168.1/24' OR ip_address IS NULL);
+SELECT GROUP BY id HAVING COUNT(*) > 0 FROM related_table r WHERE startswith((SELECT description FROM test_table t WHERE t.id = r.id), 'Another') AND r.value IS NOT NULL;
+SELECT t.id, startswith((SELECT description FROM test_table t WHERE t.id = r.id), '') AS check_start FROM related_table r JOIN test_table t ON t.id = r.id WHERE r.value = 20;
+SELECT DISTINCT ip_address FROM test_table WHERE startswith(description, 'Test') OR (ip_address IS NULL AND startswith(description, 'Another'));
+SELECT (CASE WHEN startswith(description, '') THEN 1 ELSE 0 END) AS is_empty FROM test_table WHERE ip_address << inet '192.168.1/24';
+CREATE TEMPORARY TABLE temp_table AS SELECT ip_address, COUNT(*) AS count FROM test_table GROUP BY ip_address;
+SELECT ip_address FROM temp_table WHERE count > (SELECT AVG(count) FROM temp_table) AND startswith(ip_address::TEXT, '192.');
+DROP TABLE IF EXISTS test_table;
+DROP TABLE IF EXISTS related_table;

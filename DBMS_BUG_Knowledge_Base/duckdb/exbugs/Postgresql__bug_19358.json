@@ -1,0 +1,19 @@
+{
+  "url": "https://www.postgresql.org/message-id/19358-013f22cf91350df1%40postgresql.org",
+  "title": "BUG #19358: Short circuit optimization exists in generic plan but missed in custom plan",
+  "description": "The following bug has been logged on the website:\nBug reference:      19358\nLogged by:          Chi Zhang\nEmail address:      798604270(at)qq(dot)com\nPostgreSQL version: 17.6\nOperating system:   ubuntu 24.04 with docker\nDescription:\nHi,\nIn the following test case, there are two equivalent updates; the first one\nis in prepared form, and the second one is a normal update. There is a\nconfiguration that sets plan_cache_mode = force_generic_plan, which means\nthe prepared updates will use a generic plan. When I run this test case, I\nfound the prepared update can execute, but the normal update triggers an\nerror `result of range difference would not be contiguous`, I can understand\nthis because this error is skipped in the prepared update by short circuit\noptimization. As shown in the document at\nhttps://www.postgresql.org/docs/current/runtime-config-query.html\nthat, the\ngeneric plan maybe inefficient than the custom plan. So why the short\ncircuit optimization applied in the prepared update (with a generic plan)\nbut not in the normal update (with a custom plan).\n```\nSET plan_cache_mode = force_generic_plan;\nCREATE TABLE t3(c0 TEXT);\nINSERT INTO t3(c0) VALUES('');\nPREPARE prepare_query (text, int4range, int4range) AS UPDATE t3 SET c0=$1\nWHERE (((t3.c0) IN (t3.c0))OR(((t3.c0)) BETWEEN (((t3.c0)||((($2)-($3)))))\nAND (t3.c0)));\nEXECUTE prepare_query('', '[-993693027,1525305818]'::int4range,\n'[-168306621,-163656947)'::int4range);\nDEALLOCATE prepare_query;\nUPDATE t3 SET c0=''::text WHERE (((t3.c0) IN (t3.c0))OR(((t3.c0 )) BETWEEN\n(((t3.c0)||((('[-993693027,1525305818]'::int4range)-('[-168306621,-163656947)'::int4range)))))\nAND (t3.c0))); -- ERROR:  result of range difference would not be contiguous\n```",
+  "date": "2025-12-17 12:03:44",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "Postgresql",
+  "bug_features_seed": [
+    "CREATE TABLE t4(id INTEGER PRIMARY KEY, value INTEGER, range_col INT4RANGE NOT NULL);",
+    "INSERT INTO t4(value, range_col) VALUES (10, '[1,10)'), (20, '[5,15)');",
+    "UPDATE t4 SET value = 15 WHERE range_col && '[5,20)';",
+    "SELECT * FROM t4;"
+  ],
+  "key_bug_features": [
+    "Short circuit optimization missing in custom update plan"
+  ]
+}

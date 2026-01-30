@@ -1,0 +1,12 @@
+CREATE TABLE test_dates (id UInt32, date_string String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_dates VALUES (1, '2023-10-01'), (2, 'invalid-date'), (3, '2023-01-01');
+CREATE TABLE filter_table (filter_value String) ENGINE = MergeTree() ORDER BY filter_value;
+INSERT INTO filter_table VALUES ('2023-01-01'), ('2023-02-01'), ('invalid-date');
+SELECT id, parseDateTimeOrZero(date_string) AS parsed_date FROM test_dates WHERE parsed_date != ANY (SELECT filter_value FROM filter_table);
+SELECT id, parseDateTimeOrZero(date_string) AS parsed_date FROM test_dates WHERE parsed_date != ANY (SELECT filter_value FROM filter_table WHERE filter_value != '2023-01-01');
+CREATE TABLE agg_table (category String, value UInt32) ENGINE = MergeTree() ORDER BY category;
+INSERT INTO agg_table VALUES ('A', 10), ('B', 20), ('C', 30);
+SELECT category, AVG(value) FROM agg_table GROUP BY category HAVING AVG(value) != ANY (SELECT parseDateTimeOrZero('invalid-date'));
+CREATE TEMPORARY TABLE temp_dates (temp_date DateTime) ENGINE = MergeTree() ORDER BY temp_date;
+INSERT INTO temp_dates VALUES (parseDateTimeOrZero('2023-01-01')), (parseDateTimeOrZero('2023-02-01')), (parseDateTimeOrZero('not-a-date'));
+SELECT temp_date FROM temp_dates WHERE temp_date != ANY (SELECT parseDateTimeOrZero('2023-01-01') UNION ALL SELECT parseDateTimeOrZero('not-a-date'));

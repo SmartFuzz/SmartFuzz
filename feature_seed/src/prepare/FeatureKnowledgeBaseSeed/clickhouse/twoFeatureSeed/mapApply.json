@@ -1,0 +1,20 @@
+{
+    "function": "mapApply",
+    "operator": "a.N",
+    "sql_array": [
+        "CREATE TABLE test_map (key String, value Int32) ENGINE = MergeTree() ORDER BY key;",
+        "INSERT INTO test_map VALUES ('key1', 10), ('key2', 20), ('key3', NULL);",
+        "SELECT mapApply((k, v) -> (k, v * 10), map(key, value)) AS result FROM (SELECT key, value FROM test_map) AS subquery;",
+        "SELECT tupleElement(mapApply((k, v) -> (k, v + 5), map(key, value)), 2) AS modified_value FROM (SELECT key, value FROM test_map WHERE value IS NOT NULL) AS subquery;",
+        "SELECT mapApply((k, v) -> (k, v / NULL), map(key, value)) AS result FROM (SELECT key, value FROM test_map);",
+        "SELECT mapApply((k, v) -> (k, v + 1), map(key, 0)) AS result FROM (SELECT DISTINCT key FROM test_map) AS subquery;",
+        "CREATE TABLE test_entries (id UInt32, name String, date Date) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_entries VALUES (1, 'Entry1', '2023-01-01'), (2, 'Entry2', '2023-01-02');",
+        "SELECT mapApply((k, v) -> (k, toString(v)), map(tupleElement(test_map.value, 1), 'test')) AS result FROM test_map JOIN test_entries ON test_map.value IS NOT NULL;",
+        "SELECT mapApply((k, v) -> (k, toUInt32(v) + 1), map(key, value)) AS result FROM (SELECT key, CASE WHEN value IS NULL THEN 0 ELSE value END AS value FROM test_map);",
+        "SELECT tupleElement(mapApply((k, v) -> (lower(k), v), map(key, value)), 1) AS transformed_key FROM test_map WHERE false;",
+        "SELECT mapApply((k, v) -> (k, v + 1), map('empty', 0), map('none', NULL)) AS result;",
+        "SELECT k, mapApply((k, v) -> (k, v), map(k, 100)) FROM (SELECT key AS k FROM test_map GROUP BY key) AS subquery;",
+        "SELECT tupleElement(mapApply((k, v) -> (k, CAST(v AS Float32)), map('key1', value)), 1) FROM test_map WHERE key = 'key1';"
+    ]
+}

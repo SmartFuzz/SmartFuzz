@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/58928",
+  "title": "Unexpected errors from SQL with plan cache and mismatched data types",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n```sql\nCREATE TABLE t1 (col1 int, col2 int, col3 datetime);\ninsert into t1 values(1, 1, now());\n\nprepare p1 from \"update t1 set col1 = 2 where col3 >= ? or col2 < ? \";\nset @i0 = '2017-07-20',@i1 = 2;\nexecute p1 using @i0,@i1;\n\nset @i0 = 'abc',@i1 = 2;\nexecute p1 using @i0,@i1;\n```\n\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\n\nSucceed with warning, like:\n\n```sql\n\nmysql> update t1 set col1 = 2 where col3 >= \"abc\" or col2 < 2;\nQuery OK, 1 row affected, 1 warning (0.01 sec)\nRows matched: 1  Changed: 1  Warnings: 1\n\nmysql> show warnings;\n+---------+------+----------------------------------------------------+\n| Level   | Code | Message                                            |\n+---------+------+----------------------------------------------------+\n| Warning | 1292 | evaluation failed: Incorrect datetime value: 'abc' |\n+---------+------+----------------------------------------------------+\n1 row in set (0.00 sec)\n```\n\n### 3. What did you see instead (Required)\n\n```\nexecute p1 using @i0,@i1;\nERROR 1815 (HY000): expression or(ge(test.t1.col3, cast(abc, datetime(6) BINARY)), lt(test.t1.col2, 2)) cannot be pushed down\n```\n\n### 4. What is your TiDB version? (Required)\n```\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| tidb_version()                                                                                                                                                                                                                                                       |\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| Release Version: v9.0.0-alpha-112-ga3cc774869\nEdition: Community\nGit Commit Hash: a3cc774869aa581892fbeba869190796197e0bb3\nGit Branch: master\nUTC Build Time: 2025-01-15 02:00:53\nGoVersion: go1.23.4\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv |\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n```\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "date": "2025-01-15T02:08:02Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (id int, name varchar(50), created_at timestamp);",
+    "INSERT INTO t2 VALUES (1, 'test', NOW());",
+    "PREPARE stmt1 AS SELECT * FROM t2 WHERE created_at >= $1 OR id < $2;",
+    "EXECUTE stmt1 USING '2023-01-01', 2;",
+    "EXECUTE stmt1 USING 'abc', 2;"
+  ],
+  "key_bug_features": [
+    "Executing prepared statement with mismatched data types"
+  ]
+}

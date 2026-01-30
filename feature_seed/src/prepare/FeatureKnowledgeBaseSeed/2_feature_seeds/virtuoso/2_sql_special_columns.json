@@ -1,0 +1,15 @@
+CREATE TABLE Orders (OrderID INTEGER PRIMARY KEY, CustomerName VARCHAR(100), OrderDate DATE, TotalAmount DECIMAL(10, 2));
+INSERT INTO Orders (OrderID, CustomerName, OrderDate, TotalAmount) VALUES (1, 'Alice', '2023-01-01', 100.00);
+INSERT INTO Orders (OrderID, CustomerName, OrderDate, TotalAmount) VALUES (2, 'Bob', '2023-01-02', 200.50);
+INSERT INTO Orders (OrderID, CustomerName, OrderDate, TotalAmount) VALUES (3, 'Charlie', NULL, 150.75);
+SELECT sql_special_columns('Local Virtuoso', 'Demo', 'demo', 'Orders', 0, 0) AS SpecialColumns, (SELECT COUNT(*) - 1 FROM Orders) AS TotalOrders;
+SELECT OrderID, CustomerName, TotalAmount - (SELECT MIN(TotalAmount) FROM Orders WHERE TotalAmount IS NOT NULL) AS AdjustedTotal FROM Orders WHERE CustomerName IS NOT NULL;
+SELECT OrderID, TotalAmount, (TotalAmount - 100.00) AS Difference FROM Orders WHERE TotalAmount IS NOT NULL HAVING Difference > 0;
+SELECT MAX(TotalAmount) - MIN(TotalAmount) AS Range FROM Orders;
+SELECT OrderID, CustomerName FROM Orders WHERE TotalAmount > (SELECT AVG(TotalAmount) FROM Orders) - 50;
+SELECT OrderID, COUNT(*) OVER (PARTITION BY CustomerName) AS OrderCount FROM Orders ORDER BY OrderCount DESC;
+WITH OrderInfo AS (SELECT CustomerName, COUNT(OrderID) AS OrderCount FROM Orders GROUP BY CustomerName HAVING COUNT(OrderID) > 1) SELECT OrderInfo.CustomerName, OrderInfo.OrderCount - (SELECT COUNT(*) FROM Orders WHERE OrderDate IS NULL) AS ValidOrderCount FROM OrderInfo;
+SELECT sql_special_columns('Local Virtuoso', 'Demo', 'demo', 'Orders', 0, 0) AS SpecialColumns, COUNT(*) - COUNT(OrderDate) AS NullOrderDates FROM Orders;
+CREATE TABLE TempOrders (OrderID INTEGER PRIMARY KEY, TempTotalAmount DECIMAL(10, 2));
+INSERT INTO TempOrders (OrderID, TempTotalAmount) SELECT OrderID, TotalAmount - (SELECT AVG(TotalAmount) FROM Orders) FROM Orders WHERE TotalAmount IS NOT NULL;
+SELECT TempOrder.OrderID, TempOrder.TempTotalAmount, sql_special_columns('Local Virtuoso', 'Demo', 'demo', 'TempOrders', 0, 0) AS SpecialColumns FROM TempOrders AS TempOrder WHERE TempTotalAmount > 0;

@@ -1,0 +1,16 @@
+{
+    "function": "exec_metadata",
+    "operator": "||",
+    "sql_array": [
+        "CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR(50), created_at TIMESTAMP, score FLOAT, nullable_val VARCHAR(30));",
+        "INSERT INTO test_table VALUES (1, 'Alice', NOW(), 95.5, NULL), (2, 'Bob', NOW(), NULL, 'test'), (3, NULL, NOW(), 75.2, 'example');",
+        "CREATE PROCEDURE test_proc (IN str VARCHAR) { DECLARE state VARCHAR(5), message VARCHAR(255), mdta ANY; state := '00000'; exec_metadata(CONCAT('SELECT * FROM test_table WHERE name = ''', str, ''''), state, message, mdta); IF (state <> '00000') SIGNAL(state, message); RETURN mdta; };",
+        "SELECT id, name || ' ' || COALESCE(nullable_val, 'N/A') AS full_info FROM test_table WHERE score IS NOT NULL ORDER BY score DESC;",
+        "SELECT id, COUNT(*) OVER (PARTITION BY score) AS score_count, name FROM test_table WHERE created_at >= NOW() - INTERVAL '7' DAY HAVING name IS NOT NULL;",
+        "SELECT (SELECT AVG(score) FROM test_table WHERE score IS NOT NULL) || ' Average score calculated' AS avg_score_info;",
+        "SELECT id, (NULLIF(score, 0) || ' is the score') AS score_status FROM test_table WHERE id IN (SELECT id FROM test_table WHERE nullable_val IS NOT NULL);",
+        "DROP TABLE IF EXISTS temp_test_table;",
+        "CREATE TEMPORARY TABLE temp_test_table AS SELECT * FROM test_table WHERE score > 80;",
+        "SELECT id, name FROM temp_test_table WHERE id IN (SELECT id FROM test_table WHERE score < 50) || ' - Failing' AS status_info;"
+    ]
+}

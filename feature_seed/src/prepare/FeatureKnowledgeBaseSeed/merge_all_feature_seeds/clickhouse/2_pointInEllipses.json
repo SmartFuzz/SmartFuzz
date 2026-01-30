@@ -1,0 +1,10 @@
+CREATE TABLE test_points (id UInt32, x Float64, y Float64, ellipse_x0 Float64, ellipse_y0 Float64, a Float64, b Float64);
+INSERT INTO test_points VALUES (1, 10.0, 10.0, 10.0, 9.1, 1.0, 0.9999), (2, 10.1, 10.1, 9.9, 9.0, 1.0, 0.5), (3, NULL, 10.5, 10.0, 10.0, 1.0, 1.0);
+SELECT id, pointInEllipses(x, y, ellipse_x0, ellipse_y0, a, b) AS inside FROM test_points WHERE x GLOBAL NOT IN (SELECT x FROM test_points WHERE y <= 10.0);
+CREATE TABLE test_ellipses (id UInt32, x0 Float64, y0 Float64, a Float64, b Float64);
+INSERT INTO test_ellipses VALUES (1, 10.0, 9.1, 1.0, 0.9999), (2, 10.0, 10.0, 10.0, 1.0);
+SELECT id, pointInEllipses(10.0, 10.0, x0, y0, a, b) AS inside FROM test_ellipses WHERE id GLOBAL NOT IN (SELECT id FROM test_ellipses WHERE a < 0.5);
+SELECT id, COUNT(*) AS point_count FROM (SELECT id, pointInEllipses(x, y, ellipse_x0, ellipse_y0, a, b) FROM test_points) GROUP BY id HAVING point_count > 0;
+SELECT x, y FROM test_points WHERE pointInEllipses(x, y, ellipse_x0, ellipse_y0, a, b) = 1 AND NULLIF(x, 10.0) IS NULL;
+SELECT x, y FROM test_points WHERE x GLOBAL NOT IN (SELECT x FROM test_points WHERE pointInEllipses(x, y, ellipse_x0, ellipse_y0, a, b) = 1);
+SELECT COUNT(*) FROM (SELECT id FROM test_points WHERE pointInEllipses(x, y, ellipse_x0, ellipse_y0, NULL, b) = 1) AS subquery HAVING COUNT(*) > 0;

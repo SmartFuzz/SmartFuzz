@@ -1,0 +1,12 @@
+CREATE TABLE uuid_test (id UInt32, uuid_string String, value UInt32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO uuid_test (id, uuid_string, value) VALUES (1, '61f0c404-5cb3-11e7-907b-a6006ad3dba0T', 100), (2, 'invalid-uuid-string', 200), (3, '', 300);
+SELECT id, value, toUUIDOrZero(uuid_string) AS uuid FROM uuid_test WHERE value == 100;
+SELECT id, value, toUUIDOrZero(uuid_string) AS uuid FROM uuid_test WHERE toUUIDOrZero(uuid_string) == 00000000-0000-0000-0000-000000000000;
+CREATE TABLE nested_test (id UInt32, uuid_string String, reference_id UInt32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO nested_test (id, uuid_string, reference_id) VALUES (1, '123e4567-e89b-12d3-a456-426614174000', 1), (2, 'invalid', 2), (3, '', 3);
+SELECT nt.id, toUUIDOrZero(nt.uuid_string) AS uuid, (SELECT COUNT(*) FROM uuid_test WHERE value > 150) AS value_count FROM nested_test nt WHERE nt.reference_id IN (SELECT id FROM uuid_test WHERE value == 200);
+SELECT COUNT(*) FROM (SELECT toUUIDOrZero(uuid_string) AS uuid FROM uuid_test GROUP BY uuid HAVING uuid != 00000000-0000-0000-0000-000000000000) AS grouped_uuids;
+CREATE TABLE join_test (id UInt32, uuid_string String, related_id UInt32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO join_test (id, uuid_string, related_id) VALUES (1, '61f0c404-5cb3-11e7-907b-a6006ad3dba0T', 1), (2, '', 2), (3, '123e4567-e89b-12d3-a456-426614174000', NULL);
+SELECT j.id, toUUIDOrZero(j.uuid_string) AS uuid FROM join_test j JOIN uuid_test u ON j.related_id == u.id WHERE u.value < 150;
+SELECT nt.id, toUUIDOrZero(nt.uuid_string) AS uuid, (SELECT MAX(value) FROM uuid_test WHERE value != NULL) AS max_value FROM nested_test nt HAVING toUUIDOrZero(nt.uuid_string) == 00000000-0000-0000-0000-000000000000;

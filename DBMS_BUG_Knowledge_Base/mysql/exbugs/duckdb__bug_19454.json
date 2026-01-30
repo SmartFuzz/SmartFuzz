@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/19454",
+  "title": "CSV `COPY TO` to S3 doesn’t respect FILE_SIZE_BYTES",
+  "description": "### What happens?\n\nHi DuckDB team 👋\n\nFirst off, thanks for all your work on DuckDB and the surrounding ecosystem.\n\nI ran into an issue where COPY ... TO with FORMAT CSV doesn’t respect FILE_SIZE_BYTES when writing to S3 via httpfs. There’s an existing #18381 issue tracking similar behavior without much details in the main repo (opened Jul 23, 2025, currently labeled “under review”).\n\nWhat I’m seeing\nWhen exporting CSV to S3 with FILE_SIZE_BYTES set, the export produces a single object with all rows instead of rolling over into multiple files.\n\nProposed fix (in duckdb-httpfs)\nI opened a PR in duckdb/duckdb-httpfs (PR [#146](https://github.com/duckdb/duckdb-httpfs/pull/146)) that makes CSV COPY TO enforce FILE_SIZE_BYTES on S3. In short, I found that on the S3 path the writer always reported a length of 0, so the limit check never triggered. The change updates the length as data is written and adds a small test (based on the file_size_bytes test in the main repo).\n\nWhy I’m filing here\nThere’s an existing report in duckdb/duckdb (#18381). On Oct 9, 2025 I opened a matching PR in duckdb/duckdb-httpfs with a small fix, but as of Oct 20, 2025 it hasn’t received reviews or replies yet. I know everyone’s busy and duckdb-httpfs gets fewer eyes, so I’m opening this in the main repo just to surface the context and ask for guidance on the best path forward. \n\n### To Reproduce\n\n\n```\nCREATE TABLE bigdata AS SELECT i AS col_a, i AS col_b FROM range(0,10000) tbl(i);\n\nCOPY (FROM bigdata) TO 's3://test-bucket/file_size_bytes_csv1' (FORMAT CSV, FILE_SIZE_BYTES 1000);\n\n---should lead to 3 files\nSELECT count(*) FROM glob('s3://test-bucket/file_size_bytes_csv1/*.csv')\n```\n\n### OS:\n\nMacOS arm64\n\n### DuckDB Version:\n\n1.4.1\n\n### DuckDB Client:\n\nCLI / Python / etc\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nBrynjar Magnusson\n\n### Affiliation:\n\nPersonal\n\n### Did you include all relevant configuration (e.g., CPU architecture, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes",
+  "date": "2025-10-20 11:33:01",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE diverse_data (id INT PRIMARY KEY, name VARCHAR(50), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, amount DECIMAL(10, 2), is_active BOOLEAN);",
+    "INSERT INTO diverse_data (id, name, amount, is_active) VALUES (1, 'Alice', 123.45, TRUE);",
+    "INSERT INTO diverse_data (id, name, amount, is_active) VALUES (2, 'Bob', NULL, FALSE);",
+    "SELECT * INTO OUTFILE '/var/lib/mysql-files/diverse_data_export.csv' FIELDS TERMINATED BY ',' ENCLOSED BY '\"' LINES TERMINATED BY '\\n' FROM diverse_data;",
+    "SELECT COUNT(*) FROM diverse_data;"
+  ],
+  "key_bug_features": [
+    "COPY TO S3 ignores FILE_SIZE_BYTES setting"
+  ]
+}

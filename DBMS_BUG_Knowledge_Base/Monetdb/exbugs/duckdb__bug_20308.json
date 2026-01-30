@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/20308",
+  "title": "The result of the INTERSECT/EXCEPT of two tables with NOCASE collation is wrong",
+  "description": "### What happens?\n\n`INTERSECT` and `EXCEPT` set operations ignore the `NOCASE` collation.\n\n### To Reproduce\n\n```sql\nCREATE TABLE t1(col1 VARCHAR COLLATE NOCASE);\nCREATE TABLE t2(col1 VARCHAR COLLATE NOCASE);\nINSERT INTO t1 VALUES ('a');\nINSERT INTO t2 VALUES ('A');\n```\nQuery with intersect clause:\n```sql\nSELECT * FROM t1 INTERSECT SELECT * FROM t2;\n```\nreturns the wrong result:\n```\n┌─────────┐\n│  col1   │\n│ varchar │\n├─────────┤\n│ 0 rows  │\n└─────────┘\n```\nthe expected result is:\n```\n┌─────────┐\n│  col1   │\n│ varchar │\n├─────────┤\n│ a       │\n└─────────┘\n```\nQuery with except clause:\n```sql\nSELECT * FROM t1 EXCEPT SELECT * FROM t2;\n```\nreturns the wrong result:\n```\n┌─────────┐\n│  col1   │\n│ varchar │\n├─────────┤\n│ a       │\n└─────────┘\n```\nthe expected result is:\n```\n┌─────────┐\n│  col1   │\n│ varchar │\n├─────────┤\n│ 0 rows  │\n└─────────┘\n```\nThe same wrong behavior for `UNION` set operation exists in stable versions, including `1.4.3`, but was **already fixed** in https://github.com/duckdb/duckdb/pull/17267 and works correctly, just checked DuckDB `v1.5.0-dev5021`:\n```sql\nSELECT * FROM t1 UNION SELECT * FROM t2;\n```\nreturns the wrong result in v1.4.3:\n```\n┌─────────┐\n│  col1   │\n│ varchar │\n├─────────┤\n│ a       │\n│ A       │\n└─────────┘\n```\nreturns the expected result in v1.5.0-dev5021 :\n```\n┌─────────┐\n│  col1   │\n│ varchar │\n├─────────┤\n│ A       │\n└─────────┘\n```\n\n### OS:\n\nFedora 43 x86_64\n\n### DuckDB Version:\n\n1.4.3, 1.5.0-dev5021\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nJurij Cz.\n\n### Affiliation:\n\nN/A\n\n### Did you include all relevant configuration (e.g., CPU architecture, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant data sets for reproducing the issue?\n\nNot applicable - the reproduction does not require a data set",
+  "date": "2025-12-25 10:25:25",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE t3(col1 VARCHAR, col2 INTEGER NOT NULL);",
+    "CREATE TABLE t4(col1 VARCHAR, col2 INTEGER NOT NULL);",
+    "INSERT INTO t3 VALUES ('b', 1);",
+    "INSERT INTO t4 VALUES ('B', 2);",
+    "SELECT * FROM (SELECT col1, col2 FROM t3 WHERE LOWER(col1) IN (SELECT LOWER(col1) FROM t4)) AS intersect_result;"
+  ],
+  "key_bug_features": [
+    "INTERSECT/EXCEPT ignore NOCASE collation in set operations"
+  ]
+}

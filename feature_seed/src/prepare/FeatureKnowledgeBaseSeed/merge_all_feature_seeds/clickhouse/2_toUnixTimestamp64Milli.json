@@ -1,0 +1,12 @@
+CREATE TABLE test_dates (id UInt32, dt DateTime64(3) DEFAULT now(), value String);
+INSERT INTO test_dates (id, dt, value) VALUES (1, toDateTime64('2010-01-01 00:00:00.000', 3, 'UTC'), 'test 1'), (2, toDateTime64('2020-05-20 12:30:45.123', 3, 'UTC'), 'test 2');
+SELECT EXTRACT(MONTH FROM dt) AS month, toUnixTimestamp64Milli(dt) AS timestamp FROM test_dates;
+SELECT id, toUnixTimestamp64Milli(toDateTime64(CONCAT('2022-12-', EXTRACT(DAY FROM dt)), 3, 'UTC')) FROM test_dates WHERE value = 'test 1';
+WITH (SELECT AVG(toUnixTimestamp64Milli(dt)) AS avg_timestamp FROM test_dates) AS avg_val SELECT id, dt, value FROM test_dates WHERE toUnixTimestamp64Milli(dt) > avg_val;
+CREATE TABLE test_dates_extended (id UInt32, dt DateTime64(9) DEFAULT now(), precision_level Int32, value Nullable(String));
+INSERT INTO test_dates_extended (id, dt, precision_level, value) VALUES (1, toDateTime64('2015-07-15 15:45:30.123456789', 9, 'UTC'), 9, 'precision test 1'), (2, toDateTime64('2018-11-30 23:59:59.999999999', 9, 'UTC'), 9, NULL);
+SELECT id, EXTRACT(YEAR FROM dt) AS year, toUnixTimestamp64Milli(dt) AS timestamp FROM test_dates_extended WHERE precision_level = 9 AND value IS NOT NULL;
+SELECT id, EXTRACT(DAY FROM dt) AS day, toUnixTimestamp64Milli(dt) FROM (SELECT dt FROM test_dates_extended) ORDER BY day;
+WITH (SELECT value, EXTRACT(HOUR FROM dt) AS hour_extracted FROM test_dates_extended WHERE precision_level = 9) AS extracted_data SELECT COUNT(*) AS count, AVG(toUnixTimestamp64Milli(toDateTime64(concat(value, ' ', hour_extracted), 3, 'UTC'))) AS avg_converted FROM extracted_data WHERE value IS NOT NULL GROUP BY value;
+ALTER TABLE test_dates_extended ADD COLUMN description String;
+INSERT INTO test_dates_extended (id, dt, precision_level, value, description) VALUES (3, toDateTime64('2023-01-01 12:00:00.000', 3, 'UTC'), 3, 'test 3', 'Case with description');

@@ -1,0 +1,15 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, value INT, description TEXT);
+INSERT INTO test_table (id, value, description) VALUES (1, 18, 'initial value'), (2, -18, 'negative value');
+SELECT id, bit_shift(value, 2) || ' shifted' AS shifted_description FROM test_table WHERE value > 0;
+SELECT id, value, (SELECT bit_shift(ABS(value), 3) FROM test_table WHERE id = 1) || ' is the shifted absolute value' AS abs_shifted FROM test_table;
+SELECT id, value, bit_shift(value, -1) || ' is negative shifted' FROM test_table HAVING value < 0;
+CREATE TABLE secondary_table (ref_id INT, additional_value INT);
+INSERT INTO secondary_table (ref_id, additional_value) VALUES (1, 4), (1, -4), (2, 1);
+SELECT tt.id, tt.value, bit_shift(tt.value + st.additional_value, 1) || ' combined' AS combined_output FROM test_table tt JOIN secondary_table st ON tt.id = st.ref_id WHERE tt.value IS NOT NULL;
+SELECT id, bit_shift(NULLIF(value, 0), 2) || ' after nullify' FROM test_table WHERE value IS NOT NULL OR description IS NULL;
+SELECT id, AVG(bit_shift(value, 1)) OVER (PARTITION BY description) || ' average shifted' AS avg_shifted FROM test_table;
+CREATE TABLE nullable_table (num INT NULL);
+INSERT INTO nullable_table (num) VALUES (NULL), (4), (-8);
+SELECT nt.num, bit_shift(nt.num, 3) || ' shift result' FROM nullable_table nt WHERE nt.num IS NOT NULL;
+SELECT tt.id, (SELECT COUNT(*) FROM test_table WHERE value = tt.value) || ' occurrences of ' || bit_shift(tt.value, 2) AS occurrences FROM test_table tt GROUP BY tt.id, tt.value HAVING tt.value > 0;
+SELECT tt.id, bit_shift((SELECT MAX(value) FROM test_table) - 1, 2) || ' max value shifted' FROM test_table tt;

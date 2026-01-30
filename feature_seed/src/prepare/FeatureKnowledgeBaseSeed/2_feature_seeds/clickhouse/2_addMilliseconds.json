@@ -1,0 +1,10 @@
+CREATE TABLE test_dates (id UInt32, event_time DateTime64(3), description String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_dates VALUES (1, toDateTime64('2024-01-01 12:00:00', 3), 'New Year Event');
+INSERT INTO test_dates VALUES (2, toDateTime64('2024-01-01 23:59:59', 3), 'Last Minute Countdown');
+SELECT addMilliseconds((SELECT event_time FROM test_dates WHERE id = 1), 5000) AS adjusted_time, (SELECT (description, event_time) FROM test_dates WHERE id = 2) AS description_with_time;
+SELECT addMilliseconds(toString(event_time), 10000) AS added_time_string, (event_time, addMilliseconds(event_time, 5000)) AS tuple_with_time FROM test_dates;
+WITH (SELECT addMilliseconds(event_time, 1000) AS new_time FROM test_dates WHERE id = 1) AS time_adjusted SELECT id, new_time FROM test_dates WHERE event_time < time_adjusted;
+SELECT id, addMilliseconds((SELECT MAX(event_time) FROM test_dates), -60000) AS max_time_adjusted FROM test_dates GROUP BY id HAVING max_time_adjusted IS NOT NULL;
+CREATE TABLE additional_dates (id UInt32, add_time DateTime64(3), comments String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO additional_dates VALUES (1, addMilliseconds(toDateTime64('2024-02-01 00:00:00', 3), 86400000), 'One Day Later');
+SELECT addMilliseconds(d.add_time, (SELECT count() FROM additional_dates)) AS altered_time FROM additional_dates d JOIN test_dates dt ON d.id = dt.id WHERE d.comments IS NOT NULL;

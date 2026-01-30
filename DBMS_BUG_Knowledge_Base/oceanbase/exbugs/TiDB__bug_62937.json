@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/62937",
+  "title": "wrong result with perform decorrelation",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n 1. Minimal reproduce step (Required)\n\ncreate database test;\ncreate table test.hcst_test_sel_dual (amount decimal(65,20),segment1 varchar(50));\nINSERT INTO test.hcst_test_sel_dual (amount, segment1) VALUES (6.23000000000000000000, '60021022342');\nINSERT INTO test.hcst_test_sel_dual (amount, segment1) VALUES (30025.20000000000000000000, '60121022342');\nINSERT INTO test.hcst_test_sel_dual (amount, segment1) VALUES (0.00000000000000000000, '60021022342');\nSELECT (SELECT IF(substr(dd.segment1,1,3)='600','X','') FROM dual WHERE dd.amount<>0) c1,dd.amount,dd.segment1 FROM test.hcst_test_sel_dual dd;\n\nUse hint NO_DECORRELATE() to specify that the subquery, the execution result is correct.\n\n 2. What did you expect to see? (Required)\n+------+----------------------------+-------------+\n| c1   | amount                     | segment1    |\n+------+----------------------------+-------------+\n| X    |     6.23000000000000000000 | 60021022342 |\n|      | 30025.20000000000000000000 | 60121022342 |\n| NULL |     0.00000000000000000000 | 60021022342 |\n+------+----------------------------+-------------+\n\n 3. What did you see instead (Required)\n +------+----------------------------+-------------+\n| c1   | amount                     | segment1    |\n+------+----------------------------+-------------+\n| X    |     6.23000000000000000000 | 60021022342 |\n|      | 30025.20000000000000000000 | 60121022342 |\n| X    |     0.00000000000000000000 | 60021022342 |\n+------+----------------------------+-------------+\n\n 4. What is your TiDB version? (Required)\n\nv8.5.2\n\n",
+  "date": "2025-08-12T01:41:13Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE DATABASE test_fuzz;",
+    "CREATE TABLE test_fuzz.hcst_test_fuzz (amount DECIMAL(65,20) NOT NULL, segment1 VARCHAR(50) DEFAULT 'unknown', segment2 INT CHECK (segment2 >= 0));",
+    "INSERT INTO test_fuzz.hcst_test_fuzz (amount, segment1, segment2) VALUES (12.34000000000000000000, '60021022343', 1);",
+    "INSERT INTO test_fuzz.hcst_test_fuzz (amount, segment1, segment2) VALUES (0.00000000000000000000, '60121022343', NULL);",
+    "SELECT (SELECT CASE WHEN substr(dd.segment1,1,3)='600' THEN 'Y' ELSE 'N' END FROM dual WHERE dd.amount > 0) c1, dd.amount, dd.segment1, dd.segment2 FROM test_fuzz.hcst_test_fuzz dd;"
+  ],
+  "key_bug_features": [
+    "performing decorrelation on subquery with specific conditions"
+  ]
+}

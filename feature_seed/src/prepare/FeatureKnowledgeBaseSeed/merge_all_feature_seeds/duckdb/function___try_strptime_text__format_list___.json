@@ -1,0 +1,16 @@
+CREATE TABLE timestamps (timestamp_str TEXT);
+INSERT INTO timestamps VALUES ('4/15/2023 10:56:00'), ('15/04/2023 10:56:00'), ('2023-04-15 10:56:00');
+SELECT try_strptime(timestamp_str, ['%d/%m/%Y %H:%M:%S', '%m/%d/%Y %H:%M:%S']) FROM timestamps;
+CREATE TABLE events (event_id INT, event_time TEXT);
+INSERT INTO events VALUES (1, '2023-04-15 10:56:00'), (2, '15/04/2023 10:56:00'), (3, '04/15/2023 10:56:00');
+SELECT event_id, try_strptime(event_time, ['%Y-%m-%d %H:%M:%S', '%d/%m/%Y %H:%M:%S', '%m/%d/%Y %H:%M:%S']) AS parsed_time FROM events;
+CREATE TABLE logs (log_time TEXT);
+INSERT INTO logs VALUES ('10-15-2023 10:00:00'), ('2023/10/15 10:00:00'), ('2010/15/10 10:00:00');
+SELECT log_time, try_strptime(log_time, ['%d-%m-%Y %H:%M:%S', '%Y/%m/%d %H:%M:%S', '%Y/%d/%m %H:%M:%S']) AS formatted_log_time FROM logs;
+SELECT t.timestamp_str, e.event_time FROM timestamps t JOIN events e ON try_strptime(t.timestamp_str, ['%m/%d/%Y %H:%M:%S']) IS NOT NULL WHERE e.event_id = 1;
+SELECT e.event_id, ts.timestamp_str FROM events e LEFT JOIN timestamps ts ON try_strptime(ts.timestamp_str, ['%m/%d/%Y %H:%M:%S', '%d/%m/%Y %H:%M:%S']) IS NOT NULL WHERE e.event_id IN (1, 2);
+SELECT COUNT(*) FROM (SELECT try_strptime(timestamp_str, ['%d/%m/%Y %H:%M:%S', '%m/%d/%Y %H:%M:%S']) AS valid_time FROM timestamps WHERE valid_time IS NOT NULL) AS valid_times;
+CREATE TABLE mixed_timestamps (mixed_str TEXT);
+INSERT INTO mixed_timestamps VALUES ('4/15/2023'), ('invalid_date'), ('15-04-2023 12:00:00');
+SELECT mixed_str, try_strptime(mixed_str, ['%d/%m/%Y', '%m/%d/%Y', '%d-%m-%Y %H:%M:%S']) AS parsed_mixed_time FROM mixed_timestamps;
+SELECT COUNT(*) AS valid_count FROM mixed_timestamps WHERE try_strptime(mixed_str, ['%d/%m/%Y', '%Y-%m-%d']) IS NOT NULL;

@@ -1,0 +1,11 @@
+CREATE TABLE fuzz_test (id UInt32, string1 String, string2 String, numeric_value Float64, date_value DateTime, nullable_string Nullable(String));
+INSERT INTO fuzz_test VALUES (1, 'test_string_abc', 'TEST_STRING_ABC', 3.14, '2023-01-01 00:00:00', NULL), (2, '', 'another_test_string', 2.718, '2023-01-02 00:00:00', 'nullable_value');
+SELECT id, string1, string2, stringJaccardIndexUTF8(string1, string2) AS jaccard_index FROM fuzz_test WHERE string1 ILIKE '%' || string2 || '%' OR string1 ILIKE '%test%';
+SELECT id, string1, stringJaccardIndexUTF8(string1, string2) AS jaccard_index, CASE WHEN numeric_value > 3 THEN 'high' ELSE 'low' END as value_category FROM fuzz_test WHERE NULLIF(numeric_value, 0) IS NOT NULL;
+SELECT id, COUNT(*) AS cnt FROM (SELECT id, stringJaccardIndexUTF8(string1, string2) AS jaccard_index FROM fuzz_test WHERE string1 ILIKE 'test_string_%') GROUP BY id HAVING cnt > 1;
+SELECT id, stringJaccardIndexUTF8(COALESCE(string1, ''), COALESCE(nullable_string, '')) AS jaccard_index FROM fuzz_test;
+SELECT f1.id, f1.string1, f1.string2 FROM fuzz_test f1 JOIN fuzz_test f2 ON f1.id = f2.id AND stringJaccardIndexUTF8(f1.string1, f2.string2) > 0.5 WHERE f1.numeric_value ILIKE '2%' OR f2.numeric_value < 1.5;
+SELECT id, string1, string2 FROM fuzz_test WHERE stringJaccardIndexUTF8(string1, string2) = 0.0 AND string1 ILIKE '%' || nullable_string || '%' OR string2 IS NULL;
+SELECT COUNT(*) FROM fuzz_test WHERE LENGTH(string1) > 50 AND LENGTH(string2) < 1;
+CREATE TABLE temp_test AS SELECT id, string1, string2, numeric_value FROM fuzz_test WHERE date_value >= '2023-01-01 00:00:00' AND date_value < '2023-01-03 00:00:00' WITH NO DATA;
+INSERT INTO temp_test SELECT id, string1, string2, numeric_value FROM fuzz_test WHERE string1 ILIKE '%abc%';

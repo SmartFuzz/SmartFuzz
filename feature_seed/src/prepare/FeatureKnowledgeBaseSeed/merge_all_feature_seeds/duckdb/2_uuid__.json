@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id UUID DEFAULT uuid(), event_time TIME, description VARCHAR(255));
+INSERT INTO test_table (event_time, description) VALUES (TIME '12:30:00', 'Test event 1'), (TIME '15:45:00', 'Test event 2'), (TIME '00:00:00', 'Test event 3');
+CREATE TABLE reference_table (uuid_id UUID, additional_info VARCHAR(255));
+INSERT INTO reference_table (uuid_id, additional_info) VALUES (uuid(), 'Reference data 1'), (uuid(), 'Reference data 2');
+SELECT id, event_time + INTERVAL 1 HOUR AS updated_event_time FROM test_table WHERE event_time IS NOT NULL;
+SELECT t.id, t.event_time, r.additional_info FROM test_table t JOIN reference_table r ON t.id = r.uuid_id WHERE r.additional_info LIKE '%2%';
+SELECT COUNT(*) FROM test_table WHERE event_time + INTERVAL 2 HOUR > TIME '14:00:00' HAVING COUNT(*) > 0;
+SELECT t.id, uuid() AS random_uuid, (t.event_time + INTERVAL (EXTRACT(HOUR FROM t.event_time) * 2) HOUR) AS new_event_time FROM test_table t WHERE t.description IS NOT NULL ORDER BY new_event_time DESC;
+SELECT r.uuid_id, MAX(t.event_time + INTERVAL 1 HOUR) AS max_event_time FROM test_table t LEFT JOIN reference_table r ON t.id = r.uuid_id GROUP BY r.uuid_id HAVING max_event_time IS NOT NULL;
+SELECT (SELECT COUNT(*) FROM test_table) AS total_events, (SELECT COUNT(*) FROM reference_table WHERE uuid_id IS NULL) AS null_uuid_count;
+INSERT INTO test_table (event_time, description) VALUES (TIME '23:59:59', 'Edge case time event');

@@ -1,0 +1,11 @@
+CREATE TABLE test_array_reduce (id UInt32, values Array(Int32), nullable_value Nullable(Int32));
+INSERT INTO test_array_reduce VALUES (1, [1, 2, 3], NULL), (2, [4, 5], 0), (3, [6, 7, 8], 7), (4, [], 10);
+SELECT arrayReduce('max', values) AS max_value, id FROM test_array_reduce WHERE nullable_value IS NULL GROUP BY id HAVING max_value > 0;
+SELECT id, arrayReduce('sum', values) AS total_values FROM test_array_reduce WHERE arrayReduce('max', values) IS NOT NULL GROUP BY id HAVING total_values > 5;
+SELECT arrayReduce('uniqUpTo(2)', values) AS unique_elements FROM test_array_reduce GROUP BY id HAVING unique_elements IS NULL;
+CREATE TABLE test_null_check (value Nullable(Int32), other_value Int32);
+INSERT INTO test_null_check VALUES (NULL, 1), (2, 3), (NULL, 4);
+SELECT arrayReduce('maxIf', [value, 1], [other_value]) AS max_with_nulls, value FROM test_null_check WHERE value IS NULL OR other_value IS NULL;
+SELECT id, arrayReduce('max', values) AS max_val FROM test_array_reduce WHERE values IS NOT NULL GROUP BY id HAVING max_val IS NOT NULL;
+SELECT arrayReduce('sum', values) FROM test_array_reduce WHERE values IS NULL UNION ALL SELECT arrayReduce('maxIf', values, [nullable_value IS NULL]) FROM test_array_reduce;
+SELECT arrayReduce('uniqUpTo(1)', [value]) FROM test_null_check WHERE other_value IS NULL OR value IS NOT NULL;

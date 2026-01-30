@@ -1,0 +1,18 @@
+{
+    "function": "coalesce(expr, ...)",
+    "operator": "+",
+    "sql_array": [
+        "CREATE TABLE test_table (id INTEGER PRIMARY KEY, val1 VARCHAR, val2 TIMESTAMPTZ, val3 INTERVAL);",
+        "INSERT INTO test_table (id, val1, val2, val3) VALUES (1, NULL, TIMESTAMPTZ '1992-01-01 00:00:00+00', INTERVAL '5 days');",
+        "INSERT INTO test_table (id, val1, val2, val3) VALUES (2, 'test', NULL, INTERVAL '0 days');",
+        "INSERT INTO test_table (id, val1, val2, val3) VALUES (3, NULL, TIMESTAMPTZ '1992-06-30 10:10:10+00', INTERVAL '15 days');",
+        "SELECT id, val1, coalesce(val1, 'default') AS coalesced_val, val2 + coalesce(val3, INTERVAL '0 days') AS adjusted_time FROM test_table WHERE coalesce(val1, '') <> '';",
+        "SELECT id, val2, coalesce(NULLIF(val1, ''), 'fallback') AS final_val FROM test_table WHERE val2 IS NOT NULL AND val2 + coalesce(val3, INTERVAL '1 day') < CURRENT_TIMESTAMP;",
+        "SELECT id, COUNT(*) OVER (PARTITION BY coalesce(val1, 'empty') ORDER BY val2) AS cnt_in_group, val2 + (SELECT max(val3) FROM test_table WHERE val1 IS NOT NULL) AS effective_time FROM test_table;",
+        "SELECT DISTINCT id, val1, (SELECT MAX(coalesce(val2, TIMESTAMPTZ '1970-01-01 00:00:00+00')) FROM test_table WHERE val1 LIKE coalesce(val1, '')) + INTERVAL '1 hour' AS updated_time FROM test_table ORDER BY updated_time;",
+        "SELECT id, coalesce(val1, NULL) AS final_val, SUM(CASE WHEN val2 IS NOT NULL THEN 1 ELSE 0 END) OVER (PARTITION BY coalesce(val1, 'none')) AS null_check FROM test_table;",
+        "CREATE TABLE another_table (id INTEGER PRIMARY KEY, reference_id INTEGER, created_at TIMESTAMPTZ);",
+        "INSERT INTO another_table (id, reference_id, created_at) VALUES (1, 1, TIMESTAMPTZ '1990-01-01 00:00:00+00');",
+        "SELECT a.id, a.created_at, COALESCE(b.val2, a.created_at + INTERVAL '1 day') AS completed_time FROM another_table a LEFT JOIN test_table b ON a.reference_id = b.id WHERE coalesce(b.val1, 'N/A') <> 'N/A' ORDER BY completed_time;"
+    ]
+}

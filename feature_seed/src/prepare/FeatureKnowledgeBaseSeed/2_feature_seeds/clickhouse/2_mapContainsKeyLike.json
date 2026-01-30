@@ -1,0 +1,14 @@
+CREATE TABLE tab1 (a Map(String, String), b String) ENGINE = Memory;
+INSERT INTO tab1 VALUES ({'alpha':'value1','beta':'value2'}, 'test1'), ({'gamma':'value3','delta':'value4'}, 'test2');
+CREATE TABLE tab2 (x Int32, y String) ENGINE = Memory;
+INSERT INTO tab2 VALUES (1, 'x1'), (2, 'y2'), (3, 'z3');
+SELECT mapContainsKeyLike(a, 'a%') FROM tab1 WHERE b = (SELECT y FROM tab2 WHERE x = 2);
+SELECT b, mapContainsKeyLike(a, (x -> concat('b', 'eta'))) FROM tab1 JOIN tab2 ON mapContainsKeyLike(a, concat('g', 'amma')) WHERE x > 1 GROUP BY b HAVING mapContainsKeyLike(a, 'value%') = 1;
+SELECT x, mapContainsKeyLike(a, (x -> concat('v', toString(x)))) FROM tab1 CROSS JOIN tab2;
+CREATE TABLE tab3 (d Date, m Map(String, Int32)) ENGINE = Memory;
+INSERT INTO tab3 VALUES (toDate('2023-01-01'), {'key1': 123, 'key2': 456}), (toDate('2023-01-02'), {'key3': 789, 'key4': 101});
+SELECT d, mapContainsKeyLike(m, (x -> concat('%', toString(x)))) FROM tab3 WHERE d >= toDate('2023-01-01') AND d < toDate('2023-01-03);
+SELECT mapContainsKeyLike(m, 'key%') AS contains_key FROM tab3 WHERE EXISTS (SELECT 1 FROM tab2 WHERE x < 5);
+CREATE TABLE tab4 (id UInt32, info Map(String, String), status Nullable(Int32)) ENGINE = Memory;
+INSERT INTO tab4 VALUES (1, {'k1': 'v1', 'k2': 'v2'}, NULL), (2, {'k3': 'v3', 'k4': 'v4'}, 2);
+SELECT id, mapContainsKeyLike(info, (x -> x)) FROM tab4 WHERE status IS NULL OR status = (SELECT status FROM tab4 WHERE id = 2);

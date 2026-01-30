@@ -1,0 +1,10 @@
+CREATE TABLE geo_test (id UInt32, polygon_1 Polygon, polygon_2 Polygon, created_at DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO geo_test VALUES (1, [('50', '50'), ('50', '-50'), ('-50', '-50'), ('-50', '50'), ('50', '50')], [('10', '10'), ('10', '40'), ('40', '40'), ('40', '10'), ('10', '10')], now() - INTERVAL 1 DAY);
+INSERT INTO geo_test VALUES (2, [('10', '10'), ('20', '10'), ('20', '20'), ('10', '20'), ('10', '10')], [('15', '15'), ('25', '15'), ('25', '25'), ('15', '25'), ('15', '15')], now() - INTERVAL 2 DAY);
+SELECT id, wkt(arraySort(polygonsSymDifferenceSpherical(polygon_1, polygon_2))) AS sym_diff FROM geo_test WHERE created_at > now() - INTERVAL 3 DAY;
+SELECT id, wkt(arraySort(polygonsSymDifferenceSpherical(polygon_1, polygon_2))) AS sym_diff FROM geo_test WHERE created_at > now() - INTERVAL '1' DAY ORDER BY sym_diff;
+SELECT COUNT(*) FROM geo_test WHERE wkt(arraySort(polygonsSymDifferenceSpherical(polygon_1, polygon_2))) IS NOT NULL;
+SELECT id, created_at, wkt(arraySort(polygonsSymDifferenceSpherical(polygon_1, polygon_2))) AS sym_diff FROM geo_test WHERE created_at BETWEEN now() - INTERVAL 3 DAY AND now() - INTERVAL 1 DAY;
+SELECT id, wkt(arraySort(polygonsSymDifferenceSpherical(polygon_1, polygon_2))) AS sym_diff, created_at + INTERVAL 5 DAY AS new_date FROM geo_test HAVING new_date > now();
+WITH (SELECT wkt(arraySort(polygonsSymDifferenceSpherical(polygon_1, polygon_2))) FROM geo_test WHERE id = 1) AS temp_diff SELECT temp_diff, created_at FROM geo_test WHERE created_at IS NOT NULL;
+SELECT id, COUNT(*) OVER (PARTITION BY created_at) AS count_per_date, wkt(arraySort(polygonsSymDifferenceSpherical(polygon_1, polygon_2))) FROM geo_test GROUP BY id, created_at ORDER BY count_per_date DESC;

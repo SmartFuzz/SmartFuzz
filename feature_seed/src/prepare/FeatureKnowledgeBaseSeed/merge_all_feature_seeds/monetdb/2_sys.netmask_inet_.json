@@ -1,0 +1,16 @@
+CREATE TABLE network_data (id SERIAL PRIMARY KEY, ip_address INET NOT NULL, join_time TIMESTAMP WITH TIME ZONE NOT NULL, data_value INT);
+INSERT INTO network_data (ip_address, join_time, data_value) VALUES (inet '192.168.1.5/24', '2023-10-01 10:00:00+00:00', 10);
+INSERT INTO network_data (ip_address, join_time, data_value) VALUES (inet '192.168.1.10/24', '2023-10-01 12:30:00+00:00', NULL);
+INSERT INTO network_data (ip_address, join_time, data_value) VALUES (inet '10.0.0.1/8', '2023-10-01 14:00:00+00:00', 5);
+SELECT id, sys.netmask(ip_address) AS netmask FROM network_data WHERE data_value IS NOT NULL AND join_time AT TIME ZONE 'UTC' > '2023-10-01 00:00:00';
+SELECT COUNT(*) AS total, sys.netmask(ip_address) AS netmask FROM network_data GROUP BY netmask HAVING COUNT(*) > 0;
+SELECT id, ip_address FROM network_data WHERE ip_address = (SELECT ip_address FROM network_data WHERE join_time IS NULL LIMIT 1) AND data_value IS NOT NULL;
+SELECT time(3) WITH TIME ZONE '18:40:05.123+02:00', sys.netmask(ip_address) FROM network_data WHERE data_value > 0;
+SELECT ip_address, sys.netmask(ip_address) FROM network_data WHERE time(3) WITH TIME ZONE (SELECT '11:00:00.123+00:00');
+SELECT AVG(data_value) FROM network_data WHERE join_time IS NOT NULL GROUP BY sys.netmask(ip_address) HAVING AVG(data_value) IS NOT NULL;
+ALTER TABLE network_data ADD COLUMN netmask INET GENERATED ALWAYS AS (sys.netmask(ip_address)) STORED;
+SELECT id, data_value, time(3) WITH TIME ZONE '23:59:59.999+00:00' FROM network_data WHERE ip_address = inet '192.168.1.5/24';
+INSERT INTO network_data (ip_address, join_time, data_value) VALUES (inet 'invalid_ip', '2023-10-01 12:00:00+00:00', -1);
+SELECT DISTINCT ON (sys.netmask(ip_address)) ip_address FROM network_data ORDER BY sys.netmask(ip_address), join_time DESC;
+CREATE TEMPORARY TABLE temp_network AS SELECT *, sys.netmask(ip_address) FROM network_data;
+UPDATE network_data SET data_value = CASE WHEN data_value IS NULL THEN 0 ELSE data_value END WHERE data_value < 0;

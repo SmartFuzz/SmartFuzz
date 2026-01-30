@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id INTEGER, value DOUBLE, category TEXT);
+INSERT INTO test_data VALUES (1, 10.0, 'A'), (2, 20.0, 'B'), (3, NULL, 'C'), (4, 30.0, 'A'), (5, '40', 'B'), (6, 5.5, 'C');
+SELECT category, stddev_pop(value // 2.0) AS stddev_value FROM test_data GROUP BY category HAVING stddev_value IS NOT NULL;
+SELECT id, value, (stddev_pop(NULLIF(value, 0.0)) // 3.0) AS adjusted_stddev FROM test_data WHERE value IS NOT NULL;
+SELECT category, stddev_pop(value // CAST('20' AS DOUBLE)) AS adjusted_stddev FROM test_data WHERE value IS NOT NULL GROUP BY category HAVING adjusted_stddev < 20.0;
+SELECT category, stddev_pop(value) OVER (PARTITION BY category) AS category_stddev, value // (SELECT COUNT(*) FROM test_data WHERE category = 'A') AS divided_value FROM test_data ORDER BY category;
+SELECT id, value // (SELECT MAX(value) FROM test_data WHERE value IS NOT NULL) AS relative_value FROM test_data WHERE value IS NOT NULL;
+CREATE TEMPORARY TABLE temp_data AS SELECT category, stddev_pop(value) AS category_stddev FROM test_data GROUP BY category;
+SELECT td.category, td.category_stddev FROM temp_data td WHERE td.category_stddev > (SELECT AVG(category_stddev) FROM temp_data) ORDER BY td.category_stddev DESC;
+SELECT category, stddev_pop(COALESCE(value, 0.0) // CASE WHEN category = 'B' THEN 2 ELSE 1 END) AS adjusted_stddev FROM test_data GROUP BY category;

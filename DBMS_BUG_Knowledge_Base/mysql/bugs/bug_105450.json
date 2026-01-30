@@ -1,0 +1,32 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=105450",
+  "title": "There is a problem when calling the system table in stored function",
+  "vulnerable_database": "MySQL Server: Information schema",
+  "date": "2021-11-04 02:49:00",
+  "vulnerable_version": "8.0.25, 8.0.27",
+  "description": "When calling the statistics of system table information_schema.tables in the storage function, it is consistent with the actual situation when the current link is only called for the first time.\nHow to repeat:\n1.Prepare data:\r\ncreate database testdb;\r\n\r\ncreate table `table1`  (   `org_id` int(8) not null auto_increment,   `org_code` varchar(16) not null,primary key (`org_id`));\r\n\r\ninsert into table1 values(NULL,'1');\r\ninsert into table1 values(NULL,'2');\r\n\r\n2.Let the system table update in real time:\r\nset session information_schema_stats_expiry = 0;\r\n\r\n3.Create storage function call table information_schema.tables:\r\nSET GLOBAL log_bin_trust_function_creators = 1;\r\n\r\ndelimiter /\r\n\r\ncreate function fun1(table_name varchar(64)) returns int(11)\r\nbegin\r\ndeclare dbname varchar(32) default 'testdb';\r\ndeclare nextid int(11);\r\nselect database() into dbname;\r\nselect max(AUTO_INCREMENT) into nextid from information_schema.tables t where table_schema=dbname and t.table_name=lower(table_name);\r\nreturn nextid;\r\nend;\r\n/\r\n\r\ndelimiter ;\r\n\r\n4.First query:\r\nmysql> select max(AUTO_INCREMENT) from information_schema.tables t where table_schema='testdb' and t.table_name=lower('table1');\r\n+---------------------+\r\n| max(AUTO_INCREMENT) |\r\n+---------------------+\r\n|                   3 |\r\n+---------------------+\r\n1 row in set (0.00 sec)\r\n\r\nmysql> select fun1('table1');\r\n+----------------+\r\n| fun1('table1') |\r\n+----------------+\r\n|              3 |\r\n+----------------+\r\n1 row in set (0.01 sec)\r\n\r\n5.Insert data and second query:\r\nmysql> insert into table1 values(NULL,'1');\r\n\r\nmysql> select max(AUTO_INCREMENT) from information_schema.tables t where table_schema='testdb' and t.table_name=lower('table1');\r\n+---------------------+\r\n| max(AUTO_INCREMENT) |\r\n+---------------------+\r\n|                   4 |\r\n+---------------------+\r\n1 row in set (0.00 sec)\r\n\r\nmysql> select fun1('table1');\r\n+----------------+\r\n| fun1('table1') |\r\n+----------------+\r\n|              3 |\r\n+----------------+\r\n1 row in set (0.01 sec)",
+  "poc": [
+    "create database testdb;",
+    "create table `table1`  (   `org_id` int(8) not null auto_increment,   `org_code` varchar(16) not null,primary key (`org_id`));",
+    "insert into table1 values(NULL,'1');",
+    "insert into table1 values(NULL,'2');",
+    "update in real time:\nset session information_schema_stats_expiry = 0;",
+    "SET GLOBAL log_bin_trust_function_creators = 1;",
+    "create function fun1(table_name varchar(64)) returns int(11)\nbegin\ndeclare dbname varchar(32) default 'testdb';",
+    "select database() into dbname;",
+    "select max(AUTO_INCREMENT) into nextid from information_schema.tables t where table_schema=dbname and t.table_name=lower(table_name);",
+    "select max(AUTO_INCREMENT) from information_schema.tables t where table_schema='testdb' and t.table_name=lower('table1');",
+    "select fun1('table1');",
+    "Insert data and second query:\nmysql> insert into table1 values(NULL,'1');"
+  ],
+  "key_bug_features": [
+    "Inconsistent AUTO_INCREMENT value in stored function calls"
+  ],
+  "bug_features_seed": [
+    "CREATE DATABASE testdb;",
+    "CREATE TABLE table2 (id INT NOT NULL AUTO_INCREMENT, name VARCHAR(50) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (id));",
+    "INSERT INTO table2 (name) VALUES ('test1');",
+    "INSERT INTO table2 (name) VALUES (NULL);",
+    "SELECT MAX(AUTO_INCREMENT) FROM information_schema.tables WHERE table_schema='testdb' AND table_name='table2';"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/52672",
+  "title": "\"Data truncated for column '%s' at row %d\"",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n```sql\r\ndrop table if exists PK_PRECISION10063;\r\nCREATE TABLE `PK_PRECISION10063` (\r\n  `COL1` decimal(55,0) NOT NULL,\r\n  `COL2` varchar(20) DEFAULT NULL,\r\n  `COL4` datetime DEFAULT NULL,\r\n  `COL3` bigint(20) DEFAULT NULL,\r\n  `COL5` float DEFAULT NULL,\r\n  PRIMARY KEY (`COL1`) /*T![clustered_index] CLUSTERED */\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;\r\ninsert into `PK_PRECISION10063` (`COL1`) values (8320145330174776428);\r\n\r\nselect col1, tan(col1) from PK_PRECISION10063 where tan(col1) < tan(9021874879467600608071521900001091070693729763119983979);\r\n\r\n```\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\n```sql\r\n[16:55:05]MySQL root:test> select col1, tan(col1) from PK_PRECISION10063 where tan(col1) < tan(9021874879467600608071521900001091070693729763119983979);\r\n+---------------------+---------------------+\r\n| col1                | tan(col1)           |\r\n+---------------------+---------------------+\r\n| 8320145330174776428 | 0.06084016242886609 |\r\n+---------------------+---------------------+\r\n```\r\n### 3. What did you see instead (Required)\r\n```sql\r\n[16:54:19]TiDB root:test> select col1, tan(col1) from PK_PRECISION10063 where tan(col1) < tan(9021874879467600608071521900001091070693729763119983979);\r\n(1265, \"Data truncated for column '%s' at row %d\")\r\n```\r\n### 4. What is your TiDB version? (Required)\r\nv8.1.0\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2024-04-17T08:56:39Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS PK_PRECISION10064;",
+    "CREATE TABLE PK_PRECISION10064 (COL1 REAL NOT NULL, COL2 TEXT DEFAULT NULL, COL3 REAL DEFAULT NULL, PRIMARY KEY (COL1));",
+    "INSERT INTO PK_PRECISION10064 (COL1, COL2) VALUES (12345678901234567890.0, 'Test Value');",
+    "SELECT COL1, tan(COL1) FROM PK_PRECISION10064 WHERE COL1 > 10000000000000000000.0;",
+    "SELECT COL1, tan(COL1) FROM PK_PRECISION10064 WHERE tan(COL1) IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "tan function with large decimal values causes data truncation"
+  ]
+}

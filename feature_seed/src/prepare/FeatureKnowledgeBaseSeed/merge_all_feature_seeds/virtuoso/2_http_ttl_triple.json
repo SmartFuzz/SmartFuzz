@@ -1,0 +1,11 @@
+CREATE TABLE rdf_triples (s VARCHAR, p VARCHAR, o VARCHAR);
+INSERT INTO rdf_triples VALUES ('<subject1>', '<predicate1>', '<object1>');
+INSERT INTO rdf_triples VALUES ('<subject2>', '<predicate2>', NULL);
+INSERT INTO rdf_triples VALUES ('<subject3>', '<predicate3>', 'literal');
+INSERT INTO rdf_triples VALUES ('<subject4>', '<predicate4>', '4.5');
+SELECT http_ttl_triple(vector(dict_new(16000), 0, '', '', '', 0, 0, 0, 0), s, p, o, string_output()) FROM rdf_triples WHERE (s NOT IN (SELECT DISTINCT s FROM rdf_triples WHERE o IS NULL));
+SELECT * FROM (SELECT http_ttl_triple(vector(dict_new(16000), 0, '', '', '', 0, 0, 0, 0), s, p, o, string_output()) AS serialized FROM rdf_triples) AS sub WHERE serialized NOT IN ('<subject1> <predicate1> <object1> .', '<subject2> <predicate2> <object2> .');
+SELECT s, p FROM rdf_triples WHERE (http_ttl_triple(vector(dict_new(16000), 0, '', '', '', 0, 0, 0, 0), s, p, o, string_output()) NOT IN (SELECT output FROM (SELECT http_ttl_triple(vector(dict_new(16000), 0, '', '', '', 0, 0, 0, 0), s, 'predicate_ignore', o, string_output()) AS output FROM rdf_triples) AS derived));
+CREATE TEMPORARY TABLE temp_rdf_triples AS SELECT s, p, CAST(NULL AS VARCHAR) AS o FROM rdf_triples WHERE s NOT IN (SELECT s FROM rdf_triples WHERE o IS NOT NULL);
+INSERT INTO rdf_triples SELECT * FROM temp_rdf_triples WHERE (o NOT IN (SELECT o FROM rdf_triples WHERE o IS TRUE)) AND (http_ttl_triple(vector(dict_new(16000), 0, '', '', '', 0, 0, 0, 0), s, p, o, string_output()) IS NOT NULL);
+SELECT http_ttl_triple(env, s, p, CAST('literal' AS VARCHAR), ses) FROM rdf_triples WHERE (s NOT IN (SELECT s FROM rdf_triples WHERE LENGTH(s) > 0));

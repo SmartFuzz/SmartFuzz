@@ -1,0 +1,19 @@
+{
+    "function": "date_part([part, ...], timestamptz)",
+    "operator": "&&",
+    "sql_array": [
+        "CREATE TABLE test_data (id INTEGER, ts TIMESTAMPTZ, values_list LIST<INTEGER>);",
+        "INSERT INTO test_data VALUES (1, TIMESTAMPTZ '2023-01-01 12:00:00-05', [1, 2, 3]), (2, TIMESTAMPTZ '2024-05-28 08:30:00-07', [4, 5, 6]);",
+        "SELECT id, date_part(['year', 'month', 'day'], ts) AS date_parts FROM test_data WHERE values_list && [2, 5];",
+        "SELECT id, date_part(['year', 'month'], ts) AS year_month FROM test_data WHERE (SELECT COUNT(*) FROM test_data WHERE ts IS NOT NULL) > 0;",
+        "SELECT id, date_part(['day'], ts) AS day_part, COUNT(*) OVER (PARTITION BY date_part(['year'], ts)) AS yearly_count FROM test_data GROUP BY id, day_part HAVING yearly_count > 1;",
+        "SELECT id, date_part(['month'], ts) FROM test_data WHERE values_list && (SELECT [5] FROM test_data WHERE id = 2);",
+        "CREATE TABLE temp_table (temp_id INTEGER, date_info TIMESTAMPTZ);",
+        "INSERT INTO temp_table VALUES (1, TIMESTAMPTZ '2022-02-02 14:00:00-06'), (2, null);",
+        "SELECT tt.temp_id, dt FROM temp_table tt, test_data td WHERE tt.date_info IS NOT NULL AND date_part(['year'], tt.date_info) = date_part(['year'], td.ts) LIMIT 1;",
+        "SELECT id, date_part(['day', 'month', 'year'], timestamp '2023-01-01 00:00:00') AS parts FROM test_data WHERE id IN (SELECT temp_id FROM temp_table WHERE temp_id IS NOT NULL);",
+        "UPDATE test_data SET values_list = values_list || [NULL] WHERE id = 1;",
+        "DROP TABLE IF EXISTS test_data;",
+        "DROP TABLE IF EXISTS temp_table;"
+    ]
+}

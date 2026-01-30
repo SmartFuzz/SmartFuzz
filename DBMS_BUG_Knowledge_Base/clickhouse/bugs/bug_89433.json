@@ -1,0 +1,24 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/89433",
+  "title": "Context has expired logical error with Join-engine",
+  "vulnerable_database": "ClickHouse",
+  "date": "2025-11-03T18:07:40Z",
+  "vulnerable_version": "",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nQuery with Join-engine fails between 25.7.7 and 25.7.8.\n25.7.8: https://fiddle.clickhouse.com/63b70627-67cf-4ff5-a150-8a9e5206a83f — fails.\n25.7.7: https://fiddle.clickhouse.com/6d05b6c1-775d-405c-947f-c3d3d7a18cbf — works.\nNote: below we are using `LowCardinality(String)`, but it fails with `String` as well.\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\n```sql\nCREATE TABLE tbl\n(\n`id1` LowCardinality(String),\n`id2` LowCardinality(String),\n`v` Int64\n)\nENGINE = MergeTree\nORDER BY (id1, id2, v);\nINSERT INTO tbl VALUES ('a', 'b', 1);\nCREATE TABLE join_engine\n(\n`id1` LowCardinality(String),\n`id2` LowCardinality(String),\n`v` Int64\n)\nENGINE = Join(ANY, LEFT, id1, id2)\n;\nINSERT INTO join_engine VALUES ('a', 'b', 1);\nWITH cte AS\n(\nSELECT id2\nFROM tbl\nWHERE joinGet('join_engine', 'v', id1, id2) = tbl.v\n)\nSELECT uniq(id2) AS count\nFROM\n(\nSELECT *\nFROM tbl AS e\nWHERE joinGet('join_engine', 'v', id1, id2) = e.v\n)\nWHERE id2 IN (\nSELECT id2\nFROM cte\n)\nUNION ALL\nSELECT uniq(id2) AS count\nFROM cte\n;",
+  "poc": [
+    "CREATE TABLE tbl\n(\n    `id1` LowCardinality(String),\n    `id2` LowCardinality(String),\n    `v` Int64\n)\nENGINE = MergeTree\nORDER BY (id1, id2, v);",
+    "INSERT INTO tbl VALUES ('a', 'b', 1);",
+    "CREATE TABLE join_engine\n(\n    `id1` LowCardinality(String),\n    `id2` LowCardinality(String),\n    `v` Int64\n)\nENGINE = Join(ANY, LEFT, id1, id2)\n;",
+    "INSERT INTO join_engine VALUES ('a', 'b', 1);"
+  ],
+  "key_bug_features": [
+    "Join-engine fails between versions 25.7.7 and 25.7.8"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE tbl1\n(\n    `id1` LowCardinality(String),\n    `id2` LowCardinality(String),\n    `v` Int64,\n    `created_at` DateTime DEFAULT now()\n)\nENGINE = MergeTree\nORDER BY (id1, id2, v);",
+    "INSERT INTO tbl1 VALUES ('x', 'y', 10), ('x', 'z', 20), (NULL, 'y', 30);",
+    "CREATE TABLE join_engine1\n(\n    `id1` LowCardinality(String),\n    `id2` LowCardinality(String),\n    `v` Int64,\n    `status` Enum8('active' = 1, 'inactive' = 2)\n)\nENGINE = Join(ANY, LEFT, id1, id2);",
+    "INSERT INTO join_engine1 VALUES ('x', 'y', 10, 'active'), ('x', 'z', 20, 'inactive');",
+    "SELECT uniq(id2) AS count\nFROM tbl1\nWHERE joinGet('join_engine1', 'v', id1, id2) = v AND id1 IS NOT NULL;"
+  ]
+}

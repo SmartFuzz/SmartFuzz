@@ -1,0 +1,12 @@
+CREATE TABLE test_dates (id INTEGER PRIMARY KEY, event_date TIMESTAMP, description TEXT);
+INSERT INTO test_dates VALUES (1, TIMESTAMP '2021-01-15 12:00:00', 'Event A'), (2, TIMESTAMP '2021-02-10 15:00:00', 'Event B'), (3, NULL, 'Event C');
+SELECT id, description, last_day(event_date) AS month_end, (id & 1) AS is_odd FROM test_dates WHERE last_day(event_date) IS NOT NULL ORDER BY is_odd;
+SELECT d.id, d.description, last_day(d.event_date) AS month_end, (d.id & (SELECT COUNT(*) FROM test_dates)) AS bitwise_result FROM test_dates d WHERE d.event_date IS NOT NULL AND (d.id & 2) = 0;
+CREATE TABLE temp_dates AS SELECT last_day(event_date) AS end_date, (id & 3) AS bitwise_val FROM test_dates;
+SELECT DISTINCT end_date, bitwise_val FROM temp_dates WHERE end_date IS NOT NULL;
+SELECT a.id, (a.event_date & b.id) AS combined_result FROM test_dates a JOIN (SELECT id FROM test_dates WHERE description IS NOT NULL) b ON (a.id & b.id) > 0;
+CREATE TABLE edge_cases (edge_id INTEGER, nullable_date TIMESTAMP NULL);
+INSERT INTO edge_cases VALUES (1, TIMESTAMP '2023-11-01 00:00:00'), (2, NULL), (3, TIMESTAMP '2023-02-28 12:30:30');
+SELECT edge_id, last_day(nullable_date) AS last_day_value, (edge_id & 1) AS odd_check FROM edge_cases WHERE nullable_date IS NOT NULL OR (edge_id & 1) = 0;
+SELECT (SELECT COUNT(*) FROM edge_cases WHERE nullable_date IS NULL) AS null_count, (SELECT COUNT(*) FROM edge_cases) AS total_count;
+SELECT *, last_day(event_date) AS last_day_value FROM (SELECT event_date, id & 5 AS and_result FROM test_dates) AS temp WHERE last_day_value = TIMESTAMP '2021-01-31 00:00:00';

@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/731",
+  "title": "Cast of a variable to an IRI does not match in BGP but works with filter",
+  "description": "PREFIX up:<http://purl.uniprot.org/core/>\nSELECT ?start ?protein ?input\nWHERE\n{\n\tBIND('P05067' AS ?input)\n\tBIND(\n      IF(strstarts(?input, 'PRO_'),\n      \tIRI(CONCAT('http://purl.uniprot.org/annotation/', ?input)),\n        IF (contains(?input, '-'),\n            IRI(CONCAT('http://purl.uniprot.org/isoform/', ?input)),\n            IRI(CONCAT('http://purl.uniprot.org/uniprot/', ?input))\n        )\n      ) AS ?start)\n  {\n    BIND(?start AS ?protein)\n    ?protein a up:Protein .\n  #  FILTER(sameTerm(?protein, ?start))\n  }\n} OFFSET 0 LIMIT 1\nFails to return results, while the equivalent where the BIND(?start AS ?protein) is commented out and the FILTER(sameTerm(?protein, ?start)) commented in does.\nOn http://lod.openlinksw.com/sparql/, both seem to fail the \"Strict checking of void variables\" check.",
+  "date": "2018-03-28 07:41:41",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE proteins (id INT PRIMARY KEY, name VARCHAR(255), iri VARCHAR(255) UNIQUE NOT NULL);",
+    "INSERT INTO proteins (id, name, iri) VALUES (1, 'Protein A', 'http://purl.uniprot.org/uniprot/P05067');",
+    "INSERT INTO proteins (id, name, iri) VALUES (2, 'Protein B', 'http://purl.uniprot.org/uniprot/P12345');",
+    "SELECT id, name, iri FROM proteins WHERE iri = CONCAT('http://purl.uniprot.org/uniprot/', 'P05067');",
+    "SELECT id, name FROM proteins WHERE id IN (SELECT id FROM proteins WHERE name LIKE 'Protein%') LIMIT 1;"
+  ],
+  "key_bug_features": [
+    "Casting variable to IRI fails in BGP"
+  ]
+}

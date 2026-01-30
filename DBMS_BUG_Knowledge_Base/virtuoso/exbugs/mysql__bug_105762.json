@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=105762",
+  "title": "sum(least(a, NULL)) result error",
+  "description": "least(a, NULL) will return a in SUM/AVG function\nHow to repeat:\nmysql> create table t1 (a double, b double);\r\nQuery OK, 0 rows affected (0.04 sec)\r\n\r\nmysql> insert into t1 values(1, NULL);\r\nQuery OK, 1 row affected (0.03 sec)\r\n\r\nmysql> insert into t1 values(1, 1);\r\nQuery OK, 1 row affected (0.04 sec)\r\n\r\nmysql> select sum(least(a, b)) from t1;\r\n+------------------+\r\n| sum(least(a, b)) |\r\n+------------------+\r\n|                2 |\r\n+------------------+\r\n1 row in set (0.00 sec)\nSuggested fix:\nItem_func_min_max::real_op() should return 0.0 if null_value is TRUE.\r\n\r\nfor (uint i = 0; i < arg_count; i++) {\r\n  const double tmp = args[i]->val_real();\r\n  if ((null_value = args[i]->null_value)) break; // return 0.0\r\n  if (i == 0 || (tmp < result) == m_is_least_func) result = tmp;\r\n}",
+  "date": "2021-12-01 09:42:00",
+  "vulnerable_version": "8.0.13, 8.0.27, 5.7.36",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (a INT, b INT, c DOUBLE NULL);",
+    "INSERT INTO t2 VALUES (1, NULL, 2.5);",
+    "INSERT INTO t2 VALUES (2, 3, NULL);",
+    "SELECT SUM(LEAST(a, b, COALESCE(c, 0))) FROM t2;",
+    "SELECT SUM(LEAST(a, COALESCE(b, 0))) FROM t2;"
+  ],
+  "key_bug_features": [
+    "least(a, NULL) in SUM/AVG function returns incorrect result"
+  ]
+}

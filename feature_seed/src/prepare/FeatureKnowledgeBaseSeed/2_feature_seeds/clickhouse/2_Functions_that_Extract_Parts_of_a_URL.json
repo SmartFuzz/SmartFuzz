@@ -1,0 +1,16 @@
+CREATE TABLE url_test (id UInt32, url String, created_at DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO url_test VALUES (1, 'http://example.com'), (2, 'https://test.com:8080/path?query=value#fragment'), (3, 'ftp://ftp.example.com/resource'), (4, 'svn+ssh://user@host.com/repo'), (5, 'mailto:someone@example.com');
+SELECT domain(url) AS domain_name, protocol(url) AS protocol_name FROM url_test WHERE url NOT LIKE '%example.com';
+SELECT id, domain(url) AS domain_name FROM url_test GROUP BY domain_name HAVING domain_name NOT LIKE '';
+SELECT COUNT(*) FROM (SELECT protocol(url) FROM url_test WHERE domain(url) NOT LIKE '%test.com') AS sub WHERE sub.protocol IS NOT NULL;
+SELECT netloc(url) AS network_location FROM url_test WHERE netloc(url) NOT LIKE '%@%';
+SELECT COUNT(*) FROM url_test WHERE protocol(url) NOT LIKE ALL (SELECT DISTINCT protocol(url) FROM url_test WHERE url NOT LIKE '%:8080%');
+SELECT id, domain(url) FROM url_test ORDER BY domain(url) DESC HAVING domain(url) NOT LIKE '%ftp%';
+CREATE TABLE url_metrics AS SELECT id, domain(url) AS domain_name FROM url_test WHERE url NOT LIKE '%mailto%';
+CREATE TABLE processed_urls AS SELECT id, domain(url), port(url) AS determined_port FROM url_test;
+SELECT COUNT(*) FROM (SELECT * FROM processed_urls WHERE port(url) NOT LIKE '80' OR port(url) IS NULL) as sub;
+SELECT domain(url), COUNT(*) OVER (PARTITION BY domain(url)) AS domain_count FROM url_metrics WHERE domain(url) NOT LIKE '' ORDER BY domain_count;
+SELECT firstSignificantSubdomain(url) FROM url_metrics WHERE firstSignificantSubdomain(url) NOT LIKE '';
+SELECT EXISTS (SELECT 1 FROM url_test WHERE domainWithoutWWW(url) NOT LIKE '');
+SELECT id FROM url_test WHERE domain(url) NOT LIKE ANY (SELECT domain(url) FROM url_test WHERE url NOT LIKE '%https%');
+UPDATE url_test SET url = encodeURLComponent(url) WHERE url NOT LIKE '%encoded%';

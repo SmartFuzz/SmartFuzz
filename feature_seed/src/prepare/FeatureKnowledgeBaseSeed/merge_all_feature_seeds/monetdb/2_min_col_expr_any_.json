@@ -1,0 +1,13 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, value INT, description VARCHAR(100), created_at TIMESTAMP);
+INSERT INTO test_table (id, value, description, created_at) VALUES (1, 10, 'record1', NOW()), (2, 25, 'record2', NOW()), (3, NULL, 'record3', NOW()), (4, 5, 'record4', NOW());
+SELECT id, value, MIN(value) OVER (PARTITION BY description) AS min_value FROM test_table WHERE (MIN(value) OVER (PARTITION BY description)) >= (SELECT MAX(value) FROM test_table) OR value IS NULL;
+SELECT id, description, value FROM (SELECT id, description, value, MIN(value) OVER (PARTITION BY description) AS min_value FROM test_table) AS subquery WHERE min_value >= 15 ORDER BY min_value;
+CREATE TABLE another_table (id INT PRIMARY KEY, parent_id INT, FOREIGN KEY (parent_id) REFERENCES test_table(id));
+INSERT INTO another_table (id, parent_id) VALUES (1, 1), (2, 2), (3, 3), (4, NULL);
+SELECT a.id, a.parent_id, t.value FROM another_table a JOIN test_table t ON a.parent_id = t.id WHERE t.value >= (SELECT MIN(value) FROM test_table WHERE value IS NOT NULL) HAVING MIN(a.parent_id) IS NULL;
+SELECT id, value FROM test_table WHERE id >= 2 AND (value = (SELECT MIN(value) FROM test_table WHERE id < 3) OR value IS NULL);
+SELECT value, COUNT(*) FROM test_table GROUP BY value HAVING COUNT(*) >= (SELECT COUNT(*) FROM test_table WHERE value IS NOT NULL AND created_at >= '2023-01-01');
+SELECT t1.id, t1.value, (SELECT COUNT(*) FROM another_table WHERE parent_id = t1.id) AS child_count FROM test_table t1 WHERE t1.value >= (SELECT MIN(value) FROM test_table WHERE value > 10 AND value IS NOT NULL) ORDER BY child_count DESC;
+CREATE TABLE temp_table (value_col VARCHAR(255));
+INSERT INTO temp_table (value_col) VALUES ('10'), ('twenty'), (NULL), ('30.5');
+SELECT MIN(CAST(value_col AS INT)) FROM temp_table WHERE (value_col IS NOT NULL) AND (value_col::TEXT >= '15' OR value_col IS NULL);

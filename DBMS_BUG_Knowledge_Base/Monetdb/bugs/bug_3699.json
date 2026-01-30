@@ -1,0 +1,27 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/3699",
+  "title": "segfault again! (during last week I found 3 segfault bugs already)",
+  "vulnerable_database": "monetdb",
+  "date": "2020-11-30T13:00:51Z",
+  "vulnerable_version": "Unknown",
+  "description": "",
+  "poc": [
+    "CREATE SCHEMA \"marketdata\" AUTHORIZATION \"trader\";",
+    "CREATE TABLE marketdata.quotes (\r\n \"id\" INTEGER NOT NULL DEFAULT next value for marketdata.seq_quotes_1,\r\n \"qtime\" TIMESTAMP WITH TIME ZONE NOT NULL,\r\n \"sdate\" TIMESTAMP WITH TIME ZONE,\r\n \"sym\" VARCHAR(10) NOT NULL, \r\n \"cur\" VARCHAR(10) NOT NULL,\r\n \"open\" DOUBLE NOT NULL,\r\n \"high\" DOUBLE NOT NULL,\r\n \"low\" DOUBLE NOT NULL,\r\n \"close\" DOUBLE NOT NULL,\r\n \"volume\" DOUBLE,\r\n CONSTRAINT quotes_id_pkey PRIMARY KEY (\"id\")\r\n );",
+    "SELECT * FROM (\r\n \t\t\tWITH open(sdate, open, rnk) as (\r\n \t\t\t\t\tselect sdate, open, row_number() over (partition by sdate order by qtime asc) as rnk from marketdata.quotes \r\n \t\t\t\t\t\twhere sym=psym and sdate is not NULL and cast(sdate as date) > tsince\r\n \t\t\t\t),\r\n \t\t\t\tclose(sdate, close, rnk) as (\r\n \t\t\t\t\t\tselect sdate, close, row_number() over (partition by sdate order by qtime desc) as rnk from marketdata.quotes\r\n \t\t\t\t\t\t\twhere sym=psym and sdate is not NULL and cast(sdate as date) > tsince\r\n \t\t\t\t),\r\n \t\t\t\thilw(sdate,high,low, volume) as (\r\n \t\t\t\t\t\tselect sdate, max(high) as high, min(low) as low, sum(volume) from marketdata.quotes \r\n \t\t\t\t\t\t\twhere sym=psym and sdate is not NULL and cast(sdate as date) > tsince group by sdate\r\n \t\t\t\t)\t\r\n \t\t\t\tselect open.sdate, open.open, hilw.high, hilw.low, close.close , hilw.volume from open, close, hilw where open.rnk=1 and close.rnk=1 and open.sdate=close.sdate and open.sdate=hilw.sdate ORDER BY sdate DESC\r\n \t\t\t) AS x\r\n \t\t);",
+    "select cast(sdate as date) from marketdata.quotes limit 10\r\n \t\t);",
+    "select 0.0 into t;",
+    "select 0.0);",
+    "insert into t (select ..).;"
+  ],
+  "key_bug_features": [
+    "SELECT statement with complex CTEs and date casting"
+  ],
+  "bug_features_seed": [
+    "CREATE SCHEMA \"financialdata\" AUTHORIZATION \"analyst\";",
+    "CREATE TABLE financialdata.stocks (\r\n \"id\" SERIAL NOT NULL,\r\n \"trade_time\" TIMESTAMP WITH TIME ZONE NOT NULL,\r\n \"trade_date\" TIMESTAMP WITH TIME ZONE,\r\n \"ticker\" VARCHAR(10) NOT NULL,\r\n \"currency\" VARCHAR(10) NOT NULL,\r\n \"opening_price\" DOUBLE NOT NULL,\r\n \"highest_price\" DOUBLE NOT NULL,\r\n \"lowest_price\" DOUBLE NOT NULL,\r\n \"closing_price\" DOUBLE NOT NULL,\r\n \"trade_volume\" DOUBLE,\r\n CONSTRAINT stocks_id_pkey PRIMARY KEY (\"id\")\r\n );",
+    "INSERT INTO financialdata.stocks (trade_time, trade_date, ticker, currency, opening_price, highest_price, lowest_price, closing_price, trade_volume) VALUES (NOW(), NOW(), 'AAPL', 'USD', 150.0, 155.0, 149.0, 154.0, 10000.0);",
+    "SELECT * FROM (\r\n \t\t\tWITH daily_open(trade_date, opening_price, rnk) AS (\r\n \t\t\t\t\tSELECT trade_date, opening_price, ROW_NUMBER() OVER (PARTITION BY trade_date ORDER BY trade_time ASC) AS rnk FROM financialdata.stocks \r\n \t\t\t\t\t\tWHERE ticker='AAPL' AND trade_date IS NOT NULL AND CAST(trade_date AS DATE) > CURRENT_DATE - INTERVAL '30 days'\r\n \t\t\t\t),\r\n \t\t\t\tdaily_close(trade_date, closing_price, rnk) AS (\r\n \t\t\t\t\t\tSELECT trade_date, closing_price, ROW_NUMBER() OVER (PARTITION BY trade_date ORDER BY trade_time DESC) AS rnk FROM financialdata.stocks\r\n \t\t\t\t\t\t\tWHERE ticker='AAPL' AND trade_date IS NOT NULL AND CAST(trade_date AS DATE) > CURRENT_DATE - INTERVAL '30 days'\r\n \t\t\t\t),\r\n \t\t\t\tdaily_stats(trade_date, highest_price, lowest_price, trade_volume) AS (\r\n \t\t\t\t\t\tSELECT trade_date, MAX(highest_price) AS highest_price, MIN(lowest_price) AS lowest_price, SUM(trade_volume) FROM financialdata.stocks \r\n \t\t\t\t\t\t\tWHERE ticker='AAPL' AND trade_date IS NOT NULL AND CAST(trade_date AS DATE) > CURRENT_DATE - INTERVAL '30 days' GROUP BY trade_date\r\n \t\t\t\t)\r\n \t\t\t\tSELECT daily_open.trade_date, daily_open.opening_price, daily_stats.highest_price, daily_stats.lowest_price, daily_close.closing_price, daily_stats.trade_volume FROM daily_open, daily_close, daily_stats WHERE daily_open.rnk=1 AND daily_close.rnk=1 AND daily_open.trade_date=daily_close.trade_date AND daily_open.trade_date=daily_stats.trade_date ORDER BY trade_date DESC\r\n \t\t\t) AS result;",
+    "SELECT CAST(trade_date AS DATE) FROM financialdata.stocks LIMIT 10;"
+  ]
+}

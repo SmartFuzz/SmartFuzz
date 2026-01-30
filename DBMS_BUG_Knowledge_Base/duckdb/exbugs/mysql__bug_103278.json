@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=103278",
+  "title": "SUM(decimal) produces wrong result",
+  "description": "Computing SUM(decimal) in derived table produces wrong result.\nHow to repeat:\n1. import data into table \r\n\r\n```\r\nsource /home/xychen/dump.sql; \r\n\r\n```\n\n2. execute the query \r\n\r\n```\r\nwithout derived table\r\n \r\nmysql> select sum(C_DECIMAL) from ndptest_table9;\r\n+-------------------------------------------------------------------------+\r\n| sum(C_DECIMAL)                                                          |\r\n+-------------------------------------------------------------------------+\r\n| -204799999999999993548015078616886608561.307223454886617454292144834909 |\r\n+-------------------------------------------------------------------------+\r\n\r\nwith derived table:\r\n\r\nset optimizer_switch='derived_merge=off';\r\n\r\nmysql> select * from (select sum(C_DECIMAL) from ndptest_table9) as dt;\r\n+---------------------------------------------------------------------+\r\n| sum(C_DECIMAL)                                                      |\r\n+---------------------------------------------------------------------+\r\n| -99999999999999999999999999999999999.999999999999999999999999999999 |\r\n+---------------------------------------------------------------------+\r\n\r\n``` \r\nClearly, these two quries should have the same result. However, the result \r\nin the second query looks like 'overflow'.",
+  "date": "2021-04-12 06:56:00",
+  "vulnerable_version": "8.0, 8.0.23, 5.7.33",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE ndptest_table9 (C_DECIMAL DECIMAL(65,30), C_INT INT, C_VARCHAR VARCHAR(255));",
+    "INSERT INTO ndptest_table9 VALUES (1.0, 1, 'test1'), (2.0, 2, 'test2'), (NULL, 3, 'test3');",
+    "SELECT SUM(C_DECIMAL) FROM ndptest_table9 WHERE C_INT IS NOT NULL;",
+    "SELECT SUM(C_DECIMAL) AS total_sum FROM ndptest_table9 WHERE C_VARCHAR LIKE 'test%';",
+    "SELECT SUM(C_DECIMAL) FROM ndptest_table9;"
+  ],
+  "key_bug_features": [
+    "SUM(decimal) in derived table yields incorrect result"
+  ]
+}

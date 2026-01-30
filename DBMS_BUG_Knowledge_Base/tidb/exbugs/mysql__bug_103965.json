@@ -1,0 +1,21 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=103965",
+  "title": "Stored procedure execution fails if contains a functional index",
+  "description": "A Stored Procedure execution fails after some executions when a functional index is present in the SP definition. The error behaves differently depending on the versions I tested:\r\n\r\n8.0.23: It only fails when using a temporary table. After the third execution, all the subsequent executions fail.\r\n\r\n8.0.25: It also fails on normal tables as well.\nHow to repeat:\nDROP PROCEDURE IF EXISTS `sproc`;\r\nDELIMITER $$\r\nCREATE PROCEDURE `sproc`()\r\nBEGIN\r\nDROP TEMPORARY TABLE IF EXISTS `T1`;\r\nCREATE TEMPORARY TABLE `T1`(\r\n`C1` INT,\r\nKEY ( ( `C1` > 0 ) )\r\n);\r\n\r\nSELECT 1 FROM ( SELECT 1 `C2` ) `T2`;\r\nEND$$\r\nDELIMITER ;\r\nNow if you invoke that procedure 3 times in a row:\r\n\r\nmysql> CALL `sproc`(); CALL `sproc`(); CALL `sproc`();\r\n+---+           \r\n| 1 |           \r\n+---+           \r\n| 1 |           \r\n+---+\r\n1 row in set (0.00 sec)\r\n\r\nQuery OK, 0 rows affected (0.00 sec)\r\n                \r\n+---+           \r\n| 1 |           \r\n+---+           \r\n| 1 |       \r\n+---+\r\n1 row in set (0.00 sec)\r\n\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nERROR 3107 (HY000): Generated column can refer only to generated columns defined prior to it.\r\n\r\n----\r\nOn 8.0.25: The error is\r\n\r\nERROR 3754 (HY000): Functional index 'functional_index' cannot refer to an auto-increment column.",
+  "date": "2021-06-09 22:20:00",
+  "vulnerable_version": "8.0.25, 8.0.23",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "DROP PROCEDURE IF EXISTS `sproc`;",
+    "CREATE PROCEDURE `sproc`() BEGIN DROP TEMPORARY TABLE IF EXISTS `T1`;",
+    "CREATE TEMPORARY TABLE `T1`(`C1` INT, `C2` VARCHAR(255), KEY (`C1`));",
+    "END;",
+    "CALL `sproc`;",
+    "INSERT INTO `T1`(`C1`, `C2`) VALUES (1, 'test'), (2, NULL), (3, 'example');"
+  ],
+  "key_bug_features": [
+    "Stored procedure fails with functional index in definition"
+  ]
+}

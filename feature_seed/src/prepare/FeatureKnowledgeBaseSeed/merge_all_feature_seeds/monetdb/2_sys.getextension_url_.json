@@ -1,0 +1,14 @@
+CREATE TABLE urls (id SERIAL PRIMARY KEY, url VARCHAR(255) NOT NULL);
+CREATE TABLE numbers (id SERIAL PRIMARY KEY, value INT NOT NULL);
+INSERT INTO urls (url) VALUES ('http://example.com/file.txt'), ('https://sample.org/image.jpg'), (NULL);
+INSERT INTO numbers (value) VALUES (1), (2), (3);
+SELECT sys.getextension(url) AS extension, value - 1 AS adjusted_value FROM urls, numbers WHERE url IS NOT NULL AND adjusted_value > 0;
+SELECT url, sys.getextension(url) AS ext, (SELECT COUNT(*) FROM numbers WHERE value < 3) - (SELECT COUNT(*) FROM urls WHERE url IS NULL) AS subtracted_count FROM urls GROUP BY url, ext HAVING ext IS NOT NULL;
+SELECT url, (CASE WHEN sys.getextension(url) IS NULL THEN 'No extension' ELSE sys.getextension(url) END) AS valid_extension, (COUNT(*) OVER (PARTITION BY sys.getextension(url))) - (MIN(value) OVER ()) AS extension_count FROM urls JOIN numbers ON value > 0 WHERE value IS NOT NULL;
+SELECT value, sys.getextension(CONCAT(url, '.bak')) AS extended_extension FROM urls JOIN numbers ON (value - 3) < (SELECT MAX(value) FROM numbers) GROUP BY url, value HAVING extended_extension IS NOT NULL;
+SELECT (sys.getextension(url) IS NOT NULL) AS has_extension, COUNT(*) FROM urls LEFT JOIN numbers ON (value - (SELECT AVG(value) FROM numbers)) < 2 GROUP BY has_extension;
+SELECT sys.getextension(CONCAT(url, '.pdf')), (value - 3) FROM urls CROSS JOIN numbers WHERE value <= 3;
+ALTER TABLE urls ADD COLUMN processed BOOL DEFAULT FALSE;
+UPDATE urls SET processed = TRUE WHERE sys.getextension(url) IS NOT NULL;
+CREATE TEMPORARY TABLE temp_results AS SELECT url, sys.getextension(url) AS ext FROM urls WHERE ext IS NULL;
+DROP TABLE IF EXISTS temp_results;

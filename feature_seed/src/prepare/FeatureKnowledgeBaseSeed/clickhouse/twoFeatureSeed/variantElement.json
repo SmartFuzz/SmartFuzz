@@ -1,0 +1,18 @@
+{
+    "function": "variantElement",
+    "operator": "a GLOBAL NOT IN ...",
+    "sql_array": [
+        "CREATE TABLE test1 (v Variant(UInt64, String, Array(UInt64)) NULL, id UInt64);",
+        "INSERT INTO test1 VALUES (NULL, 1), (42, 2), ('Hello, World!', 3), ([1, 2, 3], 4), (NULL, 5);",
+        "SELECT id, variantElement(v, 'String') AS string_value, variantElement(v, 'UInt64') AS uint_value, variantElement(v, 'Array(UInt64)') AS array_value FROM test1 WHERE variantElement(v, 'String') IS NOT NULL;",
+        "CREATE TABLE test2 (id UInt64, str_col String);",
+        "INSERT INTO test2 VALUES (1, 'test1'), (2, NULL), (3, 'test3');",
+        "SELECT t1.id, variantElement(t1.v, 'UInt64') AS extracted, t2.str_col FROM test1 t1 JOIN test2 t2 ON t1.id = t2.id WHERE extracted NOT IN (SELECT variantElement(v, 'UInt64') FROM test1 WHERE v IS NOT NULL);",
+        "SELECT id, variantElement(v, 'Array(UInt64)') FROM test1 WHERE id NOT IN (SELECT id FROM test2 WHERE str_col IS NULL);",
+        "SELECT t1.id, arrayJoin(variantElement(t1.v, 'Array(UInt64)')) AS element FROM test1 t1 WHERE variantElement(t1.v, 'Array(UInt64)') GLOBAL NOT IN (SELECT variantElement(v, 'Array(UInt64)') FROM test1 WHERE variantElement(v, 'String') IS NOT NULL);",
+        "SELECT t1.id, COUNT(*) FROM test1 t1 LEFT JOIN test2 t2 ON variantElement(t1.v, 'String') = t2.str_col GROUP BY t1.id HAVING COUNT(*) > 1;",
+        "CREATE TABLE test3 (v Variant(Int32, String) NULL, other_val Float64 DEFAULT 0.0, PRIMARY KEY (v));",
+        "INSERT INTO test3 VALUES (1, 'str1'), (NULL, 'str2'), (NULL, NULL);",
+        "SELECT * FROM test3 WHERE (variantElement(v, 'Int32') IS NULL OR variantElement(v, 'String') GLOBAL NOT IN (SELECT str_col FROM test2));"
+    ]
+}

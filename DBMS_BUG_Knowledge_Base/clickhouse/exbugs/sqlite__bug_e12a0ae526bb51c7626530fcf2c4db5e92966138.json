@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/e12a0ae526",
+  "title": "Assertion `memIsValid(&aMem[pOp->p1])' failed",
+  "description": "yongheng added on 2020-02-29 21:39:43:\nConsider the following POC:\n---\nCREATE TABLE v0(v2, v1);\nCREATE TABLE v3(v4, v5);\nCREATE INDEX v6 ON v3(v5, v4);\nINSERT INTO v0 VALUES(0, 8);\nSELECT(SELECT MIN(v4) FROM v0 LEFT JOIN v3 ON NULL = v5)\n---\n\nIt triggers an assertion in debug build of trunk.\ndrh added on 2020-03-02 01:30:39:\nA bytecode register was used without first being initialized in some\nobscure circumstances when using ORDER BY ... NULLS LAST on a LEFT JOIN.\nLuckily, the\nNULL value in the uninitialized register was interpreted as a zero, and so\nthe bytecode still computed the correct answer.  However, when compiling\nwith assert()s enabled, there is an assert() that detects the initialized\nregister reference.\nThe fix was to initialize the register to zero for LEFT JOINs.",
+  "date": "2020-02-29 21:39:435.45 years ago",
+  "vulnerable_version": "trunk",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(a Int32, b String, c Float64);",
+    "CREATE TABLE t2(x Int32, y Int32, z String);",
+    "INSERT INTO t1 VALUES(NULL, 'test', 3.14);",
+    "INSERT INTO t2 VALUES(1, NULL, 'example');",
+    "SELECT (SELECT MIN(x) FROM t1 LEFT JOIN t2 ON t1.a = t2.x ORDER BY t2.y) AS min_x;"
+  ],
+  "key_bug_features": [
+    "Uninitialized bytecode register in LEFT JOIN with ORDER BY"
+  ]
+}

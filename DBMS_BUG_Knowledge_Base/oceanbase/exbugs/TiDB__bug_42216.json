@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/42216",
+  "title": "multi-column RANGE COLUMNS partitioning  prune looks strange",
+  "description": "## Bug Report\r\n\r\nThe partition prune in multi-column RANGE COLUMNS looks strange. Don't known if it is a bug\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\nDDL\r\n```\r\nCREATE TABLE tk (\r\n  valid_until datetime,\r\n  name varchar(255) CHARACTER SET ascii,\r\n  notes text\r\n)\r\nPARTITION BY RANGE COLUMNS(name,valid_until)\r\n(PARTITION `p2022-g` VALUES LESS THAN ('G','2023-01-01 00:00:00'),\r\n PARTITION `p2023-g` VALUES LESS THAN ('G','2024-01-01 00:00:00'),\r\n PARTITION `p2024-g` VALUES LESS THAN ('G','2025-01-01 00:00:00'),\r\n PARTITION `p2022-m` VALUES LESS THAN ('M','2023-01-01 00:00:00'),\r\n PARTITION `p2023-m` VALUES LESS THAN ('M','2024-01-01 00:00:00'),\r\n PARTITION `p2024-m` VALUES LESS THAN ('M','2025-01-01 00:00:00'),\r\n PARTITION `p2022-s` VALUES LESS THAN ('S','2023-01-01 00:00:00'),\r\n PARTITION `p2023-s` VALUES LESS THAN ('S','2024-01-01 00:00:00'),\r\n PARTITION `p2024-s` VALUES LESS THAN ('S','2025-01-01 00:00:00'),\r\n PARTITION `p2022-` VALUES LESS THAN (0x7f,'2023-01-01 00:00:00'),\r\n PARTITION `p2023-` VALUES LESS THAN (0x7f,'2024-01-01 00:00:00'),\r\n PARTITION `p2024-` VALUES LESS THAN (0x7f,'2025-01-01 00:00:00'))\r\n```\r\n\r\nQuery\r\n\r\n```\r\nselect * from tk where name = 'G'\r\n```\r\n<img width=\"681\" alt=\"image\" src=\"https://user-images.githubusercontent.com/52435083/224983545-b9715fb9-5b0b-4cbf-b5eb-84aaa599853b.png\">\r\n\r\n\r\nwhy is p2023-g selected?  I think this query's range is  ('G','')， why can the p2023-g contain this range?\r\n\r\n\r\n\r\n\r\n### 4. What is your TiDB version? (Required)\r\nv6.5.0\r\n\r\n",
+  "date": "2023-03-14T11:12:13Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE tk2 (valid_until datetime, name varchar(255) NOT NULL, notes text DEFAULT NULL) PARTITION BY RANGE COLUMNS(name, valid_until) (PARTITION p2022_g VALUES LESS THAN ('G', '2023-01-01 00:00:00'), PARTITION p2023_g VALUES LESS THAN ('G', '2024-01-01 00:00:00'), PARTITION p2024_g VALUES LESS THAN ('G', '2025-01-01 00:00:00'), PARTITION p2022_m VALUES LESS THAN ('M', '2023-01-01 00:00:00'), PARTITION p2023_m VALUES LESS THAN ('M', '2024-01-01 00:00:00'), PARTITION p2024_m VALUES LESS THAN ('M', '2025-01-01 00:00:00'), PARTITION p2022_s VALUES LESS THAN ('S', '2023-01-01 00:00:00'), PARTITION p2023_s VALUES LESS THAN ('S', '2024-01-01 00:00:00'), PARTITION p2024_s VALUES LESS THAN ('S', '2025-01-01 00:00:00'), PARTITION p2022_ VALUES LESS THAN (0x7f, '2023-01-01 00:00:00'), PARTITION p2023_ VALUES LESS THAN (0x7f, '2024-01-01 00:00:00'), PARTITION p2024_ VALUES LESS THAN (0x7f, '2025-01-01 00:00:00'));",
+    "INSERT INTO tk2 (valid_until, name, notes) VALUES ('2023-01-01 12:00:00', 'G', 'Note 1');",
+    "INSERT INTO tk2 (valid_until, name, notes) VALUES ('2023-01-01 12:00:00', 'M', 'Note 2');",
+    "SELECT * FROM tk2 WHERE name = 'G' AND valid_until < '2024-01-01 00:00:00';",
+    "SELECT * FROM tk2 WHERE name IS NULL OR valid_until IS NULL;"
+  ],
+  "key_bug_features": [
+    "multi-column RANGE COLUMNS partitioning behavior"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+    "function": "toStartOfSecond",
+    "operator": "a - b",
+    "sql_array": [
+        "CREATE TABLE test_dates (id UInt32, event_time DateTime64(3));",
+        "INSERT INTO test_dates VALUES (1, toDateTime64('2020-01-01 10:20:30.999', 3)), (2, toDateTime64('2020-01-01 10:20:31.500', 3)), (3, toDateTime64('2020-01-01 10:20:32.999', 3));",
+        "SELECT id, toStartOfSecond(event_time) AS start_of_second FROM test_dates WHERE event_time - toStartOfSecond(event_time) < toIntervalSecond(2);",
+        "SELECT id, toStartOfSecond(event_time, 'UTC') - toStartOfSecond(toDateTime64('2020-01-01 10:20:32.999', 3)) AS time_diff FROM test_dates;",
+        "WITH (SELECT toStartOfSecond(event_time) FROM test_dates WHERE id = 2) AS second_started SELECT id, second_started - event_time AS diff FROM test_dates;",
+        "CREATE TABLE test_edge_cases (id UInt32, string_time String);",
+        "INSERT INTO test_edge_cases VALUES (1, '2020-01-01 10:20:30.999'), (2, 'invalid_date'), (3, '');",
+        "SELECT id, toStartOfSecond(toDateTime64(string_time, 3)) AS start_time FROM test_edge_cases WHERE (string_time != '') AND (string_time != 'invalid_date');",
+        "CREATE TABLE test_join (id UInt32, event_time DateTime64(3));",
+        "INSERT INTO test_join VALUES (1, toDateTime64('2020-01-01 10:20:30.999', 3)), (2, toDateTime64('2020-01-01 10:20:31.250', 3));",
+        "SELECT j1.id, toStartOfSecond(j1.event_time) - toStartOfSecond(j2.event_time) AS time_difference FROM test_join AS j1 JOIN test_join AS j2 ON j1.id = j2.id AND j1.event_time != j2.event_time;",
+        "CREATE TABLE temp_table AS SELECT id, toStartOfSecond(event_time) AS normal_time FROM test_dates;",
+        "SELECT id, normal_time, 'Difference: ' || (normal_time - toStartOfSecond(toDateTime64('2020-01-01 10:20:30.000', 3))) AS difference FROM temp_table;"
+    ]
+}

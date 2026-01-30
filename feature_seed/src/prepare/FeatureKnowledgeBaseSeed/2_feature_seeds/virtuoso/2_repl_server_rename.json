@@ -1,0 +1,14 @@
+CREATE TABLE replication_servers (id INT PRIMARY KEY, server_name VARCHAR(255), publication_name VARCHAR(255));
+INSERT INTO replication_servers (id, server_name, publication_name) VALUES (1, 'old-pub', 'demo-pub');
+INSERT INTO replication_servers (id, server_name, publication_name) VALUES (2, 'new-pub', 'working-pub');
+SELECT * FROM replication_servers WHERE server_name NOT BETWEEN 'temp-pub' AND 'old-pub';
+SELECT DB.DBA.REPL_SERVER_RENAME('old-pub', (SELECT server_name FROM replication_servers WHERE id = 2 AND publication_name NOT BETWEEN 'temp-pub' AND 'new-pub'));
+INSERT INTO replication_servers (id, server_name, publication_name) VALUES (3, NULL, 'test-pub');
+SELECT server_name, COUNT(*) OVER (PARTITION BY server_name) AS publication_count FROM replication_servers GROUP BY server_name HAVING NOT COUNT(*) BETWEEN 1 AND 2 AND server_name IS NOT NULL;
+ALTER TABLE replication_servers ADD COLUMN status VARCHAR(50) DEFAULT 'active';
+SELECT DB.DBA.REPL_SERVER_RENAME(NULL, 'another-pub') AS rename_result WHERE NOT EXISTS (SELECT * FROM replication_servers WHERE server_name IS NULL);
+DELETE FROM replication_servers WHERE id NOT BETWEEN 1 AND (SELECT MAX(id) FROM replication_servers);
+SELECT CASE WHEN (SELECT COUNT(*) FROM replication_servers) IS NOT NULL THEN 'replication exists' ELSE 'no replication' END AS status;
+CREATE TEMPORARY TABLE temp_replication (temp_id INT PRIMARY KEY, temp_name VARCHAR(255));
+INSERT INTO temp_replication (temp_id, temp_name) VALUES (1, 'temp-pub');
+SELECT DB.DBA.REPL_SERVER_RENAME((SELECT temp_name FROM temp_replication WHERE temp_id = 1), (SELECT server_name FROM replication_servers WHERE id = 2)) WHERE NOT EXISTS (SELECT * FROM replication_servers WHERE publication_name = 'temp-pub');

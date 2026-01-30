@@ -1,0 +1,16 @@
+{
+    "function": "h3PointDistM",
+    "operator": "IS NOT NULL",
+    "sql_array": [
+        "CREATE TABLE geo_test (id UInt32, lat1 Float64, lon1 Float64, lat2 Float64, lon2 Float64, distance Float64, nullable_value Nullable(Int32));",
+        "INSERT INTO geo_test (id, lat1, lon1, lat2, lon2, nullable_value) VALUES (1, -10.0, 0.0, 10.0, 0.0, NULL), (2, 0.0, 0.0, 0.0, 0.0, 5), (3, 89.0, 0.0, -89.0, 0.0, NULL), (4, NULL, 0.0, 30.0, 0.0, 10);",
+        "SELECT id, h3PointDistM(lat1, lon1, lat2, lon2) AS calculated_dist FROM geo_test WHERE calculated_dist IS NOT NULL;",
+        "SELECT id, h3PointDistM(COALESCE(lat1, 0.0), lon1, lat2, lon2) AS distance, IF(nullable_value IS NOT NULL, 'Exists', 'Missing') AS status FROM geo_test HAVING distance > 0;",
+        "SELECT id, h3PointDistM(NULL, NULL, 45.0, 90.0) AS dist_check FROM geo_test WHERE dist_check IS NOT NULL;",
+        "CREATE TABLE geo_distances AS SELECT id, h3PointDistM(lat1, lon1, lat2, lon2) AS distance FROM geo_test WHERE lat1 IS NOT NULL AND lon1 IS NOT NULL GROUP BY id, distance;",
+        "WITH (SELECT COUNT(*) FROM geo_distances WHERE distance IS NOT NULL) AS distance_count SELECT distance_count as valid_distances, (SELECT COUNT(*) FROM geo_distances) as total_entries WHERE valid_distances > 0;",
+        "SELECT g1.id, h3PointDistM(g1.lat1, g1.lon1, g2.lat2, g2.lon2) AS distance FROM geo_test g1 JOIN geo_test g2 ON g1.id != g2.id WHERE distance IS NOT NULL ORDER BY distance DESC;",
+        "INSERT INTO geo_test (id, lat1, lon1, lat2, lon2, nullable_value) VALUES (5, 90.0, 180.0, -90.0, -180.0, NULL);",
+        "SELECT id, h3PointDistM(lat1, lon1, lat2, lon2) AS calculated_dist FROM geo_test WHERE calculated_dist IS NOT NULL AND nullable_value IS NOT NULL;"
+    ]
+}

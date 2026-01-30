@@ -1,0 +1,16 @@
+{
+    "function": "changeMinute",
+    "operator": "a / b",
+    "sql_array": [
+        "CREATE TABLE test_datetime (dt DateTime, val Int32) ENGINE = MergeTree() ORDER BY dt;",
+        "INSERT INTO test_datetime VALUES (toDateTime('2023-01-01 12:00:00'), 1), (toDateTime('2023-01-01 13:00:00'), 2), (toDateTime('2023-12-31 23:59:59'), 3);",
+        "SELECT changeMinute(dt, (val / 2) % 60) AS adjusted_dt FROM test_datetime WHERE val IS NOT NULL;",
+        "SELECT dt, (changeMinute(dt, val) - toDateTime('2023-01-01 12:00:00')) / 60 AS hour_diff FROM test_datetime HAVING hour_diff > 0;",
+        "SELECT changeMinute(toDateTime64(dt, 3), val) FROM (SELECT dt, SUM(val) AS val FROM test_datetime GROUP BY dt HAVING SUM(val) > 1) AS sub;",
+        "SELECT changeMinute(toDate('1999-01-01'), 15) AS date_adjusted, changeMinute(toDateTime64(dt, 2), 45) FROM test_datetime WHERE val > (SELECT AVG(val) FROM test_datetime) LIMIT 1;",
+        "SELECT changeMinute(dt, (CASE WHEN val IS NULL THEN 0 ELSE val END) / (val + 1)) FROM test_datetime;",
+        "CREATE TABLE temp_test (id Int32, dt DateTime) ENGINE = Memory;",
+        "INSERT INTO temp_test VALUES (1, toDateTime('2023-01-01 00:00:00')), (2, NULL), (3, toDateTime('2023-01-01 12:00:00'));",
+        "SELECT dt, changeMinute(IF(dt IS NULL, toDateTime('2023-01-01 00:00:00'), dt), 15) / 60 AS hour_adjustment FROM temp_test WHERE id < 3;"
+    ]
+}

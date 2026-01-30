@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/89690",
+  "title": "paimonHDFS did not work when paimon table is not PARTITIONED",
+  "description": "### Company or project name\n_No response_\n### Describe the unexpected behaviour\nSQL 错误 [1002]: ClickHouse exception, code: 1002, host: 192.168.180.203, port: 18123; Code: 660. DB::Exception: /bucket-0/data-00bd0bec-06a6-41d5-820d-2f8e29746239-0.parquet does not exist. Error: FileNotFoundException: Path /bucket-0/data-00bd0bec-06a6-41d5-820d-2f8e29746239-0.parquet does not exist: While executing ReadFromObjectStorage. (HDFS_ERROR) (version 25.10.1.3832 (official build))\n### Which ClickHouse versions are affected?\nversion 25.10.1.3832\n### How to reproduce\npaimon ddl :\ntableEnv.executeSql(\"CREATE TABLE if not exists my_table_np (\\n\" +\n\"    user_id BIGINT,\\n\" +\n\"    item_id BIGINT,\\n\" +\n\"    behavior STRING,\\n\" +\n\"    dt STRING,\\n\" +\n\"    hh STRING,\\n\" +\n\"    PRIMARY KEY (dt, hh, user_id) NOT ENFORCED);\");\nclickhouse-sql:\ncreate named collection paimon_conf on cluster cluster_3s_2r as   url = 'hdfs://nameservice1/dev/paimon/test.db';\nSELECT * FROM  paimonHDFS(paimon_conf, filename = 'my_table_np' ) settings hdfs_ignore_file_doesnt_exist = 1;\n### Expected behavior\n_No response_\n### Error message and/or stacktrace\n_No response_\n### Additional context\n_No response_",
+  "date": "2025-11-07T01:37:57Z",
+  "vulnerable_version": "25.10.1.3832",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE IF NOT EXISTS my_table_np (user_id INTEGER, item_id INTEGER, behavior TEXT, dt TEXT, hh TEXT, PRIMARY KEY (dt, hh, user_id));",
+    "INSERT INTO my_table_np (user_id, item_id, behavior, dt, hh) VALUES (1, 101, 'click', '2023-10-01', '12');",
+    "INSERT INTO my_table_np (user_id, item_id, behavior, dt, hh) VALUES (2, 102, 'view', '2023-10-01', '12');",
+    "SELECT user_id, COUNT(*) AS behavior_count FROM my_table_np GROUP BY user_id HAVING behavior_count > 0;",
+    "SELECT * FROM my_table_np WHERE dt = '2023-10-01' AND hh = '12' AND user_id IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "paimonHDFS fails with non-partitioned paimon table"
+  ]
+}

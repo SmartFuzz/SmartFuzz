@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/7525",
+  "title": "Related to bug #7422 (variadic arguments in aggregate UDFs)",
+  "description": "The solution worked with numpy UDFs, but still not with C/C++ UDFs in which there is a strange behaviour:\n\nThe aggr_group argument contains the data of the first parameter of the variadic aggregate. No other data is passed to the C UDF.\n \n\n**To Reproduce**\n\nUse the following commands:\n\nCREATE OR REPLACE AGGREGATE jit_sum(*)\nRETURNS BIGINT\nLANGUAGE C {\n    // initialize one aggregate per group\n    result->initialize(result, aggr_group.count);\n    // zero initialize the sums\n    memset(result->data, 0, result->count * sizeof(result->null_value));\n    // gather the sums for each of the groups\n    for(size_t i = 0; i < arg2.count; i++) {\n        result->data[aggr_group.data[i]] += input.data[i];\n    }\n};\nCREATE TABLE vals(grp INTEGER, value INTEGER);\nINSERT INTO vals VALUES (1, 100), (2, 200), (1, 50), (2, 300);\nSELECT grp, jit_sum(value) FROM vals group by grp;\n\n\nIt returns error for arg2.\nThe following works, which means that parameter 'value' is stored in the aggr_group var. \n\nCREATE OR REPLACE AGGREGATE jit_sum(*)\nRETURNS BIGINT\nLANGUAGE C {\n    // initialize one aggregate per group\n    result->initialize(result, 1);\n    // zero initialize the sums\n    memset(result->data, 0, result->count * sizeof(result->null_value));\n    // gather the sums for each of the groups\n    for(size_t i = 0; i < aggr_group.count; i++) {\n        result->data[0] += aggr_group.data[i];\n    }\n};\n\nSELECT grp, jit_sum(value) FROM vals;",
+  "date": "2024-05-28T14:00:36Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "Monetdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_vals(grp INT NOT NULL, value INT CHECK(value >= 0));",
+    "INSERT INTO test_vals (grp, value) VALUES (1, 100), (2, 200), (1, NULL), (2, 300), (3, -50);",
+    "CREATE FUNCTION jit_sum_variadic(grp INT) RETURNS BIGINT DETERMINISTIC BEGIN DECLARE total BIGINT DEFAULT 0;",
+    "SELECT SUM(value) INTO total FROM test_vals WHERE grp = grp AND value IS NOT NULL;",
+    "RETURN total;",
+    "END;"
+  ],
+  "key_bug_features": [
+    "C/C++ UDFs not receiving all variadic arguments"
+  ]
+}

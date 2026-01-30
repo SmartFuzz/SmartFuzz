@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/56266",
+  "title": "cannot deduce TableDual when the partition key does not meet the conditions",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```\r\ncreate table t(a int primary key, b int);\r\ncreate table tlist (a int) partition by list (a) (\r\n    partition p0 values in (0, 1, 2),\r\n    partition p1 values in (3, 4, 5),\r\n    partition p2 values in (6, 7, 8),\r\n    partition p3 values in (9, 10, 11));\r\nexplain select 1 from t left join tlist on tlist.a=t.a where t.a in (12, 13);\r\n```\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\nv7.5\r\n```\r\n+-------------------------------+---------+------+---------------+-----------------------------------------------------+\r\n| id                            | estRows | task | access object | operator info                                       |\r\n+-------------------------------+---------+------+---------------+-----------------------------------------------------+\r\n| Projection_8                  | 2.00    | root |               | 1->Column#5                                         |\r\n| └─HashJoin_9                  | 2.00    | root |               | left outer join, equal:[eq(test.t.a, test.tlist.a)] |\r\n|   ├─TableDual_12(Build)       | 0.00    | root |               | rows:0                                              |\r\n|   └─Batch_Point_Get_11(Probe) | 2.00    | root | table:t       | handle:[12 13], keep order:false, desc:false        |\r\n+-------------------------------+---------+------+---------------+-----------------------------------------------------+\r\n```\r\n### 3. What did you see instead (Required)\r\n\r\nv8.1\r\n```\r\n+-------------------------------+----------+-----------+----------------+-----------------------------------------------------+\r\n| id                            | estRows  | task      | access object  | operator info                                       |\r\n+-------------------------------+----------+-----------+----------------+-----------------------------------------------------+\r\n| Projection_7                  | 2.50     | root      |                | 1->Column#5                                         |\r\n| └─HashJoin_9                  | 2.50     | root      |                | left outer join, equal:[eq(test.t.a, test.tlist.a)] |\r\n|   ├─Batch_Point_Get_10(Build) | 2.00     | root      | table:t        | handle:[12 13], keep order:false, desc:false        |\r\n|   └─TableReader_13(Probe)     | 20.00    | root      | partition:dual | data:Selection_12                                   |\r\n|     └─Selection_12            | 20.00    | cop[tikv] |                | in(test.tlist.a, 12, 13), not(isnull(test.tlist.a)) |\r\n|       └─TableFullScan_11      | 10000.00 | cop[tikv] | table:tlist    | keep order:false, stats:pseudo                      |\r\n+-------------------------------+----------+-----------+----------------+-----------------------------------------------------+\r\n```\r\n\r\nif you get dual partition, we should get 1 row count.\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\n\r\n",
+  "date": "2024-09-24T10:41:09Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (a Int32, b String) ENGINE = MergeTree() ORDER BY a;",
+    "CREATE TABLE tlist2 (a Int32) ENGINE = MergeTree() ORDER BY a PARTITION BY a % 5;",
+    "INSERT INTO t2 (a, b) VALUES (1, 'test1'), (2, 'test2'), (3, 'test3');",
+    "INSERT INTO tlist2 (a) VALUES (0), (1), (2), (3), (4);",
+    "EXPLAIN SELECT 1 FROM t2 LEFT JOIN tlist2 ON tlist2.a = t2.a WHERE t2.a IN (5, 6);"
+  ],
+  "key_bug_features": [
+    "partition key does not meet the conditions"
+  ]
+}

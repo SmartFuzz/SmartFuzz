@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR(255), value FLOAT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO test_table (id, name, value) VALUES (1, 'test_example', NULL), (2, 'another_test', 123.456), (3, 'boundary_case', 0.0001), (4, 'empty_string', ''), (5, 'long_string', 99999999.999999);
+SELECT cl_exec('dbg_obj_print(?)', vector(IFNULL(name, 'default'))) FROM test_table WHERE value LIKE '123%';
+SELECT cl_exec('shutdown') WHERE EXISTS (SELECT 1 FROM test_table WHERE name LIKE 'another_test') AND value IS NOT NULL;
+SELECT COUNT(id) FROM (SELECT id, name, value FROM test_table WHERE value LIKE '%999%' GROUP BY id, name HAVING COUNT(value) > 0) AS subquery;
+SELECT cl_exec('shutdown') WHERE id IN (SELECT id FROM test_table WHERE created_at > CURRENT_TIMESTAMP - INTERVAL '1 day') AND value IS NOT NULL;
+SELECT cl_exec('dbg_obj_print(?)', vector((SELECT name FROM test_table WHERE value LIKE '0.0001%'))) WHERE (SELECT COUNT(*) FROM test_table) > 2;
+SELECT cl_exec('shutdown') FROM test_table WHERE EXISTS (SELECT 1 FROM test_table AS t1 INNER JOIN test_table AS t2 ON t1.id = t2.id WHERE t1.value IS NULL AND t2.value IS NOT NULL);
+SELECT cl_exec('dbg_obj_print(?)', vector(name || ' - ' || CAST(value AS TEXT)) FROM test_table WHERE name LIKE '%test%') ORDER BY created_at DESC;
+SELECT cl_exec('shutdown') WHERE (SELECT COUNT(*) FROM (SELECT name FROM test_table WHERE name LIKE 'test%') as derived_tab) < 5;

@@ -1,0 +1,10 @@
+CREATE TABLE test_times (id INT PRIMARY KEY, event_time TIMETZ, duration TIME(6));
+INSERT INTO test_times (id, event_time, duration) VALUES (1, timetz '2023-10-20 19:30:49-00:00', time(6) '01:30:00'), (2, timetz '2023-10-21 10:15:32-00:00', time(6) '00:45:00'), (3, timetz '2023-10-21 22:00:01-00:00', time(6) '09:15:00');
+SELECT id, sys.time_to_str(event_time, '%l hour %M:%S %p') AS formatted_time FROM test_times WHERE duration > time(6) '01:00:00' AND duration IS NOT NULL;
+SELECT a.id, sys.time_to_str(a.event_time, '%Y-%m-%d %H:%M:%S %p') AS formatted_event, a.duration FROM test_times a JOIN test_times b ON a.duration = b.duration WHERE a.id <> b.id ORDER BY a.formatted_event DESC;
+SELECT id, COUNT(*) OVER (PARTITION BY duration ORDER BY id) AS duration_count FROM test_times;
+SELECT id, sys.time_to_str(COALESCE(event_time, timetz '00:00:00'), '%l hour %M:%S %p') AS safe_time FROM test_times HAVING safe_time IS NOT NULL;
+SELECT id, sys.time_to_str(event_time + timetz '00:15:00', '%l hour %M:%S %p') AS adjusted_time FROM test_times WHERE (duration - INTERVAL '00:10:00') < time(6) '01:00:00';
+SELECT id, (duration + time(6) '01:00:00') AS extended_duration FROM test_times WHERE duration IS NOT NULL;
+CREATE TABLE temp_times AS SELECT id, sys.time_to_str(event_time, '%H:%M:%S') FROM test_times WHERE event_time IS NOT NULL;
+DROP TABLE IF EXISTS temp_times;

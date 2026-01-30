@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id INTEGER, text_column TEXT, timestamp_column TIMESTAMPTZ);
+INSERT INTO test_table (id, text_column, timestamp_column) VALUES (1, '', TIMESTAMPTZ '1992-01-01 00:00:00+00'), (2, 'abc', TIMESTAMPTZ '1992-03-27 01:02:03+00');
+SELECT id, position('a' IN text_column) - INTERVAL 1 DAY AS adjusted_position FROM test_table WHERE position('c' IN text_column) > 0;
+SELECT id, position(text_column IN 'cde') * -1 AS negative_position FROM test_table WHERE text_column IS NOT NULL;
+SELECT id, (SELECT position('b' IN text_column) FROM test_table AS t2 WHERE t2.id = t1.id) - INTERVAL (SELECT COUNT(*) FROM test_table) DAY AS correlated_position FROM test_table AS t1;
+SELECT id, position('x' IN text_column) AS start_position, TIMESTAMP '1992-01-01 00:00:00' - INTERVAL (SELECT position('a' IN text_column) FROM test_table WHERE text_column = 'abc') DAY AS adjusted_timestamp FROM test_table;
+CREATE TABLE second_table (ref_id INTEGER REFERENCES test_table(id), nested_text TEXT);
+INSERT INTO second_table (ref_id, nested_text) VALUES (1, 'def'), (2, 'abcdef');
+SELECT t.id, MAX(position(nested_text IN 'abc')) - INTERVAL 2 HOUR AS max_position_adjusted FROM test_table t JOIN second_table s ON t.id = s.ref_id GROUP BY t.id HAVING COUNT(s.nested_text) > 0;
+SELECT id, position(text_column IN 'z') AS position_result FROM test_table WHERE position(text_column IN 'a') IS NULL;

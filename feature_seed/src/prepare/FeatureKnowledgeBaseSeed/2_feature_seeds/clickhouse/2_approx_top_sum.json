@@ -1,0 +1,13 @@
+CREATE TABLE test_table (k String, w UInt64) ENGINE = MergeTree() ORDER BY k;
+INSERT INTO test_table VALUES ('y', 1), ('y', 1), ('x', 5), ('y', 1), ('z', 10), (NULL, 3), ('', 2);
+SELECT approx_top_sum(3)(k, w) FROM (SELECT DISTINCT k, w FROM test_table WHERE w > 0) AS subquery;
+SELECT approx_top_sum(2)(k, w) FROM (SELECT k, SUM(w) AS total_weight FROM test_table GROUP BY k HAVING total_weight > 1) AS nested_query RIGHT JOIN (SELECT 'x' AS k, 5 AS w) AS additional_data ON nested_query.k = additional_data.k;
+SELECT approx_top_sum(5)(k, w) FROM (SELECT k, weight FROM (SELECT k, w * 2 AS weight FROM test_table UNION ALL SELECT k, w + 5 FROM test_table WHERE k = 'y') AS combined) GROUP BY k HAVING weight IS NOT NULL ORDER BY weight DESC;
+SELECT approx_top_sum(2)(k, w) FROM (SELECT k, w FROM (SELECT k, w, NULL AS ignored_col FROM test_table WHERE k != 'z') AS inner_query WHERE ignored_col IS NULL) GROUP BY k HAVING count(*) > 1;
+SELECT approx_top_sum(4)(k, w) FROM (SELECT k, MAX(w) AS max_weight FROM test_table GROUP BY k) WHERE max_weight > (SELECT AVG(w) FROM test_table WHERE w < 10);
+SELECT approx_top_sum(3)(k, weight) FROM (SELECT k, w, w AS weight FROM test_table WHERE w IS NOT NULL) WHERE k IS NOT NULL AND weight > 3;
+CREATE TABLE temp_table (k Nullable(String), w UInt64) ENGINE = MergeTree() ORDER BY k;
+INSERT INTO temp_table VALUES (NULL, 3), ('a', 2), ('b', NULL), ('c', 1), ('c', 5);
+SELECT approx_top_sum(10)(k, w) FROM (SELECT k, w FROM temp_table) WHERE w > 1 GROUP BY k;
+SELECT approx_top_sum(2)(k, w) FROM (SELECT k, SUM(w) AS total_weight FROM temp_table WHERE k IS NOT NULL GROUP BY k HAVING total_weight IS NOT NULL);
+SELECT approx_top_sum(1)(k, w) FROM (SELECT k, w, k -> concat(k, '_suffix') AS modified_k FROM temp_table) AS derived_table WHERE modified_k LIKE '%a%' GROUP BY modified_k;

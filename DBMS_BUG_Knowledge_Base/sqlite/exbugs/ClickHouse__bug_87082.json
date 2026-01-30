@@ -1,0 +1,19 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/87082",
+  "title": "materialized views do not use their namespace when calling nested parameterized views, leading to UNKNOWN_FUNCTION unless explicitly qualifying nested views",
+  "description": "### Company or project name\nfintech\n### Describe what's wrong\nWhen calling a parameterized view from a materialized view, we expect that the name of the parameterized view does not need to be qualified, and upon execution it will try finding the parameterized view in the same database/namespace in which materialized view was created.\nInstead, we observe the UNKNOWN_FUNCTION error on server side during scheduled execution, and querying the materialized view returns empty result.\nThis can be worked around by explicitly qualifying the name of the parameterized view with database name, but this is inconvenient because we expect to be able to apply the same set of scripts to different databases without having to templatize scripts/substitute db name.\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nreproduces on latest i.e. 25.8.2.29\nConsider the following repro:\n1.  Setup\n```\nCREATE DATABASE db1;\nuse db1;\nCREATE TABLE tbl1\n(\n`id` int,\n`data` varchar(10)\n)\nENGINE = MergeTree\nORDER BY id;\ninsert into tbl1 (*) values (1,'db1 data');\nCREATE VIEW v1\nAS SELECT\nid,\ndata,\n{p:varchar(10)} as p\nFROM tbl1;\nCREATE MATERIALIZED VIEW mv1\nREFRESH EVERY 1 MINUTE\nORDER BY id\nAS SELECT\nid,\ndata,\np\nFROM v1(p='db1 mv1'); -- NOTE: v1 is not qualified by db name\nCREATE MATERIALIZED VIEW mv2\nREFRESH EVERY 1 MINUTE\nORDER BY id\nAS SELECT\nid,\ndata,\np\nFROM db1.v1(p='db1 mv2');  -- NOTE: v1 is fully qualified by db name\n```\n2. Queries to illustrate/reproduce issue (after a short while - to give time to execute the materialized views)\n2.1 this doesn't work as expected\n```\nSELECT *",
+  "date": "2025-09-12T23:45:43Z",
+  "vulnerable_version": "25.8.2.29",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE tbl2 (id INTEGER, name TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO tbl2 (id, name) VALUES (1, 'db2 data');",
+    "CREATE VIEW v2 AS SELECT id, name, NULL AS p FROM tbl2;",
+    "CREATE TABLE mv3 AS SELECT id, name, 'db2 mv3' AS p FROM v2;"
+  ],
+  "key_bug_features": [
+    "Materialized views fail to qualify nested parameterized views"
+  ]
+}

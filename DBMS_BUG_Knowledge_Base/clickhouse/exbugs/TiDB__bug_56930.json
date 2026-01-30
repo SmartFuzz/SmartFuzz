@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/56930",
+  "title": "Convert charset should consider index key length limitation",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n```sql\r\nCREATE TABLE posts (\r\n  id INT AUTO_INCREMENT PRIMARY KEY,\r\n  title VARCHAR(500) CHARACTER SET utf8mb4,\r\n  subtitle VARCHAR(500) CHARACTER SET utf8mb4,\r\n  UNIQUE KEY (title, subtitle)); \r\n```\r\n```\r\nERROR 1071 (42000): Specified key was too long (4000 bytes); max key length is 3072 bytes\r\n```\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```sql\r\nCREATE TABLE posts (\r\n  id INT AUTO_INCREMENT PRIMARY KEY,\r\n  title VARCHAR(500) CHARACTER SET utf8,\r\n  subtitle VARCHAR(500) CHARACTER SET utf8,\r\n  UNIQUE KEY (title, subtitle)); \r\n\r\nALTER TABLE posts CONVERT TO CHARACTER SET utf8mb4;\r\n```\r\n\r\n<!-- a step by step guide for reproducing the bug. -->\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\n```\r\nERROR 1071 (42000): Specified key was too long (4000 bytes); max key length is 3072 bytes\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n```\r\nQuery OK, 0 rows affected (0.07 sec)\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\ncc370993\r\n",
+  "date": "2024-10-29T02:36:44Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE articles (id UInt32, content String, summary String, UNIQUE INDEX idx_content_summary (content, summary));",
+    "ALTER TABLE articles MODIFY COLUMN content String;",
+    "INSERT INTO articles (content, summary) VALUES ('This is a test article with a long content that exceeds normal limits.', 'Short summary');",
+    "SELECT * FROM articles WHERE length(content) > 100;",
+    "CREATE TABLE comments (id UInt32, article_id UInt32, comment String, FOREIGN KEY (article_id) REFERENCES articles(id));"
+  ],
+  "key_bug_features": [
+    "Charset conversion exceeding index key length limitation"
+  ]
+}

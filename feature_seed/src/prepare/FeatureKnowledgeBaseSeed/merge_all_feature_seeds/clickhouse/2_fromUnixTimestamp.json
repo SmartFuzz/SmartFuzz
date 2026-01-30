@@ -1,0 +1,11 @@
+CREATE TABLE test_dates (timestamp_value UInt32, description String);
+INSERT INTO test_dates VALUES (423543535, 'Valid Timestamp'), (NULL, 'NULL Timestamp'), (0, 'Zero Timestamp'), (4294967295, 'Max UInt32 Timestamp');
+SELECT fromUnixTimestamp(timestamp_value) AS converted_time FROM test_dates WHERE timestamp_value IS NOT NULL;
+SELECT description, fromUnixTimestamp(timestamp_value) AS converted_time FROM test_dates WHERE timestamp_value BETWEEN 423543535 AND 4294967295;
+SELECT description, COUNT(*) FROM (SELECT fromUnixTimestamp(timestamp_value) AS converted_time FROM test_dates WHERE timestamp_value BETWEEN 0 AND 4294967295) subquery GROUP BY description HAVING COUNT(*) > 0;
+SELECT description, fromUnixTimestamp(CASE WHEN timestamp_value IS NULL THEN 0 ELSE timestamp_value END) AS converted_time FROM test_dates WHERE timestamp_value BETWEEN 0 AND 4294967295;
+CREATE TABLE temp_dates (event_time DateTime, event_description String) ENGINE = MergeTree() ORDER BY event_time;
+INSERT INTO temp_dates VALUES (fromUnixTimestamp(423543535), 'Event A'), (fromUnixTimestamp(1234567890), 'Event B'), (fromUnixTimestamp(4294967295), 'Event C');
+SELECT event_description FROM temp_dates WHERE event_time BETWEEN fromUnixTimestamp(0) AND fromUnixTimestamp(4294967295) ORDER BY event_time;
+SELECT event_description FROM temp_dates WHERE event_time = fromUnixTimestamp(NULLIF(4294967295, 0) + 1);
+SELECT event_description, fromUnixTimestamp(timestamp_value) FROM test_dates INNER JOIN temp_dates ON test_dates.timestamp_value = toUInt32(toUnixTimestamp(temp_dates.event_time));

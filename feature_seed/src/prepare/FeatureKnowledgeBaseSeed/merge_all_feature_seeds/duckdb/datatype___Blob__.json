@@ -1,0 +1,18 @@
+CREATE TABLE blobs_test (id INTEGER PRIMARY KEY, data BLOB);
+INSERT INTO blobs_test (id, data) VALUES (1, '\xAA'::BLOB);
+INSERT INTO blobs_test (id, data) VALUES (2, '\xAA\xAB\xAC'::BLOB);
+INSERT INTO blobs_test (id, data) VALUES (3, 'AB'::BLOB);
+INSERT INTO blobs_test (id, data) VALUES (4, repeat(CHAR(0), 4000000000)::BLOB);
+INSERT INTO blobs_test (id, data) VALUES (5, '\x00'::BLOB || '\x0F'::BLOB);
+SELECT id, LENGTH(data) FROM blobs_test;
+SELECT id FROM blobs_test WHERE LENGTH(data) < 10;
+SELECT id FROM blobs_test WHERE data LIKE '\xAA%';
+SELECT (SELECT data FROM blobs_test WHERE id = 1)::BLOB AS blob_data;
+CREATE TABLE users (user_id INTEGER PRIMARY KEY, profile_picture BLOB);
+INSERT INTO users (user_id, profile_picture) SELECT 1, '\xFF'::BLOB UNION ALL SELECT 2, '\xFE\xFD'::BLOB;
+SELECT u.user_id, b.data FROM users u JOIN blobs_test b ON u.user_id = b.id;
+SELECT COUNT(*) FROM blobs_test WHERE data IS NOT NULL;
+SELECT (SELECT MAX(LENGTH(data)) FROM blobs_test) AS max_blob_size;
+SELECT CASE WHEN LENGTH(data) > 0 THEN 'BLOB NOT EMPTY' ELSE 'BLOB EMPTY' END FROM blobs_test WHERE id = 1;
+UPDATE blobs_test SET data = '\x01\x02\x03'::BLOB WHERE id = 1;
+DELETE FROM blobs_test WHERE LENGTH(data) = 0;

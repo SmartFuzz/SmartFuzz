@@ -1,0 +1,11 @@
+CREATE TABLE xml_test (id INT, xml_doc XML);
+INSERT INTO xml_test VALUES (1, xtree_doc('<root><child0></child0></root>'));
+INSERT INTO xml_test VALUES (2, xtree_doc('<root><b>Hello</b></root>'));
+SELECT id, XMLInsertAfter(xpath_eval('//child0', xml_doc), xtree_doc('<child1/>'), xtree_doc('<child2/>')) FROM xml_test WHERE id = 1;
+SELECT id, XMLInsertAfter(xpath_eval('//b/text()', xml_doc), ', world!') FROM xml_test WHERE id = 2;
+SELECT id, XMLInsertAfter(xpath_eval('//child0', xml_doc), xtree_doc('<child1/>')) AS new_xml, bif:contains(XMLInsertAfter(xpath_eval('//child0', xml_doc), xtree_doc('<child1/>')), 'child1') FROM xml_test HAVING new_xml IS NOT NULL;
+SELECT id FROM xml_test WHERE bif:contains(xml_doc, 'Hello') AND XMLInsertAfter(xpath_eval('//b/text()', xml_doc), ', again!') IS NOT NULL;
+SELECT id, COUNT(*) OVER () AS total_rows FROM (SELECT id, XMLInsertAfter(xpath_eval('//child0', xml_doc), xtree_doc('<child1/>')) AS modified_xml FROM xml_test) AS modified WHERE bif:contains(modified_xml, 'child1') GROUP BY id HAVING modified_xml IS NOT NULL;
+SELECT bif:contains(xpath_eval('//child0', xml_doc), 'child0') AS contains_child FROM xml_test WHERE id = 1;
+CREATE TEMPORARY TABLE temp_xml AS SELECT id, XMLInsertAfter(xpath_eval('//b/text()', xml_doc), ', world!') AS modified_xml FROM xml_test;
+SELECT * FROM temp_xml WHERE bif:contains(modified_xml, 'world!') OR modified_xml IS NULL;

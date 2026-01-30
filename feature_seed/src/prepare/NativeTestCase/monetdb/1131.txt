@@ -1,0 +1,13 @@
+START TRANSACTION;
+create table "plantest0" ("id" bigint);
+insert into plantest0 values (150000000);
+create table "plantest1" ("id" bigint);
+insert into plantest1 values (150000000);
+create procedure plantestp() begin declare rowindex bigint; set rowindex = 0; while rowindex < 5 do insert into plantest0 (id) values (100000000 + rowindex); insert into plantest1 (id) values (110000000 + rowindex); set rowindex = rowindex + 1; end while; end;
+call plantestp();
+create view plantestv as select v.*, v.id / 10000000 as id_div from ( select * from plantest0 union all select * from plantest1 ) as v;
+EXPLAIN SHOW DETAILS select id_r * 10000000 as id_range_base, count(id_r) as nrows from (select id / 10000000 from plantestv v where id >= 150000000 ) as t (id_r) group by id_r order by id_r asc;
+select id_r * 10000000 as id_range_base, count(id_r) as nrows from (select id / 10000000 from plantestv v where id >= 150000000 ) as t (id_r) group by id_r order by id_r asc;
+EXPLAIN SHOW DETAILS select id_r * 10000000 as id_range_base, count(id_r) as nrows from (select id_div from plantestv v where id >= 150000000 ) as t (id_r) group by id_r order by id_r asc;
+select id_r * 10000000 as id_range_base, count(id_r) as nrows from (select id_div from plantestv v where id >= 150000000 ) as t (id_r) group by id_r order by id_r asc;
+ROLLBACK;

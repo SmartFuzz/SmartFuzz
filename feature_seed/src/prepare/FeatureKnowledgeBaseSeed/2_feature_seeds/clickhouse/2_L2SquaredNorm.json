@@ -1,0 +1,12 @@
+CREATE TABLE test_vectors (id UInt32, values Array(Float32)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_vectors VALUES (1, [1.0, 2.0]), (2, [NULL, 3.0]), (3, [4.0, 0.0]), (4, [1.5, -2.5]), (5, []);
+SELECT id, L2SquaredNorm(values) AS norm_squared FROM test_vectors WHERE id NOT IN (SELECT id FROM test_vectors WHERE values = []);
+SELECT t1.id, L2SquaredNorm(t1.values) AS norm_squared FROM test_vectors t1 JOIN test_vectors t2 ON L2SquaredNorm(t1.values) NOT IN (t2.values) GROUP BY t1.id HAVING norm_squared > 0;
+CREATE TABLE comparison_table AS SELECT id, L2SquaredNorm(values) AS l2_norm_squared FROM test_vectors WHERE values IS NOT NULL;
+INSERT INTO comparison_table SELECT id, L2SquaredNorm([x, NULL]) FROM (SELECT 1 as id, 1.0 as x UNION ALL SELECT 2, 2.0);
+SELECT id FROM test_vectors WHERE L2SquaredNorm(values) NOT IN (SELECT L2SquaredNorm(values) FROM test_vectors WHERE values[1] IS NULL) ORDER BY id;
+CREATE TABLE vector_statistics AS SELECT id, L2SquaredNorm(values) AS norm, SUM(L2SquaredNorm(values)) AS total_norm FROM test_vectors WHERE values NOT IN ([NULL]) GROUP BY id;
+SELECT id, L2SquaredNorm(t.values) FROM (SELECT values FROM test_vectors WHERE values NOT IN (SELECT NULL)) AS t ORDER BY L2SquaredNorm(t.values) DESC LIMIT 5;
+CREATE TABLE empty_vector_test (id UInt32, values Array(Float32)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO empty_vector_test VALUES (1, []), (2, [0.0]), (3, [Float32(NULL)]);
+SELECT L2SquaredNorm(values) AS norm FROM empty_vector_test WHERE norm NOT IN (SELECT L2SquaredNorm([]));

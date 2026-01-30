@@ -1,0 +1,17 @@
+{
+    "function": "floor",
+    "operator": "a = b",
+    "sql_array": [
+        "CREATE TABLE test_fuzzing (id UInt32, value Float64, str_value String, precision_value Decimal(10, 5), created_at DateTime DEFAULT now());",
+        "INSERT INTO test_fuzzing (id, value, str_value, precision_value) VALUES (1, 123.45, '150.67', 12345.67890), (2, -128.12345, NULL, NULL), (3, 0.0, '', 0.00000);",
+        "SELECT id, floor(value) AS floor_value, floor(floor(value, 1), -1) AS nested_floor FROM test_fuzzing WHERE floor(value) = -129;",
+        "SELECT id, value, floor(COALESCE(NULLIF(str_value, ''), '0'), 1) AS floor_coalesced_value FROM test_fuzzing WHERE id = (SELECT MAX(id) FROM test_fuzzing) AND value = 123.45;",
+        "SELECT id, COUNT(*) AS count, FLOOR(value) AS floor_value FROM test_fuzzing GROUP BY id, floor_value HAVING floor_value < 0 ORDER BY count DESC;",
+        "SELECT id, floor(value + precision_value) AS modified_value FROM test_fuzzing WHERE EXISTS (SELECT 1 FROM test_fuzzing t2 WHERE t2.value = value + 1) AND (floor(value) = 0 OR str_value IS NOT NULL);",
+        "SELECT DISTINCT id, floor(CAST(str_value AS Float64), -1) AS floor_casted_value FROM test_fuzzing WHERE floor(value) = floor(CAST('150.00' AS Float64));",
+        "CREATE TABLE temp_data (temp_id UInt32, temp_value Float64) ENGINE = Memory;",
+        "INSERT INTO temp_data (temp_id, temp_value) VALUES (1, 123.45), (2, NULL), (3, -129.99);",
+        "SELECT t1.temp_id, floor(t1.temp_value), t2.floor_value FROM temp_data t1 LEFT JOIN (SELECT temp_id, floor(temp_value) AS floor_value FROM temp_data WHERE temp_value IS NOT NULL) t2 ON t1.temp_id = t2.temp_id WHERE t1.temp_value IS NOT NULL;",
+        "SELECT id, FLOOR(CONVERT(value, 'Decimal(10, 5)')) AS decimal_floor FROM test_fuzzing WHERE FLOOR(value) = -128.123 AND (value > 100 OR precision_value < 1.0) ORDER BY id ASC;"
+    ]
+}

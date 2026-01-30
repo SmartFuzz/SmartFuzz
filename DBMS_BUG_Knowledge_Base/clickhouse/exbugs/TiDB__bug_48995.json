@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/48995",
+  "title": "`RemoveUnnecessaryFirstRow` will make `HashAgg` panic.",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```\r\nCREATE TABLE t (x char(3));\r\nINSERT INTO t VALUES ('foo'), ('bar'); \r\nCREATE VIEW v AS SELECT 1 AS x FROM t;\r\nSELECT DISTINCT x FROM v;\r\n```\r\n\r\nExplain the last `select`, it will give:\r\n\r\n```\r\nmysql> explain SELECT /*+ AGG_TO_COP() */ x FROM v GROUP BY x;\r\n+---------------------------+---------+-----------+---------------+-------------------------------------------------------+\r\n| id                        | estRows | task      | access object | operator info                                         |\r\n+---------------------------+---------+-----------+---------------+-------------------------------------------------------+\r\n| HashAgg_10                | 1.00    | root      |               | group by:Column#5, funcs:firstrow(Column#5)->Column#3 |\r\n| └─TableReader_11          | 1.00    | root      |               | data:HashAgg_7                                        |\r\n|   └─HashAgg_7             | 1.00    | cop[tikv] |               | group by:1,                                           |\r\n|     └─TableFullScan_9     | 2.00    | cop[tikv] | table:t       | keep order:false, stats:pseudo                        |\r\n+---------------------------+---------+-----------+---------------+-------------------------------------------------------+\r\n4 rows in set (0.00 sec)\r\n```\r\n\r\nComment out the optimization `RemoveUnnecessaryFirstRow`, it will run successfully, with the following plan:\r\n\r\n```\r\nmysql> explain SELECT /*+ AGG_TO_COP() */ x FROM v GROUP BY x;\r\n+---------------------------+---------+-----------+---------------+-------------------------------------------------------+\r\n| id                        | estRows | task      | access object | operator info                                         |\r\n+---------------------------+---------+-----------+---------------+-------------------------------------------------------+\r\n| HashAgg_10                | 1.00    | root      |               | group by:Column#5, funcs:firstrow(Column#6)->Column#3 |\r\n| └─TableReader_11          | 1.00    | root      |               | data:HashAgg_7                                        |\r\n|   └─HashAgg_7             | 1.00    | cop[tikv] |               | group by:1, funcs:firstrow(\"x\")->Column#6             |\r\n|     └─TableFullScan_9     | 2.00    | cop[tikv] | table:t       | keep order:false, stats:pseudo                        |\r\n+---------------------------+---------+-----------+---------------+-------------------------------------------------------+\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\n```\r\n+---+\r\n| x |\r\n+---+\r\n| 1 |\r\n+---+\r\n```\r\n\r\n### 3. What did you see instead (Required)\r\n\r\n```\r\nmysql> SELECT /*+ AGG_TO_COP() */ x FROM v GROUP BY x;\r\nERROR 1105 (HY000): runtime error: index out of range [0] with length 0\r\n```\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n```\r\n01d441ef8a960bba552e2ba50bedbd757931360a\r\n```\r\n\r\n",
+  "date": "2023-11-29T06:52:51Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (id Int32, name String, value Decimal(10, 2));",
+    "INSERT INTO t1 VALUES (1, 'item1', 10.00), (2, 'item2', NULL), (3, 'item3', 20.50);",
+    "CREATE VIEW v1 AS SELECT id, ifNull(value, 0) AS value FROM t1;",
+    "SELECT DISTINCT value FROM v1 WHERE value > 5.00;",
+    "CREATE TABLE t2 (x String NOT NULL, y Int32 DEFAULT 0);"
+  ],
+  "key_bug_features": [
+    "RemoveUnnecessaryFirstRow causes HashAgg to panic"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/43707",
+  "title": "Call from_unixtime with parameter 0 in prepare mode. The results of TiDB and MySQL are different.",
+  "vulnerable_database": "tidb",
+  "date": "2023-05-11T06:28:36Z",
+  "vulnerable_version": "Unknown",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n<!-- a step by step guide for reproducing the bug. -->\r\n create table t3  (id int key,mtime timestamp, ctime timestamp);\r\n alter table t3 add index(mtime);\r\n prepare stmt from 'select unix_timestamp(mtime),unix_timestamp(ctime) from t3 where mtime> from_unixtime(?)';\r\n set @a=0;\r\n execute stmt using @a;\r\n\r\n### 2. What did you expect to see? (Required)\r\n  MySQL [test]>  execute stmt using @a;\r\n  Empty set, 1 warning (0.00 sec)\r\n  \r\n  MySQL [test]> show warnings;\r\n  +---------+------+-----------------------------------------------------------------------------+\r\n  | Level   | Code | Message                                                                     |\r\n  +---------+------+-----------------------------------------------------------------------------+\r\n  | Warning | 1292 | Incorrect datetime value: '1970-01-01 08:00:00' for column 'mtime' at row 1 |\r\n  +---------+------+-----------------------------------------------------------------------------+\r\n  1 row in set (0.00 sec)\r\n\r\n### 3. What did you see instead (Required)\r\nMySQL [test]> execute stmt using @a;\r\nERROR 1292 (22007): Incorrect timestamp value: '1970-01-01 08:00:00'\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n<!-- Paste the output of SELECT tidb_version() -->\r\nMySQL [test]> select tidb_version();\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| tidb_version()                                                                                                                                                                                                                                                                               |\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n| Release Version: v7.0.0\r\nEdition: Community\r\nGit Commit Hash: 7376954cd868dbc44fc3015c9ef89c53749339a7\r\nGit Branch: heads/refs/tags/v7.0.0\r\nUTC Build Time: 2023-03-29 13:32:33\r\nGoVersion: go1.20.2\r\nRace Enabled: false\r\nTiKV Min Version: 6.2.0-alpha\r\nCheck Table Before Drop: false\r\nStore: tikv |\r\n+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\r\n1 row in set (0.00 sec)\r\n",
+  "poc": [
+    "create table t3  (id int key,mtime timestamp, ctime timestamp);",
+    "alter table t3 add index(mtime);",
+    "prepare stmt from 'select unix_timestamp(mtime),unix_timestamp(ctime) from t3 where mtime> from_unixtime(?)';",
+    "set @a=0;",
+    "execute stmt using @a;"
+  ],
+  "poc_type": "sql_text",
+  "state": "closed",
+  "key_bug_features": [
+    "from_unixtime with parameter 0 in prepare mode"
+  ],
+  "bug_feature_seed": [
+  "DROP TABLE IF EXISTS t3;",
+  "CREATE TABLE t3(id INT PRIMARY KEY, mtime TIMESTAMP, ctime TIMESTAMP);",
+  "ALTER TABLE t3 ADD INDEX idx_mtime(mtime);",
+  "INSERT INTO t3 VALUES(1, NOW(), NOW()),(2, NULL, NOW());",
+  "PREPARE stmt FROM 'SELECT UNIX_TIMESTAMP(mtime), UNIX_TIMESTAMP(ctime) FROM t3 WHERE mtime > FROM_UNIXTIME(?)';",
+  "SET @p0 = 0;",
+  "EXECUTE stmt USING @p0;",
+  "DEALLOCATE PREPARE stmt;"
+]
+
+}

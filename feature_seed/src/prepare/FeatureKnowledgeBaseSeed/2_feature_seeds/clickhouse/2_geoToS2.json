@@ -1,0 +1,10 @@
+CREATE TABLE geo_test (id UInt32, longitude Float64, latitude Float64, description String);
+INSERT INTO geo_test VALUES (1, 37.79506683, 55.71290588, 'Normal Point'), (2, NULL, NULL, 'Null Values'), (3, 180.0, 90.0, 'Max Values'), (4, -180.0, -90.0, 'Min Values'), (5, 123.456789123, 45.987654321, 'High Precision');
+SELECT id, geoToS2(longitude, latitude) AS s2Index FROM geo_test WHERE longitude IS NOT NULL AND latitude IS NOT NULL;
+SELECT id, CASE WHEN longitude < 0 THEN geoToS2(longitude, latitude) ELSE geoToS2(-longitude, latitude) END AS s2Index FROM geo_test;
+SELECT id, geoToS2(longitude, latitude) AS s2Index FROM geo_test WHERE longitude = (SELECT MAX(longitude) FROM geo_test) ? geoToS2(longitude, latitude) : 0;
+SELECT id, geoToS2(longitude, latitude) AS s2Index, longitude + CASE WHEN latitude IS NULL THEN 0 ELSE latitude END AS adjusted_value FROM geo_test HAVING adjusted_value > 50;
+SELECT id, geoToS2(longitude, latitude) FROM geo_test JOIN (SELECT longitude AS lon, latitude AS lat FROM geo_test WHERE id = 3) AS subquery ON geo_test.longitude = subquery.lon AND geo_test.latitude = subquery.lat;
+SELECT id, geoToS2(longitude, latitude) AS s2Index FROM geo_test WHERE geoToS2(longitude, latitude) > (SELECT geoToS2(MIN(longitude), MIN(latitude)) FROM geo_test) ? 1 : 0;
+INSERT INTO geo_test SELECT id, longitude, latitude, description FROM geo_test WHERE description LIKE '%Point%' AND longitude > 0 ? longitude : 0;
+CREATE TABLE temp_geo_test AS SELECT * FROM geo_test WHERE longitude IS NOT NULL AND latitude IS NOT NULL;

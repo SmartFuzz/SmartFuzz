@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id UInt32, number Nullable(Int32), value Float32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, 2, 10.5), (2, NULL, 20.3), (3, 3, NULL), (4, 4, -15.0);
+SELECT id, and(value < 15.0, number IS NOT NULL) AS valid FROM test_table WHERE and(number <= 3, valid) GROUP BY id HAVING valid = 1;
+SELECT id FROM (SELECT id, and(number <= 2, intDiv(1, number)) AS check_div FROM test_table) AS subq WHERE check_div IS NOT NULL;
+SELECT id, and(NULL, number, 1) AS logical_check FROM test_table WHERE logical_check = 1 ORDER BY id;
+SELECT id, and(value < 25, number IS NOT NULL) AS flag FROM test_table WHERE (ID <= 2 AND flag) GROUP BY id HAVING flag = 1;
+CREATE TABLE another_table (name String, value Nullable(Int32)) ENGINE = MergeTree() ORDER BY name;
+INSERT INTO another_table VALUES ('test1', NULL), ('test2', 5), ('test3', 10);
+SELECT a.id, and(b.value IS NOT NULL, a.number <= b.value) AS combined_flag FROM test_table a JOIN another_table b ON and(a.id = b.value, a.number IS NOT NULL);
+WITH (SELECT count() FROM test_table WHERE number IS NOT NULL) AS total_count SELECT and(total_count > 0, number <= total_count) FROM test_table;

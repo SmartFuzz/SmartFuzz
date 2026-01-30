@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=110452",
+  "title": "mysqldump SEGV",
+  "description": "Run these statements;\r\n\r\nCREATE SCHEMA test;\r\nUSE test;\r\nCREATE TABLE t1 (c0 CHAR);\r\nCREATE UNIQUE INDEX i1 ON t1 (c0, (TIME '-1:0:0'));\r\n\r\nThen run mysqldump\r\n\r\nmysqldump --user=... --order-by-primary --databases test t0\r\n\r\nDuring the dump, the address sanitizer will report a SEGV:\r\n\r\nclient/mysqldump.cc:1788:10: runtime error: load of null pointer of type 'char'\r\nAddressSanitizer:DEADLYSIGNAL\r\n=================================================================\r\n==1724037==ERROR: AddressSanitizer: SEGV on unknown address 0x000000000000 (pc 0x55637e8fb485 bp 0x7fff92294a20 sp 0x7fff922949e0 T0)\r\n==1724037==The signal is caused by a READ memory access.\r\n==1724037==Hint: address points to the zero page.\r\n    #0 0x55637e8fb485 in quote_name client/mysqldump.cc:1788\r\n    #1 0x55637e8fbff4 in primary_key_fields client/mysqldump.cc:5419\r\n    #2 0x55637e914596 in dump_table client/mysqldump.cc:3743\r\n    #3 0x55637e9180e7 in dump_all_tables_in_db client/mysqldump.cc:4672\r\n    #4 0x55637e919bbc in dump_databases client/mysqldump.cc:4512\r\n    #5 0x55637e91c8b4 in main client/mysqldump.cc:5980\r\n    #6 0x7f38f9029d8f in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\r\n    #7 0x7f38f9029e3f in __libc_start_main_impl ../csu/libc-start.c:392\r\n    #8 0x55637e8f9224 in _start (/home/ferreira/repositories/mysql-server-default/BUILD/bin/mysqldump+0xd81224)\r\n\r\nAddressSanitizer can not provide additional info.\r\nSUMMARY: AddressSanitizer: SEGV client/mysqldump.cc:1788 in quote_name\r\n==1724037==ABORTING\r\n\r\nThe compilation parameters are the same as issue 108148:\r\n\r\n-DWITH_DEBUG=1 -DWITH_ASAN=ON -DWITH_UBSAN=ON and boost library version 1.77\nHow to repeat:\nRun the statements above.",
+  "date": "2023-03-21 12:29:00",
+  "vulnerable_version": "8.0.32",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE SCHEMA test2;",
+    "CREATE TABLE test2.t2 (c1 VARCHAR(255), c2 INT, c3 TIMESTAMP DEFAULT NULL);",
+    "INSERT INTO test2.t2 (c1, c2) VALUES ('test', 1), (NULL, 2), ('boundary', 2147483647);",
+    "CREATE UNIQUE INDEX idx_c1 ON test2.t2 (c1, (TIME '00:00:00'));",
+    "SELECT * FROM test2.t2;"
+  ],
+  "key_bug_features": [
+    "CREATE UNIQUE INDEX with TIME function on CHAR column"
+  ]
+}

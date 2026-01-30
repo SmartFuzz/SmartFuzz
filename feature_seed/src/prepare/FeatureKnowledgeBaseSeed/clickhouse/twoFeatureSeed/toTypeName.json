@@ -1,0 +1,22 @@
+{
+    "function": "toTypeName",
+    "operator": "a ? b : c",
+    "sql_array": [
+        "CREATE TABLE test_table (id Int32, value Float64, nullable_value Nullable(String));",
+        "INSERT INTO test_table VALUES (1, 2.5, 'test'), (2, NULL, 'example'), (3, 3.5, NULL);",
+        "SELECT toTypeName(value ? 'valid' : NULL) FROM test_table WHERE id = 1;",
+        "SELECT id, value, toTypeName(nullable_value ? 'not null' : 'is null') AS type_check FROM test_table WHERE value > 1.0;",
+        "SELECT id, value ? toTypeName(value) : toTypeName(NULL) AS check_type FROM (SELECT value FROM test_table WHERE id IN (SELECT id FROM test_table WHERE value IS NOT NULL)) WHERE value IS NOT NULL;",
+        "SELECT id, value, toTypeName(value ? value : (SELECT nullable_value FROM test_table WHERE id = 2)) AS conditional_type FROM test_table;",
+        "CREATE TABLE another_table (num Int32, text_string String);",
+        "INSERT INTO another_table VALUES (1, 'one'), (2, 'two'), (3, 'three');",
+        "SELECT t1.id, t1.value, toTypeName(t1.value ? CONCAT(t2.text_string, ' - ', toTypeName(t2.num)) : 'none') AS evaluated_type FROM test_table t1 JOIN another_table t2 ON t1.id = t2.num;",
+        "SELECT id, toTypeName(NULLIF(value, 0) ? value : 'zero') AS division_check FROM test_table;",
+        "SELECT id, value, toTypeName(value > 1 ? 1 : (SELECT AVG(value) FROM test_table)) AS check_avg FROM test_table;",
+        "SELECT id, value, toTypeName((SELECT count() FROM test_table WHERE value < 2)) AS conditional_count FROM test_table;",
+        "ALTER TABLE test_table ADD COLUMN new_nullable Nullable(Int32);",
+        "INSERT INTO test_table (id, value, nullable_value, new_nullable) VALUES (4, 4.0, NULL, NULL), (5, 5.0, 'new_entry', 10);",
+        "SELECT toTypeName(new_nullable ? new_nullable : DEFAULT(NULL)) FROM test_table;",
+        "SELECT id, value, toTypeName(value ? ROUND(value, 2) : CAST('NaN' AS Float64)) AS transformed_value FROM test_table;"
+    ]
+}

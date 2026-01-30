@@ -1,0 +1,14 @@
+CREATE TABLE geo_multipolygon (mpg MultiPolygon) ENGINE = Memory();
+INSERT INTO geo_multipolygon VALUES([[[(0, 0), (10, 0), (10, 10), (0, 10)]], [[(20, 20), (50, 20), (50, 50), (20, 50)],[(30, 30), (50, 50), (50, 30)]]]);
+INSERT INTO geo_multipolygon VALUES([[[(5, 5), (15, 5), (15, 15), (5, 15)]], [[(25, 25), (45, 25), (45, 45), (25, 45)],[(35, 35), (45, 45), (45, 35)]]]);
+CREATE TABLE geo_data (id UInt32, shape MultiPolygon) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO geo_data VALUES (1, [[[(0, 0), (0, 10), (10, 10), (10, 0)]], [[(20, 20), (30, 20), (30, 30)],[(25, 25), (30, 30), (30, 25)]]]), (2, [[[(10, 10), (20, 10), (20, 20), (10, 20)]], [[(30, 30), (40, 30), (40, 40), (30, 40)],[(35, 35), (40, 40), (40, 35)]]]);
+SELECT mpg FROM geo_multipolygon WHERE length(mpg) > 1;
+SELECT id, shape FROM geo_data WHERE shape = [[[(0, 0), (0, 10), (10, 10), (10, 0)]]] AND id IN (SELECT id FROM geo_data WHERE id > 0);
+SELECT COUNT(*) FROM geo_data WHERE shape[1] IS NOT NULL;
+WITH (SELECT mpg FROM geo_multipolygon WHERE toTypeName(mpg) = 'MultiPolygon') AS subquery SELECT COUNT(*) FROM subquery;
+SELECT id, shape FROM geo_data WHERE has(shape, [[[(0, 0), (10, 0), (10, 10), (0, 10)]], [[(20, 20), (50, 20), (50, 50), (20, 50)]]]);
+CREATE TABLE border_points (point MultiPolygon) ENGINE = Memory();
+INSERT INTO border_points VALUES ([[[(0, 0), (10, 0), (10, 10), (0, 10)]], [[(15, 15), (20, 15), (20, 20), (15, 20)]]]);
+SELECT point FROM border_points WHERE point[1] IS NOT NULL;
+SELECT * FROM geo_data WHERE shape = shape;

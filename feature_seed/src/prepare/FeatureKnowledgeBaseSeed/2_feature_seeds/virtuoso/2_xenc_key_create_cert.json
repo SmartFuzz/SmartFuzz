@@ -1,0 +1,14 @@
+CREATE TABLE certificates (id SERIAL PRIMARY KEY, cert_data BYTEA NOT NULL, cert_type VARCHAR(50), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO certificates (cert_data, cert_type) VALUES (file_to_string('keys/mycert.pfx'), 'X.509');
+SELECT xenc_key_create_cert('myRSA', (SELECT cert_data FROM certificates WHERE cert_type = 'X.509' LIMIT 1), 'X.509', 2, NULL, 'secret') AS imported_key;
+CREATE TYPE my_key_type AS (key_id INT, key_value BYTEA);
+CREATE TABLE keys (key_info my_key_type, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO keys (key_info) VALUES (NEW my_key_type(1, xenc_key_create_cert('myRSA', (SELECT cert_data FROM certificates WHERE cert_type = 'X.509' LIMIT 1), 'X.509', 2, NULL, 'secret')));
+SELECT key_info.key_value FROM keys WHERE key_info.key_id = 1;
+SELECT DISTINCT key_info.key_value FROM keys JOIN certificates ON (certificates.cert_data = (SELECT cert_data FROM certificates WHERE cert_type = 'X.509' LIMIT 1)) HAVING COUNT(*) > 0;
+SELECT *, (CASE WHEN key_info.key_value IS NULL THEN 'NULL key' ELSE 'Valid key' END) AS key_status FROM keys;
+SELECT xenc_key_create_cert('myRSA', (SELECT cert_data FROM certificates WHERE cert_data IS NOT NULL ORDER BY created_at DESC LIMIT 1), 'X.509', 2, NULL, 'secret') FROM certificates WHERE created_at > NOW() - INTERVAL '1 DAY';
+CREATE TABLE temp_keys (key_info my_key_type);
+INSERT INTO temp_keys (key_info) SELECT NEW my_key_type(2, xenc_key_create_cert('myRSA', NULL, 'X.509', 2, NULL, 'secret'));
+SELECT * FROM temp_keys WHERE key_info.key_value IS NOT NULL;
+DELETE FROM temp_keys WHERE key_info.key_id = 2;

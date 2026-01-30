@@ -1,0 +1,17 @@
+CREATE TABLE acl_rules (id INTEGER PRIMARY KEY, ip_range VARCHAR(255), user_agent VARCHAR(255), allow BOOLEAN);
+INSERT INTO acl_rules (id, ip_range, user_agent, allow) VALUES (1, '192.168.1.0/24', 'Mozilla/5.0', TRUE);
+INSERT INTO acl_rules (id, ip_range, user_agent, allow) VALUES (2, '10.0.0.0/8', 'curl/7.68.0', FALSE);
+INSERT INTO acl_rules (id, ip_range, user_agent, allow) VALUES (3, '0.0.0.0/0', 'Mozilla/5.0', TRUE);
+SELECT * FROM acl_rules WHERE ip_range = '192.168.1.0/24' AND allow = TRUE;
+SELECT * FROM acl_rules WHERE user_agent LIKE '%Mozilla%' AND allow = TRUE;
+SELECT * FROM acl_rules WHERE ip_range IN (SELECT ip_range FROM acl_rules WHERE allow = FALSE);
+SELECT r1.* FROM acl_rules r1 JOIN acl_rules r2 ON r1.id = r2.id WHERE r1.allow = TRUE AND r2.allow = FALSE;
+SELECT DISTINCT r1.ip_range FROM acl_rules r1 JOIN acl_rules r2 ON r1.user_agent = r2.user_agent WHERE r1.allow = TRUE AND r2.allow = FALSE;
+WITH denied_ips AS (SELECT ip_range FROM acl_rules WHERE allow = FALSE) SELECT * FROM acl_rules WHERE ip_range NOT IN (SELECT ip_range FROM denied_ips);
+SELECT COUNT(*) FROM acl_rules WHERE user_agent IS NULL OR ip_range IS NULL;
+SELECT ip_range, COUNT(*) FROM acl_rules GROUP BY ip_range HAVING COUNT(*) > 1;
+DELETE FROM acl_rules WHERE id = 2;
+SELECT EXISTS (SELECT 1 FROM acl_rules WHERE ip_range = '192.168.1.0/24' AND allow = TRUE);
+UPDATE acl_rules SET allow = FALSE WHERE user_agent = 'curl/7.68.0';
+SELECT * FROM acl_rules WHERE NOT (allow AND ip_range = '10.0.0.0/8');
+SELECT user_agent, COUNT(*) AS access_count FROM acl_rules GROUP BY user_agent ORDER BY access_count DESC LIMIT 5;

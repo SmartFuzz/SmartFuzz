@@ -1,0 +1,16 @@
+{
+    "function": "toDecimal32OrNull",
+    "operator": "a LIKE s",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, value String) ENGINE = Memory;",
+        "INSERT INTO test_table (id, value) VALUES (1, '123.456'), (2, 'NaN'), (3, 'Inf'), (4, '-9999999999.99999'), (5, '3.14159');",
+        "SELECT id, toDecimal32OrNull(value, 5) AS decimal_value, toTypeName(toDecimal32OrNull(value, 5)) AS type_name FROM test_table WHERE toDecimal32OrNull(value, 5) IS NOT NULL;",
+        "SELECT a.id, a.value, b.decimal_value FROM test_table AS a JOIN (SELECT id, toDecimal32OrNull(value, 3) AS decimal_value FROM test_table WHERE value NOT LIKE '%NaN%') AS b ON a.id = b.id;",
+        "SELECT COUNT(*) AS total, toDecimal32OrNull(value, 5) FROM test_table GROUP BY toDecimal32OrNull(value, 5) HAVING toDecimal32OrNull(value, 5) IS NOT NULL ORDER BY total DESC;",
+        "CREATE TABLE temp_table AS SELECT a.id, toDecimal32OrNull(a.value, 5) AS decimal_value FROM test_table AS a WHERE a.id > 0;",
+        "SELECT temp.id, temp.decimal_value, 'Value ' || toString(temp.decimal_value) LIKE 'Value 123.456' AS is_like FROM temp_table AS temp WHERE temp.decimal_value IS NOT NULL;",
+        "SELECT toDecimal32OrNull(a.value || '0', 5) AS combined, b.value FROM test_table AS a LEFT JOIN test_table AS b ON toDecimal32OrNull(a.value, 5) LIKE b.value;",
+        "SELECT id, value, toTypeName(toDecimal32OrNull(value, 9)) FROM test_table WHERE toDecimal32OrNull(value, 9) IS NULL OR value = '' ORDER BY id;",
+        "SELECT id, toDecimal32OrNull(value, 2) AS valid_decimal, CASE WHEN valid_decimal IS NULL THEN 'Error in conversion' ELSE 'Conversion successful' END AS status FROM (SELECT id, value FROM test_table) AS sub WHERE valid_decimal LIKE '%0.00';"
+    ]
+}

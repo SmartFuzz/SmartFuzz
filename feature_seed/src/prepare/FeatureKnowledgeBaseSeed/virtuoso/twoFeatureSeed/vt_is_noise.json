@@ -1,0 +1,16 @@
+{
+    "function": "vt_is_noise",
+    "operator": "bif:contains",
+    "sql_array": [
+        "CREATE TABLE test_table (id INT, text_col VARCHAR(255), noise_check BOOLEAN DEFAULT FALSE);",
+        "INSERT INTO test_table (id, text_col) VALUES (1, 'a'), (2, 'effective'), (3, NULL), (4, ''), (5, 'a very long string that is definitely not a noise word');",
+        "UPDATE test_table SET noise_check = vt_is_noise(text_col, 'UTF-8', 'X-ANY');",
+        "SELECT id, text_col, vt_is_noise(text_col, 'UTF-8', 'X-ANY') AS is_noise FROM test_table WHERE bif:contains(text_col, 'a') OR noise_check;",
+        "SELECT text_col, COUNT(*) FROM test_table GROUP BY text_col HAVING COUNT(*) > 1 AND vt_is_noise('a', 'UTF-8', 'X-ANY');",
+        "SELECT id, text_col FROM test_table WHERE bif:contains(text_col, (SELECT text_col FROM test_table WHERE noise_check = TRUE LIMIT 1)) AND (text_col IS NOT NULL OR text_col <> '');",
+        "SELECT text_col FROM test_table WHERE (SELECT vt_is_noise(text_col, 'UTF-8', 'X-ANY') FROM test_table WHERE id = 1 LIMIT 1) IS FALSE;",
+        "SELECT id, text_col FROM test_table WHERE bif:contains(text_col, 'effective') AND vt_is_noise((SELECT text_col FROM test_table WHERE id = 2), 'UTF-8', 'X-ANY');",
+        "CREATE TEMPORARY TABLE temp_table AS SELECT id, text_col FROM test_table WHERE noise_check IS TRUE;",
+        "SELECT t.id, t.text_col FROM test_table t INNER JOIN temp_table tt ON t.id = tt.id WHERE vt_is_noise(t.text_col, 'UTF-8', 'X-ANY') IS FALSE;"
+    ]
+}

@@ -1,0 +1,20 @@
+{
+    "function": "sys.getquery(url)",
+    "operator": "timestamp(6)",
+    "sql_array": [
+        "CREATE TABLE test_urls (id SERIAL PRIMARY KEY, url CLOB NOT NULL);",
+        "INSERT INTO test_urls (url) VALUES ('http://example.com?param1=value1&param2=value2');",
+        "INSERT INTO test_urls (url) VALUES ('http://example.com?param1=value1&param2=null');",
+        "INSERT INTO test_urls (url) VALUES ('http://example.com?param1=12345&param2=67890');",
+        "SELECT sys.getquery(url) AS query_part, timestamp(6) '2023-01-01 00:00:00.123456' AS event_time FROM test_urls;",
+        "SELECT sys.getquery(url) AS query_part, timestamp(6) '2023-12-31 23:59:59.999999' AS event_time FROM test_urls WHERE url IS NOT NULL;",
+        "SELECT timestamp(6) '2020-09-28 18:40:05.123456' AS event_time, sys.getquery((SELECT url FROM test_urls WHERE id = 1)) AS query_part;",
+        "SELECT url, COUNT(*) FROM test_urls GROUP BY sys.getquery(url) HAVING COUNT(*) > 1;",
+        "SELECT url, timestamp(6) '2023-01-01 00:00:00.000000' FROM test_urls WHERE LENGTH(sys.getquery(url)) > 10 ORDER BY event_time DESC;",
+        "CREATE TABLE test_data (id SERIAL PRIMARY KEY, data_value INT CHECK(data_value >= 0) DEFAULT 0);",
+        "INSERT INTO test_data (data_value) VALUES (-10), (0), (100);",
+        "SELECT d.id, d.data_value, sys.getquery((SELECT url FROM test_urls WHERE id = 1)) AS query_part FROM test_data d JOIN test_urls t ON sys.getquery(t.url) IS NOT NULL;",
+        "SELECT COUNT(*) FROM (SELECT DISTINCT sys.getquery(url) AS unique_queries FROM test_urls) AS temp WHERE unique_queries IS NOT NULL;",
+        "CREATE TEMPORARY TABLE test_temp AS SELECT url, timestamp(6) '2020-01-01 00:00:01.234567' AS temp_time FROM test_urls WHERE url LIKE 'http%';"
+    ]
+}

@@ -1,0 +1,10 @@
+CREATE TABLE test_data (value String, id Int32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_data VALUES ('-8', 1), ('abc', 2), ('127', 3), ('-129', 4), ('0.75', 5), ('NaN', 6), ('Inf', 7), ('256', 8), ('', 9);
+SELECT id, toInt8OrZero(value) AS converted_value FROM test_data WHERE value GLOBAL IN ('-8', 'abc', '127', '', 'Inf');
+SELECT DISTINCT id, toInt8OrZero(value) AS converted_value FROM test_data WHERE converted_value > 0 GROUP BY converted_value HAVING COUNT(id) > 1;
+SELECT id, MAX(toInt8OrZero(value)) AS max_value FROM test_data GROUP BY id HAVING max_value < 128;
+WITH (SELECT arrayJoin(['-8', 'foo', '127', '256', 'NaN', '']) as temp_values) AS temp SELECT toInt8OrZero(temp_values) GLOBAL IN (SELECT value FROM test_data);
+CREATE TABLE secondary_data (num Float32) ENGINE = MergeTree() ORDER BY num;
+INSERT INTO secondary_data VALUES (1.5), (2.3), (NaN), (Inf), (-2.7);
+SELECT id, toInt8OrZero(toString(num)) AS converted_number FROM secondary_data WHERE converted_number GLOBAL IN (SELECT value FROM test_data WHERE value != '');
+SELECT id, AVG(toInt8OrZero(value)) AS average_value FROM test_data GROUP BY id HAVING average_value > 0.5;

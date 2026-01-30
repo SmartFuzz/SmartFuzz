@@ -1,0 +1,19 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/59514",
+  "title": "The behavior of setting the TiFlash replica to 0 for tables with a vector index should be properly handled",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n<!-- a step by step guide for reproducing the bug. -->\ncase 1\n```\nCREATE TABLE `t` (\n  `a` int DEFAULT NULL,\n  `b` vector DEFAULT NULL,\n  `c` vector(3) DEFAULT NULL,\n  `d` vector(4) DEFAULT NULL,\n  VECTOR INDEX `vecIdx`((VEC_COSINE_DISTANCE(`c`))));\n\nalter table t set tiflash replica 0;\n```\n\ncase2\n```\n create database db SET TIFLASH REPLICA  1;\nCREATE TABLE `t` (\n  `a` int DEFAULT NULL,\n  `b` vector DEFAULT NULL,\n  `c` vector(3) DEFAULT NULL,\n  `d` vector(4) DEFAULT NULL,\n  VECTOR INDEX `vecIdx`((VEC_COSINE_DISTANCE(`c`))));\n\nALTER DATABASE db SET TIFLASH REPLICA 0;\n```\n\n### 2. What did you expect to see? (Required)\nReturn a warning like \"After this operation, vector indexes are unavailable\".\nOr\nReturn an error like \"This table has vector indexes, please remove it before setting tiflash replica 0\". It may be more appropriate to handle this behavior in the future, such as when the TiFlash replica becomes available and is bound to the vector index publicly.\n\n### 3. What did you see instead (Required)\n```\nQuery OK, 0 rows affected (0.13 sec)\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\nmaster",
+  "date": "2025-02-13T08:17:57Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE test_table ( id int NOT NULL, name varchar(255) DEFAULT NULL, vector_col float8[] DEFAULT NULL, CONSTRAINT vecIndex CHECK (vector_col IS NULL OR array_length(vector_col, 1) = 4));",
+    "INSERT INTO test_table (id, name, vector_col) VALUES (1, 'test', NULL);",
+    "ALTER TABLE test_table ADD CONSTRAINT check_vector_col CHECK (vector_col IS NULL OR array_length(vector_col, 1) = 4);",
+    "SELECT * FROM test_table WHERE vector_col IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Setting TiFlash replica to 0 with vector index present"
+  ]
+}

@@ -1,0 +1,15 @@
+CREATE TABLE test_xml (id INT PRIMARY KEY, data XML, value INT);
+INSERT INTO test_xml (id, data, value) VALUES (1, xml_tree_doc('<root><a>1</a></root>'), 10);
+INSERT INTO test_xml (id, data, value) VALUES (2, xml_tree_doc('<root><b>2</b></root>'), NULL);
+SELECT id, xte_head('element', 'attr1', 'value1', 'attr2', 123) AS head_vector FROM test_xml WHERE value IS NOT NULL;
+SELECT id, xte_head('element', 'attr1', 'value1', 'attr2', 'value2') AS head_vector FROM test_xml WHERE data IS NOT NULL AND data LIKE xml_tree_doc('<root>%');
+SELECT id, COUNT(*) OVER (PARTITION BY xte_head('element', 'attr', 'val') ORDER BY value) AS count_per_group FROM test_xml GROUP BY xte_head('element', 'attr', 'val'), value HAVING COUNT(*) > 1;
+SELECT a.id, a.data, xte_head('element', 'attr1', 'value', 'attr1', CAST(NULL AS VARCHAR)) AS head_vector FROM test_xml a JOIN test_xml b ON a.id = b.id WHERE a.value IN (SELECT b.value FROM test_xml b WHERE b.value IS NOT NULL);
+SELECT xml_tree_doc('<root><c>3</c></root>') AS xml_result, xte_head('element', 'attr', CAST(123 AS VARCHAR)) AS head_vector FROM test_xml WHERE value BETWEEN 1 AND 10;
+CREATE TABLE temp_xml (temp_id INT, xml_data XML);
+INSERT INTO temp_xml (temp_id, xml_data) SELECT id, data FROM test_xml WHERE data IS NOT NULL;
+SELECT temp_id, xte_head('node', 'key1', 'value1', 'key2', 'value2') FROM temp_xml WHERE xml_data IS NOT NULL ORDER BY temp_id;
+INSERT INTO temp_xml SELECT 3, NULL;
+SELECT temp_id, xte_head('node', 'key', '') FROM temp_xml WHERE xml_data IS NULL;
+DROP TABLE IF EXISTS test_xml;
+DROP TABLE IF EXISTS temp_xml;

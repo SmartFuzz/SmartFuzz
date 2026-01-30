@@ -1,0 +1,13 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR(100), description TEXT, val INT);
+INSERT INTO test_table (id, name, description, val) VALUES (1, 'abc', 'abcd pattern', 5);
+INSERT INTO test_table (id, name, description, val) VALUES (2, 'xyz', 'not matching', 10);
+INSERT INTO test_table (id, name, description, val) VALUES (3, 'efg', 'pattern abcdef', 2);
+CREATE TABLE secondary_table (sec_id INT PRIMARY KEY, foreign_id INT, data INT);
+INSERT INTO secondary_table (sec_id, foreign_id, data) VALUES (1, 1, 5);
+INSERT INTO secondary_table (sec_id, foreign_id, data) VALUES (2, 2, 15);
+INSERT INTO secondary_table (sec_id, foreign_id, data) VALUES (3, 1, 25);
+SELECT a.id, a.name, patindex('%a%', a.description) << 2 AS shifted_value FROM test_table a WHERE (patindex('%bc%', a.description) > 0) << 1 = 0;
+SELECT b.sec_id, b.data + (SELECT val FROM test_table c WHERE c.id = b.foreign_id) AS total_value FROM secondary_table b WHERE (b.data << 1) IS NOT NULL;
+SELECT d.id, count(*) FROM (SELECT name, patindex(name, description) AS pattern_pos FROM test_table) d GROUP BY d.name HAVING pattern_pos >> 0 > 1;
+SELECT a.id, (SELECT sum(b.data) FROM secondary_table b WHERE b.foreign_id = a.id) AS total FROM test_table a HAVING total >> 0 = 15;
+SELECT a.id, a.name, a.val, patindex('%d%', a.description) << 1 AS shift_result FROM test_table a JOIN secondary_table b ON a.id = b.foreign_id WHERE a.val IS NOT NULL AND b.data IS NOT NULL;

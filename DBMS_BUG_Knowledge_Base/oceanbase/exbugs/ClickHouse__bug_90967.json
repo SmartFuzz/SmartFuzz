@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/90967",
+  "title": "Race condition on `StorageObjectStorageConfiguration::(get/set)Paths`",
+  "description": "ClickHouse S3 related functions, when not using hive partitioning, supports writing multiple files to the same file path by appending a numbered counter at the end when using `s3_create_new_file_on_insert=1`.\n```\ncreate table s3_table (id UInt32) engine=s3(s3_conn, filename='root/file.parquet');\ninsert into s3_table values 1 SETTINGS s3_create_new_file_on_insert=1;\ninsert into s3_table values 2 SETTINGS s3_create_new_file_on_insert=1;\nselect _file, id from s3_table;\n\"root/file.parquet\", 1\n\"root/file.parquet.1\", 2\n```\nThe way this has been implemented is through an in-memory vector keeping the paths produced by this function/ table so that the next insert knows the next filename and upon reading it is possible to enumerate all files. When the server re-starts, this information is lost and ClickHouse relies on a slow retry-mechanism to get the latest inserted file path.\nWhen looking at https://github.com/ClickHouse/ClickHouse/pull/87592, I realized the `StorageObjectStorageConfiguration::getPaths/setPaths` methods are not thread safe. AFAIK, `StorageObjectStorage::write` can be executed in parallel and does not impose any locking mechanism - which might result in the `paths` object being modified simultaneously.\nThe obivous answer is to add protection around `(get/set)Paths`, but honestly wouldn't it be better if we just deprecated it since [hive partitioning is becoming the default](https://github.com/ClickHouse/ClickHouse/pull/86746)?\nThe downside tho is that we would no longer support multiple writes to a fixed location without a partition strategy. Actually, it could also break the wildcard partition strategy in case the user is also relying on `s3_create_new_file_on_insert`",
+  "date": "2025-11-27T12:36:11Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE s3_table_1 (id UInt32, name String) ENGINE = OBStore(s3_conn, filename = 'root/file_1.parquet');",
+    "INSERT INTO s3_table_1 VALUES (1, 'Alice');",
+    "INSERT INTO s3_table_1 VALUES (2, 'Bob');",
+    "CREATE TABLE s3_table_2 (id UInt32, value Float64 DEFAULT 0.0) ENGINE = OBStore(s3_conn, filename = 'root/file_2.parquet');",
+    "INSERT INTO s3_table_2 SELECT id, CAST(id AS Float64) * 1.5 FROM s3_table_1;"
+  ],
+  "key_bug_features": [
+    "Race condition in get/setPaths methods during parallel writes"
+  ]
+}

@@ -1,0 +1,12 @@
+CREATE TABLE test_data (id Int32, str_val LowCardinality(String), num_val Nullable(Int64));
+INSERT INTO test_data VALUES (1, 'abc', 123), (2, 'def', NULL), (3, 'ghi', 456);
+SELECT id, toNullable(str_val) AS nullable_val, CASE WHEN num_val IS NULL THEN -1 ELSE num_val END AS replaced_val FROM test_data WHERE toTypeName(CAST(nullable_val, 'String')) == 'String';
+SELECT id, str_val, num_val, toTypeName(toLowCardinality(num_val)) AS lowCardinality_num FROM test_data WHERE toTypeName(toNullable(num_val)) == 'Nullable(Int64)';
+SELECT id, str_val, COUNT(*) OVER (PARTITION BY toNullable(CAST(num_val, 'String'))) AS count_per_num_val FROM test_data;
+SELECT id, str_val, toTypeName(CAST(num_val, 'Int32')) AS num_val_as_int32 FROM test_data WHERE CAST(num_val, 'Int32') == 123 OR num_val IS NULL;
+SELECT id, str_val, SUM(num_val) AS total_num FROM test_data GROUP BY str_val HAVING toNullable(SUM(num_val)) IS NOT NULL;
+SELECT id, str_val, num_val FROM test_data WHERE (num_val IS NULL and str_val == '') OR (num_val != NULL and num_val < 100);
+SELECT id, str_val, toTypeName(CAST(CAST(str_val AS String), 'Int32')) AS invalid_cast FROM test_data WHERE toLowCardinality(str_val) == 'LowCardinality(String)';
+CREATE TABLE temp_data (temp_id Int32, temp_val String) ENGINE = Memory;
+INSERT INTO temp_data SELECT id, toString(num_val) FROM test_data WHERE num_val IS NOT NULL;
+SELECT t1.temp_id, t1.temp_val, toNullable(t1.temp_val) AS nullable_temp_val FROM temp_data AS t1 JOIN test_data AS t2 ON (t1.temp_val == toString(t2.num_val)) OR (t2.str_val == '');

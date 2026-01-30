@@ -1,0 +1,11 @@
+CREATE TABLE test_dates (event_time DateTime, event_id Int32, description String) ENGINE = MergeTree() ORDER BY event_time;
+INSERT INTO test_dates (event_time, event_id, description) VALUES ('2023-11-01 01:30:00', 1, 'Start of DST'), ('2023-11-01 02:30:00', 2, 'End of DST'), ('2023-11-01 03:30:00', 3, 'Regular Time');
+SELECT event_id, description FROM test_dates WHERE toHour(event_time) NOT BETWEEN 1 AND 2;
+SELECT event_id, description FROM test_dates WHERE NOT (toHour(event_time) BETWEEN 0 AND 3);
+SELECT toHour(event_time) AS hour, COUNT(*) FROM test_dates GROUP BY hour HAVING hour NOT BETWEEN 2 AND 3;
+SELECT event_id, description FROM test_dates WHERE toHour(event_time) NOT BETWEEN (SELECT MIN(toHour(event_time)) FROM test_dates) AND (SELECT MAX(toHour(event_time)) FROM test_dates);
+CREATE TABLE test_dates_with_null (event_time DateTime, event_id Int32, description String, event_detail Nullable(String)) ENGINE = MergeTree() ORDER BY event_time;
+INSERT INTO test_dates_with_null (event_time, event_id, description, event_detail) VALUES ('2023-11-01 01:30:00', 1, 'Start of DST', NULL), ('2023-11-01 02:30:00', 2, 'End of DST', 'Detail 1'), ('2023-11-01 03:30:00', 3, 'Regular Time', 'Detail 2');
+SELECT event_id, description FROM test_dates_with_null WHERE toHour(event_time) NOT BETWEEN 2 AND 3 AND event_detail IS NULL;
+SELECT toHour(NULL) AS hour WHERE toHour(event_time) NOT BETWEEN 0 AND 24;
+SELECT event_id, description FROM test_dates WHERE (toHour(event_time) NOT BETWEEN 0 AND 1 OR (event_id = 1 AND description LIKE 'Start%'));

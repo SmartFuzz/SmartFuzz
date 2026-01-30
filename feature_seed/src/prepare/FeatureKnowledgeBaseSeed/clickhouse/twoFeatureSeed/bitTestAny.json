@@ -1,0 +1,16 @@
+{
+    "function": "bitTestAny",
+    "operator": "x",
+    "sql_array": [
+        "CREATE TABLE test_bits (value Int32, index_values Array(Int32)) ENGINE = MergeTree() ORDER BY value;",
+        "INSERT INTO test_bits VALUES (43, [0, 1, 2, 3, 4]), (255, [0, 1, 2, 3, 4, 5, 6, 7]), (0, [0]), (15, [2, 3]);",
+        "SELECT value, bitTestAny(value, index_values[1], index_values[3]) AS result FROM test_bits WHERE result = 1;",
+        "SELECT value, multiIf(bitTestAny(value, index_values[0], index_values[2]) = 1, 'Contains set bits', 'No set bits') AS bit_status FROM test_bits WHERE value > 10;",
+        "SELECT value FROM (SELECT value, bitTestAny(value, 0, 1, 2) AS bit_check FROM test_bits) AS sub WHERE bit_check = 1;",
+        "SELECT DISTINCT bitTestAny(value, index_values) FROM test_bits GROUP BY value HAVING value > 12;",
+        "SELECT COUNT(*) FROM transform(value, index_values, [0, 1, 2], 'How many bits are set?') AS bit_summary WHERE bit_summary > 0;",
+        "CREATE TEMPORARY TABLE temp_test AS SELECT value, bitTestAny(value, index_values) AS temp_result FROM test_bits;",
+        "SELECT temp_result, multiIf(temp_result = 1, 'Active', NULL) AS evaluation FROM temp_test WHERE temp_result IS NOT NULL;",
+        "SELECT value, bitTestAny(COALESCE(NULL, value, -1), 1, 2) AS coalesced_test FROM test_bits WHERE value < 50;"
+    ]
+}

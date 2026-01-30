@@ -1,0 +1,11 @@
+CREATE TABLE events (id INTEGER, event_time TIMESTAMPTZ, details TEXT);
+INSERT INTO events VALUES (1, TIMESTAMPTZ '2023-01-01 10:00:00-07', 'New Year Party'), (2, TIMESTAMPTZ '2023-01-10 14:00:00-07', NULL), (3, TIMESTAMPTZ '2022-12-31 22:00:00-07', 'New Year Eve');
+SELECT time_bucket(INTERVAL '3 days', event_time, 'America/New_York') AS bucket, details FROM events WHERE event_time IS NOT NULL GROUP BY bucket, details ORDER BY bucket;
+SELECT bucketed.event_time AS bucketed_time FROM (SELECT time_bucket(INTERVAL '1 day', event_time, 'UTC') AS event_time FROM events WHERE details IS NOT NULL) AS bucketed WHERE bucketed.event_time IS DISTINCT FROM TIMESTAMPTZ '2023-01-01 12:00:00Z';
+SELECT ARRAY_AGG(details) || NULL AS combined_details FROM events WHERE event_time >= TIMESTAMPTZ '2023-01-01 00:00:00-07';
+WITH filled_events AS (SELECT id, time_bucket(INTERVAL '2 days', event_time) AS event_bucket FROM events WHERE details IS NOT NULL) SELECT COUNT(id) FROM filled_events GROUP BY event_bucket HAVING COUNT(id) > 1;
+CREATE TABLE temp_timestamps (id INTEGER, timestamp_value TIMESTAMPTZ);
+INSERT INTO temp_timestamps VALUES (1, TIMESTAMPTZ '2023-01-01 10:00:00-07'), (2, TIMESTAMPTZ '2023-01-01 10:00:00+00'), (3, NULL);
+SELECT time_bucket(INTERVAL '1 day', timestamp_value, 'Europe/London') AS daily_bucket FROM temp_timestamps WHERE timestamp_value IS NOT NULL ORDER BY daily_bucket;
+SELECT ARRAY[time_bucket(INTERVAL '1 hour', event_time, 'Asia/Tokyo')] || ARRAY[CAST(NULL AS TIMESTAMPTZ)] AS combined_buckets FROM events WHERE event_time IS NOT NULL;
+DROP TABLE temp_timestamps;

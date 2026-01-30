@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/932",
+  "title": "sparql slow if more object value specified",
+  "description": "Hi , I am using Virtuoso 7 open source edition,\nThis query below is fast, it returns the result instantly,\nselect *\n                WHERE {\n\n                graph <http://localhost:8890/graph> {\n\n                    ?catAtt qq:catId        ?catId;\n                            qq:caDataType   ?caDataType;\n                            qq:showInView   ?showInview;\n                            qq:valFormat    ?valFormatKey;\n                            qq:multiple     ?multiple;\n                            qq:position     ?position;\n                            qq:link         ?link;\n                            qq:catAttName   ?catAttName;\n                            qq:setting      ?setting;\n                            qq:flag         ?flag;\n                            qq:unit         ?caUnit.\n\n                  }\n                }\n\n                LIMIT 20\n\nThis query is so slow, took 10 seconds for the result, the only difference is the ?catId is replaced with literal value 1. I thought this should be faster because it's more specific.\nselect *\n                WHERE {\n\n                graph <http://localhost:8890/graph> {\n\n                    ?catAtt qq:catId        1;\n                            qq:caDataType   ?caDataType;\n                            qq:showInView   ?showInview;\n                            qq:valFormat    ?valFormatKey;\n                            qq:multiple     ?multiple;\n                            qq:position     ?position;\n                            qq:link         ?link;\n                            qq:catAttName   ?catAttName;\n                            qq:setting      ?setting;\n                            qq:flag         ?flag;\n                            qq:unit         ?caUnit.\n\n                  }\n                }\n\n                LIMIT 20\n\nWhy is it so? I am still new to SPARQL and triplestore, seems like I have to do some indexing on the object?\nI have tried creating the GOPS index with, I don't understand about the Partition part, is using O correct? What does that partition mean? Creating this index has improved the execution for the second query to 4 seconds, but still too slow for a DBMS.\nCREATE COLUMN INDEX RDF_QUAD_GOPS\n  ON RDF_QUAD (G, O, P, S)\n  PARTITION (O VARCHAR (-1, 0hexffff));\n\nBtw, does virtuoso stored triplet in the regular RDBMS table? in the table DB.DBA.RDF_QUAD? So Virtuoso does not have a native storage of graph? Or what I don't understand?\nThanks",
+  "date": "2020-10-26 13:22:49",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE test_data (id INT PRIMARY KEY, catId INT, caDataType VARCHAR(255), showInView BOOLEAN, valFormat VARCHAR(255), multiple BOOLEAN, position INT, link VARCHAR(255), catAttName VARCHAR(255), setting VARCHAR(255), flag BOOLEAN, caUnit VARCHAR(255));",
+    "INSERT INTO test_data (id, catId, caDataType, showInView, valFormat, multiple, position, link, catAttName, setting, flag, caUnit) VALUES (1, 1, 'type1', TRUE, 'format1', FALSE, 1, 'link1', 'name1', 'setting1', TRUE, 'unit1');",
+    "INSERT INTO test_data (id, catId, caDataType, showInView, valFormat, multiple, position, link, catAttName, setting, flag, caUnit) VALUES (2, NULL, 'type2', FALSE, 'format2', TRUE, 2, 'link2', 'name2', 'setting2', FALSE, 'unit2');",
+    "SELECT * FROM test_data WHERE catId = 1 AND showInView = TRUE;",
+    "SELECT * FROM test_data WHERE catId IS NULL OR catId > 0;"
+  ],
+  "key_bug_features": [
+    "Slow query performance with specific object value in SPARQL"
+  ]
+}

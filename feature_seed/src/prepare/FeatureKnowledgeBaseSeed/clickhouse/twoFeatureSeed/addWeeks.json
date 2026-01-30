@@ -1,0 +1,20 @@
+{
+    "function": "addWeeks",
+    "operator": "IS NOT NULL",
+    "sql_array": [
+        "CREATE TABLE test_dates (id UInt32, event_date DateTime, nullable_date Nullable(DateTime)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_dates (id, event_date, nullable_date) VALUES (1, '2024-01-01 00:00:00', NULL), (2, '2024-01-15 00:00:00', '2024-01-15 00:00:00'), (3, '2024-02-01 00:00:00', NULL);",
+        "SELECT id, addWeeks(event_date, 3) AS new_date, IS NOT NULL(nullable_date) AS is_nullable_not_null FROM test_dates WHERE IS NOT NULL(nullable_date) ORDER BY id;",
+        "WITH (SELECT COUNT(*) FROM test_dates WHERE IS NOT NULL(event_date)) AS valid_dates_count SELECT id, addWeeks(event_date, 5) WHERE valid_dates_count > 1;",
+        "CREATE TABLE test_numeric (num UInt32) ENGINE = MergeTree() ORDER BY num;",
+        "INSERT INTO test_numeric (num) VALUES (1), (2), (3), (4), (5);",
+        "SELECT num, addWeeks(toDate('2024-01-01'), num) AS date_plus_weeks FROM test_numeric WHERE addWeeks(toDate('2024-01-01'), num) IS NOT NULL;",
+        "SELECT id, addWeeks(((SELECT MAX(event_date) FROM test_dates WHERE IS NOT NULL(nullable_date)) - INTERVAL 1 DAY), -2) AS date_minus_weeks FROM test_dates;",
+        "WITH nullable_dates AS (SELECT event_date, IS NOT NULL(nullable_date) AS is_not_null FROM test_dates) SELECT addWeeks(event_date, 2) FROM nullable_dates WHERE is_not_null ORDER BY event_date;",
+        "CREATE TABLE temp_dates (date_id UInt32, some_date Nullable(DateTime)) ENGINE = MergeTree() ORDER BY date_id;",
+        "INSERT INTO temp_dates (date_id, some_date) VALUES (1, NULL), (2, '2024-01-10 12:00:00');",
+        "SELECT date_id, addWeeks(some_date, 4) AS adjusted_date FROM temp_dates WHERE IS NOT NULL(some_date) ORDER BY date_id;",
+        "SELECT id, addWeeks(event_date, IS NOT NULL(nullable_date) ? 2 : 0) AS conditional_add_weeks FROM test_dates ORDER BY event_date DESC;",
+        "SELECT id, addWeeks((SELECT MIN(event_date) FROM test_dates), MAX(num)) AS min_date_adjusted FROM test_numeric GROUP BY id HAVING IS NOT NULL(min_date_adjusted);"
+    ]
+}

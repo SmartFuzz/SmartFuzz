@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/58129",
+  "title": "The query result of the sql statement in tidb is inconsistent with mysql.",
+  "description": "## Bug Report\n\nThe query result of the sql statement in tidb is inconsistent with mysql.\n\n### 1. Minimal reproduce step (Required)\n```\nuse test;\ndrop table a;\nCREATE TABLE a (\n    id BIGINT(20) UNSIGNED NOT NULL,\n    version INT(11) NOT NULL, \n    PRIMARY KEY (id, version)\n);\ninsert into a values(1,100),(1,102),(2,29),(2,34),(2,60),(2,50),(1,129),(1,128);\n\nSELECT id, version,\n       @row_num := IF(@id_last = id, @row_num + 1, 1) as rn,\n       @id_last := id\nFROM  a, (SELECT @row_num := 0, @id_last := NULL) r\nORDER BY id, version DESC\n```\n\n### 2. What did you expect to see? (Required)\n```\nmysql> SELECT id, version,\n    ->        @row_num := IF(@id_last = id, @row_num + 1, 1) as rn,\n    ->        @id_last := id\n    -> FROM  a, (SELECT @row_num := 0, @id_last := NULL) r\n    -> ORDER BY id, version DESC;\n+----+---------+------+----------------+\n| id | version | rn   | @id_last := id |\n+----+---------+------+----------------+\n|  1 |     129 |    1 |              1 |\n|  1 |     128 |    2 |              1 |\n|  1 |     102 |    3 |              1 |\n|  1 |     100 |    4 |              1 |\n|  2 |      60 |    1 |              2 |\n|  2 |      50 |    2 |              2 |\n|  2 |      34 |    3 |              2 |\n|  2 |      29 |    4 |              2 |\n+----+---------+------+----------------+\n8 rows in set, 4 warnings (0.00 sec)\n\nmysql>\n```\n\n### 3. What did you see instead (Required)\n```\nMySQL [test]> SELECT id, version,\n    ->        @row_num := IF(@id_last = id, @row_num + 1, 1) as rn,\n    ->        @id_last := id\n    -> FROM  a, (SELECT @row_num := 0, @id_last := NULL) r\n    -> ORDER BY id, version DESC;\n+----+---------+------+----------------+\n| id | version | rn   | @id_last := id |\n+----+---------+------+----------------+\n|  1 |     129 |    4 |              1 |\n|  1 |     128 |    3 |              1 |\n|  1 |     102 |    2 |              1 |\n|  1 |     100 |    1 |              1 |\n|  2 |      60 |    4 |              2 |\n|  2 |      50 |    3 |              2 |\n|  2 |      34 |    2 |              2 |\n|  2 |      29 |    1 |              2 |\n+----+---------+------+----------------+\n8 rows in set (0.01 sec)\n\nMySQL [test]> \n```\n### 4. What is your TiDB version? (Required)\n```\nMySQL [test]> select tidb_version()\\G\n*************************** 1. row ***************************\ntidb_version(): Release Version: v8.1.1\nEdition: Community\nGit Commit Hash: a7df4f9845d5d6a590c5d45dad0dcc9f21aa8765\nGit Branch: HEAD\nUTC Build Time: 2024-08-22 05:50:03\nGoVersion: go1.21.13\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv\n1 row in set (0.00 sec)\n\nMySQL [test]>\n```\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "date": "2024-12-10T07:12:38Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE b (id INT NOT NULL, name VARCHAR(50), created_at TIMESTAMP DEFAULT NOW(), PRIMARY KEY (id));",
+    "INSERT INTO b VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie'), (4, NULL);",
+    "CREATE TABLE c (id INT NOT NULL, score FLOAT, FOREIGN KEY (id) REFERENCES b(id));",
+    "INSERT INTO c VALUES (1, 95.5), (2, 88.0), (3, NULL), (4, 76.5);",
+    "SELECT b.id, b.name, ROW_NUMBER() OVER (PARTITION BY b.id ORDER BY b.id) AS rn FROM b ORDER BY b.id;"
+  ],
+  "key_bug_features": [
+    "Inconsistent query results using row numbering with variables"
+  ]
+}

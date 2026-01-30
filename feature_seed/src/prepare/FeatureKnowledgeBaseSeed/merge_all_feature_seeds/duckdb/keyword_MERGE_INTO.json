@@ -1,0 +1,11 @@
+CREATE TABLE employees (id INTEGER, name VARCHAR, salary FLOAT);
+INSERT INTO employees VALUES (1, 'Alice', 90000.0), (2, 'Bob', 85000.0);
+MERGE INTO employees USING (SELECT unnest([1, 2, 3]) AS id, unnest(['Alice', 'Charlie', 'Bob']) AS name, unnest([95000.0, 105000.0, 80000.0]) AS salary) AS updates ON (updates.id = employees.id) WHEN MATCHED THEN UPDATE SET salary = updates.salary WHEN NOT MATCHED THEN INSERT (id, name, salary) VALUES (updates.id, updates.name, updates.salary);
+MERGE INTO employees USING (SELECT unnest([4, 5]) AS id, unnest(['Dave', 'Eve']) AS name, unnest([80000.0, 70000.0]) AS salary) AS new_employees ON (new_employees.id = employees.id) WHEN NOT MATCHED THEN INSERT (id, name, salary) VALUES (new_employees.id, new_employees.name, new_employees.salary);
+MERGE INTO employees USING (SELECT unnest([1]) AS id) AS delete_set ON (delete_set.id = employees.id) WHEN MATCHED THEN DELETE;
+MERGE INTO employees USING (SELECT unnest([2]) AS id) AS delete_set ON (delete_set.id = employees.id) WHEN MATCHED AND employees.salary < 90000.0 THEN DELETE;
+CREATE TABLE bonus_updates (id INTEGER, bonus FLOAT);
+INSERT INTO bonus_updates VALUES (1, 5000.0), (2, 7000.0);
+MERGE INTO employees USING (SELECT id, salary + bonus AS new_salary FROM employees JOIN bonus_updates ON employees.id = bonus_updates.id) AS salary_upgrades ON (salary_upgrades.id = employees.id) WHEN MATCHED THEN UPDATE SET salary = salary_upgrades.new_salary;
+MERGE INTO employees USING (SELECT unnest([1]) AS id) AS check_updates ON (check_updates.id = employees.id) WHEN MATCHED AND employees.salary < 95000.0 THEN UPDATE SET salary = 100000.0;
+MERGE INTO employees USING (SELECT unnest([3, 4]) AS id) AS potential_employees ON (potential_employees.id = employees.id) WHEN NOT MATCHED BY TARGET THEN INSERT (id, name, salary) VALUES (potential_employees.id, 'Unknown', 60000.0) RETURNING *;

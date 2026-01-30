@@ -1,0 +1,11 @@
+CREATE TABLE test_data (id INTEGER, value_x DOUBLE, value_y DOUBLE);
+INSERT INTO test_data (id, value_x, value_y) VALUES (1, NULL, 2.0), (2, 3.0, 4.0), (3, -1.0, 5.0), (4, 2.0, NULL), (5, 0.0, 0.0);
+SELECT id, regr_sxx(value_y, value_x ** 2) AS regression_value FROM test_data GROUP BY id HAVING regression_value IS NOT NULL;
+SELECT id, (SELECT COUNT(*) FROM test_data t2 WHERE t2.value_y = t1.value_y ** 2) AS matching_count FROM test_data t1;
+SELECT regr_sxx(value_y, CAST(value_x AS VARCHAR)) AS regression_value FROM test_data GROUP BY value_x HAVING regression_value IS NOT NULL;
+SELECT id, regr_sxx(value_y, value_x) OVER (PARTITION BY (value_x > 0)::INTEGER) AS partitioned_regression FROM test_data;
+CREATE TABLE additional_data (id INT, extra_value DOUBLE, UNIQUE(id));
+INSERT INTO additional_data (id, extra_value) VALUES (1, 1.0), (2, 2.0), (3, 3.0);
+SELECT td.id, regr_sxx(td.value_y, td.value_x) AS regression_value FROM test_data td JOIN additional_data ad ON td.id = ad.id WHERE td.value_x IS NOT NULL GROUP BY td.id HAVING regression_value > 0;
+SELECT regr_sxx(value_y, value_x ** 0.5) AS fractional_regression FROM test_data GROUP BY value_x HAVING fractional_regression < 10;
+SELECT id, value_x, value_y, (value_x + value_y) ** 2 AS combined_squared FROM test_data WHERE (value_x + value_y) IS NOT NULL;

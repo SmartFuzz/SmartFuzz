@@ -1,0 +1,21 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=117459",
+  "title": "Cross DDL operations on MySQL partitioned tables, parallel COUNT(*) does not report errors.",
+  "description": "Using a snapshot (vision) captured before the table structure modification, a parallel COUNT(*) query on the modified table structure executes without errors.\r\n\r\nWe think the problematic code lies in the logic of ha_innopart::records handling parallel COUNT(*) operations.\r\n\r\nBecause ha_innobase::records handles the case where !index->is_usable, while ha_innopart::records appears to overlook this scenario when processing parallel COUNT(*) operations.\nHow to repeat:\nThe following COUNT(*) queries are all parallel reads：\r\n\r\nsession 1:\r\nbegin;\r\nselect count(*) from t1;\r\n\r\nsession 2:\r\nalter table t2 add column c int;\r\n\r\nsession 1:\r\nselect count(*) from t2;\r\n\r\nIf t2 is a non-partitioned table, it throws an error: Table definition has changed, please retry transaction.\r\nIf t2 is a partitioned table, the query can still be executed, which is considered unexpected behavior.\r\n\r\nFor the final query in Session 1, we also tested non-parallel read operations, such as SELECT * FROM t2;\r\n\r\nResults as follows:\r\nIf t2 is a non-partitioned table, it throws an error: Table definition has changed, please retry transaction.\r\nIf t2 is a partitioned table, it throws an error: Table definition has changed, please retry transaction.\r\n\r\nIn a word, among the four scenarios, only the partitioned table executing a parallel COUNT(*) did not report errors, which seems to be a bug.\nSuggested fix:\nIn the logic of ha_innopart::records handling parallel COUNT(*) operations，add code to handle the HA_ERR_TABLE_DEF_CHANGED scenario.",
+  "date": "2025-02-13 03:02:00",
+  "vulnerable_version": "8.0.32",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t1 (id INTEGER PRIMARY KEY, name VARCHAR(50));",
+    "CREATE TABLE t2 (id INTEGER, c INTEGER DEFAULT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+    "INSERT INTO t1 (id, name) VALUES (1, 'Alice');",
+    "INSERT INTO t1 (id, name) VALUES (2, 'Bob');",
+    "INSERT INTO t2 (id, c) VALUES (1, NULL);",
+    "SELECT COUNT(*) FROM t2 WHERE c IS NULL;"
+  ],
+  "key_bug_features": [
+    "Parallel COUNT(*) on partitioned tables does not report errors"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/93464",
+  "title": "DataLakeCatalog REST catalog fails to discover tables in nested/hierarchical namespaces",
+  "vulnerable_database": "ClickHouse",
+  "date": "2026-01-06T06:05:06Z",
+  "vulnerable_version": "25.8.12.20747",
+  "description": "# DataLakeCatalog REST catalog fails to discover tables in nested/hierarchical namespaces\n## Summary\nWhen using `DataLakeCatalog` with an Iceberg REST catalog (Snowflake Polaris) that has hierarchical/nested namespaces, ClickHouse fails to discover tables because it uses incorrect URL encoding for nested namespace paths.\n## ClickHouse Version\n- Version: 25.8.12.20747.altinityantalya\n- Also affects: Any version with DataLakeCatalog REST catalog support\n## Environment\n- Iceberg REST Catalog: Snowflake Polaris\n- Namespace structure: Two-level hierarchy (e.g., `teslasource` → `kafkav6` → `source-data`)\n## Steps to Reproduce\n1. Create a DataLakeCatalog database connected to a Polaris catalog with nested namespaces:\n```sql\nSET allow_experimental_database_iceberg = 1;\nCREATE DATABASE polaris_iceberg\nENGINE = DataLakeCatalog('https://example.snowflakecomputing.com/polaris/api/catalog')\nSETTINGS\ncatalog_type = 'rest',\nwarehouse = 'my-warehouse',\nauth_scope = 'PRINCIPAL_ROLE:ALL',\noauth_server_uri = 'https://example.snowflakecomputing.com/polaris/api/catalog/v1/oauth/tokens',\ncatalog_credential = 'client_id:client_secret';\n```\n2. Try to list tables:\n```sql\nSET show_data_lake_catalogs_in_system_tables = 1;\nSHOW TABLES FROM polaris_iceberg;\n```\n3. Result: Empty - no tables discovered\n## Expected Behavior\nTables in nested namespaces should be discovered and accessible, e.g.:\n- `polaris_iceberg.\\`teslasource.kafkav6.source-data\\``\n## Actual Behavior\nClickHouse discovers the nested namespaces but fails to query tables due to incorrect URL encoding.\n### Debug Logs\nWhen running with `SET send_logs_level = 'trace'`, the logs show:\n```\nReadWriteBufferFromHTTP: Failed to make request to\n'https://example.snowflakecomputing.com/polaris/api/catalog/v1/my-warehouse/namespaces/teslasource.kafkav2/tables'\nHTTP status code: 404 'Not Found'\nbody: '{\"error\":{\"message\":\"Namespace does not exist: teslasource.kafkav2\",\"type\":\"NoSuchNamespaceException\",\"code\":404}}'\n```\n## Root Cause\nClickHouse's `DataLake::RestCatalog::getTables()` constructs the namespace path using a **dot (`.`)** separator:\n```\n/namespaces/teslasource.kafkav2/tables  ❌ WRONG\n```\nBut the [Iceberg REST Catalog OpenAPI spec](https://github.com/apache/iceberg/blob/main/open-api/rest-catalog-open-api.yaml) requires nested namespaces to be encoded with **unit separator (`%1F` / ASCII 0x1F)**:\n```\n/namespaces/teslasource%1Fkafkav2/tables  ✅ CORRECT\n```",
+  "poc": [
+    "CREATE DATABASE polaris_iceberg\nENGINE = DataLakeCatalog('https://example.snowflakecomputing.com/polaris/api/catalog')\nSETTINGS\n    catalog_type = 'rest',\n    warehouse = 'my-warehouse',\n    auth_scope = 'PRINCIPAL_ROLE:ALL',\n    oauth_server_uri = 'https://example.snowflakecomputing.com/polaris/api/catalog/v1/oauth/tokens',\n    catalog_credential = 'client_id:client_secret';"
+  ],
+  "key_bug_features": [
+    "Incorrect URL encoding for nested namespace paths"
+  ],
+  "bug_features_seed": [
+    "CREATE DATABASE polaris_iceberg ENGINE = DataLakeCatalog('https://example.snowflakecomputing.com/polaris/api/catalog') SETTINGS catalog_type = 'rest', warehouse = 'my-warehouse', auth_scope = 'PRINCIPAL_ROLE:ALL', oauth_server_uri = 'https://example.snowflakecomputing.com/polaris/api/catalog/v1/oauth/tokens', catalog_credential = 'client_id:client_secret';",
+    "CREATE TABLE polaris_iceberg.`teslasource.kafkav6.source-data` (id UInt32, name String, created_at DateTime DEFAULT now()) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO polaris_iceberg.`teslasource.kafkav6.source-data` VALUES (1, 'test1', now()), (2, 'test2', now());",
+    "SELECT * FROM polaris_iceberg.`teslasource.kafkav6.source-data` WHERE id IS NOT NULL;",
+    "SHOW TABLES FROM polaris_iceberg;"
+  ]
+}

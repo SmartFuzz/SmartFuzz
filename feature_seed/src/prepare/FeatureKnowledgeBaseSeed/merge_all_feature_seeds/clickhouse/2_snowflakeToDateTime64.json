@@ -1,0 +1,10 @@
+CREATE TABLE test_snowflake (id Int64, snowflake_id Int64, description String, created_at DateTime64(3), timezone String);
+INSERT INTO test_snowflake (id, snowflake_id, description, created_at, timezone) VALUES (1, 1426860802823350272, 'Test entry 1', now(), 'UTC'), (2, 1426860802823350273, 'Test entry 2', now(), 'America/New_York');
+SELECT id, description, snowflakeToDateTime64(snowflake_id, timezone) AS created_time FROM test_snowflake WHERE description ILIKE 'Test entry%';
+SELECT id, snowflake_id, (SELECT COUNT(*) FROM test_snowflake t2 WHERE t2.snowflake_id = test_snowflake.snowflake_id) AS count_in_same_group FROM test_snowflake WHERE snowflakeToDateTime64(snowflake_id, timezone) ILIKE '2021-07-20%';
+SELECT id, COUNT(*) OVER (PARTITION BY timezone) AS time_zone_count FROM test_snowflake WHERE snowflakeToDateTime64(snowflake_id, timezone) ILIKE concat('2021-07-', toString(id));
+SELECT id, snowflake_id, (snowflakeToDateTime64(snowflake_id, timezone) ILIKE '2021-07-20%' OR snowflakeToDateTime64(snowflake_id, timezone) IS NULL) AS matches FROM test_snowflake GROUP BY id, snowflake_id HAVING matches = 1;
+CREATE TABLE test_snowflake_null (id Int64, snowflake_id Int64, description String);
+INSERT INTO test_snowflake_null (id, snowflake_id, description) VALUES (1, 1426860802823350272, 'Entry with data'), (2, NULL, 'Entry with null snowflake_id');
+SELECT id, snowflakeToDateTime64(ifNull(snowflake_id, 0), 'UTC') AS created_time, description FROM test_snowflake_null WHERE (snowflakeToDateTime64(snowflake_id, 'UTC') ILIKE '2021-07-20%' OR description IS NULL);
+SELECT snowflake_id, COUNT(*) OVER (PARTITION BY timezone ORDER BY snowflake_id) AS row_num FROM test_snowflake WHERE timezone ILIKE '%UTC%';

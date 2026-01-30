@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/59664",
+  "title": "The estimated rows of the where clause do not match expectations",
+  "description": "## Bug Report\n\nWe found a problem when testing the where function of tidb. The only difference between the following two statements is that statement 1 does not contain a where clause, while statement 2 uses a where clause. We believe that the statement containing a where clause with a random predicate will be more restrictive than the statement with an empty where clause, so the estimated rows of the former will be less than the latter; However, when we use the explain function to view the estimated rows of the two statements, we find that the estimated rows containing the where clause are greater than the estimated rows without the where clause.\n--EXPLAIN SELECT t0.c0 FROM t0 GROUP BY t0.c0 HAVING ((t0.c0)^(CAST(t0.c0 AS SIGNED))); --1\n--EXPLAIN SELECT t0.c0 FROM t0 WHERE 0.8113962746633389 GROUP BY t0.c0 HAVING ((t0.c0)^(CAST(t0.c0 AS SIGNED))); --3\n\n### 1. Minimal reproduce step (Required)\n\nUSE test;\nDROP DATABASE IF EXISTS database2;\nCREATE DATABASE database2;\nUSE database2;\nCREATE TABLE t0(c0 FLOAT ZEROFILL DEFAULT 0.1283062654852083 );\nUPDATE t0 SET c0=((t0.c0)REGEXP(true)) WHERE ((t0.c0) IS NULL);\nALTER TABLE t0 ADD PRIMARY KEY(c0);\nUPDATE t0 SET c0=1 WHERE CAST(t0.c0 AS SIGNED);\nADMIN CHECKSUM TABLE t0;\nALTER TABLE t0  ORDER BY c0;\nALTER TABLE t0  DROP PRIMARY KEY;\nREPLACE INTO t0 VALUES (0.1283062654852083), (0.1283062654852083);\nUPDATE t0 SET c0=1094169305 WHERE t0.c0;\nREPLACE INTO t0(c0) VALUES (0.45080037053271715);\nALTER TABLE t0  CHANGE c0 c0 FLOAT NOT NULL ;\nSET @@sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';\nANALYZE TABLE t0;\n--EXPLAIN SELECT t0.c0 FROM t0 GROUP BY t0.c0 HAVING ((t0.c0)^(CAST(t0.c0 AS SIGNED))); --1\n--EXPLAIN SELECT t0.c0 FROM t0 WHERE 0.8113962746633389 GROUP BY t0.c0 HAVING ((t0.c0)^(CAST(t0.c0 AS SIGNED))); --3\n\n### 2. What did you expect to see? (Required)\nThe estimated rows of statement 2 should be less than or equal to the estimated rows of statement 1\n\n### 3. What did you see instead (Required)\nThe estimated rows of statement 2 are greater than  the estimated rows of statement 1\n\n### 4. What is your TiDB version? (Required)\nRelease Version: v7.5.1\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "date": "2025-02-20T04:32:18Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1(id INT PRIMARY KEY, value VARCHAR(255) NOT NULL);",
+    "INSERT INTO t1 VALUES (1, 'test1'), (2, 'test2'), (3, 'test3');",
+    "CREATE TABLE t2(id INT, ref_id INT, FOREIGN KEY(ref_id) REFERENCES t1(id));",
+    "INSERT INTO t2 VALUES (1, 1), (2, 2), (3, NULL);",
+    "EXPLAIN SELECT t1.value FROM t1 JOIN t2 ON t1.id = t2.ref_id WHERE t2.ref_id IS NOT NULL GROUP BY t1.value HAVING COUNT(t1.id) > 1;"
+  ],
+  "key_bug_features": [
+    "Estimated rows mismatch with and without where clause"
+  ]
+}

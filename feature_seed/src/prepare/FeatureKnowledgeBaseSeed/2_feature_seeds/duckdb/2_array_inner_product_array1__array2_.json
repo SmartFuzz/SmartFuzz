@@ -1,0 +1,10 @@
+CREATE TABLE data_test (id INTEGER, value1 FLOAT, value2 FLOAT, value3 FLOAT);
+INSERT INTO data_test VALUES (1, 1.0, 2.0, 3.0), (2, NULL, 4.0, 5.0), (3, 2.5, 3.5, 4.5), (4, -1.0, 0.5, 2.0);
+WITH array_data AS (SELECT array_value(value1, value2, value3) AS arr1, array_value(value2, value3, value1) AS arr2 FROM data_test WHERE id < 4) SELECT array_inner_product(arr1, arr2) << 2 AS shifted_product FROM array_data;
+SELECT id, (value1 + (value2 << 1)) AS shifted_sum FROM data_test WHERE value3 IS NOT NULL GROUP BY id HAVING COUNT(*) > 1;
+SELECT (array_inner_product(array_value(value1, value2), array_value(value3, NULL)) << 1) AS product_shifted FROM data_test WHERE id = 1 OR id = 3;
+SELECT (array_inner_product(array_value(CAST(value1 AS TEXT), CAST(value2 AS TEXT)), array_value(value3, 1.0)) << 3) AS product_cast_shifted FROM data_test WHERE value1 IS NOT NULL;
+INSERT INTO data_test VALUES (5, 3.0, -2.0, NULL);
+WITH max_value AS (SELECT MAX(value3) as max_val FROM data_test) SELECT array_inner_product(array_value(value1 << 2, value2 << 2), array_value(max_val, max_val)) FROM max_value;
+CREATE TEMPORARY TABLE temp_table AS SELECT id, value1, NULLIF(value2, 0) AS non_zero_value2 FROM data_test WHERE value1 IS NOT NULL;
+SELECT (array_inner_product(array_value(non_zero_value2, value3), array_value(value1 << 2, NULL)) IS NOT NULL) AS inner_product_exists FROM temp_table;

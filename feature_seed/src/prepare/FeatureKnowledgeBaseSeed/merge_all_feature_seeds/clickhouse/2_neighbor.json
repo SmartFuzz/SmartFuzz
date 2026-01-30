@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id Int32, value Int32, date DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, 10, '2023-01-01 00:00:00'), (2, 20, '2023-01-02 00:00:00'), (3, NULL, '2023-01-03 00:00:00'), (4, 30, '2023-01-04 00:00:00');
+SELECT id, neighbor(value, 2) AS neighbor_value FROM (SELECT id, value FROM test_table ORDER BY date) AS ordered_table WHERE neighbor(value, 2) NOT LIKE '20';
+SELECT id, value, neighbor(value, -1, 0) AS previous_value FROM test_table HAVING previous_value NOT LIKE '10';
+SELECT a.id, a.value, neighbor(a.value, 1) AS next_value FROM test_table a JOIN (SELECT id, value FROM test_table WHERE value IS NOT NULL) b ON a.id = b.id WHERE neighbor(b.value, -1) IS NULL;
+SELECT date, COUNT(*), SUM(value) AS total_value FROM (SELECT date, neighbor(value, -1) AS prev_value, value FROM test_table) GROUP BY date HAVING SUM(value) NOT LIKE CAST(prev_value AS String);
+CREATE TABLE temp_table AS SELECT id, neighbor(value, 2, -1) AS neighbor_value FROM test_table WHERE value IS NOT NULL;
+INSERT INTO temp_table SELECT id, neighbor(value, -1, value) FROM test_table WHERE id > 2;
+SELECT id, value, neighbor(value, 2) AS k_neighbor FROM test_table ORDER BY date LIMIT 5;
+DROP TABLE temp_table;

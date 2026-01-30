@@ -1,0 +1,11 @@
+CREATE TABLE test_dates (id UInt32, date_str String);
+INSERT INTO test_dates (id, date_str) VALUES (1, '2021-10-31T01:00:00Z'), (2, 'invalid_date'), (3, '2022-01-01T00:00:00Z');
+SELECT id, parseDateTimeInJodaSyntaxOrZero(date_str) AS parsed_date FROM test_dates WHERE parseDateTimeInJodaSyntaxOrZero(date_str) != toUInt32(0);
+CREATE TABLE test_numbers (num1 Float64, num2 Float64);
+INSERT INTO test_numbers (num1, num2) VALUES (123.456, 0.0), (0.0, NULL), (NULL, 789.012);
+SELECT num1, num2, parseDateTimeInJodaSyntaxOrZero('2022-01-01T00:00:00Z') AS parsed_date FROM test_numbers WHERE parseDateTimeInJodaSyntaxOrZero('invalid_date') != 0.0;
+SELECT id, date_str FROM test_dates WHERE parseDateTimeInJodaSyntaxOrZero(date_str) != parseDateTimeInJodaSyntaxOrZero('2022-01-01T00:00:00Z') AND id IN (SELECT id FROM test_dates WHERE date_str IS NOT NULL);
+CREATE TABLE test_joins (a UInt32, b String, c UInt32);
+INSERT INTO test_joins (a, b, c) VALUES (1, 'valid', 10), (2, 'invalid', 20), (3, NULL, 30);
+SELECT tj.a, tj.b, tj.c FROM test_joins AS tj JOIN test_numbers AS tn ON parseDateTimeInJodaSyntaxOrZero(tj.b) != tn.num1 WHERE tj.c != 10 AND tn.num2 IS NOT NULL;
+SELECT COUNT(*) FROM (SELECT id, parseDateTimeInJodaSyntaxOrZero(date_str) AS parsed_date FROM test_dates GROUP BY id HAVING parsed_date = 0);

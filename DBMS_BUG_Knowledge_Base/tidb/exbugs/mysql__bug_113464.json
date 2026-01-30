@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=113464",
+  "title": ">= 8.0.27 Error 1048 when updating row with empty_sql mode",
+  "description": "The problem is described below:\r\n\r\nAfter doing an INSERT on a table with a NOT NULL field, without giving any value to one of such columns, and if this table has an insert trigger, an UPDATE throws error 1048 for MySQL 8.0.35.\r\n\r\nIt executes fine if you disconnect the session after the insert command and reconnect to do the UPDATE.\r\n\r\nNOTES:\r\n\r\n- If you remove the trigger, the issue does not happen.\r\n- If you run FLUSH TABLES before the UPDATE, the issue does not happen.\r\n- The trigger is BEFORE INSERT, so, weirdly, an UPDATE operation causes this.\r\n- Reconnecting with the new session and default SQL_MODE does not cause this issue.\nHow to repeat:\nmysql>  set SESSION sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION';\r\nQuery OK, 0 rows affected, 1 warning (0.00 sec)\r\n\r\nmysql> CREATE TABLE `error_1048_test` (\r\n  `c1` char(1) NOT NULL,\r\n  `c2` char(1) NOT NULL\r\n) ENGINE=InnoDB;\r\nQuery OK, 0 rows affected (0.02 sec)\r\n\r\nmysql> CREATE TRIGGER `error_1048_test_BEFORE_INSERT` BEFORE INSERT ON `error_1048_test` FOR EACH ROW begin\r\nend;\r\nQuery OK, 0 rows affected (0.01 sec)\r\n\r\nmysql> INSERT INTO error_1048_test(c1) VALUES (\"a\");\r\nERROR 1364 (HY000): Field 'c2' doesn't have a default value\r\nmysql> set SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION';\r\nQuery OK, 0 rows affected (0.00 sec)\r\n\r\nmysql> INSERT INTO error_1048_test(c1) VALUES (\"a\");\r\nQuery OK, 1 row affected, 1 warning (0.00 sec)\r\n\r\nmysql> select * from error_1048_test;\r\n+----+----+\r\n| c1 | c2 |\r\n+----+----+\r\n| a  |    |\r\n+----+----+\r\n1 row in set (0.00 sec)\r\n\r\nmysql> UPDATE error_1048_test SET c2 = 'b';\r\nERROR 1048 (23000): Column 'c2' cannot be null",
+  "date": "2023-12-19 17:40:00",
+  "vulnerable_version": "8.0.27",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE `fuzz_test` (`id` INT NOT NULL AUTO_INCREMENT, `name` VARCHAR(50) NOT NULL, `value` DECIMAL(10,2) NOT NULL, PRIMARY KEY (`id`));",
+    "CREATE TRIGGER `fuzz_test_BEFORE_INSERT` BEFORE INSERT ON `fuzz_test` FOR EACH ROW SET NEW.value = IF(NEW.value IS NULL, 0, NEW.value);",
+    "INSERT INTO fuzz_test(name, value) VALUES ('test', NULL);",
+    "SELECT * FROM fuzz_test;",
+    "UPDATE fuzz_test SET value = 10.50 WHERE name = 'test';"
+  ],
+  "key_bug_features": [
+    "UPDATE after INSERT with NOT NULL field and trigger"
+  ]
+}

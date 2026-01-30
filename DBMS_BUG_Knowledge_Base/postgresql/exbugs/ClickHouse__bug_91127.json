@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/91127",
+  "title": "Inconsistent behavior of ALTER MODIFY COLUMN DEFAULT on missing columns after OPTIMIZE FINAL",
+  "description": "### Company or project name\n.\n### Describe the unexpected behaviour\nThere is an inconsistency when ClickHouse handles default values for columns that are added and then merged via OPTIMIZE FINAL. The previously merged column values are not affected by subsequent MODIFY COLUMN DEFAULT operations. The default only applies to new inserts.\n### Which ClickHouse versions are affected?\nall\n### How to reproduce\nIt's reproduceable in current master.\n```sql\nCREATE TABLE x (i Int32) ENGINE = MergeTree() ORDER BY ();\nINSERT INTO x VALUES (1);\nALTER TABLE x ADD COLUMN k Int32 DEFAULT 5;\nSELECT k FROM x;  -- returns: 1, 5\nALTER TABLE x MODIFY COLUMN k DEFAULT 10;\nSELECT k FROM x;  -- returns: 1, 10\nOPTIMIZE TABLE x FINAL;\nALTER TABLE x MODIFY COLUMN k DEFAULT 15;\nSELECT k FROM x;  -- returns: 1, 10, expected: 1, 15\n```\n### Expected behavior\nAfter modifying the column default to 15, SELECT k FROM x should reflect the new default for rows that were previously merged as missing column values.\n### Error message and/or stacktrace\n_No response_\n### Additional context\nOnce the missing column k is merged during the OPTIMIZE FINAL, it stores the old default value (10 in this example), which prevents future default modifications from applying to existing rows. This is inconsistent with the behavior before the merge.\nI'm planning to resolve this in #88860, which will also partially address #4968.",
+  "date": "2025-11-28T15:05:46Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE y (a INT, b TEXT);",
+    "INSERT INTO y VALUES (1, 'test'), (2, 'example');",
+    "ALTER TABLE y ADD COLUMN c DOUBLE PRECISION DEFAULT 3.14;",
+    "ALTER TABLE y ALTER COLUMN c SET DEFAULT 2.71;",
+    "VACUUM y;"
+  ],
+  "key_bug_features": [
+    "ALTER MODIFY COLUMN DEFAULT after OPTIMIZE FINAL inconsistency"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=105350",
+  "title": "Data insertion exception in version 8.0.27",
+  "description": "We found a serious problem. When inserting with insert select statement, there are data exceptions。\nHow to repeat:\nCREATE TABLE test(ID INT,FIELDNAME VARCHAR(100));\r\nINSERT INTO test VALUES(1,'36245');\n\nThe result of the query is displayed：\r\n\r\nSELECT \r\n  MAX(id)+1 ,\r\n  '27141' id2\r\nFROM\r\n  test a \r\n  GROUP BY id2 ;\r\n\r\n----------------------------------------\r\nMAX(id)+1  id2     \r\n---------  --------\r\n        2  27141   \n\nHowever, if you insert this result into the test table：\r\nINSERT INTO test \r\nSELECT \r\n  MAX(id)+1 ,\r\n  '27141' id2\r\nFROM\r\n  test a \r\n  GROUP BY id2 ;\n\nselect * from test;\r\n\r\n    ID  FIELDNAME  \r\n------  -----------\r\n     1  36245      \r\n(NULL)  27141      \n\nThe ID of the data inserted above turned out to be null\nSuggested fix:\nWe changed the way we wrote the sentence, but it was correct：\r\n\r\nINSERT INTO test \r\nSELECT \r\n  MAX(id+1),\r\n  '27141' id2\r\nFROM\r\n  test a \r\n  GROUP BY id2",
+  "date": "2021-10-28 02:06:00",
+  "vulnerable_version": "8.0.27",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test2 (ID UInt32, FIELDNAME String, CREATED_AT DateTime DEFAULT now());",
+    "INSERT INTO test2 (FIELDNAME) VALUES ('Test1');",
+    "INSERT INTO test2 (FIELDNAME) VALUES ('Test2');",
+    "INSERT INTO test2 (ID, FIELDNAME) SELECT MAX(ID) + 1, 'Test3' FROM test2;",
+    "SELECT ID, FIELDNAME FROM test2 WHERE ID IS NULL;"
+  ],
+  "key_bug_features": [
+    "Inserting with MAX(id)+1 causes null ID values"
+  ]
+}

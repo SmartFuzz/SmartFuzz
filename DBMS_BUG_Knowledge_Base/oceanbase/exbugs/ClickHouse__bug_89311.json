@@ -1,0 +1,19 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/89311",
+  "title": "Sorting does not work in projections",
+  "description": "### Company or project name\n_No response_\n### Describe the unexpected behaviour\nI need to filter data for one field and to sort data by any of other fields.\nI use the projections.\nBut sorting dose not working, because projection is not used.\n### Which ClickHouse versions are affected?\n24.12.4.49\n### How to reproduce\nCREATE TABLE IF NOT EXISTS default.test (\nlist_id LowCardinality(String),\nitem String,\ncreated_at DateTime\n)\nENGINE = ReplacingMergeTree()\nPRIMARY KEY (list_id)\nORDER BY (list_id, created_at)\n;\n--test data load\ninsert into default.test\nSELECT t.list_id,  g.*\nFROM generateRandom(\n'item String, created_at DateTime',\n1, 100, 1\n) g\ncross join (select generateUUIDv7() list_id from numbers(2) ) t\nLIMIT 100000000;\nALTER TABLE default.test MODIFY SETTING deduplicate_merge_projection_mode = 'rebuild';\nALTER TABLE default.test ADD PROJECTION prj_list_id_created_at ( SELECT * ORDER BY (list_id, created_at) );\nALTER TABLE default.test MATERIALIZE PROJECTION prj_list_id_created_at;\n--waiting for the creation of projection:\nselect * from system.mutations where table = 'tag_list_items' AND NOT is_done;\n--sorting by item field is working using primary key\nselect *\nfrom default.tag_list_items where list_id = '019a369d-0a96-7fbd-853c-a4335fd2ee9f'\norder by item\nlimit 100\noffset 10000\n--but sorting by created_at field dose not working, because projection is not used\nselect *\nfrom default.tag_list_items where list_id = '019a369d-0a96-7fbd-853c-a4335fd2ee9f'\norder by created_at\nlimit 100\noffset 6000\nSETTINGS optimize_use_projections = 1, preferred_optimize_projection_name = 'prj_list_id_created_at'--, force_optimize_projection_name='prj_list_id_created_at'\nwhy is the projection not used?\n### Expected behavior\nprojection \"prj_list_id_created_at\" is used for sorting by created_at field.\n### Error message and/or stacktrace\n_No response_",
+  "date": "2025-10-31T16:38:02Z",
+  "vulnerable_version": "24.12.4.49",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE IF NOT EXISTS default.test_v2 (list_id VARCHAR(36), item VARCHAR(255), created_at TIMESTAMP, price FLOAT, is_active TINYINT) PRIMARY KEY (list_id);",
+    "INSERT INTO default.test_v2 SELECT t.list_id, g.item, g.created_at, g.price, g.is_active FROM (SELECT UUID() AS list_id FROM dual CONNECT BY LEVEL <= 2) t CROSS JOIN (SELECT item, created_at, price, is_active FROM (SELECT 'item' AS item, NOW() AS created_at, 0.0 AS price, 1 AS is_active FROM dual CONNECT BY LEVEL <= 100)) g;",
+    "CREATE INDEX prj_list_id_created_at ON default.test_v2 (list_id, created_at);",
+    "SELECT * FROM default.test_v2 WHERE list_id = '019a369d-0a96-7fbd-853c-a4335fd2ee9f' ORDER BY created_at LIMIT 100 OFFSET 6000;"
+  ],
+  "key_bug_features": [
+    "Sorting by created_at field does not use projection"
+  ]
+}

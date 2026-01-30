@@ -1,0 +1,15 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, value VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO test_table (id, value) VALUES (1, 'test'), (2, NULL), (3, 'edge case'), (4, '16');
+SELECT id, value FROM test_table WHERE value NOT IN (SELECT value FROM test_table WHERE value IS NOT NULL);
+SELECT __dbf_set('enable_qp', (SELECT COUNT(*) FROM test_table WHERE value NOT IN (SELECT value FROM test_table WHERE id = 3))) AS qp_setting;
+CREATE TABLE join_table (ref_id INT, description TEXT);
+INSERT INTO join_table (ref_id, description) VALUES (1, 'first'), (2, 'second'), (NULL, 'third');
+SELECT t.id, t.value, j.description FROM test_table t LEFT JOIN join_table j ON t.id NOT IN (SELECT ref_id FROM join_table WHERE ref_id IS NOT NULL) WHERE j.description IS NULL;
+SELECT __dbf_set('enable_qp', (SELECT COUNT(*) FROM (SELECT value FROM test_table WHERE value NOT IN (SELECT '' AS value) GROUP BY value HAVING COUNT(*) > 1) AS subquery)) AS qp_count;
+INSERT INTO test_table (id, value) VALUES (5, 'boundary'), (6, '');
+SELECT id, COALESCE(value, 'missing') AS adjusted_value FROM test_table WHERE id NOT IN (SELECT id FROM join_table WHERE description IS NOT NULL);
+SELECT __dbf_set('enable_qp', (SELECT AVG(id) FROM test_table)) AS average_id WHERE (SELECT COUNT(*) FROM test_table WHERE value NOT IN (SELECT NULL AS value));
+DROP TABLE IF EXISTS test_table;
+CREATE TEMPORARY TABLE temp_table AS SELECT * FROM join_table WHERE ref_id NOT IN (SELECT ref_id FROM join_table WHERE description IS NOT NULL);
+SELECT id, created_at FROM test_table WHERE id NOT IN (SELECT ref_id FROM temp_table) OR created_at < CURRENT_TIMESTAMP - INTERVAL '1 DAY';
+SELECT __dbf_set('enable_qp', SUM(CASE WHEN value IS NULL THEN 1 ELSE 0 END)) FROM test_table HAVING COUNT(id) NOT IN (SELECT COUNT(*) FROM join_table);

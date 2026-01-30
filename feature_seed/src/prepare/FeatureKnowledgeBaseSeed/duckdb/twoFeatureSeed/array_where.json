@@ -1,0 +1,21 @@
+{
+    "function": "array_where",
+    "operator": "+",
+    "sql_array": [
+        "CREATE TABLE test_table (id INTEGER, values_list LIST<INTEGER>, mask_list LIST<BOOLEAN>, timestamp_column TIMESTAMP);",
+        "INSERT INTO test_table VALUES (1, [10, 20, 30, 40], [true, false, false, true], '2023-01-01 12:00:00');",
+        "INSERT INTO test_table VALUES (2, [5, 15, NULL, 25], [true, true, false, false], '2023-01-01 13:00:00');",
+        "INSERT INTO test_table VALUES (3, [NULL, 10, 20, NULL], [false, true, true, false], '2023-01-01 14:00:00');",
+        "INSERT INTO test_table VALUES (4, [1, 2, 3, 4], [true, NULL, true, false], '2023-01-01 15:00:00');",
+        "SELECT id, array_where(values_list, mask_list) AS filtered_list, timestamp_column + INTERVAL 1 HOUR AS adjusted_time FROM test_table WHERE timestamp_column IS NOT NULL;",
+        "SELECT id, COUNT(*) OVER (PARTITION BY array_where(values_list, mask_list)), array_where(values_list, mask_list) AS masked_values FROM test_table WHERE array_where(values_list, mask_list) IS NOT NULL GROUP BY id HAVING COUNT(*) > 1;",
+        "SELECT id, values_list[1] + (CAST(array_where(values_list, mask_list)[2] AS INTEGER) + INTERVAL 5 HOUR) AS complex_expression FROM test_table WHERE values_list IS NOT NULL;",
+        "SELECT id FROM (SELECT id, array_where(values_list, mask_list) AS result FROM test_table) AS subquery WHERE result IS NOT NULL;",
+        "CREATE TABLE another_table (ref_id INTEGER REFERENCES test_table(id), extra_column INTERVAL);",
+        "INSERT INTO another_table VALUES (1, INTERVAL 3 HOUR), (3, INTERVAL 2 HOUR);",
+        "SELECT a.ref_id, (a.extra_column + INTERVAL 1 DAY) as extended_interval, b.filtered_list FROM another_table a JOIN (SELECT id, array_where(values_list, mask_list) AS filtered_list FROM test_table) b ON a.ref_id = b.id WHERE a.extra_column IS NOT NULL;",
+        "SELECT id, array_where(values_list, mask_list), timestamp_column + INTERVAL (SELECT COUNT(*) FROM test_table) HOUR FROM test_table WHERE id = 3;",
+        "DROP TABLE another_table;",
+        "DROP TABLE test_table;"
+    ]
+}

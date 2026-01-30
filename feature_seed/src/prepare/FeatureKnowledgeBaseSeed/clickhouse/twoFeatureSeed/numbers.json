@@ -1,0 +1,17 @@
+{
+    "function": "numbers",
+    "operator": "a != ALL (subquery)",
+    "sql_array": [
+        "CREATE TABLE test_numbers (id UInt64, value UInt64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_numbers VALUES (1, 100), (2, NULL), (3, 200), (4, 250), (5, NULL);",
+        "SELECT id, value FROM test_numbers WHERE value != ALL (SELECT value FROM test_numbers WHERE value IS NOT NULL);",
+        "SELECT value, toDate('2023-01-01') + number AS d FROM numbers(5) WHERE toString(value) != ALL (SELECT toString(value) FROM test_numbers WHERE value IS NOT NULL);",
+        "SELECT value, SUM(value) OVER (PARTITION BY (number % 2)) AS sum_partitioned FROM (SELECT value, number FROM test_numbers JOIN numbers(1, 10) ON id % 2 != number % 2);",
+        "SELECT toString(NULL) AS null_string, COUNT(*) FROM (SELECT * FROM test_numbers) GROUP BY null_string HAVING COUNT(*) != ALL (SELECT COUNT(*) FROM test_numbers WHERE value IS NOT NULL);",
+        "SELECT value, AVG(value) AS avg_value FROM (SELECT toUInt64(number) AS value FROM numbers(10)) GROUP BY value HAVING avg_value != ALL (SELECT SUM(value) FROM test_numbers WHERE value IS NOT NULL);",
+        "SELECT value, MAX(value) AS max_value FROM (SELECT value FROM test_numbers WHERE value IS NOT NULL) GROUP BY value HAVING max_value != ALL (SELECT value FROM numbers(0, 10) WHERE number > 5);",
+        "SELECT d, value FROM (SELECT toDate('2010-01-01') + number AS d FROM numbers(365)) AS dates JOIN (SELECT value FROM test_numbers) AS vals ON d = toDate('2010-06-01') WHERE value != ALL (SELECT value FROM test_numbers WHERE value < 300);",
+        "ALTER TABLE test_numbers ADD COLUMN additional_value Nullable(UInt64);",
+        "INSERT INTO test_numbers (id, value, additional_value) VALUES (6, 300, NULL), (7, NULL, 200);"
+    ]
+}

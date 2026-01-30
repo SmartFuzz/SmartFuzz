@@ -1,0 +1,10 @@
+CREATE TABLE test_collations (id INT PRIMARY KEY, name VARCHAR(255) COLLATE utf8_general_ci, data TEXT);
+INSERT INTO test_collations (id, name, data) VALUES (1, 'Sample', 'Sample data for testing collation'), (2, 'Test', 'Another sample data');
+SELECT id, name, bif:sha1(CONCAT(name, data)) AS hash FROM test_collations WHERE name COLLATE utf8_bin = 'Sample';
+CREATE TABLE more_tests (ref_id INT REFERENCES test_collations(id), value VARCHAR(50), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO more_tests (ref_id, value) VALUES (1, 'valueA'), (2, NULL), (1, 'valueB');
+SELECT m.ref_id, m.value, bif:sha1(COALESCE(m.value, 'default')) AS value_hash FROM more_tests AS m JOIN test_collations AS t ON m.ref_id = t.id WHERE t.data IS NOT NULL GROUP BY m.ref_id, m.value ORDER BY value_hash DESC;
+WITH RankedValues AS (SELECT ref_id, value, ROW_NUMBER() OVER (PARTITION BY ref_id ORDER BY created_at DESC) AS rn FROM more_tests) SELECT ref_id, value FROM RankedValues WHERE rn = 1;
+SELECT DISTINCT name FROM test_collations WHERE bif:sha1(name) NOT IN (SELECT bif:sha1(value) FROM more_tests WHERE value IS NOT NULL) AND LENGTH(name) > 0;
+UPDATE test_collations SET name = 'Updated Sample' WHERE id = (SELECT ref_id FROM more_tests WHERE value IS NULL LIMIT 1);
+SELECT id, name, bif:sha1(NULLIF(data, '')) AS data_hash FROM test_collations WHERE id IN (SELECT ref_id FROM more_tests) HAVING data_hash IS NOT NULL;

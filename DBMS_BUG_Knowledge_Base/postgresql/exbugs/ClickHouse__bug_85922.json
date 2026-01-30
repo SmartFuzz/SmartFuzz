@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/85922",
+  "title": "Parameterized identifiers not parsed in CREATE TABLE … AS <table>",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\n`CREATE TABLE … AS <table_identifier>` fails to parse when the database part is passed via query parameter `{db:Identifier}`. Same failure with/without an ENGINE clause. Other uses of `{…:Identifier}` parse fine (e.g., in the target table name, or when using AS SELECT …). Looks like the grammar for `CREATE TABLE … AS <TableIdentifier>` doesn’t accept parameterized identifiers.\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nClickHouse client version 25.7.4.11 (official build).\n```\nCREATE TABLE IF NOT EXISTS {db:Identifier}.test (a UInt64) ENGINE = Log;\n-- this does not work and it should\nCREATE TABLE IF NOT EXISTS  {db:Identifier}.test_log\nENGINE = Log\nAS {db:Identifier}.test;\nCode: 62. DB::Exception: Syntax error: failed at position 106 ({) (line 4, col 4): {db:Identifier}.test;\n. Expected one of: SELECT query, possibly with UNION, list of union elements, SELECT query, subquery, possibly with UNION, SELECT subquery, SELECT query, WITH, FROM, SELECT, identifier. (SYNTAX_ERROR)\n-- same here\nCREATE TABLE IF NOT EXISTS {db:Identifier}.test_log\nAS {db:Identifier}.test\nENGINE = Log;\n➜  tmp cat test.sql| clickhouse-client -nm --param_db='default'\nCode: 62. DB::Exception: Syntax error: failed at position 112 (ENGINE) (line 4, col 1): ENGINE = Log;\n. Expected one of: ParserArrayOfJSONIdentifierDelimiter, token sequence, OpeningSquareBracket, Dot, token, OpeningRoundBracket. (SYNTAX_ERROR)\n-- and here\nCREATE TABLE IF NOT EXISTS {db:Identifier}.test_log\nAS {db:Identifier}.test;\nCode: 62. DB::Exception: Syntax error: failed at position 111 (end of query) (line 3, col 23): ;\n. Expected one of: ParserArrayOfJSONIdentifierDelimiter, token sequence, OpeningSquareBracket, Dot, token, OpeningRoundBracket. (SYNTAX_ERROR)\ncat test.sql | clickhouse-client -nm --param_db='default'\n```\n### Expected behavior\nAbove SQL commands should work as expected using query parameters.\n### Error message and/or stacktrace\n_No response_\n### Additional context\n_No response_",
+  "date": "2025-08-20T07:58:34Z",
+  "vulnerable_version": "25.7.4.11",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "CREATE TABLE IF NOT EXISTS users (id BIGINT, name VARCHAR, created_at TIMESTAMP) WITH (OIDS=FALSE);",
+    "CREATE TABLE IF NOT EXISTS user_logs (user_id BIGINT, log_message VARCHAR, log_time TIMESTAMP) WITH (OIDS=FALSE);",
+    "INSERT INTO users VALUES (1, 'Alice', NOW());",
+    "INSERT INTO user_logs SELECT id, 'User logged in' AS log_message, NOW() FROM users WHERE id = 1;",
+    "CREATE TABLE IF NOT EXISTS user_summary AS SELECT user_id, COUNT(*) AS log_count FROM user_logs GROUP BY user_id;"
+  ],
+  "key_bug_features": [
+    "Parameterized identifiers not accepted in CREATE TABLE statements"
+  ]
+}

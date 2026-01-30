@@ -1,0 +1,20 @@
+{
+    "function": "BPEL.BPEL.script_delete",
+    "operator": "NOT LIKE",
+    "sql_array": [
+        "CREATE TABLE bpel_processes (id INT PRIMARY KEY, version_num INT, status VARCHAR(20), process_name VARCHAR(50), instance_count INT);",
+        "INSERT INTO bpel_processes (id, version_num, status, process_name, instance_count) VALUES (1, 1, 'active', 'ProcessA', 0), (2, 2, 'active', 'ProcessB', 5), (3, 1, 'inactive', 'ProcessC', NULL);",
+        "SELECT BPEL.BPEL.script_delete((SELECT id FROM bpel_processes WHERE instance_count is NULL AND process_name NOT LIKE 'Process%'), 1);",
+        "SELECT 'test' NOT LIKE (SELECT MAX(process_name) FROM bpel_processes WHERE status = 'inactive') AS result; ",
+        "SELECT BPEL.BPEL.script_delete(1, (SELECT version_num FROM bpel_processes WHERE id = 1 AND status NOT LIKE 'active'));",
+        "SELECT BPEL.BPEL.script_delete(2, 1) WHERE EXISTS (SELECT 1 FROM bpel_processes WHERE NOT EXISTS (SELECT 1 FROM bpel_processes WHERE id = 3 AND instance_count IS NOT NULL));",
+        "SELECT 'OK' WHERE (SELECT COUNT(*) FROM bpel_processes WHERE status NOT LIKE 'inactive') > 0;",
+        "CREATE TABLE process_instances (id INT PRIMARY KEY, process_id INT, instance_status VARCHAR(20), created_at TIMESTAMP);",
+        "INSERT INTO process_instances (id, process_id, instance_status, created_at) VALUES (1, 2, 'running', NOW()), (2, 1, 'completed', NOW() - INTERVAL '1 day');",
+        "CREATE TEMP TABLE temp_process AS SELECT * FROM bpel_processes WHERE instance_count = 0;",
+        "SELECT BPEL.BPEL.script_delete((SELECT id FROM temp_process WHERE process_name NOT LIKE (SELECT process_name FROM bpel_processes WHERE status = 'active')), 0);",
+        "SELECT COUNT(*) FROM process_instances WHERE instance_status NOT LIKE 'running' HAVING COUNT(*) > 0;",
+        "ALTER TABLE bpel_processes ADD CONSTRAINT chk_instance_count CHECK (instance_count >= 0);",
+        "SELECT BPEL.BPEL.script_delete((SELECT id FROM bpel_processes WHERE instance_count < 1 AND NOT process_name LIKE 'Process%'), (SELECT MAX(version_num) FROM bpel_processes));"
+    ]
+}

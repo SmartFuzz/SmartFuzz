@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/61726",
+  "title": "Unexpected point get plan for range columns partition",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n```\nCREATE TABLE `te7463d33` (\n  `col_3` json DEFAULT NULL,\n  `col_4` varchar(223) DEFAULT 'QKd^)QlWh#cT&3',\n  UNIQUE KEY `idx_3` (`col_4`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin\nPARTITION BY RANGE COLUMNS(`col_4`)\n(PARTITION `p0` VALUES LESS THAN ('+*8Ab='),\n PARTITION `p1` VALUES LESS THAN ('959#Km%JOy2EFI'),\n PARTITION `p2` VALUES LESS THAN ('FbL~@RpX01&CYY-%%+'),\n PARTITION `p3` VALUES LESS THAN ('GFB'),\n PARTITION `p4` VALUES LESS THAN (MAXVALUE));\n\nexplain select * from te7463d33 where te7463d33.col_4 in ( 'u^D92@_4' ,null );\n```\n\n### 2. What did you expect to see? (Required)\n\nno error\n\n### 3. What did you see instead (Required)\n\nBefore https://github.com/pingcap/tidb/pull/61141, it will return wrong result\n\nAfter https://github.com/pingcap/tidb/pull/61141, report unexpected error like\n```\nmysql> explain select * from te7463d33 where te7463d33.col_4 in ( 'u^D92@_4' ,null );\nERROR 1105 (HY000): too many partitions matching for PointGetPlan\n```\n\n### 4. What is your TiDB version? (Required)\n\n<!-- Paste the output of SELECT tidb_version() -->\n\n```\nmysql> SELECT tidb_version();\n+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| tidb_version()                                                                                                                                                                                                                                                                                |\n+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| Release Version: v9.0.0-alpha-875-g23de08cfb5\nEdition: Community\nGit Commit Hash: 23de08cfb549df008edd69f3a9a7313ab18ecff3\nGit Branch: master\nUTC Build Time: 2025-06-05 03:52:07\nGoVersion: go1.24.0\nRace Enabled: false\nCheck Table Before Drop: false\nStore: unistore\nKernel Type: Classic |\n+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n1 row in set (0.00 sec)\n```\n",
+  "date": "2025-06-13T08:27:45Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE test_partition ( id INTEGER NOT NULL, name VARCHAR(100) NOT NULL, value DECIMAL(10,2) DEFAULT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE INDEX idx_name (name));",
+    "INSERT INTO test_partition (name, value) VALUES ('Alice', 100.50);",
+    "INSERT INTO test_partition (name, value) VALUES ('Bob', 200.75);",
+    "SELECT * FROM test_partition WHERE name IN ('Alice', NULL);",
+    "EXPLAIN SELECT * FROM test_partition WHERE name IN ('Charlie', NULL);"
+  ],
+  "key_bug_features": [
+    "PointGetPlan error with range columns partition"
+  ]
+}

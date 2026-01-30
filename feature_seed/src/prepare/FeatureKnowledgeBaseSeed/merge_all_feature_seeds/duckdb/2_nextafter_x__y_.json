@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id INTEGER, value FLOAT, flags INTEGER);
+INSERT INTO test_table (id, value, flags) VALUES (1, nextafter(1.0, 2.0), 15), (2, NULL, 0);
+SELECT id, value, flags, nextafter(value, 2.5) AS next_value FROM test_table WHERE (flags & 15) = 15;
+CREATE TABLE second_table (ref_id INTEGER REFERENCES test_table(id), multiplier FLOAT);
+INSERT INTO second_table (ref_id, multiplier) VALUES (1, 1.5), (2, 2.0);
+SELECT t.id, nextafter(t.value, (SELECT AVG(multiplier) FROM second_table)) AS adjusted_value, (t.flags & s.ref_id) AS bitwise_check FROM test_table t JOIN second_table s ON t.id = s.ref_id;
+SELECT COUNT(*) FROM (SELECT id, value & NULL AS null_check FROM test_table) as nulls WHERE null_check IS NULL;
+SELECT DISTINCT id, nextafter(MAX(value), 5.0) AS max_next_value FROM test_table GROUP BY id HAVING flags = flags;
+SELECT nextafter(value, (SELECT MIN(multiplier) FROM second_table WHERE ref_id = id)) AS boundary_case_value FROM test_table WHERE value IS NOT NULL;
+UPDATE test_table SET value = nextafter(value, 3.0) WHERE value > 0;
+DELETE FROM test_table WHERE id IN (SELECT ref_id FROM second_table WHERE multiplier IS NULL);

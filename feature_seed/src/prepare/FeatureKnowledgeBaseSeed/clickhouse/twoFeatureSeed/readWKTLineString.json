@@ -1,0 +1,16 @@
+{
+    "function": "readWKTLineString",
+    "operator": "a * b",
+    "sql_array": [
+        "CREATE TABLE geo_lines (id UInt32, geom String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO geo_lines VALUES (1, 'LINESTRING (1 1, 2 2)'), (2, 'LINESTRING (3 3, 4 4)'), (3, 'LINESTRING (5 5, 2 2, 1 1)'), (4, NULL);",
+        "SELECT readWKTLineString(geom) * 2 AS doubled_geom FROM geo_lines WHERE id = 1;",
+        "SELECT readWKTLineString(CONCAT('LINESTRING (', CAST(a.geom, 'String'), ', ', CAST(b.geom, 'String'), ')')) * 3 AS combined_geom FROM geo_lines AS a JOIN geo_lines AS b ON a.id <> b.id;",
+        "SELECT id, readWKTLineString(geom) * (CASE WHEN geom IS NULL THEN 0 ELSE 1 END) AS modified_geom FROM geo_lines GROUP BY id HAVING modified_geom IS NOT NULL ORDER BY id DESC;",
+        "SELECT id, readWKTLineString('LINESTRING (0 0, 100000 100000)') * 0.5 AS res FROM geo_lines WHERE res > 0;",
+        "SELECT readWKTLineString('LINESTRING (NULL NULL)') * (SELECT MIN(id) FROM geo_lines WHERE geom IS NOT NULL) AS edge_case_geom;",
+        "SELECT readWKTLineString('LINESTRING (' || groupArray(geom) || ')') * COUNT(*) FROM geo_lines GROUP BY id;",
+        "CREATE TABLE temp_geo AS SELECT id, readWKTLineString(geom) AS geom_repr FROM geo_lines WHERE geom IS NOT NULL;",
+        "SELECT temp.id, temp.geom_repr * 1.5 FROM temp_geo AS temp LEFT JOIN geo_lines AS g ON temp.id = g.id WHERE g.id IS NOT NULL;"
+    ]
+}

@@ -1,0 +1,16 @@
+CREATE TABLE soap_requests (id INTEGER PRIMARY KEY, content TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO soap_requests (content) VALUES ('<document>abc</document>');
+INSERT INTO soap_requests (content) VALUES ('<document>def</document>');
+INSERT INTO soap_requests (content) VALUES ('<document>ghi</document>');
+SELECT content FROM soap_requests WHERE id = (SELECT MAX(id) FROM soap_requests);
+SELECT content FROM soap_requests WHERE created_at > (SELECT MIN(created_at) FROM soap_requests);
+SELECT COUNT(*) FROM soap_requests WHERE content LIKE '%<document>%';
+SELECT content FROM soap_requests WHERE id IN (SELECT id FROM soap_requests WHERE content LIKE '<document>%');
+SELECT DISTINCT content FROM soap_requests WHERE LENGTH(content) > 10;
+SELECT content, (SELECT COUNT(*) FROM soap_requests) AS total_requests FROM soap_requests WHERE created_at < CURRENT_TIMESTAMP ORDER BY created_at DESC LIMIT 5;
+CREATE TABLE request_logs (log_id INTEGER PRIMARY KEY, request_id INTEGER, log_message TEXT, FOREIGN KEY (request_id) REFERENCES soap_requests (id));
+INSERT INTO request_logs (request_id, log_message) SELECT id, 'Processed successfully' FROM soap_requests WHERE content LIKE '<document>%';
+SELECT rl.log_message FROM request_logs rl JOIN soap_requests sr ON rl.request_id = sr.id WHERE sr.content LIKE '<document>%';
+DELETE FROM soap_requests WHERE content IS NULL;
+UPDATE soap_requests SET content = REPLACE(content, '<document>', '<data>') WHERE content LIKE '<document>%';
+SELECT sr.content FROM soap_requests sr WHERE EXISTS (SELECT 1 FROM request_logs rl WHERE rl.request_id = sr.id AND rl.log_message LIKE '%success%');

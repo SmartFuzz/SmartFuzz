@@ -1,0 +1,15 @@
+CREATE TABLE hits (UserID Int32, SearchPhrase String) ENGINE = MergeTree() ORDER BY UserID;
+INSERT INTO hits VALUES (1, 'apple'), (2, 'banana'), (3, ''), (4, NULL), (5, 'apple'), (6, 'banana');
+SET query_profiler_cpu_time_period_ns=10000000;
+SELECT SearchPhrase, COUNT(DISTINCT UserID) AS u FROM hits WHERE SearchPhrase <> '' AND UserID = ALL (SELECT UserID FROM hits WHERE SearchPhrase IS NOT NULL) GROUP BY SearchPhrase HAVING u >= 1 ORDER BY u DESC LIMIT 10;
+SELECT SearchPhrase, COUNT(UserID) AS total_users FROM (SELECT UserID, SearchPhrase FROM hits WHERE SearchPhrase = ALL (SELECT SearchPhrase FROM hits WHERE UserID > 3)) GROUP BY SearchPhrase HAVING total_users > 0;
+CREATE TABLE log_memory (event_time DateTime, size UInt64) ENGINE = MergeTree() ORDER BY event_time;
+INSERT INTO log_memory VALUES (now(), 512), (now() - INTERVAL 1 DAY, 1024), (now() - INTERVAL 2 DAY, NULL);
+SELECT event_time, formatReadableSize(MAX(size) OVER (PARTITION BY event_time)) AS max_size FROM log_memory WHERE size <> ALL (SELECT MIN(size) FROM log_memory WHERE size IS NOT NULL) GROUP BY event_time ORDER BY event_time;
+CREATE TABLE temp_data (id Int32, value Float32) ENGINE = Memory;
+INSERT INTO temp_data VALUES (1, 0.1), (2, 999.99), (3, NULL), (4, 1.01);
+SELECT value, COUNT(*) AS count FROM temp_data WHERE value = ALL (SELECT value FROM temp_data WHERE value IS NOT NULL) GROUP BY value HAVING count > 1 ORDER BY count DESC;
+CREATE TABLE boundary_test (test_id Int32, test_value String) ENGINE = MergeTree() ORDER BY test_id;
+INSERT INTO boundary_test VALUES (1, ''), (2, 'x'), (3, '    '), (4, 'NULL'), (5, 'a'), (6, 'longstringvalue');
+SET memory_profiler_sample_probability=1, max_untracked_memory=1;
+SELECT test_value, COUNT(test_id) AS freq FROM boundary_test WHERE test_value = ALL (SELECT test_value FROM boundary_test WHERE test_value <> '') GROUP BY test_value HAVING freq <= 1 ORDER BY freq DESC;

@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=101801",
+  "title": "Client parses results of long long type as bit type and displays wrong results",
+  "description": "The latest MySQL client can recognize MYSQL_TYPE_BIT field and display the result in the hexadecimal format. This feature is convenient in many cases for displaying data of BIT type well. But in some cases when the metadata m_data_type of result is MYSQL_TYPE_BIT, but the Item_result type is INT_RESULT, it will bring regression of result mismatch.\nHow to repeat:\nTry the following SQL:\r\nCREATE TABLE t1(a BIT(3), b BIT(9), c INT, d INT);\r\nINSERT INTO t1 VALUES (b'111', b'111110101', 0, 1), (b'000', b'010000101', 1, 1);\r\n\r\nActual result:\r\nmysql 8.0.22 > SELECT MAX(CASE WHEN c = 0 THEN a ELSE b END) FROM t1 GROUP BY d;\r\n+--------------------------------------------------------------------------------+\r\n| MAX(CASE WHEN c = 0 THEN a ELSE b END)                                         |\r\n+--------------------------------------------------------------------------------+\r\n| 0x313333                                                                       |\r\n+--------------------------------------------------------------------------------+\r\n1 row in set (0.00 sec)\r\n\r\nExpected result:\r\nmysql 8.0.16 > SELECT MAX(CASE WHEN c = 0 THEN a ELSE b END) FROM t1 GROUP BY d;\r\n+----------------------------------------+\r\n| MAX(CASE WHEN c = 0 THEN a ELSE b END) |\r\n+----------------------------------------+\r\n| 133                                    |\r\n+----------------------------------------+\r\n1 row in set (0.00 sec)\r\n\r\nActually, the result's bytes returned by MySQL server is all right. The 0x313333 represents the string of integer '133'. But the MySQL client with the latest feature wrongly regard this as BIT type and displays as above.\r\n\r\nThe MySQL client of older version doesn't have this issue(I have tried with version 8.0.16).\nSuggested fix:\nThis issue is caused by the unequal relations between Item_result types and enum_field_types types. In function Item_func_case::resolve_type(), the server sets the the m_data_type to MYSQL_TYPE_BIT, while setting cached_result_type to INT_RESULT. And then the server calculates and returns the result of this expression as an integer, but sets the data type of results' metadata to MYSQL_TYPE_BIT. This makes the client recognize the return value in BIT format.\r\n\r\nWe can have the two following possible fix ways:\r\n1. When sending the metadata of the result to the client, make the m_data_type metadata consistent with Item_result returned by Item::result_type(). If the result_type() is INT_RESULT, set the m_data_type to MYSQL_TYPE_LONGLONG instead.\r\n2. We can change the enum_field_types of field_types_merge_rules[MYSQL_TYPE_BIT][MYSQL_TYPE_BIT] returned by Field::field_type_merge() from MYSQL_TYPE_BIT to MYSQL_TYPE_LONGLONG. The first reason is that the server calculates the expressions involved MYSQL_TYPE_BIT as INT_RESULT. The second reason is that it's hard to tell the result's bit format of two MYSQL_TYPE_BIT in different formats.",
+  "date": "2020-11-30 12:34:00",
+  "vulnerable_version": "8.0.22",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t2(x BYTEA, y BYTEA, z INT, w INT NOT NULL DEFAULT 0);",
+    "INSERT INTO t2 VALUES (decode('1010', 'hex'), decode('ff', 'hex'), 1, 1), (decode('0000', 'hex'), decode('00', 'hex'), 0, NULL);",
+    "SELECT MAX(CASE WHEN z IS NULL THEN x ELSE y END) FROM t2 GROUP BY w;",
+    "CREATE TABLE t3(a INT, b BYTEA, c VARCHAR(10));",
+    "INSERT INTO t3 VALUES (10, decode('11001', 'hex'), 'test'), (20, decode('00000', 'hex'), 'example');"
+  ],
+  "key_bug_features": [
+    "Metadata mismatch between MYSQL_TYPE_BIT and INT_RESULT"
+  ]
+}

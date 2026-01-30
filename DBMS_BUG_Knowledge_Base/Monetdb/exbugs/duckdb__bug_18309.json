@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/18309",
+  "title": "ASOF Joins with OR conditions",
+  "description": "### What happens?\n\nI get different results from an AsOf Join with condition `(tt1.j = tt2.j OR tt1.j = tt2.j) AND tt1.i >= tt2.i` compared to the condition `tt1.j = tt2.j AND tt1.i >= tt2.i`. I would expected the same as the left and right sides of the OR are the same.\n\nIs an OR allowed in AsOf Joins?\n\n### To Reproduce\n\nI tried it out using your unit test framework. The tests pass like this. I think the last query output is wrong:\n\n```sql\nstatement ok\nCREATE TABLE tt1 (i INTEGER, j VARCHAR);\n\nstatement ok\n INSERT INTO tt1 VALUES \n     (2, 'A'),\n     (4, 'B'),\n     (5, 'A');\n\nstatement ok\nCREATE TABLE tt2 (i INTEGER, j VARCHAR, k VARCHAR);\n\nstatement ok\nINSERT INTO tt2 VALUES \n\t(1, 'A', 'I'),\n\t(3, 'B', 'II');\n\n# This worked as expected.\nquery II\nSELECT tt1.i, tt2.k\n   FROM tt1\n   ASOF JOIN tt2 ON\n  tt1.j = tt2.j AND tt1.i >= tt2.i\n  ORDER BY tt1.i;\n----\n2\tI\n4\tII\n5\tI\n\n# Here, I expected the same output as before but I get less.\nquery II\nSELECT tt1.i, tt2.k\n   FROM tt1\n   ASOF JOIN tt2 ON\n  (tt1.j = tt2.j OR tt1.j = tt2.j) AND tt1.i >= tt2.i\n  ORDER BY tt1.i;\n----\n2\tI\n4\tII\n```\n\n### OS:\n\nmacOS 15.5 aarch64\n\n### DuckDB Version:\n\n641e95d140ca7728085445a919c3e8d436aaf0c1\n\n### DuckDB Client:\n\nunit test\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nGishor Sivanrupan\n\n### Affiliation:\n\nExaforce\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a source build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [x] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [x] Yes, I have",
+  "date": "2025-07-18 14:19:39",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Monetdb",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE tt3 (i INTEGER, j VARCHAR, k FLOAT);",
+    "INSERT INTO tt3 VALUES (1, 'X', 1.1), (2, 'Y', 2.2), (3, 'X', 3.3);",
+    "CREATE TABLE tt4 (i INTEGER, j VARCHAR, k DATE);",
+    "INSERT INTO tt4 VALUES (1, 'X', DATE '2023-01-01'), (2, 'Y', DATE '2023-01-02');",
+    "SELECT tt3.i, tt4.k FROM tt3 JOIN tt4 ON (tt3.j = tt4.j OR tt3.j IS NULL) AND tt3.i >= tt4.i ORDER BY tt3.i;"
+  ],
+  "key_bug_features": [
+    "ASOF Join with OR conditions on identical columns"
+  ]
+}

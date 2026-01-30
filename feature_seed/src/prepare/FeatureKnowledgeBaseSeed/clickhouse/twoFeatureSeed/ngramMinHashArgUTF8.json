@@ -1,0 +1,16 @@
+{
+    "function": "ngramMinHashArgUTF8",
+    "operator": "a == b",
+    "sql_array": [
+        "CREATE TABLE test_table (id UInt32, text_column String, num_column Int32, nullable_column Nullable(Int32)) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table VALUES (1, '', 0, NULL), (2, 'Test', 10, 20), (3, 'BoundaryTest', 2147483647, 30);",
+        "SELECT ngramMinHashArgUTF8(text_column, 3, 6) AS ngrams FROM test_table WHERE id == 2;",
+        "SELECT ngramMinHashArgUTF8(nullable_column, 3, 6) AS ngrams FROM test_table WHERE nullable_column == NULL;",
+        "SELECT id, text_column, ngramMinHashArgUTF8(text_column, 1, 1) FROM test_table WHERE ngramMinHashArgUTF8(text_column, 3, 3).1 == 'Test' OR ngramMinHashArgUTF8(text_column, 3, 3).2 == '' ORDER BY id;",
+        "WITH (SELECT ngramMinHashArgUTF8(text_column, 2, 5) FROM test_table WHERE id == 3) AS ngrams_result SELECT ngrams_result WHERE (ngrams_result.1 == 'Boundary' AND ngrams_result.2 == 'Test') LIMIT 1;",
+        "CREATE TABLE secondary_table (id UInt32, related_id UInt32) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO secondary_table VALUES (1, 1), (2, 2), (3, 3);",
+        "SELECT st.id, st.related_id, nt.text_column FROM secondary_table st JOIN test_table nt ON st.related_id == nt.id WHERE ngramMinHashArgUTF8(nt.text_column, 2, 4).1 == 'Te' HAVING COUNT(nt.text_column) > 0;",
+        "SELECT id, ngramMinHashArgUTF8(text_column, 5, 1) FROM test_table GROUP BY text_column HAVING ngramMinHashArgUTF8(text_column, 5, 1).2 == ngramMinHashArgUTF8('BoundaryTest', 5, 1).1;"
+    ]
+}

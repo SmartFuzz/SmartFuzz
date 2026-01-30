@@ -1,0 +1,14 @@
+CREATE TABLE filesystem_test (id UInt32, free_space UInt64);
+INSERT INTO filesystem_test VALUES (1, filesystemUnreserved());
+SELECT free_space FROM filesystem_test WHERE id = 1;
+CREATE TABLE statistics (id UInt32, used_space UInt64, total_space UInt64);
+INSERT INTO statistics VALUES (1, 50000000, 100000000);
+SELECT id, total_space - used_space AS available_space FROM statistics WHERE available_space > filesystemUnreserved();
+SELECT formatReadableSize(filesystemUnreserved()) AS free_space, formatReadableSize(available_space) FROM (SELECT total_space - used_space AS available_space FROM statistics);
+SELECT (SELECT filesystemUnreserved() FROM filesystem_test WHERE id = 1) AS unreserved_space, count(*) FROM statistics GROUP BY total_space;
+CREATE TABLE system_info (info String, value UInt64);
+INSERT INTO system_info VALUES ('unreserved', filesystemUnreserved());
+SELECT info, value FROM system_info WHERE info = 'unreserved' UNION ALL SELECT 'update_time', toUnixTimestamp(now());
+SELECT free_space, (free_space + used_space) AS total_space FROM (SELECT filesystemUnreserved() AS free_space, (SELECT sum(used_space) FROM statistics) AS used_space);
+SELECT formatReadableSize(sum(free_space)) FROM (SELECT filesystemUnreserved() AS free_space UNION ALL SELECT filesystemUnreserved() FROM statistics);
+SELECT filesystemUnreserved() AS current_free_space, (SELECT sum(total_space) FROM statistics) AS total_disk_space;

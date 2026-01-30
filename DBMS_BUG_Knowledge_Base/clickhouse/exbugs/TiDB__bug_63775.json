@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/63775",
+  "title": "Unexpected error: \"[HY000][1105] Data Too Long, field len 1, data len 3\"",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n```\nDROP TABLE IF EXISTS tb0;\nCREATE TABLE tb0(c0 BLOB(452) , c1 DECIMAL , c2 CHAR PRIMARY KEY);\nINSERT INTO tb0(c2) VALUES ('c'), ('꾡');\n\nUPDATE tb0 SET c1=NULL, c2=NULL, c0=111 WHERE (((-1786670785)NOT LIKE((NULL) BETWEEN (tb0.c2) AND (tb0.c0)))) BETWEEN (tb0.c0) AND (3644850330);\n```\n<!-- a step by step guide for reproducing the bug. -->\n\n### 2. What did you expect to see? (Required)\nMySQL result:\n```\nmysql> UPDATE tb0 SET c1=NULL, c2=NULL, c0=111 WHERE (((-1786670785)NOT LIKE((NULL) BETWEEN (tb0.c2) AND (tb0.c0)))) BETWEEN (tb0.c0) AND (3644850330);\nQuery OK, 0 rows affected (0.001 sec)\nRows matched: 0  Changed: 0  Warnings: 0\n\nmysql> select version();\n+-----------+\n| version() |\n+-----------+\n| 8.4.6     |\n+-----------+\n1 row in set (0.000 sec)\n```\n### 3. What did you see instead (Required)\n```\nmysql> UPDATE tb0 SET c1=NULL, c2=NULL, c0=111 WHERE (((-1786670785)NOT LIKE((NULL) BETWEEN (tb0.c2) AND (tb0.c0)))) BETWEEN (tb0.c0) AND (3644850330);\nERROR 1105 (HY000): Data Too Long, field len 1, data len 3\n```\n### 4. What is your TiDB version? (Required)\n```\n+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| tidb_version()                                                                                                                                                                                                                                                                                |\n+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n| Release Version: v9.0.0-beta.2.pre-250-ga6d415f24a\nEdition: Community\nGit Commit Hash: a6d415f24a7d182ebca3d189c457d9044537028f\nGit Branch: HEAD\nUTC Build Time: 2025-08-03 10:01:12\nGoVersion: go1.23.11\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv\nKernel Type: Classic |\n+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+\n```\n<!-- Paste the output of SELECT tidb_version() -->\n\n",
+  "date": "2025-09-26T08:45:57Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS tb1;",
+    "CREATE TABLE tb1(id Int32, name String, value Decimal(10,2), data String);",
+    "INSERT INTO tb1(id, name, value) VALUES (1, 'test', 123.45), (2, 'example', NULL);",
+    "UPDATE tb1 SET value=NULL, data='sample' WHERE id=1 AND (name NOT LIKE (SELECT name FROM tb1 WHERE id=2));",
+    "SELECT * FROM tb1 WHERE value IS NULL OR (data IS NOT NULL AND length(data) > 5);"
+  ],
+  "key_bug_features": [
+    "UPDATE with NULL values and invalid conditions"
+  ]
+}

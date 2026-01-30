@@ -1,0 +1,12 @@
+CREATE TABLE test_table (id INTEGER, value DOUBLE, tags ARRAY<STRING>);
+INSERT INTO test_table VALUES (1, 42.0, ['a', 'b']), (2, NULL, ['c', NULL]), (3, 3.14, []), (4, -1.0, ['d', 'e', 'f']);
+SELECT id, constant_or_null(value, NULL) AS const_null FROM test_table WHERE value IS NOT NULL;
+SELECT id, constant_or_null(value, NULL) AS const_null FROM test_table WHERE [1, 2, 3] && tags;
+SELECT id, constant_or_null(value, (SELECT MAX(value) FROM test_table WHERE value < 0)) AS const_edge FROM test_table;
+SELECT id, constant_or_null(value, (SELECT NULL)) AS const_with_null FROM test_table GROUP BY id HAVING const_with_null IS NULL;
+SELECT id, constant_or_null(value, (SELECT NULLIF(SUM(value), 0) FROM test_table WHERE id = test_table.id)) AS sum_null FROM test_table;
+SELECT id, constant_or_null(value, (SELECT value FROM test_table WHERE id IN (1, 2) && tags = ['a', 'd'])) AS multi_check FROM test_table;
+SELECT id, constant_or_null(value, value + 1) AS increment_const FROM test_table ORDER BY constant_or_null(value, NULL) DESC;
+CREATE TABLE temp_table AS SELECT id, value FROM test_table WHERE value IS NOT NULL;
+SELECT id, constant_or_null(value, NULL) AS nullable_value FROM temp_table WHERE [value] && ['c', 'd'] AND (SELECT COUNT(*) FROM temp_table) > 0;
+DROP TABLE IF EXISTS temp_table;

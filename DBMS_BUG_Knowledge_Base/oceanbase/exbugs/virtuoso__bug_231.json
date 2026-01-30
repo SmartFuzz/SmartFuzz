@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/231",
+  "title": "The list of return values contains '*' but the pattern does not contain variables",
+  "description": "PREFIX up:<http://purl.uniprot.org/core/>\nPREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#>\nSELECT ?fasta\nWHERE {\nBIND (IRI(concat('http://purl.uniprot.org/annotation/',?featureId)) AS ?featureIRI)\n{\n?protein up:annotation ?featureIRI ;\n         up:sequence/rdf:value ?sequence .\n?featureIRI up:range ?range .\n?range up:begin ?begin ;\n       up:end   ?end .\nBIND(substr(?sequence, ?begin, ?end-?begin+1) as ?seq) .\nBIND(substr(str(?protein),33) as ?primAcc)\nBIND(concat('>', ?primAcc, '#', ?featureId, '\\\\\\\\n', ?seq) AS ?fasta)\n}\n} LIMIT 10 OFFSET 0 VALUES (?featureId) {('PRO_0000024369')}\n\nQuery fails with at dbpedia.org/sparql\nVirtuoso 37000 Error SP031: SPARQL compiler: The list of return values contains '*' but the pattern does not contain variables\n\nand\nSPARQL execute failed:[PREFIX up: PREFIX rdf: SELECT ?fasta WHERE { BIND (IRI(concat('http://purl.uniprot.org/annotation/',?featureId)) AS ?featureIRI) { ?protein up:annotation ?featureIRI ; up:sequence/rdf:value ?sequence . ?featureIRI up:range ?range . ?range up:begin ?begin ; up:end ?end . BIND(substr(?sequence, ?begin, ?end-?begin+1) as ?seq) . BIND(substr(str(?protein),33) as ?primAcc) BIND(concat('>', ?primAcc, '#', ?featureId, '\\\\\\\\n', ?seq) AS ?fasta) } } LIMIT 10 OFFSET 0 VALUES (?featureId) {('PRO_0000024369')}] Exception:virtuoso.jdbc4.VirtuosoException: SQ200: No column featureId.\n\non a virtuoso build for uniprot 2014_08 at 57052e5",
+  "date": "2014-09-08 12:17:43",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE proteins (id INT PRIMARY KEY, featureId VARCHAR(255), sequence TEXT, annotation VARCHAR(255));",
+    "INSERT INTO proteins (id, featureId, sequence, annotation) VALUES (1, 'PRO_0000024369', 'MKTAYIAKQRQISFVKSHFSRQD', 'http://purl.uniprot.org/annotation/PRO_0000024369');",
+    "CREATE TABLE ranges (id INT PRIMARY KEY, begin INT, end INT, protein_id INT, FOREIGN KEY (protein_id) REFERENCES proteins(id));",
+    "INSERT INTO ranges (id, begin, end, protein_id) VALUES (1, 1, 10, 1);",
+    "SELECT CONCAT('>', SUBSTR(CAST(protein AS CHAR), 33), '#', 'PRO_0000024369', '\\n', SUBSTR(sequence, begin, end - begin + 1)) AS fasta FROM proteins JOIN ranges ON proteins.id = ranges.protein_id WHERE featureId = 'PRO_0000024369' LIMIT 10;"
+  ],
+  "key_bug_features": [
+    "Return values contain '*' without corresponding pattern variables"
+  ]
+}

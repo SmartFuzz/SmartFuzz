@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/54746",
+  "title": "Batch Point Get doesn't use converted datum",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n```\r\nCREATE TABLE `t` (`tenant_id` bigint(20) NOT NULL DEFAULT '0',`order_id` bigint(20) NOT NULL DEFAULT '0',UNIQUE KEY `uk_ten_ord` (`order_id`, `tenant_id`))  PARTITION BY HASH(`tenant_id`) PARTITIONS 32;\r\n\r\nINSERT INTO t(tenant_id, order_id) VALUES (123, 456);\r\n\r\nDELETE FROM t where (tenant_id, order_id) in (('123','456'));\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\naffected rows 1\r\n\r\n### 3. What did you see instead (Required)\r\naffected rows 0\r\n\r\n### 4. What is your TiDB version? (Required)\r\nup to 7.5.0, master the same I think\r\n\r\nin https://github.com/pingcap/tidb/pull/26713, cases of ValueExpr and ParamMarkerExpr are handled(use converted int datum instead of origin string one), but the RowExpr is [left unchanged,](https://github.com/pingcap/tidb/blob/eab8700a53e2f2b2064d545ca566e804db7876df/pkg/planner/core/point_get_plan.go#L1102C13-L1102C20) which causes this problem.\r\n\r\nIs it intentional?\r\n\r\n",
+  "date": "2024-07-18T12:50:53Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE users (id BIGINT NOT NULL, name VARCHAR(255) NOT NULL, age INTEGER DEFAULT NULL, PRIMARY KEY (id));",
+    "INSERT INTO users(name, age) VALUES ('Alice', 30);",
+    "CREATE TABLE orders (order_id BIGINT NOT NULL, user_id BIGINT NOT NULL, amount DECIMAL(10,2) NOT NULL, UNIQUE (order_id, user_id));",
+    "INSERT INTO orders(order_id, user_id, amount) VALUES (1, 1, 99.99);",
+    "DELETE FROM orders WHERE (order_id, user_id) IN ((1, 1));"
+  ],
+  "key_bug_features": [
+    "Batch Point Get ignores converted datum in RowExpr"
+  ]
+}

@@ -1,0 +1,12 @@
+CREATE TABLE time_series_data (event_time DateTime, event_value Float64) ENGINE = MergeTree() ORDER BY event_time;
+INSERT INTO time_series_data VALUES ('2023-01-01 00:00:00', 10.0), ('2023-01-01 01:00:00', 15.0), ('2023-01-01 02:00:00', 12.5), ('2023-01-02 00:00:00', 20.0);
+SELECT event_time, event_value FROM time_series_data WHERE event_time >= '2023-01-01 00:00:00' AND event_time < '2023-01-03 00:00:00' ORDER BY event_time;
+SELECT toUnixTimestamp(event_time) AS unix_time, event_value FROM time_series_data WHERE event_time BETWEEN '2023-01-01 00:00:00' AND '2023-01-01 02:00:00';
+SELECT event_time, event_value, dateDiff('hour', '2023-01-01 00:00:00', event_time) AS hours_diff FROM time_series_data HAVING hours_diff < 3;
+WITH (SELECT avg(event_value) FROM time_series_data) AS avg_value SELECT event_time, event_value FROM time_series_data WHERE event_value > avg_value;
+SELECT DISTINCT toStartOfHour(event_time) AS hour, sum(event_value) AS total_value FROM time_series_data GROUP BY hour ORDER BY hour;
+CREATE TABLE related_content (related_id Int64, event_time DateTime, description String) ENGINE = MergeTree() ORDER BY related_id;
+INSERT INTO related_content VALUES (1, '2023-01-01 00:00:00', 'First event'), (2, '2023-01-01 01:00:00', 'Second event'), (3, '2023-01-02 00:00:00', 'Third event');
+SELECT a.event_time, a.event_value, b.description FROM time_series_data a JOIN related_content b ON toStartOfHour(a.event_time) = toStartOfHour(b.event_time) WHERE a.event_time >= '2023-01-01 00:00:00' AND a.event_time < '2023-01-02 00:00:00';
+SELECT a.event_time, count(*) AS related_count FROM time_series_data a LEFT JOIN related_content b ON toStartOfHour(a.event_time) = toStartOfHour(b.event_time) GROUP BY a.event_time;
+SELECT event_time, event_value, toLastDayOfMonth(event_time) AS last_day FROM time_series_data WHERE event_time >= '2023-01-01' AND event_time < '2023-02-01' HAVING event_value > 10.0;

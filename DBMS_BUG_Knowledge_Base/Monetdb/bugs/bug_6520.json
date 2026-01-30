@@ -1,0 +1,23 @@
+{
+  "url": "https://github.com/MonetDB/MonetDB/issues/6520",
+  "title": "UPDATE with correlated subquery causes assertion (or segfault)",
+  "vulnerable_database": "monetdb",
+  "date": "2020-11-30T16:23:51Z",
+  "vulnerable_version": "Unknown",
+  "description": "",
+  "poc": [
+    "CREATE TABLE \\\"PRIMARY\\\" (\\r\\n   \\\"ID\\\" integer NOT NULL,\\r\\n   \\\"LEN\\\" real NOT NULL,\\r\\n   CONSTRAINT \\\"PK_PRIMARY\\\" PRIMARY KEY (\\\"ID\\\")\\r\\n );",
+    "CREATE TABLE \\\"FOREIGN\\\" (\\r\\n   \\\"ID\\\" integer NOT NULL,\\r\\n   \\\"POS\\\" real NOT NULL,\\r\\n   CONSTRAINT \\\"FK_FOREIGN\\\" FOREIGN KEY (\\\"ID\\\") REFERENCES \\\"PRIMARY\\\" (\\\"ID\\\")\\r\\n );",
+    "select \\\"LEN\\\"\\r\\n \\t\\tfrom \\\"PRIMARY\\\"\\r\\n \\t\\twhere \\\"PRIMARY\\\".\\\"ID\\\" = \\\"FOREIGN\\\".\\\"ID\\\"\\r\\n \\t)\\r\\n \\twhere \\\"POS\\\" between 0 and (\\r\\n \\t\\tselect \\\"LEN\\\"\\r\\n \\t\\tfrom \\\"PRIMARY\\\"\\r\\n \\t\\twhere \\\"PRIMARY\\\".\\\"ID\\\" = \\\"FOREIGN\\\".\\\"ID\\\"\\r\\n \\t)\\r\\n ;"
+  ],
+  "key_bug_features": [
+    "UPDATE with correlated subquery causes assertion or segfault"
+  ],
+  "bug_features_seed": [
+    "CREATE TABLE \"PRIMARY\" (\"ID\" integer NOT NULL, \"LEN\" real NOT NULL, CONSTRAINT \"PK_PRIMARY\" PRIMARY KEY (\"ID\"));",
+    "CREATE TABLE \"FOREIGN\" (\"ID\" integer NOT NULL, \"POS\" real NOT NULL, CONSTRAINT \"FK_FOREIGN\" FOREIGN KEY (\"ID\") REFERENCES \"PRIMARY\" (\"ID\"));",
+    "INSERT INTO \"PRIMARY\" (\"ID\", \"LEN\") VALUES (1, 10.5), (2, 20.0), (3, NULL);",
+    "INSERT INTO \"FOREIGN\" (\"ID\", \"POS\") VALUES (1, 5.0), (2, 15.0), (3, 25.0);",
+    "UPDATE \"PRIMARY\" SET \"LEN\" = (SELECT AVG(\"LEN\") FROM \"PRIMARY\" WHERE \"ID\" = \"FOREIGN\".\"ID\") WHERE \"ID\" IN (SELECT \"ID\" FROM \"FOREIGN\" WHERE \"POS\" < (SELECT MAX(\"LEN\") FROM \"PRIMARY\"));"
+  ]
+}

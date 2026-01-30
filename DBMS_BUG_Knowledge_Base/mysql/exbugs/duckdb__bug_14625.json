@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14625",
+  "title": "Will you consider optimizing string compression in the future?",
+  "description": "### What happens?\n\nI constructed a single-column data table as follows, with each tuple approximately 4KB in size (26B * 196 = 5096B), and inserted a total of 4096 rows of data. According to DuckDB's theoretical calculations, each tuple requires roughly 20 blocks for storage (5096 / 256). Therefore, without any compression, the entire table would require approximately 20MB (20 * 256 * 4096) of storage space, which is indeed the case.\r\n<img width=\"793\" alt=\"image\" src=\"https://github.com/user-attachments/assets/07fc3ff4-37d8-4dee-81c0-4ae89a5c198d\">\r\n<img width=\"1622\" alt=\"image\" src=\"https://github.com/user-attachments/assets/a4676d51-cdc8-47c0-a3f3-933ebbce4dd0\">\r\nHowever, in systems such as PostgreSQL, longer strings are usually compressed by the toast mechanism. If I am importing data from a PostgreSQL database into DuckDB, this situation can often result in an explosive increase in storage space.\r\n<img width=\"695\" alt=\"image\" src=\"https://github.com/user-attachments/assets/317582c6-5b04-410f-8c9c-62b474bfe92d\">\r\nIt seems that DuckDB doesn't put much emphasis on string compression, possibly prioritizing reduced CPU overhead for runtime decompression. However, from an I/O perspective, the reduction in I/O volume due to compression can also contribute to decreased overall runtime (reduce time to read data). I'm curious about the trade-offs made in this design decision and whether there might be a need (string compression) for future iterations?\r\n\r\nPS: In PostgreSQL, TOAST appears to have compression optimizations for longer strings with internal repetitions.\n\n### To Reproduce\n\n```\r\nCREATE TABLE test (name VARCHAR);\r\nSELECT * FROM pragma_database_size();\r\nINSERT INTO test SELECT repeat('abcdefghijklmnopqrstuvwxyz', 196) FROM generate_series(1, 4096);\r\nCHECKPOINT;\r\nSELECT * FROM pragma_database_size();\r\n```\n\n### OS:\n\nx86_64\n\n### DuckDB Version:\n\nv1.1.1\n\n### DuckDB Client:\n\nCLI\n\n### Hardware:\n\n_No response_\n\n### Full Name:\n\nAmore\n\n### Affiliation:\n\nSoftware engineer\n\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\n\nI have tested with a source build\n\n### Did you include all relevant data sets for reproducing the issue?\n\nYes\n\n### Did you include all code required to reproduce the issue?\n\n- [X] Yes, I have\n\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\n\n- [X] Yes, I have",
+  "date": "2024-10-30 03:27:47",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE test_strings (id INT PRIMARY KEY, name VARCHAR(3000) NOT NULL);",
+    "INSERT INTO test_strings SELECT i, REPEAT('abc', 1000) FROM (SELECT @rownum := @rownum + 1 AS i FROM (SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9 UNION SELECT 10) t1, (SELECT @rownum := 0) t2 LIMIT 100) AS seq;",
+    "CREATE TABLE test_numbers (num INT, name VARCHAR(3000));",
+    "INSERT INTO test_numbers SELECT i, REPEAT('xyz', 200) FROM (SELECT @rownum := @rownum + 1 AS i FROM (SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9 UNION SELECT 10) t1, (SELECT @rownum := 0) t2 LIMIT 50) AS seq;",
+    "SELECT t1.id, t2.name FROM test_strings t1 JOIN test_numbers t2 ON t1.id = t2.num WHERE t1.name IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "Lack of string compression for large data imports"
+  ]
+}

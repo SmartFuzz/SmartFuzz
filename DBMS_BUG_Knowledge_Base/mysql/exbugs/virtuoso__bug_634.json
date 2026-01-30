@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/634",
+  "title": "Can't properly insert similar labeled Literals and IRIs as Objects on a clean Virtuoso in Version 7.2.4",
+  "description": "I have noticed the following problem concerning Virtuoso through our integration tests:\nCertain triples dont get properly inserted for the first time. This means, that the test fails during the first attempt on a clean Virtuoso, but afterwards succeeds. This happens on Version 7.2.4 (I used the docker container \"tenforce/virtuoso:1.1.0-virtuoso7.2.4\" to reproduce the error)\nMinimal example for reproducing the error in the conductor:\nIt's important, that the Store is new and unused (I recommend using docker for testing that as well)\nInsert into Default Graph URI \"http://example.org/\" the following triples:\nINSERT {\n    <a> <b> <c> .\n    <a> <b> \"c\" .\n    <a> <b> \"a\" .\n    <a> <b> <d> .\n}\n\nResult: 3 added\nthe result looks like this (SELECT * { ?s ?p ?o }):\n<a> <b> <c> .\n<a> <b> <a> .\n<a> <b> <d> .\n\nThere are 2 things wrong here: the second triple is missing and in the third triple the Object Literal  changed into an IRI.\nnow delete everything in the Graph ( DELETE WHERE { ?s ?p ?o } )\nnow trying to insert the triple in a different order actually works:\nINSERT {\n    <a> <b> \"c\" .\n    <a> <b> <c> .\n    <a> <b> \"a\" .\n    <a> <b> <d> .\n}\n\nResult: 4 added\nAnd this time the 2 Literals are correctly inserted.\nDeleting everything again and attempting to use the first query again will result again in the wrong results. Though a whitespace (e.g. add another space or newline) change is enough to let the query work on a second or later run.\nTheoretically the tests fail the first time we do them, und succeed the second time. I couldnt exactly reproduce this effect though. ( This is the test that shows this behaviour: https://github.com/AKSW/Erfurt/blob/develop/tests/integration/Erfurt/Rdf/ModelIntegrationTest.php#L166 )",
+  "date": "2017-03-11 21:43:48",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE example_graph (s VARCHAR(255), p VARCHAR(255), o VARCHAR(255));",
+    "INSERT INTO example_graph (s, p, o) VALUES ('<a>', '<b>', '<c>'), ('<a>', '<b>', 'c'), ('<a>', '<b>', 'a'), ('<a>', '<b>', 'd');",
+    "DELETE FROM example_graph;",
+    "INSERT INTO example_graph (s, p, o) VALUES ('<a>', '<b>', 'c'), ('<a>', '<b>', '<c>'), ('<a>', '<b>', 'a'), ('<a>', '<b>', 'd');",
+    "SELECT * FROM example_graph;"
+  ],
+  "key_bug_features": [
+    "Inconsistent insertion of similar labeled Literals and IRIs"
+  ]
+}

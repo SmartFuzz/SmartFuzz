@@ -1,0 +1,16 @@
+{
+    "function": "parseDateTime64BestEffortUSOrNull",
+    "operator": "SELECT a OR b",
+    "sql_array": [
+        "CREATE TABLE test_dates (date_string String, id Int32, amount Decimal(10, 2));",
+        "INSERT INTO test_dates VALUES ('01/01/2023', 1, 100.00), ('invalid_date', 2, 200.00), ('12/25/2023', 3, 300.25);",
+        "SELECT id, parseDateTime64BestEffortUSOrNull(date_string, 3) AS parsed_date, amount FROM test_dates WHERE parsed_date IS NOT NULL;",
+        "SELECT id, amount, (SELECT SUM(amount) FROM test_dates td WHERE td.id = test_dates.id OR parseDateTime64BestEffortUSOrNull(td.date_string, 3) IS NOT NULL) AS total_amount FROM test_dates GROUP BY id, amount HAVING total_amount > 150.00;",
+        "SELECT id, (date_string = '' OR amount < 0) AS invalid_entry FROM test_dates WHERE parseDateTime64BestEffortUSOrNull(date_string, 3) IS NULL OR (amount IS NULL AND id = 3) ORDER BY id ASC;",
+        "SELECT id, sum(IF(parseDateTime64BestEffortUSOrNull(date_string, 3) OR NULL, amount, 0)) AS sum_or_null FROM test_dates GROUP BY id;",
+        "SELECT id, CASE WHEN parseDateTime64BestEffortUSOrNull(date_string, 3) IS NOT NULL OR parseDateTime64BestEffortUSOrNull('03/15/2023', 3) IS NOT NULL THEN 'Valid' ELSE 'Invalid' END AS status FROM test_dates;",
+        "CREATE TABLE temp_dates AS SELECT date_string, id, amount FROM test_dates WHERE parseDateTime64BestEffortUSOrNull(date_string, 3) IS NOT NULL;",
+        "SELECT date_string, parseDateTime64BestEffortUSOrNull(date_string, 3) OR NULL AS parsed_logical FROM temp_dates WHERE amount > 100.00 HAVING parsed_logical IS NOT NULL;",
+        "SELECT id, sum(amount) AS total_amount FROM test_dates WHERE parseDateTime64BestEffortUSOrNull(date_string, 3) IS NOT NULL OR parseDateTime64BestEffortUSOrNull('03/15/2023', 3) IS NOT NULL GROUP BY id HAVING total_amount < 300.00;"
+    ]
+}

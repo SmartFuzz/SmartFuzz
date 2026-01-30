@@ -1,0 +1,22 @@
+{
+    "function": "sum(distinct integer_expr)",
+    "operator": "<",
+    "sql_array": [
+        "CREATE TABLE test_table (id SERIAL PRIMARY KEY, value INTEGER, description VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+        "INSERT INTO test_table (value, description) VALUES (1, 'first value'), (2, 'second value'), (NULL, 'null value'), (1, 'duplicate value'), (3, 'third value');",
+        "SELECT sum(distinct value) FROM test_table WHERE value < (SELECT sum(distinct value) FROM test_table WHERE value IS NOT NULL);",
+        "SELECT DISTINCT description, sum(distinct value) AS total_value FROM test_table GROUP BY description HAVING total_value < 5;",
+        "CREATE TABLE second_table (ref_id INTEGER REFERENCES test_table(id), other_value INTEGER);",
+        "INSERT INTO second_table (ref_id, other_value) VALUES (1, NULL), (2, 3), (1, 2), (NULL, 5);",
+        "SELECT sum(distinct st.other_value) FROM second_table st JOIN test_table tt ON st.ref_id = tt.id WHERE tt.value IS NOT NULL AND tt.value < (SELECT max(value) FROM test_table);",
+        "SELECT sum(distinct value) FROM test_table WHERE value < 5 AND (description IS NOT NULL OR NULL IS NULL);",
+        "SELECT sum(distinct (value * 2)) FROM test_table WHERE value IS NOT NULL GROUP BY description HAVING sum(distinct value) < (SELECT max(value) FROM test_table WHERE value IS NOT NULL) AND count(*) < 5;",
+        "CREATE TEMPORARY TABLE temp_table (temp_value BIGINT);",
+        "INSERT INTO temp_table (temp_value) VALUES (NULL), (5), (10), (15);",
+        "SELECT sum(distinct temp_value) FROM temp_table WHERE temp_value < (SELECT sum(distinct value) FROM test_table) AND temp_value IS NOT NULL;",
+        "ALTER TABLE test_table ADD COLUMN extra_value HUGEINT;",
+        "INSERT INTO test_table (value, description, extra_value) VALUES (10, 'extra too', 20), (NULL, 'another extra', NULL);",
+        "SELECT sum(distinct extra_value) FROM test_table WHERE extra_value < (SELECT sum(distinct value + 5) FROM test_table WHERE value IS NOT NULL);",
+        "DROP TABLE temp_table;"
+    ]
+}

@@ -1,0 +1,22 @@
+{
+    "HTML": [
+        "https://docs.openlinksw.com/virtuoso/fn_vt_batch_feed_offband/"
+    ],
+    "Title": [
+        "vt_batch_feed_offband"
+    ],
+    "Feature": [
+        "vt_batch_feed_offband(vt_batch, clustered_values, is_del)"
+    ],
+    "Description": [
+        "Add offband information to a free text update batch.",
+        "This function allows you to add offband information to a free text update batch.\nThis should be done by index and unindex hook functions of the free text index\nif and only if the index is created with both \"CLUSTERED WITH (...)\"\nand \"USING FUNCTION\" options and the hook function returns non-zero\nvalue, i.e. disables standard indexing of the document.",
+        "This function is needed only for very unusual free text indexes."
+    ],
+    "Examples": [
+        "create table LEADS (\n  ORG_ID      integer not null,\t    -- ID of a newspaper.\n  LEAD_ID     integer not null,\t    -- Internal ID of an article in a newspaper.\n  FREETEXT_ID integer not null,\t    -- Global document ID of an article.\n  SUBJECT     varchar (255),\t    -- Brief content of an article or a lead.\n  NAME_FIRST  varchar (30),\t    -- First name of the author.\n  NAME_LAST   varchar (30),\t    -- Last name of the author.\n  TITLE       varchar (255),\t    -- Title of an article.\n  primary key (ORG_ID, LEAD_ID));\ncreate procedure LEADS_SUBJECT_INDEX_HOOK (inout vtb any, inout pkeyid integer)\n{\n  declare text_to_index varchar;\n  declare oid any;\n  text_to_index := coalesce (\n    (select concat (\n      coalesce (SUBJECT, ''), ' ',\n      coalesce (TITLE, ''), ' ',\n      coalesce (NAME_FIRST, '') ) from LEADS\n    where FREETEXT_ID = pkeyid), null);\n  if (text_to_index is null)\n    return 0;\n  oid := coalesce ((select ORG_ID from LEADS where FREETEXT_ID = pkeyid), null);\n  vt_batch_feed (vtb, text_to_index, 0);\n  vt_batch_feed_offband ( vtb, serialize (vector (oid)), 0);\n  return 1;\n}\ncreate procedure\nLEADS_SUBJECT_UNINDEX_HOOK (inout vtb any, inout pkeyid integer)\n{\n  declare text_to_index varchar;\n  declare oid any;\n  text_to_index := coalesce (\n    (select concat (\n      coalesce (SUBJECT, ''), ' ',\n      coalesce (TITLE, ''),' ',\n      coalesce (NAME_FIRST, '') ) from LEADS\n  where FREETEXT_ID = pkeyid), null);\n  if (text_to_index is null)\n    return 0;\n  oid := coalesce ((select ORG_ID from LEADS where FREETEXT_ID = pkeyid), null);\n  vt_batch_feed (vtb, text_to_index, 1);\n  vt_batch_feed_offband ( vtb, serialize (vector (oid)), 1);\n  return 1;\n}\ncreate text index on LEADS (SUBJECT) with key FREETEXT_ID\nclustered with (ORG_ID) using function;"
+    ],
+    "Category": [
+        "Free Text function"
+    ]
+}

@@ -1,0 +1,11 @@
+CREATE TABLE businessService (id INT PRIMARY KEY, name VARCHAR(255), description TEXT);
+CREATE TABLE bindingTemplate (id INT PRIMARY KEY, service_id INT, endpoint VARCHAR(255), FOREIGN KEY (service_id) REFERENCES businessService(id));
+INSERT INTO businessService (id, name, description) VALUES (1, 'Test Service', 'A service for testing'), (2, 'Edge Case Service', NULL);
+INSERT INTO bindingTemplate (id, service_id, endpoint) VALUES (1, 1, 'http://example.com/service1'), (2, 1, NULL), (3, 2, 'http://example.com/service2');
+SELECT uddi_save_binding( (SELECT xid FROM bindingTemplate bt JOIN businessService bs ON bs.id = bt.service_id WHERE bs.name = 'Test Service' AND bt.endpoint IS NOT NULL), 2);
+SELECT xpath_string('/businessService/bindingTemplate', (SELECT xml_serialize(content (SELECT * FROM bindingTemplate FOR XML PATH('bindingTemplate')) AS xml)));
+UPDATE bindingTemplate SET endpoint = (SELECT xpath_string('/root/child', '<root><child>http://changed-endpoint.com</child></root>')) WHERE id = (SELECT MIN(id) FROM bindingTemplate);
+SELECT * FROM businessService bs JOIN bindingTemplate bt ON bs.id = bt.service_id WHERE bt.endpoint IS NULL GROUP BY bs.id HAVING COUNT(bt.endpoint) > 0;
+SELECT COUNT(*) OVER (PARTITION BY service_id) as binding_count FROM bindingTemplate WHERE endpoint IS NOT NULL HAVING binding_count > 0;
+SELECT uddi_save_binding((SELECT xid FROM (SELECT id AS xid FROM bindingTemplate WHERE endpoint = '') AS inner_query), NULL);
+DELETE FROM bindingTemplate WHERE id = (SELECT MAX(id) FROM bindingTemplate);

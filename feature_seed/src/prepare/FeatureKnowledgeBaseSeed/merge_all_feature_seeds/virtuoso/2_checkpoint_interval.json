@@ -1,0 +1,15 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, checkpoint_interval_value INT, data VARCHAR(255) NULL);
+INSERT INTO test_table (id, checkpoint_interval_value, data) VALUES (1, checkpoint_interval(120), 'Initial value');
+INSERT INTO test_table (id, checkpoint_interval_value, data) VALUES (2, checkpoint_interval(0), NULL);
+SELECT id, data FROM test_table WHERE checkpoint_interval_value >= (SELECT checkpoint_interval(-1));
+SELECT *, checkpoint_interval(0) FROM test_table WHERE data IS NULL AND checkpoint_interval_value >= 0;
+CREATE TABLE another_table (ref_id INT, description VARCHAR(255), CHECK (ref_id >= 0));
+INSERT INTO another_table (ref_id, description) VALUES (1, 'Description A'), (2, NULL), (-1, 'Invalid Description');
+SELECT a.ref_id, a.description FROM another_table AS a JOIN test_table AS t ON a.ref_id >= t.checkpoint_interval_value WHERE t.id = 1;
+SELECT COUNT(*) FROM another_table GROUP BY ref_id HAVING COUNT(*) >= (SELECT COUNT(*) FROM test_table WHERE checkpoint_interval(120) >= 0);
+SELECT checkpoint_interval(-1) AS checkpoint_status, data FROM test_table WHERE data IS NOT NULL ORDER BY checkpoint_interval_value DESC;
+SELECT SUM(checkpoint_interval_value) FROM test_table WHERE checkpoint_interval_value >= (SELECT MAX(ref_id) FROM another_table) AND data IS NULL;
+SELECT t.id FROM test_table AS t WHERE checkpoint_interval_value >= ?;
+ALTER TABLE test_table ADD COLUMN new_column FLOAT NULL;
+INSERT INTO test_table (id, checkpoint_interval_value, data, new_column) VALUES (3, checkpoint_interval(-1), 'Value C', 0.0);
+SELECT * FROM test_table WHERE new_column IS NULL AND checkpoint_interval_value < (SELECT checkpoint_interval(120));

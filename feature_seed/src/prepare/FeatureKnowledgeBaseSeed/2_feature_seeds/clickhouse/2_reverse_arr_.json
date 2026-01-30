@@ -1,0 +1,9 @@
+CREATE TABLE test_table (id UInt32, dates DateTime, values Array(Int32)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_table VALUES (1, now(), [1, 2, 3]), (2, now() + INTERVAL 1 DAY, [4, 5, 6]), (3, now() + INTERVAL 2 DAY + INTERVAL 3 HOUR, [7, 8, 9]);
+SELECT id, reverse(values) AS reversed_values, dates + INTERVAL 1 DAY AS next_date FROM test_table WHERE dates < now() + INTERVAL 5 HOUR;
+SELECT id, values, COUNT(*) OVER (PARTITION BY id ORDER BY reverse(values)[1]) AS competitive_count FROM test_table;
+SELECT id, reverse(values) AS reversed_values, (dates + INTERVAL 3 DAY) - INTERVAL (length(reverse(values[1])) + 1) HOUR AS calculated_date FROM test_table WHERE values[1] IS NOT NULL;
+SELECT id, arrayJoin(values) AS value_element, reverse(arraySlice(values, 2, 1)) AS second_value FROM test_table WHERE id IN (SELECT id FROM test_table WHERE dates >= now() - INTERVAL 1 WEEK) ORDER BY value_element;
+SELECT id AS table_id, (SELECT COUNT(*) FROM test_table AS t2 WHERE t2.id = t1.id) AS count_value, reverse(values) FROM test_table AS t1 WHERE count_value > 0;
+SELECT id, values, dates + INTERVAL (CASE WHEN id % 2 = 0 THEN 1 ELSE 2 END) DAY AS dynamic_interval FROM test_table HAVING length(reverse(values)) > 0;
+SELECT id, reverse(values) AS reversed, dates FROM (SELECT id, reverse(values) AS reversed_values, dates FROM test_table WHERE values[1] > 5) AS subquery WHERE dates < now();

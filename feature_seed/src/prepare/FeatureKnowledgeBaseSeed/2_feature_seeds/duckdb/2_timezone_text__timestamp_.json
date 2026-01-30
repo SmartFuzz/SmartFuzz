@@ -1,0 +1,13 @@
+CREATE TABLE timestamps_data (id INT, local_time TIMESTAMP, region TEXT);
+INSERT INTO timestamps_data VALUES (1, TIMESTAMP '2001-02-16 20:38:40', 'America/Denver'), (2, TIMESTAMP '2023-10-01 12:00:00', 'America/New_York');
+SELECT id, timezone(region, local_time) & 31 AS modified_time FROM timestamps_data WHERE timezone(region, local_time) IS NOT NULL;
+SELECT id, (SELECT COUNT(*) FROM timestamps_data AS inner_table WHERE inner_table.region = outer_table.region) AS region_count FROM timestamps_data AS outer_table GROUP BY region;
+SELECT id, (timezone('America/Los_Angeles', local_time) & 20) AS time_bitwise FROM timestamps_data HAVING (time_bitwise IS NOT NULL) AND (time_bitwise > 10);
+WITH tz_data AS (SELECT id, timezone(region, local_time) AS local_tz FROM timestamps_data) SELECT id, local_tz, local_tz & 15 AS bit_and FROM tz_data ORDER BY local_tz DESC;
+CREATE TABLE edge_cases (num_val INT, null_val INT, empty_text TEXT);
+INSERT INTO edge_cases VALUES (NULL, NULL, ''), (5, 10, 'text'), (0, 1, '');
+SELECT num_val, null_val & 15 AS null_bitwise FROM edge_cases WHERE null_val IS NULL OR num_val IS NOT NULL;
+SELECT e.num_val, timezone('UTC', TIMESTAMP '2023-01-01 00:00:01') & e.null_val AS edge_check FROM edge_cases e WHERE e.num_val > -1;
+SELECT (SELECT timezone('America/Chicago', TIMESTAMP '2001-02-16 20:38:40') & num_val FROM edge_cases WHERE num_val IS NOT NULL) AS result;
+DROP TABLE IF EXISTS temp_data;
+CREATE TEMP TABLE temp_data AS SELECT id, timezone(region, local_time) AS adjusted_time FROM timestamps_data WHERE region IS NOT NULL;

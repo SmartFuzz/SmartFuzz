@@ -1,0 +1,15 @@
+{
+    "function": "time_bucket(bucket_width, timestamptz[, offset])",
+    "operator": "||",
+    "sql_array": [
+        "CREATE TABLE test_data (id INT, event_time TIMESTAMPTZ, value DOUBLE, tags TEXT[]);",
+        "INSERT INTO test_data VALUES (1, TIMESTAMPTZ '2023-01-01 10:00:00-07', 100.0, ARRAY['A', 'B']), (2, TIMESTAMPTZ '2023-01-01 10:15:00-07', NULL, ARRAY['C']), (3, TIMESTAMPTZ '2023-01-01 10:20:00-07', 150.5, ARRAY[]);",
+        "SELECT time_bucket(INTERVAL '15 minutes', event_time, INTERVAL '0 minutes') AS bucketed_time, value || ARRAY['processed'] FROM (SELECT event_time, value FROM test_data WHERE value IS NOT NULL) AS subquery WHERE bucketed_time IS NOT NULL GROUP BY bucketed_time, value;",
+        "SELECT time_bucket(INTERVAL '30 minutes', event_time) AS bucket_time, COUNT(value) || ARRAY['counted'] AS total_count FROM test_data GROUP BY bucket_time HAVING total_count IS NOT NULL ORDER BY bucket_time DESC;",
+        "SELECT DISTINCT tb.bucket_time || ARRAY['unique'] FROM (SELECT time_bucket(INTERVAL '1 hour', event_time) AS bucket_time FROM test_data WHERE event_time IS NOT NULL) AS tb JOIN test_data td ON tb.bucket_time = time_bucket(INTERVAL '1 hour', td.event_time) WHERE td.value IS NOT NULL;",
+        "WITH time_buckets AS (SELECT time_bucket(INTERVAL '10 minutes', event_time) AS bucket_time, value FROM test_data) SELECT bucket_time || ARRAY['bucketed'] AS bucket, COUNT(*) FROM time_buckets GROUP BY bucket_time;",
+        "CREATE TEMP TABLE temp_data AS SELECT event_time, value || ARRAY['temp'] AS modified_value FROM test_data WHERE value > 100;",
+        "SELECT modified_value FROM temp_data WHERE modified_value IS NULL;",
+        "SELECT time_bucket(INTERVAL '5 minutes', event_time) || ARRAY[COALESCE(value, -1)] FROM test_data WHERE event_time < TIMESTAMPTZ '2023-01-01 11:00:00-07' ORDER BY event_time;"
+    ]
+}

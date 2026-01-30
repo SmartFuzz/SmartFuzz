@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/ClickHouse/ClickHouse/issues/87013",
+  "title": "refreshable materialized views with EMPTY keyword remove EMPTY keyword after creation from table definition",
+  "description": "### Company or project name\n_No response_\n### Describe what's wrong\nWhen we create a refreshable materialized view with the EMPTY keyword, this is not stored in metadata, and after backup and restore, it tries to recreate the destination table.\n### Does it reproduce on the most recent release?\nYes\n### How to reproduce\nhttps://fiddle.clickhouse.com/3e631467-41f5-4bdc-990e-21de0e2c5db6\n```sql\nDROP DATABASE IF EXISTS test SYNC;\nCREATE DATABASE test ENGINE=Atomic;\nCREATE  TABLE  IF NOT EXISTS `test`.`mv_src_table` UUID 'dc60928b-ff47-448d-806c-2dc2e06714fb'  (id UInt64) Engine=MergeTree ORDER BY id;\nINSERT INTO `test`.`mv_src_table` SELECT number FROM numbers(10);\nCREATE  TABLE  IF NOT EXISTS `test`.`mv_refreshable_dst_table` UUID '620be150-bdef-47b2-a295-428dd8e79c97' (id UInt64) Engine=MergeTree ORDER BY id;\nCREATE  MATERIALIZED VIEW  IF NOT EXISTS `test`.`mv_refreshable` UUID '98be4ca8-fe55-471a-9c56-2e722a7cd8c1' REFRESH EVERY 1 MINUTE TO `test`.`mv_refreshable_dst_table` EMPTY AS SELECT max(id) AS id FROM `test`.`mv_src_table`;\nSHOW CREATE TABLE `test`.`mv_refreshable` FORMAT Vertical;;\nSELECT now();\nSELECT * FROM system.view_refreshes FORMAT Vertical;\nSELECT count() FROM `test`.`mv_refreshable`;\nBACKUP DATABASE test TO File('test.zip');\nDROP DATABASE test SYNC;\nCREATE DATABASE test ENGINE=Atomic;\nRESTORE DATABASE test FROM File('test.zip');\nSELECT now();\nSELECT * FROM system.view_refreshes FORMAT Vertical;\nSELECT count() FROM `test`.`mv_refreshable`;\n```\ngot wrong MATERIALIZED VIEW deifnition without EMPTY keyword and Running status for refresh after restore instead of Scheduled\n```\nRow 1:\n──────\nstatement: CREATE MATERIALIZED VIEW test.mv_refreshable\nREFRESH EVERY 1 MINUTE TO test.mv_refreshable_dst_table\n(\n`id` UInt64\n)\nDEFINER = default SQL SECURITY DEFINER\nAS SELECT max(id) AS id\nFROM test.mv_src_table\n2025-09-11 14:07:41\nRow 1:\n──────\ndatabase:                 test\nview:                     mv_refreshable\nuuid:                     98be4ca8-fe55-471a-9c56-2e722a7cd8c1\nstatus:                   Scheduled\nlast_success_time:        NULL\nlast_success_duration_ms: NULL\nlast_refresh_time:        NULL\nlast_refresh_replica:",
+  "date": "2025-09-11T14:13:53Z",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "ClickHouse",
+  "bug_features_seed": [
+    "DROP DATABASE IF EXISTS test;",
+    "CREATE DATABASE test;",
+    "CREATE TABLE IF NOT EXISTS test.mv_src_table (id BIGINT, value VARCHAR);",
+    "INSERT INTO test.mv_src_table SELECT number, CAST(number AS VARCHAR) FROM range(10);",
+    "CREATE MATERIALIZED VIEW test.mv_refreshable AS SELECT max(id) AS id FROM test.mv_src_table WHERE value IS NOT NULL;"
+  ],
+  "key_bug_features": [
+    "refreshable materialized view loses EMPTY keyword after restore"
+  ]
+}

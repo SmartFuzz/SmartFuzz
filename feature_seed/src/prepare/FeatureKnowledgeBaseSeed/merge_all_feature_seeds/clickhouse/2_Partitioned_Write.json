@@ -1,0 +1,11 @@
+CREATE TABLE test_table (a String, b UInt32, c UInt32, d DateTime) ENGINE = MergeTree() ORDER BY a;
+INSERT INTO test_table VALUES ('Apple', 1, 2, now()), ('Banana', 2, 3, now()), ('Cherry', 3, 4, now()), ('Date', 4, 5, now());
+INSERT INTO TABLE FUNCTION gcs('http://bucket.amazonaws.com/my_bucket/file_{_partition_id}.csv', 'CSV', 'a String, b UInt32, c UInt32, d DateTime') PARTITION BY a VALUES ('Apple', 1, 2, now()), ('Banana', 2, 3, now());
+SELECT a, SUM(b) AS total_b FROM (SELECT a, b FROM test_table WHERE a ILIKE '%A%') GROUP BY a HAVING total_b > 0;
+SELECT a, (SELECT COUNT(*) FROM test_table WHERE b > 1) AS count_b FROM test_table WHERE a ILIKE any(ARRAY['%B%', '%D%']) GROUP BY a;
+INSERT INTO TABLE FUNCTION gcs('http://bucket.amazonaws.com/my_bucket_{_partition_id}/file.csv', 'CSV', 'a UInt32, b UInt32, c DateTime') PARTITION BY b ILIKE '1%' VALUES (1, 2, now()), (1, 3, now()), (2, 4, toUnixTimestamp(now()));
+SELECT a, MAX(CASE WHEN c > 3 THEN b ELSE 0 END) AS max_b FROM test_table GROUP BY a HAVING a ILIKE 'C%';
+CREATE TABLE temp_table AS SELECT * FROM test_table WHERE a ILIKE 'A%' WITH DATA;
+SELECT DISTINCT a, b FROM temp_table WHERE d IS NOT NULL AND a ILIKE '%e%' ORDER BY b;
+INSERT INTO test_table VALUES ('A', NULL, 5, now()), ('B', 5, 5, toDate('2100-01-01'));
+SELECT a, AVG(b) AS avg_b FROM (SELECT a, b FROM test_table GROUP BY a, b) WHERE b IS NOT NULL GROUP BY a HAVING avg_b < 3;

@@ -1,0 +1,16 @@
+{
+    "function": "complete_table_name",
+    "operator": "<>",
+    "sql_array": [
+        "CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR(100), created_at TIMESTAMP, nullable_col VARCHAR);",
+        "INSERT INTO test_table (id, name, created_at, nullable_col) VALUES (1, 'Alice', CURRENT_TIMESTAMP, NULL), (2, 'Bob', CURRENT_TIMESTAMP, 'Data'), (3, 'Charlie', CURRENT_TIMESTAMP, NULL);",
+        "SELECT complete_table_name('test_table', 1) AS full_table_name, COUNT(*) FROM test_table GROUP BY complete_table_name('test_table', 1) HAVING COUNT(*) <> 1;",
+        "SELECT id, complete_table_name(name, 1) FROM test_table WHERE id <> (SELECT MIN(id) FROM test_table) AND nullable_col IS NULL;",
+        "CREATE TABLE temp_table (ref_id INT REFERENCES test_table(id), description VARCHAR);",
+        "INSERT INTO temp_table (ref_id, description) VALUES (1, 'Reference to Alice'), (2, NULL), (3, 'Reference to Charlie');",
+        "SELECT tt.id, tt.name, (SELECT COUNT(*) FROM temp_table WHERE ref_id = tt.id) AS ref_count FROM test_table tt WHERE ref_count <> 0;",
+        "SELECT complete_table_name('temp_table', 1), AVG(ref_count) FROM (SELECT tt.id, COUNT(*) AS ref_count FROM test_table tt LEFT JOIN temp_table t ON tt.id = t.ref_id GROUP BY tt.id) AS subquery HAVING AVG(ref_count) <> 1;",
+        "SELECT complete_table_name('test_table', 1), MIN(created_at) AS oldest_entry FROM test_table WHERE id <> (SELECT MAX(id) FROM test_table) AND nullable_col IS NOT NULL GROUP BY complete_table_name('test_table', 1) HAVING MIN(created_at) IS NOT NULL;",
+        "SELECT complete_table_name('test_table', 1) AS full_name FROM test_table WHERE EXISTS (SELECT 1 FROM temp_table WHERE ref_id <> test_table.id) AND (1 <> 2);"
+    ]
+}

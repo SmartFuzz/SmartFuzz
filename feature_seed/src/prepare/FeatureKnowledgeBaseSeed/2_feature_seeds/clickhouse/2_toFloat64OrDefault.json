@@ -1,0 +1,9 @@
+CREATE TABLE test_fuzzing (id UInt32, value String, optional_value String DEFAULT NULL);
+INSERT INTO test_fuzzing (id, value, optional_value) VALUES (1, '3.14', 'NaN'), (2, 'xx', NULL), (3, '1.7976931348623157e+308', '0x1.fffffffffffffffP+1023'), (4, '', 'inf'), (5, '-inf', '0');
+SELECT id, toFloat64OrDefault(value, 0) AS float_value FROM test_fuzzing WHERE value = ALL (SELECT value FROM test_fuzzing WHERE id > 1);
+SELECT id, value, toFloat64OrDefault(optional_value, 0) AS optional_float FROM test_fuzzing WHERE toFloat64OrDefault(value, CAST('0', 'Float64')) = ALL (SELECT toFloat64OrDefault(value, CAST('1', 'Float64')) FROM test_fuzzing WHERE value != 'xx');
+SELECT id, value, AVG(toFloat64OrDefault(value, 0)) OVER (PARTITION BY optional_value ORDER BY id) AS avg_float FROM test_fuzzing GROUP BY id, value, optional_value HAVING toFloat64OrDefault(value, 0) > 0;
+SELECT * FROM test_fuzzing WHERE value IN (SELECT value FROM test_fuzzing WHERE optional_value = ALL (SELECT NULL FROM test_fuzzing WHERE value = 'xx'));
+ALTER TABLE test_fuzzing ADD COLUMN new_value Float64;
+UPDATE test_fuzzing SET new_value = toFloat64OrDefault(value, NULL) WHERE optional_value IS NOT NULL;
+SELECT id, new_value FROM test_fuzzing WHERE new_value = ALL (SELECT toFloat64OrDefault(value, '0') FROM test_fuzzing WHERE value NOT LIKE '%xx%');

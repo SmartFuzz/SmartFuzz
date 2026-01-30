@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/724",
+  "title": "Evaluation of multiple SERVICE clauses",
+  "description": "Dear all,\nI'm noticed that Virtuoso adopts what seems to me a very inefficient strategy to evaluate a SPARQL query containing multiple SERVICE clauses with independent graph patterns (no common variable): each SERVICE clause is invoked once for each solution retrieved from previously evaluated SERVICE clauses.\nThis ends up in a multiplication of SERVICE invocations, although they return the same results each time (since the graph patterns are independent).\nHere is an example calling two services I've deployed. The graph patterns in each SERVICE clause are independent: the first one has a variable ?img and the second a variable ?audioUrl. And there is no other dependency.\nprefix foaf: <http://xmlns.com/foaf/0.1/>\nprefix schema: <http://schema.org/>\n\nconstruct {\n    [] foaf:depiction ?img ; schema:contentUrl ?audioUrl.\n} where {\n    service <https://erebe-vm2.i3s.unice.fr/sparql-ms/flickr/getPhotosByGroupByTag?group_id=806927@N20&tags=taxonomy:binomial=Delphinus+delphis>\n    { select * where { [] foaf:depiction ?img.  } limit 3 }\n\n    service <https://erebe-vm2.i3s.unice.fr/sparql-ms/macaulaylibrary/getAudioByTaxon?name=Delphinus+delphis>\n    { select ?audioUrl where { [] schema:contentUrl ?audioUrl. } limit 5 }\n}\n\nAs you can see, the first query returns at most 3 results, the 2nd query 5 results. When I monitor the logs of my services, I notice that the 2nd is called exactly one time, whereas the first one is called 5 times, i.e. once for each result retrieved from the 2nd SERVICE clause.\nWould you say this is a bug or is there a good reason that I don't catch?\nThanks for your help.\nNote: I'm using the OS edition 7.20.",
+  "date": "2018-03-05 09:58:15",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "virtuoso",
+  "bug_features_seed": [
+    "CREATE TABLE images (id INT PRIMARY KEY, img_url VARCHAR(255) NOT NULL, description TEXT);",
+    "CREATE TABLE audio (id INT PRIMARY KEY, audio_url VARCHAR(255) NOT NULL, duration INT CHECK (duration >= 0));",
+    "INSERT INTO images (id, img_url, description) VALUES (1, 'http://example.com/image1.jpg', 'Image 1 description'), (2, 'http://example.com/image2.jpg', 'Image 2 description'), (3, 'http://example.com/image3.jpg', 'Image 3 description');",
+    "INSERT INTO audio (id, audio_url, duration) VALUES (1, 'http://example.com/audio1.mp3', 120), (2, 'http://example.com/audio2.mp3', 150), (3, 'http://example.com/audio3.mp3', 90);",
+    "SELECT img.img_url, aud.audio_url FROM images img JOIN audio aud ON img.id = aud.id WHERE aud.duration IS NOT NULL AND img.id <= 3;"
+  ],
+  "key_bug_features": [
+    "Multiple SERVICE clauses with independent graph patterns evaluated inefficiently"
+  ]
+}

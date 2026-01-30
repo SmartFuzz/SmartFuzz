@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id UInt32, value Float64, note String);
+INSERT INTO test_table (id, value, note) VALUES (1, 3.5, 'test1'), (2, 4.0, 'test2'), (3, NULL, 'test3'), (4, 5.2, 'test4');
+CREATE TABLE test_series (sample_id UInt32, value Float64) ENGINE = MergeTree() ORDER BY sample_id;
+INSERT INTO test_series (sample_id, value) VALUES (1, 2.5), (2, NULL), (3, 5.5), (4, 3.0);
+SELECT kurtSamp(value) AS kurtosis FROM (SELECT value AS main_value FROM test_table WHERE value > 0) WHERE NOT isNull(main_value);
+SELECT kurtSamp(value) AS kurtosis FROM (SELECT value FROM test_series WHERE value > (SELECT AVG(value) FROM test_series) * 2) GROUP BY sample_id HAVING count(value) > 1;
+SELECT kurtSamp(CASE WHEN value IS NOT NULL THEN value ELSE 0 END) AS kurtosis FROM test_table WHERE id IN (SELECT id FROM (SELECT id FROM test_table WHERE note = 'test1' OR note = 'test2')) GROUP BY note;
+SELECT kurtSamp(WINDOW_FUNCTION) FROM (SELECT id, value, COUNT(*) OVER (PARTITION BY id) AS count_value FROM test_table) HAVING count_value > 2 ORDER BY kurtosis DESC;
+SELECT kurtSamp(ABS(value)) AS kurtosis FROM (SELECT value + 1 AS modified_value FROM test_series WHERE value IS NOT NULL) WHERE modified_value > 4 ORDER BY kurtosis ASC;
+SELECT kurtSamp(value) AS kurtosis FROM (SELECT value FROM (SELECT value FROM test_series WHERE value IS NOT NULL UNION ALL SELECT value FROM test_series WHERE value IS NULL)) AS unioned_values GROUP BY value HAVING COUNT(value) > 1;

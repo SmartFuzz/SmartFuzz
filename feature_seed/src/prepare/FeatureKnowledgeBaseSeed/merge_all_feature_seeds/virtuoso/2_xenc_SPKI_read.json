@@ -1,0 +1,14 @@
+CREATE TABLE keys (id INT PRIMARY KEY, public_key VARCHAR(512), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO keys (id, public_key) VALUES (1, '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQ...');
+SELECT id, public_key, xenc_SPKI_read(NULL, public_key) AS spki_key FROM keys WHERE public_key IS NOT NULL;
+SELECT id, COUNT(*) FROM (SELECT id, public_key FROM keys WHERE public_key LIKE '-----BEGIN%' GROUP BY id HAVING COUNT(public_key) > 0) AS subquery;
+SELECT id, bif:eval('SELECT COUNT(*) FROM keys WHERE public_key IS NOT NULL') AS non_null_count FROM keys WHERE public_key IS NOT NULL;
+INSERT INTO keys (id, public_key) VALUES (2, '');
+SELECT id, bif:eval('SELECT xenc_SPKI_read(NULL, public_key) FROM keys WHERE LENGTH(public_key) = 0') AS empty_key FROM keys WHERE LENGTH(public_key) = 0;
+CREATE TABLE dummy_values (value VARCHAR(10));
+INSERT INTO dummy_values (value) VALUES ('5'), ('10'), (NULL);
+SELECT id, bif:eval('SELECT AVG(CAST(value AS INT)) FROM dummy_values WHERE value IS NOT NULL') AS average_value FROM keys;
+SELECT id, bif:eval('SELECT xenc_SPKI_read(NULL, REPLACE(public_key, ''\n'', '''')) FROM keys') AS cleaned_key FROM keys;
+SELECT bif:eval('SELECT xenc_SPKI_read(NULL, public_key) FROM keys WHERE id = (SELECT MAX(id) FROM keys)') FROM keys WHERE id IS NOT NULL;
+SELECT bif:eval('SELECT SUM(value) FROM dummy_values WHERE value IS NOT NULL') AS total_value FROM dummy_values;
+SELECT bif:eval('SELECT DISTINCT public_key FROM keys WHERE LENGTH(public_key) <% some_value VARIOUS %>') FROM keys WHERE public_key IS NOT NULL;

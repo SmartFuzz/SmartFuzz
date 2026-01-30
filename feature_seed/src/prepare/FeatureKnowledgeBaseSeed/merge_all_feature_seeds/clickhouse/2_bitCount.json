@@ -1,0 +1,18 @@
+CREATE TABLE test_date_table (id UInt32, date_col Date) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_date_table VALUES (1, '2023-01-01'), (2, '2023-01-02'), (3, '2023-01-03');
+SELECT id, date_col FROM test_date_table WHERE id BETWEEN 1 AND 3;
+CREATE TABLE test_number_table (num UInt8) ENGINE = MergeTree() ORDER BY num;
+INSERT INTO test_number_table VALUES (0), (1), (255), (128), (2);
+SELECT num, bitCount(num) FROM test_number_table;
+SELECT id, (SELECT bitCount(num) FROM test_number_table WHERE num > 1) as count_greater FROM test_date_table;
+WITH (SELECT bitCount(toUInt8(-1))) AS count FROM test_number_table WHERE count BETWEEN 0 AND 8;
+SELECT id, bitCount(num) AS bits_set FROM test_number_table GROUP BY id HAVING bits_set > 0;
+CREATE TABLE test_complex (id UInt32, val Float64) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_complex VALUES (1, 123.456), (2, -789.012), (3, 0.0);
+SELECT id, bitCount(toUInt64(val)) AS bit_count FROM (SELECT val FROM test_complex WHERE id BETWEEN 1 AND 3) ORDER BY bit_count;
+SELECT id, (SELECT bitCount(toUInt8(num)) FROM test_number_table WHERE num BETWEEN 1 AND 255) as bit_count FROM test_date_table WHERE EXISTS (SELECT 1 FROM test_number_table WHERE num > 128);
+SELECT id, bitCount(toUInt8(NULL)) AS null_case FROM test_date_table WHERE id BETWEEN 1 AND 3;
+SELECT id FROM test_number_table WHERE bitCount(0) BETWEEN 0 AND 8;
+WITH (SELECT count() FROM test_number_table WHERE num > 1) AS non_zero_count SELECT id, NULLIF(non_zero_count, 0) AS safe_count FROM test_date_table;
+ALTER TABLE test_complex ADD COLUMN description String;
+SELECT id, description, bitCount(num) AS bits_set FROM test_complex WHERE description IS NULL OR bitCount(id) BETWEEN 1 AND 2;

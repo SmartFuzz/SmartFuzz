@@ -1,0 +1,14 @@
+CREATE TABLE test_table (id Int32, haystack String, token String, result Int32) ENGINE = Memory;
+INSERT INTO test_table VALUES (1, 'Hello World', 'Hello,World', 0), (2, 'Example Test', 'Test', 1), (3, '', 'Empty', null), (4, 'Another Example', 'Invalid,Token', null);
+SELECT id, hasTokenOrNull(haystack, token) AS result FROM test_table;
+SELECT id, multiIf(hasTokenOrNull(haystack, token) = 1, 'Found', hasTokenOrNull(haystack, token) = 0, 'Not Found', hasTokenOrNull(haystack, token) IS NULL, 'Ill-formed Token') AS token_status FROM test_table;
+CREATE TABLE another_table (group_id Int32, token String, haystack String) ENGINE = MergeTree ORDER BY group_id;
+INSERT INTO another_table VALUES (1, 'Token1', 'Token1;
+Token2'), (1, 'Token2', 'Token2;
+Token3'), (2, 'Token3', 'Token3;
+Token1');
+SELECT group_id, multiIf(hasTokenOrNull(haystack, token) = 1, 'Present', hasTokenOrNull(haystack, token) = 0, 'Absent', hasTokenOrNull(haystack, token) IS NULL, 'Malformed') AS presence_status FROM another_table GROUP BY group_id;
+SELECT id, arrayJoin([0, 1, 2]) AS sequence, hasTokenOrNull(haystack, toString(sequence)) AS token_presence FROM test_table;
+SELECT id, multiIf(haystack = '', NULL, hasTokenOrNull(haystack, token)) AS null_test FROM test_table WHERE hasTokenOrNull(haystack, token) IS NOT NULL;
+SELECT id, hasTokenOrNull(haystack, CASE WHEN token = 'Invalid,Token' THEN NULL ELSE token END) AS conditional_token_check FROM test_table;
+SELECT id, countIf(hasTokenOrNull(haystack, token) = 1) AS successful_checks FROM test_table GROUP BY id HAVING successful_checks > 0;

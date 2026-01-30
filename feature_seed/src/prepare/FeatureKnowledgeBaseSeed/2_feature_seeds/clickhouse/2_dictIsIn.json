@@ -1,0 +1,10 @@
+CREATE TABLE test_dict (id UInt64, parent_id UInt64, name String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_dict VALUES (1, NULL, 'root'), (2, 1, 'child1'), (3, 1, 'child2'), (4, 2, 'grandchild1'), (5, 2, 'grandchild2');
+CREATE DICTIONARY test_dict_hierarchy (id UInt64, parent_id UInt64) PRIMARY KEY id SOURCE(SELECT id, parent_id FROM test_dict) LIFETIME(300);
+SELECT COUNT(*) FROM test_dict WHERE dictIsIn('test_dict_hierarchy', id, (SELECT parent_id FROM test_dict WHERE id = 4));
+SELECT id FROM test_dict WHERE (SELECT COUNT(*) FROM test_dict AS inner_table WHERE inner_table.parent_id = test_dict.id) = 0;
+SELECT id FROM test_dict WHERE (id = ALL (SELECT parent_id FROM test_dict WHERE name LIKE 'child%')) AND dictIsIn('test_dict_hierarchy', id, 1);
+SELECT id, dictIsIn('test_dict_hierarchy', id, parent_id) AS is_child FROM test_dict HAVING is_child = 1 ORDER BY id;
+SELECT id FROM test_dict WHERE id = ALL (SELECT outer_table.id FROM test_dict AS outer_table WHERE dictIsIn('test_dict_hierarchy', outer_table.id, 2));
+SELECT id, dictIsIn('test_dict_hierarchy', id, 1) AS is_root FROM test_dict GROUP BY id HAVING is_root = 1;
+SELECT dictIsIn('test_dict_hierarchy', id, 1) AS check_ancestor, COUNT(*) FROM test_dict GROUP BY check_ancestor HAVING check_ancestor = 1;

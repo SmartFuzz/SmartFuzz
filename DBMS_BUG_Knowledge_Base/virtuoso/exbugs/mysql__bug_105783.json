@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=105783",
+  "title": "`datetime <cmp> int` returns different result in different SQLs",
+  "description": "mysql> select cast(\"2001-08-14 00:00:00\" as datetime)>20021020,cast(\"2001-08-15 00:00:00\" as datetime)>20021020,cast(\"2001-08-16 00:00:00\" as datetime)>20021020,cast(\"2003-09-15 01:20:30\" as datetime)>20021020;\r\n+--------------------------------------------------+--------------------------------------------------+--------------------------------------------------+--------------------------------------------------+\r\n| cast(\"2001-08-14 00:00:00\" as datetime)>20021020 | cast(\"2001-08-15 00:00:00\" as datetime)>20021020 | cast(\"2001-08-16 00:00:00\" as datetime)>20021020 | cast(\"2003-09-15 01:20:30\" as datetime)>20021020 |\r\n+--------------------------------------------------+--------------------------------------------------+--------------------------------------------------+--------------------------------------------------+\r\n|                                                1 |                                                1 |                                                1 |                                                1 |\r\n+--------------------------------------------------+--------------------------------------------------+--------------------------------------------------+--------------------------------------------------+\r\n\r\nmysql> drop table if exists t1;\r\nQuery OK, 0 rows affected (0.02 sec)\r\n\r\nmysql> create table t1 ( dt datetime);\r\nQuery OK, 0 rows affected (0.03 sec)\r\n\r\nmysql> insert into t1 values (\"2001-08-14 00:00:00\"),(\"2001-08-15 00:00:00\"),(\"2001-08-16 00:00:00\"),(\"2003-09-15 01:20:30\");\r\nQuery OK, 4 rows affected (0.01 sec)\r\nRecords: 4  Duplicates: 0  Warnings: 0\r\n\r\nmysql> select * from t1 where dt > 20021020;\r\n+---------------------+\r\n| dt                  |\r\n+---------------------+\r\n| 2003-09-15 01:20:30 |\r\n+---------------------+\r\n1 row in set (0.00 sec)\r\n\r\nmysql> select dt>20021020 from t1;\r\n+-------------+\r\n| dt>20021020 |\r\n+-------------+\r\n|           0 |\r\n|           0 |\r\n|           0 |\r\n|           1 |\r\n+-------------+\r\n4 rows in set (0.00 sec)\nHow to repeat:\ncase1:\r\n\r\nselect cast(\"2001-08-14 00:00:00\" as datetime)>20021020,cast(\"2001-08-15 00:00:00\" as datetime)>20021020,cast(\"2001-08-16 00:00:00\" as datetime)>20021020,cast(\"2003-09-15 01:20:30\" as datetime)>20021020;\n\ncase2:\r\ndrop table if exists t1;\r\ncreate table t1 ( dt datetime);\r\ninsert into t1 values (\"2001-08-14 00:00:00\"),(\"2001-08-15 00:00:00\"),(\"2001-08-16 00:00:00\"),(\"2003-09-15 01:20:30\");\r\nselect * from t1 where dt > 20021020;",
+  "date": "2021-12-03 03:18:00",
+  "vulnerable_version": "8.0, 5.7",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "DROP TABLE IF EXISTS t2;",
+    "CREATE TABLE t2 (id INT PRIMARY KEY, dt TIMESTAMP, value INT);",
+    "INSERT INTO t2 VALUES (1, TIMESTAMP('2001-08-14 00:00:00'), 10), (2, TIMESTAMP('2001-08-15 00:00:00'), 20), (3, TIMESTAMP('2001-08-16 00:00:00'), 30), (4, TIMESTAMP('2003-09-15 01:20:30'), 40);",
+    "SELECT id, dt > TIMESTAMP('2002-10-20 00:00:00') AS comparison FROM t2;",
+    "SELECT COUNT(*) FROM t2 WHERE dt < TIMESTAMP('2002-10-20 00:00:00');"
+  ],
+  "key_bug_features": [
+    "datetime comparison with integer yields inconsistent results"
+  ]
+}

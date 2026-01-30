@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=112532",
+  "title": "Innodb_row_lock_current_waits values  show non-zero   when there is no lock",
+  "description": "Innodb_row_lock_current_waits\r\nThe number of row locks currently waited for by operations on InnoDB tables.\r\n\r\nwhen thers is no  lock wait  ,the value should be zero.\r\nIn the following test case , lock wait sql is clear,\r\nbut  the  Innodb_row_lock_current_waits  value is still   non-zero.\nHow to repeat:\nin a 8C8G ECS environment\r\n\r\n set global innodb_lock_wait_timeout=1;\r\nsesson1\r\nCREATE TABLE `test` (\r\n  `id` int NOT NULL,\r\n  `name` int DEFAULT NULL,\r\n  PRIMARY KEY (`id`),\r\n  UNIQUE KEY `name` (`name`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ;\r\n\r\nthen load date with the shell\r\n#! /bin/bash\r\nfor ((i=2;i<=500;i++))\r\ndo\r\n\tmysql -uroot   -e\"insert t.test values($i,$i)\";\r\ndone\r\n\r\nsesson2\r\n\r\nbegin;\r\nselect id from t.test where id <604 lock in share mode;\r\n\r\nsesson3\r\n\r\n#! /bin/bash\r\nfor ((i=2;i<=2000;i++))\r\ndo\r\n       nohup\tmysql -uroot-e\"begin;insert t.test values(534,534);\" &\r\ndone\r\n\r\nwhen the sesson3 is over, there is no lock\r\nbut\r\nshow status  like '%Innodb_row_lock_current_waits%'\r\n\r\nmysql: [Warning] Using a password on the command line interface can be insecure.\r\n+-------------------------------+-------+\r\n| Variable_name                 | Value |\r\n+-------------------------------+-------+\r\n| Innodb_row_lock_current_waits | 3     |\r\n+-------------------------------+-------+\r\n the  value is still   non-zero.\nSuggested fix:\nadd lock_wait_mutex  when srv_stats.n_lock_wait_current_count.dec(); \r\nchange in muli-thread  \r\nafter the patch\r\n\r\nshow status  like '%Innodb_row_lock_current_waits%'\r\nmysql: [Warning] Using a password on the command line interface can be insecure.\r\n+-------------------------------+-------+\r\n| Variable_name                 | Value |\r\n+-------------------------------+-------+\r\n| Innodb_row_lock_current_waits | 0     |\r\n+-------------------------------+-------+",
+  "date": "2023-09-27 03:14:00",
+  "vulnerable_version": "8.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE test2 (id Int32 NOT NULL, name String DEFAULT NULL, created_at DateTime DEFAULT now(), PRIMARY KEY (id)) ENGINE = MergeTree() ORDER BY id;",
+    "INSERT INTO test2 (id, name) VALUES (1, 'Alice');",
+    "INSERT INTO test2 (id, name) VALUES (2, NULL);",
+    "SELECT * FROM test2 WHERE id IN (SELECT id FROM test2 WHERE name IS NOT NULL);",
+    "ALTER TABLE test2 UPDATE name = 'Bob' WHERE id = 1;"
+  ],
+  "key_bug_features": [
+    "Innodb_row_lock_current_waits shows non-zero without lock"
+  ]
+}

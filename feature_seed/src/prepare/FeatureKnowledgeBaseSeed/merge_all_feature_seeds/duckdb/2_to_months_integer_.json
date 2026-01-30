@@ -1,0 +1,8 @@
+CREATE TABLE test_intervals (id INTEGER PRIMARY KEY, time_period INTERVAL, values INTEGER[]);
+INSERT INTO test_intervals (id, time_period, values) VALUES (1, to_months(5), ARRAY[1, 2, 3]), (2, to_months(3), ARRAY[4, NULL, 6]), (3, to_months(0), ARRAY[7, 8, 9]);
+SELECT id, time_period, values, (values <-> ARRAY[3, 2, 1]) AS distance FROM test_intervals WHERE values[1] IS NOT NULL;
+SELECT id, (SELECT MIN(time_period) FROM test_intervals WHERE time_period IS NOT NULL) AS min_period, (values <-> ARRAY[NULL, 10, 11]) AS distance FROM test_intervals GROUP BY id HAVING min_period IS NOT NULL;
+SELECT id, SUM(CASE WHEN time_period IS NULL THEN 0 ELSE 1 END) AS valid_periods_count, (ARRAY_AGG(values) <-> ARRAY[4, 5, 6]) AS distance_agg FROM test_intervals GROUP BY id ORDER BY valid_periods_count DESC;
+CREATE TEMP TABLE temp_values AS SELECT id, SUM(value) AS total_value FROM (SELECT id, UNNEST(values) AS value FROM test_intervals) AS flat_values GROUP BY id;
+SELECT id, total_value, (total_value <-> (SELECT MAX(total_value) FROM temp_values)) AS distance FROM temp_values WHERE total_value IS NOT NULL ORDER BY distance DESC;
+SELECT id, time_period, (to_months(2) <- to_months(4)) AS interval_difference FROM test_intervals WHERE (time_period IS NOT NULL) AND (values <-> ARRAY[1, 2, 4] > 0);

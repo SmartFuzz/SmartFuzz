@@ -1,0 +1,10 @@
+CREATE TABLE test_table (id INTEGER, random_num INTEGER, hash_value VARCHAR(32), nullable_col VARCHAR(100));
+INSERT INTO test_table (id, random_num, nullable_col) SELECT 1, rnd(100), NULL;
+INSERT INTO test_table (id, random_num, nullable_col) SELECT 2, rnd(100), 'sample';
+INSERT INTO test_table (id, random_num, nullable_col) SELECT 3, rnd(100), '';
+SELECT id, randomize() AS rng, bif:md5(CONCAT('Row:', id, COALESCE(nullable_col, 'NULL'))) AS hash FROM test_table WHERE random_num > 50;
+SELECT id, bif:md5(TO_CHAR(rnd(100))) AS random_hash FROM (SELECT id, random_num FROM test_table) AS subquery WHERE random_num IS NOT NULL;
+SELECT id, bif:md5(CAST(random_num AS VARCHAR)) AS hash, randomize() FROM test_table GROUP BY id, random_num HAVING COUNT(*) > 1;
+SELECT id, bif:md5(CONCAT(COALESCE(nullable_col, 'empty'), randomize())) AS combined_hash FROM test_table WHERE id IN (SELECT id FROM test_table WHERE random_num <= 10);
+SELECT bif:md5(randomize()::text) AS randomized_hash FROM (SELECT DISTINCT random_num FROM test_table WHERE nullable_col IS NOT NULL) AS distinct_randoms;
+SELECT id, random_num, bif:md5(CONCAT(randomize(), id)) AS hash_value FROM test_table HAVING random_num <= (SELECT AVG(random_num) FROM test_table) ORDER BY hash_value DESC;

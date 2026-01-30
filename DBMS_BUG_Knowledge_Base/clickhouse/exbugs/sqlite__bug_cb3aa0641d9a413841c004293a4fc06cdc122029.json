@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/cb3aa0641d",
+  "title": "Incorrect result from a subquery containing over-constrainted ORDER BY",
+  "description": "drh added on 2016-01-13 15:00:25:\nThe query at the end of the following SQL should return a value of \"1\", but it\nsometimes returns \"NULL\" on recent versions of SQLite:\nCREATE TABLE t1(x INTEGER PRIMARY KEY);\nINSERT INTO t1 VALUES(1),(2);\nCREATE TABLE t2(y);\nINSERT INTO t2 VALUES(3),(4);\nSELECT quote((SELECT x FROM t2, t1 ORDER BY x, y));\nThis problem appears to have been introduced on 2014-08-29 14:20:46 by\ncheck-in [2a74129a21f], though it is unclear if that check-in actually caused\nthe problem or just unmasked it.\nThe problem appears to be cause by misbehavior in the\npartial sorting by index\noptimization.\ndrh added on 2016-01-13 15:21:24:\nThe simple work-around to this problem is to not over-constraint ORDER BY\nclauses.  Do not write:\nSELECT x FROM ... ORDER BY x, y, z;\nThe extra \"y\" and \"z\" terms on the ORDER BY are pointless as the \"ORDER BY x\" is sufficient to completely define the output order.  So instead write:\nSELECT x FROM ... ORDER BY x;\nSQLite ought to give the correct answer in either case.  And apparently it always does in the second case.  The bug here is that sometimes the first case gives an incorrect result.",
+  "date": "2016-01-13 15:00:259.58 years ago",
+  "vulnerable_version": "3.10.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(x Int32, y String);",
+    "INSERT INTO t1 VALUES(1, 'a'), (2, 'b');",
+    "CREATE TABLE t2(y Int32, z Float64);",
+    "INSERT INTO t2 VALUES(3, 4.5), (4, NULL);",
+    "SELECT x FROM t1, t2 ORDER BY x;"
+  ],
+  "key_bug_features": [
+    "Subquery with over-constrained ORDER BY clause"
+  ]
+}

@@ -1,0 +1,15 @@
+CREATE TABLE test_table (id INT PRIMARY KEY, value VARCHAR(255), nullable_col VARCHAR(255) NULL);
+INSERT INTO test_table (id, value, nullable_col) VALUES (1, 'test', NULL), (2, 'example', 'data'), (3, 'fuzz', '');
+SELECT sys_stat_analyze('test_table'), value FROM test_table WHERE id <= (SELECT MAX(id) FROM test_table);
+SELECT value FROM test_table WHERE LENGTH(value) <= (SELECT AVG(LENGTH(value)) FROM test_table) HAVING COUNT(*) > 1;
+SELECT sys_stat_analyze('test_table'), id FROM test_table WHERE nullable_col IS NULL AND id <= 3;
+SELECT sys_stat_analyze('test_table') AS stats, value FROM test_table WHERE value <= (CASE WHEN nullable_col IS NOT NULL THEN 'example' ELSE 'fuzz' END);
+CREATE TABLE another_table (ref_id INT, data INT CHECK(data >= 0));
+INSERT INTO another_table (ref_id, data) VALUES (1, 100), (1, NULL), (NULL, 200);
+SELECT sys_stat_analyze('another_table') FROM another_table JOIN test_table ON another_table.ref_id <= test_table.id WHERE test_table.value IS NOT NULL;
+SELECT value FROM test_table WHERE value <= (SELECT MAX(value) FROM test_table WHERE id > 0 GROUP BY value HAVING COUNT(value) > 1);
+SELECT avg(val) FROM (SELECT value, COUNT(value) as val FROM test_table GROUP BY value HAVING COUNT(value) <= 3) AS subquery WHERE val IS NOT NULL;
+INSERT INTO test_table (id, value, nullable_col) VALUES (4, '12345', 'test'), (5, 'str_6789', NULL);
+SELECT sys_stat_analyze('test_table'), value FROM test_table WHERE id <= (SELECT COUNT(*) FROM another_table) AND nullable_col IS NOT NULL;
+SELECT value FROM test_table WHERE value <= CAST('example' AS VARCHAR) AND id BETWEEN (SELECT MIN(id) FROM test_table) AND (SELECT COALESCE(MAX(id), 0) FROM test_table);
+SELECT sys_stat_analyze('test_table') FROM test_table WHERE value IS NOT NULL AND nullable_col IS NULL AND id IN (SELECT ref_id FROM another_table WHERE data IS NOT NULL);

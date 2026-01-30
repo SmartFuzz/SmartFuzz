@@ -1,0 +1,11 @@
+CREATE TABLE domain_names (id UInt32, name String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO domain_names VALUES (1, 'xn--strae-oqa.xn--mnchen-3ya.de'), (2, 'xn--g6h.xn--zfr164b.xn--mgbaam7a3b.xn--mgba3a1w');
+SELECT id, idnaDecode(name) FROM domain_names WHERE name GLOBAL NOT IN (SELECT name FROM domain_names WHERE id = 1);
+SELECT id, idnaDecode(name), count(*) OVER () AS total_count FROM domain_names WHERE id GLOBAL NOT IN (SELECT id FROM (SELECT MAX(id) AS max_id FROM domain_names GROUP BY id) AS t);
+CREATE TABLE temp_data (id UInt32, encoded_name String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO temp_data SELECT id, idnaDecode(name) FROM domain_names;
+SELECT id, encoded_name FROM temp_data WHERE encoded_name GLOBAL NOT IN (SELECT encoded_name FROM temp_data WHERE id > 1) HAVING count(*) > 0;
+SELECT id, idnaDecode(name) as decoded_name FROM domain_names WHERE name GLOBAL NOT IN (SELECT idnaDecode(name) FROM (SELECT DISTINCT name FROM domain_names) AS t) AND decoded_name IS NOT NULL;
+CREATE TABLE fuzzy_test (id UInt32, name String, ns_null Nullable(UInt8)) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO fuzzy_test VALUES (1, idnaDecode('xn--n0a.xn--example.com'), NULL), (2, idnaDecode('xn--mgbh0fb.xn--example.co.uk'), 1);
+SELECT id, idnaDecode(name) AS decoded_name FROM fuzzy_test WHERE ns_null GLOBAL NOT IN (SELECT ns_null FROM fuzzy_test WHERE ns_null IS NULL);

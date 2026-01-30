@@ -1,0 +1,14 @@
+CREATE TABLE test_dates (date_string String) ENGINE = MergeTree() ORDER BY date_string;
+INSERT INTO test_dates VALUES ('2023-10-01T10:30:00.000Z'), ('2023-10-01T10:30:10.000Z'), ('2023-10-01T10:30:20.000Z');
+SELECT parseDateTime64InJodaSyntax(date_string, 3) AS parsed_date FROM test_dates;
+SELECT id, parseDateTime64InJodaSyntax(date_string, 3) AS parsed_date FROM (SELECT 1 AS id, '2023-10-01T10:30:00.000Z' AS date_string UNION ALL SELECT 2, '2023-10-01T10:30:10.000Z') ORDER BY id;
+CREATE TABLE additional_dates (id UInt32, date_string String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO additional_dates VALUES (1, '2023-10-02T15:00:00.000Z'), (2, '2023-10-02T15:00:00.500Z');
+SELECT ad.id, parseDateTime64InJodaSyntax(ad.date_string, 2) AS parsed_date FROM additional_dates AS ad JOIN test_dates AS td ON ad.id = td.id;
+CREATE TABLE complex_dates AS SELECT parseDateTime64InJodaSyntax(date_string, 4) AS complex_date FROM (SELECT date_string FROM test_dates) AS temp_date;
+SELECT DISTINCT parseDateTime64InJodaSyntax(td.date_string, 5) AS distinct_parsed FROM test_dates td WHERE parseDateTime64InJodaSyntax(td.date_string, 5) > now64(3);
+SELECT parseDateTime64InJodaSyntax('2023-10-01T10:30:10.000Z', 3) + INTERVAL 10 SECOND AS increased_date;
+DROP TABLE IF EXISTS test_dates;
+CREATE TEMPORARY TABLE fuzz_test_dates (date_string String) ENGINE = Memory;
+INSERT INTO fuzz_test_dates VALUES ('invalid-date'), ('2023-10-01T25:61:00.000Z'), ('2023-10-01T10:30:00.123456789Z');
+SELECT parseDateTime64InJodaSyntax(date_string, 6) FROM fuzz_test_dates;

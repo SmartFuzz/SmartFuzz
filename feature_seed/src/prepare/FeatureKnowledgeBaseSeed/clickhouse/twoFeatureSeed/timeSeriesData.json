@@ -1,0 +1,18 @@
+{
+    "function": "timeSeriesData",
+    "operator": "a != ALL (subquery)",
+    "sql_array": [
+        "CREATE TABLE db_name.time_series_table (id UInt32, timestamp DateTime, value Float32) ENGINE=TimeSeries DATA data_table;",
+        "INSERT INTO db_name.time_series_table VALUES (1, now(), 10.5), (2, now() - INTERVAL 1 DAY, 20.75), (3, now() - INTERVAL 2 DAY, NULL);",
+        "SELECT id FROM db_name.time_series_table WHERE value != ALL (SELECT value FROM timeSeriesData(db_name.time_series_table) WHERE value IS NOT NULL);",
+        "SELECT id, COUNT(*) OVER (PARTITION BY id) as count FROM (SELECT id, timestamp FROM timeSeriesData(db_name.time_series_table) WHERE value != ALL (SELECT value FROM timeSeriesData(db_name.time_series_table) WHERE value IS NOT NULL)) HAVING count > 1;",
+        "CREATE TABLE db_name.time_series_inner_table (id UInt32, uuid UUID, data Float32) ENGINE=TimeSeries DATA INNER UUID '01234567-89ab-cdef-0123-456789abcdef';",
+        "INSERT INTO db_name.time_series_inner_table VALUES (1, '01234567-89ab-cdef-0123-456789abcdef', 15.5), (2, '01234567-89ab-cdef-0123-456789abcdef', NULL);",
+        "SELECT id FROM timeSeriesData(db_name.time_series_inner_table) WHERE data != ALL (SELECT value FROM timeSeriesData(db_name.time_series_table));",
+        "SELECT id, value FROM db_name.time_series_table WHERE value != ALL (SELECT value FROM timeSeriesData(db_name.time_series_inner_table) WHERE data IS NOT NULL) LIMIT 1;",
+        "CREATE TABLE db_name.time_series_boundary_table (id UInt32, created_at DateTime, value Float64, constraints CONSTRAINT ck_value CHECK (value >= 0)) ENGINE=TimeSeries DATA data_table;",
+        "INSERT INTO db_name.time_series_boundary_table VALUES (1, '2022-01-01 00:00:00', 0.0), (2, '2022-01-01 01:00:00', -1.0), (3, '2022-01-01 02:00:00', 5.75);",
+        "SELECT id FROM db_name.time_series_boundary_table WHERE value != ALL (SELECT value FROM timeSeriesData(db_name.time_series_boundary_table) WHERE value < 0) AND created_at < '2023-01-01 00:00:00';",
+        "SELECT * FROM timeSeriesData(db_name.time_series_table) WHERE id NOT IN (SELECT id FROM db_name.time_series_inner_table WHERE uuid IS NULL);"
+    ]
+}

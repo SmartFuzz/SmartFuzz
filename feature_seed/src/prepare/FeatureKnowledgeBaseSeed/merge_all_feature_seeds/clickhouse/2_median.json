@@ -1,0 +1,10 @@
+CREATE TABLE test_data (id Int32, val Float32, str_val String, created_at DateTime) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_data VALUES (1, 10.5, 'A', '2023-01-01 10:00:00'), (2, 20.5, 'B', '2023-01-02 11:00:00'), (3, NULL, 'C', '2023-01-03 12:00:00'), (4, 15.0, 'D', '2023-01-04 13:00:00'), (5, 30.1, 'E', '2023-01-05 14:00:00');
+CREATE TABLE filtered_data AS SELECT id, median(val) AS median_val FROM test_data GROUP BY id HAVING median(val) BETWEEN 10 AND 20;
+SELECT id, median(CASE WHEN str_val IS NULL THEN 0 ELSE toFloat32(str_val) END) AS calculated_median FROM test_data WHERE id BETWEEN 1 AND 5 GROUP BY id ORDER BY calculated_median;
+SELECT id, median(val) AS median_val FROM (SELECT id, val FROM test_data WHERE created_at BETWEEN '2023-01-01 00:00:00' AND '2023-01-05 23:59:59') GROUP BY id HAVING median_val > 15;
+SELECT id, median(val) AS median_val FROM (SELECT val, str_val FROM test_data WHERE str_val LIKE 'A%' OR str_val IS NULL) GROUP BY id HAVING median_val BETWEEN 0 AND (SELECT max(val) FROM test_data);
+SELECT id, median(val) AS median_val FROM test_data WHERE val IS NOT NULL HAVING median_val BETWEEN (SELECT min(val) FROM test_data WHERE created_at >= '2023-01-01') AND (SELECT max(val) FROM test_data WHERE created_at <= '2023-01-05');
+DROP TABLE IF EXISTS temp_data;
+CREATE TABLE temp_data AS SELECT DISTINCT str_val, COUNT(*) AS count FROM test_data GROUP BY str_val HAVING count < 2 ORDER BY count DESC;
+INSERT INTO temp_data SELECT str_val, COUNT(*) FROM test_data GROUP BY str_val HAVING median(val) IS NOT NULL;

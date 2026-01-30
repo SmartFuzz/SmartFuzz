@@ -1,0 +1,15 @@
+CREATE TABLE test_numbers (num UInt64) ENGINE = MergeTree() ORDER BY num;
+INSERT INTO test_numbers VALUES (0), (1), (2), (3), (4), (5), (6), (7), (8), (9);
+SELECT rowNumberInAllBlocks() FROM (SELECT * FROM test_numbers) SETTINGS max_block_size = 1;
+SELECT rowNumberInAllBlocks() FROM (SELECT * FROM test_numbers WHERE num < 5) SETTINGS max_block_size = 2;
+SELECT rowNumberInAllBlocks() FROM (SELECT * FROM test_numbers ORDER BY num DESC) SETTINGS max_block_size = 3;
+SELECT rowNumberInAllBlocks() FROM (SELECT num FROM test_numbers UNION ALL SELECT num FROM test_numbers) SETTINGS max_block_size = 2;
+SELECT rowNumberInAllBlocks() FROM (SELECT *, rowNumberInAllBlocks() AS row_num FROM test_numbers LIMIT 10) SETTINGS max_block_size = 5;
+SELECT rowNumberInAllBlocks() FROM (SELECT num FROM test_numbers WHERE num % 2 = 0) SETTINGS max_block_size = 1;
+SELECT rowNumberInAllBlocks() FROM (SELECT num, rowNumberInAllBlocks() AS rn FROM (SELECT * FROM test_numbers LIMIT 30) AS sub) WHERE rn < 10 SETTINGS max_block_size = 10;
+SELECT rowNumberInAllBlocks() FROM (SELECT num, (SELECT MAX(num) FROM test_numbers) AS max_num FROM test_numbers) SETTINGS max_block_size = 2;
+CREATE TABLE test_join (id UInt64, value String) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO test_join VALUES (1, 'A'), (2, 'B'), (3, 'C');
+SELECT rowNumberInAllBlocks() FROM (SELECT t1.id, t2.value FROM test_numbers t1 INNER JOIN test_join t2 ON t1.num = t2.id) SETTINGS max_block_size = 2;
+SELECT rowNumberInAllBlocks() FROM (SELECT t1.num, t2.value FROM test_numbers t1 LEFT JOIN test_join t2 ON t1.num = t2.id) SETTINGS max_block_size = 1;
+SELECT rowNumberInAllBlocks() FROM (SELECT rowNumberInAllBlocks(), num FROM (SELECT * FROM test_numbers) AS sub) SETTINGS max_block_size = 5;

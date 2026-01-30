@@ -1,0 +1,10 @@
+CREATE TABLE test_dates (id UInt32, eventDate Date, durationHours Int32, eventTime DateTime);
+INSERT INTO test_dates VALUES (1, '2024-01-01', 12, '2024-01-01 12:00:00'), (2, '2024-02-15', 24, '2024-02-15 15:30:00'), (3, '2024-03-05', -6, '2024-03-05 16:15:00');
+SELECT id, subtractHours(eventTime, durationHours) AS adjustedTime FROM (SELECT id, eventTime, durationHours FROM test_dates WHERE eventDate > '2024-01-01') AS subquery;
+SELECT id, subtractHours(toDate(eventDate), 5) AS adjustedDate, (x -> x + 10)(durationHours) AS modifiedDuration FROM test_dates;
+SELECT id, eventDate, COUNT(*) OVER (PARTITION BY subtractHours(eventTime, durationHours) ORDER BY eventTime) AS eventCount FROM test_dates WHERE subtractHours(eventTime, 12) IS NOT NULL;
+SELECT DISTINCT id FROM (SELECT id, subtractHours(eventTime, NULLIF(durationHours, 0)) AS nonZeroDuration FROM test_dates) AS subquery WHERE nonZeroDuration IS NOT NULL;
+SELECT MAX(eventDate) AS maxEventDate, MIN(subtractHours(eventTime, durationHours)) AS minAdjustedTime FROM test_dates GROUP BY eventDate HAVING minAdjustedTime IS NOT NULL;
+INSERT INTO test_dates VALUES (4, '2024-04-01', 0, '2024-04-01 00:00:00');
+CREATE TEMPORARY TABLE temp_dates AS SELECT 1 AS id, toDate('2024-03-01') AS eventDate UNION ALL SELECT 2, toDate('2024-03-02');
+SELECT id, subtractHours(eventDate, (x -> durationHours)(durationHours)) AS adjustedDate FROM temp_dates JOIN test_dates ON temp_dates.eventDate = test_dates.eventDate;

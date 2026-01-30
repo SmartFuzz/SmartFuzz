@@ -1,0 +1,17 @@
+{
+    "function": "toInt128",
+    "operator": "EXTRACT",
+    "sql_array": [
+        "CREATE TABLE test_data (id UInt64, amount String, created_at DateTime) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_data VALUES (1, '123.456'), (2, '-999.999'), (3, '0'), (4, 'INVALID'), (5, 'Inf'), (6, 'NaN'), (7, '9223372036854775808'), (8, '');",
+        "SELECT toInt128(EXTRACT(YEAR FROM created_at)) AS year, count(*) FROM test_data GROUP BY year HAVING year IS NOT NULL;",
+        "SELECT id, toInt128(amount) as int_amount FROM test_data WHERE toInt128(amount) IS NOT NULL ORDER BY int_amount DESC;",
+        "SELECT EXTRACT(MONTH FROM toDate('2023-12-15')) + toInt128('10') AS result FROM test_data;",
+        "SELECT id, EXTRACT(DAY FROM toDate(created_at)) AS day, toInt128(amount) / NULLIF(toInt128(EXTRACT(DAY FROM toDate(created_at))), 0) AS ratio FROM test_data WHERE amount NOT LIKE '%INVALID%' AND created_at IS NOT NULL;",
+        "WITH (SELECT toInt128(amount) FROM test_data WHERE amount NOT LIKE '%INVALID%' AND amount IS NOT NULL LIMIT 5) AS subquery SELECT avg(subquery) AS average_amount FROM subquery;",
+        "SELECT id, toInt128(EXTRACT(YEAR FROM created_at)) + EXTRACT(DAY FROM toDate('2023-12-15')) AS complex_expr FROM test_data WHERE created_at IS NOT NULL GROUP BY id HAVING complex_expr > 1000;",
+        "CREATE TEMPORARY TABLE temp_data (temp_id UInt64, temp_amount String) ENGINE = TinyLog;",
+        "INSERT INTO temp_data VALUES (1, '256'), (2, '512'), (3, '1024');",
+        "SELECT temp_id, toInt128(temp_amount) / (SELECT count(*) FROM test_data) AS temp_average FROM temp_data WHERE toInt128(temp_amount) IS NOT NULL HAVING temp_average < 2;"
+    ]
+}

@@ -1,0 +1,10 @@
+CREATE TABLE test_dates (id UInt32, event_time DateTime, status Nullable(String));
+INSERT INTO test_dates VALUES (1, toDateTime('1993-10-05 05:20:36'), 'active'), (2, toDateTime('2000-09-20 14:11:29'), NULL), (3, toDateTime('2023-01-01 00:00:00'), 'paused');
+SELECT id, toRelativeMinuteNum(event_time) AS relative_minutes FROM test_dates WHERE toRelativeMinuteNum(event_time) >= 0;
+SELECT id, COUNT(*) AS count FROM test_dates WHERE toRelativeMinuteNum(event_time) >= toRelativeMinuteNum(CURRENT_DATE()) GROUP BY id HAVING count > 0;
+SELECT id, toRelativeMinuteNum(event_time) AS relative_minutes FROM test_dates WHERE toRelativeMinuteNum(event_time) >= (SELECT MIN(toRelativeMinuteNum(event_time)) FROM test_dates WHERE status IS NULL);
+CREATE TABLE test_values (val String, created_at DateTime64(3));
+INSERT INTO test_values VALUES ('2023-10-01 12:30:00.123', toDateTime64('2023-10-01 12:30:00', 3)), ('invalid', NULL);
+SELECT val, toRelativeMinuteNum(IF(created_at IS NOT NULL, created_at, toDateTime('1970-01-01 00:00:00'))) AS relative_minutes FROM test_values WHERE relative_minutes >= 0;
+SELECT val, CASE WHEN toRelativeMinuteNum(created_at) >= 60 THEN 'Old' ELSE 'Recent' END AS age_category FROM test_values GROUP BY age_category;
+SELECT * FROM (SELECT id, toRelativeMinuteNum(event_time) AS minutes FROM test_dates) AS subquery WHERE minutes >= (SELECT MAX(toRelativeMinuteNum(event_time)) FROM test_dates) - 10;

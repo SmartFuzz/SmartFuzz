@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/60692",
+  "title": "tidb reports \"Can't find column\" error from v8.5.0 when there are multiple joins in the query",
+  "description": "## Bug Report\n\nPlease answer these questions before submitting your issue. Thanks!\n\n### 1. Minimal reproduce step (Required)\n\n```sql\ncreate table t1(a int, b int, c int, d int, e int);\ncreate table t2(a int, b int, c int, d int, e int);\ncreate table t3(a int, b int, c int, d int, e int);\ncreate table t4(a int, b int, c int, d int, e int);\ncreate table t5(a int, b int, c int, d int, e int);\nexplain select tmp4.b from t1 join t2 on t1.a = t2.b join t3 on t1.b = t3.b left join (select a, b, c, (row_number() over (partition by b order by e asc)) from t4) tmp4 on tmp4.b = t2.c and tmp4.c = t3.c join t5 on t5.a = t1.e;\n```\n\n### 2. What did you expect to see? (Required)\n\nShow the execution plan.\n\n### 3. What did you see instead (Required)\n\n```\nERROR 1105 (HY000): Can't find column test.t4.b in schema Column: [] Unique key: []\n```\n\n### 4. What is your TiDB version? (Required)\n\nv8.5.0, v9.0.0-beta.1\n\n",
+  "date": "2025-04-21T14:31:50Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "ClickHouse",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1(a Int32, b String, c Float64, d Date, e Int32);",
+    "CREATE TABLE t2(a Int32, b Int32, c Int32, d Int32, e Int32 DEFAULT 0);",
+    "INSERT INTO t1(a, b, c, d, e) VALUES (1, 'test', 1.5, '2023-01-01', 10);",
+    "INSERT INTO t2(a, b, c, d, e) VALUES (2, 1, 3, 4, 5);",
+    "EXPLAIN SELECT tmp4.b FROM t1 JOIN t2 ON t1.a = t2.b JOIN (SELECT a, b, c, row_number() OVER (PARTITION BY b ORDER BY e ASC) AS rn FROM t2) tmp4 ON tmp4.b = t1.b;"
+  ],
+  "key_bug_features": [
+    "Multiple joins cause column not found error in query"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+    "function": "uddi_discard_authToken",
+    "operator": "BETWEEN",
+    "sql_array": [
+        "CREATE TABLE authTokens (id INT PRIMARY KEY, token VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, user_id INT NOT NULL);",
+        "INSERT INTO authTokens (id, token, user_id) VALUES (1, 'tokenA', 101), (2, 'tokenB', 102), (3, NULL, 103), (4, '', 104), (5, 'tokenC', 105);",
+        "SELECT id, uddi_discard_authToken(token) AS discarded_token FROM authTokens WHERE token IS NOT NULL AND token BETWEEN 'tokenA' AND 'tokenC';",
+        "SELECT id, uddi_discard_authToken(token) AS discarded FROM authTokens WHERE id BETWEEN (SELECT MIN(id) FROM authTokens WHERE token IS NOT NULL) AND (SELECT MAX(id) FROM authTokens) AND NOT discarded IS NULL;",
+        "SELECT a.id, a.token FROM authTokens a JOIN (SELECT user_id, COUNT(*) AS token_count FROM authTokens GROUP BY user_id HAVING COUNT(*) > 1) b ON a.user_id = b.user_id WHERE a.token BETWEEN 'tokenA' AND 'tokenC';",
+        "SELECT id, SUM(CASE WHEN token IS NULL THEN 1 ELSE 0 END) AS null_count FROM authTokens GROUP BY id HAVING null_count BETWEEN 0 AND 2;",
+        "CREATE TABLE userActions (action_id INT, action_type VARCHAR(50), timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, auth_token VARCHAR(255), FOREIGN KEY (auth_token) REFERENCES authTokens(token));",
+        "INSERT INTO userActions (action_id, action_type, auth_token) VALUES (1, 'login', 'tokenA'), (2, 'logout', 'tokenB'), (3, 'update', NULL), (4, 'delete', '');",
+        "SELECT ua.action_type, COUNT(*) FROM userActions ua WHERE ua.auth_token BETWEEN (SELECT token FROM authTokens WHERE token IS NOT NULL LIMIT 1) AND (SELECT token FROM authTokens WHERE token IS NOT NULL ORDER BY token DESC LIMIT 1) GROUP BY ua.action_type;",
+        "SELECT a.id, uddi_discard_authToken(a.token) AS discarded_token FROM authTokens a WHERE (a.token IS NULL OR a.token = '') AND a.id BETWEEN 1 AND 5 ORDER BY a.id;"
+    ]
+}

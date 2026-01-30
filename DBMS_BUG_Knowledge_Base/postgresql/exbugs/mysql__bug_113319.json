@@ -1,0 +1,20 @@
+{
+  "url": "https://bugs.mysql.com/bug.php?id=113319",
+  "title": "unnesting scalar subquery containing count and having cond produces wrong result",
+  "description": "In the rule for unnesting scalar subqueries, if the subquery contains a count aggregate func and a having condition, an incorrect rewrite has occurred, resulting in an erroneous result set.\r\ne.g.\r\nset optimizer_switch='subquery_to_derived=on';\r\nselect (select count(1) as cnt from t2 where t2.a = t1.a  having cnt > 0) from t1;\r\n=>\r\nselect coalesce(`derived_1_2`.`Name_exp_1`,0) AS `(select count(1) as cnt from t2 where t2.a = t1.a  having cnt > 0)` from `test`.`t1` left join (/* select#2 */ select count(1) AS `Name_exp_1`,`test`.`t2`.`a` AS `Name_exp_2` from `test`.`t2` group by `Name_exp_2` having (`Name_exp_1` > 0)) `derived_1_2` on((`derived_1_2`.`Name_exp_2` = `test`.`t1`.`a`))\r\n\r\nMySQL cannot distinguish whether the NULL value of the input parameter for coalesce is produced by the having condition or is filled in when a left join fails to match. Simplistically turning it into 0 results in an incorrect result set.\nHow to repeat:\nCREATE TABLE t1(a INT);\r\nCREATE TABLE t2(a INT);\r\nINSERT INTO t1 VALUES(1), (2), (3), (4);\r\nINSERT INTO t2 VALUES(1), (2);\r\n\r\nset optimizer_switch='subquery_to_derived=off';\r\nselect (select count(1) as cnt from t2 where t2.a = t1.a  having cnt > 0) from t1;\r\n(select count(1) as cnt from t2 where t2.a = t1.a  having cnt > 0)\r\n1\r\n1\r\nNULL\r\nNULL\r\nset optimizer_switch='subquery_to_derived=on';\r\nselect (select count(1) as cnt from t2 where t2.a = t1.a  having cnt > 0) from t1;\r\n(select count(1) as cnt from t2 where t2.a = t1.a  having cnt > 0)\r\n1\r\n1\r\n0\r\n0",
+  "date": "2023-12-04 06:58:00",
+  "vulnerable_version": "mysql-8.0.33, 8.0.35, 8.1.0, 8.2.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "mysql",
+  "bug_features_seed": [
+    "CREATE TABLE t1(a INT NOT NULL, b VARCHAR(50));",
+    "CREATE TABLE t2(a INT, c DECIMAL(10,2) DEFAULT NULL);",
+    "INSERT INTO t1 VALUES(1, 'test1'), (2, 'test2'), (3, 'test3'), (4, 'test4');",
+    "INSERT INTO t2 VALUES(1, 10.50), (2, 20.75), (3, NULL);",
+    "SELECT COALESCE(derived.cnt, 0) FROM t1 LEFT JOIN (SELECT COUNT(1) AS cnt, t2.a FROM t2 GROUP BY t2.a HAVING COUNT(1) > 0) AS derived ON derived.a = t1.a;"
+  ],
+  "key_bug_features": [
+    "unnesting scalar subquery with count and having condition"
+  ]
+}

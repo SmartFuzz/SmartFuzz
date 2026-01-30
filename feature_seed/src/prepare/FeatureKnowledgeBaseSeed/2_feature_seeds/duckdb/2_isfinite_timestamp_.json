@@ -1,0 +1,10 @@
+CREATE TABLE test_timestamps (id INT, ts TIMESTAMP, vals LIST<INT>);
+INSERT INTO test_timestamps VALUES (1, TIMESTAMP '2023-01-01 00:00:00', [1, 2, 3]), (2, NULL, [4, 5, 6]), (3, TIMESTAMP '9999-12-31 23:59:59', []);
+SELECT id, isfinite(ts) AS is_finite, vals && [1, 4] AS overlaps FROM test_timestamps WHERE vals && [2, 3];
+SELECT id, ts, isfinite(ts) AS is_finite FROM test_timestamps WHERE ts IS NOT NULL AND vals && [1, 2, 3];
+SELECT id, isfinite(ts) AS is_finite FROM test_timestamps WHERE id IN (SELECT id FROM test_timestamps WHERE vals && [5, 6]);
+SELECT id, ts, vals, isfinite(ts), vals && [1, 2] FROM test_timestamps WHERE (isfinite(ts) IS TRUE) AND (vals IS NOT NULL OR ts IS NULL);
+CREATE TABLE temp_timestamps AS SELECT id, ts, vals FROM test_timestamps WHERE vals IS NOT NULL;
+SELECT id, COUNT(*), isfinite(ts) FROM temp_timestamps GROUP BY id HAVING COUNT(*) > 0 AND SUM(CASE WHEN vals && [1, 2] THEN 1 ELSE 0 END) > 0;
+SELECT DISTINCT id FROM (SELECT id, vals && [5] AS overlap_check FROM test_timestamps) AS check_overlap WHERE overlap_check IS NOT NULL;
+SELECT id, isfinite(ts) AS is_finite FROM test_timestamps WHERE ts < TIMESTAMP '2000-01-01' AND ts IS NOT NULL ORDER BY ts DESC;

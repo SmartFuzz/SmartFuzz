@@ -1,0 +1,18 @@
+CREATE TABLE visits (id Int32, session_duration Float32) ENGINE = MergeTree() ORDER BY id SAMPLE BY id;
+INSERT INTO visits VALUES (1, 30.5), (2, 25.0), (3, 45.2), (4, 15.0), (5, 62.0);
+SELECT count(*) * sample_factor FROM visits SAMPLE 0.1;
+SELECT avg(session_duration) FROM visits SAMPLE 0.1;
+SELECT sum(session_duration) * sample_factor FROM visits SAMPLE 10000000;
+SELECT session_duration FROM visits WHERE id IN (SELECT id FROM visits SAMPLE 0.5);
+SELECT v1.id, v1.session_duration, v2.session_duration FROM visits v1 JOIN visits v2 ON v1.id = v2.id SAMPLE 0.1;
+SELECT (SELECT count(*) FROM visits SAMPLE 0.1) * 10 AS approx_count;
+SELECT id, session_duration FROM visits SAMPLE 1/10 WHERE session_duration > (SELECT avg(session_duration) FROM visits SAMPLE 0.5);
+CREATE TABLE user_visits (user_id Int32, visit_id Int32) ENGINE = MergeTree() ORDER BY user_id SAMPLE BY visit_id;
+INSERT INTO user_visits VALUES (1, 1), (1, 2), (2, 3), (2, 4);
+SELECT count(DISTINCT user_id) * sample_factor FROM user_visits SAMPLE 0.1;
+SELECT user_id, count(visit_id) FROM user_visits GROUP BY user_id SAMPLE 0.2;
+CREATE TABLE aggregated_visits (visit_date Date, visit_count Int32) ENGINE = MergeTree() ORDER BY visit_date SAMPLE BY visit_count;
+INSERT INTO aggregated_visits VALUES ('2023-01-01', 100), ('2023-01-02', 200), ('2023-01-03', 300);
+SELECT visit_date, sum(visit_count) * sample_factor FROM aggregated_visits SAMPLE 0.05 GROUP BY visit_date;
+SELECT visit_date, count(*) FROM (SELECT * FROM aggregated_visits SAMPLE 0.1) GROUP BY visit_date;
+SELECT visit_date, count(*) AS total FROM aggregated_visits WHERE visit_count > 150 SAMPLE 0.05 GROUP BY visit_date;

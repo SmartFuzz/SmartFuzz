@@ -1,0 +1,30 @@
+{
+  "url": "https://github.com/openlink/virtuoso-opensource/issues/147",
+  "title": "Problem with negating IN expression in FILTER",
+  "vulnerable_database": "Virtuoso",
+  "date": "2014-03-05 10:44:24",
+  "vulnerable_version": "",
+  "description": "problem exist in 6.1.6 and 7.1, with slightly different symptoms\nTest data:\nPREFIX vocab: <http://example.com/vocab#>\n\nWITH <http://test.graph/>\nINSERT {\n  <http://example.com/Book/1> a vocab:Book;\n                              vocab:title \"Book 1\" .\n}\n\nOn 7.1/6.1.8\nFollowing query should should return 0 rows, returns 1:\nPREFIX vocab: <http://example.com/vocab#>\n\nSELECT DISTINCT ?me ?var3 DATATYPE(?var3) AS ?var4\nWHERE {\n  GRAPH <http://test.graph/> {\n    ?me vocab:title ?var3\n    FILTER (!(DATATYPE(?var3) IN (<http://www.w3.org/2001/XMLSchema#string>,<http://www.w3.org/2001/XMLSchema#float>)))\n  }\n}\n\nFollowing query should return 0 rows, does return 0 rows):\nPREFIX vocab: <http://example.com/vocab#>\n\nSELECT DISTINCT ?me ?var3 DATATYPE(?var3) AS ?var4\nWHERE {\n  GRAPH <http://test.graph/> {\n    ?me vocab:title ?var3\n    FILTER (!(DATATYPE(?var3) IN (<http://www.w3.org/2001/XMLSchema#string>)))\n  }\n}\n\nOn 6.1.6\nThis should return no results, but returns 1 result:\nPREFIX vocab: <http://example.com/vocab#>\n\nSELECT DISTINCT ?me ?var3\nWHERE {\n  GRAPH <http://test.graph/> {\n    ?me vocab:title ?var3\n    FILTER (!(?var3 IN (\"Book 1\", \"Book 2\")))\n  }\n}\n\nwhereas this correctly returns 0 rows\nPREFIX vocab: <http://example.com/vocab#>\n\nSELECT DISTINCT ?me ?var3\nWHERE {\n  GRAPH <http://test.graph/> {\n    ?me vocab:title ?var3\n    FILTER (!(?var3 IN (\"Book 1\")))\n  }\n}\n\nManually converting the ?a NOT IN (?b, ?c,..) to (?a != ?b AND ?a != ?b AND ?a != ...) works in any version, but obviously I shouldn't need to do that.",
+  "poc": [
+    "PREFIX vocab: <http://example.com/vocab#>\n\nWITH <http://test.graph/>\nINSERT {\n  <http://example.com/Book/1> a vocab:Book;\n                              vocab:title \"Book 1\" .\n}",
+    "PREFIX vocab: <http://example.com/vocab#>\n\nSELECT DISTINCT ?me ?var3 DATATYPE(?var3) AS ?var4\nWHERE {\n  GRAPH <http://test.graph/> {\n    ?me vocab:title ?var3\n    FILTER (!(DATATYPE(?var3) IN (<http://www.w3.org/2001/XMLSchema#string>,<http://www.w3.org/2001/XMLSchema#float>)))\n  }\n}",
+    "PREFIX vocab: <http://example.com/vocab#>\n\nSELECT DISTINCT ?me ?var3 DATATYPE(?var3) AS ?var4\nWHERE {\n  GRAPH <http://test.graph/> {\n    ?me vocab:title ?var3\n    FILTER (!(DATATYPE(?var3) IN (<http://www.w3.org/2001/XMLSchema#string>)))\n  }\n}",
+    "PREFIX vocab: <http://example.com/vocab#>\n\nSELECT DISTINCT ?me ?var3\nWHERE {\n  GRAPH <http://test.graph/> {\n    ?me vocab:title ?var3\n    FILTER (!(?var3 IN (\"Book 1\", \"Book 2\")))\n  }\n}",
+    "PREFIX vocab: <http://example.com/vocab#>\n\nSELECT DISTINCT ?me ?var3\nWHERE {\n  GRAPH <http://test.graph/> {\n    ?me vocab:title ?var3\n    FILTER (!(?var3 IN (\"Book 1\")))\n  }\n}"
+  ],
+  "key_bug_features": [
+    "Negating IN expression in FILTER returns incorrect results"
+  ],
+  "bug_feature_seed": [
+  "SPARQL PREFIX vocab: <http://example.com/vocab#> INSERT DATA { GRAPH <http://test.graph/> { <http://example.com/Book/1> a vocab:Book ; vocab:title \"Book 1\" . } };",
+  "SPARQL PREFIX vocab: <http://example.com/vocab#> SELECT ?me ?title FROM <http://test.graph/> WHERE { ?me vocab:title ?title };",
+  "SPARQL PREFIX vocab: <http://example.com/vocab#> SELECT ?me ?title (DATATYPE(?title) AS ?dt) FROM <http://test.graph/> WHERE { ?me vocab:title ?title };",
+  "SPARQL PREFIX vocab: <http://example.com/vocab#> SELECT ?me ?title FROM <http://test.graph/> WHERE { ?me vocab:title ?title FILTER (!(DATATYPE(?title) IN (<http://www.w3.org/2001/XMLSchema#string>, <http://www.w3.org/2001/XMLSchema#float>))) };",
+  "SPARQL PREFIX vocab: <http://example.com/vocab#> SELECT ?me ?title FROM <http://test.graph/> WHERE { ?me vocab:title ?title FILTER (!(DATATYPE(?title) IN (<http://www.w3.org/2001/XMLSchema#string>))) };",
+  "SPARQL PREFIX vocab: <http://example.com/vocab#> SELECT ?me ?title FROM <http://test.graph/> WHERE { ?me vocab:title ?title FILTER (!(?title IN (\"Book 1\", \"Book 2\"))) };",
+  "SPARQL PREFIX vocab: <http://example.com/vocab#> SELECT ?me ?title FROM <http://test.graph/> WHERE { ?me vocab:title ?title FILTER (!(?title IN (\"Book 1\"))) };",
+  "SPARQL PREFIX vocab: <http://example.com/vocab#> SELECT ?me ?title FROM <http://test.graph/> WHERE { ?me vocab:title ?title FILTER (?title != \"Book 1\" && ?title != \"Book 2\") };",
+  "SPARQL PREFIX vocab: <http://example.com/vocab#> SELECT ?me ?title FROM <http://test.graph/> WHERE { ?me vocab:title ?title FILTER (?title != \"Book 1\") };"
+]
+
+}

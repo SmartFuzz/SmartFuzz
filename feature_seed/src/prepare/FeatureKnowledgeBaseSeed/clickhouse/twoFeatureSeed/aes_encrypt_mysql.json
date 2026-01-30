@@ -1,0 +1,16 @@
+{
+    "function": "aes_encrypt_mysql",
+    "operator": "EXISTS",
+    "sql_array": [
+        "CREATE TABLE test_encryption (id UInt32, plaintext String, encryption_key String, iv String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_encryption VALUES (1, 'TestData1', '1234567891012131', 'iv_example1'), (2, 'TestData2', '12345678910121314', 'iv_example2');",
+        "SELECT EXISTS(SELECT * FROM (SELECT hex(aes_encrypt_mysql('aes-128-cbc', plaintext, encryption_key, iv)) AS ciphertext FROM test_encryption)) AS has_ciphertext;",
+        "SELECT count() FROM test_encryption WHERE EXISTS(SELECT plaintext FROM test_encryption WHERE hex(aes_encrypt_mysql('aes-256-ofb', plaintext, encryption_key, iv)) = '0x24E9E4966469');",
+        "SELECT id, hex(aes_encrypt_mysql('aes-256-ecb', plaintext, encryption_key)) FROM test_encryption WHERE EXISTS(SELECT * FROM numbers(5) WHERE number = id % 5);",
+        "CREATE TABLE temp_keys (key_id UInt32, key_value String) ENGINE = Memory;",
+        "INSERT INTO temp_keys VALUES (1, '1234567891012131'), (2, '12345678910121314');",
+        "SELECT EXISTS(SELECT 1 FROM temp_keys WHERE EXISTS(SELECT hex(aes_encrypt_mysql('aes-192-cbc', 'TestData', key_value, 'iv_temp')) FROM test_encryption));",
+        "WITH (SELECT hex(aes_encrypt_mysql('aes-256-ecb', 'TestMessage', encryption_key)) AS encrypted_message FROM test_encryption) AS encrypted_data SELECT EXISTS(SELECT * FROM encrypted_data WHERE encrypted_message IS NOT NULL);",
+        "SELECT COUNT(*) FROM test_encryption WHERE EXISTS(SELECT * FROM (SELECT id FROM test_encryption WHERE LENGTH(plaintext) < 10) AS subquery WHERE subquery.id = test_encryption.id);"
+    ]
+}

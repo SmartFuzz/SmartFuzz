@@ -1,0 +1,11 @@
+CREATE TABLE test_package (id INT PRIMARY KEY, name VARCHAR(100), version VARCHAR(10), created_at TIMESTAMP);
+INSERT INTO test_package (id, name, version, created_at) VALUES (1, 'packageA', '1.0.0', NOW());
+INSERT INTO test_package (id, name, version, created_at) VALUES (2, 'packageB', '1.0.1', NOW());
+CREATE TABLE test_package_diff (id INT, package_id INT, diff_element VARCHAR(255));
+INSERT INTO test_package_diff (id, package_id, diff_element) VALUES (1, 1, 'altered_column');
+INSERT INTO test_package_diff (id, package_id, diff_element) VALUES (2, 2, 'missing_column');
+SELECT DISTINCT p.name FROM test_package p JOIN test_package_diff d ON p.id = d.package_id WHERE p.version != '1.0.0';
+SELECT p.name, (SELECT COUNT(*) FROM test_package_diff d WHERE d.package_id = p.id) AS difference_count FROM test_package p;
+SELECT p.name FROM test_package p WHERE EXISTS (SELECT 1 FROM test_package_diff d WHERE d.package_id = p.id) AND p.version > '1.0.0';
+SELECT p.id, p.name, (SELECT COUNT(*) FROM test_package_diff d WHERE d.package_id = p.id AND d.diff_element LIKE '%column%') AS alteration_count FROM test_package p;
+CREATE VIEW package_check AS SELECT p.name, d.diff_element FROM test_package p LEFT JOIN test_package_diff d ON p.id = d.package_id WHERE d.diff_element IS NOT NULL;

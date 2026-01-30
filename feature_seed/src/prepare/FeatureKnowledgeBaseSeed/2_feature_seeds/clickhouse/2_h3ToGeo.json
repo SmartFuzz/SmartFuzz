@@ -1,0 +1,11 @@
+CREATE TABLE geo_data (h3Index UInt64, description String) ENGINE = MergeTree() ORDER BY h3Index;
+INSERT INTO geo_data VALUES (644325524701193974, 'Test Location 1');
+INSERT INTO geo_data VALUES (644325524701193973, 'Test Location 2');
+SELECT h3ToGeo(h3Index) AS coordinates FROM geo_data WHERE h3Index IN (SELECT h3Index FROM geo_data WHERE description == 'Test Location 1');
+SELECT h3ToGeo(h3Index) AS coordinates FROM geo_data WHERE h3Index == (SELECT MAX(h3Index) FROM geo_data);
+CREATE TABLE temp_geo (lon Float64, lat Float64) ENGINE = Memory;
+INSERT INTO temp_geo SELECT h3ToGeo(h3Index) FROM geo_data;
+SELECT lon, lat FROM temp_geo GROUP BY lon, lat HAVING lon == (SELECT AVG(lon) FROM temp_geo);
+SELECT h3ToGeo(h3Index) AS coordinates FROM geo_data WHERE h3Index == (SELECT MIN(h3Index) FROM geo_data WHERE description IS NOT NULL);
+SELECT lon, lat FROM temp_geo WHERE lon IS NOT NULL AND lat IS NOT NULL ORDER BY lon DESC;
+SELECT h3ToGeo(h3Index) AS coordinates, CASE WHEN h3Index == 644325524701193974 THEN 'Location 1' ELSE 'Other' END AS location_type FROM geo_data;

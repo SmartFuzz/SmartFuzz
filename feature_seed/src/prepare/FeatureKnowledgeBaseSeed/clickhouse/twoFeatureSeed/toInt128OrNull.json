@@ -1,0 +1,16 @@
+{
+    "function": "toInt128OrNull",
+    "operator": "x",
+    "sql_array": [
+        "CREATE TABLE test_table (id Int32, value String) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO test_table VALUES (1, '123'), (2, 'abc'), (3, '-128'), (4, '170141183460469231731687303715884105727'), (5, '0'), (6, 'Inf');",
+        "SELECT id, value, toInt128OrNull(value) AS converted_value, multiIf(converted_value IS NULL, 'Conversion Failed', converted_value < 0, 'Negative', converted_value = 0, 'Zero', 'Positive') AS status FROM (SELECT id, value FROM test_table) WHERE value != '';",
+        "SELECT id, value, multiIf(toInt128OrNull(value) IS NULL, 'Invalid', toInt128OrNull(value) < 0, 'Negative', 'Valid') AS validation FROM test_table HAVING validation = 'Invalid';",
+        "SELECT id, sum(toInt128OrNull(value)) AS total_sum FROM (SELECT id, value FROM test_table WHERE toInt128OrNull(value) IS NOT NULL GROUP BY id) GROUP BY id HAVING total_sum > 0;",
+        "WITH (SELECT count(*) FROM test_table WHERE toInt128OrNull(value) IS NOT NULL) AS valid_count SELECT id, value, multiIf(valid_count > 0, toInt128OrNull(value), 0) AS safe_value FROM test_table;",
+        "CREATE TEMPORARY TABLE temp_table (num String);",
+        "INSERT INTO temp_table VALUES ('123'), ('abc'), ('456'), ('-128');",
+        "SELECT num, toInt128OrNull(num) AS converted FROM temp_table WHERE multiIf(num = '', 1, 0) = 0;",
+        "SELECT t1.id, t2.num, multiIf(toInt128OrNull(t2.num) IS NULL, 'Invalid', 'Valid') AS validity FROM (SELECT id FROM test_table) AS t1 JOIN temp_table AS t2 ON t1.id = t2.num;"
+    ]
+}

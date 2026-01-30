@@ -1,0 +1,17 @@
+{
+    "function": "xml_auto",
+    "operator": "bif:st_within",
+    "sql_array": [
+        "CREATE TABLE spatial_data (id INT PRIMARY KEY, location GEOMETRY, name VARCHAR(100));",
+        "INSERT INTO spatial_data VALUES (1, ST_POINT(10, 10), 'Location A'), (2, ST_POINT(20, 20), 'Location B'), (3, ST_POINT(15, 15), 'Location C');",
+        "CREATE PROCEDURE generate_xml AS BEGIN DECLARE st ANY; SET @query = 'SELECT name FROM spatial_data WHERE bif:st_within(location, ST_MAKEBOX(ST_POINT(10, 10), ST_POINT(20, 20))) FOR XML'; st := string_output(); xml_auto(@query, vector(), st); RESULT(string_output_string(st)); END;",
+        "SELECT id, (CASE WHEN location IS NULL THEN 'No Location' ELSE 'Has Location' END) AS location_status FROM spatial_data;",
+        "SELECT id, COUNT(*) FROM spatial_data GROUP BY (CASE WHEN name IS NULL THEN 'Unnamed' ELSE name END) HAVING COUNT(*) > 0;",
+        "SELECT s1.name FROM spatial_data s1 JOIN spatial_data s2 ON bif:st_within(s1.location, s2.location) WHERE s1.id <> s2.id;",
+        "SELECT DISTINCT st_astext(location) FROM spatial_data WHERE bif:st_within(location, ST_MAKEBOX(ST_POINT(0, 0), ST_POINT(30, 30))) FOR XML;",
+        "CREATE TABLE metrics (metric_id INT PRIMARY KEY, value FLOAT, timestamp TIMESTAMP);",
+        "INSERT INTO metrics VALUES (1, 0.1, '2023-01-01 00:00:00'), (2, NULL, '2023-01-02 00:00:00'), (3, 2.5, '2023-01-03 00:00:00');",
+        "SELECT AVG(value) as average_value, MAX(value) as max_value FROM metrics WHERE value IS NOT NULL GROUP BY timestamp;",
+        "CREATE PROCEDURE fuzz_test AS BEGIN DECLARE st ANY; SET @fuzz_query = 'SELECT value FROM metrics WHERE value > ? AND timestamp < ? FOR XML'; st := string_output(); xml_auto(@fuzz_query, vector(1, '2023-01-03 00:00:00'), st); RESULT(string_output_string(st)); END;"
+    ]
+}

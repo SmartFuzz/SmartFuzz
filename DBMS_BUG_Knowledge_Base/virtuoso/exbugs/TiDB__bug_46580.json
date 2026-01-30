@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/46580",
+  "title": "Uncertain Results by MERGE_JOIN",
+  "description": "## Bug Report\r\n\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\n```sql\r\nCREATE TABLE t0(c0 INT);\r\nCREATE TABLE t1(c0 BOOL, c1 BOOL);\r\nINSERT INTO t1 VALUES (false, true);\r\nINSERT INTO t1 VALUES (true, true);\r\nCREATE VIEW v0(c0, c1, c2) AS SELECT t1.c0, LOG10(t0.c0), t1.c0 FROM t0, t1;\r\nINSERT INTO t0(c0) VALUES (3);\r\n\r\nSELECT /*+ MERGE_JOIN(t1, t0, v0)*/v0.c2, t1.c0 FROM v0,  t0 CROSS JOIN t1 ORDER BY -v0.c1;\r\n```\r\n\r\n### 2. What did you expect to see? (Required)\r\n\r\n### 3. What did you see instead (Required)\r\nExecuting the above test case multiple times and the results are not the same.\r\nSometimes it returns:\r\n```\r\nc2      c0\r\n1       0\r\n0       0\r\n1       1\r\n0       1\r\n```\r\nSometimes it returns empty: {}.\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n| Release Version: v7.4.0-alpha-239-g4f2f5e1061\r\nEdition: Community\r\nGit Commit Hash: 4f2f5e1061ddc55a2dd349e1df67847c0edd1f23\r\nGit Branch: master\r\nUTC Build Time: 2023-08-30 12:06:00\r\nGoVersion: go1.21.0\r\nRace Enabled: false\r\nCheck Table Before Drop: false\r\nStore: unistore |\r\n\r\n\r\n",
+  "date": "2023-09-01T02:55:34Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "virtuoso",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t2(c0 INT NOT NULL, c1 FLOAT DEFAULT 0.0);",
+    "INSERT INTO t2(c0, c1) VALUES (1, NULL);",
+    "CREATE VIEW v1 AS SELECT c0, c1 FROM t2 WHERE c1 IS NOT NULL;",
+    "INSERT INTO t2(c0, c1) VALUES (2, 2.5);",
+    "SELECT v1.c0, t1.c0 FROM v1 JOIN t1 ON v1.c0 = 1 ORDER BY v1.c0 DESC;"
+  ],
+  "key_bug_features": [
+    "Inconsistent results with MERGE_JOIN on view and tables"
+  ]
+}

@@ -1,0 +1,10 @@
+CREATE TABLE test_strings (id UInt32, str1 String, str2 String);
+INSERT INTO test_strings VALUES (1, '', 'nonempty'), (2, 'test', NULL), (3, 'clickhouse', 'houseclick'), (4, 'data', 'data');
+SELECT id, stringJaccardIndex(str1, str2) AS jaccard_index FROM test_strings WHERE stringJaccardIndex(str1, str2) > 0.5 OR str1 = '';
+SELECT id, str1, str2, (SELECT stringJaccardIndex(str1, str2)) AS inner_jaccard, inner_jaccard > 0.5 AS jaccard_high FROM (SELECT str1, str2 FROM test_strings) WHERE str1 IS NOT NULL;
+SELECT id, (SELECT stringJaccardIndex(str1, str2) FROM test_strings WHERE str1 LIKE 'c%') AS jaccard_value FROM test_strings HAVING jaccard_value OR str2 IS NULL;
+CREATE TABLE test_edges (id UInt32, str1 Nullable(String), str2 Nullable(String) DEFAULT NULL);
+INSERT INTO test_edges VALUES (1, 'abc', 'def'), (2, 'xyz', NULL), (3, NULL, 'pqr'), (4, NULL, NULL);
+SELECT id, stringJaccardIndex(COALESCE(str1, 'empty'), COALESCE(str2, 'empty')) AS jaccard_index FROM test_edges WHERE jaccard_index > 0 OR str1 IS NULL;
+SELECT id, stringJaccardIndex(toString(number), str1) FROM (SELECT number FROM numbers(10)) JOIN test_strings ON stringJaccardIndex(toString(number), str1) > 0.1 OR str2 IS NOT NULL;
+WITH (SELECT stringJaccardIndex('first', 'second') AS comparison) AS comp SELECT id, comparison, comparison > 0.1 AS is_similar FROM test_strings WHERE is_similar OR str1 = 'data';

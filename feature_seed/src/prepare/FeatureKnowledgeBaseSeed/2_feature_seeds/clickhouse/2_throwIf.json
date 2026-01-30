@@ -1,0 +1,15 @@
+CREATE TABLE test_table (id UInt32, values Array(Int32), number Int32 DEFAULT 0);
+INSERT INTO test_table VALUES (1, [1, 2, 3, 4, 5], 2);
+INSERT INTO test_table VALUES (2, [6, 7, 8, 9, 10], 3);
+INSERT INTO test_table VALUES (3, [], 1);
+INSERT INTO test_table VALUES (4, [NULL], 0);
+SELECT throwIf(arrayElement(values, 1) = 2, 'Value is 2') FROM test_table WHERE id = 1;
+SELECT throwIf(arrayElement(values, 2) = 10, 'Value is 10', 100) FROM test_table WHERE number = 2;
+SELECT id, throwIf(arrayElement(values, id) IS NULL, 'Element is NULL') FROM test_table WHERE id < 5;
+SELECT COUNT(*), throwIf(COUNT() = 0, 'No records found') FROM (SELECT id FROM test_table WHERE arrayElement(values, 3) IS NOT NULL) AS sub;
+SELECT id, throwIf(arrayElement(values, number + 2) IS NULL OR number < 0, 'Invalid access or negative number') FROM test_table;
+SELECT id FROM (SELECT id, throwIf(number = 3,. 'Should not be 3') FROM test_table) AS checked_ids WHERE checked_ids.id IS NOT NULL ORDER BY id DESC;
+SELECT id, count(*) FROM test_table GROUP BY id HAVING throwIf(count(*) > 1, 'Duplicated ID');
+SELECT throwIf(arrayElement(values, 3) IS NOT NULL AND values[1] = 0, 'Unexpected Zero at first index') FROM test_table;
+CREATE TABLE temp_table AS test_table ENGINE = Memory;
+INSERT INTO temp_table SELECT id, values, number FROM test_table WHERE throwIf(arrayLength(values) = 0, 'Empty array found');

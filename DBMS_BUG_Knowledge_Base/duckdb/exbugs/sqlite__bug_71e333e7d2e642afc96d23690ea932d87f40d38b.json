@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/71e333e7d2",
+  "title": "COLLATE operator inside CHECK constraint fails in shared-cache mode",
+  "description": "drh added on 2012-12-06 15:05:48:\nThe following script, run in \"testfixture\", fails, possibly with a segfault,\nwhen db2 tries to access a collating sequence function for db1 after db1 has\nbeen closed:\nsqlite3_enable_shared_cache 1\nfile delete -force test.db\nsqlite3 db1 test.db\nsqlite3 db2 test.db\nset counter 0\nproc mycollate_db1 {a b} {incr ::counter; string compare $a $b}\nproc mycollate_db2 {a b} {string compare $a $b}\ndb1 collate mycollate mycollate_db1\ndb2 collate mycollate mycollate_db2\ndb1 eval {\n  CREATE TABLE t1(a, CHECK (a COLLATE mycollate IN ('one', 'two', 'three')));\n  INSERT INTO t1 VALUES('one');\n}\ndb1 close\nputs counter=$counter ;# expect to see mycollate_db1 called several times\ndb2 eval {INSERT INTO t1 VALUES('two');}\ndb2 close\nputs counter=$counter ;# No additional calls to mycollate_db1",
+  "date": "2012-12-06 15:05:4812.68 years ago",
+  "vulnerable_version": "3.7.15-beta",
+  "poc_type": "sql_text",
+  "vulnerable_database": "duckdb",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(a VARCHAR, CHECK (a IN ('one', 'two', 'three')));",
+    "CREATE TABLE t2(b INTEGER, c VARCHAR NOT NULL DEFAULT 'default');",
+    "INSERT INTO t1 VALUES('one');",
+    "INSERT INTO t2(b, c) VALUES(1, NULL);",
+    "INSERT INTO t1 SELECT 'two' WHERE NOT EXISTS (SELECT 1 FROM t2 WHERE b = 1);"
+  ],
+  "key_bug_features": [
+    "COLLATE operator in CHECK constraint with shared-cache mode"
+  ]
+}

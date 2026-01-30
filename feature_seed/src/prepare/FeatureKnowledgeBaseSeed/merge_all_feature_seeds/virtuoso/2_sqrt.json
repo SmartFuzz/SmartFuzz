@@ -1,0 +1,11 @@
+CREATE TABLE numbers (id INTEGER PRIMARY KEY, value INTEGER NOT NULL, computed_value DOUBLE PRECISION);
+INSERT INTO numbers (value) VALUES (0), (1), (4), (9), (16), (25), (36), (49), (64), (81), (100);
+INSERT INTO numbers (value) VALUES (NULL), (-1), (2), (3), (5), (8), (10);
+CREATE TABLE calculations (num_id INTEGER, sqrt_value DOUBLE PRECISION, modulo_result INTEGER, FOREIGN KEY (num_id) REFERENCES numbers(id));
+INSERT INTO calculations (num_id, sqrt_value, modulo_result) SELECT id, sqrt(value), sqrt(value) % 3 FROM numbers WHERE value IS NOT NULL;
+SELECT num.id, num.value, calc.sqrt_value, calc.modulo_result FROM numbers num LEFT JOIN calculations calc ON num.id = calc.num_id WHERE calc.modulo_result IS NULL OR calc.modulo_result > 0 ORDER BY num.value;
+SELECT DISTINCT num.value, sqrt(num.value) AS sqrt_value, (sqrt(num.value) + num.value) % 5 AS combined_mod FROM numbers num WHERE num.value IS NOT NULL AND num.value >= 0 HAVING combined_mod > 1;
+WITH CTE AS (SELECT num.id, sqrt(num.value) AS sqrt_value, num.value AS original_value FROM numbers num WHERE num.value IS NOT NULL AND num.value >= 0) SELECT CTE.id, CTE.sqrt_value, CTE.original_value, CTE.sqrt_value % 2 AS even_check FROM CTE WHERE CTE.sqrt_value IS NOT NULL;
+SELECT COUNT(*), AVG(sqrt(value)) FROM numbers WHERE value IS NOT NULL GROUP BY value % 2 HAVING AVG(sqrt(value)) > 2;
+UPDATE calculations SET sqrt_value = sqrt(value), modulo_result = sqrt(value) % (SELECT AVG(value) FROM numbers WHERE value IS NOT NULL) WHERE num_id IN (SELECT id FROM numbers WHERE value IS NOT NULL);
+SELECT A.id, (A.value + COALESCE(B.sqrt_value, 0)) % 10 AS total_mod FROM numbers A LEFT JOIN (SELECT num_id, sqrt_value FROM calculations) B ON A.id = B.num_id WHERE A.value < 50 ORDER BY total_mod ASC;

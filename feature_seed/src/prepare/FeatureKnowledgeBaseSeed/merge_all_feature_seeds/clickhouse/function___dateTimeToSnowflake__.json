@@ -1,0 +1,12 @@
+CREATE TABLE test_dates (event_time DateTime, event_id UInt64);
+INSERT INTO test_dates VALUES (toDateTime('2021-08-15 18:57:56', 'Asia/Shanghai'), 1);
+INSERT INTO test_dates VALUES (toDateTime('2022-01-01 00:00:00', 'Asia/Shanghai'), 2);
+INSERT INTO test_dates VALUES (toDateTime('2023-10-01 23:59:59', 'Asia/Shanghai'), 3);
+WITH toDateTime('2021-08-15 18:57:56', 'Asia/Shanghai') AS dt SELECT dateTimeToSnowflake(dt);
+WITH (SELECT event_time FROM test_dates WHERE event_id = 1) AS dt SELECT dateTimeToSnowflake(dt);
+WITH (SELECT COUNT(*) FROM test_dates) AS total_events, toDateTime('2022-01-01 00:00:00', 'Asia/Shanghai') AS dt SELECT dateTimeToSnowflake(dt) * total_events;
+WITH dt AS (SELECT event_time FROM test_dates WHERE event_id = 2) SELECT dateTimeToSnowflake((SELECT MIN(dt) FROM dt));
+SELECT dateTimeToSnowflake(toDateTime(event_time, 'Asia/Shanghai')) FROM test_dates WHERE event_time < toDateTime('2023-01-01 00:00:00', 'Asia/Shanghai');
+CREATE TABLE snowflake_ids AS SELECT dateTimeToSnowflake(toDateTime(event_time, 'Asia/Shanghai')) AS snowflake_id FROM test_dates;
+WITH (SELECT dateTimeToSnowflake(toDateTime(event_time, 'Asia/Shanghai')) FROM test_dates) AS ids SELECT SUM(ids);
+CREATE TABLE event_summary AS SELECT event_id, dateTimeToSnowflake(event_time) AS snowflake_id FROM test_dates GROUP BY event_id;

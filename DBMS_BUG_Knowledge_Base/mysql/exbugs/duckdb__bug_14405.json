@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/duckdb/duckdb/issues/14405",
+  "title": "`map_concat` does not handle a value with type `TIMESTAMP WITH TIME ZONE` in a `on conflict ... do update set`",
+  "description": "### What happens?\r\n\r\nA seemingly valid query, with a column as `map<VARCHAR, TIMESTAMP WITH TIME ZONE>` is rejected when used with a `on conflict ... do update` clause.\r\n\r\n> Invalid Input Error: 'value' type of map differs between arguments, expected 'MAP(INTEGER, TIMESTAMP WITH TIME ZONE)', found 'MAP(VARCHAR, VARCHAR)' instead\r\n\r\n### To Reproduce\r\n\r\nI reproduce with:\r\n\r\n```sql\r\nCREATE TABLE map_ts (\r\n      key VARCHAR PRIMARY KEY,\r\n      ts TIMESTAMPTZ,\r\n      int INTEGER\r\n      ,map MAP(INTEGER, TIMESTAMPTZ)\r\n);\r\n```\r\n\r\nthen\r\n\r\n```sql\r\n-- OK\r\ninsert into map_ts (key, ts) values ('someKey', '1992-09-20 11:30:00.123456789') ;\r\n-- KO\r\ninsert into map_ts (key, ts)  values ('someKey', '1992-09-20 11:30:00.123456789')  on conflict (key) do update set map = map_concat(EXCLUDED.map, MAP(['some_property'], ['1992-09-20 11:30:00.123456789']));\r\n```\r\n\r\n### OS:\r\n\r\nMacos\r\n\r\n### DuckDB Version:\r\n\r\n1.1.1\r\n\r\n### DuckDB Client:\r\n\r\nJava\r\n\r\n### Hardware:\r\n\r\n_No response_\r\n\r\n### Full Name:\r\n\r\nBenoit Chatain Lacelle\r\n\r\n### Affiliation:\r\n\r\nSolven.eu\r\n\r\n### What is the latest build you tested with? If possible, we recommend testing with the latest nightly build.\r\n\r\nI have tested with a stable release\r\n\r\n### Did you include all relevant data sets for reproducing the issue?\r\n\r\nYes\r\n\r\n### Did you include all code required to reproduce the issue?\r\n\r\n- [X] Yes, I have\r\n\r\n### Did you include all relevant configuration (e.g., CPU architecture, Python version, Linux distribution) to reproduce the issue?\r\n\r\n- [X] Yes, I have",
+  "date": "2024-10-16 20:09:40",
+  "vulnerable_version": "",
+  "poc_type": "sql_text",
+  "vulnerable_database": "mysql",
+  "source_database": "duckdb",
+  "bug_features_seed": [
+    "CREATE TABLE map_ts_2 (key VARCHAR(255) PRIMARY KEY, ts TIMESTAMP, int INT, map JSON);",
+    "INSERT INTO map_ts_2 (key, ts) VALUES ('key1', '2023-01-01 10:00:00');",
+    "INSERT INTO map_ts_2 (key, ts) VALUES ('key1', '2023-01-01 10:00:00') ON DUPLICATE KEY UPDATE map = JSON_MERGE(map, JSON_OBJECT('1', '2023-01-01 10:00:00'));",
+    "INSERT INTO map_ts_2 (key, ts) VALUES ('key2', '2023-02-01 10:00:00');",
+    "INSERT INTO map_ts_2 (key, ts) VALUES ('key2', '2023-02-01 10:00:00') ON DUPLICATE KEY UPDATE map = JSON_MERGE(map, JSON_OBJECT('2', '2023-02-01 10:00:00'));"
+  ],
+  "key_bug_features": [
+    "map_concat fails with TIMESTAMP WITH TIME ZONE type"
+  ]
+}

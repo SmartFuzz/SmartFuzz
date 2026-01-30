@@ -1,0 +1,10 @@
+CREATE TABLE test_tuples (id UInt32, values Tuple(Int32, Float64));
+INSERT INTO test_tuples VALUES (1, (10, 20.5)), (2, (0, 0)), (3, (5, -15.0));
+SELECT id, tupleDivideByNumber(values, 0) AS divided_values FROM test_tuples WHERE id = 2;
+SELECT id, (values.1 > 0 ? tupleDivideByNumber(values, values.1) : (0, 0)) AS safe_divided_values FROM test_tuples;
+SELECT id, (case when values.2 IS NULL then tupleDivideByNumber(values, 10) else tupleDivideByNumber(values, values.2) end) AS conditional_divide FROM test_tuples WHERE (values.1 ? (values.2 > 0) : (true)) = true;
+SELECT id, (tupleDivideByNumber((values.1, values.2), 5) ? (values.1 + values.2) : (0, 0)) AS combined_results FROM test_tuples GROUP BY id HAVING combined_results.1 > 0;
+CREATE TABLE test_joined (id UInt32, other_values Tuple(UInt8, String));
+INSERT INTO test_joined VALUES (1, (255, 'test')), (2, (128, 'edge')), (3, (0, 'null'));
+SELECT t.id, t.values, j.other_values, tupleDivideByNumber(t.values, j.other_values.1) AS results FROM test_tuples AS t JOIN test_joined AS j ON (t.id = j.id ? t.values.1 : 0) WHERE tupleDivideByNumber(t.values, 1) IS NOT NULL ORDER BY results.1;
+SELECT id, (tupleDivideByNumber(values, (SELECT avg(other_values.1) FROM test_joined)) ? (1, 10) : (0, 0)) AS division_result FROM test_tuples;

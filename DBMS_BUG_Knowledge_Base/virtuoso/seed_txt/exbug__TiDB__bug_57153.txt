@@ -1,0 +1,5 @@
+CREATE TABLE test_cache (cache_key VARCHAR(512) NOT NULL, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, expired_at TIMESTAMP AS (CASE WHEN expires > 0 THEN updated_at + INTERVAL expires SECOND ELSE updated_at + INTERVAL 99 YEAR END), expires INTEGER, PRIMARY KEY (cache_key), INDEX idx_expired_at (expired_at));
+INSERT INTO test_cache (cache_key, expires) VALUES ('2023-01-01 10:00:00', 120) ON CONFLICT (cache_key) DO UPDATE SET expires = test_cache.expires + 2;
+INSERT INTO test_cache (cache_key, expires) VALUES ('2023-01-01 10:00:00', NULL) ON CONFLICT (cache_key) DO UPDATE SET expires = COALESCE(test_cache.expires, 0) + 1;
+SELECT * FROM test_cache WHERE expired_at < NOW();
+DELETE FROM test_cache WHERE cache_key = '2023-01-01 10:00:00' AND expires IS NOT NULL;

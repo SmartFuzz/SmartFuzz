@@ -1,0 +1,22 @@
+{
+    "function": "readWKTPoint",
+    "operator": "IS NULL",
+    "sql_array": [
+        "CREATE TABLE geo_test (id UInt32, location Nullable(String), value Float32);",
+        "INSERT INTO geo_test VALUES (1, 'POINT (1 2)', 10.5), (2, NULL, NULL), (3, 'POINT (-1 -2)', 20.0);",
+        "SELECT id, readWKTPoint(location) AS point, value FROM geo_test WHERE location IS NULL;",
+        "SELECT id, readWKTPoint(location) AS point FROM geo_test WHERE readWKTPoint(location) IS NULL;",
+        "SELECT id, readWKTPoint(location) AS point FROM geo_test WHERE value IS NULL AND location IS NOT NULL;",
+        "SELECT id, readWKTPoint(location) AS point, value FROM geo_test WHERE value > 0 OR location IS NULL;",
+        "WITH (SELECT id FROM geo_test WHERE location IS NOT NULL) AS non_null_ids SELECT readWKTPoint(location) FROM geo_test WHERE id IN non_null_ids;",
+        "CREATE TABLE all_test (id UInt32, location Nullable(String), value Float64) ENGINE = MergeTree() ORDER BY id;",
+        "INSERT INTO all_test VALUES (1, 'POINT (0 0)', 1.55), (2, 'POINT (100 200)', 2.75), (3, NULL, NULL);",
+        "SELECT a.id, readWKTPoint(a.location) AS point_a, readWKTPoint(b.location) AS point_b FROM geo_test AS a JOIN all_test AS b ON a.id = b.id WHERE a.location IS NOT NULL OR b.value IS NULL;",
+        "SELECT id, readWKTPoint(location) AS point FROM geo_test GROUP BY id HAVING IS NULL(value) = 1;",
+        "SELECT id, SUM(value) OVER (PARTITION BY value ORDER BY id) AS running_total FROM geo_test WHERE readWKTPoint(location) IS NOT NULL;",
+        "SELECT id, readWKTPoint(location) AS point FROM geo_test WHERE readWKTPoint(location) IS NOT NULL AND (location IS NOT NULL OR value < 0.5);",
+        "ALTER TABLE all_test ADD COLUMN new_value Nullable(Int32);",
+        "UPDATE all_test SET new_value = 1 WHERE value IS NOT NULL;",
+        "DROP TABLE IF EXISTS geo_test;"
+    ]
+}

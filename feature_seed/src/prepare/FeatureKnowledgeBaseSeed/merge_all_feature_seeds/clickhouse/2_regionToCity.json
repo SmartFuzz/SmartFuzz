@@ -1,0 +1,10 @@
+CREATE TABLE geolocation (id UInt32, region_id UInt32, population UInt32, name String, area Float32);
+INSERT INTO geolocation VALUES (1, 12345, 100000, 'CityA', 10.0), (2, 67890, 200000, 'CityB', 20.5);
+SELECT regionToCity(-region_id) AS city_id, name FROM geolocation WHERE population > 50000 HAVING city_id != 0;
+SELECT id, regionToCity(number::UInt32) AS city_id, regionToCity(-region_id) AS neg_city_id FROM geolocation WHERE neg_city_id = 0 OR NOT neg_city_id IS NULL;
+WITH (SELECT AVG(area) FROM geolocation) AS average_area SELECT regionToCity(id) AS city_id, -population / average_area AS neg_population_ratio FROM geolocation HAVING city_id > 0;
+SELECT DISTINCT regionToCity(IF(region_id IS NULL, 0, region_id)), arrayJoin([population, population + 1000]) AS population_estimations FROM geolocation GROUP BY city_id;
+SELECT regionToCity(number::UInt32) AS city_id, id FROM (SELECT id, region_id FROM geolocation WHERE area > (SELECT AVG(area) FROM geolocation)) AS geos WHERE region_id NOT IN (SELECT region_id FROM geolocation WHERE population < 1000);
+CREATE TABLE test_region (test_id UInt32, region UInt32);
+INSERT INTO test_region VALUES (1, 12345), (2, 0), (3, NULL);
+SELECT region, -regionToCity(IF(region IS NULL, 0, region)) AS neg_city_id FROM test_region WHERE neg_city_id != 0;

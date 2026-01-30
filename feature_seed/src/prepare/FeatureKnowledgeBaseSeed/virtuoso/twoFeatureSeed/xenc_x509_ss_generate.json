@@ -1,0 +1,19 @@
+{
+    "function": "xenc_x509_ss_generate",
+    "operator": "OR",
+    "sql_array": [
+        "CREATE TABLE certificates (id SERIAL PRIMARY KEY, private_key TEXT, common_name TEXT, email TEXT);",
+        "INSERT INTO certificates (private_key, common_name, email) VALUES ('id_rsa', 'Example CA', 'ca@example.com');",
+        "SELECT xenc_x509_ss_generate(private_key, 1, 365, vector('C', common_name, 'emailAddress', email)) AS cert FROM certificates WHERE private_key IS NOT NULL;",
+        "CREATE TABLE keys (user_id INT, key_name TEXT, key_data TEXT, FOREIGN KEY (user_id) REFERENCES users(id));",
+        "INSERT INTO keys (user_id, key_name, key_data) VALUES (1, 'id_rsa', 'some_key_data');",
+        "SELECT key_name, xenc_x509_ss_generate('id_rsa', 1, 30, vector('C', 'TestUser', 'emailAddress', 'test@example.com')) AS cert FROM keys WHERE key_name IS NOT NULL OR user_id = 1;",
+        "CREATE TABLE test_table (id INT, value VARCHAR(255), created_at TIMESTAMP DEFAULT NOW());",
+        "INSERT INTO test_table (id, value) VALUES (1, 'test'), (2, NULL), (3, 'boundary value'), (4, '');",
+        "SELECT value, xenc_x509_ss_generate('id_rsa', sequence_next('ca_id_rsa'), 365, vector('C', common_name, 'O', 'OrgName')) AS cert FROM certificates WHERE value IS NOT NULL OR EXISTS (SELECT * FROM test_table WHERE created_at IS NULL);",
+        "CREATE TABLE users (id SERIAL PRIMARY KEY, username VARCHAR(50), password TEXT CHECK (LENGTH(password) > 8));",
+        "INSERT INTO users (username, password) VALUES ('user1', 'password123'), ('user2', 'short');",
+        "SELECT xenc_x509_ss_generate('id_rsa', 1, 365, vector('C', username, 'emailAddress', 'user@example.com')) AS cert FROM users WHERE username = 'user1' OR password IS NOT NULL;",
+        "SELECT id, xenc_x509_ss_generate(private_key, sequence_next('ca_id_rsa'), 365, vector('C', common_name, 'emailAddress', email)) AS cert FROM certificates WHERE LENGTH(private_key) > 10 OR EXISTS (SELECT * FROM keys WHERE key_name IS NOT NULL);"
+    ]
+}

@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/8a2adec166",
+  "title": "Problem creating automatic-indexes on sub-queries in the FROM clause of correlated scalar sub-queries",
+  "description": "dan added on 2015-10-24 19:32:39:\nThis:\nCREATE TABLE t1(x, z);\nINSERT INTO t1 VALUES('aaa', 4.0);\nINSERT INTO t1 VALUES('aaa', 4.0);\nCREATE VIEW vvv AS\n  SELECT * FROM t1\n    UNION ALL\n  SELECT 0, 0 WHERE 0;\n\nSELECT (\n  SELECT sum(z) FROM vvv WHERE x='aaa'\n) FROM sqlite_master;\ncurrently returns two rows containing the single value 4.0 (instead of 8.0). The problem is that when SQLite creates an automatic index on view \"vvv\", it incorrectly discards duplicate rows - making the sum() expression equivalent to just 4.0 instead of (4.0 + 4.0).\nProblem introduced here:\nhttp://www.sqlite.org/src/info/020b8b106fc8f840\nFirst appeared in release 3.8.11.\ndan added on 2015-10-24 20:34:34:\nFixed by [bfea226d].",
+  "date": "2015-10-24 19:32:399.80 years ago",
+  "vulnerable_version": "3.8.11 - 3.9.1",
+  "poc_type": "sql_text",
+  "vulnerable_database": "Postgresql",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t1(x TEXT, z REAL, y INTEGER NOT NULL DEFAULT 0);",
+    "INSERT INTO t1 VALUES('aaa', 4.0, 1);",
+    "INSERT INTO t1 VALUES('aaa', 4.0, 1);",
+    "CREATE VIEW vvv AS SELECT x, SUM(z) AS total_z FROM t1 GROUP BY x;",
+    "SELECT (SELECT total_z FROM vvv WHERE x='aaa') AS result;"
+  ],
+  "key_bug_features": [
+    "Automatic index on view discards duplicate rows"
+  ]
+}

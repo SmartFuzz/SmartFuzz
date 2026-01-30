@@ -1,0 +1,20 @@
+{
+  "url": "https://www.sqlite.org/src/tktview/343634942d",
+  "title": "Index on expression goes corrupt from valid SQL",
+  "description": "drh added on 2018-02-01 00:08:37:\nThe integrity_check at the end of the following block of SQL reports\nindex corruption.\nCREATE TABLE t1 (a INTEGER);\nCREATE INDEX idx1 ON t1 (lower(a));\nINSERT INTO t1 VALUES('0001234');\nPRAGMA integrity_check;\nRunning REINDEX clears the problem.\nThis problem appears to have been in the code since indexes on expressions\nwere first introduced with version 3.9.0 (2015-10-14).\nThis problem was discovered in the wild and reported to the SQLite developers\nthrough private channels.\ndrh added on 2018-02-01 16:17:02:\nHere is deeper discussion of the problem:\nInternally, SQLite tracks values as Mem objects.  (The sqlite3_value object\nin the public interface is just a renamed Mem object.)  Each Mem object is\nable to hold both a numeric value and its equivalent string representation\nat the same time.  Hence sqlite3_value_int() and \nsqlite3_value_text() can both be answered for the same object without having\nto do any conversions.\nThe mapping between string representations and numeric representations is\nmany to one.  There are many different strings that map to the same numeric\nvalue.  For example, '123', '0123', and '+123' all map into numeric 123.\nEvery numeric value has a canonical string representation, which is what is\ngenerated when SQLite converts numeric to string.  So a numeric-to-string\nconversion is one-to-one.  But a string-to-numeric conversion is many-to-one.\nIf you have situation where a table is storing a numeric value, and an\nindex is based on the string representation of that numeric value, it is\ncritical that the string representation used by the index be the canonical\nrepresentation of the numeric value, and not one of the other strings that\nhappen to map into that numeric value.  Otherwise, the index will be\ninconsistent with the table.\nThis bug arose when a non-canonical string representation was used to build\nthe index.\nThe fix was to add logic to SQLite that ensures that when the same Mem object\nholds both a string representation and a numeric representation, that the\nstring rep is the canonical string rep.",
+  "date": "2018-02-01 00:08:377.52 years ago",
+  "vulnerable_version": "3.22.0",
+  "poc_type": "sql_text",
+  "vulnerable_database": "oceanbase",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE t2 (b VARCHAR(255), c FLOAT, d INT NOT NULL DEFAULT 0);",
+    "CREATE INDEX idx2 ON t2 (LOWER(b));",
+    "INSERT INTO t2 VALUES('0005678', 123.45, NULL);",
+    "INSERT INTO t2 VALUES('123', 456.78, 1);",
+    "SELECT * FROM t2;"
+  ],
+  "key_bug_features": [
+    "Index corruption from non-canonical string representation"
+  ]
+}

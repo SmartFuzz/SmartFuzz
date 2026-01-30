@@ -1,0 +1,20 @@
+{
+  "url": "https://sqlite.org/src/tktview/8f157e8010b22af0",
+  "title": "Heap Buffer Overflow in multiSelectOrderBy",
+  "description": "yongheng added on 2020-06-14 20:14:12:\nAffect at least trunk and 3.32 release version.\n\nPOC:\n---\nCREATE TABLE a(b);\nCREATE VIEW c(d) AS SELECT b FROM a ORDER BY b;\nSELECT sum(d) OVER( PARTITION BY(SELECT 0 FROM c JOIN a WHERE b =(SELECT b INTERSECT SELECT d FROM c) AND b = 123)) FROM c;\n---\ndrh added on 2020-06-15 13:56:11:\nSimplified test case that does not involve window functions:\nCREATE TABLE t1(c1);     INSERT INTO t1 VALUES(12),(123),(1234),(NULL),('abc');\nCREATE TABLE t2(c2);     INSERT INTO t2 VALUES(44),(55),(123);\nCREATE TABLE t3(c3,c4);  INSERT INTO t3 VALUES(66,1),(123,2),(77,3);\nCREATE VIEW t5 AS SELECT c3 FROM t3 ORDER BY c4;\nSELECT * FROM t1, t2 WHERE c1=(SELECT 123 INTERSECT SELECT c2 FROM t5) AND c1=123;\n\nProblem first appeared in the 3.25.0 release on 2018-09-15 and seems to have\nbeen caused by the new use of transitive properties for constant propagation - \nthe optimization identified as \"3c\" in the change log",
+  "date": "2020-06-14 20:14:125.16 years ago",
+  "vulnerable_version": "未找到Version Found In标签",
+  "poc_type": "sql_text",
+  "vulnerable_database": "TiDB",
+  "source_database": "sqlite",
+  "bug_features_seed": [
+    "CREATE TABLE users(id INT PRIMARY KEY, name VARCHAR(255), age INT, salary DECIMAL(10,2));",
+    "INSERT INTO users(name, age, salary) VALUES('Alice', 30, 50000.00), ('Bob', NULL, 60000.00), ('Charlie', 25, 70000.00);",
+    "CREATE TABLE departments(id INT PRIMARY KEY, dept_name VARCHAR(255));",
+    "INSERT INTO departments(dept_name) VALUES('HR'), ('Engineering'), ('Sales');",
+    "CREATE VIEW user_salaries AS SELECT age, salary FROM users ORDER BY salary;"
+  ],
+  "key_bug_features": [
+    "SELECT with INTERSECT and ORDER BY in views"
+  ]
+}

@@ -1,0 +1,10 @@
+CREATE TABLE mww_ttest (id Int32, sample_data Float64, sample_index Int32) ENGINE = MergeTree() ORDER BY id;
+INSERT INTO mww_ttest VALUES (1, 12.5, 0), (2, 15.0, 0), (3, NULL, 0), (4, 14.0, 1), (5, 18.3, 1), (6, 16.7, 1), (7, 7.5, 0);
+SELECT mannWhitneyUTest('greater', 0)(SUM(sample_data) * (sample_index + 1), AVG(sample_data)) FROM mww_ttest GROUP BY sample_index HAVING COUNT(*) > 1;
+SELECT mannWhitneyUTest('two-sided', 1)(SUM(sample_data) * sample_index, AVG(sample_data)) FROM (SELECT sample_data, sample_index FROM mww_ttest WHERE sample_data IS NOT NULL) GROUP BY sample_index ORDER BY sample_index;
+SELECT sample_index, mannWhitneyUTest('greater', 0)(COALESCE(sample_data, 0) * 2.5, NULL) FROM mww_ttest GROUP BY sample_index;
+CREATE TABLE temp_mww (value Float64, sample_index Int32) ENGINE = MergeTree() ORDER BY value;
+INSERT INTO temp_mww SELECT sample_data * -1, sample_index FROM mww_ttest WHERE sample_data > 15;
+SELECT mannWhitneyUTest('two-sided', 0)(SUM(value), MIN(value) * sample_index) FROM temp_mww GROUP BY sample_index HAVING COUNT(value) > 2;
+SELECT DISTINCT mannWhitneyUTest('greater', 1)(SUM(sample_data) * (CASE WHEN sample_index = 0 THEN 1 ELSE -1 END), AVG(sample_data)) FROM mww_ttest WHERE sample_index IS NOT NULL GROUP BY sample_index;
+SELECT MAX(mannWhitneyUTest('greater')(sample_data, sample_index)) OVER (PARTITION BY sample_index) FROM mww_ttest;

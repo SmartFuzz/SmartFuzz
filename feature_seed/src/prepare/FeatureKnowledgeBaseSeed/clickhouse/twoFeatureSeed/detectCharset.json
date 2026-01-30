@@ -1,0 +1,21 @@
+{
+    "function": "detectCharset",
+    "operator": "(x1, x2, ...)",
+    "sql_array": [
+        "CREATE TABLE test_strings (id UInt32, text String);",
+        "INSERT INTO test_strings VALUES (1, 'Ich bleibe f\u00fcr ein paar Tage.'), (2, '\u3053\u308c\u306f\u30c6\u30b9\u30c8\u3067\u3059\u3002'), (3, 'C'est un test.'), (4, '\u0422\u0435\u0441\u0442\u043e\u0432\u043e\u0435 \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0435.');",
+        "CREATE TABLE test_results (id UInt32, charset_detected String);",
+        "INSERT INTO test_results SELECT id, detectCharset(text) FROM test_strings;",
+        "SELECT id, detectCharset(CONCAT(text, ' - additional context: ', detectCharset(text))) AS charset Detailed FROM test_strings;",
+        "SELECT id FROM (SELECT id, detectCharset(text) AS detected_charset FROM test_strings) WHERE detected_charset IS NOT NULL;",
+        "SELECT id, detectCharset(text) AS detected_charset FROM test_strings WHERE detectCharset(text) IS NOT NULL GROUP BY detected_charset HAVING detected_charset LIKE 'UTF%';",
+        "SELECT (id, detectCharset(IFNULL(text, 'empty'))) FROM test_strings WHERE id < 4;",
+        "SELECT id, COUNT(*) OVER(PARTITION BY detectCharset(text)) AS charset_count FROM test_strings;",
+        "SELECT (text, detectCharset(text)) FROM test_strings WHERE detectCharset(text) = detectCharset('C'est un test.');",
+        "SELECT (id, detectCharset(text), (id % 2)) FROM test_strings GROUP BY (id, detectCharset(text)) HAVING id > 3;",
+        "SELECT (text, detectCharset(CAST(id AS String))) FROM test_strings HAVING detectCharset(CAST(id AS String)) IS NOT NULL ORDER BY id;",
+        "CREATE TABLE test_tuples AS SELECT (id, detectCharset(text)) AS char_tuple FROM test_strings;",
+        "SELECT * FROM test_tuples WHERE detectCharset(((text, detectCharset(text)))) IS NULL;",
+        "INSERT INTO test_results SELECT id, detectCharset(CONCAT(text, ' random text ', detectCharset(text))) FROM test_strings WHERE detectCharset(text) IS NOT NULL;"
+    ]
+}

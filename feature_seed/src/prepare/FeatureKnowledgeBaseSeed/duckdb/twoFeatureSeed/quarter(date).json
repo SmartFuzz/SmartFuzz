@@ -1,0 +1,16 @@
+{
+    "function": "quarter(date)",
+    "operator": "+",
+    "sql_array": [
+        "CREATE TABLE test_dates (id INTEGER, event_date DATE, description VARCHAR);",
+        "INSERT INTO test_dates (id, event_date, description) VALUES (1, NULL, 'Null Entry'), (2, DATE '2023-01-01', 'New Year'), (3, DATE '2023-06-30', 'End of Q2'), (4, DATE '2023-12-31', 'End of Year');",
+        "SELECT id, event_date, quarter(event_date) AS quarter_of_event, event_date + INTERVAL (1 + quarter(event_date)) MONTH AS new_date FROM test_dates WHERE event_date IS NOT NULL;",
+        "SELECT id, event_date, quarter(event_date) AS quarter_of_event FROM test_dates WHERE event_date > DATE '2023-01-01' AND quarter(event_date) = 1 ORDER BY new_date DESC;",
+        "SELECT id, COUNT(*) OVER (PARTITION BY quarter(event_date)) AS count_per_quarter FROM (SELECT id, event_date, quarter(event_date) AS quarter FROM test_dates WHERE event_date IS NOT NULL) AS quarter_counts;",
+        "SELECT a.id, a.event_date, quarter(a.event_date) AS quarter_of_event FROM test_dates AS a JOIN test_dates AS b ON a.id <> b.id AND quarter(a.event_date) = quarter(b.event_date) WHERE b.event_date IS NOT NULL;",
+        "CREATE TABLE additional_dates (id INTEGER, some_date DATE);",
+        "INSERT INTO additional_dates (id, some_date) VALUES (1, DATE '1991-12-31'), (2, DATE '1999-02-29'), (3, DATE '2004-03-01');",
+        "SELECT a.id, a.event_date, round((a.event_date + INTERVAL (select COUNT(*) FROM additional_dates) DAY)::DATE) AS adjusted_date FROM test_dates a WHERE a.id IN (SELECT b.id FROM additional_dates b WHERE b.some_date < DATE '2000-01-01') ORDER BY adjusted_date;",
+        "SELECT id, CASE WHEN event_date IS NULL THEN 'No Event' ELSE description END AS event_status FROM test_dates WHERE id IN (SELECT id FROM test_dates WHERE quarter(event_date) = 4);"
+    ]
+}

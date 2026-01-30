@@ -1,0 +1,14 @@
+CREATE TABLE test_tuple_null (a Tuple(Int32, Int32), b Nullable(Int32), c Nullable(String));
+INSERT INTO test_tuple_null VALUES ((1, 2), NULL, 'test'), ((3, 4), 10, NULL), ((5, 6), 20, 'edge');
+SELECT tupleConcat((a.1, a.2), (b, c IS NULL)) AS res FROM test_tuple_null WHERE b IS NULL;
+SELECT tupleConcat((1, 2), (NULL, NULL), (3, 4)) AS res FROM test_tuple_null WHERE (b IS NULL) AND (c IS NOT NULL);
+SELECT tupleConcat((3, 4), (tupleConcat((1, 2), (b IS NULL)), (c))) AS res FROM test_tuple_null WHERE IS NULL(b);
+WITH (SELECT COUNT(*) FROM test_tuple_null WHERE b IS NULL) AS cnt SELECT tupleConcat((1, 2), (b, cnt IS NULL)) FROM test_tuple_null WHERE cnt > 0;
+WITH (SELECT AVG(b) FROM test_tuple_null WHERE b IS NOT NULL) AS avg_b SELECT tupleConcat((avg_b, c), (IF(b IS NULL, 1, 0))) AS test FROM test_tuple_null;
+CREATE TABLE test_join (id Int32, details Nullable(Tuple(Int32, String)));
+INSERT INTO test_join VALUES (1, (NULL, 'first')), (2, (20, 'second')), (3, (NULL, 'third'));
+SELECT t1.id, tupleConcat(t1.details, (t2.id, t2.details IS NULL)) FROM test_tuple_null AS t1 JOIN test_join AS t2 ON t1.b IS NULL AND t2.details IS NOT NULL;
+CREATE TABLE test_window (id Int32, val Nullable(Int32));
+INSERT INTO test_window VALUES (1, 10), (2, NULL), (3, 30);
+SELECT id, tupleConcat((val, val IS NULL)) AS result FROM test_window ORDER BY result;
+SELECT id, tupleConcat((val, 1 / val IS NULL)) AS division_check FROM test_window HAVING division_check IS NULL;

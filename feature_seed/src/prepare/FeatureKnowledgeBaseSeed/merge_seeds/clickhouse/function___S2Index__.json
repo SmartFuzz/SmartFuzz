@@ -1,0 +1,10 @@
+CREATE TABLE geo_points (id Int32, lat Float64, lon Float64);
+INSERT INTO geo_points VALUES (1, 37.7749, -122.4194), (2, 34.0522, -118.2437), (3, 40.7128, -74.0060);
+SELECT id, geoToS2(lat, lon) AS s2_index FROM geo_points;
+CREATE TABLE s2_indices AS SELECT id, geoToS2(lat, lon) AS s2_index FROM geo_points;
+SELECT s2_index FROM s2_indices WHERE id = (SELECT id FROM geo_points WHERE lat = 37.7749 AND lon = -122.4194);
+SELECT g1.id, s2ToGeo(g1.s2_index) AS geo_coordinates FROM (SELECT id, geoToS2(lat, lon) AS s2_index FROM geo_points) AS g1;
+SELECT g1.id, geoToS2(g1.lat, g1.lon) AS s2_index FROM (SELECT lat, lon FROM geo_points WHERE lat >= 30 AND lon <= -100) AS g1;
+SELECT DISTINCT g1.id FROM (SELECT lat, lon, geoToS2(lat, lon) AS s2_index FROM geo_points) AS g1 JOIN s2_indices AS g2 ON g1.s2_index = g2.s2_index WHERE g1.id != g2.id;
+CREATE TABLE geo_results AS SELECT g1.id, g2.id AS nearby_id FROM geo_points AS g1 JOIN geo_points AS g2 ON geoToS2(g1.lat, g1.lon) = geoToS2(g2.lat, g2.lon) WHERE g1.id != g2.id;
+SELECT COUNT(*) FROM geo_results WHERE nearby_id IS NOT NULL;

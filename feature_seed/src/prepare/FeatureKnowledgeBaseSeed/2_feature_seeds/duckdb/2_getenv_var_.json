@@ -1,0 +1,11 @@
+CREATE TABLE test_table (id INTEGER, created_at TIMESTAMP, data VARCHAR(255));
+INSERT INTO test_table VALUES (1, TIMESTAMP '2023-01-01 00:00:00', 'first entry'), (2, TIMESTAMP '2023-01-15 12:30:45', 'second entry'), (3, TIMESTAMP '2023-01-20 15:45:00', NULL);
+SELECT id, created_at - INTERVAL (CASE WHEN data IS NULL THEN 1 ELSE 0 END) DAY AS adjusted_time FROM test_table WHERE data IS NOT NULL;
+SELECT id, (SELECT getenv('CURRENT_USER')) AS env_var, created_at - INTERVAL 10 DAY as past_time FROM test_table WHERE created_at >= TIMESTAMP '2023-01-01 00:00:00' ORDER BY adjusted_time;
+SELECT id, COUNT(*) OVER(PARTITION BY created_at - INTERVAL (SELECT COUNT(*) FROM test_table WHERE data IS NOT NULL) DAY) AS cnt FROM test_table GROUP BY id, created_at HAVING cnt > 1;
+CREATE TABLE temp_table AS SELECT *, created_at - INTERVAL 1 MONTH AS modified_at FROM test_table WHERE data IS NOT NULL;
+SELECT id, modified_at, getenv('MY_VAR') - INTERVAL 5 HOUR FROM temp_table WHERE modified_at IS NOT NULL ORDER BY modified_at;
+CREATE TABLE join_table (join_id INTEGER, reference TIMESTAMP);
+INSERT INTO join_table VALUES (1, TIMESTAMP '2023-01-01 00:00:00'), (2, TIMESTAMP '2023-01-10 00:00:00');
+SELECT t1.id, t1.created_at, t2.reference, (t1.created_at - INTERVAL 6 DAY) AS time_shifted FROM test_table t1 JOIN join_table t2 ON t1.created_at < t2.reference WHERE t1.created_at IS NOT NULL;
+SELECT 1.0/NULLIF(NULL, 0) AS division_check, getenv('PATH') AS path_value;

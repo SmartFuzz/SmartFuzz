@@ -1,0 +1,25 @@
+{
+    "function": "generate_series(timestamptz, timestamptz, interval)",
+    "operator": "!",
+    "sql_array": [
+        "CREATE TABLE events (id INT, event_time TIMESTAMPTZ, description TEXT);",
+        "INSERT INTO events VALUES (1, TIMESTAMPTZ '2001-04-10 12:00:00', 'Event A');",
+        "INSERT INTO events VALUES (2, TIMESTAMPTZ '2001-04-10 12:30:00', 'Event B');",
+        "INSERT INTO events VALUES (3, TIMESTAMPTZ '2001-04-11 12:45:00', 'Event C');",
+        "INSERT INTO events VALUES (4, TIMESTAMPTZ '2001-04-11 13:00:00', NULL);",
+        "CREATE TABLE complex_events (event_id INT, timestamp_series TIMESTAMPTZ, factorial_value INT);",
+        "INSERT INTO complex_events SELECT id, generate_series(event_time, event_time + INTERVAL '1 DAY', INTERVAL '30 MINUTE'), id! FROM events WHERE event_time IS NOT NULL;",
+        "SELECT event_id, timestamp_series, factorial_value FROM complex_events WHERE factorial_value > 1 HAVING timestamp_series >= TIMESTAMPTZ '2001-04-10' AND timestamp_series <= TIMESTAMPTZ '2001-04-11';",
+        "SELECT e.id, e.description, COUNT(*) FROM events e JOIN complex_events ce ON e.id = ce.event_id GROUP BY e.id, e.description HAVING COUNT(*) > 1;",
+        "SELECT generate_series(TIMESTAMPTZ '2001-04-10', TIMESTAMPTZ '2001-04-11', INTERVAL '1 HOUR') AS series, 5! AS factorial_result;",
+        "SELECT e.id, e.description, (NULLIF(NULL, '') ! 3) AS null_factorial FROM events e WHERE e.event_time IS NOT NULL ORDER BY null_factorial;",
+        "SELECT e.id, generate_series(event_time, event_time + INTERVAL '1 DAY', INTERVAL '1 HOUR') AS hourly_series FROM events e JOIN (SELECT event_id, COUNT(*) AS count FROM complex_events GROUP BY event_id HAVING COUNT(*) > 1) AS ce ON e.id = ce.event_id;",
+        "SELECT e.id, e.description, generate_series(e.event_time, e.event_time + INTERVAL '6 HOUR', INTERVAL '1 HOUR') AS extended_series FROM events e WHERE e.event_time IS NOT NULL;",
+        "CREATE TABLE edge_cases (case_id INT, null_value TIMESTAMPTZ);",
+        "INSERT INTO edge_cases VALUES (1, NULL), (2, TIMESTAMPTZ '2001-04-10 14:00:00');",
+        "SELECT ec.case_id, ec.null_value, generate_series(ec.null_value, ec.null_value + INTERVAL '2 HOURS', INTERVAL '1 HOUR') AS null_series FROM edge_cases ec;",
+        "SELECT *, 0! AS zero_factorial FROM (SELECT event_time, COUNT(*) AS cnt FROM events GROUP BY event_time HAVING COUNT(*) < 2) AS sub;",
+        "DROP TABLE IF EXISTS temp_cases;",
+        "CREATE TEMP TABLE temp_cases AS SELECT id, generate_series(TIMESTAMPTZ '2001-01-01', TIMESTAMPTZ '2001-12-31', INTERVAL '1 MONTH') AS month_series FROM events;"
+    ]
+}

@@ -1,0 +1,14 @@
+CREATE TABLE time_test (id SERIAL PRIMARY KEY, sec_interval_column INTERVAL, dummy_text VARCHAR(100));
+INSERT INTO time_test (sec_interval_column, dummy_text) VALUES (INTERVAL '35' SECOND, 'Sample text with backslash: A\nB\tC');
+SELECT second(e'A\f' || sec_interval_column) AS extracted_seconds FROM time_test;
+CREATE TABLE second_test (id SERIAL PRIMARY KEY, sec_interval_column INTERVAL NOT NULL);
+INSERT INTO second_test (sec_interval_column) VALUES (INTERVAL '60' SECOND), (INTERVAL '120' SECOND);
+SELECT id, second(e'A\t' || sec_interval_column) AS seconds_extracted FROM second_test WHERE sec_interval_column IS NOT NULL;
+WITH extracted AS (SELECT id, second(e'A\n' || sec_interval_column) AS seconds_extracted FROM second_test) SELECT avg(seconds_extracted) AS avg_seconds FROM extracted HAVING avg_seconds < 100;
+CREATE TABLE merge_test (id SERIAL PRIMARY KEY, sec_interval_column INTERVAL, related_id INT REFERENCES second_test(id));
+INSERT INTO merge_test (sec_interval_column, related_id) VALUES (INTERVAL '15' SECOND, 1), (INTERVAL '5' SECOND, 2);
+SELECT mt.id, second(e'A\b' || mt.sec_interval_column) AS extracted_seconds, st.sec_interval_column FROM merge_test mt JOIN second_test st ON mt.related_id = st.id WHERE second(e'A\f' || mt.sec_interval_column) IS NOT NULL;
+SELECT seconds_extracted FROM (SELECT second(e'A\n' || sec_interval_column) AS seconds_extracted FROM second_test WHERE sec_interval_column IS NOT NULL) AS derived WHERE seconds_extracted > 59;
+CREATE TABLE mixed_test (id SERIAL PRIMARY KEY, sec_interval_column INTERVAL, text_column VARCHAR(100));
+INSERT INTO mixed_test (sec_interval_column, text_column) VALUES (INTERVAL '1' SECOND, e'Text with backslash: A\u0042'), (INTERVAL '0' SECOND, 'Plain text');
+SELECT mt.id, second(e'A\t' || mt.sec_interval_column) AS seconds_extracted FROM mixed_test mt WHERE (second(e'A\n' || mt.sec_interval_column) IS NOT NULL) OR (text_column LIKE e'%\t%');

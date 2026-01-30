@@ -1,0 +1,16 @@
+{
+    "function": "h3GetUnidirectionalEdgeBoundary",
+    "operator": "a NOT IN ...",
+    "sql_array": [
+        "CREATE TABLE geo_edges (id UInt64, edge_index UInt64, coordinates Array(Array(Float64)));",
+        "INSERT INTO geo_edges VALUES (1, 1248204388774707199, h3GetUnidirectionalEdgeBoundary(1248204388774707199)), (2, 1248204388774707198, h3GetUnidirectionalEdgeBoundary(1248204388774707198));",
+        "SELECT id, edge_index, coordinates FROM geo_edges WHERE edge_index NOT IN (SELECT edge_index FROM geo_edges WHERE coordinates[1][1] IS NOT NULL) ORDER BY edge_index;",
+        "SELECT edge_index, COUNT(*) as boundary_count FROM geo_edges GROUP BY edge_index HAVING boundary_count NOT IN (SELECT COUNT(*) FROM geo_edges WHERE coordinates[1][1] IS NULL);",
+        "CREATE TABLE temp_edges AS SELECT * FROM geo_edges WHERE edge_index NOT IN (SELECT edge_index FROM geo_edges WHERE edge_index < 0);",
+        "SELECT edge_index, h3GetUnidirectionalEdgeBoundary(edge_index) AS boundary FROM geo_edges WHERE edge_index NOT IN (SELECT edge_index FROM temp_edges) ORDER BY boundary[1][1] DESC;",
+        "INSERT INTO geo_edges VALUES (3, CAST('1248204388774707197' AS UInt64), h3GetUnidirectionalEdgeBoundary(CAST('1248204388774707197' AS UInt64))), (4, 0, h3GetUnidirectionalEdgeBoundary(0));",
+        "SELECT edge_index, h3GetUnidirectionalEdgeBoundary(edge_index) NOT IN (SELECT coordinates FROM geo_edges WHERE id = 2) AS is_boundary_valid FROM geo_edges WHERE edge_index IS NOT NULL;",
+        "SELECT COUNT(*) FROM (SELECT edge_index, h3GetUnidirectionalEdgeBoundary(edge_index) FROM geo_edges WHERE edge_index NOT IN (1, 2, 3.5)) AS boundaries_grouped HAVING count > 0;",
+        "DROP TABLE IF EXISTS temp_edges;"
+    ]
+}

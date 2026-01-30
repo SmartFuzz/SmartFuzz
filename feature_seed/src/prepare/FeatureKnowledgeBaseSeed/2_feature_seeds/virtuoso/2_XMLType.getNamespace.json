@@ -1,0 +1,10 @@
+CREATE TABLE test_xml (id INT PRIMARY KEY, xml_data XMLType);
+INSERT INTO test_xml (id, xml_data) VALUES (1, XMLType('<z:item xmlns:z="http://www.example.com/"><test>value</test></z:item>', 'http://www.example.com/schema.xsd'));
+INSERT INTO test_xml (id, xml_data) VALUES (2, XMLType('<fragment><z:item/></fragment>'));
+INSERT INTO test_xml (id, xml_data) VALUES (3, XMLType('<local/>'));
+SELECT id, XMLType.getNamespace(xml_data) AS namespace_uri FROM test_xml WHERE xml_data IS NOT NULL HAVING namespace_uri IS NULL;
+SELECT id, xpath_string('//z:item', xml_data) AS item_value FROM test_xml WHERE XMLType.getNamespace(xml_data) IS NOT NULL;
+SELECT id, XMLType.getNamespace(xml_data) AS namespace_uri, xpath_string('//z:item', xml_data) AS item_value FROM test_xml WHERE xml_data IS NOT NULL AND id IN (SELECT id FROM test_xml WHERE XMLType.getNamespace(xml_data) IS NULL) GROUP BY XMLType.getNamespace(xml_data), item_value HAVING COUNT(item_value) > 1;
+SELECT XMLType.getNamespace(XMLType('<local/>', 'http://example.com/test.xsd')) AS namespace_test;
+SELECT xpath_string('//item', XMLType('<local/>')), XMLType.getNamespace(XMLType('<item/>', 'http://example.com/schema.xsd')) FROM test_xml WHERE id = 1;
+SELECT id, XMLType.getNamespace(xml_data), xpath_string('//z:item', XMLType('<z:item xmlns:z="http://www.example.com/"><value>1</value></z:item>', 'http://www.example.com/schema.xsd')) FROM test_xml WHERE id IN (SELECT MAX(id) FROM test_xml) ORDER BY id DESC;

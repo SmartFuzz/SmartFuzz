@@ -1,0 +1,20 @@
+{
+  "url": "https://github.com/pingcap/tidb/issues/43624",
+  "title": "Unexpected results when `CASE` and `IN` use together",
+  "description": "## Bug Report\r\n\r\nPlease answer these questions before submitting your issue. Thanks!\r\n\r\n### 1. Minimal reproduce step (Required)\r\n\r\nConsider the following program:\r\n```\r\nCREATE TABLE t0(c0 BOOL);\r\n\r\nINSERT INTO t0 VALUES (true);\r\n\r\nSELECT t0.c0 FROM t0 WHERE (((CASE (((CASE t0.c0 WHEN 6 THEN 0.03 ELSE t0.c0 END ))LIKE(t0.c0)) WHEN t0.c0 THEN 1  END ))AND( t0.c0 IN ((1))));  -- empty result\r\n\r\nSELECT t0.c0 FROM t0 WHERE (((CASE (((CASE t0.c0 WHEN 6 THEN 0.03 ELSE t0.c0 END ))LIKE(t0.c0)) WHEN t0.c0 THEN 1  END ))AND( t0.c0 IN (SELECT t0.c0 FROM t0)));   -- 1\r\n```\r\nThese two queries are equivalent, because I run query `SELECT t0.c0 FROM t0;` and get result `1`. But the first query returns an empty result, I think it is unexpected.\r\n\r\nFor `CASE t0.c0 WHEN 6 THEN 0.03 ELSE t0.c0 END`, I tried `SELECT CASE t0.c0 WHEN 6 THEN 0.03 ELSE t0.c0 END FROM t0;` and get result `1`, then I replace this expression with `1` and get query `SELECT t0.c0 FROM t0 WHERE (((CASE (((1 ))LIKE(t0.c0)) WHEN t0.c0 THEN 1  END ))AND( t0.c0 IN ((1))));`. This query also returns `1`.\r\n\r\nFor `t0.c0 IN (1)`, I tried `SELECT t0.c0 IN (1) FROM t0;` and got result `1`. So the first query should not have an empty result.\r\n\r\n### 2. What did you expect to see? (Required)\r\nThe first `SELECT` query returns `1`\r\n\r\n### 3. What did you see instead (Required)\r\nThe first `SELECT` query returns an empty result.\r\n\r\n### 4. What is your TiDB version? (Required)\r\n\r\n```\r\nRelease Version: v7.2.0-alpha-108-gfd438de6a\\nEdition: Community\\nGit Commit Hash: fd438de6a89ec33ae7d6e3f2350a83939ebe172c\\nGit Branch: master\\nUTC Build Time: 2023-05-08 15:05:47\\nGoVersion: go1.20.3\\nRace Enabled: false\\nTiKV Min Version: 6.2.0-alpha\\nCheck Table Before Drop: false\\nStore: unistore\r\n```\r\n\r\n",
+  "date": "2023-05-08T15:32:43Z",
+  "vulnerable_version": "Unknown",
+  "poc_type": "sql_text",
+  "vulnerable_database": "sqlite",
+  "source_database": "TiDB",
+  "bug_features_seed": [
+    "CREATE TABLE t1(c0 INTEGER, c1 TEXT, c2 INTEGER);",
+    "INSERT INTO t1 VALUES (1, 'test', 1), (2, 'example', 0);",
+    "SELECT c0 FROM t1 WHERE (CASE WHEN c1 IN ('test', 'example') THEN c0 ELSE NULL END) IS NOT NULL;",
+    "SELECT c0 FROM t1 WHERE (CASE WHEN c1 LIKE 't%' THEN c0 ELSE 0 END) IN (SELECT c0 FROM t1 WHERE c2 = 1);",
+    "SELECT c0 FROM t1 WHERE (CASE WHEN c0 > 1 THEN c0 ELSE NULL END) IN (SELECT c0 FROM t1 WHERE c2 IS NULL);"
+  ],
+  "key_bug_features": [
+    "Unexpected results with CASE and IN conditions together"
+  ]
+}
