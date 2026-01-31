@@ -1,5 +1,5 @@
-# Smarfuzz
-Smarfuzz is an automated framework for synthesizing high-quality initial SQL seeds for mutation-based DBMS fuzzing using Large Language Models (LLMs).
+# Smartfuzz
+Smartfuzz is an automated framework for synthesizing high-quality initial SQL seeds for mutation-based DBMS fuzzing using Large Language Models (LLMs).
 
 ## Directory
 - Squirrel: Squirrel, a mutation-based fuzzer with the expand support for MonetDB, DuckDB, Virtuoso, Clickhouse.
