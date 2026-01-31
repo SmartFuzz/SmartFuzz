@@ -65,7 +65,7 @@ Smartfuzz is an automated framework for synthesizing high-quality initial SQL se
 | 51 | virtuoso | https://github.com/openlink/virtuoso-opensource/issues/1379 | fixed |
 | 52 | virtuoso | https://github.com/openlink/virtuoso-opensource/issues/1381 | fixed |
 | 53 | virtuoso | https://github.com/openlink/virtuoso-opensource/issues/1382 | fixed |
-| 54 | virtuoso | https://github.com/openlink/virtuoso-opensource/issues/1385 | fixed |
+| 54 | virtuoso | https://github.com/openlink/virtuoso-opensource/issues/1385 | waiting |
 | 55 | virtuoso | https://github.com/openlink/virtuoso-opensource/issues/1388 | waiting |
 | 56 | virtuoso | https://github.com/openlink/virtuoso-opensource/issues/1389 | waiting |
 | 57 | virtuoso | https://github.com/openlink/virtuoso-opensource/issues/1390 | waiting |
